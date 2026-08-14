@@ -6,51 +6,59 @@ Utility per controllare in blocco i package Android e ottenere direttamente nell
 - stato del listing;
 - titolo attuale sullo Store;
 - fonte della data di aggiornamento;
-- note sui casi problematici o ambigui.
+- classificazione visuale della criticità;
+- identificazione delle system app quando possibile.
 
-## Novità della GUI
+## Tabella risultati
 
-La versione Windows mostra i risultati direttamente in una tabella interna, senza creare automaticamente file di output.
+La versione Windows mostra i risultati direttamente in una tabella interna.
 
 La tabella permette di:
 
 - ordinare i risultati cliccando sulle intestazioni delle colonne;
 - filtrare rapidamente le righe con il campo `Filter`;
-- vedere il riepilogo di app disponibili e casi da controllare;
+- nascondere o mostrare le system app senza rieseguire l'audit;
 - fare doppio clic su una riga per aprire il listing Play Store;
 - esportare il CSV soltanto quando serve, tramite `Export results…`.
 
-## Esclusione delle system app
+### Hide system apps
 
-La casella:
+Il checkbox `Hide system apps` è un filtro puramente visuale.
 
-`Exclude system apps (phone scans and CSV files)`
+Tutti i package della sorgente vengono analizzati una sola volta. Dopo l'audit puoi attivare o disattivare il checkbox e la tabella si aggiorna immediatamente.
 
-è attiva di default e vale sia per la scansione diretta del telefono sia per i file CSV/TXT caricati.
+La classificazione system app usa, in ordine:
 
-### Se analizzi direttamente il telefono
+1. eventuale colonna CSV come `is_system`, `system`, `system_app` o `app_type`;
+2. ADB, se è collegato e autorizzato un telefono Android;
+3. un fallback molto prudente basato sui package chiaramente di sistema.
 
-Premi `Scan phone with ADB`.
+Con una scansione diretta del telefono via ADB la classificazione system/user è esatta per quel dispositivo.
 
-L'app legge tutti i package e separa quelli di sistema usando ADB. La classificazione è quindi riferita al telefono effettivamente collegato. Puoi cambiare il checkbox anche dopo la scansione e prima di avviare l'audit.
+## Criticità e colori
 
-### Se carichi un CSV / TSV / TXT
+Ogni riga riceve un colore e la colonna finale `Criticality`:
 
-Prima dell'audit, il programma prova a identificare le system app in questo ordine:
+- 🔴 `Removed`: app non più trovata sul Play Store;
+- 🟡 `Aging`: ultimo aggiornamento più vecchio di 365 giorni e non oltre 730 giorni;
+- 🟠 `Stale`: ultimo aggiornamento più vecchio di 730 giorni;
+- 🟢 `Current`: ultimo aggiornamento non più vecchio di 365 giorni;
+- 🟣 `Other`: data assente/non interpretabile, errore di richiesta, disponibilità soltanto nel locale fallback o altra situazione non classificabile con sicurezza.
 
-1. usa eventuali colonne del file come `is_system`, `system_app`, `system` o `app_type`;
-2. se è collegato e autorizzato un telefono Android via ADB, confronta i package del file con `adb shell pm list packages -s`, ottenendo una classificazione esatta per quel telefono;
-3. se non sono disponibili né metadati né ADB, applica solo un fallback prudente sui package chiaramente di sistema.
+La colonna `Criticality` è ordinabile per severità.
 
-Le app classificate come system vengono rimosse **prima** di interrogare il Play Store, quindi non consumano richieste dell'audit.
-
-Per una classificazione affidabile di un CSV che non contiene un flag di sistema, il metodo migliore è collegare lo stesso telefono da cui proviene la lista e lasciare ADB disponibile.
+Il riepilogo sopra la tabella mostra anche il numero di righe per ciascun colore e quante system app sono nascoste.
 
 ## Analisi diretta del telefono
 
 Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono, senza creare prima un CSV intermedio.
 
-Dopo la scansione, la lista resta in memoria e puoi premere `Run Play Store audit`.
+La scansione usa:
+
+- `adb shell pm list packages` per tutti i package;
+- `adb shell pm list packages -s` per identificare le system app.
+
+Dopo la scansione premi `Run Play Store audit`.
 
 ## Creare l'EXE Windows online
 
@@ -82,14 +90,14 @@ Doppio clic su:
 
 ## Input file supportati
 
-Se preferisci non usare ADB direttamente, puoi caricare:
+Puoi caricare:
 
 - CSV;
 - TSV;
 - TXT;
 - output ADB `package:com.example.app`.
 
-Sono riconosciute colonne come:
+Sono riconosciute colonne package come:
 
 - `package_name`
 - `package`
@@ -99,8 +107,6 @@ Sono riconosciute colonne come:
 - `id`
 
 Il nome dell'app è opzionale.
-
-Per indicare esplicitamente se una riga è una system app, puoi aggiungere per esempio una colonna `is_system` con valori `true/false`, `1/0`, `yes/no`, `system/user`.
 
 ## File principali
 
