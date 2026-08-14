@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import csv
 import queue
+import re
 import shutil
 import subprocess
 import threading
 import webbrowser
+from datetime import date, datetime
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -22,6 +24,7 @@ class PlayStoreAuditApp(tk.Tk):
         "play_title",
         "updated_source",
         "notes",
+        "criticality",
     )
 
     COLUMN_LABELS = {
@@ -32,16 +35,18 @@ class PlayStoreAuditApp(tk.Tk):
         "play_title": "Play Store title",
         "updated_source": "Update source",
         "notes": "Notes",
+        "criticality": "Criticality",
     }
 
     COLUMN_WIDTHS = {
-        "app_name": 170,
-        "package_name": 260,
-        "play_status": 190,
-        "play_last_update": 115,
-        "play_title": 210,
-        "updated_source": 170,
-        "notes": 340,
+        "app_name": 165,
+        "package_name": 245,
+        "play_status": 180,
+        "play_last_update": 110,
+        "play_title": 200,
+        "updated_source": 155,
+        "notes": 285,
+        "criticality": 135,
     }
 
     SYSTEM_COLUMN_NAMES = {
@@ -61,8 +66,6 @@ class PlayStoreAuditApp(tk.Tk):
         "third-party", "third_party", "thirdparty",
     }
 
-    # Offline fallback used only when neither CSV metadata nor an authorised
-    # source phone is available. Kept deliberately conservative.
     DEFINITE_SYSTEM_PREFIXES = (
         "com.android.",
         "com.google.android.overlay.",
@@ -84,18 +87,43 @@ class PlayStoreAuditApp(tk.Tk):
         "com.google.android.connectivity.resources",
     }
 
+    MONTHS = {
+        "jan": 1, "january": 1, "gen": 1, "gennaio": 1,
+        "feb": 2, "february": 2, "febbraio": 2,
+        "mar": 3, "march": 3, "marzo": 3,
+        "apr": 4, "april": 4, "aprile": 4,
+        "may": 5, "maggio": 5, "mag": 5,
+        "jun": 6, "june": 6, "giu": 6, "giugno": 6,
+        "jul": 7, "july": 7, "lug": 7, "luglio": 7,
+        "aug": 8, "august": 8, "ago": 8, "agosto": 8,
+        "sep": 9, "sept": 9, "september": 9, "set": 9, "settembre": 9,
+        "oct": 10, "october": 10, "ott": 10, "ottobre": 10,
+        "nov": 11, "november": 11, "novembre": 11,
+        "dec": 12, "december": 12, "dic": 12, "dicembre": 12,
+    }
+
+    CRITICALITY = {
+        "red": {"label": "🔴 Removed", "rank": 0},
+        "orange": {"label": "🟠 Stale", "rank": 1},
+        "yellow": {"label": "🟡 Aging", "rank": 2},
+        "purple": {"label": "🟣 Other", "rank": 3},
+        "green": {"label": "🟢 Current", "rank": 4},
+    }
+
+    EXPORT_FIELDS = list(OUTPUT_FIELDS) + ["is_system", "criticality", "age_days"]
+
     def __init__(self) -> None:
         super().__init__()
         self.title("Play Store App Audit")
-        self.geometry("1340x790")
-        self.minsize(1020, 640)
+        self.geometry("1400x820")
+        self.minsize(1050, 650)
 
         self.input_var = tk.StringVar()
         self.source_var = tk.StringVar(value="No app list selected")
         self.country_var = tk.StringVar(value="it")
         self.language_var = tk.StringVar(value="it")
         self.workers_var = tk.IntVar(value=16)
-        self.exclude_system_var = tk.BooleanVar(value=True)
+        self.hide_system_var = tk.BooleanVar(value=True)
         self.filter_var = tk.StringVar()
         self.status_var = tk.StringVar(value="Ready")
         self.summary_var = tk.StringVar(value="No results yet")
@@ -106,6 +134,7 @@ class PlayStoreAuditApp(tk.Tk):
         self.file_system_metadata: dict[str, bool] = {}
         self.device_apps_all: list[dict[str, str]] = []
         self.device_system_packages: set[str] = set()
+        self.current_system_packages: set[str] = set()
         self.current_rows: list[dict[str, object]] = []
         self.sort_column: str | None = None
         self.sort_reverse = False
@@ -159,19 +188,11 @@ class PlayStoreAuditApp(tk.Tk):
         ttk.Label(options, text="Language:").grid(row=0, column=2, sticky="w")
         ttk.Entry(options, textvariable=self.language_var, width=7).grid(row=0, column=3, padx=(5, 18))
         ttk.Label(options, text="Parallel threads:").grid(row=0, column=4, sticky="w")
-        ttk.Spinbox(options, from_=1, to=32, textvariable=self.workers_var, width=7).grid(row=0, column=5, padx=(5, 22))
-        ttk.Checkbutton(
-            options,
-            text="Exclude system apps (phone scans and CSV files)",
-            variable=self.exclude_system_var,
-        ).grid(row=0, column=6, sticky="w")
+        ttk.Spinbox(options, from_=1, to=32, textvariable=self.workers_var, width=7).grid(row=0, column=5, padx=(5, 18))
         ttk.Label(
             options,
-            text=(
-                "For CSV files, detection is exact when the CSV contains a system flag "
-                "or an authorised Android phone is connected via ADB."
-            ),
-        ).grid(row=1, column=0, columnspan=7, sticky="w", pady=(7, 0))
+            text="System-app classification is collected during the audit and can be hidden/shown later without rerunning it.",
+        ).grid(row=0, column=6, sticky="w", padx=(8, 0))
 
         action_frame = ttk.Frame(root)
         action_frame.grid(row=3, column=0, sticky="ew", pady=(10, 0))
@@ -192,17 +213,33 @@ class PlayStoreAuditApp(tk.Tk):
         results = ttk.LabelFrame(root, text="Results", padding=8)
         results.grid(row=5, column=0, sticky="nsew")
         results.columnconfigure(0, weight=1)
-        results.rowconfigure(1, weight=1)
+        results.rowconfigure(2, weight=1)
 
         toolbar = ttk.Frame(results)
-        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 7))
-        toolbar.columnconfigure(2, weight=1)
+        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        toolbar.columnconfigure(3, weight=1)
         ttk.Label(toolbar, textvariable=self.summary_var).grid(row=0, column=0, sticky="w")
-        ttk.Label(toolbar, text="Filter:").grid(row=0, column=1, sticky="e", padx=(20, 5))
-        ttk.Entry(toolbar, textvariable=self.filter_var, width=34).grid(row=0, column=2, sticky="e")
+        ttk.Checkbutton(
+            toolbar,
+            text="Hide system apps",
+            variable=self.hide_system_var,
+            command=self._refresh_table,
+        ).grid(row=0, column=1, padx=(20, 16), sticky="w")
+        ttk.Label(toolbar, text="Filter:").grid(row=0, column=2, sticky="e", padx=(0, 5))
+        ttk.Entry(toolbar, textvariable=self.filter_var, width=34).grid(row=0, column=3, sticky="e")
+
+        legend = ttk.Frame(results)
+        legend.grid(row=1, column=0, sticky="ew", pady=(0, 7))
+        ttk.Label(
+            legend,
+            text=(
+                "🔴 Removed = no longer on Store   |   🟡 Aging = >365–730 days   |   "
+                "🟠 Stale = >730 days   |   🟢 Current = ≤365 days   |   🟣 Other = uncertain/other"
+            ),
+        ).grid(row=0, column=0, sticky="w")
 
         table_frame = ttk.Frame(results)
-        table_frame.grid(row=1, column=0, sticky="nsew")
+        table_frame.grid(row=2, column=0, sticky="nsew")
         table_frame.columnconfigure(0, weight=1)
         table_frame.rowconfigure(0, weight=1)
         self.tree = ttk.Treeview(table_frame, columns=self.COLUMNS, show="headings", selectmode="browse")
@@ -215,13 +252,18 @@ class PlayStoreAuditApp(tk.Tk):
 
         for column in self.COLUMNS:
             self.tree.heading(column, text=self.COLUMN_LABELS[column], command=lambda c=column: self._sort_results(c))
-            anchor = "center" if column in {"play_status", "play_last_update"} else "w"
+            anchor = "center" if column in {"play_status", "play_last_update", "criticality"} else "w"
             stretch = column in {"app_name", "package_name", "play_title", "notes"}
             self.tree.column(column, width=self.COLUMN_WIDTHS[column], minwidth=90, anchor=anchor, stretch=stretch)
 
-        self.tree.tag_configure("problem", font=("Segoe UI", 9, "bold"))
+        self.tree.tag_configure("red", background="#FADBD8", foreground="#7B241C", font=("Segoe UI", 9, "bold"))
+        self.tree.tag_configure("yellow", background="#FFF4BF", foreground="#6E5A00")
+        self.tree.tag_configure("orange", background="#FFE0B2", foreground="#8A3B00", font=("Segoe UI", 9, "bold"))
+        self.tree.tag_configure("green", background="#D9F2D9", foreground="#1E6B2D")
+        self.tree.tag_configure("purple", background="#EADCF8", foreground="#5B2C6F", font=("Segoe UI", 9, "bold"))
+
         self.tree.bind("<Double-1>", self._open_selected_store_url)
-        ttk.Label(results, text="Tip: click a column header to sort; double-click a row to open its Play Store page.").grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(results, text="Tip: click a column header to sort; double-click a row to open its Play Store page.").grid(row=3, column=0, sticky="w", pady=(6, 0))
 
     def _choose_input(self) -> None:
         selected = filedialog.askopenfilename(
@@ -354,7 +396,7 @@ class PlayStoreAuditApp(tk.Tk):
             self.source_var.set(
                 f"Phone scan: {len(all_packages)} total packages | {user_count} third-party | {len(system_packages)} system"
             )
-            self.status_var.set("Phone scan ready. The system-app checkbox can be changed before running.")
+            self.status_var.set("Phone scan ready. All packages will be audited; system apps can be hidden in the results table.")
         except Exception as exc:
             self.status_var.set("Phone scan failed")
             messagebox.showerror("ADB error", str(exc))
@@ -364,10 +406,7 @@ class PlayStoreAuditApp(tk.Tk):
             return True
         return any(package_name.startswith(prefix) for prefix in self.DEFINITE_SYSTEM_PREFIXES)
 
-    def _filter_file_apps(self, apps: list[dict[str, str]]) -> tuple[list[dict[str, str]], int, str]:
-        if not self.exclude_system_var.get():
-            return apps, 0, "system filtering disabled"
-
+    def _classify_file_system_packages(self, apps: list[dict[str, str]]) -> tuple[set[str], str]:
         system_packages = {
             package_name
             for package_name, is_system in self.file_system_metadata.items()
@@ -402,39 +441,26 @@ class PlayStoreAuditApp(tk.Tk):
             if heuristic_count:
                 method_parts.append("conservative package-name fallback")
 
-        filtered = [app for app in apps if app["package_name"] not in system_packages]
-        excluded = len(apps) - len(filtered)
-
         if method_parts:
             method = " + ".join(method_parts)
         else:
-            method = (
-                "no exact classifier available; connect the source phone via ADB "
-                "or add an is_system column for reliable CSV filtering"
-            )
-        return filtered, excluded, method
+            method = "no exact classifier available; connect the source phone via ADB or add an is_system column"
+        valid_packages = {app["package_name"] for app in apps}
+        return system_packages.intersection(valid_packages), method
 
-    def _get_apps_to_audit(self) -> tuple[list[dict[str, str]], int, str]:
+    def _get_apps_to_audit(self) -> tuple[list[dict[str, str]], set[str], str]:
         if self.source_mode == "device" and self.device_apps_all:
-            apps = list(self.device_apps_all)
-            if self.exclude_system_var.get():
-                filtered = [app for app in apps if app["package_name"] not in self.device_system_packages]
-                return filtered, len(apps) - len(filtered), "ADB exact system classification"
-            return apps, 0, "system filtering disabled"
-
+            return list(self.device_apps_all), set(self.device_system_packages), "ADB exact system classification"
         if self.source_mode == "file" and self.file_apps:
-            return self._filter_file_apps(list(self.file_apps))
-
+            system_packages, method = self._classify_file_system_packages(self.file_apps)
+            return list(self.file_apps), system_packages, method
         raise ValueError("Choose a CSV/TXT file or scan a connected Android phone first.")
 
     def _start_audit(self) -> None:
         try:
-            apps, excluded_count, filter_method = self._get_apps_to_audit()
+            apps, system_packages, classification_method = self._get_apps_to_audit()
         except Exception as exc:
             messagebox.showerror("No app list", str(exc))
-            return
-        if not apps:
-            messagebox.showerror("Nothing to audit", "All packages were excluded by the current system-app filter.")
             return
         try:
             workers = max(1, int(self.workers_var.get()))
@@ -442,23 +468,16 @@ class PlayStoreAuditApp(tk.Tk):
             messagebox.showerror("Invalid setting", "Parallel threads must be a number.")
             return
 
-        if self.source_mode == "file":
-            self.source_var.set(
-                f"CSV/TXT source: {len(apps)} packages to audit | {excluded_count} system packages excluded | {filter_method}"
-            )
-        else:
-            self.source_var.set(
-                f"Phone source: {len(apps)} packages to audit | {excluded_count} system packages excluded"
-            )
-
+        self.current_system_packages = system_packages
+        self.source_var.set(
+            f"{('Phone' if self.source_mode == 'device' else 'CSV/TXT')} source: {len(apps)} packages | "
+            f"{len(system_packages)} classified as system | {classification_method}"
+        )
         self.run_button.config(state="disabled")
         self.export_button.config(state="disabled")
         self.progress["value"] = 0
         self.progress["maximum"] = len(apps)
-        self.status_var.set(
-            f"Starting audit for {len(apps)} packages"
-            + (f" ({excluded_count} system apps skipped)…" if excluded_count else "…")
-        )
+        self.status_var.set(f"Starting audit for all {len(apps)} packages…")
         self.current_rows = []
         self._refresh_table()
         config = AuditConfig(
@@ -477,10 +496,71 @@ class PlayStoreAuditApp(tk.Tk):
         except Exception as exc:
             self.progress_queue.put(("error", str(exc)))
 
+    def _parse_update_date(self, value: object) -> date | None:
+        text = str(value or "").strip()
+        if not text:
+            return None
+
+        try:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+        except ValueError:
+            pass
+
+        match = re.fullmatch(r"(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})", text)
+        if match:
+            day, month_name, year = match.groups()
+            month = self.MONTHS.get(month_name.lower().rstrip("."))
+            if month:
+                try:
+                    return date(int(year), month, int(day))
+                except ValueError:
+                    return None
+
+        match = re.fullmatch(r"([A-Za-zÀ-ÿ.]+)\s+(\d{1,2}),?\s+(\d{4})", text)
+        if match:
+            month_name, day, year = match.groups()
+            month = self.MONTHS.get(month_name.lower().rstrip("."))
+            if month:
+                try:
+                    return date(int(year), month, int(day))
+                except ValueError:
+                    return None
+        return None
+
+    def _classify_criticality(self, row: dict[str, object]) -> None:
+        status = str(row.get("play_status") or "").strip()
+        update_date = self._parse_update_date(row.get("play_last_update"))
+        age_days: int | None = None
+
+        if status == "not_found_or_unavailable":
+            key = "red"
+        elif status != "available":
+            key = "purple"
+        elif update_date is None:
+            key = "purple"
+        else:
+            age_days = (date.today() - update_date).days
+            if age_days < 0:
+                key = "purple"
+            elif age_days <= 365:
+                key = "green"
+            elif age_days <= 730:
+                key = "yellow"
+            else:
+                key = "orange"
+
+        row["criticality_key"] = key
+        row["criticality"] = self.CRITICALITY[key]["label"]
+        row["criticality_rank"] = self.CRITICALITY[key]["rank"]
+        row["age_days"] = "" if age_days is None else age_days
+
     def _sort_key(self, row: dict[str, object], column: str):
-        value = str(row.get(column, "") or "").strip()
+        if column == "criticality":
+            return int(row.get("criticality_rank", 99))
         if column == "play_last_update":
-            return (1, "") if not value else (0, value)
+            parsed = self._parse_update_date(row.get(column))
+            return parsed.toordinal() if parsed else -1
+        value = str(row.get(column, "") or "").strip()
         return value.casefold()
 
     def _sort_results(self, column: str) -> None:
@@ -503,12 +583,17 @@ class PlayStoreAuditApp(tk.Tk):
             self.tree.heading(column, text=label, command=lambda c=column: self._sort_results(c))
 
     def _filtered_rows(self) -> list[dict[str, object]]:
+        rows = self.current_rows
+        if self.hide_system_var.get():
+            rows = [row for row in rows if not row.get("is_system")]
+
         query = self.filter_var.get().strip().casefold()
         if not query:
-            return self.current_rows
+            return rows
+        search_fields = list(OUTPUT_FIELDS) + ["criticality", "is_system", "age_days"]
         return [
-            row for row in self.current_rows
-            if query in " ".join(str(row.get(column, "") or "") for column in OUTPUT_FIELDS).casefold()
+            row for row in rows
+            if query in " ".join(str(row.get(column, "") or "") for column in search_fields).casefold()
         ]
 
     def _refresh_table(self) -> None:
@@ -526,18 +611,23 @@ class PlayStoreAuditApp(tk.Tk):
         visible_rows = self._filtered_rows()
         for row in visible_rows:
             values = [row.get(column, "") for column in self.COLUMNS]
-            tags = ()
-            if row.get("play_status") != "available" or not row.get("play_last_update"):
-                tags = ("problem",)
-            item = self.tree.insert("", "end", values=values, tags=tags)
+            tag = str(row.get("criticality_key") or "purple")
+            item = self.tree.insert("", "end", values=values, tags=(tag,))
             if selected_package and row.get("package_name") == selected_package:
                 self.tree.selection_set(item)
 
         if self.current_rows:
-            available = sum(1 for row in self.current_rows if row.get("play_status") == "available")
-            problems = len(self.current_rows) - available
-            suffix = f" | showing {len(visible_rows)}" if len(visible_rows) != len(self.current_rows) else ""
-            self.summary_var.set(f"{len(self.current_rows)} apps | {available} available | {problems} need attention{suffix}")
+            counts = {key: 0 for key in self.CRITICALITY}
+            for row in visible_rows:
+                counts[str(row.get("criticality_key") or "purple")] += 1
+            hidden_system = sum(1 for row in self.current_rows if row.get("is_system")) if self.hide_system_var.get() else 0
+            visibility = f"showing {len(visible_rows)}/{len(self.current_rows)}"
+            if hidden_system:
+                visibility += f" | {hidden_system} system hidden"
+            self.summary_var.set(
+                f"{visibility} | 🔴 {counts['red']}  🟠 {counts['orange']}  🟡 {counts['yellow']}  "
+                f"🟣 {counts['purple']}  🟢 {counts['green']}"
+            )
         else:
             self.summary_var.set("No results yet")
 
@@ -566,7 +656,7 @@ class PlayStoreAuditApp(tk.Tk):
             return
         try:
             with open(selected, "w", newline="", encoding="utf-8-sig") as handle:
-                writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
+                writer = csv.DictWriter(handle, fieldnames=self.EXPORT_FIELDS, extrasaction="ignore")
                 writer.writeheader()
                 writer.writerows(self.current_rows)
             messagebox.showinfo("Export complete", f"Results saved to:\n{selected}")
@@ -575,6 +665,7 @@ class PlayStoreAuditApp(tk.Tk):
 
     def _clear_results(self) -> None:
         self.current_rows = []
+        self.current_system_packages = set()
         self.sort_column = None
         self.sort_reverse = False
         self.filter_var.set("")
@@ -596,6 +687,9 @@ class PlayStoreAuditApp(tk.Tk):
                     self.status_var.set(f"Completed {done}/{total}: {package_name}")
                 elif kind == "done":
                     _, rows = message
+                    for row in rows:
+                        row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
+                        self._classify_criticality(row)
                     self.current_rows = rows
                     if self.sort_column:
                         self.current_rows.sort(
