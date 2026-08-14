@@ -1,0 +1,64 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "playstore_audit_core.py"
+      - "playstore_audit_gui.py"
+      - "requirements.txt"
+      - ".github/workflows/build-windows-exe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build PlayStoreAppAudit.exe
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Validate Python source
+        shell: pwsh
+        run: |
+          python -m py_compile playstore_audit_core.py
+          python -m py_compile playstore_audit_gui.py
+
+      - name: Build Windows EXE
+        shell: pwsh
+        run: |
+          pyinstaller `
+            --noconfirm `
+            --clean `
+            --onefile `
+            --windowed `
+            --name PlayStoreAppAudit `
+            --collect-all google_play_scraper `
+            --collect-all bs4 `
+            --collect-all lxml `
+            playstore_audit_gui.py
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlayStoreAppAudit-Windows
+          path: dist/PlayStoreAppAudit.exe
+          if-no-files-found: error
+          retention-days: 30
