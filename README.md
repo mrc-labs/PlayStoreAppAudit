@@ -1,72 +1,87 @@
-# Play Store App Audit - Final
+# Play Store App Audit
 
-Utility per controllare in blocco i package Android e ottenere:
+Utility per controllare in blocco i package Android e ottenere direttamente nell'app:
 
 - ultima data di aggiornamento pubblicata sul Google Play Store;
 - stato del listing;
 - titolo attuale sullo Store;
-- file separato con sole app problematiche.
+- fonte della data di aggiornamento;
+- note sui casi problematici o ambigui.
 
-## Metodo consigliato
+## Novità della GUI
 
-### Per creare un EXE Windows online
+La versione Windows mostra ora i risultati direttamente in una tabella interna, senza creare automaticamente file di output.
 
-Leggi `GUIDA_GITHUB_EXE.md`.
+La tabella permette di:
 
-Il repository contiene già:
+- ordinare i risultati cliccando sulle intestazioni delle colonne;
+- filtrare rapidamente le righe con il campo `Filter`;
+- vedere il riepilogo di app disponibili e casi da controllare;
+- fare doppio clic su una riga per aprire il listing Play Store;
+- esportare il CSV soltanto quando serve, tramite `Export results…`.
+
+## Analisi diretta del telefono
+
+Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono, senza creare prima un CSV intermedio.
+
+La casella:
+
+`Exclude system apps when scanning phone`
+
+è attiva di default.
+
+- attiva: usa `adb shell pm list packages -3` e analizza le app di terze parti;
+- disattiva: usa `adb shell pm list packages` e include anche i package di sistema.
+
+Dopo la scansione, la lista resta in memoria e puoi premere `Run Play Store audit`.
+
+## Creare l'EXE Windows online
+
+Il repository contiene:
 
 `.github/workflows/build-windows-exe.yml`
 
-Il workflow gira su un runner Windows GitHub e restituisce
-`PlayStoreAppAudit.exe` come artifact.
+Il workflow GitHub Actions gira su un runner Windows e genera `PlayStoreAppAudit.exe` come artifact.
 
-### Per eseguire l'analisi online senza creare un EXE
+Ogni modifica a `playstore_audit_gui.py`, `playstore_audit_core.py`, `requirements.txt` o al workflow avvia automaticamente una nuova build.
 
-Usa:
+## Altri metodi
 
-`playstore_audit_final_colab.ipynb`
+### Google Colab
 
-### Per eseguire l'app da Python su Windows
+Usa `playstore_audit_final_colab.ipynb` se vuoi eseguire l'audit online senza usare l'EXE.
 
-Doppio clic:
+### Python su Windows
+
+Doppio clic su:
 
 `run_windows_gui.bat`
 
-### Per creare l'EXE localmente su Windows
+### Build locale Windows
 
-Doppio clic:
+Doppio clic su:
 
 `build_windows_exe.bat`
 
-## Input supportati
+## Input file supportati
 
-- CSV
-- TSV
-- TXT
-- output ADB `package:com.example.app`
+Se preferisci non usare ADB direttamente, puoi caricare:
+
+- CSV;
+- TSV;
+- TXT;
+- output ADB `package:com.example.app`.
 
 Sono riconosciute colonne come:
 
-- package_name
-- package
-- packageName
-- packageId
-- app_id
-- id
+- `package_name`
+- `package`
+- `packageName`
+- `packageId`
+- `app_id`
+- `id`
 
 Il nome dell'app è opzionale.
-
-## Estrazione delle app dal telefono
-
-Il metodo preferito usa Android Debug Bridge:
-
-`adb shell pm list packages -3`
-
-Nel pacchetto è presente anche:
-
-`extract_packages_from_phone.ps1`
-
-Consulta `GUIDA_GITHUB_EXE.md` per la procedura completa.
 
 ## File principali
 
@@ -76,5 +91,4 @@ Consulta `GUIDA_GITHUB_EXE.md` per la procedura completa.
 - `playstore_audit_final_colab.ipynb`: versione Colab
 - `.github/workflows/build-windows-exe.yml`: build online Windows
 - `requirements.txt`: dipendenze
-- `extract_packages_from_phone.ps1`: esportazione package da Android
-- `GUIDA_GITHUB_EXE.md`: guida completa
+- `extract_packages_from_phone.ps1`: esportazione package da Android, se vuoi ancora usare il metodo manuale
