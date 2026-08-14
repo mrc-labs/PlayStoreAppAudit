@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.spec
+*.log
+*_playstore_audit_*.csv
+*_playstore_problems_*.csv
+*_playstore_results_*.zip
