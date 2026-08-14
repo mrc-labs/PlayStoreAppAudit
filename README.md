@@ -10,7 +10,7 @@ Utility per controllare in blocco i package Android e ottenere direttamente nell
 
 ## Novità della GUI
 
-La versione Windows mostra ora i risultati direttamente in una tabella interna, senza creare automaticamente file di output.
+La versione Windows mostra i risultati direttamente in una tabella interna, senza creare automaticamente file di output.
 
 La tabella permette di:
 
@@ -20,18 +20,35 @@ La tabella permette di:
 - fare doppio clic su una riga per aprire il listing Play Store;
 - esportare il CSV soltanto quando serve, tramite `Export results…`.
 
-## Analisi diretta del telefono
-
-Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono, senza creare prima un CSV intermedio.
+## Esclusione delle system app
 
 La casella:
 
-`Exclude system apps when scanning phone`
+`Exclude system apps (phone scans and CSV files)`
 
-è attiva di default.
+è attiva di default e vale sia per la scansione diretta del telefono sia per i file CSV/TXT caricati.
 
-- attiva: usa `adb shell pm list packages -3` e analizza le app di terze parti;
-- disattiva: usa `adb shell pm list packages` e include anche i package di sistema.
+### Se analizzi direttamente il telefono
+
+Premi `Scan phone with ADB`.
+
+L'app legge tutti i package e separa quelli di sistema usando ADB. La classificazione è quindi riferita al telefono effettivamente collegato. Puoi cambiare il checkbox anche dopo la scansione e prima di avviare l'audit.
+
+### Se carichi un CSV / TSV / TXT
+
+Prima dell'audit, il programma prova a identificare le system app in questo ordine:
+
+1. usa eventuali colonne del file come `is_system`, `system_app`, `system` o `app_type`;
+2. se è collegato e autorizzato un telefono Android via ADB, confronta i package del file con `adb shell pm list packages -s`, ottenendo una classificazione esatta per quel telefono;
+3. se non sono disponibili né metadati né ADB, applica solo un fallback prudente sui package chiaramente di sistema.
+
+Le app classificate come system vengono rimosse **prima** di interrogare il Play Store, quindi non consumano richieste dell'audit.
+
+Per una classificazione affidabile di un CSV che non contiene un flag di sistema, il metodo migliore è collegare lo stesso telefono da cui proviene la lista e lasciare ADB disponibile.
+
+## Analisi diretta del telefono
+
+Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono, senza creare prima un CSV intermedio.
 
 Dopo la scansione, la lista resta in memoria e puoi premere `Run Play Store audit`.
 
@@ -82,6 +99,8 @@ Sono riconosciute colonne come:
 - `id`
 
 Il nome dell'app è opzionale.
+
+Per indicare esplicitamente se una riga è una system app, puoi aggiungere per esempio una colonna `is_system` con valori `true/false`, `1/0`, `yes/no`, `system/user`.
 
 ## File principali
 
