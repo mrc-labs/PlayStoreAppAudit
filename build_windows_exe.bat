@@ -28,7 +28,7 @@ pyinstaller ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
-  playstore_audit_gui.py
+  playstore_audit_windows.py
 
 echo.
 echo Build completata.
