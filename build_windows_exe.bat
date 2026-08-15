@@ -24,13 +24,13 @@ pyinstaller ^
   --clean ^
   --onefile ^
   --windowed ^
-  --name PlayStoreAppAudit ^
+  --name PlayStoreAppAudit-Qt6 ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
-  playstore_audit_qt.py
+  playstore_audit_qt_branch.py
 
 echo.
-echo Build Qt completata.
-echo EXE: %CD%\dist\PlayStoreAppAudit.exe
+echo Build Qt6 completata.
+echo EXE: %CD%\dist\PlayStoreAppAudit-Qt6.exe
 pause
