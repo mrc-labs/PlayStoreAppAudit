@@ -10,11 +10,13 @@ on:
       - "playstore_audit_multicountry.py"
       - "playstore_audit_user_state.py"
       - "playstore_audit_v8_features.py"
+      - "playstore_audit_v9_features.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
       - "playstore_audit_qt_compact.py"
       - "playstore_audit_qt_v8.py"
       - "playstore_audit_qt_v8_stable.py"
+      - "playstore_audit_qt_v9.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -52,14 +54,16 @@ jobs:
           python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_user_state.py
           python -m py_compile playstore_audit_v8_features.py
+          python -m py_compile playstore_audit_v9_features.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
           python -m py_compile playstore_audit_qt_v8.py
           python -m py_compile playstore_audit_qt_v8_stable.py
+          python -m py_compile playstore_audit_qt_v9.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "import playstore_audit_v8_features as f; assert f.parse_country_list('ch, it, uk, us')[0]==['ch','it','gb','us']; assert f.compare_versions('1.2.3','1.2.3')=='Match'; assert f.compare_versions('1.2.3','Varies with device')=='Device-specific'; print('Shared v8 helpers OK')"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v8_stable as m; import playstore_audit_qt_v8 as b; import playstore_audit_user_state as s; app=QApplication([]); w=m.PlayStoreAuditQtV8Stable(); assert w.workers_spin.value()==16; assert w.model.columnCount()==len(b.V8_MODEL_COLUMNS); assert all(c in b.V8_MODEL_COLUMNS for c in ('play_version','installed_version','version_comparison','installer_source')); assert s.DEFAULT_SETTINGS['fallback_countries']; assert s.DEFAULT_SETTINGS['collect_device_metadata'] is True; assert [a.text() for a in w.menuBar().actions()]==['File','Tools','Help']; labels=[a.text() for a in w.tools_menu.actions() if a.text()]; assert 'Force full refresh (ignore cache)' in labels; assert 'Recheck Removed / Anomaly / Other' in labels; assert 'Clear previous-audit history' in labels; assert w.table.verticalHeader().defaultSectionSize()==24; print('Qt6 v8 stable smoke test OK'); w.close()"
+          python -c "import tempfile; from pathlib import Path; import playstore_audit_v9_features as f; assert f.compatibility_label('35','36')=='Modern'; assert f.compatibility_label('29','36')=='Legacy target'; assert f.row_matches_filter({'criticality_key':'red'},'Problems'); assert f.calculate_health_score({'criticality_key':'green','compatibility_status':'Modern','version_comparison':'Match'})==100; p=Path(tempfile.gettempdir())/'psaa_v9_test.html'; f.write_html_report(p,[{'criticality_key':'green','criticality':'Current','package_name':'com.example','play_title':'Example','play_last_update':'2026-08-01','age_days':14,'notes':''}],{}); assert p.is_file(); p.unlink(); print('Shared v9 helpers OK')"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v9 as m; import playstore_audit_user_state as s; app=QApplication([]); w=m.PlayStoreAuditQtV9(); assert w.model.columnCount()==len(m.V9_MODEL_COLUMNS); assert all(c in m.V9_MODEL_COLUMNS for c in ('compatibility_status','target_sdk','health_score','device_change')); assert s.DEFAULT_SETTINGS['permissions_audit_enabled'] is False; assert s.DEFAULT_SETTINGS['health_score_enabled'] is False; assert [a.text() for a in w.menuBar().actions()]==['File','View','Tools','Help']; assert w.table.verticalHeader().defaultSectionSize()==24; w.current_rows=[{'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}]; w.model.set_rows(w.current_rows); w._apply_filter_preset('Problems'); assert w.proxy.rowCount()==0; w._apply_filter_preset('All'); assert w.proxy.rowCount()==1; print('Qt6 v9 smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -78,7 +82,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt_v8_stable.py
+            playstore_audit_qt_v9.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
