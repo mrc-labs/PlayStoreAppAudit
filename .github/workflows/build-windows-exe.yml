@@ -10,12 +10,16 @@ on:
       - "playstore_audit_multicountry.py"
       - "playstore_audit_user_state.py"
       - "playstore_audit_v8_features.py"
+      - "playstore_audit_v9_features.py"
       - "playstore_audit_gui.py"
       - "playstore_audit_windows.py"
       - "playstore_audit_customtkinter.py"
       - "playstore_audit_customtkinter_branch.py"
       - "playstore_audit_customtkinter_v8.py"
+      - "playstore_audit_customtkinter_v9.py"
       - "playstore_audit_customtkinter_launcher.py"
+      - "playstore_audit_customtkinter_v9_launcher.py"
+      - "hook-tkinterdnd2.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -53,14 +57,17 @@ jobs:
           python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_user_state.py
           python -m py_compile playstore_audit_v8_features.py
+          python -m py_compile playstore_audit_v9_features.py
           python -m py_compile playstore_audit_gui.py
           python -m py_compile playstore_audit_windows.py
           python -m py_compile playstore_audit_customtkinter.py
           python -m py_compile playstore_audit_customtkinter_branch.py
           python -m py_compile playstore_audit_customtkinter_v8.py
+          python -m py_compile playstore_audit_customtkinter_v9.py
           python -m py_compile playstore_audit_customtkinter_launcher.py
-          python -c "import playstore_audit_v8_features as f; assert f.parse_country_list('ch, it, uk, us')[0]==['ch','it','gb','us']; assert f.compare_versions('1.2.3','1.2.3')=='Match'; assert f.compare_versions('1.2.3','Varies with device')=='Device-specific'; print('Shared v8 helpers OK')"
-          python -c "import playstore_audit_customtkinter_v8 as m; import playstore_audit_user_state as s; w=m.CustomTkPlayStoreAuditV8(); w.update_idletasks(); assert tuple(w.tree['columns'])==m.V8_MODEL_COLUMNS; assert all(c in m.V8_MODEL_COLUMNS for c in ('play_version','installed_version','version_comparison','installer_source')); assert s.DEFAULT_SETTINGS['fallback_countries']; assert s.DEFAULT_SETTINGS['collect_device_metadata'] is True; assert int(w.workers_var.get())==16; assert w.path_entry.cget('placeholder_text'); w.current_rows=[{'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play'}]; w._refresh_table(); assert len(w.tree.get_children())==1; print('CustomTkinter v8 smoke test OK'); w.destroy()"
+          python -m py_compile playstore_audit_customtkinter_v9_launcher.py
+          python -c "import tempfile; from pathlib import Path; import playstore_audit_v9_features as f; assert f.compatibility_label('35','36')=='Modern'; assert f.compatibility_label('29','36')=='Legacy target'; assert f.row_matches_filter({'criticality_key':'red'},'Problems'); assert f.calculate_health_score({'criticality_key':'green','compatibility_status':'Modern','version_comparison':'Match'})==100; p=Path(tempfile.gettempdir())/'psaa_v9_test.html'; f.write_html_report(p,[{'criticality_key':'green','criticality':'Current','package_name':'com.example','play_title':'Example','play_last_update':'2026-08-01','age_days':14,'notes':''}],{}); assert p.is_file(); p.unlink(); print('Shared v9 helpers OK')"
+          python -c "import playstore_audit_customtkinter_v9 as m; import playstore_audit_user_state as s; w=m.CustomTkPlayStoreAuditV9(); w.update_idletasks(); assert tuple(w.tree['columns'])==m.V9_MODEL_COLUMNS; assert all(c in m.V9_MODEL_COLUMNS for c in ('compatibility_status','target_sdk','health_score','device_change')); assert s.DEFAULT_SETTINGS['permissions_audit_enabled'] is False; assert s.DEFAULT_SETTINGS['health_score_enabled'] is False; w.current_rows=[{'criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}]; w._refresh_table(); assert len(w.tree.get_children())==1; w._apply_filter_preset('Problems'); assert len(w.tree.get_children())==0; w._apply_filter_preset('All'); assert len(w.tree.get_children())==1; print('CustomTkinter v9 smoke test OK'); w.destroy()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -76,11 +83,13 @@ jobs:
             --windowed `
             --name PlayStoreAppAudit-CustomTkinter `
             --icon app_icon.ico `
+            --additional-hooks-dir=. `
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
             --collect-all customtkinter `
-            playstore_audit_customtkinter_launcher.py
+            --collect-all tkinterdnd2 `
+            playstore_audit_customtkinter_v9_launcher.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
