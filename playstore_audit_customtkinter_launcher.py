@@ -19,7 +19,7 @@ def enable_windows_per_monitor_dpi() -> None:
 
 def main() -> None:
     enable_windows_per_monitor_dpi()
-    from playstore_audit_customtkinter_branch import main as run_app
+    from playstore_audit_customtkinter_v8 import main as run_app
     run_app()
 
 
