@@ -6,6 +6,7 @@ on:
     branches: [qt6]
     paths:
       - "app_icon.py"
+      - "playstore_audit_process.py"
       - "playstore_audit_core.py"
       - "playstore_audit_multicountry.py"
       - "playstore_audit_user_state.py"
@@ -17,6 +18,7 @@ on:
       - "playstore_audit_qt_v8.py"
       - "playstore_audit_qt_v8_stable.py"
       - "playstore_audit_qt_v9.py"
+      - "playstore_audit_qt_v9_fixed.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -50,6 +52,7 @@ jobs:
         shell: pwsh
         run: |
           python -m py_compile app_icon.py
+          python -m py_compile playstore_audit_process.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_user_state.py
@@ -61,9 +64,10 @@ jobs:
           python -m py_compile playstore_audit_qt_v8.py
           python -m py_compile playstore_audit_qt_v8_stable.py
           python -m py_compile playstore_audit_qt_v9.py
+          python -m py_compile playstore_audit_qt_v9_fixed.py
           $env:QT_QPA_PLATFORM="offscreen"
           python -c "import tempfile; from pathlib import Path; import playstore_audit_v9_features as f; assert f.compatibility_label('35','36')=='Modern'; assert f.compatibility_label('29','36')=='Legacy target'; assert f.row_matches_filter({'criticality_key':'red'},'Problems'); assert f.calculate_health_score({'criticality_key':'green','compatibility_status':'Modern','version_comparison':'Match'})==100; p=Path(tempfile.gettempdir())/'psaa_v9_test.html'; f.write_html_report(p,[{'criticality_key':'green','criticality':'Current','package_name':'com.example','play_title':'Example','play_last_update':'2026-08-01','age_days':14,'notes':''}],{}); assert p.is_file(); p.unlink(); print('Shared v9 helpers OK')"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v9 as m; import playstore_audit_user_state as s; app=QApplication([]); w=m.PlayStoreAuditQtV9(); assert w.model.columnCount()==len(m.V9_MODEL_COLUMNS); assert all(c in m.V9_MODEL_COLUMNS for c in ('compatibility_status','target_sdk','health_score','device_change')); assert s.DEFAULT_SETTINGS['permissions_audit_enabled'] is False; assert s.DEFAULT_SETTINGS['health_score_enabled'] is False; assert [a.text() for a in w.menuBar().actions()]==['File','View','Tools','Help']; assert w.table.verticalHeader().defaultSectionSize()==24; w.current_rows=[{'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}]; w.model.set_rows(w.current_rows); w._apply_filter_preset('Problems'); assert w.proxy.rowCount()==0; w._apply_filter_preset('All'); assert w.proxy.rowCount()==1; print('Qt6 v9 smoke test OK'); w.close()"
+          python -c "import subprocess; from PySide6.QtCore import Qt; from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v9 as m; import playstore_audit_qt_v9_fixed as fx; import playstore_audit_user_state as s; app=QApplication([]); w=fx.PlayStoreAuditQtV9Fixed(); assert w.model.columnCount()==len(m.V9_MODEL_COLUMNS); assert s.load_settings().get('qt_header_schema_version')==fx.TABLE_SCHEMA_VERSION; assert 'HiddenWindowPopen' in subprocess.Popen.__name__; row={'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test title','play_last_update':'2026-08-01','age_days':14,'notes':'Test notes','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}; w.current_rows=[row]; w.model.set_rows(w.current_rows); expected={'criticality':'●  Current','package_name':'com.example.test','play_title':'Test title','play_last_update':'2026-08-01','age_days':'14','notes':'Test notes'}; [(_ for _ in ()).throw(AssertionError((c,w.model.data(w.model.index(0,m.V9_MODEL_COLUMNS.index(c)),Qt.ItemDataRole.DisplayRole),v))) if str(w.model.data(w.model.index(0,m.V9_MODEL_COLUMNS.index(c)),Qt.ItemDataRole.DisplayRole))!=v else None for c,v in expected.items()]; w._apply_filter_preset('Problems'); assert w.proxy.rowCount()==0; w._apply_filter_preset('All'); assert w.proxy.rowCount()==1; print('Qt6 fixed table/no-console smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -82,7 +86,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt_v9.py
+            playstore_audit_qt_v9_fixed.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
