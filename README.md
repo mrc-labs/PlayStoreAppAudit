@@ -2,16 +2,15 @@
 
 This branch contains the **PySide6 / Qt 6** GUI.
 
-The audit engine and Play Store logic remain shared with the CustomTkinter variant. The two branches intentionally differ mainly in presentation/widget technology.
+The audit engine and Play Store logic remain aligned with the CustomTkinter variant. The two branches intentionally differ mainly in presentation/widget technology.
 
 ## App source
 
-The source card contains:
+The source card keeps the main controls on one horizontal row:
 
-- `Choose file`
-- `Scan phone with ADB`
-- `Store country`
-- `Exclude system apps from source`
+`source field | Choose file | Scan phone with ADB | Store country | Exclude system apps from source`
+
+A compact source-status line appears directly underneath.
 
 `Store country` is detected from the Windows Region and remains editable because Google Play availability can differ by country/region.
 
@@ -26,6 +25,16 @@ When `Exclude system apps from source` is enabled:
 
 When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
 
+## Multi-country availability check
+
+The normal audit checks the selected Store country first. If the package is reported unavailable there, the app automatically checks representative alternate Play Store markets: US, UK, Germany, France, Italy, Switzerland, Spain, Canada, Australia and Japan.
+
+- found in another checked country -> **blue Store anomaly** and a note identifying the selected/unavailable country and the country where it was found;
+- not found in any checked market -> **red Removed**, with the checked markets recorded in Notes;
+- alternate checks contain request/HTTP errors and no listing is found -> **purple Other**, with an inconclusive multi-country note.
+
+The additional requests run only for packages unavailable in the selected market.
+
 ## Compact audit controls
 
 The audit action area is intentionally kept on one horizontal row:
@@ -38,19 +47,9 @@ This removes the old standalone progress card and gives more vertical space to t
 
 The interactive table shows `Package Name` as the canonical package identifier. `Input name` is retained internally/exported when available but is hidden from the on-screen table because it is usually redundant.
 
-The Qt table supports:
+The Qt table supports native sorting, draggable/reorderable columns, numeric `Age (days)` sorting, instant text filtering, clickable criticality counters, pastel row colouring, `Hide system apps`, double-click to open Google Play and optional CSV export.
 
-- native sorting;
-- draggable/reorderable columns;
-- `Age (days)` numeric sorting;
-- instant text filtering;
-- clickable criticality counters;
-- pastel row colouring;
-- `Hide system apps` as a visual filter;
-- double-click to open the Google Play listing;
-- optional CSV export.
-
-Criticality remains:
+Criticality:
 
 - red: Removed;
 - orange: Stale, >730 days;
@@ -59,24 +58,12 @@ Criticality remains:
 - purple: Other / unknown / error;
 - green: Current, <=365 days.
 
-## App icon
-
-The branch generates a modern Fluent-style PlayStoreAppAudit icon and uses it both as the Qt window icon and as the embedded Windows EXE icon.
-
 ## ADB
 
 If ADB is missing, the app can download the current Windows Platform-Tools package directly from Google's official endpoint and install it under `%LOCALAPPDATA%\PlayStoreAppAudit\platform-tools`.
 
 ## Build
 
-GitHub Actions builds:
+GitHub Actions builds `PlayStoreAppAudit-Qt6.exe` as artifact `PlayStoreAppAudit-Windows-Qt6`.
 
-`PlayStoreAppAudit-Qt6.exe`
-
-Artifact name:
-
-`PlayStoreAppAudit-Windows-Qt6`
-
-Local entry point:
-
-`playstore_audit_qt_compact.py`
+Local entry point: `playstore_audit_qt_compact.py`.
