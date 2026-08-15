@@ -4,6 +4,7 @@ import queue
 import subprocess
 import threading
 import tkinter as tk
+from tkinter import messagebox
 
 import customtkinter as ctk
 
@@ -79,7 +80,6 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
         settings = self.country_entry.master
         top = source.master
 
-        # Replace the path field so CustomTkinter's native placeholder works.
         old_path = self.path_entry
         old_path.destroy()
         self.path_entry = ctk.CTkEntry(
@@ -96,8 +96,6 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
         self.input_var.trace_add("write", lambda *_: self._sync_path_entry())
         self._sync_path_entry()
 
-        # Remove the standalone settings card. All source controls now share
-        # one row: path | Choose file | ADB | country | system-app exclusion.
         settings.grid_remove()
         source.grid_configure(columnspan=2, padx=(0, 0))
         top.grid_columnconfigure(0, weight=1)
@@ -128,8 +126,6 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
             pady=(0, 8),
         )
 
-        # Remove the extra helper line and keep only the compact source-status
-        # line directly below the controls.
         for child in source.winfo_children():
             try:
                 grid = child.grid_info()
@@ -148,7 +144,6 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
             except Exception:
                 pass
 
-        # The table itself now contains only the six user-facing columns.
         self.tree.heading(
             "criticality",
             text="Status",
@@ -266,10 +261,10 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
         try:
             apps, system_packages, classification_method = self._get_apps_to_audit()
         except Exception as exc:
-            tk.messagebox.showerror("No app list", str(exc))
+            messagebox.showerror("No app list", str(exc))
             return
         if not apps:
-            tk.messagebox.showerror("Nothing to audit", "No packages are loaded.")
+            messagebox.showerror("Nothing to audit", "No packages are loaded.")
             return
 
         country = (self.country_var.get().strip() or "it").lower()
@@ -393,10 +388,8 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
                         state="normal" if self.current_rows else "disabled"
                     )
                     self.status_var.set("Audit failed")
-                    tk.messagebox.showerror("Audit error", error)
+                    messagebox.showerror("Audit error", error)
 
-                # Ignore stale legacy audit messages. This branch uses the
-                # session-aware controlled_* messages above.
         except queue.Empty:
             pass
         self.after(100, self._process_queue)
