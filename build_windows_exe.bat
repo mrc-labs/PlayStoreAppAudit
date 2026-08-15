@@ -29,7 +29,7 @@ pyinstaller ^
   --collect-all bs4 ^
   --collect-all lxml ^
   --collect-all customtkinter ^
-  playstore_audit_customtkinter.py
+  playstore_audit_customtkinter_launcher.py
 
 echo.
 echo Build CustomTkinter completata.
