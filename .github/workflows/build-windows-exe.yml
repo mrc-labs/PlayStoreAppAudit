@@ -6,6 +6,7 @@ on:
     paths:
       - "playstore_audit_core.py"
       - "playstore_audit_gui.py"
+      - "playstore_audit_windows.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -40,6 +41,7 @@ jobs:
         run: |
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_gui.py
+          python -m py_compile playstore_audit_windows.py
 
       - name: Build Windows EXE
         shell: pwsh
@@ -53,7 +55,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_gui.py
+            playstore_audit_windows.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
