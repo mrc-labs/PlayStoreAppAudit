@@ -13,11 +13,13 @@ The source card contains:
 - `Store country`
 - `Exclude system apps from source`
 
-`Store country` is detected from the Windows Region and remains editable.
+`Store country` is detected from the Windows Region and remains editable because Google Play availability can differ by country/region.
 
 Store language is **not exposed in the UI** and is fixed internally to `en`.
 
 Audit concurrency is **fixed internally to 16 parallel workers** and is no longer exposed as a user setting.
+
+The source field now uses a native CustomTkinter grey placeholder (`Choose a CSV / TSV / TXT file, or scan your Android phone`) instead of appearing blank before a source is chosen.
 
 When `Exclude system apps from source` is enabled:
 
@@ -25,6 +27,14 @@ When `Exclude system apps from source` is enabled:
 - **CSV/TSV** removes packages classified as system while the file is loaded, using an explicit system flag when available, an exact ADB comparison when possible, or the conservative package-name fallback.
 
 When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
+
+## Compact audit controls
+
+The audit action area is intentionally kept on one horizontal row:
+
+`Run Play Store audit | progress + status | Export results | Clear`
+
+The progress bar and its short status text share the middle section of that row, removing the old standalone progress card and leaving more vertical space for the table.
 
 ## Results
 
@@ -35,6 +45,7 @@ The CustomTkinter interface provides:
 - modern cards, buttons, entries and checkboxes;
 - CustomTkinter HighDPI scaling on Windows;
 - early Windows DPI-awareness setup before the Tk window is created;
+- grey placeholder text in empty source/filter fields;
 - the existing sortable `ttk.Treeview` results table;
 - `Age (days)` sorting;
 - instant text filtering;
@@ -55,9 +66,13 @@ Criticality remains:
 - purple: Other / unknown / error;
 - green: Current, <=365 days.
 
+## App icon
+
+The branch generates the same modern Fluent-style PlayStoreAppAudit icon as the Qt6 branch and uses it both in the window and as the embedded Windows EXE icon.
+
 ## ADB
 
-The CustomTkinter branch now explicitly supplies Python's `subprocess` module to its ADB scan implementation, fixing the previous `name 'subprocess' is not defined` runtime error.
+The CustomTkinter branch explicitly supplies Python's `subprocess` module to its ADB scan implementation, fixing the previous `name 'subprocess' is not defined` runtime error.
 
 If ADB is missing, the app can download the current Windows Platform-Tools package directly from Google's official endpoint and install it under `%LOCALAPPDATA%\PlayStoreAppAudit\platform-tools`.
 
