@@ -11,9 +11,10 @@ install_hidden_subprocess_windows()
 import customtkinter as ctk
 
 import playstore_audit_customtkinter_v9 as v9
+from playstore_audit_customtkinter_v9_stable import CustomTkPlayStoreAuditV9Stable
 
 
-class CustomTkPlayStoreAuditV9Fixed(v9.CustomTkPlayStoreAuditV9):
+class CustomTkPlayStoreAuditV9Fixed(CustomTkPlayStoreAuditV9Stable):
     def _show_about(self) -> None:
         window = ctk.CTkToplevel(self)
         window.title("About Play Store App Audit")
