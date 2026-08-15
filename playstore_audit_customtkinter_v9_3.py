@@ -75,12 +75,30 @@ class CustomTkPlayStoreAuditV93(v92ui.CustomTkPlayStoreAuditV92):
         self.scan_button.configure(text="Scan phone", width=130)
         self.scan_button.grid(row=3, column=1, sticky="e", padx=(0, 16), pady=(5, 7))
 
+        # Tk widgets cannot be re-parented. Recreate the compact secondary controls
+        # inside their own footer frame while preserving the original variables.
+        self.country_source_label.destroy()
+        self.country_source_entry.destroy()
+        self.skip_source_check.destroy()
         options = ctk.CTkFrame(source, fg_color="transparent")
         options.grid(row=4, column=0, columnspan=2, sticky="ew", padx=16, pady=(2, 5))
-        self.country_source_label.configure(text="Store country")
+        self.country_source_label = ctk.CTkLabel(options, text="Store country")
         self.country_source_label.pack(side="left")
-        self.country_source_entry.configure(width=58)
+        self.country_source_entry = ctk.CTkEntry(
+            options,
+            textvariable=self.country_var,
+            width=58,
+            height=34,
+            corner_radius=8,
+        )
         self.country_source_entry.pack(side="left", padx=(6, 14))
+        self.skip_source_check = ctk.CTkCheckBox(
+            options,
+            text="Exclude system apps from source",
+            variable=self.skip_system_var,
+            onvalue=True,
+            offvalue=False,
+        )
         self.skip_source_check.pack(side="left")
 
         self._v93_source_status = ctk.CTkLabel(
