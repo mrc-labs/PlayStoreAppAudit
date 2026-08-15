@@ -5,6 +5,7 @@ on:
   push:
     branches: [customtkinter]
     paths:
+      - "app_icon.py"
       - "playstore_audit_core.py"
       - "playstore_audit_gui.py"
       - "playstore_audit_windows.py"
@@ -43,13 +44,19 @@ jobs:
       - name: Validate Python source and CustomTkinter UI
         shell: pwsh
         run: |
+          python -m py_compile app_icon.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_gui.py
           python -m py_compile playstore_audit_windows.py
           python -m py_compile playstore_audit_customtkinter.py
           python -m py_compile playstore_audit_customtkinter_branch.py
           python -m py_compile playstore_audit_customtkinter_launcher.py
-          python -c "import playstore_audit_customtkinter_branch as m; w=m.CustomTkPlayStoreAuditBranch(); w.update_idletasks(); assert w.language_var.get() == 'en'; assert int(w.workers_var.get()) == 16; assert 'app_name' not in w.tree['displaycolumns']; w.current_rows=[{'app_name':'Test','package_name':'com.example.test','play_status':'available','play_last_update':'2026-08-01','age_days':14,'play_title':'Test','updated_source':'test','notes':'','criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'is_system':False,'store_url':''}]; w._refresh_table(); assert len(w.tree.get_children()) == 1; print('CustomTkinter compact table smoke test OK'); w.destroy()"
+          python -c "from app_icon import ensure_runtime_icon; p=ensure_runtime_icon(); assert p.exists(); print('Icon generation OK')"
+          python -c "import playstore_audit_customtkinter_branch as m; w=m.CustomTkPlayStoreAuditBranch(); w.update_idletasks(); assert w.language_var.get() == 'en'; assert int(w.workers_var.get()) == 16; assert 'app_name' not in w.tree['displaycolumns']; assert w.path_entry.cget('placeholder_text'); w.current_rows=[{'app_name':'Test','package_name':'com.example.test','play_status':'available','play_last_update':'2026-08-01','age_days':14,'play_title':'Test','updated_source':'test','notes':'','criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'is_system':False,'store_url':''}]; w._refresh_table(); assert len(w.tree.get_children()) == 1; print('CustomTkinter compact UI/table smoke test OK'); w.destroy()"
+
+      - name: Generate Windows icon
+        shell: pwsh
+        run: python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
 
       - name: Build Windows EXE
         shell: pwsh
@@ -60,6 +67,7 @@ jobs:
             --onefile `
             --windowed `
             --name PlayStoreAppAudit-CustomTkinter `
+            --icon app_icon.ico `
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
