@@ -13,7 +13,7 @@ The source card contains:
 - `Store country`
 - `Exclude system apps from source`
 
-`Store country` is detected from the Windows Region and remains editable.
+`Store country` is detected from the Windows Region and remains editable because Google Play availability can differ by country/region.
 
 Store language is **not exposed in the UI** and is fixed internally to `en`.
 
@@ -25,6 +25,14 @@ When `Exclude system apps from source` is enabled:
 - **CSV/TSV** removes packages classified as system while the file is loaded, using an explicit system flag when available, an exact ADB comparison when possible, or the conservative package-name fallback.
 
 When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
+
+## Compact audit controls
+
+The audit action area is intentionally kept on one horizontal row:
+
+`Run Play Store audit | progress + status | Export results | Clear`
+
+This removes the old standalone progress card and gives more vertical space to the results table.
 
 ## Results
 
@@ -50,6 +58,10 @@ Criticality remains:
 - blue: Store anomaly;
 - purple: Other / unknown / error;
 - green: Current, <=365 days.
+
+## App icon
+
+The branch generates a modern Fluent-style PlayStoreAppAudit icon and uses it both as the Qt window icon and as the embedded Windows EXE icon.
 
 ## ADB
 
