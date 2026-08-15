@@ -1,99 +1,36 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+from io import BytesIO
 from pathlib import Path
 import tempfile
 
 
+# Final generated PlayStoreAppAudit icon, stored directly in the source so the
+# GitHub connector/build does not need to distribute a separate binary asset.
+_ICON_PNG_BASE64 = "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"
+
+_ICON_BYTES = base64.b64decode(_ICON_PNG_BASE64)
+_ICON_HASH = hashlib.sha256(_ICON_BYTES).hexdigest()[:12]
+
+
 def generate_app_icon(output: str | Path, size: int = 256) -> Path:
-    """Generate the PlayStoreAppAudit icon as a compact Fluent-style PNG."""
-    from PIL import Image, ImageDraw, ImageFilter
+    """Write the final generated icon as a transparent PNG at the requested size."""
+    from PIL import Image
 
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    s = int(size)
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-
-    # Rounded blue Fluent-style tile with a light-to-deep vertical gradient.
-    bg = Image.new("RGBA", (s, s))
-    px = bg.load()
-    for y in range(s):
-        t = y / max(s - 1, 1)
-        for x in range(s):
-            edge = abs(x - s / 2) / max(s / 2, 1)
-            r = int(18 * (1 - t) + 4 * t)
-            g = max(50, int((137 * (1 - t) + 73 * t) - 18 * edge))
-            b = max(120, int((245 * (1 - t) + 200 * t) - 8 * edge))
-            px[x, y] = (r, g, b, 255)
-
-    mask = Image.new("L", (s, s), 0)
-    md = ImageDraw.Draw(mask)
-    md.rounded_rectangle((3, 3, s - 4, s - 4), radius=int(s * 0.19), fill=255)
-    img.alpha_composite(Image.composite(bg, Image.new("RGBA", (s, s), (0, 0, 0, 0)), mask))
-    d = ImageDraw.Draw(img)
-
-    scale = s / 256.0
-    def P(v: float) -> int:
-        return int(round(v * scale))
-
-    # Minimal Android cue behind the phone.
-    green = (133, 229, 61, 255)
-    d.pieslice((P(32), P(130), P(112), P(210)), 180, 360, fill=green)
-    d.rectangle((P(32), P(170), P(112), P(200)), fill=green)
-    d.line((P(44), P(139), P(37), P(127)), fill=green, width=max(2, P(5)))
-    d.line((P(95), P(139), P(102), P(127)), fill=green, width=max(2, P(5)))
-    d.ellipse((P(51), P(155), P(59), P(163)), fill=(15, 91, 141, 255))
-    d.ellipse((P(83), P(155), P(91), P(163)), fill=(15, 91, 141, 255))
-
-    # Phone shadow.
-    shadow = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow)
-    sd.rounded_rectangle((P(72), P(29), P(177), P(225)), radius=P(22), fill=(0, 0, 0, 95))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(max(1, P(6))))
-    img.alpha_composite(shadow)
-    d = ImageDraw.Draw(img)
-
-    # Phone.
-    d.rounded_rectangle((P(70), P(24), P(178), P(222)), radius=P(23), fill=(137, 208, 255, 255))
-    d.rounded_rectangle((P(76), P(30), P(172), P(216)), radius=P(18), fill=(6, 58, 137, 255))
-    d.rounded_rectangle((P(111), P(35), P(137), P(39)), radius=P(2), fill=(43, 133, 222, 255))
-
-    # Simplified Play-inspired mark.
-    left = (P(96), P(67))
-    centre = (P(123), P(102))
-    top_right = (P(153), P(102))
-    left_bottom = (P(96), P(137))
-    upper = (P(145), P(83))
-    lower = (P(145), P(120))
-    d.polygon([left, top_right, left_bottom], fill=(34, 181, 247, 255))
-    d.polygon([left, centre, upper], fill=(113, 226, 77, 255))
-    d.polygon([upper, top_right, lower, centre], fill=(255, 220, 62, 255))
-    d.polygon([left_bottom, centre, lower], fill=(47, 207, 106, 255))
-
-    # Magnifier shadow.
-    sh = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    shd = ImageDraw.Draw(sh)
-    shd.ellipse((P(135), P(132), P(222), P(219)), fill=(0, 0, 0, 95))
-    shd.line((P(204), P(202), P(235), P(235)), fill=(0, 0, 0, 95), width=max(4, P(18)))
-    sh = sh.filter(ImageFilter.GaussianBlur(max(1, P(4))))
-    img.alpha_composite(sh)
-    d = ImageDraw.Draw(img)
-
-    # Magnifier + checklist.
-    d.ellipse((P(130), P(126), P(220), P(216)), fill=(159, 220, 255, 255))
-    d.ellipse((P(137), P(133), P(213), P(209)), fill=(8, 66, 150, 255))
-    d.line((P(204), P(201), P(238), P(235)), fill=(121, 185, 244, 255), width=max(4, P(17)))
-    d.line((P(206), P(203), P(238), P(235)), fill=(65, 148, 230, 255), width=max(3, P(11)))
-    for y in (151, 171, 191):
-        d.line((P(151), P(y), P(158), P(y + 6), P(168), P(y - 6)), fill=(123, 230, 70, 255), width=max(2, P(5)), joint="curve")
-        d.rounded_rectangle((P(178), P(y - 2), P(201), P(y + 3)), radius=P(2), fill=(31, 170, 244, 255))
-
-    d.rounded_rectangle((P(3), P(3), P(252), P(252)), radius=P(48), outline=(93, 196, 255, 180), width=max(1, P(2)))
-    img.save(output, optimize=True)
+    image = Image.open(BytesIO(_ICON_BYTES)).convert("RGBA")
+    if image.size != (size, size):
+        image = image.resize((size, size), Image.Resampling.LANCZOS)
+    image.save(output, optimize=True)
     return output
 
 
 def ensure_runtime_icon() -> Path:
-    target = Path(tempfile.gettempdir()) / "PlayStoreAppAudit" / "app_icon.png"
+    # Versioned filename prevents an older cached icon from surviving an app upgrade.
+    target = Path(tempfile.gettempdir()) / "PlayStoreAppAudit" / f"app_icon_{_ICON_HASH}.png"
     if not target.exists():
         generate_app_icon(target, 256)
     return target
@@ -106,5 +43,9 @@ def generate_windows_ico(directory: str | Path = ".") -> Path:
     png = generate_app_icon(directory / "app_icon.png", 256)
     ico = directory / "app_icon.ico"
     image = Image.open(png).convert("RGBA")
-    image.save(ico, format="ICO", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    image.save(
+        ico,
+        format="ICO",
+        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    )
     return ico
