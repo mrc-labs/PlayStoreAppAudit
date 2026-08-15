@@ -7,6 +7,7 @@ on:
     paths:
       - "app_icon.py"
       - "playstore_audit_core.py"
+      - "playstore_audit_multicountry.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
       - "playstore_audit_qt_compact.py"
@@ -44,11 +45,12 @@ jobs:
         run: |
           python -m py_compile app_icon.py
           python -m py_compile playstore_audit_core.py
+          python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value() == 16; assert w.table.isColumnHidden(0); assert not w.windowIcon().isNull(); print('Qt6 compact UI/icon smoke test OK'); w.close()"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value() == 16; assert w.table.isColumnHidden(0); assert not w.windowIcon().isNull(); assert w.country_edit.parentWidget() is w.path_edit.parentWidget(); assert w.exclude_system_source_check.parentWidget() is w.path_edit.parentWidget(); row={'play_status':'available_in_other_country'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='blue'; row={'play_status':'not_found_in_checked_countries'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='red'; print('Qt6 compact/multi-country smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
