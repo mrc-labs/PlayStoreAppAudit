@@ -14,7 +14,19 @@ import playstore_audit_user_state as user_state
 class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
     """Stable v9.2 Qt wrapper keeping native menu objects referenced by Python."""
 
+    def __init__(self) -> None:
+        # v9's inheritance chain rebuilds the menu while base classes are still
+        # constructing. Defer our final menu until every base __init__ is done so
+        # no QMenu QAction is left pointing at an object removed by a later clear().
+        self._defer_v92_menu_build = True
+        super().__init__()
+        self._defer_v92_menu_build = False
+        self._build_menu_v9()
+
     def _build_menu_v9(self) -> None:
+        if getattr(self, "_defer_v92_menu_build", False):
+            return
+
         bar = self.menuBar()
         bar.clear()
 
