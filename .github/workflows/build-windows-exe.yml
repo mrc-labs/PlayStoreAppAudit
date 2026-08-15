@@ -9,6 +9,7 @@ on:
       - "playstore_audit_gui.py"
       - "playstore_audit_windows.py"
       - "playstore_audit_customtkinter.py"
+      - "playstore_audit_customtkinter_launcher.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -45,6 +46,7 @@ jobs:
           python -m py_compile playstore_audit_gui.py
           python -m py_compile playstore_audit_windows.py
           python -m py_compile playstore_audit_customtkinter.py
+          python -m py_compile playstore_audit_customtkinter_launcher.py
           python -c "import customtkinter; import playstore_audit_customtkinter as m; w=m.CustomTkPlayStoreAuditApp(); w.update_idletasks(); assert w.language_var.get() == 'en'; print('CustomTkinter window smoke test OK'); w.destroy()"
 
       - name: Build Windows EXE
@@ -60,7 +62,7 @@ jobs:
             --collect-all bs4 `
             --collect-all lxml `
             --collect-all customtkinter `
-            playstore_audit_customtkinter.py
+            playstore_audit_customtkinter_launcher.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
