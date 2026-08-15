@@ -5,6 +5,7 @@ on:
   push:
     branches: [qt6]
     paths:
+      - "app_icon.py"
       - "playstore_audit_core.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
@@ -41,12 +42,17 @@ jobs:
       - name: Validate Python source and Qt UI
         shell: pwsh
         run: |
+          python -m py_compile app_icon.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value() == 16; assert w.table.isColumnHidden(0); assert w.country_edit.isVisible() == False or True; print('Qt6 compact window smoke test OK'); w.close()"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value() == 16; assert w.table.isColumnHidden(0); assert not w.windowIcon().isNull(); print('Qt6 compact UI/icon smoke test OK'); w.close()"
+
+      - name: Generate Windows icon
+        shell: pwsh
+        run: python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
 
       - name: Build Windows EXE
         shell: pwsh
@@ -57,6 +63,7 @@ jobs:
             --onefile `
             --windowed `
             --name PlayStoreAppAudit-Qt6 `
+            --icon app_icon.ico `
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
