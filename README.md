@@ -1,120 +1,70 @@
-# Play Store App Audit
+# Play Store App Audit - CustomTkinter branch
 
-Windows utility per controllare in blocco i package Android e ottenere direttamente nell'app:
+This branch contains the **CustomTkinter 6** GUI.
 
-- ultima data di aggiornamento pubblicata sul Google Play Store;
-- età dell'ultimo aggiornamento in giorni;
-- stato del listing;
-- titolo attuale sullo Store;
-- fonte della data di aggiornamento;
-- classificazione visuale della criticità;
-- identificazione delle system app quando possibile.
+The audit engine and Play Store logic remain shared with the Qt6 variant. The main difference is the desktop-widget layer: this branch keeps the Tkinter/ttk table stack and modernises the surrounding UI with CustomTkinter.
 
-## GUI Qt 6 / PySide6
+## Source behaviour
 
-La GUI principale è ora `playstore_audit_qt.py`, costruita con PySide6 / Qt 6.
+The `App source` section contains:
 
-Vantaggi principali rispetto alla precedente GUI Tkinter:
+- `Choose file`
+- `Scan phone with ADB`
+- `Exclude system apps when loading / scanning`
 
-- supporto HiDPI nativo e scaling per-monitor;
-- layout e controlli più moderni;
-- `QTableView` con sorting nativo;
-- colonne trascinabili e riordinabili;
-- filtri istantanei tramite proxy model;
-- migliore resa grafica dei colori di criticità;
-- operazioni ADB/audit eseguite senza bloccare l'interfaccia principale.
+When the exclusion checkbox is enabled:
 
-I vecchi file Tkinter sono temporaneamente mantenuti nel repository come fallback durante la migrazione, ma GitHub Actions e gli script Windows costruiscono/avviano la versione Qt 6.
+- **ADB** loads third-party packages only using `adb shell pm list packages -3`;
+- **CSV/TSV** removes packages classified as system while the file is loaded, using an explicit system flag when available, an exact ADB comparison when possible, or the conservative package-name fallback.
 
-## Impostazioni principali
+When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
 
-- `Country`: determina il mercato Google Play controllato e può cambiare la disponibilità del listing. Su Windows viene inizializzato automaticamente dalla Region configurata nel sistema operativo (es. Switzerland -> `ch`, Italy -> `it`), ma resta modificabile.
-- `Parallel threads`: controlla il parallelismo dell'audit.
+## Store settings
 
-`Language` è dentro `Advanced` come `Store language`, con default `en`. Serve soprattutto per titoli/testi localizzati e non determina il mercato controllato.
+- `Country` is detected from the Windows Region and remains editable.
+- Store language is **not exposed in the UI** and is fixed internally to `en`.
+- `Parallel threads` remains configurable.
 
-## Advanced
+There is no longer an Advanced language/system-skip panel.
 
-La sezione `Advanced` è chiusa di default e contiene:
+## Results
 
-- `Store language`, default `en`;
-- `Skip system apps during audit`, disattivato di default.
+The CustomTkinter interface provides:
 
-Se `Skip system apps during audit` è attivo, le system app classificate vengono escluse prima delle richieste al Play Store. L'audit è più rapido, ma quelle app non vengono analizzate e non possono comparire nei risultati.
+- modern cards, buttons, entries and checkboxes;
+- automatic CustomTkinter HighDPI scaling on Windows;
+- the existing sortable `ttk.Treeview` results table;
+- `Age (days)` sorting;
+- instant text filtering;
+- clickable criticality counters;
+- pastel row colouring;
+- `Hide system apps` as a visual filter;
+- double-click to open the Google Play listing;
+- optional CSV export.
 
-## Tabella risultati
+Criticality remains:
 
-La tabella permette di:
+- red: Removed;
+- orange: Stale, >730 days;
+- yellow: Aging, >365 and <=730 days;
+- blue: Store anomaly;
+- purple: Other / unknown / error;
+- green: Current, <=365 days.
 
-- ordinare i risultati cliccando sulle intestazioni;
-- trascinare le intestazioni per riordinare le colonne;
-- ordinare numericamente `Age (days)`;
-- filtrare rapidamente con il campo `Filter apps`;
-- cliccare i contatori colorati per mostrare una sola classe di criticità;
-- nascondere o mostrare le system app senza rieseguire l'audit;
-- fare doppio clic su una riga per aprire il listing Play Store;
-- esportare il CSV soltanto quando serve.
+## ADB
 
-### Hide system apps
+If ADB is missing, the app can download the current Windows Platform-Tools package directly from Google's official endpoint and install it under `%LOCALAPPDATA%\PlayStoreAppAudit\platform-tools`.
 
-`Hide system apps` è un filtro puramente visuale. Quando le system app sono state analizzate, puoi nasconderle o mostrarle istantaneamente senza rilanciare l'audit.
+## Build
 
-La classificazione system app usa, in ordine:
+GitHub Actions builds:
 
-1. eventuale colonna CSV come `is_system`, `system`, `system_app` o `app_type`;
-2. ADB, se è collegato e autorizzato un telefono Android;
-3. un fallback prudente basato sui package chiaramente di sistema.
+`PlayStoreAppAudit-CustomTkinter.exe`
 
-Con una scansione diretta del telefono via ADB la classificazione system/user è esatta per quel dispositivo.
+Artifact name:
 
-## Criticità e colori
+`PlayStoreAppAudit-Windows-CustomTkinter`
 
-Gli sfondi sono volutamente molto tenui.
+Local entry point:
 
-- `Removed`: app non più trovata sul Play Store;
-- `Stale`: ultimo aggiornamento più vecchio di 730 giorni;
-- `Aging`: ultimo aggiornamento più vecchio di 365 giorni e non oltre 730 giorni;
-- `Store anomaly`: listing trovato soltanto nel locale fallback o altra anomalia esplicita di disponibilità;
-- `Other`: data assente/non interpretabile, errore di richiesta o altra situazione non determinabile con sicurezza;
-- `Current`: ultimo aggiornamento non più vecchio di 365 giorni.
-
-La colonna `Criticality` è ordinabile per severità. I contatori colorati sono cliccabili e `All` ripristina la vista completa.
-
-## Analisi diretta del telefono e ADB
-
-Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono.
-
-L'app cerca automaticamente ADB in:
-
-- PATH di Windows;
-- cartella dell'app / `platform-tools`;
-- Android Studio SDK (`%LOCALAPPDATA%\Android\Sdk\platform-tools`);
-- `ANDROID_SDK_ROOT` e `ANDROID_HOME`;
-- copia gestita dall'app in `%LOCALAPPDATA%\PlayStoreAppAudit\platform-tools`.
-
-Se ADB non è installato, l'app propone di scaricare direttamente da Google l'ultima versione Windows di Android SDK Platform-Tools e installarla nella cartella utente dell'app. I binari Google non sono inclusi nell'EXE.
-
-Se il telefono è `unauthorized`, sbloccalo e accetta `Allow USB debugging?`. Se non compare, controlla cavo dati, modalità USB e driver OEM Windows.
-
-La scansione usa:
-
-- `adb shell pm list packages` per tutti i package;
-- `adb shell pm list packages -s` per identificare le system app.
-
-## Creare l'EXE Windows online
-
-`.github/workflows/build-windows-exe.yml` usa un runner Windows GitHub Actions e genera `PlayStoreAppAudit.exe` dalla GUI Qt 6 `playstore_audit_qt.py`.
-
-L'artifact della build si chiama `PlayStoreAppAudit-Windows-Qt6`.
-
-## Altri metodi
-
-- Python su Windows: `run_windows_gui.bat`
-- Build locale Windows: `build_windows_exe.bat`
-- CLI: `playstore_audit_cli.py`
-
-## Input file supportati
-
-Puoi caricare CSV, TSV, TXT oppure output ADB `package:com.example.app`.
-
-Sono riconosciute colonne package come `package_name`, `package`, `packageName`, `packageId`, `app_id` e `id`. Il nome dell'app è opzionale.
+`playstore_audit_customtkinter.py`
