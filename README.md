@@ -14,16 +14,16 @@ Utility per controllare in blocco i package Android e ottenere direttamente nell
 
 La schermata principale mantiene soltanto i parametri realmente utili nell'uso normale:
 
-- `Country`: determina il mercato Google Play controllato e può cambiare la disponibilità del listing;
+- `Country`: determina il mercato Google Play controllato e può cambiare la disponibilità del listing. Su Windows viene inizializzato automaticamente dalla Region configurata nel sistema operativo (es. Switzerland -> `ch`, Italy -> `it`), ma resta modificabile;
 - `Parallel threads`: controlla il parallelismo dell'audit.
 
-`Language` non è più mostrato nella schermata principale. È disponibile dentro `Advanced` come `Store language` e serve soprattutto per titoli/testi localizzati; non determina il mercato controllato.
+`Language` non è mostrato nella schermata principale. È disponibile dentro `Advanced` come `Store language`, con default `en`, e serve soprattutto per titoli/testi localizzati; non determina il mercato controllato.
 
 ## Advanced
 
 La sezione `Advanced` è chiusa di default e contiene:
 
-- `Store language`, default `it`;
+- `Store language`, default `en`;
 - `Skip system apps during audit`, disattivato di default.
 
 Se `Skip system apps during audit` è attivo, le system app classificate vengono escluse prima delle richieste al Play Store. L'audit è più rapido, ma quelle app non vengono analizzate e non possono comparire nei risultati.
@@ -67,9 +67,21 @@ I colori di sfondo sono volutamente molto tenui per mantenere leggibile la tabel
 
 La colonna `Criticality` è ordinabile per severità. I contatori colorati sopra la tabella sono cliccabili: clicca un colore per filtrare quella classe, cliccalo di nuovo oppure premi `All` per tornare alla vista completa.
 
-## Analisi diretta del telefono
+## Analisi diretta del telefono e ADB
 
-Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono, senza creare prima un CSV intermedio.
+Premi `Scan phone with ADB` per leggere direttamente le app installate dal telefono.
+
+L'app cerca automaticamente ADB in:
+
+- PATH di Windows;
+- cartella dell'app / `platform-tools`;
+- Android Studio SDK (`%LOCALAPPDATA%\Android\Sdk\platform-tools`);
+- `ANDROID_SDK_ROOT` e `ANDROID_HOME`;
+- copia gestita dall'app in `%LOCALAPPDATA%\PlayStoreAppAudit\platform-tools`.
+
+Se ADB non è installato, l'app propone di scaricare direttamente da Google l'ultima versione Windows di Android SDK Platform-Tools e installarla nella cartella utente dell'app. Il download avviene a runtime dal server Google, dopo conferma dell'utente; i binari Google non sono inclusi nell'EXE.
+
+Se il telefono viene visto come `unauthorized`, l'app indica di sbloccare il telefono e accettare il prompt RSA `Allow USB debugging?`. Se ADB è installato ma il telefono non compare, controlla cavo dati, modalità USB e driver OEM Windows.
 
 La scansione usa:
 
@@ -82,7 +94,7 @@ Dopo la scansione premi `Run Play Store audit`.
 
 Il repository contiene `.github/workflows/build-windows-exe.yml`.
 
-Il workflow GitHub Actions gira su un runner Windows e genera `PlayStoreAppAudit.exe` come artifact. Ogni modifica a `playstore_audit_gui.py`, `playstore_audit_core.py`, `requirements.txt` o al workflow avvia automaticamente una nuova build.
+Il workflow GitHub Actions gira su un runner Windows e genera `PlayStoreAppAudit.exe` come artifact. La build Windows usa `playstore_audit_windows.py`, che aggiunge rilevamento automatico della Region e gestione ADB alla GUI principale.
 
 ## Altri metodi
 
