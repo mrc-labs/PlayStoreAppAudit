@@ -6,6 +6,7 @@ on:
     branches: [customtkinter]
     paths:
       - "app_icon.py"
+      - "playstore_audit_process.py"
       - "playstore_audit_core.py"
       - "playstore_audit_multicountry.py"
       - "playstore_audit_user_state.py"
@@ -18,6 +19,7 @@ on:
       - "playstore_audit_customtkinter_v8.py"
       - "playstore_audit_customtkinter_v9.py"
       - "playstore_audit_customtkinter_v9_stable.py"
+      - "playstore_audit_customtkinter_v9_fixed.py"
       - "playstore_audit_customtkinter_launcher.py"
       - "playstore_audit_customtkinter_v9_launcher.py"
       - "hook-tkinterdnd2.py"
@@ -54,6 +56,7 @@ jobs:
         shell: pwsh
         run: |
           python -m py_compile app_icon.py
+          python -m py_compile playstore_audit_process.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_user_state.py
@@ -66,10 +69,11 @@ jobs:
           python -m py_compile playstore_audit_customtkinter_v8.py
           python -m py_compile playstore_audit_customtkinter_v9.py
           python -m py_compile playstore_audit_customtkinter_v9_stable.py
+          python -m py_compile playstore_audit_customtkinter_v9_fixed.py
           python -m py_compile playstore_audit_customtkinter_launcher.py
           python -m py_compile playstore_audit_customtkinter_v9_launcher.py
           python -c "import tempfile; from pathlib import Path; import playstore_audit_v9_features as f; assert f.compatibility_label('35','36')=='Modern'; assert f.compatibility_label('29','36')=='Legacy target'; assert f.row_matches_filter({'criticality_key':'red'},'Problems'); assert f.calculate_health_score({'criticality_key':'green','compatibility_status':'Modern','version_comparison':'Match'})==100; p=Path(tempfile.gettempdir())/'psaa_v9_test.html'; f.write_html_report(p,[{'criticality_key':'green','criticality':'Current','package_name':'com.example','play_title':'Example','play_last_update':'2026-08-01','age_days':14,'notes':''}],{}); assert p.is_file(); p.unlink(); print('Shared v9 helpers OK')"
-          python -c "import playstore_audit_customtkinter_v9_stable as sm; import playstore_audit_customtkinter_v9 as m; import playstore_audit_user_state as s; w=sm.CustomTkPlayStoreAuditV9Stable(); w.update_idletasks(); assert tuple(w.tree['columns'])==m.V9_MODEL_COLUMNS; assert all(c in m.V9_MODEL_COLUMNS for c in ('compatibility_status','target_sdk','health_score','device_change')); assert s.DEFAULT_SETTINGS['permissions_audit_enabled'] is False; assert s.DEFAULT_SETTINGS['health_score_enabled'] is False; w.current_rows=[{'criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}]; w._refresh_table(); assert len(w.tree.get_children())==1; w._apply_filter_preset('Problems'); assert len(w.tree.get_children())==0; w._apply_filter_preset('All'); assert len(w.tree.get_children())==1; w._set_view_preset('Device'); assert s.load_settings()['view_preset']=='Device'; print('CustomTkinter v9 stable smoke test OK'); w.destroy()"
+          python -c "import subprocess; import playstore_audit_customtkinter_v9_fixed as fx; import playstore_audit_customtkinter_v9 as m; import playstore_audit_user_state as s; w=fx.CustomTkPlayStoreAuditV9Fixed(); w.update_idletasks(); assert tuple(w.tree['columns'])==m.V9_MODEL_COLUMNS; assert 'HiddenWindowPopen' in subprocess.Popen.__name__; assert s.DEFAULT_SETTINGS['permissions_audit_enabled'] is False; assert s.DEFAULT_SETTINGS['health_score_enabled'] is False; w.current_rows=[{'criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'play_version':'1.0','installed_version':'1.0','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100}]; w._refresh_table(); assert len(w.tree.get_children())==1; w._apply_filter_preset('Problems'); assert len(w.tree.get_children())==0; w._apply_filter_preset('All'); assert len(w.tree.get_children())==1; print('CustomTkinter fixed/no-console smoke test OK'); w.destroy()"
 
       - name: Generate Windows icon
         shell: pwsh
