@@ -32,7 +32,8 @@ There is no longer an Advanced language/system-skip panel.
 The CustomTkinter interface provides:
 
 - modern cards, buttons, entries and checkboxes;
-- automatic CustomTkinter HighDPI scaling on Windows;
+- CustomTkinter HighDPI scaling on Windows;
+- early Windows DPI-awareness setup before the Tk window is created;
 - the existing sortable `ttk.Treeview` results table;
 - `Age (days)` sorting;
 - instant text filtering;
@@ -65,6 +66,6 @@ Artifact name:
 
 `PlayStoreAppAudit-Windows-CustomTkinter`
 
-Local entry point:
+The build and local run use the DPI-aware launcher:
 
-`playstore_audit_customtkinter.py`
+`playstore_audit_customtkinter_launcher.py`
