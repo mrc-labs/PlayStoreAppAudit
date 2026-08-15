@@ -13,6 +13,7 @@ on:
       - "playstore_audit_v8_features.py"
       - "playstore_audit_v9_features.py"
       - "playstore_audit_v9_2_features.py"
+      - "playstore_audit_v9_3_features.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
       - "playstore_audit_qt_compact.py"
@@ -22,6 +23,7 @@ on:
       - "playstore_audit_qt_v9_fixed.py"
       - "playstore_audit_qt_v9_2.py"
       - "playstore_audit_qt_v9_2_stable.py"
+      - "playstore_audit_qt_v9_3.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -51,7 +53,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Validate Python source and Qt6 v9.2 UI
+      - name: Validate Python source and Qt6 v9.3 UI
         shell: pwsh
         run: |
           python -m py_compile app_icon.py
@@ -62,6 +64,7 @@ jobs:
           python -m py_compile playstore_audit_v8_features.py
           python -m py_compile playstore_audit_v9_features.py
           python -m py_compile playstore_audit_v9_2_features.py
+          python -m py_compile playstore_audit_v9_3_features.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
@@ -71,9 +74,10 @@ jobs:
           python -m py_compile playstore_audit_qt_v9_fixed.py
           python -m py_compile playstore_audit_qt_v9_2.py
           python -m py_compile playstore_audit_qt_v9_2_stable.py
+          python -m py_compile playstore_audit_qt_v9_3.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "import PySide6; assert PySide6.__version__=='6.11.1', PySide6.__version__; import playstore_audit_v9_2_features as f; assert f.format_date_value('Aug 1, 2026','YYYY-MM-DD')=='2026-08-01'; assert f.format_date_value('2026-08-01 12:00:00','DD/MM/YYYY')=='01/08/2026'; assert 'Phone-only methods' in f.CSV_EXPORT_GUIDE; print('Qt/PySide6 6.11.1 and v9.2 helpers OK')"
-          python -c "import subprocess; from PySide6.QtCore import Qt; from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v9_2_stable as sm; import playstore_audit_qt_v9_2 as m; app=QApplication([]); w=sm.PlayStoreAuditQtV92Stable(); assert 'HiddenWindowPopen' in subprocess.Popen.__name__; assert [a.text() for a in w.menuBar().actions()]==['File','View','Tools','Help']; vm=[a.menu() for a in w.menuBar().actions() if a.text()=='View'][0]; labels=[a.text() for a in vm.actions() if a.text()]; assert labels==['View preset','Reset table layout'], labels; vp=vm.actions()[0].menu(); assert [a.text() for a in vp.actions()]==['Basic','Device','Technical','Custom']; rows=[{'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.green','play_title':'Green','play_last_update':'Aug 1, 2026','age_days':14,'notes':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Green','store_url':'','is_system':False,'play_version':'1','installed_version':'1','version_comparison':'Match','installer_source':'Google Play'},{'criticality':'●  Removed','criticality_key':'red','criticality_rank':0,'package_name':'com.red','play_title':'Red','play_last_update':'','age_days':'','notes':'','play_status':'not_found_in_checked_countries','updated_source':'','play_http_status':404,'app_name':'Red','store_url':'','is_system':False,'play_version':'','installed_version':'','version_comparison':'Different','installer_source':''}]; w.current_rows=rows; w.model.set_rows(rows); w.proxy.invalidateFilter(); assert str(w.model.data(w.model.index(0,m.v9.V9_MODEL_COLUMNS.index('play_last_update')),Qt.ItemDataRole.DisplayRole))=='2026-08-01'; w._set_criticality_filter('green'); assert w.proxy.rowCount()==1; w._set_criticality_filter('red'); assert w.proxy.rowCount()==2; w._set_criticality_filter('green'); assert w.proxy.rowCount()==1; w._set_criticality_filter(None); assert w.proxy.rowCount()==2; w._update_summary(); assert w.summary_label.text()=='2/2 shown  •  Version differences 1', w.summary_label.text(); print('Qt6 v9.2 smoke test OK'); w.close()"
+          python -c "import PySide6; v=tuple(int(x) for x in PySide6.__version__.split('.')[:2]); assert v >= (6,11), PySide6.__version__; import playstore_audit_v9_2_features as f; import playstore_audit_v9_3_features as f3; assert f.format_date_value('Aug 1, 2026','YYYY-MM-DD')=='2026-08-01'; assert 'Phone-only methods' in f.CSV_EXPORT_GUIDE; assert f3.device_change_count({'had_previous':True,'counts':{'new':1,'removed':2,'version':1,'installer':0,'state':0}})==4; print('Qt/PySide6', PySide6.__version__, 'and v9.3 helpers OK')"
+          python -c "import subprocess; from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v9_3 as m; app=QApplication([]); w=m.PlayStoreAuditQtV93(); assert 'HiddenWindowPopen' in subprocess.Popen.__name__; assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; exports=[a.text() for a in w._export_results_menu.actions() if a.text()]; assert exports==['Export all results as CSV…','Export visible results as CSV…','Export all results as HTML…','Export visible results as HTML…'], exports; file_labels=[a.text() for a in w.file_menu.actions() if a.text()]; [(_ for _ in ()).throw(AssertionError(x)) if x not in file_labels else None for x in exports]; rows=[{'criticality':'●  Current','criticality_key':'green','criticality_rank':5,'package_name':'com.green','play_title':'Green','play_last_update':'Aug 1, 2026','age_days':14,'notes':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Green','store_url':'','is_system':False,'play_version':'1','installed_version':'1','version_comparison':'Match','installer_source':'Google Play'},{'criticality':'●  Removed','criticality_key':'red','criticality_rank':0,'package_name':'com.red','play_title':'Red','play_last_update':'','age_days':'','notes':'','play_status':'not_found_in_checked_countries','updated_source':'','play_http_status':404,'app_name':'Red','store_url':'','is_system':False,'play_version':'','installed_version':'','version_comparison':'Different','installer_source':''}]; w.current_rows=rows; w.model.set_rows(rows); w.proxy.invalidateFilter(); w._last_inventory_changes={'had_previous':True,'counts':{'new':1,'removed':2,'version':1,'installer':0,'state':0}}; w._update_summary(); assert '2/2 shown' in w.summary_label.text(); assert 'Version differences 1' in w.summary_label.text(); assert 'Device changes 4' in w.summary_label.text(); print('Qt6 v9.3 smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -92,7 +96,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt_v9_2_stable.py
+            playstore_audit_qt_v9_3.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
