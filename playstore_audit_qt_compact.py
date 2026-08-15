@@ -3,8 +3,10 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
 
+from app_icon import ensure_runtime_icon
 import playstore_audit_qt as qt_base
 from playstore_audit_qt_branch import PlayStoreAuditQtBranch
 
@@ -12,17 +14,30 @@ from playstore_audit_qt_branch import PlayStoreAuditQtBranch
 FIXED_WORKERS = 16
 
 
-class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
-    """Compact Qt6 presentation with fixed audit concurrency.
+def _find_layout_containing(layout, target_widget):
+    """Return the nested layout that directly contains target_widget."""
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        if item.widget() is target_widget:
+            return layout
+        child_layout = item.layout()
+        if child_layout is not None:
+            found = _find_layout_containing(child_layout, target_widget)
+            if found is not None:
+                return found
+    return None
 
-    Functional behaviour remains the same as the branch implementation; this
-    class only simplifies the visible controls and result columns.
-    """
+
+class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
+    """Compact Qt6 presentation with fixed audit concurrency."""
 
     def __init__(self) -> None:
-        # The base table model reads this mapping dynamically.
         qt_base.COLUMN_LABELS["package_name"] = "Package Name"
         super().__init__()
+
+        self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
+        self.resize(1500, 820)
+        self.setMinimumHeight(640)
 
         self.workers_spin.setValue(FIXED_WORKERS)
         self.exclude_system_source_check.setText("Exclude system apps from source")
@@ -31,8 +46,8 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             "Turn it off if you want system apps included in the source list."
         )
 
-        # Move Store country next to the source-level system-app choice and
-        # remove the now-unnecessary standalone Audit settings card.
+        # Store country belongs to the source definition. Concurrency is fixed
+        # internally, so the separate settings card is unnecessary.
         source_card = self.path_edit.parentWidget()
         settings_card = self.country_edit.parentWidget()
         source_layout = source_card.layout()
@@ -56,17 +71,52 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         self.exclude_system_source_check.show()
         settings_card.hide()
 
-        # Input name is retained internally/exported, but it is redundant in
-        # the interactive table. Package Name is the canonical visible key.
+        # Keep app_name internally/exported, but show only Package Name as the
+        # canonical identifier in the interactive table.
         self.table.setColumnHidden(0, True)
         self.model.headerDataChanged.emit(
             Qt.Orientation.Horizontal, 0, self.model.columnCount() - 1
         )
         self.table.setColumnWidth(1, 300)
 
+        self._compact_action_row()
+
+    def _compact_action_row(self) -> None:
+        """Run | progress+status | Export | Clear on one compact row."""
+        root = self.centralWidget().layout()
+        action_layout = _find_layout_containing(root, self.run_button)
+        progress_card = self.progress.parentWidget()
+        progress_layout = progress_card.layout()
+
+        if action_layout is None or progress_layout is None:
+            return
+
+        # Detach widgets from their old positions.
+        action_layout.removeWidget(self.export_button)
+        action_layout.removeWidget(self.clear_button)
+        progress_layout.removeWidget(self.progress)
+        progress_layout.removeWidget(self.status_label)
+
+        self.run_button.setMinimumWidth(215)
+        self.run_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+        inline_progress = QVBoxLayout()
+        inline_progress.setContentsMargins(0, 0, 0, 0)
+        inline_progress.setSpacing(2)
+        inline_progress.addWidget(self.progress)
+        inline_progress.addWidget(self.status_label)
+
+        action_layout.insertLayout(1, inline_progress, 1)
+        action_layout.addWidget(self.export_button)
+        action_layout.addWidget(self.clear_button)
+        action_layout.setStretch(0, 0)
+        action_layout.setStretch(1, 1)
+
+        root.removeWidget(progress_card)
+        progress_card.hide()
+        progress_card.deleteLater()
+
     def _start_audit(self) -> None:
-        # Fixed hidden concurrency. English is already fixed internally by the
-        # Qt branch implementation.
         self.workers_spin.setValue(FIXED_WORKERS)
         super()._start_audit()
 
@@ -76,6 +126,7 @@ def main() -> int:
     app.setApplicationName(qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
+    app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = PlayStoreAuditQtCompact()
     window.show()
     return app.exec()
