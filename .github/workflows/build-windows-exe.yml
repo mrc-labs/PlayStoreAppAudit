@@ -1,11 +1,13 @@
-name: Build Windows EXE
+name: Build Windows EXE - Qt6
 
 on:
   workflow_dispatch:
   push:
+    branches: [qt6]
     paths:
       - "playstore_audit_core.py"
       - "playstore_audit_qt.py"
+      - "playstore_audit_qt_branch.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -14,7 +16,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build PlayStoreAppAudit Qt.exe
+    name: Build PlayStoreAppAudit Qt6.exe
     runs-on: windows-latest
 
     steps:
@@ -40,8 +42,9 @@ jobs:
         run: |
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_qt.py
+          python -m py_compile playstore_audit_qt_branch.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt; app=QApplication([]); w=playstore_audit_qt.PlayStoreAuditQt(); print('PySide6 Qt window smoke test OK'); w.close()"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_branch as m; app=QApplication([]); w=m.PlayStoreAuditQtBranch(); assert not hasattr(w, 'language_edit'); print('Qt6 window smoke test OK'); w.close()"
 
       - name: Build Windows EXE
         shell: pwsh
@@ -51,20 +54,16 @@ jobs:
             --clean `
             --onefile `
             --windowed `
-            --name PlayStoreAppAudit `
+            --name PlayStoreAppAudit-Qt6 `
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt.py
-
-      - name: Show build output
-        shell: pwsh
-        run: Get-ChildItem -Recurse dist
+            playstore_audit_qt_branch.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
           name: PlayStoreAppAudit-Windows-Qt6
-          path: dist/PlayStoreAppAudit.exe
+          path: dist/PlayStoreAppAudit-Qt6.exe
           if-no-files-found: error
           retention-days: 30
