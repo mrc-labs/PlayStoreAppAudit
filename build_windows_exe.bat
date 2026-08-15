@@ -24,13 +24,14 @@ pyinstaller ^
   --clean ^
   --onefile ^
   --windowed ^
-  --name PlayStoreAppAudit ^
+  --name PlayStoreAppAudit-CustomTkinter ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
-  playstore_audit_qt.py
+  --collect-all customtkinter ^
+  playstore_audit_customtkinter.py
 
 echo.
-echo Build Qt completata.
-echo EXE: %CD%\dist\PlayStoreAppAudit.exe
+echo Build CustomTkinter completata.
+echo EXE: %CD%\dist\PlayStoreAppAudit-CustomTkinter.exe
 pause
