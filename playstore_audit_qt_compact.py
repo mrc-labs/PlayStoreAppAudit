@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
 
 from app_icon import ensure_runtime_icon
@@ -107,6 +107,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         self.table.setColumnWidth(1, 300)
 
         self._compact_action_row()
+        self._compact_results_area()
 
     def _compact_action_row(self) -> None:
         """Run | progress+status | Export | Clear on one compact row."""
@@ -141,6 +142,51 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         root.removeWidget(progress_card)
         progress_card.hide()
         progress_card.deleteLater()
+
+    def _compact_results_area(self) -> None:
+        """Reduce excess vertical whitespace in the Qt results card."""
+        results_card = self.table.parentWidget()
+        results_layout = results_card.layout() if results_card is not None else None
+        if results_layout is None:
+            return
+
+        # CustomTkinter is visually denser in this area. Keep the Qt clarity,
+        # but use tighter card margins and gaps between the four result bands.
+        results_layout.setContentsMargins(12, 9, 12, 10)
+        results_layout.setSpacing(5)
+
+        toolbar = _find_layout_containing(results_layout, self.summary_label)
+        if toolbar is not None:
+            toolbar.setContentsMargins(0, 0, 0, 0)
+            toolbar.setSpacing(8)
+
+        chips = _find_layout_containing(results_layout, self.all_chip)
+        if chips is not None:
+            chips.setContentsMargins(0, 0, 0, 0)
+            chips.setSpacing(5)
+
+        summary_font = QFont(self.summary_label.font())
+        summary_font.setPointSizeF(10.5)
+        summary_font.setBold(True)
+        self.summary_label.setFont(summary_font)
+        self.summary_label.setContentsMargins(0, 0, 0, 0)
+
+        self.hide_system_check.setContentsMargins(0, 0, 0, 0)
+        self.search_edit.setFixedHeight(32)
+
+        self.all_chip.setFixedHeight(28)
+        for button in self.criticality_buttons.values():
+            button.setFixedHeight(28)
+
+        # Tighten the explanatory legend without changing its wording.
+        for index in range(results_layout.count()):
+            widget = results_layout.itemAt(index).widget()
+            if isinstance(widget, QLabel) and widget.text().startswith("Removed ="):
+                legend_font = QFont(widget.font())
+                legend_font.setPointSizeF(8.8)
+                widget.setFont(legend_font)
+                widget.setContentsMargins(0, 0, 0, 0)
+                break
 
     def _start_audit(self) -> None:
         self.workers_spin.setValue(FIXED_WORKERS)
