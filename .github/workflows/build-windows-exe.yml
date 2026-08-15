@@ -35,12 +35,13 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Validate Python source
+      - name: Validate Python source and Qt UI
         shell: pwsh
         run: |
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_qt.py
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt; print('PySide6 Qt import OK')"
+          $env:QT_QPA_PLATFORM="offscreen"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt; app=QApplication([]); w=playstore_audit_qt.PlayStoreAuditQt(); print('PySide6 Qt window smoke test OK'); w.close()"
 
       - name: Build Windows EXE
         shell: pwsh
