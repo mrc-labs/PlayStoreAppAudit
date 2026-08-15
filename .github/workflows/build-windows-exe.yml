@@ -8,6 +8,7 @@ on:
       - "app_icon.py"
       - "playstore_audit_core.py"
       - "playstore_audit_multicountry.py"
+      - "playstore_audit_user_state.py"
       - "playstore_audit_gui.py"
       - "playstore_audit_windows.py"
       - "playstore_audit_customtkinter.py"
@@ -48,13 +49,14 @@ jobs:
           python -m py_compile app_icon.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_multicountry.py
+          python -m py_compile playstore_audit_user_state.py
           python -m py_compile playstore_audit_gui.py
           python -m py_compile playstore_audit_windows.py
           python -m py_compile playstore_audit_customtkinter.py
           python -m py_compile playstore_audit_customtkinter_branch.py
           python -m py_compile playstore_audit_customtkinter_launcher.py
           python -c "from app_icon import ensure_runtime_icon; p=ensure_runtime_icon(); assert p.exists(); print('Icon generation OK')"
-          python -c "import playstore_audit_customtkinter_branch as m; w=m.CustomTkPlayStoreAuditBranch(); w.update_idletasks(); assert w.language_var.get()=='en'; assert int(w.workers_var.get())==16; assert tuple(w.tree['columns'])==w.COLUMNS; assert w.COLUMNS==('criticality','package_name','play_title','play_last_update','age_days','notes'); assert w.tree.heading('criticality','text')=='Status'; assert w.path_entry.cget('placeholder_text'); assert int(w.country_source_entry.grid_info()['row'])==1; assert int(w.skip_source_check.grid_info()['row'])==1; row={'play_status':'available_in_other_country'}; w._classify_criticality(row); assert row['criticality_key']=='blue'; row={'play_status':'not_found_in_checked_countries'}; w._classify_criticality(row); assert row['criticality_key']=='red'; w.current_rows=[{'app_name':'Test','package_name':'com.example.test','play_status':'available','play_last_update':'2026-08-01','age_days':14,'play_title':'Test','updated_source':'test','notes':'','criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'is_system':False,'store_url':''}]; w._refresh_table(); assert len(w.tree.get_children())==1; w._audit_active=True; w._audit_paused=False; w._audit_pause_event.set(); w._last_progress=(2,10,'x'); w._toggle_pause(); assert w._audit_paused and not w._audit_pause_event.is_set() and w.run_button.cget('text')=='Resume'; w._toggle_pause(); assert (not w._audit_paused) and w._audit_pause_event.is_set() and w.run_button.cget('text')=='Pause'; w._audit_active=False; w._set_run_mode('run'); assert w.run_button.cget('text')=='Run Play Store audit'; print('CustomTkinter columns/pause smoke test OK'); w.destroy()"
+          python -c "import playstore_audit_customtkinter_branch as m; from playstore_audit_user_state import DEFAULT_SETTINGS; w=m.CustomTkPlayStoreAuditBranch(); w.update_idletasks(); assert int(w.workers_var.get())==16; assert tuple(w.tree['columns'])==m.MODEL_COLUMNS; assert tuple(w.tree['displaycolumns'])==m.PRIMARY_COLUMNS; assert w.tree.heading('criticality','text')=='Status'; assert int(DEFAULT_SETTINGS['cache_ttl_hours'])==72; assert w.path_entry.cget('placeholder_text'); assert int(w.country_source_entry.grid_info()['row'])==1; assert int(w.skip_source_check.grid_info()['row'])==1; row={'play_status':'available_in_other_country'}; w._classify_criticality(row); assert row['criticality_key']=='blue'; w.current_rows=[{'criticality':'🟢 Current','package_name':'com.example.test','play_title':'Test','play_last_update':'2026-08-01','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Test','store_url':'','is_system':False,'criticality_key':'green','criticality_rank':5}]; w._refresh_table(); assert len(w.tree.get_children())==1; w._audit_active=True; w._audit_paused=False; w._audit_pause_event.set(); w._last_progress=(2,10,'x'); w._toggle_pause(); assert w._audit_paused and w.run_button.cget('text')=='Resume'; w._toggle_pause(); assert (not w._audit_paused) and w.run_button.cget('text')=='Pause'; w._audit_active=False; w._set_run_mode('run'); assert w.run_button.cget('text')=='Run Play Store audit'; print('CustomTkinter advanced/cache/layout smoke test OK'); w.destroy()"
 
       - name: Generate Windows icon
         shell: pwsh
