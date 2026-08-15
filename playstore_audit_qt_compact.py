@@ -7,11 +7,38 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
 
 from app_icon import ensure_runtime_icon
+from playstore_audit_multicountry import audit_apps_multicountry
 import playstore_audit_qt as qt_base
 from playstore_audit_qt_branch import PlayStoreAuditQtBranch
 
 
 FIXED_WORKERS = 16
+
+# Keep functional behaviour shared with the CustomTkinter branch while using
+# the existing Qt worker and result pipeline.
+qt_base.audit_apps = audit_apps_multicountry
+_original_classify_criticality = qt_base.classify_criticality
+
+
+def _classify_criticality_multicountry(row: dict[str, object]) -> None:
+    status = str(row.get("play_status") or "").strip()
+    if status == "not_found_in_checked_countries":
+        key = "red"
+    elif status == "available_in_other_country":
+        key = "blue"
+    elif status == "multi_country_check_inconclusive":
+        key = "purple"
+    else:
+        _original_classify_criticality(row)
+        return
+
+    row["criticality_key"] = key
+    row["criticality"] = qt_base.CRITICALITY[key]["label"]
+    row["criticality_rank"] = qt_base.CRITICALITY[key]["rank"]
+    row["age_days"] = ""
+
+
+qt_base.classify_criticality = _classify_criticality_multicountry
 
 
 def _find_layout_containing(layout, target_widget):
@@ -36,8 +63,8 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         super().__init__()
 
         self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-        self.resize(1500, 820)
-        self.setMinimumHeight(640)
+        self.resize(1500, 800)
+        self.setMinimumHeight(620)
 
         self.workers_spin.setValue(FIXED_WORKERS)
         self.exclude_system_source_check.setText("Exclude system apps from source")
@@ -46,26 +73,26 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             "Turn it off if you want system apps included in the source list."
         )
 
-        # Store country belongs to the source definition. Concurrency is fixed
-        # internally, so the separate settings card is unnecessary.
+        # Keep every source control on one horizontal line:
+        # path | Choose file | ADB | Store country | system-app option.
         source_card = self.path_edit.parentWidget()
         settings_card = self.country_edit.parentWidget()
         source_layout = source_card.layout()
+        source_line = _find_layout_containing(source_layout, self.path_edit)
 
         source_layout.removeWidget(self.exclude_system_source_check)
         self.country_edit.setParent(source_card)
         self.exclude_system_source_check.setParent(source_card)
 
-        source_options = QHBoxLayout()
-        source_options.setSpacing(8)
-        country_label = QLabel("Store country")
-        country_label.setToolTip("Google Play market, detected from Windows Region.")
-        source_options.addWidget(country_label)
-        source_options.addWidget(self.country_edit)
-        source_options.addSpacing(14)
-        source_options.addWidget(self.exclude_system_source_check)
-        source_options.addStretch(1)
-        source_layout.insertLayout(2, source_options)
+        if source_line is not None:
+            source_line.addSpacing(10)
+            country_label = QLabel("Store country")
+            country_label.setToolTip("Google Play market, detected from Windows Region.")
+            source_line.addWidget(country_label)
+            self.country_edit.setFixedWidth(58)
+            source_line.addWidget(self.country_edit)
+            source_line.addSpacing(8)
+            source_line.addWidget(self.exclude_system_source_check)
 
         self.country_edit.show()
         self.exclude_system_source_check.show()
@@ -91,7 +118,6 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         if action_layout is None or progress_layout is None:
             return
 
-        # Detach widgets from their old positions.
         action_layout.removeWidget(self.export_button)
         action_layout.removeWidget(self.clear_button)
         progress_layout.removeWidget(self.progress)
