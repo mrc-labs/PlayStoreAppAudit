@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtGui import QAction, QActionGroup, QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMenu
 
 from app_icon import ensure_runtime_icon
 import playstore_audit_qt_v9_2 as v92ui
@@ -15,9 +15,6 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
     """Stable v9.2 Qt wrapper keeping native menu objects referenced by Python."""
 
     def __init__(self) -> None:
-        # v9's inheritance chain rebuilds the menu while base classes are still
-        # constructing. Defer our final menu until every base __init__ is done so
-        # no QMenu QAction is left pointing at an object removed by a later clear().
         self._defer_v92_menu_build = True
         super().__init__()
         self._defer_v92_menu_build = False
@@ -30,9 +27,14 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         bar = self.menuBar()
         bar.clear()
 
-        self.file_menu = bar.addMenu("File")
+        # Construct QMenu objects explicitly with a persistent parent. This is
+        # more robust across PySide ownership transitions than the addMenu(str)
+        # convenience overload when an inheritance chain rebuilt the menu bar.
+        self.file_menu = QMenu("File", bar)
+        bar.addMenu(self.file_menu)
         self.file_menu.addAction("Choose app list…", self._choose_input)
-        self.recent_menu = self.file_menu.addMenu("Recent sources")
+        self.recent_menu = QMenu("Recent sources", self.file_menu)
+        self.file_menu.addMenu(self.recent_menu)
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
@@ -44,8 +46,10 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
 
-        self.view_menu = bar.addMenu("View")
-        self.view_presets_menu = self.view_menu.addMenu("View preset")
+        self.view_menu = QMenu("View", bar)
+        bar.addMenu(self.view_menu)
+        self.view_presets_menu = QMenu("View preset", self.view_menu)
+        self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
         current = str(user_state.load_settings().get("view_preset") or "Basic")
@@ -61,14 +65,16 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         self.view_menu.addSeparator()
         self.reset_layout_action = self.view_menu.addAction("Reset table layout", self._reset_table_layout)
 
-        self.tools_menu = bar.addMenu("Tools")
+        self.tools_menu = QMenu("Tools", bar)
+        bar.addMenu(self.tools_menu)
         self.tools_menu.addAction("Advanced settings…", self._show_advanced_settings)
         self.tools_menu.addSeparator()
         self.tools_menu.addAction("Force full refresh (ignore cache)", self._force_full_refresh)
         self.tools_menu.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         self.tools_menu.addSeparator()
         self.tools_menu.addAction("Device summary…", self._show_device_summary)
-        self.snapshots_menu = self.tools_menu.addMenu("Device snapshots")
+        self.snapshots_menu = QMenu("Device snapshots", self.tools_menu)
+        self.tools_menu.addMenu(self.snapshots_menu)
         self.snapshots_menu.addAction("Save current device snapshot…", self._save_device_snapshot)
         self.snapshots_menu.addAction("Compare current device with snapshot…", self._compare_device_snapshot)
         self.tools_menu.addAction("Device inventory changes…", self._show_inventory_changes)
@@ -76,7 +82,8 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         self.tools_menu.addAction("Clear audit cache", self._clear_audit_cache)
         self.tools_menu.addAction("Clear previous-audit history", self._clear_audit_history)
 
-        self.help_menu = bar.addMenu("Help")
+        self.help_menu = QMenu("Help", bar)
+        bar.addMenu(self.help_menu)
         self.help_menu.addAction("ADB setup guide…", lambda: self._show_text_help("ADB setup guide", v92ui.v9.features.ADB_SETUP_GUIDE))
         self.help_menu.addAction("How to export package CSV…", lambda: self._show_text_help("Export package CSV", v92.CSV_EXPORT_GUIDE))
         self.help_menu.addAction("Health score methodology…", lambda: self._show_text_help("Health score methodology", v92ui.v9.features.HEALTH_SCORE_GUIDE))
