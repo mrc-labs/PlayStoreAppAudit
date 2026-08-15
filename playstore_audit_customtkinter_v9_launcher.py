@@ -5,7 +5,7 @@ from playstore_audit_customtkinter_launcher import enable_windows_per_monitor_dp
 
 def main() -> None:
     enable_windows_per_monitor_dpi()
-    from playstore_audit_customtkinter_v9_stable import main as run_app
+    from playstore_audit_customtkinter_v9_fixed import main as run_app
     run_app()
 
 
