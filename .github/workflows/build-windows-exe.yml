@@ -8,6 +8,7 @@ on:
       - "app_icon.py"
       - "playstore_audit_core.py"
       - "playstore_audit_multicountry.py"
+      - "playstore_audit_user_state.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
       - "playstore_audit_qt_compact.py"
@@ -46,11 +47,12 @@ jobs:
           python -m py_compile app_icon.py
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_multicountry.py
+          python -m py_compile playstore_audit_user_state.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value()==16; assert tuple(m.qt_base.COLUMNS)==m.DISPLAY_COLUMNS; assert w.model.columnCount()==6; assert m.qt_base.COLUMN_LABELS['criticality']=='Status'; assert w.table.verticalHeader().defaultSectionSize()==26; assert not w.windowIcon().isNull(); assert w.country_edit.parentWidget() is w.path_edit.parentWidget(); assert w.exclude_system_source_check.parentWidget() is w.path_edit.parentWidget(); row={'play_status':'available_in_other_country'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='blue'; row={'play_status':'not_found_in_checked_countries'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='red'; w._audit_active=True; w._audit_paused=False; w._audit_pause_event.set(); w._last_progress=(2,10,'x'); w._toggle_pause(); assert w._audit_paused and not w._audit_pause_event.is_set() and w.run_button.text()=='Resume'; w._toggle_pause(); assert (not w._audit_paused) and w._audit_pause_event.is_set() and w.run_button.text()=='Pause'; w._audit_active=False; w._set_run_mode('run'); assert w.run_button.text()=='Run Play Store audit'; print('Qt6 columns/pause smoke test OK'); w.close()"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; from playstore_audit_user_state import DEFAULT_SETTINGS; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value()==16; assert tuple(m.qt_base.COLUMNS)==m.MODEL_COLUMNS; assert w.model.columnCount()==len(m.MODEL_COLUMNS); assert m.qt_base.COLUMN_LABELS['criticality']=='Status'; assert w.table.verticalHeader().defaultSectionSize()==24; assert not w.windowIcon().isNull(); assert w.country_edit.parentWidget() is w.path_edit.parentWidget(); assert w.exclude_system_source_check.parentWidget() is w.path_edit.parentWidget(); assert int(DEFAULT_SETTINGS['cache_ttl_hours'])==72; assert [a.text() for a in w.menuBar().actions()]==['File','Tools','Help']; visible=[m.MODEL_COLUMNS[i] for i in range(len(m.MODEL_COLUMNS)) if not w.table.isColumnHidden(i)]; assert visible==list(m.PRIMARY_COLUMNS); row={'play_status':'available_in_other_country'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='blue'; w._audit_active=True; w._audit_paused=False; w._audit_pause_event.set(); w._last_progress=(2,10,'x'); w._toggle_pause(); assert w._audit_paused and w.run_button.text()=='Resume'; w._toggle_pause(); assert (not w._audit_paused) and w.run_button.text()=='Pause'; w._audit_active=False; w._set_run_mode('run'); assert w.run_button.text()=='Run Play Store audit'; print('Qt6 advanced/cache/layout smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
