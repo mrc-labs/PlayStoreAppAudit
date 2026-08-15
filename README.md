@@ -3,6 +3,7 @@
 Utility per controllare in blocco i package Android e ottenere direttamente nell'app:
 
 - ultima data di aggiornamento pubblicata sul Google Play Store;
+- età dell'ultimo aggiornamento in giorni;
 - stato del listing;
 - titolo attuale sullo Store;
 - fonte della data di aggiornamento;
@@ -16,7 +17,9 @@ La versione Windows mostra i risultati direttamente in una tabella interna.
 La tabella permette di:
 
 - ordinare i risultati cliccando sulle intestazioni delle colonne;
+- ordinare numericamente anche `Age (days)`;
 - filtrare rapidamente le righe con il campo `Filter`;
+- cliccare i contatori colorati per mostrare una sola classe di criticità;
 - nascondere o mostrare le system app senza rieseguire l'audit;
 - fare doppio clic su una riga per aprire il listing Play Store;
 - esportare il CSV soltanto quando serve, tramite `Export results…`.
@@ -37,17 +40,18 @@ Con una scansione diretta del telefono via ADB la classificazione system/user è
 
 ## Criticità e colori
 
-Ogni riga riceve un colore e la colonna finale `Criticality`:
+I colori di sfondo sono volutamente molto tenui per mantenere leggibile la tabella.
 
 - 🔴 `Removed`: app non più trovata sul Play Store;
-- 🟡 `Aging`: ultimo aggiornamento più vecchio di 365 giorni e non oltre 730 giorni;
 - 🟠 `Stale`: ultimo aggiornamento più vecchio di 730 giorni;
-- 🟢 `Current`: ultimo aggiornamento non più vecchio di 365 giorni;
-- 🟣 `Other`: data assente/non interpretabile, errore di richiesta, disponibilità soltanto nel locale fallback o altra situazione non classificabile con sicurezza.
+- 🟡 `Aging`: ultimo aggiornamento più vecchio di 365 giorni e non oltre 730 giorni;
+- 🔵 `Store anomaly`: listing trovato soltanto nel locale fallback o altra anomalia esplicita di disponibilità sullo Store;
+- 🟣 `Other`: data assente/non interpretabile, errore di richiesta o altra situazione non determinabile con sicurezza;
+- 🟢 `Current`: ultimo aggiornamento non più vecchio di 365 giorni.
 
 La colonna `Criticality` è ordinabile per severità.
 
-Il riepilogo sopra la tabella mostra anche il numero di righe per ciascun colore e quante system app sono nascoste.
+I contatori colorati sopra la tabella sono cliccabili: clicca un colore per filtrare quella classe, cliccalo di nuovo oppure premi `All` per tornare alla vista completa.
 
 ## Analisi diretta del telefono
 
@@ -107,13 +111,3 @@ Sono riconosciute colonne package come:
 - `id`
 
 Il nome dell'app è opzionale.
-
-## File principali
-
-- `playstore_audit_core.py`: motore dell'audit
-- `playstore_audit_gui.py`: interfaccia Windows
-- `playstore_audit_cli.py`: versione command line
-- `playstore_audit_final_colab.ipynb`: versione Colab
-- `.github/workflows/build-windows-exe.yml`: build online Windows
-- `requirements.txt`: dipendenze
-- `extract_packages_from_phone.ps1`: esportazione package da Android, se vuoi ancora usare il metodo manuale
