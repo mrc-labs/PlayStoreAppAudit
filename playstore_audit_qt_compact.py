@@ -1,21 +1,53 @@
 from __future__ import annotations
 
 import sys
+import threading
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QSizePolicy,
+    QStyle,
+    QVBoxLayout,
+)
 
 from app_icon import ensure_runtime_icon
+from playstore_audit_core import AuditConfig
 from playstore_audit_multicountry import audit_apps_multicountry
 import playstore_audit_qt as qt_base
 from playstore_audit_qt_branch import PlayStoreAuditQtBranch
 
 
 FIXED_WORKERS = 16
+DISPLAY_COLUMNS = (
+    "criticality",
+    "package_name",
+    "play_title",
+    "play_last_update",
+    "age_days",
+    "notes",
+)
+DISPLAY_WIDTHS = (145, 300, 265, 120, 92, 460)
 
-# Keep functional behaviour shared with the CustomTkinter branch while using
-# the existing Qt worker and result pipeline.
+# Keep diagnostic fields (Play status / Update source) in the underlying rows
+# and CSV export, while the interactive table shows only user-facing fields.
+qt_base.COLUMNS = DISPLAY_COLUMNS
+qt_base.COLUMN_LABELS.update(
+    {
+        "criticality": "Status",
+        "package_name": "Package Name",
+        "play_title": "Play Store Title",
+        "play_last_update": "Last update",
+        "age_days": "Age (days)",
+        "notes": "Notes",
+    }
+)
+
+# Keep functional behaviour shared with the CustomTkinter branch.
 qt_base.audit_apps = audit_apps_multicountry
 _original_classify_criticality = qt_base.classify_criticality
 
@@ -55,12 +87,28 @@ def _find_layout_containing(layout, target_widget):
     return None
 
 
+class ControlledAuditSignals(QObject):
+    progress = Signal(int, int, int, str)  # session, done, total, package
+    done = Signal(object)  # (session, rows, error)
+
+
 class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
-    """Compact Qt6 presentation with fixed audit concurrency."""
+    """Compact Qt6 presentation with fixed concurrency and pausable audits."""
 
     def __init__(self) -> None:
-        qt_base.COLUMN_LABELS["package_name"] = "Package Name"
+        self._audit_session = 0
+        self._audit_active = False
+        self._audit_paused = False
+        self._audit_pause_event = threading.Event()
+        self._audit_pause_event.set()
+        self._audit_cancel_event = threading.Event()
+        self._last_progress = (0, 0, "")
+
         super().__init__()
+
+        self.audit_control_signals = ControlledAuditSignals()
+        self.audit_control_signals.progress.connect(self._on_controlled_progress)
+        self.audit_control_signals.done.connect(self._on_controlled_done)
 
         self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
         self.resize(1500, 800)
@@ -98,19 +146,23 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         self.exclude_system_source_check.show()
         settings_card.hide()
 
-        # Keep app_name internally/exported, but show only Package Name as the
-        # canonical identifier in the interactive table.
-        self.table.setColumnHidden(0, True)
+        # User-facing table order. Technical fields remain in the row/export.
         self.model.headerDataChanged.emit(
             Qt.Orientation.Horizontal, 0, self.model.columnCount() - 1
         )
-        self.table.setColumnWidth(1, 300)
+        for column, width in enumerate(DISPLAY_WIDTHS):
+            self.table.setColumnWidth(column, width)
+
+        # Slightly denser rows than the previous Qt build.
+        self.table.verticalHeader().setMinimumSectionSize(22)
+        self.table.verticalHeader().setDefaultSectionSize(26)
 
         self._compact_action_row()
         self._compact_results_area()
+        self._set_run_mode("run")
 
     def _compact_action_row(self) -> None:
-        """Run | progress+status | Export | Clear on one compact row."""
+        """Run/Pause | progress+status | Export | Clear on one compact row."""
         root = self.centralWidget().layout()
         action_layout = _find_layout_containing(root, self.run_button)
         progress_card = self.progress.parentWidget()
@@ -150,8 +202,6 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         if results_layout is None:
             return
 
-        # CustomTkinter is visually denser in this area. Keep the Qt clarity,
-        # but use tighter card margins and gaps between the four result bands.
         results_layout.setContentsMargins(12, 9, 12, 10)
         results_layout.setSpacing(5)
 
@@ -178,7 +228,6 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         for button in self.criticality_buttons.values():
             button.setFixedHeight(28)
 
-        # Tighten the explanatory legend without changing its wording.
         for index in range(results_layout.count()):
             widget = results_layout.itemAt(index).widget()
             if isinstance(widget, QLabel) and widget.text().startswith("Removed ="):
@@ -188,9 +237,171 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
                 widget.setContentsMargins(0, 0, 0, 0)
                 break
 
+    def _set_run_mode(self, mode: str) -> None:
+        if mode == "pause":
+            self.run_button.setText("Pause")
+            self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
+        elif mode == "resume":
+            self.run_button.setText("Resume")
+            self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        else:
+            self.run_button.setText("Run Play Store audit")
+            self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.run_button.setEnabled(True)
+
+    def _set_audit_source_controls_enabled(self, enabled: bool) -> None:
+        self.choose_button.setEnabled(enabled)
+        self.scan_button.setEnabled(enabled)
+        self.country_edit.setEnabled(enabled)
+        self.exclude_system_source_check.setEnabled(enabled)
+
+    def _toggle_pause(self) -> None:
+        if not self._audit_active:
+            return
+
+        done, total, _package = self._last_progress
+        if self._audit_paused:
+            self._audit_pause_event.set()
+            self._audit_paused = False
+            self._set_run_mode("pause")
+            self.status_label.setText(f"Resumed • {done}/{total} completed")
+        else:
+            self._audit_pause_event.clear()
+            self._audit_paused = True
+            self._set_run_mode("resume")
+            self.status_label.setText(f"Paused • {done}/{total} completed")
+
     def _start_audit(self) -> None:
-        self.workers_spin.setValue(FIXED_WORKERS)
-        super()._start_audit()
+        if self._audit_active:
+            self._toggle_pause()
+            return
+
+        try:
+            apps, system_packages, classification_method = self._get_apps_to_audit()
+        except Exception as exc:
+            QMessageBox.warning(self, "No app list", str(exc))
+            return
+        if not apps:
+            QMessageBox.warning(self, "Nothing to audit", "No packages are loaded.")
+            return
+
+        country = (self.country_edit.text().strip() or qt_base.detect_windows_country()).lower()
+        self.current_system_packages = system_packages
+        self.criticality_filter = None
+        self._sync_criticality_buttons()
+
+        source_label = "Phone" if self.source_mode == "device" else "CSV/TXT"
+        self.source_label.setText(
+            f"{source_label} source: {len(apps)} packages • "
+            f"{len(system_packages)} classified as system • {classification_method}"
+        )
+
+        self.current_rows = []
+        self.model.set_rows([])
+        self.proxy.invalidateFilter()
+        self.export_button.setEnabled(False)
+        self.progress.setRange(0, len(apps))
+        self.progress.setValue(0)
+        self.status_label.setText(
+            f"Starting audit for {len(apps)} packages in Store country '{country}'…"
+        )
+
+        self._audit_session += 1
+        session = self._audit_session
+        self._audit_active = True
+        self._audit_paused = False
+        self._audit_pause_event = threading.Event()
+        self._audit_pause_event.set()
+        self._audit_cancel_event = threading.Event()
+        self._last_progress = (0, len(apps), "")
+        self._set_audit_source_controls_enabled(False)
+        self._set_run_mode("pause")
+
+        config = AuditConfig(country=country, language="en", max_workers=FIXED_WORKERS)
+        threading.Thread(
+            target=self._controlled_audit_worker,
+            args=(apps, config, session, self._audit_pause_event, self._audit_cancel_event),
+            daemon=True,
+        ).start()
+
+    def _controlled_audit_worker(
+        self,
+        apps: list[dict[str, str]],
+        config: AuditConfig,
+        session: int,
+        pause_event: threading.Event,
+        cancel_event: threading.Event,
+    ) -> None:
+        try:
+            def progress(done: int, total: int, package_name: str) -> None:
+                if cancel_event.is_set() or session != self._audit_session:
+                    return
+                self.audit_control_signals.progress.emit(session, done, total, package_name)
+
+            rows = audit_apps_multicountry(
+                apps,
+                config,
+                progress,
+                pause_event=pause_event,
+                cancel_event=cancel_event,
+            )
+            if cancel_event.is_set() or session != self._audit_session:
+                return
+            self.audit_control_signals.done.emit((session, rows, ""))
+        except Exception as exc:
+            if not cancel_event.is_set() and session == self._audit_session:
+                self.audit_control_signals.done.emit((session, None, str(exc)))
+
+    def _on_controlled_progress(
+        self, session: int, done: int, total: int, package_name: str
+    ) -> None:
+        if session != self._audit_session or not self._audit_active:
+            return
+        self._last_progress = (done, total, package_name)
+        self.progress.setRange(0, total)
+        self.progress.setValue(done)
+        if self._audit_paused:
+            self.status_label.setText(f"Paused • {done}/{total} completed")
+        else:
+            self.status_label.setText(f"Completed {done}/{total}: {package_name}")
+
+    def _on_controlled_done(self, payload: object) -> None:
+        session, rows, error = payload  # type: ignore[misc]
+        if session != self._audit_session:
+            return
+
+        self._audit_active = False
+        self._audit_paused = False
+        self._audit_pause_event.set()
+        self._set_audit_source_controls_enabled(True)
+        self._set_run_mode("run")
+
+        if error:
+            self.status_label.setText("Audit failed")
+            self.export_button.setEnabled(bool(self.current_rows))
+            QMessageBox.critical(self, "Audit failed", str(error))
+            return
+
+        qt_base.PlayStoreAuditQt._on_audit_done(self, rows)
+        self._set_run_mode("run")
+
+    def _cancel_active_audit(self) -> None:
+        if not self._audit_active:
+            self._set_run_mode("run")
+            return
+
+        self._audit_cancel_event.set()
+        self._audit_pause_event.set()
+        self._audit_session += 1
+        self._audit_active = False
+        self._audit_paused = False
+        self._set_audit_source_controls_enabled(True)
+        self._set_run_mode("run")
+
+    def _clear_results(self) -> None:
+        self._cancel_active_audit()
+        qt_base.PlayStoreAuditQt._clear_results(self)
+        self._set_run_mode("run")
 
 
 def main() -> int:
