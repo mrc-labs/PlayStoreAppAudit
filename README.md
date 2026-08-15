@@ -2,16 +2,15 @@
 
 This branch contains the **CustomTkinter 6** GUI.
 
-The audit engine and Play Store logic remain shared with the Qt6 variant. The main difference is the desktop-widget layer: this branch keeps the Tkinter/ttk table stack and modernises the surrounding UI with CustomTkinter.
+The audit engine and Play Store logic remain aligned with the Qt6 variant. The main difference is the desktop-widget layer: this branch keeps the Tkinter/ttk table stack and modernises the surrounding UI with CustomTkinter.
 
 ## App source
 
-The source card contains:
+The source card keeps the main controls on one horizontal row:
 
-- `Choose file`
-- `Scan phone with ADB`
-- `Store country`
-- `Exclude system apps from source`
+`source field | Choose file | Scan phone with ADB | Store country | Exclude system apps from source`
+
+A compact source-status line appears directly underneath.
 
 `Store country` is detected from the Windows Region and remains editable because Google Play availability can differ by country/region.
 
@@ -19,7 +18,7 @@ Store language is **not exposed in the UI** and is fixed internally to `en`.
 
 Audit concurrency is **fixed internally to 16 parallel workers** and is no longer exposed as a user setting.
 
-The source field now uses a native CustomTkinter grey placeholder (`Choose a CSV / TSV / TXT file, or scan your Android phone`) instead of appearing blank before a source is chosen.
+The source field uses a native CustomTkinter grey placeholder (`Choose a CSV / TSV / TXT file, or scan your Android phone`) instead of appearing blank before a source is chosen.
 
 When `Exclude system apps from source` is enabled:
 
@@ -27,6 +26,16 @@ When `Exclude system apps from source` is enabled:
 - **CSV/TSV** removes packages classified as system while the file is loaded, using an explicit system flag when available, an exact ADB comparison when possible, or the conservative package-name fallback.
 
 When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
+
+## Multi-country availability check
+
+The normal audit checks the selected Store country first. If the package is reported unavailable there, the app automatically checks representative alternate Play Store markets: US, UK, Germany, France, Italy, Switzerland, Spain, Canada, Australia and Japan.
+
+- found in another checked country -> **blue Store anomaly** and a note identifying the selected/unavailable country and the country where it was found;
+- not found in any checked market -> **red Removed**, with the checked markets recorded in Notes;
+- alternate checks contain request/HTTP errors and no listing is found -> **purple Other**, with an inconclusive multi-country note.
+
+The additional requests run only for packages unavailable in the selected market.
 
 ## Compact audit controls
 
@@ -40,24 +49,11 @@ The progress bar and its short status text share the middle section of that row,
 
 The interactive table shows `Package Name` as the canonical package identifier. `Input name` is retained internally/exported when available but is hidden from the on-screen table because it is usually redundant.
 
-The CustomTkinter interface provides:
+The CustomTkinter interface provides modern cards/buttons/entries/checkboxes, HighDPI scaling, grey placeholders, sortable `ttk.Treeview`, `Age (days)` sorting, instant filtering, clickable criticality counters, pastel row colouring, `Hide system apps`, double-click to open Google Play and optional CSV export.
 
-- modern cards, buttons, entries and checkboxes;
-- CustomTkinter HighDPI scaling on Windows;
-- early Windows DPI-awareness setup before the Tk window is created;
-- grey placeholder text in empty source/filter fields;
-- the existing sortable `ttk.Treeview` results table;
-- `Age (days)` sorting;
-- instant text filtering;
-- clickable criticality counters;
-- pastel row colouring;
-- `Hide system apps` as a visual filter;
-- double-click to open the Google Play listing;
-- optional CSV export.
+The Windows CI smoke test inserts a synthetic audit row into the Treeview and verifies that the table renders it.
 
-The Windows CI smoke test also inserts a synthetic audit row into the Treeview and verifies that the table renders it.
-
-Criticality remains:
+Criticality:
 
 - red: Removed;
 - orange: Stale, >730 days;
@@ -65,10 +61,6 @@ Criticality remains:
 - blue: Store anomaly;
 - purple: Other / unknown / error;
 - green: Current, <=365 days.
-
-## App icon
-
-The branch generates the same modern Fluent-style PlayStoreAppAudit icon as the Qt6 branch and uses it both in the window and as the embedded Windows EXE icon.
 
 ## ADB
 
@@ -78,14 +70,6 @@ If ADB is missing, the app can download the current Windows Platform-Tools packa
 
 ## Build
 
-GitHub Actions builds:
+GitHub Actions builds `PlayStoreAppAudit-CustomTkinter.exe` as artifact `PlayStoreAppAudit-Windows-CustomTkinter`.
 
-`PlayStoreAppAudit-CustomTkinter.exe`
-
-Artifact name:
-
-`PlayStoreAppAudit-Windows-CustomTkinter`
-
-The build and local run use the DPI-aware launcher:
-
-`playstore_audit_customtkinter_launcher.py`
+The build and local run use the DPI-aware launcher `playstore_audit_customtkinter_launcher.py`.
