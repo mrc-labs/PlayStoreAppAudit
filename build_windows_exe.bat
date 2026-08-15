@@ -18,6 +18,7 @@ call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install pyinstaller
+python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
 
 pyinstaller ^
   --noconfirm ^
@@ -25,6 +26,7 @@ pyinstaller ^
   --onefile ^
   --windowed ^
   --name PlayStoreAppAudit-CustomTkinter ^
+  --icon app_icon.ico ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
