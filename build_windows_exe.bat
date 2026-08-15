@@ -28,9 +28,9 @@ pyinstaller ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
-  playstore_audit_windows.py
+  playstore_audit_qt.py
 
 echo.
-echo Build completata.
+echo Build Qt completata.
 echo EXE: %CD%\dist\PlayStoreAppAudit.exe
 pause
