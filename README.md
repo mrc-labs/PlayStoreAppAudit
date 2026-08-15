@@ -2,32 +2,33 @@
 
 This branch contains the **PySide6 / Qt 6** GUI.
 
-The audit engine and Play Store logic remain shared with the other UI variant. The main differences between branches are presentation and desktop-widget technology.
+The audit engine and Play Store logic remain shared with the CustomTkinter variant. The two branches intentionally differ mainly in presentation/widget technology.
 
-## Source behaviour
+## App source
 
-The `App source` section contains:
+The source card contains:
 
 - `Choose file`
 - `Scan phone with ADB`
-- `Exclude system apps when loading / scanning`
+- `Store country`
+- `Exclude system apps from source`
 
-When the exclusion checkbox is enabled:
+`Store country` is detected from the Windows Region and remains editable.
+
+Store language is **not exposed in the UI** and is fixed internally to `en`.
+
+Audit concurrency is **fixed internally to 16 parallel workers** and is no longer exposed as a user setting.
+
+When `Exclude system apps from source` is enabled:
 
 - **ADB** loads third-party packages only using `adb shell pm list packages -3`;
 - **CSV/TSV** removes packages classified as system while the file is loaded, using an explicit system flag when available, an exact ADB comparison when possible, or the conservative package-name fallback.
 
 When it is disabled, all packages are loaded. `Hide system apps` remains available as a result-table display filter.
 
-## Store settings
-
-- `Country` is detected from the Windows Region and remains editable.
-- Store language is **not exposed in the UI** and is fixed internally to `en`.
-- `Parallel threads` remains configurable.
-
-There is no longer an Advanced language/system-skip panel.
-
 ## Results
+
+The interactive table shows `Package Name` as the canonical package identifier. `Input name` is retained internally/exported when available but is hidden from the on-screen table because it is usually redundant.
 
 The Qt table supports:
 
@@ -66,4 +67,4 @@ Artifact name:
 
 Local entry point:
 
-`playstore_audit_qt_branch.py`
+`playstore_audit_qt_compact.py`
