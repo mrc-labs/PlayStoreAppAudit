@@ -13,6 +13,7 @@ on:
       - "playstore_audit_v8_features.py"
       - "playstore_audit_v9_features.py"
       - "playstore_audit_v9_2_features.py"
+      - "playstore_audit_v9_3_features.py"
       - "playstore_audit_gui.py"
       - "playstore_audit_windows.py"
       - "playstore_audit_customtkinter.py"
@@ -22,9 +23,11 @@ on:
       - "playstore_audit_customtkinter_v9_stable.py"
       - "playstore_audit_customtkinter_v9_fixed.py"
       - "playstore_audit_customtkinter_v9_2.py"
+      - "playstore_audit_customtkinter_v9_3.py"
       - "playstore_audit_customtkinter_launcher.py"
       - "playstore_audit_customtkinter_v9_launcher.py"
       - "playstore_audit_customtkinter_v9_2_launcher.py"
+      - "playstore_audit_customtkinter_v9_3_launcher.py"
       - "hook-tkinterdnd2.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
@@ -55,7 +58,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Validate Python source and CustomTkinter v9.2 UI
+      - name: Validate Python source and CustomTkinter v9.3 UI
         shell: pwsh
         run: |
           python -m py_compile app_icon.py
@@ -66,6 +69,7 @@ jobs:
           python -m py_compile playstore_audit_v8_features.py
           python -m py_compile playstore_audit_v9_features.py
           python -m py_compile playstore_audit_v9_2_features.py
+          python -m py_compile playstore_audit_v9_3_features.py
           python -m py_compile playstore_audit_gui.py
           python -m py_compile playstore_audit_windows.py
           python -m py_compile playstore_audit_customtkinter.py
@@ -75,11 +79,13 @@ jobs:
           python -m py_compile playstore_audit_customtkinter_v9_stable.py
           python -m py_compile playstore_audit_customtkinter_v9_fixed.py
           python -m py_compile playstore_audit_customtkinter_v9_2.py
+          python -m py_compile playstore_audit_customtkinter_v9_3.py
           python -m py_compile playstore_audit_customtkinter_launcher.py
           python -m py_compile playstore_audit_customtkinter_v9_launcher.py
           python -m py_compile playstore_audit_customtkinter_v9_2_launcher.py
-          python -c "import playstore_audit_v9_2_features as f; assert f.format_date_value('Aug 1, 2026','YYYY-MM-DD')=='2026-08-01'; assert f.format_date_value('2026-08-01 12:00:00','DD/MM/YYYY')=='01/08/2026'; assert 'Phone-only methods' in f.CSV_EXPORT_GUIDE; print('Shared v9.2 helpers OK')"
-          python -c "import subprocess; import playstore_audit_customtkinter_v9_2 as m; import playstore_audit_user_state as s; w=m.CustomTkPlayStoreAuditV92(); w.update_idletasks(); assert 'HiddenWindowPopen' in subprocess.Popen.__name__; assert tuple(w.tree['columns'])==m.v9.V9_MODEL_COLUMNS; rows=[{'criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'package_name':'com.green','play_title':'Green','play_last_update':'Aug 1, 2026','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Green','store_url':'','is_system':False,'play_version':'1','installed_version':'1','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'2026-01-02 10:00:00','last_local_update':'2026-08-01 12:00:00','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100},{'criticality':'🔴 Removed','criticality_key':'red','criticality_rank':0,'package_name':'com.red','play_title':'Red','play_last_update':'','age_days':'','notes':'','change':'','play_status':'not_found_in_checked_countries','updated_source':'','play_http_status':404,'app_name':'Red','store_url':'','is_system':False,'play_version':'','installed_version':'','version_comparison':'Different','installer_source':'','compatibility_status':'Unknown','target_sdk':'','min_sdk':'','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':40}]; w.current_rows=rows; w._refresh_table(); assert len(w.tree.get_children())==2; first=w.tree.item(w.tree.get_children()[0],'values'); date_idx=list(m.v9.V9_MODEL_COLUMNS).index('play_last_update'); assert first[date_idx]=='2026-08-01', first; w._set_criticality_filter('green'); assert len(w.tree.get_children())==1; w._set_criticality_filter('red'); assert len(w.tree.get_children())==2; w._set_criticality_filter('green'); assert len(w.tree.get_children())==1; w._set_criticality_filter(None); assert len(w.tree.get_children())==2; assert w.summary_var.get()=='2/2 shown  •  Version differences 1', w.summary_var.get(); w._set_view_preset('Custom'); assert s.load_settings()['view_preset']=='Custom'; print('CustomTkinter v9.2 smoke test OK'); w.destroy()"
+          python -m py_compile playstore_audit_customtkinter_v9_3_launcher.py
+          python -c "import playstore_audit_v9_2_features as f; import playstore_audit_v9_3_features as f3; assert f.format_date_value('Aug 1, 2026','YYYY-MM-DD')=='2026-08-01'; assert 'Phone-only methods' in f.CSV_EXPORT_GUIDE; assert f3.device_change_count({'had_previous':True,'counts':{'new':1,'removed':2,'version':1,'installer':0,'state':0}})==4; print('Shared v9.3 helpers OK')"
+          python -c "import subprocess; import playstore_audit_customtkinter_v9_3 as m; w=m.CustomTkPlayStoreAuditV93(); w.update_idletasks(); assert 'HiddenWindowPopen' in subprocess.Popen.__name__; assert not w.path_entry.winfo_ismapped(); assert w.choose_button.cget('text')=='Choose file'; assert w.scan_button.cget('text')=='Scan phone'; labels=[w._export_results_menu.entrycget(i,'label') for i in range(w._export_results_menu.index('end')+1) if w._export_results_menu.type(i)!='separator']; assert labels==['Export all results as CSV…','Export visible results as CSV…','Export all results as HTML…','Export visible results as HTML…'], labels; rows=[{'criticality':'🟢 Current','criticality_key':'green','criticality_rank':5,'package_name':'com.green','play_title':'Green','play_last_update':'Aug 1, 2026','age_days':14,'notes':'','change':'','play_status':'available','updated_source':'test','play_http_status':200,'app_name':'Green','store_url':'','is_system':False,'play_version':'1','installed_version':'1','version_comparison':'Match','installer_source':'Google Play','compatibility_status':'Modern','target_sdk':'35','min_sdk':'26','first_install_time':'2026-01-02 10:00:00','last_local_update':'2026-08-01 12:00:00','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':100},{'criticality':'🔴 Removed','criticality_key':'red','criticality_rank':0,'package_name':'com.red','play_title':'Red','play_last_update':'','age_days':'','notes':'','change':'','play_status':'not_found_in_checked_countries','updated_source':'','play_http_status':404,'app_name':'Red','store_url':'','is_system':False,'play_version':'','installed_version':'','version_comparison':'Different','installer_source':'','compatibility_status':'Unknown','target_sdk':'','min_sdk':'','first_install_time':'','last_local_update':'','app_enabled':'Enabled','sensitive_permissions_count':'','sensitive_permissions':'','device_change':'Same','health_score':40}]; w.current_rows=rows; w._last_inventory_changes={'had_previous':True,'counts':{'new':1,'removed':2,'version':1,'installer':0,'state':0}}; w._refresh_table(); assert '2/2 shown' in w.summary_var.get(); assert 'Version differences 1' in w.summary_var.get(); assert 'Device changes 4' in w.summary_var.get(); print('CustomTkinter v9.3 smoke test OK'); w.destroy()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -101,7 +107,7 @@ jobs:
             --collect-all lxml `
             --collect-all customtkinter `
             --collect-all tkinterdnd2 `
-            playstore_audit_customtkinter_v9_2_launcher.py
+            playstore_audit_customtkinter_v9_3_launcher.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
