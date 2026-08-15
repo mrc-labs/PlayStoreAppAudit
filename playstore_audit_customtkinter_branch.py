@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import queue
 import subprocess
+import threading
 import tkinter as tk
 
 import customtkinter as ctk
 
 from app_icon import ensure_runtime_icon
+from playstore_audit_core import AuditConfig
 from playstore_audit_multicountry import audit_apps_multicountry
 import playstore_audit_customtkinter as legacy
 import playstore_audit_gui as gui_base
@@ -26,7 +29,40 @@ SOURCE_PLACEHOLDER = "Choose a CSV / TSV / TXT file, or scan your Android phone"
 class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
     """Compact CustomTkinter presentation of the shared audit workflow."""
 
+    COLUMNS = (
+        "criticality",
+        "package_name",
+        "play_title",
+        "play_last_update",
+        "age_days",
+        "notes",
+    )
+    COLUMN_LABELS = {
+        "criticality": "Status",
+        "package_name": "Package Name",
+        "play_title": "Play Store Title",
+        "play_last_update": "Last update",
+        "age_days": "Age (days)",
+        "notes": "Notes",
+    }
+    COLUMN_WIDTHS = {
+        "criticality": 145,
+        "package_name": 285,
+        "play_title": 245,
+        "play_last_update": 110,
+        "age_days": 90,
+        "notes": 430,
+    }
+
     def __init__(self) -> None:
+        self._audit_session = 0
+        self._audit_active = False
+        self._audit_paused = False
+        self._audit_pause_event = threading.Event()
+        self._audit_pause_event.set()
+        self._audit_cancel_event = threading.Event()
+        self._last_progress = (0, 0, "")
+
         super().__init__()
         self.language_var.set("en")
         self.workers_var.set(FIXED_WORKERS)
@@ -44,7 +80,6 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
         top = source.master
 
         # Replace the path field so CustomTkinter's native placeholder works.
-        # CTkEntry placeholders do not work together with textvariable.
         old_path = self.path_entry
         old_path.destroy()
         self.path_entry = ctk.CTkEntry(
@@ -113,18 +148,17 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
             except Exception:
                 pass
 
-        # Keep app_name in underlying values for export and compatibility, but
-        # do not display the redundant Input name column.
-        visible_columns = tuple(column for column in self.COLUMNS if column != "app_name")
-        self.tree.configure(displaycolumns=visible_columns)
+        # The table itself now contains only the six user-facing columns.
         self.tree.heading(
-            "package_name",
-            text="Package Name",
-            command=lambda: self._sort_results("package_name"),
+            "criticality",
+            text="Status",
+            command=lambda: self._sort_results("criticality"),
         )
-        self.tree.column("package_name", width=285, minwidth=160, stretch=True)
+        for column in self.COLUMNS:
+            self.tree.column(column, width=self.COLUMN_WIDTHS[column])
 
         self._compact_action_row()
+        self._set_run_mode("run")
 
     def _sync_path_entry(self) -> None:
         if not hasattr(self, "path_entry"):
@@ -138,7 +172,7 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
             pass
 
     def _compact_action_row(self) -> None:
-        """Run | progress+status | Export | Clear on one compact row."""
+        """Run/Pause | progress+status | Export | Clear on one compact row."""
         actions = self.run_button.master
         root = actions.master
         progress_card = self.progress.master
@@ -193,10 +227,196 @@ class CustomTkPlayStoreAuditBranch(legacy.CustomTkPlayStoreAuditApp):
         row["criticality_rank"] = self.CRITICALITY[key]["rank"]
         row["age_days"] = ""
 
+    def _set_run_mode(self, mode: str) -> None:
+        if mode == "pause":
+            text = "Pause"
+        elif mode == "resume":
+            text = "Resume"
+        else:
+            text = "Run Play Store audit"
+        self.run_button.configure(text=text, state="normal")
+
+    def _set_audit_source_controls_enabled(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        self.choose_button.configure(state=state)
+        self.scan_button.configure(state=state)
+        self.skip_source_check.configure(state=state)
+        self.country_source_entry.configure(state=state)
+
+    def _toggle_pause(self) -> None:
+        if not self._audit_active:
+            return
+        done, total, _package = self._last_progress
+        if self._audit_paused:
+            self._audit_pause_event.set()
+            self._audit_paused = False
+            self._set_run_mode("pause")
+            self.status_var.set(f"Resumed | {done}/{total} completed")
+        else:
+            self._audit_pause_event.clear()
+            self._audit_paused = True
+            self._set_run_mode("resume")
+            self.status_var.set(f"Paused | {done}/{total} completed")
+
     def _start_audit(self) -> None:
+        if self._audit_active:
+            self._toggle_pause()
+            return
+
+        try:
+            apps, system_packages, classification_method = self._get_apps_to_audit()
+        except Exception as exc:
+            tk.messagebox.showerror("No app list", str(exc))
+            return
+        if not apps:
+            tk.messagebox.showerror("Nothing to audit", "No packages are loaded.")
+            return
+
+        country = (self.country_var.get().strip() or "it").lower()
+        self.current_system_packages = system_packages
+        self.criticality_filter = None
         self.workers_var.set(FIXED_WORKERS)
         self.language_var.set("en")
-        super()._start_audit()
+
+        source_label = "Phone" if self.source_mode == "device" else "CSV/TXT"
+        self.source_var.set(
+            f"{source_label} source: {len(apps)} packages | "
+            f"{len(system_packages)} classified as system | {classification_method}"
+        )
+
+        self.current_rows = []
+        self._refresh_table()
+        self.export_button.configure(state="disabled")
+        self.progress["value"] = 0
+        self.progress["maximum"] = len(apps)
+        self.status_var.set(
+            f"Starting audit for {len(apps)} packages in Store country '{country}'…"
+        )
+
+        self._audit_session += 1
+        session = self._audit_session
+        self._audit_active = True
+        self._audit_paused = False
+        self._audit_pause_event = threading.Event()
+        self._audit_pause_event.set()
+        self._audit_cancel_event = threading.Event()
+        self._last_progress = (0, len(apps), "")
+        self._set_audit_source_controls_enabled(False)
+        self._set_run_mode("pause")
+
+        config = AuditConfig(country=country, language="en", max_workers=FIXED_WORKERS)
+        threading.Thread(
+            target=self._controlled_audit_worker,
+            args=(apps, config, session, self._audit_pause_event, self._audit_cancel_event),
+            daemon=True,
+        ).start()
+
+    def _controlled_audit_worker(
+        self,
+        apps: list[dict[str, str]],
+        config: AuditConfig,
+        session: int,
+        pause_event: threading.Event,
+        cancel_event: threading.Event,
+    ) -> None:
+        try:
+            def progress(done: int, total: int, package_name: str) -> None:
+                if cancel_event.is_set() or session != self._audit_session:
+                    return
+                self.progress_queue.put(("controlled_progress", session, done, total, package_name))
+
+            rows = audit_apps_multicountry(
+                apps,
+                config,
+                progress,
+                pause_event=pause_event,
+                cancel_event=cancel_event,
+            )
+            if cancel_event.is_set() or session != self._audit_session:
+                return
+            self.progress_queue.put(("controlled_done", session, rows))
+        except Exception as exc:
+            if not cancel_event.is_set() and session == self._audit_session:
+                self.progress_queue.put(("controlled_error", session, str(exc)))
+
+    def _process_queue(self) -> None:
+        try:
+            while True:
+                message = self.progress_queue.get_nowait()
+                kind = message[0]
+
+                if kind == "controlled_progress":
+                    _, session, done, total, package_name = message
+                    if session != self._audit_session or not self._audit_active:
+                        continue
+                    self._last_progress = (done, total, package_name)
+                    self.progress["value"] = done
+                    self.progress["maximum"] = total
+                    if self._audit_paused:
+                        self.status_var.set(f"Paused | {done}/{total} completed")
+                    else:
+                        self.status_var.set(f"Completed {done}/{total}: {package_name}")
+
+                elif kind == "controlled_done":
+                    _, session, rows = message
+                    if session != self._audit_session:
+                        continue
+                    for row in rows:
+                        row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
+                        self._classify_criticality(row)
+                    self.current_rows = rows
+                    if self.sort_column:
+                        self.current_rows.sort(
+                            key=lambda row: self._sort_key(row, self.sort_column),
+                            reverse=self.sort_reverse,
+                        )
+                    self._audit_active = False
+                    self._audit_paused = False
+                    self._audit_pause_event.set()
+                    self._set_audit_source_controls_enabled(True)
+                    self._set_run_mode("run")
+                    self.export_button.configure(state="normal")
+                    self.progress["value"] = self.progress["maximum"]
+                    self.status_var.set("Audit completed")
+                    self._refresh_table()
+
+                elif kind == "controlled_error":
+                    _, session, error = message
+                    if session != self._audit_session:
+                        continue
+                    self._audit_active = False
+                    self._audit_paused = False
+                    self._audit_pause_event.set()
+                    self._set_audit_source_controls_enabled(True)
+                    self._set_run_mode("run")
+                    self.export_button.configure(
+                        state="normal" if self.current_rows else "disabled"
+                    )
+                    self.status_var.set("Audit failed")
+                    tk.messagebox.showerror("Audit error", error)
+
+                # Ignore stale legacy audit messages. This branch uses the
+                # session-aware controlled_* messages above.
+        except queue.Empty:
+            pass
+        self.after(100, self._process_queue)
+
+    def _cancel_active_audit(self) -> None:
+        if not self._audit_active:
+            self._set_run_mode("run")
+            return
+        self._audit_cancel_event.set()
+        self._audit_pause_event.set()
+        self._audit_session += 1
+        self._audit_active = False
+        self._audit_paused = False
+        self._set_audit_source_controls_enabled(True)
+        self._set_run_mode("run")
+
+    def _clear_results(self) -> None:
+        self._cancel_active_audit()
+        gui_base.PlayStoreAuditApp._clear_results(self)
+        self._set_run_mode("run")
 
 
 def main() -> None:
