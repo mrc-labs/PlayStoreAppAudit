@@ -9,9 +9,11 @@ on:
       - "playstore_audit_core.py"
       - "playstore_audit_multicountry.py"
       - "playstore_audit_user_state.py"
+      - "playstore_audit_v8_features.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
       - "playstore_audit_qt_compact.py"
+      - "playstore_audit_qt_v8.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -48,11 +50,14 @@ jobs:
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_multicountry.py
           python -m py_compile playstore_audit_user_state.py
+          python -m py_compile playstore_audit_v8_features.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
           python -m py_compile playstore_audit_qt_compact.py
+          python -m py_compile playstore_audit_qt_v8.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; from playstore_audit_user_state import DEFAULT_SETTINGS; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value()==16; assert tuple(m.qt_base.COLUMNS)==m.MODEL_COLUMNS; assert w.model.columnCount()==len(m.MODEL_COLUMNS); assert m.qt_base.COLUMN_LABELS['criticality']=='Status'; assert w.table.verticalHeader().defaultSectionSize()==24; assert not w.windowIcon().isNull(); assert w.country_edit.parentWidget() is w.path_edit.parentWidget(); assert w.exclude_system_source_check.parentWidget() is w.path_edit.parentWidget(); assert int(DEFAULT_SETTINGS['cache_ttl_hours'])==72; assert [a.text() for a in w.menuBar().actions()]==['File','Tools','Help']; visible=[m.MODEL_COLUMNS[i] for i in range(len(m.MODEL_COLUMNS)) if not w.table.isColumnHidden(i)]; assert visible==list(m.PRIMARY_COLUMNS); row={'play_status':'available_in_other_country'}; m.qt_base.classify_criticality(row); assert row['criticality_key']=='blue'; w._audit_active=True; w._audit_paused=False; w._audit_pause_event.set(); w._last_progress=(2,10,'x'); w._toggle_pause(); assert w._audit_paused and w.run_button.text()=='Resume'; w._toggle_pause(); assert (not w._audit_paused) and w.run_button.text()=='Pause'; w._audit_active=False; w._set_run_mode('run'); assert w.run_button.text()=='Run Play Store audit'; print('Qt6 advanced/cache/layout smoke test OK'); w.close()"
+          python -c "import playstore_audit_v8_features as f; assert f.parse_country_list('ch, it, uk, us')[0]==['ch','it','gb','us']; assert f.compare_versions('1.2.3','1.2.3')=='Match'; assert f.compare_versions('1.2.3','Varies with device')=='Device-specific'; print('Shared v8 helpers OK')"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_v8 as m; import playstore_audit_user_state as s; app=QApplication([]); w=m.PlayStoreAuditQtV8(); assert w.workers_spin.value()==16; assert w.model.columnCount()==len(m.V8_MODEL_COLUMNS); assert all(c in m.V8_MODEL_COLUMNS for c in ('play_version','installed_version','version_comparison','installer_source')); assert s.DEFAULT_SETTINGS['fallback_countries']; assert s.DEFAULT_SETTINGS['collect_device_metadata'] is True; assert [a.text() for a in w.menuBar().actions()]==['File','Tools','Help']; tools=w.menuBar().actions()[1].menu(); labels=[a.text() for a in tools.actions() if a.text()]; assert 'Force full refresh (ignore cache)' in labels; assert 'Recheck Removed / Anomaly / Other' in labels; assert 'Clear previous-audit history' in labels; assert w.table.verticalHeader().defaultSectionSize()==24; print('Qt6 v8 smoke test OK'); w.close()"
 
       - name: Generate Windows icon
         shell: pwsh
@@ -71,7 +76,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt_compact.py
+            playstore_audit_qt_v8.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
