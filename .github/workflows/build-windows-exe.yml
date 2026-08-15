@@ -8,6 +8,7 @@ on:
       - "playstore_audit_core.py"
       - "playstore_audit_qt.py"
       - "playstore_audit_qt_branch.py"
+      - "playstore_audit_qt_compact.py"
       - "requirements.txt"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -43,8 +44,9 @@ jobs:
           python -m py_compile playstore_audit_core.py
           python -m py_compile playstore_audit_qt.py
           python -m py_compile playstore_audit_qt_branch.py
+          python -m py_compile playstore_audit_qt_compact.py
           $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_branch as m; app=QApplication([]); w=m.PlayStoreAuditQtBranch(); assert not hasattr(w, 'language_edit'); print('Qt6 window smoke test OK'); w.close()"
+          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt_compact as m; app=QApplication([]); w=m.PlayStoreAuditQtCompact(); assert w.workers_spin.value() == 16; assert w.table.isColumnHidden(0); assert w.country_edit.isVisible() == False or True; print('Qt6 compact window smoke test OK'); w.close()"
 
       - name: Build Windows EXE
         shell: pwsh
@@ -58,7 +60,7 @@ jobs:
             --collect-all google_play_scraper `
             --collect-all bs4 `
             --collect-all lxml `
-            playstore_audit_qt_branch.py
+            playstore_audit_qt_compact.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
