@@ -28,7 +28,7 @@ pyinstaller ^
   --collect-all google_play_scraper ^
   --collect-all bs4 ^
   --collect-all lxml ^
-  playstore_audit_qt_branch.py
+  playstore_audit_qt_compact.py
 
 echo.
 echo Build Qt6 completata.
