@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
-import playstore_app_audit.services.persistence as user_state
+import playstore_app_audit.services.state as state
 
 DEFAULT_FALLBACK_COUNTRIES = "us, gb, de, fr, it, ch, es, ca, au, jp"
 DEFAULT_DEVICE_INFO_ENABLED = True
@@ -20,9 +20,9 @@ _FALLBACK_COUNTRIES: tuple[str, ...] = tuple(token.strip() for token in DEFAULT_
 
 def install_user_state_extensions() -> None:
     """Extend v7 settings/technical-column dictionaries in place."""
-    user_state.DEFAULT_SETTINGS.setdefault("fallback_countries", DEFAULT_FALLBACK_COUNTRIES)
-    user_state.DEFAULT_SETTINGS.setdefault("collect_device_metadata", DEFAULT_DEVICE_INFO_ENABLED)
-    user_state.TECHNICAL_COLUMNS.update(
+    state.DEFAULT_SETTINGS.setdefault("fallback_countries", DEFAULT_FALLBACK_COUNTRIES)
+    state.DEFAULT_SETTINGS.setdefault("collect_device_metadata", DEFAULT_DEVICE_INFO_ENABLED)
+    state.TECHNICAL_COLUMNS.update(
         {
             "play_version": "Play Store version",
             "installed_version": "Installed version",
@@ -75,14 +75,14 @@ def get_fallback_countries(selected_country: str = "") -> tuple[str, ...]:
 
 def clear_history() -> None:
     try:
-        user_state.history_path().write_text("{}", encoding="utf-8")
+        state.history_path().write_text("{}", encoding="utf-8")
     except Exception:
         pass
 
 
 def save_history_merged(rows: list[dict[str, Any]]) -> None:
     """Update the local baseline without deleting packages omitted by a subset recheck."""
-    data = user_state.load_history()
+    data = state.load_history()
     if not isinstance(data, dict):
         data = {}
     now = datetime.now(UTC).isoformat()
@@ -97,7 +97,7 @@ def save_history_merged(rows: list[dict[str, Any]]) -> None:
             "play_last_update": row.get("play_last_update", ""),
             "saved_at": now,
         }
-    path = user_state.history_path()
+    path = state.history_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
     import json

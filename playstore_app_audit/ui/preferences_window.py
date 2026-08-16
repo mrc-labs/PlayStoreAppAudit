@@ -30,21 +30,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
 
-# Transitional aliases for inherited settings/export behaviour.
-v9 = insights_ui
-fixed = table_ui
-user_state = persistence
-v92 = presentation
-
-insights_ui.features.VIEW_PRESETS = presentation.VIEW_PRESETS
-insights_ui.features.CSV_EXPORT_GUIDE = presentation.CSV_EXPORT_GUIDE
-insights_ui.features.APP_VERSION = presentation.APP_VERSION
+device_insights.VIEW_PRESETS = presentation.VIEW_PRESETS
+device_insights.CSV_EXPORT_GUIDE = presentation.CSV_EXPORT_GUIDE
+device_insights.APP_VERSION = presentation.APP_VERSION
 
 
 class FormattedAuditTableModel(table_ui.AuditTableModel):
@@ -87,9 +84,9 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
 class PreferencesWindow(table_ui.TableWindow):
     def __init__(self) -> None:
         self._status_filters: set[str] = set()
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         settings["active_filter_preset"] = "All"
-        persistence.save_settings(settings)
+        state.save_settings(settings)
         super().__init__()
 
         old_proxy = self.proxy
@@ -110,7 +107,7 @@ class PreferencesWindow(table_ui.TableWindow):
 
     # ---------- Views ----------
     def _visible_column_order(self) -> list[str]:
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         preset = str(settings.get("view_preset") or "Basic")
         compare = bool(settings.get("compare_previous", False))
         health = bool(settings.get("health_score_enabled", False))
@@ -211,7 +208,7 @@ class PreferencesWindow(table_ui.TableWindow):
         presets = view_menu.addMenu("View preset")
         group = QActionGroup(self)
         group.setExclusive(True)
-        current = str(persistence.load_settings().get("view_preset") or "Basic")
+        current = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current)
@@ -240,7 +237,7 @@ class PreferencesWindow(table_ui.TableWindow):
         help_menu = bar.addMenu("Help")
         help_menu.addAction(
             "ADB setup guide…",
-            lambda: self._show_text_help("ADB setup guide", insights_ui.features.ADB_SETUP_GUIDE),
+            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
         )
         help_menu.addAction(
             "How to export package CSV…",
@@ -248,7 +245,7 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         help_menu.addAction(
             "Health score methodology…",
-            lambda: self._show_text_help("Health score methodology", insights_ui.features.HEALTH_SCORE_GUIDE),
+            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
         )
         help_menu.addSeparator()
         help_menu.addAction("Check for updates…", self._check_for_updates)
@@ -258,7 +255,7 @@ class PreferencesWindow(table_ui.TableWindow):
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
-        self.user_settings = persistence.load_settings()
+        self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setWindowTitle("Advanced settings")
         dialog.resize(780, 800)
@@ -288,10 +285,7 @@ class PreferencesWindow(table_ui.TableWindow):
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         language = QLineEdit(str(self.user_settings.get("store_language") or "en"))
         fallback = QLineEdit(
-            str(
-                self.user_settings.get("fallback_countries")
-                or insights_ui.v8.features.DEFAULT_FALLBACK_COUNTRIES
-            )
+            str(self.user_settings.get("fallback_countries") or device_metadata.DEFAULT_FALLBACK_COUNTRIES)
         )
         date_format = QComboBox()
         date_format.addItems(list(presentation.DATE_FORMATS))
@@ -347,7 +341,7 @@ class PreferencesWindow(table_ui.TableWindow):
         storage = QGroupBox("Storage")
         s_layout = QVBoxLayout(storage)
         portable = QCheckBox("Portable mode: keep app data next to the EXE")
-        portable.setChecked(insights_ui.features.portable_mode_active())
+        portable.setChecked(device_insights.portable_mode_active())
         portable_note = QLabel(
             "Changing portable mode migrates local app data and requires a restart. The EXE folder must be writable."
         )
@@ -364,7 +358,7 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_checks: dict[str, QCheckBox] = {}
         choices = [c for c in insights_ui.V9_MODEL_COLUMNS if c not in {"criticality", "package_name"}]
         for i, key in enumerate(choices):
-            label = insights_ui.v8.v7.qt_base.COLUMN_LABELS.get(key, key)
+            label = base_ui.COLUMN_LABELS.get(key, key)
             check = QCheckBox(label)
             check.setChecked(key in configured)
             custom_checks[key] = check
@@ -386,11 +380,11 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         bottom.addWidget(buttons)
         root.addLayout(bottom)
-        old_portable = insights_ui.features.portable_mode_active()
+        old_portable = device_insights.portable_mode_active()
 
         def reset_controls() -> None:
             language.setText("en")
-            fallback.setText(insights_ui.v8.features.DEFAULT_FALLBACK_COUNTRIES)
+            fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             cache.setChecked(True)
             ttl.setValue(72)
@@ -410,7 +404,7 @@ class PreferencesWindow(table_ui.TableWindow):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        fallback_text, invalid = insights_ui.v8.features.normalise_country_string(fallback.text())
+        fallback_text, invalid = device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
         custom_columns = ["criticality", "package_name"] + [
             k for k, check in custom_checks.items() if check.isChecked()
@@ -430,11 +424,11 @@ class PreferencesWindow(table_ui.TableWindow):
                 "custom_view_columns": list(dict.fromkeys(custom_columns)),
             }
         )
-        self.user_settings = persistence.save_settings(self.user_settings)
+        self.user_settings = state.save_settings(self.user_settings)
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
-            persistence.clear_cache()
+            state.clear_cache()
         if portable.isChecked() != old_portable:
-            ok, portable_msg = insights_ui.features.migrate_portable_mode(portable.isChecked())
+            ok, portable_msg = device_insights.migrate_portable_mode(portable.isChecked())
             if not ok:
                 QMessageBox.warning(self, "Portable mode", portable_msg)
         self._apply_column_visibility(reset_order=False)
@@ -464,7 +458,7 @@ class PreferencesWindow(table_ui.TableWindow):
         if not selected.lower().endswith(".html"):
             selected += ".html"
         try:
-            insights_ui.features.write_html_report(
+            device_insights.write_html_report(
                 selected, presentation.rows_for_output(list(self.current_rows)), self._device_summary
             )
             QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
@@ -474,7 +468,7 @@ class PreferencesWindow(table_ui.TableWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(insights_ui.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

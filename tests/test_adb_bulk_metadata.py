@@ -30,7 +30,7 @@ def test_extract_bulk_package_blocks_is_scoped_to_packages_section() -> None:
 
 def test_bulk_metadata_avoids_per_package_dumpsys(monkeypatch) -> None:
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(insights.user_state, "load_settings", lambda: {"permissions_audit_enabled": True})
+    monkeypatch.setattr(insights.state, "load_settings", lambda: {"permissions_audit_enabled": True})
 
     def fake_run(adb: str, args: list[str], timeout: int = 30) -> str:
         calls.append(tuple(args))
@@ -68,7 +68,7 @@ def test_partial_bulk_dump_falls_back_only_for_missing_package(monkeypatch) -> N
         "    lastUpdateTime=2026-07-01 11:00:00\n",
         "",
     )
-    monkeypatch.setattr(insights.user_state, "load_settings", lambda: {"permissions_audit_enabled": False})
+    monkeypatch.setattr(insights.state, "load_settings", lambda: {"permissions_audit_enabled": False})
 
     def fake_run(adb: str, args: list[str], timeout: int = 30) -> str:
         calls.append(tuple(args))
@@ -96,7 +96,7 @@ def test_partial_bulk_dump_falls_back_only_for_missing_package(monkeypatch) -> N
 
 
 def test_bulk_failure_preserves_per_package_fallback(monkeypatch) -> None:
-    monkeypatch.setattr(insights.user_state, "load_settings", lambda: {"permissions_audit_enabled": False})
+    monkeypatch.setattr(insights.state, "load_settings", lambda: {"permissions_audit_enabled": False})
     per_package: list[str] = []
 
     def fake_run(adb: str, args: list[str], timeout: int = 30) -> str:

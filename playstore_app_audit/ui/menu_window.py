@@ -6,8 +6,8 @@ from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import QApplication, QMenu
 
 import playstore_app_audit.services.device_insights as device_insights
-import playstore_app_audit.services.persistence as persistence
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit.resources import ensure_runtime_icon
@@ -54,7 +54,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
-        current = str(persistence.load_settings().get("view_preset") or "Basic")
+        current = str(state.load_settings().get("view_preset") or "Basic")
         self.view_preset_actions = []
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)

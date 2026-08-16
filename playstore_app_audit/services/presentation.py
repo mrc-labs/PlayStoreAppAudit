@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-import playstore_app_audit.services.persistence as user_state
+import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
 
 APP_VERSION = __version__
@@ -60,7 +60,7 @@ Use 'Scan phone with ADB', then File → Export current phone package list as CS
 
 
 def install_defaults() -> None:
-    defaults = user_state.DEFAULT_SETTINGS
+    defaults = state.DEFAULT_SETTINGS
     defaults.setdefault("date_format", DEFAULT_DATE_FORMAT)
     defaults.setdefault("custom_view_columns", list(DEFAULT_CUSTOM_VIEW_COLUMNS))
 
@@ -119,7 +119,7 @@ def format_date_value(value: object, style: str | None = None) -> str:
 
 
 def configured_date_format() -> str:
-    style = str(user_state.load_settings().get("date_format") or DEFAULT_DATE_FORMAT)
+    style = str(state.load_settings().get("date_format") or DEFAULT_DATE_FORMAT)
     return style if style in DATE_FORMATS else DEFAULT_DATE_FORMAT
 
 
