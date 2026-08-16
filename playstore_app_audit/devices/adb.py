@@ -30,9 +30,18 @@ def run_adb(adb: str, *args: str, timeout: int = 30) -> subprocess.CompletedProc
 
 
 def find_adb() -> str | None:
+    """Return the first ADB candidate that can actually execute on this host."""
     for candidate in adb_candidates():
-        if candidate.is_file():
-            return str(candidate)
+        if not candidate.is_file():
+            continue
+        try:
+            run_adb(str(candidate), "version", timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            # Important on Linux ARM64: an old managed x86-64 Platform-Tools
+            # download may still exist from an earlier build. Ignore unusable
+            # binaries and continue looking for a native distro/SDK ADB.
+            continue
+        return str(candidate)
     return None
 
 
