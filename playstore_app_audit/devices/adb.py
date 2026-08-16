@@ -12,6 +12,8 @@ from playstore_app_audit.platform.runtime import (
     adb_executable_name,
     hidden_subprocess_kwargs,
     managed_platform_tools_dir,
+    managed_platform_tools_download_supported,
+    managed_platform_tools_unavailable_message,
     platform_tools_url,
 )
 
@@ -44,6 +46,9 @@ def is_authorised(adb: str) -> bool:
 
 def install_platform_tools() -> tuple[str, str]:
     """Download the current official Google Platform-Tools archive for this OS."""
+    if not managed_platform_tools_download_supported():
+        raise RuntimeError(managed_platform_tools_unavailable_message())
+
     target = managed_platform_tools_dir()
     executable = adb_executable_name()
 
@@ -52,7 +57,7 @@ def install_platform_tools() -> tuple[str, str]:
         archive_path = temp_root / "platform-tools.zip"
         request = urllib.request.Request(
             platform_tools_url(),
-            headers={"User-Agent": "PlayStoreAppAudit/0.10"},
+            headers={"User-Agent": "PlayStoreAppAudit/0.12"},
         )
         with urllib.request.urlopen(request, timeout=90) as response, archive_path.open("wb") as output:
             shutil.copyfileobj(response, output)
