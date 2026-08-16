@@ -13,9 +13,6 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-# Compatibility imports. The versioned Qt modules are kept temporarily as a
-# tested compatibility layer while the application is migrated into this
-# package. New product code should depend on this package, not on those modules.
 import playstore_audit_qt as qt_base
 import playstore_audit_qt_branch as qt_branch
 import playstore_audit_qt_compact as qt_compact
@@ -30,6 +27,9 @@ from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
 
+# Compatibility imports above are a tested transition layer while the older
+# versioned Qt modules are migrated behind this canonical package entry point.
+# New product code should depend on playstore_app_audit, not versioned wrappers.
 
 # Centralise platform decisions instead of spreading Windows assumptions across
 # the UI inheritance chain.
