@@ -5,6 +5,7 @@ on:
     branches: ["refactor/v0.12-foundations"]
     paths:
       - "tools/refactor_v012_foundations.py"
+      - "tools/refactor_v012_foundations_patch.py"
       - ".github/workflows/refactor-v012-foundations.yml"
 
 permissions:
@@ -37,7 +38,7 @@ jobs:
 
       - name: Apply v0.12 foundation refactor
         shell: pwsh
-        run: python tools/refactor_v012_foundations.py
+        run: python tools/refactor_v012_foundations_patch.py
 
       - name: Format and autofix
         shell: pwsh
@@ -89,6 +90,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item tools/refactor_v012_foundations.py
+          Remove-Item tools/refactor_v012_foundations_patch.py
           Remove-Item .github/workflows/refactor-v012-foundations.yml
           if (Test-Path tools -PathType Container) {
             if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
