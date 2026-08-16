@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 
 from playstore_app_audit.devices import adb as adb_service
@@ -52,3 +54,22 @@ def test_macos_arm64_managed_adb_is_supported(monkeypatch: pytest.MonkeyPatch) -
     assert runtime.platform_key() == "macos"
     assert runtime.machine_key() == "arm64"
     assert runtime.managed_platform_tools_download_supported()
+
+
+def test_find_adb_skips_binary_that_cannot_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    broken = tmp_path / "broken-adb"
+    native = tmp_path / "native-adb"
+    broken.write_text("broken", encoding="utf-8")
+    native.write_text("native", encoding="utf-8")
+    monkeypatch.setattr(adb_service, "adb_candidates", lambda: [broken, native])
+
+    def fake_run(adb: str, *args: str, timeout: int = 30):
+        assert args == ("version",)
+        if adb == str(broken):
+            raise OSError("Exec format error")
+        return subprocess.CompletedProcess([adb, *args], 0, "Android Debug Bridge\n", "")
+
+    monkeypatch.setattr(adb_service, "run_adb", fake_run)
+    assert adb_service.find_adb() == str(native)
