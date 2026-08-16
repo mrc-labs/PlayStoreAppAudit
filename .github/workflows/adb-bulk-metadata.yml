@@ -1,0 +1,71 @@
+name: One-time ADB bulk metadata optimisation
+
+on:
+  push:
+    branches: ["perf/adb-bulk-metadata"]
+    paths:
+      - "tools/add_adb_bulk_metadata.py"
+      - ".github/workflows/adb-bulk-metadata.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-test-commit:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout performance branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: perf/adb-bulk-metadata
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Apply optimisation
+        shell: pwsh
+        run: python tools/add_adb_bulk_metadata.py
+
+      - name: Format, test and lint
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ruff format playstore_app_audit tests main.py
+          ruff check --fix playstore_app_audit tests main.py
+          python -m compileall -q playstore_app_audit
+          python -m pytest
+          ruff check playstore_app_audit tests main.py
+          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; print('ADB optimisation Qt smoke OK'); w.close()"
+
+      - name: Remove one-time migration machinery
+        shell: pwsh
+        run: |
+          Remove-Item tools/add_adb_bulk_metadata.py
+          Remove-Item .github/workflows/adb-bulk-metadata.yml
+          if (Test-Path tools -PathType Container) {
+            if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
+          }
+
+      - name: Commit validated optimisation
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git commit -m "Use bulk dumpsys package metadata with safe fallback"
+          git push origin HEAD:perf/adb-bulk-metadata
