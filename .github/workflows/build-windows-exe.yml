@@ -65,7 +65,7 @@ jobs:
         shell: pwsh
         run: |
           pyside6-deploy main.py --name PlayStoreAppAudit --init
-          python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations=True --windows-console-mode=disable'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close(); print(open('pysidedeploy.spec',encoding='utf-8').read())"
+          python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations=True --windows-console-mode=disable --nofollow-import-to=PIL'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close(); print(open('pysidedeploy.spec',encoding='utf-8').read())"
 
       - name: Build optimized Windows executable
         shell: pwsh
