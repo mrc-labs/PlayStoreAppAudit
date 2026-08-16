@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from playstore_audit_core import AuditConfig, fetch_app, load_apps
 from playstore_audit_v8_features import audit_apps_v8
