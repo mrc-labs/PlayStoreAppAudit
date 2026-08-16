@@ -24,11 +24,16 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
-import playstore_audit_qt_compact as v7
-import playstore_audit_user_state as user_state
-import playstore_audit_v8_features as features
 
+# Transitional aliases keep the proven inheritance graph stable while module ownership moves into the package.
+v7 = compact_ui
+user_state = persistence
+features = device_metadata
+device_insights = device_metadata
 
 # Extend the v7 table model in-place. These extra fields remain hidden by
 # default and are available from Advanced settings / App details.
@@ -38,10 +43,10 @@ V8_EXTRA_COLUMNS = (
     "version_comparison",
     "installer_source",
 )
-V8_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(v7.MODEL_COLUMNS) + V8_EXTRA_COLUMNS))
-v7.MODEL_COLUMNS = V8_MODEL_COLUMNS
-v7.qt_base.COLUMNS = V8_MODEL_COLUMNS
-v7.DEFAULT_WIDTHS.update(
+V8_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(compact_ui.MODEL_COLUMNS) + V8_EXTRA_COLUMNS))
+compact_ui.MODEL_COLUMNS = V8_MODEL_COLUMNS
+compact_ui.qt_base.COLUMNS = V8_MODEL_COLUMNS
+compact_ui.DEFAULT_WIDTHS.update(
     {
         "play_version": 150,
         "installed_version": 150,
@@ -49,7 +54,7 @@ v7.DEFAULT_WIDTHS.update(
         "installer_source": 230,
     }
 )
-v7.qt_base.COLUMN_LABELS.update(
+compact_ui.qt_base.COLUMN_LABELS.update(
     {
         "play_version": "Play Store version",
         "installed_version": "Installed version",
@@ -57,9 +62,9 @@ v7.qt_base.COLUMN_LABELS.update(
         "installer_source": "Installer source",
     }
 )
-v7.qt_base.EXPORT_FIELDS = list(
+compact_ui.qt_base.EXPORT_FIELDS = list(
     dict.fromkeys(
-        list(v7.qt_base.EXPORT_FIELDS)
+        list(compact_ui.qt_base.EXPORT_FIELDS)
         + [
             "play_version",
             "installed_version",
@@ -71,10 +76,10 @@ v7.qt_base.EXPORT_FIELDS = list(
 )
 
 # Use the enhanced v8 audit path and merge-safe history writer.
-v7.audit_apps_multicountry = features.audit_apps_v8
-v7.save_history = features.save_history_merged
+compact_ui.audit_apps_multicountry = device_metadata.audit_apps_v8
+compact_ui.save_history = device_metadata.save_history_merged
 
-_ORIGINAL_LOAD_FRESH_CACHE = v7.load_fresh_cache
+_ORIGINAL_LOAD_FRESH_CACHE = compact_ui.load_fresh_cache
 _BYPASS_CACHE_ONCE = False
 
 
@@ -84,10 +89,10 @@ def _load_fresh_cache_proxy(*args, **kwargs):
     return _ORIGINAL_LOAD_FRESH_CACHE(*args, **kwargs)
 
 
-v7.load_fresh_cache = _load_fresh_cache_proxy
+compact_ui.load_fresh_cache = _load_fresh_cache_proxy
 
 
-class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
+class DeviceWindow(compact_ui.CompactWindow):
     """Qt6 v8: expert fallbacks, rechecks, details and ADB device metadata."""
 
     def __init__(self) -> None:
@@ -161,12 +166,14 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
             QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            features.clear_history()
-            self.status_label.setText("Previous-audit history cleared; the next comparison run will create a new baseline")
+            device_metadata.clear_history()
+            self.status_label.setText(
+                "Previous-audit history cleared; the next comparison run will create a new baseline"
+            )
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
-        self.user_settings = user_state.load_settings()
+        self.user_settings = persistence.load_settings()
         dialog = QDialog(self)
         dialog.setWindowTitle("Advanced settings")
         dialog.setMinimumWidth(620)
@@ -189,7 +196,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         store_form.addRow("Store language", language)
 
         fallback = QLineEdit(
-            str(self.user_settings.get("fallback_countries") or features.DEFAULT_FALLBACK_COUNTRIES)
+            str(self.user_settings.get("fallback_countries") or device_metadata.DEFAULT_FALLBACK_COUNTRIES)
         )
         fallback.setPlaceholderText("us, gb, de, fr, it, ch, es, ca, au, jp")
         fallback.setToolTip(
@@ -251,7 +258,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
         selected = set(self.user_settings.get("technical_columns", []))
-        for key, label in user_state.TECHNICAL_COLUMNS.items():
+        for key, label in persistence.TECHNICAL_COLUMNS.items():
             check = QCheckBox(label)
             check.setChecked(key in selected)
             technical_checks[key] = check
@@ -270,7 +277,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
 
         def reset_controls() -> None:
             language.setText("en")
-            fallback.setText(features.DEFAULT_FALLBACK_COUNTRIES)
+            fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             cache_enabled.setChecked(True)
             ttl.setValue(72)
             collect_device.setChecked(True)
@@ -284,7 +291,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        fallback_text, invalid = features.normalise_country_string(fallback.text())
+        fallback_text, invalid = device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
         self.user_settings.update(
             {
@@ -294,14 +301,12 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect_device.isChecked(),
                 "compare_previous": compare.isChecked(),
-                "technical_columns": [
-                    key for key, check in technical_checks.items() if check.isChecked()
-                ],
+                "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )
-        self.user_settings = user_state.save_settings(self.user_settings)
+        self.user_settings = persistence.save_settings(self.user_settings)
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
-            user_state.clear_cache()
+            persistence.clear_cache()
         self._apply_column_visibility(reset_order=False)
         message = "Advanced settings saved; audit-related changes apply from the next run"
         if invalid:
@@ -312,11 +317,11 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
     def _update_summary(self) -> None:
         # Keep the standard chip counters/filter state, then replace only the
         # compact summary text with the richer dashboard line.
-        v7.qt_base.PlayStoreAuditQt._update_summary(self)
+        compact_ui.qt_base.BaseWindow._update_summary(self)
         if not self.current_rows:
             return
         rows = self._rows_before_criticality_filter()
-        self.summary_label.setText(features.dashboard_summary(rows, self.proxy.rowCount()))
+        self.summary_label.setText(device_metadata.dashboard_summary(rows, self.proxy.rowCount()))
 
     # ---------- Details / context menu ----------
     def _show_details(self, row: dict[str, Any]) -> None:
@@ -359,9 +364,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         buttons_row = QHBoxLayout()
         open_store = QPushButton("Open in Google Play")
         open_store.setEnabled(bool(row.get("store_url")))
-        open_store.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl(str(row.get("store_url") or "")))
-        )
+        open_store.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(str(row.get("store_url") or ""))))
         buttons_row.addWidget(open_store)
         buttons_row.addStretch(1)
         close = QPushButton("Close")
@@ -415,7 +418,9 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
     # ---------- Recheck / force refresh ----------
     def _force_full_refresh(self) -> None:
         if self._audit_active:
-            QMessageBox.information(self, "Audit running", "Pause/resume or wait for the current audit to finish first.")
+            QMessageBox.information(
+                self, "Audit running", "Pause/resume or wait for the current audit to finish first."
+            )
             return
         self._force_refresh_next = True
         self._merge_base_rows = None
@@ -426,27 +431,39 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         packages = [
             str(row.get("package_name") or "")
             for row in self.current_rows
-            if features.is_problematic(row)
+            if device_metadata.is_problematic(row)
         ]
         if not packages:
-            QMessageBox.information(self, "No problematic apps", "There are no Removed, Store anomaly or Other results to recheck.")
+            QMessageBox.information(
+                self,
+                "No problematic apps",
+                "There are no Removed, Store anomaly or Other results to recheck.",
+            )
             return
         self._start_subset_refresh(packages, "Problematic-app recheck")
 
     def _start_subset_refresh(self, packages: list[str], label: str) -> None:
         if self._audit_active:
-            QMessageBox.information(self, "Audit running", "Wait for the current audit to finish before starting a targeted recheck.")
+            QMessageBox.information(
+                self,
+                "Audit running",
+                "Wait for the current audit to finish before starting a targeted recheck.",
+            )
             return
         wanted = {package for package in packages if package}
         source_rows = [row for row in self.current_rows if str(row.get("package_name") or "") in wanted]
         if not source_rows:
-            QMessageBox.information(self, "Nothing to recheck", "No matching app is present in the current results.")
+            QMessageBox.information(
+                self, "Nothing to recheck", "No matching app is present in the current results."
+            )
             return
         self._merge_base_rows = [dict(row) for row in self.current_rows]
         self._subset_label = label
         self._apps_override = [
             {
-                "app_name": str(row.get("app_name") or row.get("play_title") or row.get("package_name") or ""),
+                "app_name": str(
+                    row.get("app_name") or row.get("play_title") or row.get("package_name") or ""
+                ),
                 "package_name": str(row.get("package_name") or ""),
             }
             for row in source_rows
@@ -474,10 +491,10 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         if self._audit_active:
             super()._start_audit()
             return
-        settings = user_state.load_settings()
+        settings = persistence.load_settings()
         selected_country = (self.country_edit.text().strip() or "").lower()
-        features.set_fallback_countries(
-            settings.get("fallback_countries", features.DEFAULT_FALLBACK_COUNTRIES),
+        device_metadata.set_fallback_countries(
+            settings.get("fallback_countries", device_metadata.DEFAULT_FALLBACK_COUNTRIES),
             selected_country,
         )
         _BYPASS_CACHE_ONCE = bool(self._force_refresh_next)
@@ -503,13 +520,13 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
         metadata_executor: ThreadPoolExecutor | None = None
         metadata_future = None
         try:
-            settings = user_state.load_settings()
+            settings = persistence.load_settings()
             if self.source_mode == "device" and settings.get("collect_device_metadata", True):
                 adb = self._get_authorised_adb()
                 if adb:
                     metadata_executor = ThreadPoolExecutor(max_workers=1)
                     metadata_future = metadata_executor.submit(
-                        features.collect_device_metadata,
+                        device_metadata.collect_device_metadata,
                         adb,
                         [app["package_name"] for app in all_apps],
                         cancel_event,
@@ -526,7 +543,7 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
                 )
 
             live_rows = (
-                features.audit_apps_v8(
+                device_metadata.audit_apps_v8(
                     live_apps,
                     config,
                     progress,
@@ -539,24 +556,16 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
             if cancel_event.is_set() or session != self._audit_session:
                 return
             if cache_enabled and live_rows:
-                v7.update_cache(live_rows, config.country, config.language)
+                compact_ui.update_cache(live_rows, config.country, config.language)
 
             by_package = {package: dict(row) for package, row in cached.items()}
-            by_package.update(
-                {str(row.get("package_name") or ""): row for row in live_rows}
-            )
-            rows = [
-                by_package[app["package_name"]]
-                for app in all_apps
-                if app["package_name"] in by_package
-            ]
+            by_package.update({str(row.get("package_name") or ""): row for row in live_rows})
+            rows = [by_package[app["package_name"]] for app in all_apps if app["package_name"] in by_package]
 
             metadata = metadata_future.result() if metadata_future is not None else {}
-            features.enrich_rows_with_device_metadata(rows, metadata)
+            device_metadata.enrich_rows_with_device_metadata(rows, metadata)
             self._pending_device_metadata = metadata
-            self.audit_control_signals.done.emit(
-                (session, rows, "", cached_count, len(live_rows))
-            )
+            self.audit_control_signals.done.emit((session, rows, "", cached_count, len(live_rows)))
         except Exception as exc:
             if not cancel_event.is_set() and session == self._audit_session:
                 self.audit_control_signals.done.emit((session, None, str(exc), 0, 0))
@@ -595,21 +604,16 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
 
         new_rows = list(rows or [])
         compare_enabled = bool(self.user_settings.get("compare_previous", False))
-        history = user_state.load_history() if compare_enabled else {}
+        history = persistence.load_history() if compare_enabled else {}
         for row in new_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
-            v7.qt_base.classify_criticality(row)
-            row["change"] = user_state.compare_with_history(row, history) if compare_enabled else ""
+            compact_ui.qt_base.classify_criticality(row)
+            row["change"] = persistence.compare_with_history(row, history) if compare_enabled else ""
 
-        replacements = {
-            str(row.get("package_name") or ""): row for row in new_rows
-        }
-        merged = [
-            replacements.get(str(row.get("package_name") or ""), row)
-            for row in old_rows
-        ]
+        replacements = {str(row.get("package_name") or ""): row for row in new_rows}
+        merged = [replacements.get(str(row.get("package_name") or ""), row) for row in old_rows]
         if compare_enabled:
-            features.save_history_merged(merged)
+            device_metadata.save_history_merged(merged)
 
         self.current_rows = merged
         self.model.set_rows(merged)
@@ -624,11 +628,11 @@ class PlayStoreAuditQtV8(v7.PlayStoreAuditQtCompact):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(v7.qt_base.APP_NAME)
+    app.setApplicationName(compact_ui.qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtV8()
+    window = DeviceWindow()
     window.show()
     return app.exec()
 

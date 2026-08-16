@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from playstore_audit_core import AuditConfig, fetch_app, load_apps
-from playstore_audit_v8_features import audit_apps_v8
+from playstore_app_audit.services.audit_engine import AuditConfig, fetch_app, load_apps
+from playstore_app_audit.services.device_metadata import audit_apps_v8
 
 ProgressCallback = Callable[[int, int, str], None]
 

@@ -6,9 +6,6 @@ New code should import from ``playstore_app_audit.services.state`` directly.
 from playstore_app_audit.services.state import (
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
-    _cache_key,
-    _read_json,
-    _write_json,
     app_data_dir,
     cache_path,
     clear_cache,

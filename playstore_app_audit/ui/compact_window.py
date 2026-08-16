@@ -4,7 +4,7 @@ import csv
 import sys
 import threading
 
-from PySide6.QtCore import QByteArray, QObject, Qt, Signal, QUrl
+from PySide6.QtCore import QByteArray, QObject, Qt, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -26,10 +26,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.ui.base_window as base_ui
 from app_icon import ensure_runtime_icon
-from playstore_audit_core import AuditConfig
-from playstore_audit_multicountry import audit_apps_multicountry
-from playstore_audit_user_state import (
+from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.countries import audit_apps_multicountry
+from playstore_app_audit.services.persistence import (
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
     clear_cache,
@@ -37,14 +38,14 @@ from playstore_audit_user_state import (
     load_fresh_cache,
     load_history,
     load_settings,
-    reset_settings,
     save_history,
     save_settings,
     update_cache,
 )
-import playstore_audit_qt as qt_base
-from playstore_audit_qt_branch import PlayStoreAuditQtBranch
+from playstore_app_audit.ui.audit_window import AuditWindow
 
+# Transitional internal alias for inherited code that still follows the old layer graph.
+qt_base = base_ui
 
 FIXED_WORKERS = 16
 PRIMARY_COLUMNS = (
@@ -87,8 +88,8 @@ DEFAULT_WIDTHS = {
 }
 PROJECT_URL = "https://github.com/mrc-labs/PlayStoreAppAudit"
 
-qt_base.COLUMNS = MODEL_COLUMNS
-qt_base.COLUMN_LABELS.update(
+base_ui.COLUMNS = MODEL_COLUMNS
+base_ui.COLUMN_LABELS.update(
     {
         "criticality": "Status",
         "change": "Change",
@@ -105,11 +106,9 @@ qt_base.COLUMN_LABELS.update(
         "is_system": "System app",
     }
 )
-qt_base.EXPORT_FIELDS = list(
-    dict.fromkeys(qt_base.EXPORT_FIELDS + ["change", "cache_hit"])
-)
-qt_base.audit_apps = audit_apps_multicountry
-_original_classify_criticality = qt_base.classify_criticality
+base_ui.EXPORT_FIELDS = list(dict.fromkeys(base_ui.EXPORT_FIELDS + ["change", "cache_hit"]))
+base_ui.audit_apps = audit_apps_multicountry
+_original_classify_criticality = base_ui.classify_criticality
 
 
 def _classify_criticality_multicountry(row: dict[str, object]) -> None:
@@ -124,12 +123,12 @@ def _classify_criticality_multicountry(row: dict[str, object]) -> None:
         _original_classify_criticality(row)
         return
     row["criticality_key"] = key
-    row["criticality"] = qt_base.CRITICALITY[key]["label"]
-    row["criticality_rank"] = qt_base.CRITICALITY[key]["rank"]
+    row["criticality"] = base_ui.CRITICALITY[key]["label"]
+    row["criticality_rank"] = base_ui.CRITICALITY[key]["rank"]
     row["age_days"] = ""
 
 
-qt_base.classify_criticality = _classify_criticality_multicountry
+base_ui.classify_criticality = _classify_criticality_multicountry
 
 
 def _find_layout_containing(layout, target_widget):
@@ -150,7 +149,7 @@ class ControlledAuditSignals(QObject):
     done = Signal(object)
 
 
-class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
+class CompactWindow(AuditWindow):
     """Qt6 desktop UI with pausable audits, cache and advanced controls."""
 
     def __init__(self) -> None:
@@ -370,14 +369,18 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             "Change them only when necessary and if you understand the effect."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet("background:#FFF6E5; color:#6B4A16; border:1px solid #E9C77D; padding:10px; border-radius:6px;")
+        warning.setStyleSheet(
+            "background:#FFF6E5; color:#6B4A16; border:1px solid #E9C77D; padding:10px; border-radius:6px;"
+        )
         root.addWidget(warning)
 
         store_group = QGroupBox("Store and cache")
         store_form = QFormLayout(store_group)
         language = QLineEdit(str(self.user_settings.get("store_language") or "en"))
         language.setMaxLength(8)
-        language.setToolTip("Google Play UI language. Default: en. This normally does not change market availability.")
+        language.setToolTip(
+            "Google Play UI language. Default: en. This normally does not change market availability."
+        )
         store_form.addRow("Store language", language)
         cache_enabled = QCheckBox("Use intelligent cache")
         cache_enabled.setChecked(bool(self.user_settings.get("cache_enabled", True)))
@@ -386,9 +389,13 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         ttl.setRange(1, 720)
         ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
         ttl.setSuffix(" hours")
-        ttl.setToolTip("Only healthy available listings are cached. Removed/anomaly/error results are always checked live.")
+        ttl.setToolTip(
+            "Only healthy available listings are cached. Removed/anomaly/error results are always checked live."
+        )
         store_form.addRow("Healthy-result cache TTL", ttl)
-        cache_note = QLabel("Default: 72 hours. Only normal available apps with a valid update date are reused; risky or uncertain states always bypass the cache.")
+        cache_note = QLabel(
+            "Default: 72 hours. Only normal available apps with a valid update date are reused; risky or uncertain states always bypass the cache."
+        )
         cache_note.setWordWrap(True)
         cache_note.setStyleSheet("color:#6F7C87;")
         store_form.addRow("", cache_note)
@@ -399,7 +406,9 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         compare = QCheckBox("Compare with previous audit")
         compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
         history_layout.addWidget(compare)
-        history_note = QLabel("Off by default. When enabled, the first completed audit creates a local baseline; later audits show Change = New / Same / Better / Worse.")
+        history_note = QLabel(
+            "Off by default. When enabled, the first completed audit creates a local baseline; later audits show Change = New / Same / Better / Worse."
+        )
         history_note.setWordWrap(True)
         history_note.setStyleSheet("color:#6F7C87;")
         history_layout.addWidget(history_note)
@@ -420,7 +429,9 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         reset_button = QPushButton("Reset to defaults")
         button_row.addWidget(reset_button)
         button_row.addStretch(1)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
         button_row.addWidget(buttons)
         root.addLayout(button_row)
 
@@ -478,7 +489,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             "<b>Created by MRC</b><br>"
             "Development assistance: OpenAI ChatGPT<br><br>"
             "Audit Android packages against public Google Play listings, update dates and regional availability.<br><br>"
-            f"<a href=\"{PROJECT_URL}\">MRC on GitHub</a><br><br>"
+            f'<a href="{PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
         info.setWordWrap(True)
@@ -533,7 +544,9 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
                 if not self.table.isColumnHidden(i)
             ]
             visible_columns.sort()
-            QApplication.clipboard().setText("\t".join(str(row.get(column, "") or "") for _, column in visible_columns))
+            QApplication.clipboard().setText(
+                "\t".join(str(row.get(column, "") or "") for _, column in visible_columns)
+            )
 
     def _visible_rows(self) -> list[dict[str, object]]:
         rows: list[dict[str, object]] = []
@@ -554,7 +567,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             selected += ".csv"
         try:
             with open(selected, "w", newline="", encoding="utf-8-sig") as handle:
-                writer = csv.DictWriter(handle, fieldnames=qt_base.EXPORT_FIELDS, extrasaction="ignore")
+                writer = csv.DictWriter(handle, fieldnames=base_ui.EXPORT_FIELDS, extrasaction="ignore")
                 writer.writeheader()
                 writer.writerows(rows)
             QMessageBox.information(self, "Export complete", f"Results saved to:\n{selected}")
@@ -615,7 +628,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             return
 
         self.user_settings = load_settings()
-        country = (self.country_edit.text().strip() or qt_base.detect_windows_country()).lower()
+        country = (self.country_edit.text().strip() or base_ui.detect_windows_country()).lower()
         language = str(self.user_settings.get("store_language") or "en").lower()
         cache_enabled = bool(self.user_settings.get("cache_enabled", True))
         ttl = int(self.user_settings.get("cache_ttl_hours", 72))
@@ -655,7 +668,16 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         config = AuditConfig(country=country, language=language, max_workers=FIXED_WORKERS)
         threading.Thread(
             target=self._controlled_audit_worker,
-            args=(apps, live_apps, cached, config, session, self._audit_pause_event, self._audit_cancel_event, cache_enabled),
+            args=(
+                apps,
+                live_apps,
+                cached,
+                config,
+                session,
+                self._audit_pause_event,
+                self._audit_cancel_event,
+                cache_enabled,
+            ),
             daemon=True,
         ).start()
 
@@ -677,15 +699,21 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
             def progress(done: int, _total: int, package_name: str) -> None:
                 if cancel_event.is_set() or session != self._audit_session:
                     return
-                self.audit_control_signals.progress.emit(session, cached_count + done, total_count, package_name)
+                self.audit_control_signals.progress.emit(
+                    session, cached_count + done, total_count, package_name
+                )
 
-            live_rows = audit_apps_multicountry(
-                live_apps,
-                config,
-                progress,
-                pause_event=pause_event,
-                cancel_event=cancel_event,
-            ) if live_apps else []
+            live_rows = (
+                audit_apps_multicountry(
+                    live_apps,
+                    config,
+                    progress,
+                    pause_event=pause_event,
+                    cancel_event=cancel_event,
+                )
+                if live_apps
+                else []
+            )
             if cancel_event.is_set() or session != self._audit_session:
                 return
             if cache_enabled and live_rows:
@@ -729,7 +757,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         history = load_history() if compare_enabled else {}
         for row in typed_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
-            qt_base.classify_criticality(row)
+            base_ui.classify_criticality(row)
             row["change"] = compare_with_history(row, history) if compare_enabled else ""
         if compare_enabled:
             save_history(typed_rows)
@@ -740,7 +768,9 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
         self.progress.setRange(0, max(len(typed_rows), 1))
         self.progress.setValue(len(typed_rows))
         self.export_button.setEnabled(bool(typed_rows))
-        cache_summary = f" • {cached_count} cached • {live_count} live" if cached_count else f" • {live_count} live"
+        cache_summary = (
+            f" • {cached_count} cached • {live_count} live" if cached_count else f" • {live_count} live"
+        )
         self.status_label.setText(f"Audit completed{cache_summary}")
         self._update_summary()
         self._apply_column_visibility(reset_order=False)
@@ -759,7 +789,7 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
 
     def _clear_results(self) -> None:
         self._cancel_active_audit()
-        qt_base.PlayStoreAuditQt._clear_results(self)
+        base_ui.BaseWindow._clear_results(self)
         self._set_run_mode("run")
 
     def closeEvent(self, event) -> None:
@@ -770,11 +800,11 @@ class PlayStoreAuditQtCompact(PlayStoreAuditQtBranch):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtCompact()
+    window = CompactWindow()
     window.show()
     return app.exec()
 

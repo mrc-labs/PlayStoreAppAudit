@@ -73,9 +73,7 @@ def load_settings() -> dict[str, Any]:
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     cols = settings.get("technical_columns", [])
     settings["technical_columns"] = (
-        [c for c in cols if c in TECHNICAL_COLUMNS]
-        if isinstance(cols, list)
-        else []
+        [c for c in cols if c in TECHNICAL_COLUMNS] if isinstance(cols, list) else []
     )
     if not isinstance(settings.get("ctk_column_widths"), dict):
         settings["ctk_column_widths"] = {}

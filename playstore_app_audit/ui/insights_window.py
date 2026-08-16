@@ -31,11 +31,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.ui.device_window as device_ui
 from app_icon import ensure_runtime_icon
-import playstore_audit_qt_v8 as v8
-import playstore_audit_user_state as user_state
-import playstore_audit_v9_features as features
 
+# Transitional aliases keep nested references stable during the package migration.
+v8 = device_ui
+user_state = persistence
+features = device_insights
 
 V9_EXTRA_COLUMNS = (
     "compatibility_status",
@@ -49,11 +53,11 @@ V9_EXTRA_COLUMNS = (
     "device_change",
     "health_score",
 )
-V9_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(v8.V8_MODEL_COLUMNS) + V9_EXTRA_COLUMNS))
-v8.V8_MODEL_COLUMNS = V9_MODEL_COLUMNS
-v8.v7.MODEL_COLUMNS = V9_MODEL_COLUMNS
-v8.v7.qt_base.COLUMNS = V9_MODEL_COLUMNS
-v8.v7.DEFAULT_WIDTHS.update(
+V9_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(device_ui.V8_MODEL_COLUMNS) + V9_EXTRA_COLUMNS))
+device_ui.V8_MODEL_COLUMNS = V9_MODEL_COLUMNS
+device_ui.v7.MODEL_COLUMNS = V9_MODEL_COLUMNS
+device_ui.v7.qt_base.COLUMNS = V9_MODEL_COLUMNS
+device_ui.v7.DEFAULT_WIDTHS.update(
     {
         "compatibility_status": 150,
         "target_sdk": 90,
@@ -67,47 +71,49 @@ v8.v7.DEFAULT_WIDTHS.update(
         "health_score": 90,
     }
 )
-v8.v7.qt_base.COLUMN_LABELS.update(features.V9_TECHNICAL_COLUMNS)
-v8.v7.qt_base.EXPORT_FIELDS = list(
-    dict.fromkeys(list(v8.v7.qt_base.EXPORT_FIELDS) + list(V9_EXTRA_COLUMNS))
+device_ui.v7.qt_base.COLUMN_LABELS.update(device_insights.V9_TECHNICAL_COLUMNS)
+device_ui.v7.qt_base.EXPORT_FIELDS = list(
+    dict.fromkeys(list(device_ui.v7.qt_base.EXPORT_FIELDS) + list(V9_EXTRA_COLUMNS))
 )
 
 # v8 imports the feature module object, so replacing these functions upgrades
 # its existing background worker without duplicating the audit engine.
-v8.features.collect_device_metadata = features.collect_device_metadata_v9
-v8.features.enrich_rows_with_device_metadata = features.enrich_rows_with_device_metadata_v9
+device_ui.device_insights.collect_device_metadata = device_insights.collect_device_metadata_v9
+device_ui.device_insights.enrich_rows_with_device_metadata = (
+    device_insights.enrich_rows_with_device_metadata_v9
+)
 
-_original_classify = v8.v7.qt_base.classify_criticality
+_original_classify = device_ui.v7.qt_base.classify_criticality
 
 
 def _classify_with_health(row: dict[str, Any]) -> None:
     _original_classify(row)
-    features.apply_health_score(row)
+    device_insights.apply_health_score(row)
 
 
-v8.v7.qt_base.classify_criticality = _classify_with_health
+device_ui.v7.qt_base.classify_criticality = _classify_with_health
 
 
-class V9FilterProxy(v8.v7.qt_base.AppFilterProxy):
+class AdvancedFilterProxy(device_ui.v7.qt_base.AppFilterProxy):
     def __init__(self) -> None:
         super().__init__()
         self.v9_preset = "All"
 
     def set_v9_preset(self, preset: str) -> None:
-        self.v9_preset = preset if preset in features.BUILTIN_FILTERS else "All"
+        self.v9_preset = preset if preset in device_insights.BUILTIN_FILTERS else "All"
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):
             return False
         model = self.sourceModel()
-        if not isinstance(model, v8.v7.qt_base.AppTableModel):
+        if not isinstance(model, device_ui.v7.qt_base.AppTableModel):
             return True
         row = model.row_dict(source_row)
-        return features.row_matches_filter(row, self.v9_preset)
+        return device_insights.row_matches_filter(row, self.v9_preset)
 
 
-class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
+class InsightsWindow(device_ui.DeviceWindow):
     """Qt6 v9 with device maintenance analysis and product-style utilities."""
 
     def __init__(self) -> None:
@@ -120,12 +126,12 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         # Replace the proxy with a v9-aware proxy so built-in filter presets can
         # combine with the existing text/status/system filters.
         old_proxy = self.proxy
-        proxy = V9FilterProxy()
+        proxy = AdvancedFilterProxy()
         proxy.setSourceModel(self.model)
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
         proxy.set_criticality_filter(self.criticality_filter)
-        self._active_filter_preset = str(user_state.load_settings().get("active_filter_preset") or "All")
+        self._active_filter_preset = str(persistence.load_settings().get("active_filter_preset") or "All")
         proxy.set_v9_preset(self._active_filter_preset)
         self.proxy = proxy
         self.table.setModel(proxy)
@@ -135,11 +141,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         self._build_menu_v9()
         self._apply_column_visibility(reset_order=False)
         self._update_summary()
-        features.log_event("Qt6 v9 started")
+        device_insights.log_event("Qt6 v9 started")
 
     # ---------- Column/view presets ----------
     def _visible_column_order(self) -> list[str]:
-        self.user_settings = user_state.load_settings()
+        self.user_settings = persistence.load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
         compare = bool(self.user_settings.get("compare_previous", False))
         health = bool(self.user_settings.get("health_score_enabled", False))
@@ -171,7 +177,7 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
             columns = ["criticality"]
             if compare:
                 columns.append("change")
-            columns.extend(v8.v7.PRIMARY_COLUMNS[1:])
+            columns.extend(device_ui.v7.PRIMARY_COLUMNS[1:])
 
         selected = self.user_settings.get("technical_columns", [])
         if isinstance(selected, list):
@@ -179,11 +185,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         return list(dict.fromkeys(c for c in columns if c in V9_MODEL_COLUMNS))
 
     def _set_view_preset(self, name: str) -> None:
-        if name not in features.VIEW_PRESETS:
+        if name not in device_insights.VIEW_PRESETS:
             return
-        settings = user_state.load_settings()
+        settings = persistence.load_settings()
         settings["view_preset"] = name
-        self.user_settings = user_state.save_settings(settings)
+        self.user_settings = persistence.save_settings(settings)
         self._apply_column_visibility(reset_order=True)
         self.status_label.setText(f"View preset: {name}")
 
@@ -223,8 +229,8 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         view_presets = view_menu.addMenu("View preset")
         group = QActionGroup(self)
         group.setExclusive(True)
-        current_view = str(user_state.load_settings().get("view_preset") or "Basic")
-        for name in features.VIEW_PRESETS:
+        current_view = str(persistence.load_settings().get("view_preset") or "Basic")
+        for name in device_insights.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current_view)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
@@ -255,9 +261,18 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         tools.addAction("Clear previous-audit history", self._clear_audit_history)
 
         help_menu = bar.addMenu("Help")
-        help_menu.addAction("ADB setup guide…", lambda: self._show_text_help("ADB setup guide", features.ADB_SETUP_GUIDE))
-        help_menu.addAction("How to export package CSV…", lambda: self._show_text_help("Export package CSV", features.CSV_EXPORT_GUIDE))
-        help_menu.addAction("Health score methodology…", lambda: self._show_text_help("Health score methodology", features.HEALTH_SCORE_GUIDE))
+        help_menu.addAction(
+            "ADB setup guide…",
+            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
+        )
+        help_menu.addAction(
+            "How to export package CSV…",
+            lambda: self._show_text_help("Export package CSV", device_insights.CSV_EXPORT_GUIDE),
+        )
+        help_menu.addAction(
+            "Health score methodology…",
+            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
+        )
         help_menu.addSeparator()
         help_menu.addAction("Check for updates…", self._check_for_updates)
         help_menu.addAction("Create diagnostic bundle…", self._create_diagnostic_bundle)
@@ -266,31 +281,35 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
 
     def _populate_recent_menu(self) -> None:
         self._recent_menu.clear()
-        paths = features.get_recent_sources()
+        paths = device_insights.get_recent_sources()
         if not paths:
             action = self._recent_menu.addAction("No recent files")
             action.setEnabled(False)
             return
         for path in paths:
-            self._recent_menu.addAction(Path(path).name, lambda _checked=False, p=path: self._load_input_file(p))
+            self._recent_menu.addAction(
+                Path(path).name, lambda _checked=False, p=path: self._load_input_file(p)
+            )
 
     def _populate_filter_menu(self) -> None:
         self._filter_menu.clear()
-        for name in features.BUILTIN_FILTERS:
+        for name in device_insights.BUILTIN_FILTERS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == self._active_filter_preset)
             action.triggered.connect(lambda _checked=False, n=name: self._apply_filter_preset(n))
             self._filter_menu.addAction(action)
-        saved = features.get_saved_filters()
+        saved = device_insights.get_saved_filters()
         if saved:
             self._filter_menu.addSeparator()
             for name in sorted(saved):
-                self._filter_menu.addAction(f"★ {name}", lambda _checked=False, n=name: self._apply_saved_filter(n))
+                self._filter_menu.addAction(
+                    f"★ {name}", lambda _checked=False, n=name: self._apply_saved_filter(n)
+                )
 
     # ---------- File loading / drag & drop ----------
     def _load_input_file(self, path: str) -> None:
         try:
-            apps = v8.v7.qt_base.load_apps(path)
+            apps = device_ui.v7.qt_base.load_apps(path)
             metadata = self._read_system_metadata_from_file(path, apps)
         except Exception as exc:
             QMessageBox.critical(self, "Invalid app list", str(exc))
@@ -307,9 +326,9 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         meta_text = f" • system flag available for {len(metadata)} packages" if metadata else ""
         self.source_label.setText(f"File selected: {len(apps)} unique Android packages{meta_text}")
         self.status_label.setText("File ready. Run the Play Store audit.")
-        features.add_recent_source(path)
+        device_insights.add_recent_source(path)
         self._populate_recent_menu()
-        features.log_event(f"Loaded file source: {Path(path).name} ({len(apps)} packages)")
+        device_insights.log_event(f"Loaded file source: {Path(path).name} ({len(apps)} packages)")
 
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -323,7 +342,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         urls = event.mimeData().urls()
-        if len(urls) == 1 and urls[0].isLocalFile() and Path(urls[0].toLocalFile()).suffix.lower() in {".csv", ".tsv", ".txt"}:
+        if (
+            len(urls) == 1
+            and urls[0].isLocalFile()
+            and Path(urls[0].toLocalFile()).suffix.lower() in {".csv", ".tsv", ".txt"}
+        ):
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -340,20 +363,30 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         adb = self._get_authorised_adb()
         if adb:
             try:
-                self._device_summary = features.collect_device_summary(
+                self._device_summary = device_insights.collect_device_summary(
                     adb, len(self.device_apps_all), len(self.device_system_packages)
                 )
-                name = " ".join(filter(None, [str(self._device_summary.get("manufacturer") or ""), str(self._device_summary.get("model") or "")]))
+                name = " ".join(
+                    filter(
+                        None,
+                        [
+                            str(self._device_summary.get("manufacturer") or ""),
+                            str(self._device_summary.get("model") or ""),
+                        ],
+                    )
+                )
                 if name:
                     self.status_label.setText(f"Phone scan ready: {name}. Run the Play Store audit.")
             except Exception as exc:
-                features.log_event(f"Device summary failed: {exc}")
+                device_insights.log_event(f"Device summary failed: {exc}")
 
     def _export_phone_packages_csv(self) -> None:
         if not self.device_apps_all:
             QMessageBox.information(self, "No phone scan", "Scan a phone with ADB first.")
             return
-        selected, _ = QFileDialog.getSaveFileName(self, "Export phone package list", "android_packages.csv", "CSV (*.csv)")
+        selected, _ = QFileDialog.getSaveFileName(
+            self, "Export phone package list", "android_packages.csv", "CSV (*.csv)"
+        )
         if not selected:
             return
         if not selected.lower().endswith(".csv"):
@@ -363,7 +396,9 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
             writer.writeheader()
             for app in self.device_apps_all:
                 package = app["package_name"]
-                writer.writerow({"package_name": package, "is_system": package in self.device_system_packages})
+                writer.writerow(
+                    {"package_name": package, "is_system": package in self.device_system_packages}
+                )
         QMessageBox.information(self, "Export complete", f"Package list saved to:\n{selected}")
 
     def _show_device_summary(self) -> None:
@@ -372,11 +407,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
             return
         d = self._device_summary
         text = (
-            f"Device: {d.get('manufacturer','')} {d.get('model','')}\n"
-            f"Serial: {d.get('serial_masked','Unknown')}\n"
-            f"Android: {d.get('android_version','?')} (API {d.get('android_api','?')})\n"
-            f"Security patch: {d.get('security_patch','?')}\n"
-            f"Packages: {d.get('total_packages',0)} total · {d.get('third_party_packages',0)} third-party · {d.get('system_packages',0)} system"
+            f"Device: {d.get('manufacturer', '')} {d.get('model', '')}\n"
+            f"Serial: {d.get('serial_masked', 'Unknown')}\n"
+            f"Android: {d.get('android_version', '?')} (API {d.get('android_api', '?')})\n"
+            f"Security patch: {d.get('security_patch', '?')}\n"
+            f"Packages: {d.get('total_packages', 0)} total · {d.get('third_party_packages', 0)} third-party · {d.get('system_packages', 0)} system"
         )
         QMessageBox.information(self, "Device summary", text)
 
@@ -384,24 +419,38 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         if not self.current_rows or self.source_mode != "device":
             QMessageBox.information(self, "No device audit", "Run an ADB-based audit first.")
             return
-        default = f"{self._device_summary.get('model','android')}_snapshot.psaa.json".replace(" ", "_")
-        selected, _ = QFileDialog.getSaveFileName(self, "Save device snapshot", default, "Play Store App Audit snapshot (*.psaa.json);;JSON (*.json)")
+        default = f"{self._device_summary.get('model', 'android')}_snapshot.psaa.json".replace(" ", "_")
+        selected, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save device snapshot",
+            default,
+            "Play Store App Audit snapshot (*.psaa.json);;JSON (*.json)",
+        )
         if not selected:
             return
         if not selected.lower().endswith(".json"):
             selected += ".psaa.json"
-        features.save_snapshot(selected, self.current_rows, self._device_summary)
+        device_insights.save_snapshot(selected, self.current_rows, self._device_summary)
         QMessageBox.information(self, "Snapshot saved", f"Saved to:\n{selected}")
 
     def _compare_device_snapshot(self) -> None:
         if not self.current_rows or self.source_mode != "device":
-            QMessageBox.information(self, "No current device", "Run an ADB-based audit for the current phone first.")
+            QMessageBox.information(
+                self, "No current device", "Run an ADB-based audit for the current phone first."
+            )
             return
-        selected, _ = QFileDialog.getOpenFileName(self, "Choose device snapshot", "", "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)")
+        selected, _ = QFileDialog.getOpenFileName(
+            self,
+            "Choose device snapshot",
+            "",
+            "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
+        )
         if not selected:
             return
         try:
-            comparison = features.compare_snapshots(self.current_rows, self._device_summary, features.load_snapshot(selected))
+            comparison = device_insights.compare_snapshots(
+                self.current_rows, self._device_summary, device_insights.load_snapshot(selected)
+            )
         except Exception as exc:
             QMessageBox.critical(self, "Snapshot error", str(exc))
             return
@@ -425,22 +474,26 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
                 lines.append(label + ":")
                 lines.extend(f"  {p}" for p in values[:100])
                 if len(values) > 100:
-                    lines.append(f"  … {len(values)-100} more")
+                    lines.append(f"  … {len(values) - 100} more")
                 lines.append("")
         self._show_text_help("Device comparison", "\n".join(lines))
 
     def _show_inventory_changes(self) -> None:
         if not self._last_inventory_changes:
-            QMessageBox.information(self, "No inventory comparison", "Run at least two ADB audits on the same device with inventory history enabled.")
+            QMessageBox.information(
+                self,
+                "No inventory comparison",
+                "Run at least two ADB audits on the same device with inventory history enabled.",
+            )
             return
         data = self._last_inventory_changes
         counts = data.get("counts", {})
         lines = [
-            f"New on device: {counts.get('new',0)}",
-            f"Removed from device: {counts.get('removed',0)}",
-            f"Version changed: {counts.get('version',0)}",
-            f"Installer changed: {counts.get('installer',0)}",
-            f"Enabled state changed: {counts.get('state',0)}",
+            f"New on device: {counts.get('new', 0)}",
+            f"Removed from device: {counts.get('removed', 0)}",
+            f"Version changed: {counts.get('version', 0)}",
+            f"Installer changed: {counts.get('installer', 0)}",
+            f"Enabled state changed: {counts.get('state', 0)}",
         ]
         removed = data.get("removed", [])
         if removed:
@@ -449,11 +502,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
 
     # ---------- Filters ----------
     def _apply_filter_preset(self, name: str) -> None:
-        self._active_filter_preset = name if name in features.BUILTIN_FILTERS else "All"
+        self._active_filter_preset = name if name in device_insights.BUILTIN_FILTERS else "All"
         self.proxy.set_v9_preset(self._active_filter_preset)
-        settings = user_state.load_settings()
+        settings = persistence.load_settings()
         settings["active_filter_preset"] = self._active_filter_preset
-        user_state.save_settings(settings)
+        persistence.save_settings(settings)
         self._populate_filter_menu()
         self._update_summary()
         self.status_label.setText(f"Filter preset: {self._active_filter_preset}")
@@ -463,12 +516,18 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         name = name.strip()
         if not ok or not name:
             return
-        features.save_filter(name, self.search_edit.text(), self.criticality_filter, self.hide_system_check.isChecked(), self._active_filter_preset)
+        device_insights.save_filter(
+            name,
+            self.search_edit.text(),
+            self.criticality_filter,
+            self.hide_system_check.isChecked(),
+            self._active_filter_preset,
+        )
         self._populate_filter_menu()
         self.status_label.setText(f"Saved filter preset: {name}")
 
     def _apply_saved_filter(self, name: str) -> None:
-        data = features.get_saved_filters().get(name)
+        data = device_insights.get_saved_filters().get(name)
         if not isinstance(data, dict):
             return
         self.search_edit.setText(str(data.get("query") or ""))
@@ -481,7 +540,7 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         self.status_label.setText(f"Applied saved filter: {name}")
 
     def _manage_saved_filters(self) -> None:
-        saved = features.get_saved_filters()
+        saved = device_insights.get_saved_filters()
         if not saved:
             QMessageBox.information(self, "Saved filters", "No custom filter presets have been saved yet.")
             return
@@ -507,12 +566,12 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         item = widget.currentItem()
         if not item:
             return
-        features.delete_filter(item.text())
+        device_insights.delete_filter(item.text())
         widget.takeItem(widget.row(item))
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
-        self.user_settings = user_state.load_settings()
+        self.user_settings = persistence.load_settings()
         dialog = QDialog(self)
         dialog.setWindowTitle("Advanced settings")
         dialog.resize(720, 760)
@@ -521,7 +580,9 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
             "⚠ Expert settings. These options can change network load, Store interpretation, ADB collection and the technical data shown. Change them only when genuinely necessary."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet("background:#FFF6E5;color:#6B4A16;border:1px solid #E9C77D;padding:10px;border-radius:6px;")
+        warning.setStyleSheet(
+            "background:#FFF6E5;color:#6B4A16;border:1px solid #E9C77D;padding:10px;border-radius:6px;"
+        )
         root.addWidget(warning)
 
         scroll = QScrollArea()
@@ -534,7 +595,12 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         store = QGroupBox("Store and cache")
         form = QFormLayout(store)
         language = QLineEdit(str(self.user_settings.get("store_language") or "en"))
-        fallback = QLineEdit(str(self.user_settings.get("fallback_countries") or v8.features.DEFAULT_FALLBACK_COUNTRIES))
+        fallback = QLineEdit(
+            str(
+                self.user_settings.get("fallback_countries")
+                or device_ui.device_insights.DEFAULT_FALLBACK_COUNTRIES
+            )
+        )
         cache = QCheckBox("Use intelligent cache")
         cache.setChecked(bool(self.user_settings.get("cache_enabled", True)))
         ttl = QSpinBox()
@@ -543,14 +609,21 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
         form.addRow("Store language", language)
         form.addRow("Fallback Store countries", fallback)
-        form.addRow("", QLabel("Comma/space separated country codes. Hidden from the normal UI; used only when the selected Store country is unavailable/inconclusive."))
+        form.addRow(
+            "",
+            QLabel(
+                "Comma/space separated country codes. Hidden from the normal UI; used only when the selected Store country is unavailable/inconclusive."
+            ),
+        )
         form.addRow("", cache)
         form.addRow("Healthy-result cache TTL", ttl)
         content.addWidget(store)
 
         device = QGroupBox("Connected Android device")
         d_layout = QVBoxLayout(device)
-        collect_device = QCheckBox("Collect installed version, installer, Target/Min SDK and local install/update metadata")
+        collect_device = QCheckBox(
+            "Collect installed version, installer, Target/Min SDK and local install/update metadata"
+        )
         collect_device.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         permissions = QCheckBox("Audit sensitive requested permissions (advanced, slower)")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
@@ -562,7 +635,9 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         d_layout.addWidget(permissions)
         d_layout.addWidget(inventory)
         d_layout.addWidget(health)
-        note = QLabel("Permission audit is OFF by default. Health score is a maintenance heuristic, not a security rating. See Help for methodology.")
+        note = QLabel(
+            "Permission audit is OFF by default. Health score is a maintenance heuristic, not a security rating. See Help for methodology."
+        )
         note.setWordWrap(True)
         d_layout.addWidget(note)
         content.addWidget(device)
@@ -577,9 +652,11 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         storage = QGroupBox("Storage")
         s_layout = QVBoxLayout(storage)
         portable = QCheckBox("Portable mode: keep settings/cache/history next to the EXE")
-        portable.setChecked(features.portable_mode_active())
+        portable.setChecked(device_insights.portable_mode_active())
         s_layout.addWidget(portable)
-        portable_note = QLabel("Changing portable mode migrates local app data and requires a restart. The EXE folder must be writable.")
+        portable_note = QLabel(
+            "Changing portable mode migrates local app data and requires a restart. The EXE folder must be writable."
+        )
         portable_note.setWordWrap(True)
         s_layout.addWidget(portable_note)
         content.addWidget(storage)
@@ -588,7 +665,7 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         c_layout = QVBoxLayout(columns)
         checks: dict[str, QCheckBox] = {}
         selected = set(self.user_settings.get("technical_columns", []))
-        for key, label in user_state.TECHNICAL_COLUMNS.items():
+        for key, label in persistence.TECHNICAL_COLUMNS.items():
             check = QCheckBox(label)
             check.setChecked(key in selected)
             checks[key] = check
@@ -600,13 +677,15 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         reset = QPushButton("Reset to defaults")
         bottom.addWidget(reset)
         bottom.addStretch(1)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
         bottom.addWidget(buttons)
         root.addLayout(bottom)
 
         def reset_controls() -> None:
             language.setText("en")
-            fallback.setText(v8.features.DEFAULT_FALLBACK_COUNTRIES)
+            fallback.setText(device_ui.device_insights.DEFAULT_FALLBACK_COUNTRIES)
             cache.setChecked(True)
             ttl.setValue(72)
             collect_device.setChecked(True)
@@ -624,9 +703,9 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        fallback_text, invalid = v8.features.normalise_country_string(fallback.text())
+        fallback_text, invalid = device_ui.device_insights.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
-        old_portable = features.portable_mode_active()
+        old_portable = device_insights.portable_mode_active()
         self.user_settings.update(
             {
                 "store_language": (language.text().strip() or "en").lower(),
@@ -641,15 +720,15 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
                 "technical_columns": [k for k, check in checks.items() if check.isChecked()],
             }
         )
-        self.user_settings = user_state.save_settings(self.user_settings)
+        self.user_settings = persistence.save_settings(self.user_settings)
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
-            user_state.clear_cache()
+            persistence.clear_cache()
         self._apply_column_visibility(reset_order=False)
         msg = "Advanced settings saved"
         if invalid:
             msg += " • ignored invalid country entries: " + ", ".join(invalid)
         if portable.isChecked() != old_portable:
-            ok, portable_msg = features.migrate_portable_mode(portable.isChecked())
+            ok, portable_msg = device_insights.migrate_portable_mode(portable.isChecked())
             if not ok:
                 QMessageBox.warning(self, "Portable mode", portable_msg)
             else:
@@ -669,15 +748,17 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         self._v9_targeted_active = False
         if self.current_rows:
             for row in self.current_rows:
-                features.apply_health_score(row)
+                device_insights.apply_health_score(row)
         if (
             not targeted
             and self.source_mode == "device"
             and self.current_rows
-            and bool(user_state.load_settings().get("inventory_history_enabled", True))
+            and bool(persistence.load_settings().get("inventory_history_enabled", True))
             and self._device_summary
         ):
-            self._last_inventory_changes = features.annotate_inventory_changes_and_save(self.current_rows, self._device_summary)
+            self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
+                self.current_rows, self._device_summary
+            )
         if self.current_rows:
             self.model.set_rows(self.current_rows)
             self.proxy.invalidateFilter()
@@ -690,24 +771,39 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         dialog.setWindowTitle("App details")
         dialog.resize(760, 720)
         root = QVBoxLayout(dialog)
-        title = QLabel(f"<b>{html.escape(str(row.get('play_title') or row.get('package_name') or 'App'))}</b>")
+        title = QLabel(
+            f"<b>{html.escape(str(row.get('play_title') or row.get('package_name') or 'App'))}</b>"
+        )
         root.addWidget(title)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         inner = QWidget()
         form = QFormLayout(inner)
         fields = [
-            ("Status", "criticality"), ("Health score", "health_score"), ("Change", "change"),
-            ("Package Name", "package_name"), ("Play Store Title", "play_title"),
-            ("Last update", "play_last_update"), ("Age (days)", "age_days"),
-            ("Play Store version", "play_version"), ("Installed version", "installed_version"),
-            ("Installed vs Store", "version_comparison"), ("Installer source", "installer_source"),
-            ("Android compatibility", "compatibility_status"), ("Target SDK", "target_sdk"), ("Min SDK", "min_sdk"),
-            ("First installed", "first_install_time"), ("Last local update", "last_local_update"),
-            ("Enabled state", "app_enabled"), ("Device inventory change", "device_change"),
-            ("Sensitive permissions", "sensitive_permissions"), ("Play status", "play_status"),
-            ("Update source", "updated_source"), ("HTTP status", "play_http_status"),
-            ("System app", "is_system"), ("Notes", "notes"),
+            ("Status", "criticality"),
+            ("Health score", "health_score"),
+            ("Change", "change"),
+            ("Package Name", "package_name"),
+            ("Play Store Title", "play_title"),
+            ("Last update", "play_last_update"),
+            ("Age (days)", "age_days"),
+            ("Play Store version", "play_version"),
+            ("Installed version", "installed_version"),
+            ("Installed vs Store", "version_comparison"),
+            ("Installer source", "installer_source"),
+            ("Android compatibility", "compatibility_status"),
+            ("Target SDK", "target_sdk"),
+            ("Min SDK", "min_sdk"),
+            ("First installed", "first_install_time"),
+            ("Last local update", "last_local_update"),
+            ("Enabled state", "app_enabled"),
+            ("Device inventory change", "device_change"),
+            ("Sensitive permissions", "sensitive_permissions"),
+            ("Play status", "play_status"),
+            ("Update source", "updated_source"),
+            ("HTTP status", "play_http_status"),
+            ("System app", "is_system"),
+            ("Notes", "notes"),
         ]
         for label_text, key in fields:
             value = str(row.get(key, "") or "")
@@ -770,17 +866,25 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
             QApplication.clipboard().setText(str(row.get("store_url") or ""))
         elif chosen is copy_row:
             header = self.table.horizontalHeader()
-            visible = [(header.visualIndex(i), V9_MODEL_COLUMNS[i]) for i in range(len(V9_MODEL_COLUMNS)) if not self.table.isColumnHidden(i)]
+            visible = [
+                (header.visualIndex(i), V9_MODEL_COLUMNS[i])
+                for i in range(len(V9_MODEL_COLUMNS))
+                if not self.table.isColumnHidden(i)
+            ]
             visible.sort()
-            QApplication.clipboard().setText("\t".join(str(row.get(column, "") or "") for _, column in visible))
+            QApplication.clipboard().setText(
+                "\t".join(str(row.get(column, "") or "") for _, column in visible)
+            )
 
     def _open_app_info(self, package_name: str) -> None:
         adb = self._get_authorised_adb()
         if not adb:
-            QMessageBox.warning(self, "ADB unavailable", "No authorised Android device is currently connected.")
+            QMessageBox.warning(
+                self, "ADB unavailable", "No authorised Android device is currently connected."
+            )
             return
         try:
-            features.open_app_info_on_device(adb, package_name)
+            device_insights.open_app_info_on_device(adb, package_name)
         except Exception as exc:
             QMessageBox.critical(self, "Could not open App Info", str(exc))
 
@@ -789,12 +893,14 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
         if not self.current_rows:
             QMessageBox.information(self, "No results", "Run an audit first.")
             return
-        selected, _ = QFileDialog.getSaveFileName(self, "Export HTML report", "playstore_audit_report.html", "HTML (*.html)")
+        selected, _ = QFileDialog.getSaveFileName(
+            self, "Export HTML report", "playstore_audit_report.html", "HTML (*.html)"
+        )
         if not selected:
             return
         if not selected.lower().endswith(".html"):
             selected += ".html"
-        features.write_html_report(selected, self.current_rows, self._device_summary)
+        device_insights.write_html_report(selected, self.current_rows, self._device_summary)
         QMessageBox.information(self, "Report created", f"HTML report saved to:\n{selected}")
 
     def _show_text_help(self, title: str, text: str) -> None:
@@ -815,43 +921,55 @@ class PlayStoreAuditQtV9(v8.PlayStoreAuditQtV8):
     def _check_for_updates(self) -> None:
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            result = features.check_for_updates()
+            result = device_insights.check_for_updates()
         finally:
             QApplication.restoreOverrideCursor()
         if result.get("status") != "ok":
-            QMessageBox.information(self, "Update check", str(result.get("message") or "Update check unavailable."))
+            QMessageBox.information(
+                self, "Update check", str(result.get("message") or "Update check unavailable.")
+            )
             return
         if result.get("newer"):
-            answer = QMessageBox.question(self, "Update available", f"Version {result.get('tag')} is available. Open the release page?")
+            answer = QMessageBox.question(
+                self, "Update available", f"Version {result.get('tag')} is available. Open the release page?"
+            )
             if answer == QMessageBox.StandardButton.Yes:
-                QDesktopServices.openUrl(QUrl(str(result.get("url") or features.LATEST_RELEASE_PAGE)))
+                QDesktopServices.openUrl(QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE)))
         else:
-            QMessageBox.information(self, "Up to date", f"You are running Play Store App Audit {features.APP_VERSION}.")
+            QMessageBox.information(
+                self, "Up to date", f"You are running Play Store App Audit {device_insights.APP_VERSION}."
+            )
 
     def _create_diagnostic_bundle(self) -> None:
-        selected, _ = QFileDialog.getSaveFileName(self, "Create diagnostic bundle", "PlayStoreAppAudit-diagnostics.zip", "ZIP (*.zip)")
+        selected, _ = QFileDialog.getSaveFileName(
+            self, "Create diagnostic bundle", "PlayStoreAppAudit-diagnostics.zip", "ZIP (*.zip)"
+        )
         if not selected:
             return
         if not selected.lower().endswith(".zip"):
             selected += ".zip"
-        features.create_diagnostic_bundle(selected, self.current_rows, self._device_summary)
-        QMessageBox.information(self, "Diagnostic bundle created", "The bundle excludes recent file paths, saved filters and the package inventory itself.")
+        device_insights.create_diagnostic_bundle(selected, self.current_rows, self._device_summary)
+        QMessageBox.information(
+            self,
+            "Diagnostic bundle created",
+            "The bundle excludes recent file paths, saved filters and the package inventory itself.",
+        )
 
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
             "About Play Store App Audit",
-            f"<b>Play Store App Audit {features.APP_VERSION}</b><br><br>Created by MRC<br>Development assistance: OpenAI ChatGPT<br><br>Unofficial utility. Not affiliated with or endorsed by Google.<br><br><a href='https://github.com/mrc-labs/PlayStoreAppAudit'>MRC on GitHub</a>",
+            f"<b>Play Store App Audit {device_insights.APP_VERSION}</b><br><br>Created by MRC<br>Development assistance: OpenAI ChatGPT<br><br>Unofficial utility. Not affiliated with or endorsed by Google.<br><br><a href='https://github.com/mrc-labs/PlayStoreAppAudit'>MRC on GitHub</a>",
         )
 
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(device_ui.v7.qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtV9()
+    window = InsightsWindow()
     window.show()
     return app.exec()
 

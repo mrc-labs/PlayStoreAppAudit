@@ -4,11 +4,13 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-from playstore_audit_core import AuditConfig, audit_apps, load_apps, write_results
+from playstore_app_audit.services.audit_engine import AuditConfig, audit_apps, load_apps, write_results
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Controlla disponibilità e ultima data di aggiornamento delle app su Google Play.")
+    parser = argparse.ArgumentParser(
+        description="Controlla disponibilità e ultima data di aggiornamento delle app su Google Play."
+    )
     parser.add_argument("input_file", help="CSV, TSV o TXT con i package Android")
     parser.add_argument("--output-dir", default=".", help="Cartella output")
     parser.add_argument("--workers", type=int, default=16, help="Richieste parallele")
@@ -22,9 +24,13 @@ def main() -> int:
     output_file = output_dir / f"{stem}_playstore_audit_{timestamp}.csv"
     problems_file = output_dir / f"{stem}_playstore_problems_{timestamp}.csv"
     apps = load_apps(input_path)
-    config = AuditConfig(country=args.country.lower(), language=args.language.lower(), max_workers=max(1, args.workers))
+    config = AuditConfig(
+        country=args.country.lower(), language=args.language.lower(), max_workers=max(1, args.workers)
+    )
+
     def progress(done: int, total: int, package_name: str) -> None:
         print(f"\rCompletate {done}/{total}: {package_name:<60}", end="", flush=True)
+
     rows = audit_apps(apps, config, progress)
     print()
     write_results(rows, output_file, problems_file)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from playstore_audit_process import install_hidden_subprocess_windows
+from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_windows
 
 # Install this before the UI modules start invoking adb.exe or other console tools.
 install_hidden_subprocess_windows()
@@ -11,15 +11,18 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QColor, QFont, QIcon
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
+import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
-import playstore_audit_qt_v9 as v9
-import playstore_audit_user_state as user_state
 
+# Transitional aliases for the inherited table layer.
+v9 = insights_ui
+user_state = persistence
 
 TABLE_SCHEMA_VERSION = "v9-fixed-1"
 
 
-class StableV9TableModel(v9.v8.v7.qt_base.AppTableModel):
+class AuditTableModel(insights_ui.v8.v7.qt_base.AppTableModel):
     """Qt model with an immutable column map.
 
     Older builds changed the module-level COLUMNS tuple while progressively
@@ -31,7 +34,7 @@ class StableV9TableModel(v9.v8.v7.qt_base.AppTableModel):
 
     def __init__(self) -> None:
         super().__init__()
-        self.columns = tuple(v9.V9_MODEL_COLUMNS)
+        self.columns = tuple(insights_ui.V9_MODEL_COLUMNS)
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self.columns)
@@ -46,7 +49,7 @@ class StableV9TableModel(v9.v8.v7.qt_base.AppTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(self.columns):
             column = self.columns[section]
-            return v9.v8.v7.qt_base.COLUMN_LABELS.get(column, column)
+            return insights_ui.v8.v7.qt_base.COLUMN_LABELS.get(column, column)
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -58,9 +61,7 @@ class StableV9TableModel(v9.v8.v7.qt_base.AppTableModel):
         row = self.rows[index.row()]
         column = self.columns[index.column()]
         key = str(row.get("criticality_key") or "purple")
-        info = v9.v8.v7.qt_base.CRITICALITY.get(
-            key, v9.v8.v7.qt_base.CRITICALITY["purple"]
-        )
+        info = insights_ui.v8.v7.qt_base.CRITICALITY.get(key, insights_ui.v8.v7.qt_base.CRITICALITY["purple"])
 
         if role == Qt.ItemDataRole.DisplayRole:
             value = row.get(column, "")
@@ -98,28 +99,28 @@ class StableV9TableModel(v9.v8.v7.qt_base.AppTableModel):
         return None
 
 
-class PlayStoreAuditQtV9Fixed(v9.PlayStoreAuditQtV9):
+class TableWindow(insights_ui.InsightsWindow):
     def __init__(self) -> None:
         # QHeaderView state is not portable across a changed logical-column
         # schema. Invalidate it once when upgrading to this fixed model.
-        settings = user_state.load_settings()
+        settings = persistence.load_settings()
         if str(settings.get("qt_header_schema_version") or "") != TABLE_SCHEMA_VERSION:
             settings["qt_header_state"] = ""
             settings["qt_header_schema_version"] = TABLE_SCHEMA_VERSION
-            user_state.save_settings(settings)
+            persistence.save_settings(settings)
 
         # Keep every Qt layer on the same schema before constructing widgets.
-        v9.v8.V8_MODEL_COLUMNS = tuple(v9.V9_MODEL_COLUMNS)
-        v9.v8.v7.MODEL_COLUMNS = tuple(v9.V9_MODEL_COLUMNS)
-        v9.v8.v7.qt_base.COLUMNS = tuple(v9.V9_MODEL_COLUMNS)
+        insights_ui.v8.V8_MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
+        insights_ui.v8.v7.MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
+        insights_ui.v8.v7.qt_base.COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
 
         super().__init__()
 
         old_proxy = self.proxy
-        stable_model = StableV9TableModel()
+        stable_model = AuditTableModel()
         stable_model.set_rows(list(self.current_rows))
 
-        proxy = v9.V9FilterProxy()
+        proxy = insights_ui.AdvancedFilterProxy()
         proxy.setSourceModel(stable_model)
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
@@ -149,7 +150,7 @@ class PlayStoreAuditQtV9Fixed(v9.PlayStoreAuditQtV9):
             "<b>Created by MRC</b><br><br>"
             "Audit Android packages against public Google Play listings, update dates, "
             "regional availability and optional connected-device metadata.<br><br>"
-            f"<a href=\"{v9.v8.v7.PROJECT_URL}\">MRC on GitHub</a><br><br>"
+            f'<a href="{insights_ui.v8.v7.PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
         info.setWordWrap(True)
@@ -165,11 +166,11 @@ class PlayStoreAuditQtV9Fixed(v9.PlayStoreAuditQtV9):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(v9.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(insights_ui.v8.v7.qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtV9Fixed()
+    window = TableWindow()
     window.show()
     return app.exec()
 

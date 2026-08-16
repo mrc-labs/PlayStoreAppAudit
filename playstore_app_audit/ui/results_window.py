@@ -16,15 +16,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.services.summary as summary_service
+import playstore_app_audit.ui.menu_window as menu_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
 from app_icon import ensure_runtime_icon
-import playstore_audit_qt_v9_2 as v92ui
-import playstore_audit_qt_v9_2_stable as stable
-import playstore_audit_v9_3_features as v93
-
 
 # Surface the new product version through the existing v9/v9.2 feature objects.
-v92ui.v92.APP_VERSION = v93.APP_VERSION
-v92ui.v9.features.APP_VERSION = v93.APP_VERSION
+preferences_ui.v92.APP_VERSION = summary_service.APP_VERSION
+preferences_ui.v9.features.APP_VERSION = summary_service.APP_VERSION
 
 
 def _find_layout_containing(layout, target_widget):
@@ -51,7 +50,13 @@ def _clear_layout_keep_widgets(layout, keep: set[object]) -> None:
             widget.deleteLater()
 
 
-class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
+# Transitional aliases for the final results/UX layer.
+v92ui = preferences_ui
+stable = menu_ui
+v93 = summary_service
+
+
+class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         super().__init__()
         self._rebuild_source_area()
@@ -129,7 +134,7 @@ class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
         if self.source_mode == "file":
             text = self.source_label.text()
             if text.startswith("File selected: "):
-                text = text[len("File selected: "):]
+                text = text[len("File selected: ") :]
             self.source_label.setText(f"{Path(path).name}  •  {text}")
             self.source_label.setToolTip(path)
 
@@ -150,7 +155,9 @@ class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
         self._export_results_menu = menu
 
     def _export_visible_html_report(self) -> None:
-        self._export_html_rows(self._visible_rows(), "playstore_audit_visible_report.html", "Export visible results as HTML")
+        self._export_html_rows(
+            self._visible_rows(), "playstore_audit_visible_report.html", "Export visible results as HTML"
+        )
 
     def _export_html_rows(self, rows: list[dict[str, Any]], default_name: str, title: str) -> None:
         if not rows:
@@ -162,8 +169,8 @@ class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
         if not selected.lower().endswith(".html"):
             selected += ".html"
         try:
-            formatted = v92ui.v92.rows_for_output([dict(row) for row in rows])
-            v92ui.v9.features.write_html_report(selected, formatted, self._device_summary)
+            formatted = preferences_ui.v92.rows_for_output([dict(row) for row in rows])
+            preferences_ui.v9.features.write_html_report(selected, formatted, self._device_summary)
             QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
         except Exception as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
@@ -193,17 +200,19 @@ class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
             return
         visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
         self.summary_label.setText(
-            v93.concise_summary(list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None))
+            summary_service.concise_summary(
+                list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None)
+            )
         )
 
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(v92ui.v9.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(preferences_ui.v9.v8.v7.qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtV93()
+    window = ResultsWindow()
     window.show()
     return app.exec()
 

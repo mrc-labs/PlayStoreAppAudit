@@ -1,25 +1,38 @@
 from __future__ import annotations
 
-import csv
 import subprocess
 import threading
-from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QHeaderView,
-    QLabel, QLineEdit, QMessageBox, QProgressBar, QPushButton, QSizePolicy,
-    QSpinBox, QStyle, QTableView, QVBoxLayout, QWidget,
+    QCheckBox,
+    QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStyle,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
 )
 
-from playstore_audit_core import AuditConfig, load_apps
-from playstore_audit_qt import (
-    APP_NAME, COLUMNS, CRITICALITY, PLATFORM_TOOLS_PAGE,
-    PlayStoreAuditQt, detect_windows_country, parse_adb_packages,
+from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
+from playstore_app_audit.ui.base_window import (
+    APP_NAME,
+    CRITICALITY,
+    BaseWindow,
+    detect_windows_country,
+    parse_adb_packages,
 )
 
 
-class PlayStoreAuditQtBranch(PlayStoreAuditQt):
+class AuditWindow(BaseWindow):
     """Qt 6 UI branch.
 
     Functional policy shared with the CustomTkinter branch:
@@ -219,7 +232,9 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
         for column, width in enumerate(widths):
             self.table.setColumnWidth(column, width)
 
-        tip = QLabel("Tip: click headers to sort, drag headers to reorder columns, double-click a row to open Google Play.")
+        tip = QLabel(
+            "Tip: click headers to sort, drag headers to reorder columns, double-click a row to open Google Play."
+        )
         tip.setObjectName("Muted")
         results_layout.addWidget(tip)
 
@@ -229,7 +244,9 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
 
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
-            self, "Choose app list", "",
+            self,
+            "Choose app list",
+            "",
             "App lists (*.csv *.tsv *.txt);;CSV (*.csv);;Text (*.txt);;All files (*.*)",
         )
         if not selected:
@@ -254,7 +271,11 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
         self.device_system_packages = set()
         self.source_mode = "file"
         self.path_edit.setText(selected)
-        suffix = f" • {skipped} system excluded during load" if self.exclude_system_source_check.isChecked() else f" • {len(system_packages)} classified as system"
+        suffix = (
+            f" • {skipped} system excluded during load"
+            if self.exclude_system_source_check.isChecked()
+            else f" • {len(system_packages)} classified as system"
+        )
         self.source_label.setText(f"File loaded: {len(apps)}/{original_count} packages{suffix} • {method}")
         self.status_label.setText("File ready. Run the Play Store audit.")
 
@@ -263,21 +284,31 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
         self.progress.setRange(0, 0)
         self.status_label.setText("Checking ADB device connection…")
         exclude_system = self.exclude_system_source_check.isChecked()
-        threading.Thread(target=self._scan_phone_worker_branch, args=(adb, exclude_system), daemon=True).start()
+        threading.Thread(
+            target=self._scan_phone_worker_branch, args=(adb, exclude_system), daemon=True
+        ).start()
 
     def _scan_phone_worker_branch(self, adb: str, exclude_system: bool) -> None:
         try:
-            devices_output = subprocess.run([adb, "devices"], check=True, capture_output=True, text=True, timeout=20).stdout.splitlines()
+            devices_output = subprocess.run(
+                [adb, "devices"], check=True, capture_output=True, text=True, timeout=20
+            ).stdout.splitlines()
             rows = [line.split() for line in devices_output[1:] if line.strip()]
             authorised = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "device"]
             unauthorised = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "unauthorized"]
             offline = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "offline"]
             if not authorised:
                 if unauthorised:
-                    raise RuntimeError("The phone is visible to ADB but is not authorised. Unlock it and accept 'Allow USB debugging?', then scan again.")
+                    raise RuntimeError(
+                        "The phone is visible to ADB but is not authorised. Unlock it and accept 'Allow USB debugging?', then scan again."
+                    )
                 if offline:
-                    raise RuntimeError("The phone is visible to ADB but is offline. Reconnect the USB cable, unlock it and try again.")
-                raise RuntimeError("ADB is installed, but no Android phone is visible. Check USB debugging, cable/data mode and Windows USB drivers.")
+                    raise RuntimeError(
+                        "The phone is visible to ADB but is offline. Reconnect the USB cable, unlock it and try again."
+                    )
+                raise RuntimeError(
+                    "ADB is installed, but no Android phone is visible. Check USB debugging, cable/data mode and Windows USB drivers."
+                )
 
             command = [adb, "shell", "pm", "list", "packages"]
             if exclude_system:
@@ -303,10 +334,14 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
         self.path_edit.clear()
 
         if self.exclude_system_source_check.isChecked():
-            self.source_label.setText(f"Phone scan: {len(typed_apps)} third-party packages loaded • system apps excluded during ADB scan")
+            self.source_label.setText(
+                f"Phone scan: {len(typed_apps)} third-party packages loaded • system apps excluded during ADB scan"
+            )
         else:
             user_count = sum(1 for app in typed_apps if app["package_name"] not in typed_system)
-            self.source_label.setText(f"Phone scan: {len(typed_apps)} total packages • {user_count} third-party • {len(typed_system)} system")
+            self.source_label.setText(
+                f"Phone scan: {len(typed_apps)} total packages • {user_count} third-party • {len(typed_system)} system"
+            )
         self.status_label.setText("Phone scan ready. Run the Play Store audit.")
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -329,7 +364,9 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
         self._sync_criticality_buttons()
 
         source_label = "Phone" if self.source_mode == "device" else "CSV/TXT"
-        self.source_label.setText(f"{source_label} source: {len(apps)} packages • {len(system_packages)} classified as system • {classification_method}")
+        self.source_label.setText(
+            f"{source_label} source: {len(apps)} packages • {len(system_packages)} classified as system • {classification_method}"
+        )
         self.current_rows = []
         self.model.set_rows([])
         self._set_busy(True)
@@ -342,13 +379,15 @@ class PlayStoreAuditQtBranch(PlayStoreAuditQt):
 
 
 def main() -> int:
-    from PySide6.QtWidgets import QApplication
     import sys
+
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
-    window = PlayStoreAuditQtBranch()
+    window = AuditWindow()
     window.show()
     return app.exec()
 

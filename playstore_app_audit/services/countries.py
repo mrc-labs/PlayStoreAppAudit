@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Optional
+from typing import Any
 
-import playstore_audit_core as core
+import playstore_app_audit.services.audit_engine as core
 
 # Representative Play Store markets checked only when the selected market
 # reports the package as unavailable. The selected country is always checked
 # first by the normal audit path and is automatically skipped here.
 MULTI_COUNTRY_MARKETS = (
-    "us", "gb", "de", "fr", "it", "ch", "es", "ca", "au", "jp",
+    "us",
+    "gb",
+    "de",
+    "fr",
+    "it",
+    "ch",
+    "es",
+    "ca",
+    "au",
+    "jp",
 )
 
 
@@ -112,7 +122,9 @@ def fetch_app_multicountry(
             result["play_title"] = alternative.get("title", "") or result.get("play_title", "")
             result["play_last_update"] = alternative.get("updated", "") or result.get("play_last_update", "")
             source = str(alternative.get("source") or "")
-            result["updated_source"] = f"{source}_multi_country" if source else result.get("updated_source", "")
+            result["updated_source"] = (
+                f"{source}_multi_country" if source else result.get("updated_source", "")
+            )
             result["store_url"] = alternative.get("url", "") or result.get("store_url", "")
             result["notes"] = _append_note(
                 result.get("notes"),
@@ -146,11 +158,11 @@ def fetch_app_multicountry(
 def audit_apps_multicountry(
     apps: list[dict[str, str]],
     config: core.AuditConfig,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
 ) -> list[dict[str, Any]]:
-    results: list[Optional[dict[str, Any]]] = [None] * len(apps)
+    results: list[dict[str, Any] | None] = [None] * len(apps)
 
     def run_one(app: dict[str, str]) -> dict[str, Any] | None:
         if not _wait_until_running(pause_event, cancel_event):
@@ -164,10 +176,7 @@ def audit_apps_multicountry(
         )
 
     with ThreadPoolExecutor(max_workers=max(1, config.max_workers)) as executor:
-        futures = {
-            executor.submit(run_one, app): index
-            for index, app in enumerate(apps)
-        }
+        futures = {executor.submit(run_one, app): index for index, app in enumerate(apps)}
         completed = 0
         for future in as_completed(futures):
             index = futures[future]

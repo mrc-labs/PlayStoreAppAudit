@@ -11,11 +11,9 @@ import sys
 import tempfile
 import threading
 import urllib.request
-import webbrowser
 import zipfile
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
 
 from PySide6.QtCore import (
     QAbstractTableModel,
@@ -23,14 +21,13 @@ from PySide6.QtCore import (
     QObject,
     QSortFilterProxyModel,
     Qt,
-    Signal,
     QUrl,
+    Signal,
 )
-from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon
+from PySide6.QtGui import QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QComboBox,
     QFileDialog,
     QFrame,
     QGridLayout,
@@ -51,8 +48,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from playstore_audit_core import AuditConfig, OUTPUT_FIELDS, audit_apps, load_apps
-
+from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 
 APP_NAME = "PlayStoreAppAudit"
 PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
@@ -61,20 +57,48 @@ SDK_LICENSE_PAGE = "https://developer.android.com/studio/terms"
 
 
 SYSTEM_COLUMN_NAMES = {
-    "is_system", "issystem", "system", "system_app", "systemapp",
-    "is_system_app", "issystemapp", "app_type", "apptype", "type",
+    "is_system",
+    "issystem",
+    "system",
+    "system_app",
+    "systemapp",
+    "is_system_app",
+    "issystemapp",
+    "app_type",
+    "apptype",
+    "type",
 }
 PACKAGE_COLUMN_NAMES = {
-    "package", "packageid", "packagename", "package_name",
-    "appid", "app_id", "id",
+    "package",
+    "packageid",
+    "packagename",
+    "package_name",
+    "appid",
+    "app_id",
+    "id",
 }
 TRUE_SYSTEM_VALUES = {
-    "1", "true", "yes", "y", "system", "system_app", "systemapp",
-    "preinstalled", "pre-installed",
+    "1",
+    "true",
+    "yes",
+    "y",
+    "system",
+    "system_app",
+    "systemapp",
+    "preinstalled",
+    "pre-installed",
 }
 FALSE_SYSTEM_VALUES = {
-    "0", "false", "no", "n", "user", "user_app", "userapp",
-    "third-party", "third_party", "thirdparty",
+    "0",
+    "false",
+    "no",
+    "n",
+    "user",
+    "user_app",
+    "userapp",
+    "third-party",
+    "third_party",
+    "thirdparty",
 }
 
 DEFINITE_SYSTEM_PREFIXES = (
@@ -99,18 +123,50 @@ DEFINITE_SYSTEM_PACKAGES = {
 }
 
 MONTHS = {
-    "jan": 1, "january": 1, "gen": 1, "gennaio": 1,
-    "feb": 2, "february": 2, "febbraio": 2,
-    "mar": 3, "march": 3, "marzo": 3,
-    "apr": 4, "april": 4, "aprile": 4,
-    "may": 5, "maggio": 5, "mag": 5,
-    "jun": 6, "june": 6, "giu": 6, "giugno": 6,
-    "jul": 7, "july": 7, "lug": 7, "luglio": 7,
-    "aug": 8, "august": 8, "ago": 8, "agosto": 8,
-    "sep": 9, "sept": 9, "september": 9, "set": 9, "settembre": 9,
-    "oct": 10, "october": 10, "ott": 10, "ottobre": 10,
-    "nov": 11, "november": 11, "novembre": 11,
-    "dec": 12, "december": 12, "dic": 12, "dicembre": 12,
+    "jan": 1,
+    "january": 1,
+    "gen": 1,
+    "gennaio": 1,
+    "feb": 2,
+    "february": 2,
+    "febbraio": 2,
+    "mar": 3,
+    "march": 3,
+    "marzo": 3,
+    "apr": 4,
+    "april": 4,
+    "aprile": 4,
+    "may": 5,
+    "maggio": 5,
+    "mag": 5,
+    "jun": 6,
+    "june": 6,
+    "giu": 6,
+    "giugno": 6,
+    "jul": 7,
+    "july": 7,
+    "lug": 7,
+    "luglio": 7,
+    "aug": 8,
+    "august": 8,
+    "ago": 8,
+    "agosto": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "set": 9,
+    "settembre": 9,
+    "oct": 10,
+    "october": 10,
+    "ott": 10,
+    "ottobre": 10,
+    "nov": 11,
+    "november": 11,
+    "novembre": 11,
+    "dec": 12,
+    "december": 12,
+    "dic": 12,
+    "dicembre": 12,
 }
 
 CRITICALITY = {
@@ -304,9 +360,8 @@ def parse_adb_packages(output: str) -> set[str]:
 
 
 def is_definite_system_package(package_name: str) -> bool:
-    return (
-        package_name in DEFINITE_SYSTEM_PACKAGES
-        or any(package_name.startswith(prefix) for prefix in DEFINITE_SYSTEM_PREFIXES)
+    return package_name in DEFINITE_SYSTEM_PACKAGES or any(
+        package_name.startswith(prefix) for prefix in DEFINITE_SYSTEM_PREFIXES
     )
 
 
@@ -407,9 +462,7 @@ class AppFilterProxy(QSortFilterProxyModel):
             return False
 
         if self.query:
-            search_fields = list(OUTPUT_FIELDS) + [
-                "criticality", "is_system", "age_days", "criticality_key"
-            ]
+            search_fields = list(OUTPUT_FIELDS) + ["criticality", "is_system", "age_days", "criticality_key"]
             haystack = " ".join(str(row.get(field, "") or "") for field in search_fields).casefold()
             if self.query not in haystack:
                 return False
@@ -449,7 +502,7 @@ class WorkerSignals(QObject):
     adb_install_done = Signal(str, str)
 
 
-class PlayStoreAuditQt(QMainWindow):
+class BaseWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Play Store App Audit")
@@ -777,15 +830,15 @@ class PlayStoreAuditQt(QMainWindow):
             button.setStyleSheet(
                 f"""
                 QPushButton {{
-                    background: {info['background']};
-                    color: {info['foreground']};
-                    border: 1px solid {info['background']};
+                    background: {info["background"]};
+                    color: {info["foreground"]};
+                    border: 1px solid {info["background"]};
                 }}
                 QPushButton:hover {{
-                    border: 1px solid {info['accent']};
+                    border: 1px solid {info["accent"]};
                 }}
                 QPushButton:checked {{
-                    border: 2px solid {info['accent']};
+                    border: 2px solid {info["accent"]};
                     font-weight: 650;
                 }}
                 """
@@ -831,9 +884,7 @@ class PlayStoreAuditQt(QMainWindow):
 
     def _toggle_advanced(self, visible: bool) -> None:
         self.advanced_panel.setVisible(visible)
-        self.advanced_button.setArrowType(
-            Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow
-        )
+        self.advanced_button.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
 
     def _set_busy(self, busy: bool) -> None:
         self.run_button.setEnabled(not busy)
@@ -883,9 +934,7 @@ class PlayStoreAuditQt(QMainWindow):
 
         reader = csv.DictReader(raw.splitlines(), delimiter=delimiter)
         fieldnames = reader.fieldnames or []
-        normalised = {
-            normalise_header(name): name for name in fieldnames if name is not None
-        }
+        normalised = {normalise_header(name): name for name in fieldnames if name is not None}
         package_column = next(
             (original for name, original in normalised.items() if name in PACKAGE_COLUMN_NAMES),
             None,
@@ -918,9 +967,7 @@ class PlayStoreAuditQt(QMainWindow):
 
         local_app_data = os.environ.get("LOCALAPPDATA")
         if local_app_data:
-            candidates.append(
-                str(Path(local_app_data) / "Android" / "Sdk" / "platform-tools" / "adb.exe")
-            )
+            candidates.append(str(Path(local_app_data) / "Android" / "Sdk" / "platform-tools" / "adb.exe"))
 
         for variable in ("ANDROID_SDK_ROOT", "ANDROID_HOME"):
             value = os.environ.get(variable)
@@ -959,10 +1006,11 @@ class PlayStoreAuditQt(QMainWindow):
             ).stdout.splitlines()
         except Exception:
             return None
-        return adb if any(
-            len(line.split()) >= 2 and line.split()[1] == "device"
-            for line in devices[1:]
-        ) else None
+        return (
+            adb
+            if any(len(line.split()) >= 2 and line.split()[1] == "device" for line in devices[1:])
+            else None
+        )
 
     def _scan_phone(self) -> None:
         adb = self._find_adb()
@@ -1003,7 +1051,10 @@ class PlayStoreAuditQt(QMainWindow):
                 request = urllib.request.Request(
                     PLATFORM_TOOLS_URL, headers={"User-Agent": f"{APP_NAME}/2.0"}
                 )
-                with urllib.request.urlopen(request, timeout=90) as response, archive_path.open("wb") as output:
+                with (
+                    urllib.request.urlopen(request, timeout=90) as response,
+                    archive_path.open("wb") as output,
+                ):
                     shutil.copyfileobj(response, output)
 
                 extract_root = temp_root / "extract"
@@ -1027,13 +1078,17 @@ class PlayStoreAuditQt(QMainWindow):
                 shutil.copytree(extracted_tools, target)
 
             adb = target / "adb.exe"
-            version = subprocess.run(
-                [str(adb), "version"],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=20,
-            ).stdout.strip().splitlines()
+            version = (
+                subprocess.run(
+                    [str(adb), "version"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                )
+                .stdout.strip()
+                .splitlines()
+            )
             version_text = version[0] if version else "ADB installed"
             self.signals.adb_install_done.emit(str(adb), version_text)
         except Exception as exc:
@@ -1123,9 +1178,7 @@ class PlayStoreAuditQt(QMainWindow):
         self.source_mode = "device"
         self.path_edit.clear()
 
-        user_count = sum(
-            1 for app in typed_apps if app["package_name"] not in typed_system
-        )
+        user_count = sum(1 for app in typed_apps if app["package_name"] not in typed_system)
         self.source_label.setText(
             f"Phone scan: {len(typed_apps)} total packages • "
             f"{user_count} third-party • {len(typed_system)} system"
@@ -1135,18 +1188,12 @@ class PlayStoreAuditQt(QMainWindow):
         self.progress.setValue(0)
         self._set_busy(False)
 
-    def _classify_file_system_packages(
-        self, apps: list[dict[str, str]]
-    ) -> tuple[set[str], str]:
+    def _classify_file_system_packages(self, apps: list[dict[str, str]]) -> tuple[set[str], str]:
         system_packages = {
-            package_name
-            for package_name, is_system in self.file_system_metadata.items()
-            if is_system
+            package_name for package_name, is_system in self.file_system_metadata.items() if is_system
         }
         known_user_packages = {
-            package_name
-            for package_name, is_system in self.file_system_metadata.items()
-            if not is_system
+            package_name for package_name, is_system in self.file_system_metadata.items() if not is_system
         }
         method_parts: list[str] = []
         if self.file_system_metadata:
@@ -1206,9 +1253,7 @@ class PlayStoreAuditQt(QMainWindow):
         apps = list(all_apps)
         skipped_system = 0
         if self.skip_system_check.isChecked():
-            apps = [
-                app for app in all_apps if app["package_name"] not in system_packages
-            ]
+            apps = [app for app in all_apps if app["package_name"] not in system_packages]
             skipped_system = len(all_apps) - len(apps)
             if not apps:
                 QMessageBox.warning(
@@ -1243,14 +1288,11 @@ class PlayStoreAuditQt(QMainWindow):
             language=language,
             max_workers=workers,
         )
-        threading.Thread(
-            target=self._audit_worker, args=(apps, config), daemon=True
-        ).start()
+        threading.Thread(target=self._audit_worker, args=(apps, config), daemon=True).start()
 
-    def _audit_worker(
-        self, apps: list[dict[str, str]], config: AuditConfig
-    ) -> None:
+    def _audit_worker(self, apps: list[dict[str, str]], config: AuditConfig) -> None:
         try:
+
             def progress(done: int, total: int, package_name: str) -> None:
                 self.signals.progress.emit(done, total, package_name)
 
@@ -1267,9 +1309,7 @@ class PlayStoreAuditQt(QMainWindow):
     def _on_audit_done(self, rows: object) -> None:
         typed_rows = list(rows)  # type: ignore[arg-type]
         for row in typed_rows:
-            row["is_system"] = (
-                str(row.get("package_name") or "") in self.current_system_packages
-            )
+            row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
             classify_criticality(row)
 
         self.current_rows = typed_rows
@@ -1318,24 +1358,18 @@ class PlayStoreAuditQt(QMainWindow):
 
         query = self.search_edit.text().strip().casefold()
         if query:
-            search_fields = list(OUTPUT_FIELDS) + [
-                "criticality", "is_system", "age_days", "criticality_key"
-            ]
+            search_fields = list(OUTPUT_FIELDS) + ["criticality", "is_system", "age_days", "criticality_key"]
             rows = [
                 row
                 for row in rows
-                if query
-                in " ".join(
-                    str(row.get(field, "") or "") for field in search_fields
-                ).casefold()
+                if query in " ".join(str(row.get(field, "") or "") for field in search_fields).casefold()
             ]
         return rows
 
     def _update_summary(self) -> None:
         base_rows = self._rows_before_criticality_filter()
         counts = {
-            key: sum(1 for row in base_rows if row.get("criticality_key") == key)
-            for key in CRITICALITY
+            key: sum(1 for row in base_rows if row.get("criticality_key") == key) for key in CRITICALITY
         }
         for key, button in self.criticality_buttons.items():
             button.setText(f"{CRITICALITY[key]['button']} {counts[key]}")
@@ -1411,7 +1445,7 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
-    window = PlayStoreAuditQt()
+    window = BaseWindow()
     window.show()
     return app.exec()
 

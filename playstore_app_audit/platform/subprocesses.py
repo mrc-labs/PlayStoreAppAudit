@@ -4,7 +4,6 @@ import os
 import subprocess
 from typing import Any
 
-
 _INSTALLED = False
 _ORIGINAL_POPEN = subprocess.Popen
 

@@ -5,13 +5,18 @@ import sys
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import QApplication, QMenu
 
+import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.ui.preferences_window as preferences_ui
 from app_icon import ensure_runtime_icon
-import playstore_audit_qt_v9_2 as v92ui
-import playstore_audit_v9_2_features as v92
-import playstore_audit_user_state as user_state
+
+# Transitional aliases for the menu layer.
+v92ui = preferences_ui
+v92 = presentation
+user_state = persistence
 
 
-class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
+class MenuWindow(preferences_ui.PreferencesWindow):
     """Stable v9.2 Qt wrapper keeping native menu objects referenced by Python."""
 
     def __init__(self) -> None:
@@ -52,9 +57,9 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
-        current = str(user_state.load_settings().get("view_preset") or "Basic")
+        current = str(persistence.load_settings().get("view_preset") or "Basic")
         self.view_preset_actions = []
-        for name in v92.VIEW_PRESETS:
+        for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
@@ -84,9 +89,20 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
 
         self.help_menu = QMenu("Help", bar)
         bar.addMenu(self.help_menu)
-        self.help_menu.addAction("ADB setup guide…", lambda: self._show_text_help("ADB setup guide", v92ui.v9.features.ADB_SETUP_GUIDE))
-        self.help_menu.addAction("How to export package CSV…", lambda: self._show_text_help("Export package CSV", v92.CSV_EXPORT_GUIDE))
-        self.help_menu.addAction("Health score methodology…", lambda: self._show_text_help("Health score methodology", v92ui.v9.features.HEALTH_SCORE_GUIDE))
+        self.help_menu.addAction(
+            "ADB setup guide…",
+            lambda: self._show_text_help("ADB setup guide", preferences_ui.v9.features.ADB_SETUP_GUIDE),
+        )
+        self.help_menu.addAction(
+            "How to export package CSV…",
+            lambda: self._show_text_help("Export package CSV", presentation.CSV_EXPORT_GUIDE),
+        )
+        self.help_menu.addAction(
+            "Health score methodology…",
+            lambda: self._show_text_help(
+                "Health score methodology", preferences_ui.v9.features.HEALTH_SCORE_GUIDE
+            ),
+        )
         self.help_menu.addSeparator()
         self.help_menu.addAction("Check for updates…", self._check_for_updates)
         self.help_menu.addAction("Create diagnostic bundle…", self._create_diagnostic_bundle)
@@ -97,7 +113,7 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
         if not hasattr(self, "summary_label"):
             return
         base_rows = self._rows_before_criticality_filter()
-        criticality = v92ui.v9.v8.v7.qt_base.CRITICALITY
+        criticality = preferences_ui.v9.v8.v7.qt_base.CRITICALITY
         counts = {
             key: sum(1 for row in base_rows if str(row.get("criticality_key") or "") == key)
             for key in criticality
@@ -106,12 +122,12 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
             for key, button in self.criticality_buttons.items():
                 button.setText(f"{criticality[key]['button']} {counts[key]}")
         visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
-        self.summary_label.setText(v92.concise_summary(list(self.current_rows), visible))
+        self.summary_label.setText(presentation.concise_summary(list(self.current_rows), visible))
 
     def _clear_results(self) -> None:
         self._status_filters.clear()
         super()._clear_results()
-        if isinstance(self.proxy, v92ui.V92FilterProxy):
+        if isinstance(self.proxy, preferences_ui.AuditFilterProxy):
             self.proxy.set_status_filters(set())
         self._sync_status_filter_buttons()
         self._update_summary()
@@ -119,11 +135,11 @@ class PlayStoreAuditQtV92Stable(v92ui.PlayStoreAuditQtV92):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(v92ui.v9.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(preferences_ui.v9.v8.v7.qt_base.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
-    window = PlayStoreAuditQtV92Stable()
+    window = MenuWindow()
     window.show()
     return app.exec()
 

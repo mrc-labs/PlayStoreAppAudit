@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-import playstore_audit_user_state as user_state
+import playstore_app_audit.services.persistence as user_state
 
 APP_VERSION = "0.9.2"
 

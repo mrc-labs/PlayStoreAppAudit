@@ -13,14 +13,14 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-import playstore_audit_qt as qt_base
-import playstore_audit_qt_branch as qt_branch
-import playstore_audit_qt_compact as qt_compact
-import playstore_audit_qt_v9_2 as v92ui
-import playstore_audit_qt_v9_3 as legacy_ui
-import playstore_audit_v9_2_features as v92_features
-import playstore_audit_v9_3_features as v93_features
-import playstore_audit_v9_features as v9_features
+import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.summary as summary_service
+import playstore_app_audit.ui.audit_window as audit_ui
+import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
+import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
@@ -34,20 +34,20 @@ from playstore_app_audit.services import state as state_service
 
 # Centralise platform decisions instead of spreading Windows assumptions across
 # the UI inheritance chain.
-qt_base.detect_windows_country = runtime.detect_store_country
-qt_branch.detect_windows_country = runtime.detect_store_country
-qt_base.managed_platform_tools_dir = runtime.managed_platform_tools_dir
-qt_base.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
-qt_compact.ensure_runtime_icon = ensure_runtime_icon
-v9_features.local_data_dir = runtime.app_data_dir
-v9_features.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
-state_service.app_data_dir = v9_features.app_data_dir_v9
+base_ui.detect_windows_country = runtime.detect_store_country
+audit_ui.detect_windows_country = runtime.detect_store_country
+base_ui.managed_platform_tools_dir = runtime.managed_platform_tools_dir
+base_ui.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
+compact_ui.ensure_runtime_icon = ensure_runtime_icon
+device_insights.local_data_dir = runtime.app_data_dir
+device_insights.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
+state_service.app_data_dir = device_insights.app_data_dir_v9
 
 # Surface the package version everywhere the legacy dialogs/reports read it.
-v92ui.v9.features.APP_VERSION = __version__
-v92_features.APP_VERSION = __version__
-v93_features.APP_VERSION = __version__
-v9_features.APP_VERSION = __version__
+preferences_ui.v9.features.APP_VERSION = __version__
+presentation.APP_VERSION = __version__
+summary_service.APP_VERSION = __version__
+device_insights.APP_VERSION = __version__
 
 
 def _detach_layout(layout, keep: set[object]) -> None:
@@ -61,7 +61,7 @@ def _detach_layout(layout, keep: set[object]) -> None:
             widget.deleteLater()
 
 
-class MainWindow(legacy_ui.PlayStoreAuditQtV93):
+class MainWindow(results_ui.ResultsWindow):
     """Current Qt desktop window.
 
     This is the stable public UI entry point. Platform-specific behaviour lives
@@ -100,11 +100,7 @@ class MainWindow(legacy_ui.PlayStoreAuditQtV93):
             return
 
         source_title = next(
-            (
-                child
-                for child in source_card.findChildren(QLabel)
-                if child.text().strip() == "App source"
-            ),
+            (child for child in source_card.findChildren(QLabel) if child.text().strip() == "App source"),
             None,
         )
         keep = {

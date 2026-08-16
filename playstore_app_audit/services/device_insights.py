@@ -11,14 +11,14 @@ import subprocess
 import sys
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import requests
 
-import playstore_audit_user_state as user_state
-import playstore_audit_v8_features as v8
+import playstore_app_audit.services.device_metadata as v8
+import playstore_app_audit.services.persistence as user_state
 
 APP_VERSION = "0.9.0"
 GITHUB_REPOSITORY = "mrc-labs/PlayStoreAppAudit"
@@ -200,7 +200,11 @@ def add_recent_source(path: str, limit: int = 8) -> None:
 def get_recent_sources() -> list[str]:
     settings = user_state.load_settings()
     items = settings.get("recent_sources", [])
-    return [str(x) for x in items if isinstance(x, str) and Path(x).is_file()][:8] if isinstance(items, list) else []
+    return (
+        [str(x) for x in items if isinstance(x, str) and Path(x).is_file()][:8]
+        if isinstance(items, list)
+        else []
+    )
 
 
 def save_filter(name: str, query: str, criticality: str | None, hide_system: bool, preset: str) -> None:
@@ -278,7 +282,9 @@ def collect_device_summary(adb: str, total_packages: int = 0, system_packages: i
         serial = _run(adb, ["get-serialno"], 10).strip()
     except Exception:
         serial = ""
-    device_hash = hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16] if serial else "unknown"
+    device_hash = (
+        hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16] if serial else "unknown"
+    )
     masked = ("••••" + serial[-4:]) if len(serial) >= 4 else (serial or "Unknown")
     manufacturer = props.get("ro.product.manufacturer", "")
     model = props.get("ro.product.model", "")
@@ -296,7 +302,7 @@ def collect_device_summary(adb: str, total_packages: int = 0, system_packages: i
         "total_packages": int(total_packages),
         "system_packages": int(system_packages),
         "third_party_packages": max(0, int(total_packages) - int(system_packages)),
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -308,7 +314,9 @@ def _permission_labels(text: str) -> list[str]:
     return found
 
 
-def _parse_package_dump(text: str, disabled: bool, device_sdk: int, include_permissions: bool) -> dict[str, str]:
+def _parse_package_dump(
+    text: str, disabled: bool, device_sdk: int, include_permissions: bool
+) -> dict[str, str]:
     def first(pattern: str) -> str:
         match = re.search(pattern, text, re.MULTILINE)
         return match.group(1).strip() if match else ""
@@ -371,7 +379,11 @@ def collect_device_metadata_v9(
 
     try:
         disabled_output = _run(adb, ["shell", "pm", "list", "packages", "-d"], 45)
-        disabled = {line.replace("package:", "", 1).strip() for line in disabled_output.splitlines() if line.strip().startswith("package:")}
+        disabled = {
+            line.replace("package:", "", 1).strip()
+            for line in disabled_output.splitlines()
+            if line.strip().startswith("package:")
+        }
     except Exception:
         disabled = set()
 
@@ -418,7 +430,9 @@ def collect_device_metadata_v9(
     return metadata
 
 
-def enrich_rows_with_device_metadata_v9(rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]) -> None:
+def enrich_rows_with_device_metadata_v9(
+    rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
+) -> None:
     for row in rows:
         package = str(row.get("package_name") or "")
         info = metadata.get(package, {})
@@ -466,7 +480,7 @@ def snapshots_dir() -> Path:
 def make_device_snapshot(rows: list[dict[str, Any]], device_summary: dict[str, Any]) -> dict[str, Any]:
     return {
         "format": "PlayStoreAppAudit-device-snapshot-v1",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "device": dict(device_summary or {}),
         "apps": [
             {
@@ -490,7 +504,9 @@ def make_device_snapshot(rows: list[dict[str, Any]], device_summary: dict[str, A
 
 def save_snapshot(path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any]) -> Path:
     target = Path(path)
-    target.write_text(json.dumps(make_device_snapshot(rows, device_summary), indent=2, ensure_ascii=False), encoding="utf-8")
+    target.write_text(
+        json.dumps(make_device_snapshot(rows, device_summary), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     return target
 
 
@@ -501,8 +517,12 @@ def load_snapshot(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def compare_snapshots(current_rows: list[dict[str, Any]], current_device: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, Any]:
-    old_apps = {str(row.get("package_name") or ""): row for row in snapshot.get("apps", []) if isinstance(row, dict)}
+def compare_snapshots(
+    current_rows: list[dict[str, Any]], current_device: dict[str, Any], snapshot: dict[str, Any]
+) -> dict[str, Any]:
+    old_apps = {
+        str(row.get("package_name") or ""): row for row in snapshot.get("apps", []) if isinstance(row, dict)
+    }
     new_apps = {str(row.get("package_name") or ""): row for row in current_rows}
     only_old = sorted(set(old_apps) - set(new_apps))
     only_new = sorted(set(new_apps) - set(old_apps))
@@ -534,7 +554,9 @@ def inventory_path(device_id: str) -> Path:
     return app_data_dir_v9() / f"inventory_{safe}.json"
 
 
-def annotate_inventory_changes_and_save(rows: list[dict[str, Any]], device_summary: dict[str, Any]) -> dict[str, Any]:
+def annotate_inventory_changes_and_save(
+    rows: list[dict[str, Any]], device_summary: dict[str, Any]
+) -> dict[str, Any]:
     device_id = str(device_summary.get("device_id") or "unknown")
     path = inventory_path(device_id)
     try:
@@ -575,7 +597,7 @@ def annotate_inventory_changes_and_save(rows: list[dict[str, Any]], device_summa
     counts["removed"] = len(removed)
     payload = {
         "device": device_summary,
-        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "saved_at": datetime.now(UTC).isoformat(),
         "apps": current,
     }
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -586,36 +608,52 @@ def _status_class(row: dict[str, Any]) -> str:
     return str(row.get("criticality_key") or "purple")
 
 
-def write_html_report(path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None) -> Path:
+def write_html_report(
+    path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None
+) -> Path:
     target = Path(path)
-    counts = {key: sum(1 for row in rows if _status_class(row) == key) for key in ("green", "yellow", "orange", "red", "blue", "purple")}
+    counts = {
+        key: sum(1 for row in rows if _status_class(row) == key)
+        for key in ("green", "yellow", "orange", "red", "blue", "purple")
+    }
     cards = "".join(
         f'<div class="card {key}"><b>{label}</b><span>{counts[key]}</span></div>'
-        for key, label in (("green", "Current"), ("yellow", "Aging"), ("orange", "Stale"), ("red", "Removed"), ("blue", "Anomaly"), ("purple", "Other"))
+        for key, label in (
+            ("green", "Current"),
+            ("yellow", "Aging"),
+            ("orange", "Stale"),
+            ("red", "Removed"),
+            ("blue", "Anomaly"),
+            ("purple", "Other"),
+        )
     )
     device_html = ""
     if device_summary:
-        name = " ".join(filter(None, [str(device_summary.get("manufacturer") or ""), str(device_summary.get("model") or "")])).strip()
+        name = " ".join(
+            filter(
+                None, [str(device_summary.get("manufacturer") or ""), str(device_summary.get("model") or "")]
+            )
+        ).strip()
         device_html = f'<p class="muted">Device: {html.escape(name or "Android device")} · Android {html.escape(str(device_summary.get("android_version") or "?"))} (API {html.escape(str(device_summary.get("android_api") or "?"))}) · Security patch {html.escape(str(device_summary.get("security_patch") or "?"))}</p>'
     table_rows = []
     for row in rows:
         table_rows.append(
             f'<tr class="{_status_class(row)}">'
-            f'<td>{html.escape(str(row.get("criticality") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("package_name") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("play_title") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("play_last_update") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("age_days") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("compatibility_status") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("health_score") or ""))}</td>'
-            f'<td>{html.escape(str(row.get("notes") or ""))}</td>'
-            '</tr>'
+            f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('compatibility_status') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('health_score') or ''))}</td>"
+            f"<td>{html.escape(str(row.get('notes') or ''))}</td>"
+            "</tr>"
         )
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
 body{{font-family:Segoe UI,Arial,sans-serif;margin:28px;background:#f5f7fa;color:#20252b}}.wrap{{max-width:1500px;margin:auto}}h1{{margin-bottom:4px}}.muted{{color:#6f7c87}}.cards{{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}}.card{{background:white;border:1px solid #dde3e8;border-radius:10px;padding:10px 15px;min-width:100px;display:flex;justify-content:space-between;gap:18px}}.card span{{font-size:20px;font-weight:700}}table{{width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden}}th,td{{padding:8px 10px;border-bottom:1px solid #e6ebef;text-align:left;vertical-align:top}}th{{background:#eef2f5;position:sticky;top:0}}tr.green{{background:#f2f9f3}}tr.yellow{{background:#fffcef}}tr.orange{{background:#fff7ee}}tr.red{{background:#fdf3f3}}tr.blue{{background:#f0f7fc}}tr.purple{{background:#f8f2fa}}code{{font-family:Consolas,monospace}}
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Android compatibility</th><th>Health</th><th>Notes</th></tr></thead><tbody>{''.join(table_rows)}</tbody></table></div></body></html>"""
+</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Android compatibility</th><th>Health</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table></div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 
@@ -627,9 +665,19 @@ def _parse_version_tuple(value: str) -> tuple[int, ...]:
 
 def check_for_updates() -> dict[str, Any]:
     try:
-        response = requests.get(LATEST_RELEASE_API, headers={"Accept": "application/vnd.github+json", "User-Agent": f"PlayStoreAppAudit/{APP_VERSION}"}, timeout=8)
+        response = requests.get(
+            LATEST_RELEASE_API,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"PlayStoreAppAudit/{APP_VERSION}",
+            },
+            timeout=8,
+        )
         if response.status_code == 404:
-            return {"status": "unavailable", "message": "No public release feed is available. The GitHub repository may still be private or may not have a published release."}
+            return {
+                "status": "unavailable",
+                "message": "No public release feed is available. The GitHub repository may still be private or may not have a published release.",
+            }
         response.raise_for_status()
         data = response.json()
         tag = str(data.get("tag_name") or "")
@@ -653,7 +701,9 @@ def log_event(message: str) -> None:
         pass
 
 
-def create_diagnostic_bundle(path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None) -> Path:
+def create_diagnostic_bundle(
+    path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None
+) -> Path:
     target = Path(path)
     settings = user_state.load_settings()
     sanitized = dict(settings)
@@ -665,13 +715,18 @@ def create_diagnostic_bundle(path: str | Path, rows: list[dict[str, Any]], devic
         "platform": platform.platform(),
         "portable_mode": portable_mode_active(),
         "result_count": len(rows),
-        "status_counts": {key: sum(1 for row in rows if str(row.get("criticality_key") or "") == key) for key in ("green", "yellow", "orange", "red", "blue", "purple")},
+        "status_counts": {
+            key: sum(1 for row in rows if str(row.get("criticality_key") or "") == key)
+            for key in ("green", "yellow", "orange", "red", "blue", "purple")
+        },
         "device": {k: v for k, v in (device_summary or {}).items() if k not in {"device_id"}},
     }
     with tempfile.TemporaryDirectory(prefix="psaa_diag_") as tmp:
         root = Path(tmp)
         (root / "system.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-        (root / "settings_sanitized.json").write_text(json.dumps(sanitized, indent=2, ensure_ascii=False), encoding="utf-8")
+        (root / "settings_sanitized.json").write_text(
+            json.dumps(sanitized, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         log = app_data_dir_v9() / "activity.log"
         if log.is_file():
             shutil.copy2(log, root / "activity.log")
@@ -683,7 +738,16 @@ def create_diagnostic_bundle(path: str | Path, rows: list[dict[str, Any]], devic
 
 def open_app_info_on_device(adb: str, package_name: str) -> None:
     subprocess.run(
-        [adb, "shell", "am", "start", "-a", "android.settings.APPLICATION_DETAILS_SETTINGS", "-d", f"package:{package_name}"],
+        [
+            adb,
+            "shell",
+            "am",
+            "start",
+            "-a",
+            "android.settings.APPLICATION_DETAILS_SETTINGS",
+            "-d",
+            f"package:{package_name}",
+        ],
         check=True,
         capture_output=True,
         text=True,

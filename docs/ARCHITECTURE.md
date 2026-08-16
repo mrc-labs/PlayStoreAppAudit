@@ -15,13 +15,11 @@ New code is organised as follows:
 - `playstore_app_audit/ui/`: Qt Widgets UI.
 - `tests/`: regression and platform-abstraction tests.
 
-## Current migration state
+## Current architecture
 
-The package structure above is now the public/canonical entry layer. The existing top-level `playstore_audit_qt_v*.py` modules are still used internally as a compatibility layer so that the refactor does not replace a large amount of proven UI/audit behaviour in one risky change.
+The migration away from version-suffixed top-level modules is complete. Production code now lives under `playstore_app_audit/`; the repository no longer depends on `playstore_audit_qt_v*.py`, `*_fixed.py` or `*_stable.py` compatibility files.
 
-No new product feature should be added to version-suffixed UI modules. The next architectural cleanup is to migrate their remaining methods into focused package modules and then delete the compatibility chain.
-
-This is intentionally a strangler-style refactor: stable behaviour remains working while ownership moves module by module behind clean boundaries.
+The Qt window is organised into focused internal layers (`base_window`, `audit_window`, `compact_window`, `device_window`, `insights_window`, `table_window`, `preferences_window`, `menu_window`, `results_window`) with `main_window.py` as the only public UI entry point. Services and platform code are likewise inside the package. Future refactors should reduce inheritance/monkey-patching where it improves clarity, but must not reintroduce versioned modules.
 
 ## Dependency direction
 

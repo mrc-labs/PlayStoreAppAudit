@@ -4,15 +4,15 @@ import csv
 import re
 import threading
 import time
+from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
-
 
 PLAY_URL = "https://play.google.com/store/apps/details"
 
@@ -83,8 +83,8 @@ def load_apps(input_path: str | Path) -> list[dict[str, str]]:
 
     first = parsed[0]
     normalised_headers = [_normalise_header(v) for v in first]
-    package_index: Optional[int] = None
-    name_index: Optional[int] = None
+    package_index: int | None = None
+    name_index: int | None = None
     has_header = False
 
     for index, header in enumerate(normalised_headers):
@@ -105,17 +105,12 @@ def load_apps(input_path: str | Path) -> list[dict[str, str]]:
         max_columns = max(len(row) for row in data_rows)
         scores: list[tuple[int, int]] = []
         for index in range(max_columns):
-            score = sum(
-                1
-                for row in data_rows[:100]
-                if index < len(row) and _looks_like_package(row[index])
-            )
+            score = sum(1 for row in data_rows[:100] if index < len(row) and _looks_like_package(row[index]))
             scores.append((score, index))
         best_score, package_index = max(scores)
         if best_score == 0:
             raise ValueError(
-                "No Android package column was found. "
-                "Use a column named package_name or one package per row."
+                "No Android package column was found. Use a column named package_name or one package per row."
             )
 
     if name_index is None:
@@ -160,7 +155,7 @@ def normalise_updated(value: Any) -> str:
         if timestamp > 10_000_000_000:
             timestamp /= 1000.0
         try:
-            return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+            return datetime.fromtimestamp(timestamp, tz=UTC).strftime("%Y-%m-%d")
         except (OverflowError, OSError, ValueError):
             return str(value)
     text = str(value).strip()
@@ -169,7 +164,7 @@ def normalise_updated(value: Any) -> str:
         if len(text) == 13:
             timestamp /= 1000.0
         try:
-            return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
+            return datetime.fromtimestamp(timestamp, tz=UTC).strftime("%Y-%m-%d")
         except (OverflowError, OSError, ValueError):
             return text
     return text
@@ -179,10 +174,12 @@ def _get_session(language: str) -> requests.Session:
     session = getattr(_thread_local, "session", None)
     if session is None:
         session = requests.Session()
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-            "Accept-Language": f"{language}-{language.upper()},{language};q=0.9,en-US;q=0.8,en;q=0.7",
-        })
+        session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+                "Accept-Language": f"{language}-{language.upper()},{language};q=0.9,en-US;q=0.8,en;q=0.7",
+            }
+        )
         _thread_local.session = session
     return session
 
@@ -220,7 +217,12 @@ def _scraper_request(package_name: str, language: str, country: str, config: Aud
     try:
         from google_play_scraper import app as play_app
     except ImportError as exc:
-        return {"ok": False, "title": "", "updated": "", "error": f"google_play_scraper is not installed: {exc}"}
+        return {
+            "ok": False,
+            "title": "",
+            "updated": "",
+            "error": f"google_play_scraper is not installed: {exc}",
+        }
 
     last_error = ""
     for attempt in range(config.max_retries + 1):
@@ -236,7 +238,12 @@ def _scraper_request(package_name: str, language: str, country: str, config: Aud
             last_error = str(exc)[:300]
             if attempt < config.max_retries:
                 time.sleep(config.retry_sleep_base * (attempt + 1))
-    return {"ok": False, "title": "", "updated": "", "error": last_error or "Unknown Google Play scraper error"}
+    return {
+        "ok": False,
+        "title": "",
+        "updated": "",
+        "error": last_error or "Unknown Google Play scraper error",
+    }
 
 
 def _html_request(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
@@ -255,16 +262,48 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             if attempt < config.max_retries:
                 time.sleep(config.retry_sleep_base * (attempt + 1))
             else:
-                return {"ok": False, "status": "request_error", "http_status": "", "title": "", "updated": "", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "error": last_error}
+                return {
+                    "ok": False,
+                    "status": "request_error",
+                    "http_status": "",
+                    "title": "",
+                    "updated": "",
+                    "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+                    "error": last_error,
+                }
     else:
-        return {"ok": False, "status": "request_error", "http_status": "", "title": "", "updated": "", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "error": last_error or "Request not completed"}
+        return {
+            "ok": False,
+            "status": "request_error",
+            "http_status": "",
+            "title": "",
+            "updated": "",
+            "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+            "error": last_error or "Request not completed",
+        }
 
     html = response.text
     store_url = response.url
     if response.status_code == 404:
-        return {"ok": False, "status": "not_found_or_unavailable", "http_status": 404, "title": "", "updated": "", "url": store_url, "error": "404"}
+        return {
+            "ok": False,
+            "status": "not_found_or_unavailable",
+            "http_status": 404,
+            "title": "",
+            "updated": "",
+            "url": store_url,
+            "error": "404",
+        }
     if response.status_code != 200:
-        return {"ok": False, "status": "http_error", "http_status": response.status_code, "title": "", "updated": "", "url": store_url, "error": f"HTTP {response.status_code}"}
+        return {
+            "ok": False,
+            "status": "http_error",
+            "http_status": response.status_code,
+            "title": "",
+            "updated": "",
+            "url": store_url,
+            "error": f"HTTP {response.status_code}",
+        }
 
     unavailable_signals = (
         "Siamo spiacenti, l'URL richiesto non è stato trovato",
@@ -273,26 +312,58 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
         "We're sorry, the requested URL was not found",
     )
     if any(signal in html for signal in unavailable_signals):
-        return {"ok": False, "status": "not_found_or_unavailable", "http_status": 200, "title": "", "updated": "", "url": store_url, "error": "The page indicates that the listing is unavailable."}
+        return {
+            "ok": False,
+            "status": "not_found_or_unavailable",
+            "http_status": 200,
+            "title": "",
+            "updated": "",
+            "url": store_url,
+            "error": "The page indicates that the listing is unavailable.",
+        }
 
     soup = BeautifulSoup(html, "html.parser")
     title = ""
     og_title = soup.find("meta", property="og:title")
     if og_title and og_title.get("content"):
         title = str(og_title["content"]).strip()
-    return {"ok": True, "status": "available", "http_status": response.status_code, "title": title, "updated": _parse_updated_from_html(html), "url": store_url, "error": ""}
+    return {
+        "ok": True,
+        "status": "available",
+        "http_status": response.status_code,
+        "title": title,
+        "updated": _parse_updated_from_html(html),
+        "url": store_url,
+        "error": "",
+    }
 
 
 def _fetch_locale(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
     scraper = _scraper_request(package_name, language, country, config)
     if scraper["ok"] and scraper["updated"]:
-        return {"status": "available", "http_status": 200, "title": scraper["title"], "updated": scraper["updated"], "source": "google_play_scraper", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "notes": ""}
+        return {
+            "status": "available",
+            "http_status": 200,
+            "title": scraper["title"],
+            "updated": scraper["updated"],
+            "source": "google_play_scraper",
+            "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+            "notes": "",
+        }
 
     html = _html_request(package_name, language, country, config)
     if scraper["ok"]:
         title = scraper["title"] or html.get("title", "")
         updated = scraper["updated"] or html.get("updated", "")
-        return {"status": "available", "http_status": html.get("http_status", 200), "title": title, "updated": updated, "source": "google_play_scraper" if scraper["updated"] else ("html_fallback" if updated else ""), "url": html.get("url") or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "notes": "" if updated else "update_date_not_found"}
+        return {
+            "status": "available",
+            "http_status": html.get("http_status", 200),
+            "title": title,
+            "updated": updated,
+            "source": "google_play_scraper" if scraper["updated"] else ("html_fallback" if updated else ""),
+            "url": html.get("url") or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+            "notes": "" if updated else "update_date_not_found",
+        }
 
     return {
         "status": html.get("status", "check_failed"),
@@ -301,14 +372,26 @@ def _fetch_locale(package_name: str, language: str, country: str, config: AuditC
         "updated": html.get("updated", ""),
         "source": "html_fallback" if html.get("updated") else "",
         "url": html.get("url") or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
-        "notes": " | ".join(value for value in [f"scraper: {scraper['error']}" if scraper["error"] else "", f"html: {html.get('error', '')}" if html.get("error") else ""] if value),
+        "notes": " | ".join(
+            value
+            for value in [
+                f"scraper: {scraper['error']}" if scraper["error"] else "",
+                f"html: {html.get('error', '')}" if html.get("error") else "",
+            ]
+            if value
+        ),
     }
 
 
 def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str, Any]:
     primary = _fetch_locale(package_name, config.language, config.country, config)
-    needs_fallback = not primary["updated"] or primary["status"] in {"not_found_or_unavailable", "request_error", "http_error", "check_failed"}
-    fallback: Optional[dict[str, Any]] = None
+    needs_fallback = not primary["updated"] or primary["status"] in {
+        "not_found_or_unavailable",
+        "request_error",
+        "http_error",
+        "check_failed",
+    }
+    fallback: dict[str, Any] | None = None
     if needs_fallback:
         fallback = _fetch_locale(package_name, config.fallback_language, config.fallback_country, config)
 
@@ -324,8 +407,13 @@ def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str
             final["status"] = "available_in_fallback_locale_only"
             final["http_status"] = fallback["http_status"]
             final["url"] = fallback["url"]
-            final["notes"] = " | ".join(filter(None, [final["notes"], "primary_locale_unavailable_fallback_available"]))
-        if final["status"] in {"request_error", "http_error", "check_failed"} and fallback["status"] == "available":
+            final["notes"] = " | ".join(
+                filter(None, [final["notes"], "primary_locale_unavailable_fallback_available"])
+            )
+        if (
+            final["status"] in {"request_error", "http_error", "check_failed"}
+            and fallback["status"] == "available"
+        ):
             final["status"] = "available"
             final["http_status"] = fallback["http_status"]
             final["url"] = fallback["url"]
@@ -347,9 +435,9 @@ def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str
 def audit_apps(
     apps: list[dict[str, str]],
     config: AuditConfig,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
 ) -> list[dict[str, Any]]:
-    results: list[Optional[dict[str, Any]]] = [None] * len(apps)
+    results: list[dict[str, Any] | None] = [None] * len(apps)
     with ThreadPoolExecutor(max_workers=max(1, config.max_workers)) as executor:
         futures = {
             executor.submit(fetch_app, app["app_name"], app["package_name"], config): index

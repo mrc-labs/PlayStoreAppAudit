@@ -4,19 +4,18 @@ import re
 import subprocess
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-import playstore_audit_core as core
-import playstore_audit_user_state as user_state
+import playstore_app_audit.services.audit_engine as core
+import playstore_app_audit.services.persistence as user_state
 
 DEFAULT_FALLBACK_COUNTRIES = "us, gb, de, fr, it, ch, es, ca, au, jp"
 DEFAULT_DEVICE_INFO_ENABLED = True
 
-_FALLBACK_COUNTRIES: tuple[str, ...] = tuple(
-    token.strip() for token in DEFAULT_FALLBACK_COUNTRIES.split(",")
-)
+_FALLBACK_COUNTRIES: tuple[str, ...] = tuple(token.strip() for token in DEFAULT_FALLBACK_COUNTRIES.split(","))
 
 
 def install_user_state_extensions() -> None:
@@ -86,7 +85,7 @@ def save_history_merged(rows: list[dict[str, Any]]) -> None:
     data = user_state.load_history()
     if not isinstance(data, dict):
         data = {}
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for row in rows:
         package_name = str(row.get("package_name") or "").strip()
         if not package_name:
@@ -102,6 +101,7 @@ def save_history_merged(rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
     import json
+
     temp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     temp.replace(path)
 
@@ -231,7 +231,9 @@ def install_core_version_support() -> None:
     if getattr(core, "_playstore_audit_v8_version_support", False):
         return
 
-    def scraper_request(package_name: str, language: str, country: str, config: core.AuditConfig) -> dict[str, Any]:
+    def scraper_request(
+        package_name: str, language: str, country: str, config: core.AuditConfig
+    ) -> dict[str, Any]:
         try:
             from google_play_scraper import app as play_app
         except ImportError as exc:
@@ -266,7 +268,9 @@ def install_core_version_support() -> None:
             "error": last_error or "Unknown Google Play scraper error",
         }
 
-    def fetch_locale(package_name: str, language: str, country: str, config: core.AuditConfig) -> dict[str, Any]:
+    def fetch_locale(
+        package_name: str, language: str, country: str, config: core.AuditConfig
+    ) -> dict[str, Any]:
         scraper = scraper_request(package_name, language, country, config)
         if scraper["ok"] and scraper["updated"]:
             return {
@@ -290,7 +294,9 @@ def install_core_version_support() -> None:
                 "title": title,
                 "updated": updated,
                 "version": scraper["version"],
-                "source": "google_play_scraper" if scraper["updated"] else ("html_fallback" if updated else ""),
+                "source": "google_play_scraper"
+                if scraper["updated"]
+                else ("html_fallback" if updated else ""),
                 "url": html.get("url") or f"{core.PLAY_URL}?id={package_name}&hl={language}&gl={country}",
                 "notes": "" if updated else "update_date_not_found",
             }
@@ -442,12 +448,12 @@ def fetch_app_v8(
 def audit_apps_v8(
     apps: list[dict[str, str]],
     config: core.AuditConfig,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    progress_callback: Callable[[int, int, str], None] | None = None,
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
 ) -> list[dict[str, Any]]:
     install_core_version_support()
-    results: list[Optional[dict[str, Any]]] = [None] * len(apps)
+    results: list[dict[str, Any] | None] = [None] * len(apps)
 
     def run_one(app: dict[str, str]) -> dict[str, Any] | None:
         if not _wait_until_running(pause_event, cancel_event):

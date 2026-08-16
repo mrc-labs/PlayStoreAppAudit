@@ -1,4 +1,4 @@
-from playstore_audit_core import _parse_updated_from_html
+from playstore_app_audit.services.audit_engine import _parse_updated_from_html
 
 
 def test_date_modified_is_accepted() -> None:

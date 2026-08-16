@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import playstore_audit_v9_2_features as v92
-
+import playstore_app_audit.services.presentation as v92
 
 APP_VERSION = "0.9.3"
 
