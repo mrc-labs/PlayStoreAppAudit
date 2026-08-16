@@ -17,9 +17,11 @@ All production application code belongs under `playstore_app_audit/`:
 - `playstore_app_audit/platform/`: Windows/macOS/Linux abstraction.
 - `playstore_app_audit/ui/`: Qt Widgets UI only.
 
-The version-suffixed top-level Qt and feature modules have been removed. The internal Qt layers now use descriptive package module names such as `base_window`, `audit_window`, `device_window`, `preferences_window` and `results_window`, with `main_window.py` as the public UI entry point.
+The version-suffixed top-level Qt and feature modules have been removed. The internal Qt layers use descriptive package module names such as `base_window`, `audit_window`, `device_window`, `preferences_window` and `results_window`, with `main_window.py` as the public UI entry point.
 
-Some inherited UI layers still use transitional aliases/monkey-patching to preserve proven behaviour. Improve these incrementally when it makes the code clearer, but do not recreate versioned wrappers or perform a large behavioural rewrite at the same time as a structural change.
+Cross-module runtime monkey-patching for audit selection, classification, cache bypass and ADB metadata enrichment has been removed. UI layers customise behaviour through explicit overridable hooks such as row classification, cache loading and metadata collection/enrichment. Keep future extension points explicit and local rather than mutating imported modules at runtime.
+
+The UI still uses a layered inheritance structure for proven behaviour. Reduce that structure incrementally only where composition or smaller focused widgets/controllers clearly improve maintainability. Do not combine a large behavioural rewrite with a structural migration.
 
 UI code must not implement Google Play parsing, cache persistence, ADB discovery/download logic, or OS detection directly.
 
@@ -70,7 +72,9 @@ Windows is the normal CI build and runs automatically for relevant pushes to `ma
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
-Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact.
+Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact. Validate the actual output artifact, not only the deployment command exit code, because deployment wrappers can occasionally leave an incomplete bundle after a compiler/plugin failure.
+
+Linux CI runners require the small Qt/X11/EGL runtime set installed by the manual build workflow. macOS packaging intentionally excludes the unused `platforminputcontexts`/Qt Virtual Keyboard plugin, which avoids pulling an unavailable QtVirtualKeyboardQml framework into the app bundle.
 
 Generated binaries, deployment directories and generated icon files must never be committed to source control. They belong in CI artifacts or local ignored paths.
 
@@ -83,6 +87,7 @@ Before considering a change complete:
 3. `ruff check playstore_app_audit tests main.py`
 4. Run the Qt offscreen smoke test used by CI.
 5. For packaging changes, build the Windows artifact and verify the executable starts.
+6. For macOS/Linux packaging changes, validate that the produced app/binary exists and has a plausible non-trivial size.
 
 Add regression tests for bugs before or together with the fix when practical.
 
