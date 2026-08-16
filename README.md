@@ -1,40 +1,95 @@
 # Play Store App Audit
 
-The project now has two parallel Windows GUI branches built on the same Play Store audit engine:
+Play Store App Audit is a Qt 6 / PySide6 desktop utility for auditing Android packages against public Google Play listings and, when an Android phone is connected through ADB, enriching the audit with device metadata.
 
-- `qt6` — PySide6 / Qt 6 interface, richer table model and native per-monitor HiDPI handling.
-- `customtkinter` — CustomTkinter interface, lighter executable and more direct continuation of the previous Tkinter architecture.
+CustomTkinter is retired. The application now has one Qt source tree intended for Windows, macOS and Linux.
 
-`main` is kept as the common/historical base while the two UI variants are compared.
+## Current architecture
 
-## Shared functional policy
+The canonical entry point is:
 
-Both comparison branches use the same intended behaviour:
+```bash
+python main.py
+```
 
-- Google Play `Country` is detected from Windows Region and remains editable.
-- Store language is hidden from the UI and fixed internally to `en`.
-- `Exclude system apps when loading / scanning` is visible directly in `App source`.
-- With ADB and the exclusion enabled, third-party packages are loaded with `adb shell pm list packages -3`.
-- With CSV/TSV and the exclusion enabled, system packages are removed during file load when they can be classified.
-- `Hide system apps` remains a result-table display filter when system apps were loaded.
-- Criticality colours, date thresholds, Store anomaly handling, filtering, export and ADB installation behaviour remain aligned.
+New application code lives under `playstore_app_audit/`:
 
-## Branch builds
+- `domain/` for typed domain concepts
+- `services/` for Store, audit, state/cache/history and report boundaries
+- `devices/` for ADB/device integration
+- `platform/` for Windows/macOS/Linux differences
+- `ui/` for the Qt Widgets UI
 
-### Qt6
+The old top-level version-suffixed Qt modules are currently a tested compatibility layer during the refactor. New product features must be added to the canonical package rather than creating more `*_vN.py`, `*_fixed.py` or `*_stable.py` files. See `docs/ARCHITECTURE.md` and `AGENTS.md`.
 
-Branch: `qt6`
+## App source
 
-Artifact: `PlayStoreAppAudit-Windows-Qt6`
+The main source card is compact and presents the two source choices on one horizontal row:
 
-Executable: `PlayStoreAppAudit-Qt6.exe`
+`CSV / TSV / TXT file [Choose file]  |  or  |  Android phone (ADB) [Scan phone]  |  Store country  |  Exclude system apps from source`
 
-### CustomTkinter
+A short source-status line appears underneath.
 
-Branch: `customtkinter`
+The Store country is detected from the desktop operating-system region and remains editable because Google Play availability can differ by market. Store language defaults to English and can be changed in Advanced settings.
 
-Artifact: `PlayStoreAppAudit-Windows-CustomTkinter`
+Audit concurrency is fixed internally to 16 workers.
 
-Executable: `PlayStoreAppAudit-CustomTkinter.exe`
+## Google Play availability and freshness
 
-Each branch contains its own GitHub Actions workflow configuration and local build/run scripts.
+The selected Store country is checked first. If a package is unavailable there, the configured multi-country fallback list is checked automatically. The default list is representative rather than globally exhaustive and can be changed in Advanced settings.
+
+Status classes:
+
+- Removed
+- Stale, older than 730 days
+- Aging, older than 365 and up to 730 days
+- Store anomaly
+- Other / unknown / error
+- Current, up to 365 days
+
+The HTML fallback accepts only update-specific date signals. `datePublished` is deliberately ignored because it can represent the original publication date rather than the latest update.
+
+## Device / ADB features
+
+ADB support is read-only. Depending on enabled options, an ADB audit can collect installed version, installer source, Target/Min SDK, install/update metadata, enabled state and declared sensitive permissions. Device summary, inventory history and device snapshots are also supported.
+
+If ADB is missing, the app can download the current official Android Platform-Tools archive for the host operating system from Google.
+
+## Results and exports
+
+The Basic table remains intentionally compact. Device, Technical and Custom view presets expose additional fields without cluttering the normal audit view.
+
+Status chips above the table can be multi-selected. Search and system-app visibility filters combine with those selections.
+
+Result exports support:
+
+- all results as CSV
+- visible results as CSV
+- all results as HTML
+- visible results as HTML
+
+The File menu can also export the current phone package inventory as CSV.
+
+## Runtime
+
+Release builds currently use Python 3.13 because the current stable Nuitka release still labels Python 3.14 support experimental. The source should remain compatible with newer stable CPython versions, and the release baseline should move to Python 3.14 once the stable deployment toolchain fully supports it.
+
+Qt uses the latest stable `PySide6-Essentials` satisfying `>=6.11`.
+
+The runtime intentionally avoids unnecessary Qt Addons and no longer requires `lxml`; BeautifulSoup's standard-library `html.parser` is used for the rare HTML fallback. Pillow is kept as a build/development dependency for generating native icon formats and is not a runtime dependency.
+
+## Quality
+
+```bash
+python -m compileall -q playstore_app_audit
+python -m pytest
+ruff check playstore_app_audit tests main.py
+```
+
+The Windows CI also opens the Qt UI using the offscreen platform plugin before packaging.
+
+## Builds
+
+Windows is the normal automatic GitHub Actions build. macOS and Linux builds are manual/on-demand only, but use the same source revision.
+
+Release packaging uses Qt's `pyside6-deploy` / Nuitka path. See `docs/BUILDING.md` for local and CI instructions and `docs/BRANCH_MIGRATION.md` for the planned move to a single canonical `main` branch.

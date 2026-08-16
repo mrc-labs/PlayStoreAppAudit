@@ -1,0 +1,134 @@
+name: Build macOS / Linux - Qt6 (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Desktop target to build"
+        required: true
+        default: "both"
+        type: choice
+        options:
+          - linux
+          - macos
+          - both
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    if: ${{ inputs.target == 'linux' || inputs.target == 'both' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Test shared source
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pytest
+          ruff check playstore_app_audit tests main.py
+          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('Linux Qt smoke test OK'); w.close()"
+      - name: Generate Linux icon
+        run: python -c "from app_icon import generate_app_icon; print(generate_app_icon('app_icon.png', 256))"
+      - name: Configure Qt deployment
+        run: |
+          pyside6-deploy main.py --name PlayStoreAppAudit --init
+          python - <<'PY'
+          from configparser import ConfigParser
+          from pathlib import Path
+          p=ConfigParser(); p.read('pysidedeploy.spec')
+          p['app']['exec_directory']=str(Path('dist').resolve())
+          p['app']['icon']=str(Path('app_icon.png').resolve())
+          p['nuitka']['mode']='onefile'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
+          with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
+          PY
+      - name: Build Linux binary
+        run: |
+          mkdir -p dist artifact
+          pyside6-deploy -c pysidedeploy.spec -f
+          BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
+          test -n "$BIN"
+          cp "$BIN" artifact/PlayStoreAppAudit-linux.bin
+          chmod +x artifact/PlayStoreAppAudit-linux.bin
+          du -h artifact/PlayStoreAppAudit-linux.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlayStoreAppAudit-Linux
+          path: artifact/PlayStoreAppAudit-linux.bin
+          if-no-files-found: error
+          retention-days: 30
+
+  build-macos:
+    if: ${{ inputs.target == 'macos' || inputs.target == 'both' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Test shared source
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pytest
+          ruff check playstore_app_audit tests main.py
+          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('macOS Qt smoke test OK'); w.close()"
+      - name: Generate macOS icon
+        run: |
+          mkdir -p app_icon.iconset
+          python - <<'PY'
+          from app_icon import generate_app_icon
+          sizes=(16,32,128,256,512)
+          for size in sizes:
+              generate_app_icon(f'app_icon.iconset/icon_{size}x{size}.png', size)
+              generate_app_icon(f'app_icon.iconset/icon_{size}x{size}@2x.png', size*2)
+          PY
+          iconutil -c icns app_icon.iconset -o app_icon.icns
+      - name: Configure Qt deployment
+        run: |
+          pyside6-deploy main.py --name PlayStoreAppAudit --init
+          python - <<'PY'
+          from configparser import ConfigParser
+          from pathlib import Path
+          p=ConfigParser(); p.read('pysidedeploy.spec')
+          p['app']['exec_directory']=str(Path('dist').resolve())
+          p['app']['icon']=str(Path('app_icon.icns').resolve())
+          p['nuitka']['mode']='standalone'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
+          with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
+          PY
+      - name: Build macOS app bundle
+        run: |
+          mkdir -p dist artifact
+          pyside6-deploy -c pysidedeploy.spec -f
+          APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
+          test -n "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
+          du -h artifact/PlayStoreAppAudit-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PlayStoreAppAudit-macOS
+          path: artifact/PlayStoreAppAudit-macOS.zip
+          if-no-files-found: error
+          retention-days: 30

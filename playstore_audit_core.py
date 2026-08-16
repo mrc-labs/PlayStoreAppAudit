@@ -39,8 +39,8 @@ _thread_local = threading.local()
 
 @dataclass(frozen=True)
 class AuditConfig:
-    country: str = "it"
-    language: str = "it"
+    country: str = "us"
+    language: str = "en"
     fallback_country: str = "us"
     fallback_language: str = "en"
     max_workers: int = 16
@@ -69,17 +69,17 @@ def _detect_delimiter(sample: str) -> str:
 def load_apps(input_path: str | Path) -> list[dict[str, str]]:
     path = Path(input_path)
     if not path.exists():
-        raise FileNotFoundError(f"File non trovato: {path}")
+        raise FileNotFoundError(f"File not found: {path}")
 
     raw = path.read_text(encoding="utf-8-sig", errors="replace")
     if not raw.strip():
-        raise ValueError("Il file di input è vuoto.")
+        raise ValueError("The input file is empty.")
 
     delimiter = _detect_delimiter(raw[:5000])
     parsed = list(csv.reader(raw.splitlines(), delimiter=delimiter))
     parsed = [[cell.strip() for cell in row] for row in parsed if any(cell.strip() for cell in row)]
     if not parsed:
-        raise ValueError("Il file non contiene righe utilizzabili.")
+        raise ValueError("The file does not contain usable rows.")
 
     first = parsed[0]
     normalised_headers = [_normalise_header(v) for v in first]
@@ -114,8 +114,8 @@ def load_apps(input_path: str | Path) -> list[dict[str, str]]:
         best_score, package_index = max(scores)
         if best_score == 0:
             raise ValueError(
-                "Non trovo una colonna con package Android. "
-                "Usa una colonna chiamata package_name oppure un package per riga."
+                "No Android package column was found. "
+                "Use a column named package_name or one package per row."
             )
 
     if name_index is None:
@@ -145,7 +145,7 @@ def load_apps(input_path: str | Path) -> list[dict[str, str]]:
         apps.append({"app_name": app_name or package_name, "package_name": package_name})
 
     if not apps:
-        raise ValueError("Nessun package Android valido trovato nel file.")
+        raise ValueError("No valid Android packages were found in the file.")
 
     return apps
 
@@ -188,7 +188,12 @@ def _get_session(language: str) -> requests.Session:
 
 
 def _parse_updated_from_html(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
+    """Extract only update-specific dates from a Play Store HTML response.
+
+    `datePublished` is intentionally not accepted: it can be the original app
+    publication date and therefore must never be used as the latest-update date.
+    """
+    soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text("\n", strip=True)
     visible_patterns = [
         r"Aggiornata il\s+([0-9]{1,2}\s+[A-Za-zÀ-ÿ]+\s+[0-9]{4})",
@@ -203,7 +208,6 @@ def _parse_updated_from_html(html: str) -> str:
     embedded_patterns = [
         r'"dateModified"\s*:\s*"([^"]+)"',
         r'"updated"\s*:\s*"([^"]+)"',
-        r'"datePublished"\s*:\s*"([^"]+)"',
     ]
     for pattern in embedded_patterns:
         match = re.search(pattern, html, re.IGNORECASE)
@@ -216,7 +220,7 @@ def _scraper_request(package_name: str, language: str, country: str, config: Aud
     try:
         from google_play_scraper import app as play_app
     except ImportError as exc:
-        return {"ok": False, "title": "", "updated": "", "error": f"google_play_scraper non installato: {exc}"}
+        return {"ok": False, "title": "", "updated": "", "error": f"google_play_scraper is not installed: {exc}"}
 
     last_error = ""
     for attempt in range(config.max_retries + 1):
@@ -232,7 +236,7 @@ def _scraper_request(package_name: str, language: str, country: str, config: Aud
             last_error = str(exc)[:300]
             if attempt < config.max_retries:
                 time.sleep(config.retry_sleep_base * (attempt + 1))
-    return {"ok": False, "title": "", "updated": "", "error": last_error or "Errore sconosciuto dal Play Store scraper"}
+    return {"ok": False, "title": "", "updated": "", "error": last_error or "Unknown Google Play scraper error"}
 
 
 def _html_request(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
@@ -253,7 +257,7 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             else:
                 return {"ok": False, "status": "request_error", "http_status": "", "title": "", "updated": "", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "error": last_error}
     else:
-        return {"ok": False, "status": "request_error", "http_status": "", "title": "", "updated": "", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "error": last_error or "Richiesta non completata"}
+        return {"ok": False, "status": "request_error", "http_status": "", "title": "", "updated": "", "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}", "error": last_error or "Request not completed"}
 
     html = response.text
     store_url = response.url
@@ -269,9 +273,9 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
         "We're sorry, the requested URL was not found",
     )
     if any(signal in html for signal in unavailable_signals):
-        return {"ok": False, "status": "not_found_or_unavailable", "http_status": 200, "title": "", "updated": "", "url": store_url, "error": "La pagina indica che il listing non è disponibile."}
+        return {"ok": False, "status": "not_found_or_unavailable", "http_status": 200, "title": "", "updated": "", "url": store_url, "error": "The page indicates that the listing is unavailable."}
 
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "html.parser")
     title = ""
     og_title = soup.find("meta", property="og:title")
     if og_title and og_title.get("content"):
@@ -340,10 +344,17 @@ def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str
     }
 
 
-def audit_apps(apps: list[dict[str, str]], config: AuditConfig, progress_callback: Optional[Callable[[int, int, str], None]] = None) -> list[dict[str, Any]]:
+def audit_apps(
+    apps: list[dict[str, str]],
+    config: AuditConfig,
+    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+) -> list[dict[str, Any]]:
     results: list[Optional[dict[str, Any]]] = [None] * len(apps)
     with ThreadPoolExecutor(max_workers=max(1, config.max_workers)) as executor:
-        futures = {executor.submit(fetch_app, app["app_name"], app["package_name"], config): index for index, app in enumerate(apps)}
+        futures = {
+            executor.submit(fetch_app, app["app_name"], app["package_name"], config): index
+            for index, app in enumerate(apps)
+        }
         completed = 0
         for future in as_completed(futures):
             index = futures[future]
@@ -351,32 +362,37 @@ def audit_apps(apps: list[dict[str, str]], config: AuditConfig, progress_callbac
             try:
                 results[index] = future.result()
             except Exception as exc:
-                results[index] = {"app_name": app["app_name"], "package_name": app["package_name"], "play_status": "unexpected_error", "play_http_status": "", "play_title": "", "play_last_update": "", "updated_source": "", "store_url": f"{PLAY_URL}?id={app['package_name']}", "notes": str(exc)[:500]}
+                results[index] = {
+                    "app_name": app["app_name"],
+                    "package_name": app["package_name"],
+                    "play_status": "unexpected_error",
+                    "play_http_status": "",
+                    "play_title": "",
+                    "play_last_update": "",
+                    "updated_source": "",
+                    "store_url": f"{PLAY_URL}?id={app['package_name']}",
+                    "notes": str(exc)[:500],
+                }
             completed += 1
             if progress_callback:
                 progress_callback(completed, len(apps), app["package_name"])
-    return [row for row in results if row is not None]
+
+    return [result for result in results if result is not None]
 
 
-OUTPUT_FIELDS = ["app_name", "package_name", "play_status", "play_http_status", "play_title", "play_last_update", "updated_source", "store_url", "notes"]
+def iter_packages(apps: Iterable[dict[str, str]]) -> Iterable[str]:
+    for app in apps:
+        yield app["package_name"]
 
 
-def write_results(rows: Iterable[dict[str, Any]], output_path: str | Path, problems_path: str | Path | None = None) -> tuple[Path, Optional[Path]]:
-    output = Path(output_path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    rows_list = list(rows)
-    with output.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows_list)
-
-    problems_output: Optional[Path] = None
-    if problems_path:
-        problems_output = Path(problems_path)
-        problems_output.parent.mkdir(parents=True, exist_ok=True)
-        problematic = [row for row in rows_list if row["play_status"] != "available" or not row["play_last_update"]]
-        with problems_output.open("w", newline="", encoding="utf-8-sig") as handle:
-            writer = csv.DictWriter(handle, fieldnames=OUTPUT_FIELDS)
-            writer.writeheader()
-            writer.writerows(problematic)
-    return output, problems_output
+OUTPUT_FIELDS = [
+    "app_name",
+    "package_name",
+    "play_status",
+    "play_http_status",
+    "play_title",
+    "play_last_update",
+    "updated_source",
+    "store_url",
+    "notes",
+]

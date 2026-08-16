@@ -1,0 +1,212 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QVBoxLayout,
+)
+
+from app_icon import ensure_runtime_icon
+import playstore_audit_qt_v9_2 as v92ui
+import playstore_audit_qt_v9_2_stable as stable
+import playstore_audit_v9_3_features as v93
+
+
+# Surface the new product version through the existing v9/v9.2 feature objects.
+v92ui.v92.APP_VERSION = v93.APP_VERSION
+v92ui.v9.features.APP_VERSION = v93.APP_VERSION
+
+
+def _find_layout_containing(layout, target_widget):
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        if item.widget() is target_widget:
+            return layout
+        child = item.layout()
+        if child is not None:
+            found = _find_layout_containing(child, target_widget)
+            if found is not None:
+                return found
+    return None
+
+
+def _clear_layout_keep_widgets(layout, keep: set[object]) -> None:
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget()
+        child = item.layout()
+        if child is not None:
+            _clear_layout_keep_widgets(child, keep)
+        if widget is not None and widget not in keep:
+            widget.deleteLater()
+
+
+class PlayStoreAuditQtV93(stable.PlayStoreAuditQtV92Stable):
+    def __init__(self) -> None:
+        super().__init__()
+        self._rebuild_source_area()
+        self._setup_export_button_menu()
+        self._rebuild_file_menu()
+        self._update_summary()
+
+    # ---------- Source UX ----------
+    def _choice_row(self, text: str, button) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(12)
+        label = QLabel(text)
+        font = QFont(label.font())
+        font.setBold(True)
+        label.setFont(font)
+        row.addWidget(label)
+        row.addStretch(1)
+        button.setFixedWidth(132)
+        row.addWidget(button)
+        return row
+
+    def _rebuild_source_area(self) -> None:
+        source_card = self.path_edit.parentWidget()
+        source_layout = source_card.layout() if source_card is not None else None
+        if source_layout is None:
+            return
+        source_line = _find_layout_containing(source_layout, self.path_edit)
+        if source_line is None:
+            return
+
+        keep = {
+            self.path_edit,
+            self.choose_button,
+            self.scan_button,
+            self.country_edit,
+            self.exclude_system_source_check,
+        }
+        _clear_layout_keep_widgets(source_line, keep)
+        self.path_edit.hide()
+
+        self.choose_button.setText("Choose file")
+        self.scan_button.setText("Scan phone")
+
+        choices = QVBoxLayout()
+        choices.setContentsMargins(0, 0, 0, 0)
+        choices.setSpacing(5)
+        choices.addLayout(self._choice_row("Choose a CSV / TSV / TXT file", self.choose_button))
+
+        or_label = QLabel("or")
+        or_label.setObjectName("Muted")
+        or_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        choices.addWidget(or_label)
+
+        choices.addLayout(self._choice_row("Scan your Android phone with ADB", self.scan_button))
+        source_line.addLayout(choices, 1)
+
+        options = QHBoxLayout()
+        options.setContentsMargins(0, 2, 0, 0)
+        options.setSpacing(8)
+        country_label = QLabel("Store country")
+        country_label.setToolTip("Google Play market, detected from Windows Region.")
+        options.addWidget(country_label)
+        self.country_edit.setFixedWidth(58)
+        options.addWidget(self.country_edit)
+        options.addSpacing(8)
+        options.addWidget(self.exclude_system_source_check)
+        options.addStretch(1)
+
+        # Keep the compact status/source label as the last line in the card.
+        source_layout.insertLayout(max(0, source_layout.count() - 1), options)
+
+    def _load_input_file(self, path: str) -> None:
+        super()._load_input_file(path)
+        if self.source_mode == "file":
+            text = self.source_label.text()
+            if text.startswith("File selected: "):
+                text = text[len("File selected: "):]
+            self.source_label.setText(f"{Path(path).name}  •  {text}")
+            self.source_label.setToolTip(path)
+
+    # ---------- Export UX ----------
+    def _setup_export_button_menu(self) -> None:
+        try:
+            self.export_button.clicked.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        menu = QMenu(self.export_button)
+        menu.addAction("Export all results as CSV…", self._export_results)
+        menu.addAction("Export visible results as CSV…", self._export_visible_results)
+        menu.addSeparator()
+        menu.addAction("Export all results as HTML…", self._export_html_report)
+        menu.addAction("Export visible results as HTML…", self._export_visible_html_report)
+        self.export_button.setText("Export results")
+        self.export_button.setMenu(menu)
+        self._export_results_menu = menu
+
+    def _export_visible_html_report(self) -> None:
+        self._export_html_rows(self._visible_rows(), "playstore_audit_visible_report.html", "Export visible results as HTML")
+
+    def _export_html_rows(self, rows: list[dict[str, Any]], default_name: str, title: str) -> None:
+        if not rows:
+            QMessageBox.information(self, "Nothing to export", "There are no results to export.")
+            return
+        selected, _ = QFileDialog.getSaveFileName(self, title, default_name, "HTML (*.html)")
+        if not selected:
+            return
+        if not selected.lower().endswith(".html"):
+            selected += ".html"
+        try:
+            formatted = v92ui.v92.rows_for_output([dict(row) for row in rows])
+            v92ui.v9.features.write_html_report(selected, formatted, self._device_summary)
+            QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Export failed", str(exc))
+
+    def _rebuild_file_menu(self) -> None:
+        if not hasattr(self, "file_menu"):
+            return
+        self.file_menu.clear()
+        self.file_menu.addAction("Choose app list…", self._choose_input)
+        self.recent_menu = self.file_menu.addMenu("Recent sources")
+        self._recent_menu = self.recent_menu
+        self._populate_recent_menu()
+        self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
+        self.file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
+        self.file_menu.addSeparator()
+        self.file_menu.addAction("Export all results as CSV…", self._export_results)
+        self.file_menu.addAction("Export visible results as CSV…", self._export_visible_results)
+        self.file_menu.addAction("Export all results as HTML…", self._export_html_report)
+        self.file_menu.addAction("Export visible results as HTML…", self._export_visible_html_report)
+        self.file_menu.addSeparator()
+        self.file_menu.addAction("Exit", self.close)
+
+    # ---------- Concise summary ----------
+    def _update_summary(self) -> None:
+        super()._update_summary()
+        if not hasattr(self, "summary_label"):
+            return
+        visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
+        self.summary_label.setText(
+            v93.concise_summary(list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None))
+        )
+
+
+def main() -> int:
+    app = QApplication(sys.argv)
+    app.setApplicationName(v92ui.v9.v8.v7.qt_base.APP_NAME)
+    app.setOrganizationName("MRC")
+    app.setStyle("Fusion")
+    app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
+    window = PlayStoreAuditQtV93()
+    window.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

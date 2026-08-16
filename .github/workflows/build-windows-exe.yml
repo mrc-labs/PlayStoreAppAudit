@@ -1,12 +1,14 @@
-name: Build Windows EXE
+name: Build Windows - Qt6
 
 on:
   workflow_dispatch:
   push:
+    branches: [qt6]
     paths:
-      - "playstore_audit_core.py"
-      - "playstore_audit_qt.py"
-      - "requirements.txt"
+      - "**/*.py"
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - "AGENTS.md"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
@@ -14,7 +16,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build PlayStoreAppAudit Qt.exe
+    name: Test and build PlayStoreAppAudit.exe
     runs-on: windows-latest
 
     steps:
@@ -24,47 +26,63 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           cache: "pip"
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Install runtime and test dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          pip install -r requirements-dev.txt
 
-      - name: Validate Python source and Qt UI
+      - name: Verify current runtime versions
         shell: pwsh
         run: |
-          python -m py_compile playstore_audit_core.py
-          python -m py_compile playstore_audit_qt.py
-          $env:QT_QPA_PLATFORM="offscreen"
-          python -c "from PySide6.QtWidgets import QApplication; import playstore_audit_qt; app=QApplication([]); w=playstore_audit_qt.PlayStoreAuditQt(); print('PySide6 Qt window smoke test OK'); w.close()"
+          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info >= (3,13); assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6,11)"
 
-      - name: Build Windows EXE
+      - name: Static checks and regression tests
         shell: pwsh
         run: |
-          pyinstaller `
-            --noconfirm `
-            --clean `
-            --onefile `
-            --windowed `
-            --name PlayStoreAppAudit `
-            --collect-all google_play_scraper `
-            --collect-all bs4 `
-            --collect-all lxml `
-            playstore_audit_qt.py
+          python -m compileall -q playstore_app_audit
+          python -m pytest
+          ruff check playstore_app_audit tests main.py
 
-      - name: Show build output
+      - name: Qt offscreen smoke test
         shell: pwsh
-        run: Get-ChildItem -Recurse dist
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; old='Audit completed • 10 cached • 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt package smoke test OK'); w.close()"
 
-      - name: Upload EXE
+      - name: Generate Windows icon
+        shell: pwsh
+        run: python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
+
+      - name: Initialise Qt deployment configuration
+        shell: pwsh
+        run: |
+          pyside6-deploy main.py --name PlayStoreAppAudit --init
+          python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --windows-console-mode=disable --nofollow-import-to=PIL --assume-yes-for-downloads'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close()"
+
+      - name: Build optimized Windows executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          pyside6-deploy -c pysidedeploy.spec -f
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe | Where-Object { $_.Name -match 'PlayStoreAppAudit|main' } | Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $exe) { throw 'No deployed executable found.' }
+          Copy-Item $exe.FullName artifact/PlayStoreAppAudit.exe
+          $sizeMB = [math]::Round((Get-Item artifact/PlayStoreAppAudit.exe).Length / 1MB, 2)
+          Write-Host "Final executable size: $sizeMB MB"
+
+      - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-Windows-Qt6
-          path: dist/PlayStoreAppAudit.exe
+          name: PlayStoreAppAudit-Windows
+          path: artifact/PlayStoreAppAudit.exe
           if-no-files-found: error
           retention-days: 30
