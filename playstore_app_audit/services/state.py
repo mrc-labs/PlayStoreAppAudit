@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -70,7 +70,11 @@ def load_settings() -> dict[str, Any]:
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     cols = settings.get("technical_columns", [])
-    settings["technical_columns"] = [c for c in cols if c in TECHNICAL_COLUMNS] if isinstance(cols, list) else []
+    settings["technical_columns"] = (
+        [c for c in cols if c in TECHNICAL_COLUMNS]
+        if isinstance(cols, list)
+        else []
+    )
     if not isinstance(settings.get("ctk_column_widths"), dict):
         settings["ctk_column_widths"] = {}
     return settings
@@ -108,7 +112,7 @@ def load_fresh_cache(
     data = _read_json(cache_path(), {})
     if not isinstance(data, dict):
         return {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     fresh: dict[str, dict[str, Any]] = {}
     for app in apps:
         package_name = app.get("package_name", "")
@@ -123,7 +127,7 @@ def load_fresh_cache(
             continue
         try:
             fetched = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
-            age_hours = (now - fetched.astimezone(timezone.utc)).total_seconds() / 3600
+            age_hours = (now - fetched.astimezone(UTC)).total_seconds() / 3600
         except Exception:
             continue
         if age_hours < 0 or age_hours > ttl_hours:
@@ -140,7 +144,7 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
     data = _read_json(cache_path(), {})
     if not isinstance(data, dict):
         data = {}
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for row in rows:
         if row.get("play_status") != "available" or not row.get("play_last_update"):
             continue
@@ -163,11 +167,11 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
         data[_cache_key(country, language, package_name)] = {"fetched_at": now, "row": stored}
 
     cutoff_seconds = 45 * 24 * 3600
-    current_time = datetime.now(timezone.utc)
+    current_time = datetime.now(UTC)
     for key in list(data):
         try:
             fetched = datetime.fromisoformat(str(data[key]["fetched_at"]).replace("Z", "+00:00"))
-            if (current_time - fetched.astimezone(timezone.utc)).total_seconds() > cutoff_seconds:
+            if (current_time - fetched.astimezone(UTC)).total_seconds() > cutoff_seconds:
                 data.pop(key, None)
         except Exception:
             data.pop(key, None)
@@ -201,7 +205,7 @@ def compare_with_history(row: dict[str, Any], history: dict[str, dict[str, Any]]
 
 
 def save_history(rows: list[dict[str, Any]]) -> None:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     data: dict[str, dict[str, Any]] = {}
     for row in rows:
         package_name = str(row.get("package_name") or "").strip()
