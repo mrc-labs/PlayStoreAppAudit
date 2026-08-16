@@ -1,4 +1,7 @@
 import subprocess
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -56,8 +59,45 @@ def test_macos_arm64_managed_adb_is_supported(monkeypatch: pytest.MonkeyPatch) -
     assert runtime.managed_platform_tools_download_supported()
 
 
+def test_macos_x86_64_managed_adb_is_supported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(runtime.platform, "machine", lambda: "x86_64")
+
+    assert runtime.platform_key() == "macos"
+    assert runtime.machine_key() == "x64"
+    assert runtime.managed_platform_tools_download_supported()
+
+
+@pytest.mark.parametrize(
+    ("reported", "normalised"),
+    [
+        ("x86_64", "x64"),
+        ("AMD64", "x64"),
+        ("aarch64", "arm64"),
+        ("ARM64", "arm64"),
+    ],
+)
+def test_machine_architecture_aliases_are_normalised(
+    monkeypatch: pytest.MonkeyPatch, reported: str, normalised: str
+) -> None:
+    monkeypatch.setattr(runtime.platform, "machine", lambda: reported)
+
+    assert runtime.machine_key() == normalised
+
+
+@pytest.mark.parametrize("reported", ["ppc64le", "riscv64", ""])
+def test_unexpected_linux_architecture_requires_native_adb(
+    monkeypatch: pytest.MonkeyPatch, reported: str
+) -> None:
+    monkeypatch.setattr(runtime.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(runtime.platform, "machine", lambda: reported)
+
+    assert not runtime.managed_platform_tools_download_supported()
+    assert "native ADB" in runtime.managed_platform_tools_unavailable_message()
+
+
 def test_find_adb_skips_binary_that_cannot_run(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     broken = tmp_path / "broken-adb"
     native = tmp_path / "native-adb"
@@ -73,3 +113,92 @@ def test_find_adb_skips_binary_that_cannot_run(
 
     monkeypatch.setattr(adb_service, "run_adb", fake_run)
     assert adb_service.find_adb() == str(native)
+
+
+def test_find_adb_skips_candidate_that_times_out(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    timed_out = tmp_path / "timed-out-adb"
+    native = tmp_path / "native-adb"
+    timed_out.touch()
+    native.touch()
+    monkeypatch.setattr(adb_service, "adb_candidates", lambda: [timed_out, native])
+
+    def fake_run(adb: str, *args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+        if adb == str(timed_out):
+            raise subprocess.TimeoutExpired([adb, *args], timeout)
+        return subprocess.CompletedProcess([adb, *args], 0, "Android Debug Bridge\n", "")
+
+    monkeypatch.setattr(adb_service, "run_adb", fake_run)
+
+    assert adb_service.find_adb() == str(native)
+
+
+def test_find_adb_rejects_nonzero_candidate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    failed = tmp_path / "failed-adb"
+    failed.touch()
+    monkeypatch.setattr(adb_service, "adb_candidates", lambda: [failed])
+
+    def fake_run(adb: str, *args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+        raise subprocess.CalledProcessError(1, [adb, *args])
+
+    monkeypatch.setattr(adb_service, "run_adb", fake_run)
+
+    assert adb_service.find_adb() is None
+
+
+def test_find_adb_returns_none_when_all_candidates_are_invalid(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    unusable = [tmp_path / "wrong-arch-adb", tmp_path / "broken-adb"]
+    for candidate in unusable:
+        candidate.touch()
+    monkeypatch.setattr(adb_service, "adb_candidates", lambda: unusable)
+
+    def fake_run(adb: str, *args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+        if adb == str(unusable[0]):
+            raise OSError("Exec format error")
+        raise subprocess.CalledProcessError(1, [adb, *args])
+
+    monkeypatch.setattr(adb_service, "run_adb", fake_run)
+
+    assert adb_service.find_adb() is None
+
+
+def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from playstore_app_audit.ui import main_window
+
+    discovery_ran = False
+    thread_started = False
+
+    def discover() -> None:
+        nonlocal discovery_ran
+        discovery_ran = True
+
+    class DeferredThread:
+        def __init__(self, *, target: Any, daemon: bool) -> None:
+            assert target is discover
+            assert daemon
+
+        def start(self) -> None:
+            nonlocal thread_started
+            thread_started = True
+
+    progress = SimpleNamespace(setRange=lambda _start, _end: None)
+    status = SimpleNamespace(setText=lambda _text: None)
+    window = SimpleNamespace(
+        _set_busy=lambda _busy: None,
+        progress=progress,
+        status_label=status,
+        _find_adb_worker=discover,
+    )
+    monkeypatch.setattr(main_window.threading, "Thread", DeferredThread)
+
+    main_window.MainWindow._scan_phone(window)  # type: ignore[arg-type]
+
+    assert thread_started
+    assert not discovery_ran

@@ -7,6 +7,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from playstore_app_audit import __version__
 from playstore_app_audit.platform.runtime import (
     adb_candidates,
     adb_executable_name,
@@ -66,7 +67,7 @@ def install_platform_tools() -> tuple[str, str]:
         archive_path = temp_root / "platform-tools.zip"
         request = urllib.request.Request(
             platform_tools_url(),
-            headers={"User-Agent": "PlayStoreAppAudit/0.12"},
+            headers={"User-Agent": f"PlayStoreAppAudit/{__version__}"},
         )
         with urllib.request.urlopen(request, timeout=90) as response, archive_path.open("wb") as output:
             shutil.copyfileobj(response, output)

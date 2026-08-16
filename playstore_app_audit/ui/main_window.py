@@ -38,6 +38,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._rebuild_source_area_v10()
 
     # ---------- UX ----------
@@ -134,41 +135,57 @@ class MainWindow(results_ui.ResultsWindow):
         return find_adb()
 
     def _scan_phone(self) -> None:
-        adb = self._find_adb()
-        if not adb:
-            if not runtime.managed_platform_tools_download_supported():
-                QMessageBox.information(
-                    self,
-                    "Native ADB required",
-                    runtime.managed_platform_tools_unavailable_message(),
-                )
-                return
+        self._set_busy(True)
+        self.progress.setRange(0, 0)
+        self.status_label.setText("Looking for ADB…")
+        threading.Thread(target=self._find_adb_worker, daemon=True).start()
 
-            choice = QMessageBox.question(
-                self,
-                "Install Android Platform-Tools?",
-                f"ADB is not installed on this {runtime.platform_label()} computer.\n\n"
-                "Play Store App Audit can download the latest Android Platform-Tools "
-                "directly from Google's official download endpoint for this operating system.\n\n"
-                "Continue?\n\n"
-                "By continuing, you confirm that you have reviewed and accept the Android SDK terms.",
-                QMessageBox.StandardButton.Yes
-                | QMessageBox.StandardButton.No
-                | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Yes,
-            )
-            if choice == QMessageBox.StandardButton.Cancel:
-                return
-            if choice == QMessageBox.StandardButton.No:
-                QDesktopServices.openUrl(QUrl(runtime.PLATFORM_TOOLS_PAGE))
-                return
-            self.pending_scan_after_install = True
-            self._set_busy(True)
-            self.progress.setRange(0, 0)
-            self.status_label.setText("Downloading Android Platform-Tools from Google…")
-            threading.Thread(target=self._install_platform_tools_worker, daemon=True).start()
+    def _find_adb_worker(self) -> None:
+        try:
+            self.signals.adb_discovery_done.emit(self._find_adb())
+        except Exception as exc:
+            self.signals.failed.emit(f"ADB discovery failed:\n\n{exc}")
+
+    def _on_adb_discovery_done(self, adb: str | None) -> None:
+        if adb:
+            self._start_adb_scan(adb)
             return
-        self._start_adb_scan(adb)
+
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
+        self.status_label.setText("ADB not found")
+        self._set_busy(False)
+        if not runtime.managed_platform_tools_download_supported():
+            QMessageBox.information(
+                self,
+                "Native ADB required",
+                runtime.managed_platform_tools_unavailable_message(),
+            )
+            return
+
+        choice = QMessageBox.question(
+            self,
+            "Install Android Platform-Tools?",
+            f"ADB is not installed on this {runtime.platform_label()} computer.\n\n"
+            "Play Store App Audit can download the latest Android Platform-Tools "
+            "directly from Google's official download endpoint for this operating system.\n\n"
+            "Continue?\n\n"
+            "By continuing, you confirm that you have reviewed and accept the Android SDK terms.",
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Yes,
+        )
+        if choice == QMessageBox.StandardButton.Cancel:
+            return
+        if choice == QMessageBox.StandardButton.No:
+            QDesktopServices.openUrl(QUrl(runtime.PLATFORM_TOOLS_PAGE))
+            return
+        self.pending_scan_after_install = True
+        self._set_busy(True)
+        self.progress.setRange(0, 0)
+        self.status_label.setText("Downloading Android Platform-Tools from Google…")
+        threading.Thread(target=self._install_platform_tools_worker, daemon=True).start()
 
     def _install_platform_tools_worker(self) -> None:
         try:

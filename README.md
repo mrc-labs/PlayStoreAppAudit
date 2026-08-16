@@ -53,7 +53,14 @@ The HTML fallback accepts only update-specific date signals. `datePublished` is 
 
 ADB support is read-only. Depending on enabled options, an ADB audit can collect installed version, installer source, Target/Min SDK, install/update metadata, enabled state and declared sensitive permissions. Device summary, inventory history and device snapshots are also supported.
 
-If ADB is missing, the app can download the current official Android Platform-Tools archive for the host operating system from Google.
+If ADB is missing, managed Platform-Tools support depends on the desktop:
+
+- Windows: managed Platform-Tools are available where supported by the application.
+- macOS: managed Platform-Tools are available where supported by the application.
+- Linux x64: Google's managed Linux Platform-Tools are supported.
+- Linux ARM64: Google does not provide the managed Linux archive used by this application, so use a native ADB from the system, distribution or an ARM64-compatible Android SDK.
+
+ADB may also be installed separately and placed on `PATH`, or supplied through an Android SDK referenced by `ANDROID_SDK_ROOT` / `ANDROID_HOME`.
 
 ## Results and exports
 
