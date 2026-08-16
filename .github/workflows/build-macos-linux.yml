@@ -29,6 +29,10 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+      - name: Install Qt Linux system runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -37,6 +41,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
+          python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
           python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('Linux Qt smoke test OK'); w.close()"
@@ -55,15 +60,16 @@ jobs:
           p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build Linux binary
+      - name: Build and validate Linux binary
         run: |
           mkdir -p dist artifact
           pyside6-deploy -c pysidedeploy.spec -f
           BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
           test -n "$BIN"
+          test "$(stat -c%s "$BIN")" -gt 1048576
           cp "$BIN" artifact/PlayStoreAppAudit-linux.bin
           chmod +x artifact/PlayStoreAppAudit-linux.bin
-          du -h artifact/PlayStoreAppAudit-linux.bin
+          ls -lh artifact/PlayStoreAppAudit-linux.bin
       - uses: actions/upload-artifact@v4
         with:
           name: PlayStoreAppAudit-Linux
@@ -91,6 +97,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
+          python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
           python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('macOS Qt smoke test OK'); w.close()"
@@ -99,8 +106,7 @@ jobs:
           mkdir -p app_icon.iconset
           python - <<'PY'
           from app_icon import generate_app_icon
-          sizes=(16,32,128,256,512)
-          for size in sizes:
+          for size in (16, 32, 128, 256, 512):
               generate_app_icon(f'app_icon.iconset/icon_{size}x{size}.png', size)
               generate_app_icon(f'app_icon.iconset/icon_{size}x{size}@2x.png', size*2)
           PY
@@ -115,17 +121,21 @@ jobs:
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build macOS app bundle
+      - name: Build and validate macOS app bundle
         run: |
           mkdir -p dist artifact
           pyside6-deploy -c pysidedeploy.spec -f
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
+          EXEC=$(find "$APP/Contents/MacOS" -type f -perm +111 | head -n 1)
+          test -n "$EXEC"
+          test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
           ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
-          du -h artifact/PlayStoreAppAudit-macOS.zip
+          test "$(stat -f%z artifact/PlayStoreAppAudit-macOS.zip)" -gt 1048576
+          ls -lh artifact/PlayStoreAppAudit-macOS.zip
       - uses: actions/upload-artifact@v4
         with:
           name: PlayStoreAppAudit-macOS
