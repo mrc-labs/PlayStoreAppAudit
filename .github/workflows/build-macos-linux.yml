@@ -299,12 +299,20 @@ jobs:
           echo "Mach-O architecture: $MACHO_ARCHES"
           test "$MACHO_ARCHES" = "${{ matrix.expected_macho_arch }}"
           BUILD_INFO=$(xcrun vtool -show-build "$EXEC"); echo "$BUILD_INFO"
-          MINOS=$(echo "$BUILD_INFO" | awk '/minos/{print $2; exit}')
+          MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "minos" { print $2; exit }')
+          MINOS_METADATA="LC_BUILD_VERSION/minos"
+          if [ -z "$MINOS" ]; then
+            MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '
+              $1 == "cmd" { legacy = ($2 == "LC_VERSION_MIN_MACOSX"); next }
+              legacy && $1 == "version" { print $2; exit }
+            ')
+            MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
+          fi
           test -n "$MINOS"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
           BUNDLE_BUILD_INFO="$APP/Contents/Resources/BUILD-INFO.txt"
           mkdir -p "$(dirname "$BUNDLE_BUILD_INFO")"
-          PACKAGE_MINIMUM_MACOS="$MINOS" PACKAGE_MACHO_ARCHES="$MACHO_ARCHES" python - <<'PY' > "$BUNDLE_BUILD_INFO"
+          PACKAGE_MINIMUM_MACOS="$MINOS" PACKAGE_MINIMUM_MACOS_METADATA="$MINOS_METADATA" PACKAGE_MACHO_ARCHES="$MACHO_ARCHES" python - <<'PY' > "$BUNDLE_BUILD_INFO"
           import os
           import platform
           import sys
@@ -323,7 +331,8 @@ jobs:
           print('Build host macOS version:', platform.mac_ver()[0])
           print('Package architecture:', os.environ['PACKAGE_ARCH'])
           print('Mach-O executable architecture:', os.environ['PACKAGE_MACHO_ARCHES'])
-          print('Main executable LC_BUILD_VERSION minos:', os.environ['PACKAGE_MINIMUM_MACOS'])
+          print('Main executable minimum-version metadata:', os.environ['PACKAGE_MINIMUM_MACOS_METADATA'])
+          print('Main executable reported minimum macOS version:', os.environ['PACKAGE_MINIMUM_MACOS'])
           print('Python:', sys.version.replace('\n', ' '))
           print('PySide6:', PySide6.__version__)
           print('Nuitka:', version('Nuitka'))
