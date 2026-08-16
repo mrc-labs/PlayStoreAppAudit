@@ -60,6 +60,21 @@ At runtime, if ADB is not already installed, Play Store App Audit downloads the 
 
 The platform abstraction also searches typical Android SDK locations and `ANDROID_SDK_ROOT` / `ANDROID_HOME`.
 
+## Release versioning
+
+The canonical version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`. A regression test requires them to match.
+
+For a normal release:
+
+1. Update both version values in the same change.
+2. Update `CHANGELOG.md`.
+3. Merge only after the PR quality workflow is green.
+4. Confirm the automatic Windows build from the resulting `main` commit.
+5. Validate Linux and macOS from the same source revision when the release affects packaging/platform code.
+6. Tag the validated `main` commit as `vMAJOR.MINOR.PATCH`.
+
+Release tags identify immutable source checkpoints. Feature/fix development continues from `main` on short-lived branches rather than version-specific permanent branches.
+
 ## Signing and distribution
 
 Unsigned CI artifacts are suitable for testing. Public distribution should eventually add:
