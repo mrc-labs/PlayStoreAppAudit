@@ -5,6 +5,7 @@ on:
     branches: ["refactor/flatten-architecture"]
     paths:
       - "tools/flatten_architecture.py"
+      - "tools/post_flatten_fixes.py"
       - ".github/workflows/refactor-flatten.yml"
 
 permissions:
@@ -37,7 +38,9 @@ jobs:
 
       - name: Apply architecture migration
         shell: pwsh
-        run: python tools/flatten_architecture.py
+        run: |
+          python tools/flatten_architecture.py
+          python tools/post_flatten_fixes.py
 
       - name: Set transitional lint policy for migrated Qt code
         shell: pwsh
@@ -99,6 +102,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item tools/flatten_architecture.py
+          Remove-Item tools/post_flatten_fixes.py
           Remove-Item .github/workflows/refactor-flatten.yml
           if (Test-Path tools -PathType Container) {
             if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
