@@ -3,7 +3,7 @@ name: Build Windows - Qt6
 on:
   workflow_dispatch:
   push:
-    branches: [qt6]
+    branches: [main]
     paths:
       - "**/*.py"
       - "pyproject.toml"
