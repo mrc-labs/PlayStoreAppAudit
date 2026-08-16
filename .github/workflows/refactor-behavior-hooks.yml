@@ -1,0 +1,68 @@
+name: One-time behavior-hook refactor
+
+on:
+  push:
+    branches: ["refactor/v0.12-behavior-hooks"]
+    paths:
+      - "tools/refactor_behavior_hooks.py"
+      - ".github/workflows/refactor-behavior-hooks.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-test-commit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refactor/v0.12-behavior-hooks
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Apply refactor
+        shell: pwsh
+        run: python tools/refactor_behavior_hooks.py
+      - name: Format and lint
+        shell: pwsh
+        run: |
+          ruff format playstore_app_audit tests main.py
+          ruff check --fix playstore_app_audit tests main.py
+          ruff check playstore_app_audit tests main.py
+      - name: Tests
+        shell: pwsh
+        run: |
+          python -m compileall -q playstore_app_audit
+          python -m pytest
+      - name: Qt smoke
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; old='Audit completed • 10 cached • 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert hasattr(w,'_classify_row'); assert hasattr(w,'_collect_device_metadata'); assert hasattr(w,'_load_fresh_cache'); print('Behavior-hook smoke OK'); w.close()"
+      - name: Remove migration machinery
+        shell: pwsh
+        run: |
+          Remove-Item tools/refactor_behavior_hooks.py
+          Remove-Item .github/workflows/refactor-behavior-hooks.yml
+          if (Test-Path tools -PathType Container) {
+            if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
+          }
+      - name: Commit validated refactor
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Replace runtime monkey-patching with behavior hooks"
+          git push origin HEAD:refactor/v0.12-behavior-hooks
