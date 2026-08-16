@@ -39,10 +39,6 @@ import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
 
-device_insights.VIEW_PRESETS = presentation.VIEW_PRESETS
-device_insights.CSV_EXPORT_GUIDE = presentation.CSV_EXPORT_GUIDE
-device_insights.APP_VERSION = presentation.APP_VERSION
-
 
 class FormattedAuditTableModel(table_ui.AuditTableModel):
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):

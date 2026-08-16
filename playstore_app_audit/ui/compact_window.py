@@ -51,7 +51,6 @@ MODEL_COLUMNS = schema.MODEL_COLUMNS
 DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
 PROJECT_URL = "https://github.com/mrc-labs/PlayStoreAppAudit"
 
-base_ui.audit_apps = audit_apps_multicountry
 _original_classify_criticality = base_ui.classify_criticality
 
 
@@ -70,9 +69,6 @@ def _classify_criticality_multicountry(row: dict[str, object]) -> None:
     row["criticality"] = base_ui.CRITICALITY[key]["label"]
     row["criticality_rank"] = base_ui.CRITICALITY[key]["rank"]
     row["age_days"] = ""
-
-
-base_ui.classify_criticality = _classify_criticality_multicountry
 
 
 def _find_layout_containing(layout, target_widget):
@@ -152,6 +148,19 @@ class CompactWindow(AuditWindow):
         self._restore_table_layout()
         self._apply_column_visibility()
         self._set_run_mode("run")
+
+    # ---------- Behaviour hooks ----------
+    def _classify_row(self, row: dict[str, object]) -> None:
+        _classify_criticality_multicountry(row)
+
+    def _load_fresh_cache(
+        self,
+        apps: list[dict[str, str]],
+        country: str,
+        language: str,
+        ttl_hours: int,
+    ) -> dict[str, dict[str, object]]:
+        return load_fresh_cache(apps, country, language, ttl_hours)
 
     # ---------- Layout ----------
     def _compact_action_row(self) -> None:
@@ -431,7 +440,6 @@ class CompactWindow(AuditWindow):
         layout.addWidget(title)
         info = QLabel(
             "<b>Created by MRC</b><br>"
-            "Development assistance: OpenAI ChatGPT<br><br>"
             "Audit Android packages against public Google Play listings, update dates and regional availability.<br><br>"
             f'<a href="{PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
@@ -576,7 +584,7 @@ class CompactWindow(AuditWindow):
         language = str(self.user_settings.get("store_language") or "en").lower()
         cache_enabled = bool(self.user_settings.get("cache_enabled", True))
         ttl = int(self.user_settings.get("cache_ttl_hours", 72))
-        cached = load_fresh_cache(apps, country, language, ttl) if cache_enabled else {}
+        cached = self._load_fresh_cache(apps, country, language, ttl) if cache_enabled else {}
         live_apps = [app for app in apps if app["package_name"] not in cached]
         cached_count = len(cached)
 
@@ -701,7 +709,7 @@ class CompactWindow(AuditWindow):
         history = load_history() if compare_enabled else {}
         for row in typed_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
-            base_ui.classify_criticality(row)
+            self._classify_row(row)
             row["change"] = compare_with_history(row, history) if compare_enabled else ""
         if compare_enabled:
             save_history(typed_rows)

@@ -35,22 +35,6 @@ from playstore_app_audit.ui import schema
 V8_EXTRA_COLUMNS = schema.DEVICE_EXTRA_COLUMNS
 V8_MODEL_COLUMNS = schema.DEVICE_MODEL_COLUMNS
 
-# Use the enhanced v8 audit path and merge-safe history writer.
-compact_ui.audit_apps_multicountry = device_metadata.audit_apps_v8
-compact_ui.save_history = device_metadata.save_history_merged
-
-_ORIGINAL_LOAD_FRESH_CACHE = compact_ui.load_fresh_cache
-_BYPASS_CACHE_ONCE = False
-
-
-def _load_fresh_cache_proxy(*args, **kwargs):
-    if _BYPASS_CACHE_ONCE:
-        return {}
-    return _ORIGINAL_LOAD_FRESH_CACHE(*args, **kwargs)
-
-
-compact_ui.load_fresh_cache = _load_fresh_cache_proxy
-
 
 class DeviceWindow(compact_ui.CompactWindow):
     """Qt6 v8: expert fallbacks, rechecks, details and ADB device metadata."""
@@ -65,6 +49,26 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._build_menu_v8()
         self._apply_column_visibility(reset_order=False)
         self._update_summary()
+
+    # ---------- Behaviour hooks ----------
+    def _load_fresh_cache(
+        self,
+        apps: list[dict[str, str]],
+        country: str,
+        language: str,
+        ttl_hours: int,
+    ) -> dict[str, dict[str, object]]:
+        if self._force_refresh_next:
+            return {}
+        return super()._load_fresh_cache(apps, country, language, ttl_hours)
+
+    def _collect_device_metadata(self, adb: str, packages: list[str], cancel_event):
+        return device_metadata.collect_device_metadata(adb, packages, cancel_event)
+
+    def _enrich_rows_with_device_metadata(
+        self, rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
+    ) -> None:
+        device_metadata.enrich_rows_with_device_metadata(rows, metadata)
 
     # ---------- Menus ----------
     def _build_menu_v8(self) -> None:
@@ -447,7 +451,6 @@ class DeviceWindow(compact_ui.CompactWindow):
         return super()._get_apps_to_audit()
 
     def _start_audit(self) -> None:
-        global _BYPASS_CACHE_ONCE
         if self._audit_active:
             super()._start_audit()
             return
@@ -457,11 +460,9 @@ class DeviceWindow(compact_ui.CompactWindow):
             settings.get("fallback_countries", device_metadata.DEFAULT_FALLBACK_COUNTRIES),
             selected_country,
         )
-        _BYPASS_CACHE_ONCE = bool(self._force_refresh_next)
         try:
             super()._start_audit()
         finally:
-            _BYPASS_CACHE_ONCE = False
             self._force_refresh_next = False
             self._apps_override = None
 
@@ -486,7 +487,7 @@ class DeviceWindow(compact_ui.CompactWindow):
                 if adb:
                     metadata_executor = ThreadPoolExecutor(max_workers=1)
                     metadata_future = metadata_executor.submit(
-                        device_metadata.collect_device_metadata,
+                        self._collect_device_metadata,
                         adb,
                         [app["package_name"] for app in all_apps],
                         cancel_event,
@@ -523,7 +524,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             rows = [by_package[app["package_name"]] for app in all_apps if app["package_name"] in by_package]
 
             metadata = metadata_future.result() if metadata_future is not None else {}
-            device_metadata.enrich_rows_with_device_metadata(rows, metadata)
+            self._enrich_rows_with_device_metadata(rows, metadata)
             self._pending_device_metadata = metadata
             self.audit_control_signals.done.emit((session, rows, "", cached_count, len(live_rows)))
         except Exception as exc:
@@ -567,7 +568,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         history = state.load_history() if compare_enabled else {}
         for row in new_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
-            base_ui.classify_criticality(row)
+            self._classify_row(row)
             row["change"] = state.compare_with_history(row, history) if compare_enabled else ""
 
         replacements = {str(row.get("package_name") or ""): row for row in new_rows}
