@@ -19,7 +19,18 @@ permissions:
 jobs:
   build-linux:
     if: ${{ inputs.target == 'linux' || inputs.target == 'both' }}
-    runs-on: ubuntu-latest
+    name: Linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+            managed_adb: true
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            managed_adb: false
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,22 +40,38 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-      - name: Install Qt Linux system runtime
+      - name: Install Linux runtime and dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
-      - name: Install dependencies
-        run: |
+          if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Test shared source
+      - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
-          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('Linux Qt smoke test OK'); w.close()"
+          python main.py
+      - name: Validate ADB path for this architecture
+        run: |
+          python - <<'PY'
+          import subprocess
+          from playstore_app_audit.devices.adb import find_adb, install_platform_tools
+          from playstore_app_audit.platform.runtime import managed_platform_tools_download_supported, machine_key
+          expected = '${{ matrix.arch }}'
+          assert machine_key() == expected
+          if managed_platform_tools_download_supported():
+              adb, version = install_platform_tools(); print(version)
+          else:
+              adb = find_adb(); assert adb, 'native ADB is required and was not found'
+          result = subprocess.run([adb, 'version'], capture_output=True, text=True, timeout=20)
+          print(result.stdout)
+          assert result.returncode == 0 and 'Android Debug Bridge' in result.stdout
+          PY
       - name: Generate Linux icon
         run: python -c "from app_icon import generate_app_icon; print(generate_app_icon('app_icon.png', 256))"
       - name: Configure Qt deployment
@@ -60,26 +87,53 @@ jobs:
           p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build and validate Linux binary
+      - name: Build, inspect and smoke packaged Linux binary
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           mkdir -p dist artifact
           pyside6-deploy -c pysidedeploy.spec -f
           BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
           test -n "$BIN"
           test "$(stat -c%s "$BIN")" -gt 1048576
-          cp "$BIN" artifact/PlayStoreAppAudit-linux.bin
-          chmod +x artifact/PlayStoreAppAudit-linux.bin
-          ls -lh artifact/PlayStoreAppAudit-linux.bin
+          chmod +x "$BIN"
+          file "$BIN"
+          "$BIN"
+          OUT="artifact/PlayStoreAppAudit-v0.12.0-linux-${{ matrix.arch }}.bin"
+          cp "$BIN" "$OUT"
+          chmod +x "$OUT"
+          (cd artifact && sha256sum "$(basename "$OUT")" > "$(basename "$OUT").sha256")
+          python - <<'PY' > artifact/BUILD-INFO-${{ matrix.arch }}.txt
+          import platform, sys, PySide6
+          print('Play Store App Audit 0.12.0')
+          print('Target: Linux ${{ matrix.arch }}')
+          print('Build host:', platform.platform())
+          print('Python:', sys.version.replace('\n', ' '))
+          print('PySide6:', PySide6.__version__)
+          PY
+          ls -lh artifact/*
       - uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-Linux
-          path: artifact/PlayStoreAppAudit-linux.bin
+          name: PlayStoreAppAudit-v0.12.0-Linux-${{ matrix.arch }}
+          path: artifact/
           if-no-files-found: error
           retention-days: 30
 
   build-macos:
     if: ${{ inputs.target == 'macos' || inputs.target == 'both' }}
-    runs-on: macos-latest
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+            max_minos: "14"
+          - os: macos-15-intel
+            arch: x64
+            max_minos: "15"
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,14 +147,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Test shared source
+      - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
-          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('macOS Qt smoke test OK'); w.close()"
+          python main.py
+      - name: Validate managed ADB
+        run: |
+          python - <<'PY'
+          import subprocess
+          from playstore_app_audit.devices.adb import install_platform_tools
+          from playstore_app_audit.platform.runtime import machine_key
+          assert machine_key() == '${{ matrix.arch }}'
+          adb, version = install_platform_tools(); print(version)
+          result = subprocess.run([adb, 'version'], capture_output=True, text=True, timeout=20)
+          print(result.stdout)
+          assert result.returncode == 0 and 'Android Debug Bridge' in result.stdout
+          PY
       - name: Generate macOS icon
         run: |
           mkdir -p app_icon.iconset
@@ -124,9 +191,12 @@ jobs:
           p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version=0.12.0 --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build and validate macOS app bundle
+      - name: Build, inspect and smoke packaged macOS app
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
-          mkdir -p dist artifact
+          mkdir -p dist artifact roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
@@ -134,16 +204,42 @@ jobs:
           test -n "$EXEC"
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
           PLIST="$APP/Contents/Info.plist"
-          test -f "$PLIST"
+          plutil -lint "$PLIST"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$PLIST")" = "PlayStoreAppAudit"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" = "com.mrclabs.PlayStoreAppAudit"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" = "0.12.0"
-          ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
-          test "$(stat -f%z artifact/PlayStoreAppAudit-macOS.zip)" -gt 1048576
-          ls -lh artifact/PlayStoreAppAudit-macOS.zip
+          file "$EXEC"
+          BUILD_INFO=$(xcrun vtool -show-build "$EXEC"); echo "$BUILD_INFO"
+          MINOS=$(echo "$BUILD_INFO" | awk '/minos/{print $2; exit}')
+          test -n "$MINOS"
+          python -c "from packaging.version import Version; assert Version('$MINOS') <= Version('${{ matrix.max_minos }}')"
+          if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          "$EXEC"
+          ZIP="artifact/PlayStoreAppAudit-v0.12.0-macOS-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+          test "$(stat -f%z "$ZIP")" -gt 1048576
+          ditto -x -k "$ZIP" roundtrip
+          RAPP=$(find roundtrip -maxdepth 2 -type d -name '*.app' | head -n 1)
+          test -n "$RAPP"
+          REXEC=$(find "$RAPP/Contents/MacOS" -type f -perm +111 | head -n 1)
+          test -n "$REXEC"
+          codesign --verify --deep --strict --verbose=2 "$RAPP"
+          "$REXEC"
+          (cd artifact && shasum -a 256 "$(basename "$ZIP")" > "$(basename "$ZIP").sha256")
+          python - <<'PY' > artifact/BUILD-INFO-${{ matrix.arch }}.txt
+          import platform, sys, PySide6
+          print('Play Store App Audit 0.12.0')
+          print('Target: macOS ${{ matrix.arch }}')
+          print('Build host:', platform.platform())
+          print('Python:', sys.version.replace('\n', ' '))
+          print('PySide6:', PySide6.__version__)
+          print('Signing: ad-hoc CI signature only; not Apple-notarized')
+          PY
+          ls -lh artifact/*
       - uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-macOS
-          path: artifact/PlayStoreAppAudit-macOS.zip
+          name: PlayStoreAppAudit-v0.12.0-macOS-${{ matrix.arch }}
+          path: artifact/
           if-no-files-found: error
           retention-days: 30
