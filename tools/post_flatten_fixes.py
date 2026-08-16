@@ -11,7 +11,7 @@ PATCHES: dict[str, tuple[str, str]] = {
     ),
     "playstore_app_audit/ui/device_window.py": (
         "\n\n# Extend the v7 table model in-place.",
-        "\n\n# Transitional aliases keep the proven inheritance graph stable while module ownership moves into the package.\nv7 = compact_ui\nuser_state = persistence\nfeatures = device_metadata\n\n# Extend the v7 table model in-place.",
+        "\n\n# Transitional aliases keep the proven inheritance graph stable while module ownership moves into the package.\nv7 = compact_ui\nuser_state = persistence\nfeatures = device_metadata\ndevice_insights = device_metadata\n\n# Extend the v7 table model in-place.",
     ),
     "playstore_app_audit/ui/insights_window.py": (
         "\n\nV9_EXTRA_COLUMNS = (",
