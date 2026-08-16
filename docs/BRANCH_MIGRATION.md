@@ -1,51 +1,39 @@
-# Branch migration plan
+# Branch migration status
 
-Do this only after the refactored Qt build is green in CI and has been tested with a real Android phone.
+The Qt6 v0.10.0 application has been validated on a real Android phone and promoted to `main`.
 
-The important distinction is: **do not merge every legacy branch into `main`**. Only the current `qt6` application should be merged. `customtkinter` is preserved as a historical tag and then retired; `qt6-working` contains no unique work that needs merging.
+`main` is now the canonical production branch. The old `main` commit remains preserved in the merge history. `qt6-working` has no commits that are unique relative to the promoted Qt history.
 
-## 1. Preserve checkpoints before changing branches
+Because the GitHub connector cannot create Git tags directly, the final CustomTkinter head was preserved automatically as the temporary archival branch:
 
-`qt6-working` has no unique commits relative to the current Qt branch, so a preservation tag is not necessary.
+`archive/customtkinter-v9.3`
 
-Keep a permanent checkpoint of the retired CustomTkinter implementation:
+This points at the same commit that `customtkinter` pointed at when retirement started.
+
+## Manual archival step
+
+Convert that archival pointer into a permanent tag from any local clone:
 
 ```bash
 git fetch origin
-git tag legacy-customtkinter-v9.3 origin/customtkinter
+git tag legacy-customtkinter-v9.3 origin/archive/customtkinter-v9.3
 git push origin legacy-customtkinter-v9.3
 ```
 
-Also preserve the pre-migration `main` state:
+Verify the tag appears under GitHub **Tags** before deleting the archival branch.
 
-```bash
-git tag pre-qt-main-migration origin/main
-git push origin pre-qt-main-migration
-```
+A separate `pre-qt-main-migration` tag is optional rather than required: the former `main` commit remains a parent in the merge history, so it has not been discarded.
 
-## 2. Merge the Qt application into `main`
+## Manual branch retirement
 
-Do not force-reset `main`. Preserve history with a normal pull request/merge.
-
-1. Open a pull request from `qt6` into `main`.
-2. Review the small `main`-only documentation difference and resolve it in favour of the new architecture where appropriate.
-3. Merge the pull request.
-4. In the merged Windows workflow, change the automatic branch trigger from `qt6` to `main`.
-5. Commit that workflow change on `main`.
-6. Confirm a successful Windows build from `main`.
-7. Test the resulting executable with a real Android phone.
-
-`main` is already the repository default branch, so no default-branch switch is required.
-
-## 3. Retire the legacy branches
-
-Only after `main` is green and tested, delete:
+After the automatic Windows build from `main` is green, delete these migration branches:
 
 - `customtkinter`
 - `qt6-working`
 - `qt6`
+- `archive/customtkinter-v9.3` (only after the tag above exists)
 
-GitHub UI: repository → **Branches** → delete each branch using the trash/delete control.
+GitHub UI: repository → **Branches** → use the delete/trash control for each branch.
 
 CLI equivalent:
 
@@ -53,12 +41,13 @@ CLI equivalent:
 git push origin --delete customtkinter
 git push origin --delete qt6-working
 git push origin --delete qt6
+git push origin --delete archive/customtkinter-v9.3
 ```
 
-The `legacy-customtkinter-v9.3` tag keeps the complete old CustomTkinter checkpoint without requiring a permanent branch.
+Do not merge `customtkinter` or `qt6-working` into `main`.
 
-## 4. Future workflow
+## Future workflow
 
-From that point, `main` is the single canonical branch. Use short-lived feature/fix branches and merge them back into `main`.
+`main` is the single permanent production branch. Use short-lived feature/fix branches, open a pull request back to `main`, merge it, then delete the temporary branch.
 
-Do not maintain permanent branches for Windows, macOS or Linux. All three desktop builds must come from the same source revision.
+Do not maintain permanent Windows/macOS/Linux branches. All three desktop builds must come from the same source revision. Windows builds automatically; macOS and Linux remain manually dispatched only.
