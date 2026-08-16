@@ -5,6 +5,7 @@ on:
     branches: ["refactor/v0.12-behavior-hooks"]
     paths:
       - "tools/refactor_behavior_hooks.py"
+      - "tools/run_behavior_refactor.py"
       - ".github/workflows/refactor-behavior-hooks.yml"
 
 permissions:
@@ -32,7 +33,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Apply refactor
         shell: pwsh
-        run: python tools/refactor_behavior_hooks.py
+        run: python tools/run_behavior_refactor.py
       - name: Format and lint
         shell: pwsh
         run: |
@@ -54,6 +55,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item tools/refactor_behavior_hooks.py
+          Remove-Item tools/run_behavior_refactor.py
           Remove-Item .github/workflows/refactor-behavior-hooks.yml
           if (Test-Path tools -PathType Container) {
             if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
