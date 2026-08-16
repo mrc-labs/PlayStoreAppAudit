@@ -16,14 +16,12 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
-from app_icon import ensure_runtime_icon
-
-# Surface the new product version through the existing v9/v9.2 feature objects.
-preferences_ui.v92.APP_VERSION = summary_service.APP_VERSION
-preferences_ui.v9.features.APP_VERSION = summary_service.APP_VERSION
+from playstore_app_audit.resources import ensure_runtime_icon
 
 
 def _find_layout_containing(layout, target_widget):
@@ -50,16 +48,9 @@ def _clear_layout_keep_widgets(layout, keep: set[object]) -> None:
             widget.deleteLater()
 
 
-# Transitional aliases for the final results/UX layer.
-v92ui = preferences_ui
-stable = menu_ui
-v93 = summary_service
-
-
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         super().__init__()
-        self._rebuild_source_area()
         self._setup_export_button_menu()
         self._rebuild_file_menu()
         self._update_summary()
@@ -169,8 +160,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         if not selected.lower().endswith(".html"):
             selected += ".html"
         try:
-            formatted = preferences_ui.v92.rows_for_output([dict(row) for row in rows])
-            preferences_ui.v9.features.write_html_report(selected, formatted, self._device_summary)
+            formatted = presentation.rows_for_output([dict(row) for row in rows])
+            device_insights.write_html_report(selected, formatted, self._device_summary)
             QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
         except Exception as exc:
             QMessageBox.critical(self, "Export failed", str(exc))

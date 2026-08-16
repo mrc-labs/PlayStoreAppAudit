@@ -19,7 +19,7 @@ New code is organised as follows:
 
 The migration away from version-suffixed top-level modules is complete. Production code now lives under `playstore_app_audit/`; the repository no longer depends on `playstore_audit_qt_v*.py`, `*_fixed.py` or `*_stable.py` compatibility files.
 
-The Qt window is organised into focused internal layers (`base_window`, `audit_window`, `compact_window`, `device_window`, `insights_window`, `table_window`, `preferences_window`, `menu_window`, `results_window`) with `main_window.py` as the only public UI entry point. Services and platform code are likewise inside the package. Future refactors should reduce inheritance/monkey-patching where it improves clarity, but must not reintroduce versioned modules.
+The Qt window is organised into focused internal layers (`base_window`, `audit_window`, `compact_window`, `device_window`, `insights_window`, `table_window`, `preferences_window`, `menu_window`, `results_window`) with `main_window.py` as the only public UI entry point. Services and platform code are likewise inside the package. The first v0.12 cleanup removes import-time platform/version patching from MainWindow and centralises portable/app-data paths in the platform layer. Future refactors should continue reducing the remaining UI inheritance/legacy configuration patching where it improves clarity, but must not reintroduce versioned modules.
 
 ## Dependency direction
 

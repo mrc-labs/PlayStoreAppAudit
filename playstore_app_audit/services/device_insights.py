@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import html
 import json
-import os
 import platform
 import re
 import shutil
@@ -19,8 +18,10 @@ import requests
 
 import playstore_app_audit.services.device_metadata as v8
 import playstore_app_audit.services.persistence as user_state
+from playstore_app_audit import __version__
+from playstore_app_audit.platform import runtime
 
-APP_VERSION = "0.9.0"
+APP_VERSION = __version__
 GITHUB_REPOSITORY = "mrc-labs/PlayStoreAppAudit"
 LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 LATEST_RELEASE_PAGE = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest"
@@ -118,64 +119,31 @@ Installer source and requested permissions do not reduce the score. The score is
 """
 
 
-def _exe_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
-    return Path.cwd()
-
-
 def portable_marker() -> Path:
-    return _exe_dir() / "PlayStoreAppAudit.portable"
+    return runtime.portable_marker()
 
 
 def portable_data_dir() -> Path:
-    return _exe_dir() / "PlayStoreAppAudit-data"
+    return runtime.portable_data_dir()
 
 
 def local_data_dir() -> Path:
-    base = os.environ.get("LOCALAPPDATA")
-    root = Path(base) if base else Path.home() / ".playstore_app_audit"
-    return root / "PlayStoreAppAudit"
+    return runtime.default_app_data_dir()
 
 
 def app_data_dir_v9() -> Path:
-    target = portable_data_dir() if portable_marker().is_file() else local_data_dir()
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+    return runtime.app_data_dir()
 
 
 def portable_mode_active() -> bool:
-    return portable_marker().is_file()
+    return runtime.portable_mode_active()
 
 
 def migrate_portable_mode(enable: bool) -> tuple[bool, str]:
-    current = app_data_dir_v9()
-    destination = portable_data_dir() if enable else local_data_dir()
-    destination.mkdir(parents=True, exist_ok=True)
-    try:
-        probe = destination / ".write_test"
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink(missing_ok=True)
-        if current.resolve() != destination.resolve():
-            for item in current.iterdir():
-                target = destination / item.name
-                if item.is_dir():
-                    if target.exists():
-                        shutil.rmtree(target)
-                    shutil.copytree(item, target)
-                else:
-                    shutil.copy2(item, target)
-        if enable:
-            portable_marker().write_text("Play Store App Audit portable mode\n", encoding="utf-8")
-        else:
-            portable_marker().unlink(missing_ok=True)
-        return True, "Portable mode changed. Restart the app to use the new data location."
-    except Exception as exc:
-        return False, f"Could not change portable mode: {exc}"
+    return runtime.migrate_portable_mode(enable)
 
 
 def install_v9_state_extensions() -> None:
-    user_state.app_data_dir = app_data_dir_v9
     defaults = user_state.DEFAULT_SETTINGS
     defaults.setdefault("permissions_audit_enabled", False)
     defaults.setdefault("health_score_enabled", False)
