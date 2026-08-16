@@ -19,7 +19,20 @@ permissions:
 jobs:
   build-linux:
     if: ${{ inputs.target == 'linux' || inputs.target == 'both' }}
-    runs-on: ubuntu-latest
+    name: Linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+            expected_elf_machine: Advanced Micro Devices X86-64
+            managed_adb: true
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            expected_elf_machine: AArch64
+            managed_adb: false
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,22 +42,67 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-      - name: Install Qt Linux system runtime
+      - name: Read canonical project version
+        id: project_version
+        run: |
+          VERSION="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Install Linux runtime and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
-      - name: Install dependencies
-        run: |
+          sudo apt-get install -y \
+            binutils \
+            libegl1 \
+            libfontconfig1 \
+            libgl1 \
+            libx11-xcb1 \
+            libxcb1 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-shm0 \
+            libxcb-sync1 \
+            libxcb-util1 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1 \
+            libxkbcommon-x11-0 \
+            xauth \
+            xvfb
+          if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Test shared source
+      - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
-          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('Linux Qt smoke test OK'); w.close()"
+          python main.py
+      - name: Validate ADB path for this architecture
+        run: |
+          python - <<'PY'
+          import subprocess
+          from playstore_app_audit.devices.adb import find_adb, install_platform_tools
+          from playstore_app_audit.platform.runtime import managed_platform_tools_download_supported, machine_key
+          expected = '${{ matrix.arch }}'
+          assert machine_key() == expected
+          if managed_platform_tools_download_supported():
+              adb, version = install_platform_tools(); print(version)
+          else:
+              adb = find_adb(); assert adb, 'native ADB is required and was not found'
+          result = subprocess.run([adb, 'version'], capture_output=True, text=True, timeout=20)
+          print(result.stdout)
+          assert result.returncode == 0 and 'Android Debug Bridge' in result.stdout
+          PY
       - name: Generate Linux icon
         run: python -c "from app_icon import generate_app_icon; print(generate_app_icon('app_icon.png', 256))"
       - name: Configure Qt deployment
@@ -60,26 +118,89 @@ jobs:
           p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build and validate Linux binary
+      - name: Build, inspect and smoke packaged Linux binary
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
+          PACKAGE_ARCH: ${{ matrix.arch }}
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
-          mkdir -p dist artifact
+          mkdir -p dist artifact package roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
           BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
           test -n "$BIN"
           test "$(stat -c%s "$BIN")" -gt 1048576
-          cp "$BIN" artifact/PlayStoreAppAudit-linux.bin
-          chmod +x artifact/PlayStoreAppAudit-linux.bin
-          ls -lh artifact/PlayStoreAppAudit-linux.bin
+          chmod +x "$BIN"
+          file "$BIN"
+          ELF_MACHINE="$(readelf -h "$BIN" | awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+          echo "ELF machine architecture: $ELF_MACHINE"
+          test "$ELF_MACHINE" = "${{ matrix.expected_elf_machine }}"
+          export PACKAGE_ELF_MACHINE="$ELF_MACHINE"
+          "$BIN"
+
+          PACKAGE_NAME="PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}"
+          PACKAGE_DIR="package/$PACKAGE_NAME"
+          mkdir -p "$PACKAGE_DIR"
+          install -m 0755 "$BIN" "$PACKAGE_DIR/PlayStoreAppAudit"
+          python - <<'PY' > "$PACKAGE_DIR/BUILD-INFO.txt"
+          import os
+          import platform
+          import sys
+          from importlib.metadata import version
+
+          import PySide6
+
+          print('Application version:', os.environ['APP_VERSION'])
+          print('GitHub SHA:', os.environ.get('GITHUB_SHA', 'unavailable'))
+          print('GitHub ref:', os.environ.get('GITHUB_REF', 'unavailable'))
+          print('GitHub ref name:', os.environ.get('GITHUB_REF_NAME', 'unavailable'))
+          print('Runner OS:', os.environ.get('RUNNER_OS', 'unavailable'))
+          print('Runner image OS:', os.environ.get('ImageOS', 'unavailable'))
+          print('Runner image version:', os.environ.get('ImageVersion', 'unavailable'))
+          print('Build/test host OS:', platform.freedesktop_os_release().get('PRETTY_NAME', platform.platform()))
+          print('Build/test host kernel:', platform.platform())
+          print('Package architecture:', os.environ['PACKAGE_ARCH'])
+          print('ELF machine architecture:', os.environ['PACKAGE_ELF_MACHINE'])
+          print('Build host architecture:', platform.machine())
+          print('Python:', sys.version.replace('\n', ' '))
+          print('PySide6:', PySide6.__version__)
+          print('Nuitka:', version('Nuitka'))
+          PY
+
+          ARCHIVE="artifact/$PACKAGE_NAME.tar.gz"
+          tar -czf "$ARCHIVE" -C package "$PACKAGE_NAME"
+          test "$(stat -c%s "$ARCHIVE")" -gt 1048576
+          tar -xzf "$ARCHIVE" -C roundtrip
+          ROUNDTRIP_BIN="roundtrip/$PACKAGE_NAME/PlayStoreAppAudit"
+          test -x "$ROUNDTRIP_BIN"
+          test -f "roundtrip/$PACKAGE_NAME/BUILD-INFO.txt"
+          ROUNDTRIP_MACHINE="$(readelf -h "$ROUNDTRIP_BIN" | awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+          test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
+          timeout 30s xvfb-run -a env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+          (cd artifact && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
+          (cd artifact && sha256sum -c "$(basename "$ARCHIVE").sha256")
+          ls -lh artifact/*
       - uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-Linux
-          path: artifact/PlayStoreAppAudit-linux.bin
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
+          path: artifact/
           if-no-files-found: error
           retention-days: 30
 
   build-macos:
     if: ${{ inputs.target == 'macos' || inputs.target == 'both' }}
-    runs-on: macos-latest
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+            expected_macho_arch: arm64
+          - os: macos-15-intel
+            arch: x64
+            expected_macho_arch: x86_64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -89,18 +210,37 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+      - name: Read canonical project version
+        id: project_version
+        run: |
+          VERSION="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Test shared source
+      - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
           python -m pytest
           ruff check playstore_app_audit tests main.py
-          python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); print('macOS Qt smoke test OK'); w.close()"
+          python main.py
+      - name: Validate managed ADB
+        run: |
+          python - <<'PY'
+          import subprocess
+          from playstore_app_audit.devices.adb import install_platform_tools
+          from playstore_app_audit.platform.runtime import machine_key
+          assert machine_key() == '${{ matrix.arch }}'
+          adb, version = install_platform_tools(); print(version)
+          result = subprocess.run([adb, 'version'], capture_output=True, text=True, timeout=20)
+          print(result.stdout)
+          assert result.returncode == 0 and 'Android Debug Bridge' in result.stdout
+          PY
       - name: Generate macOS icon
         run: |
           mkdir -p app_icon.iconset
@@ -112,33 +252,123 @@ jobs:
           PY
           iconutil -c icns app_icon.iconset -o app_icon.icns
       - name: Configure Qt deployment
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
           pyside6-deploy main.py --name PlayStoreAppAudit --init
           python - <<'PY'
           from configparser import ConfigParser
+          import os
           from pathlib import Path
           p=ConfigParser(); p.read('pysidedeploy.spec')
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --nofollow-import-to=PIL --assume-yes-for-downloads'
+          version = os.environ['APP_VERSION']
+          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build and validate macOS app bundle
+      - name: Build, inspect and smoke packaged macOS app
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
+          PACKAGE_ARCH: ${{ matrix.arch }}
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
-          mkdir -p dist artifact
+          mkdir -p dist artifact roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
-          EXEC=$(find "$APP/Contents/MacOS" -type f -perm +111 | head -n 1)
-          test -n "$EXEC"
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
-          ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
-          test "$(stat -f%z artifact/PlayStoreAppAudit-macOS.zip)" -gt 1048576
-          ls -lh artifact/PlayStoreAppAudit-macOS.zip
+          PLIST="$APP/Contents/Info.plist"
+          plutil -lint "$PLIST"
+          EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")"
+          test -n "$EXECUTABLE_NAME"
+          EXEC="$APP/Contents/MacOS/$EXECUTABLE_NAME"
+          test -f "$EXEC"
+          test -x "$EXEC"
+          /usr/libexec/PlistBuddy -c 'Delete :CFBundleVersion' "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $APP_VERSION" "$PLIST"
+          plutil -lint "$PLIST"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$PLIST")" = "PlayStoreAppAudit"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" = "com.mrclabs.PlayStoreAppAudit"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" = "$APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")" = "$APP_VERSION"
+          file "$EXEC"
+          MACHO_ARCHES="$(lipo -archs "$EXEC")"
+          echo "Mach-O architecture: $MACHO_ARCHES"
+          test "$MACHO_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          BUILD_INFO=$(xcrun vtool -show-build "$EXEC"); echo "$BUILD_INFO"
+          MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "minos" { print $2; exit }')
+          MINOS_METADATA="LC_BUILD_VERSION/minos"
+          if [ -z "$MINOS" ]; then
+            MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '
+              $1 == "cmd" { legacy = ($2 == "LC_VERSION_MIN_MACOSX"); next }
+              legacy && $1 == "version" { print $2; exit }
+            ')
+            MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
+          fi
+          test -n "$MINOS"
+          if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
+          BUNDLE_BUILD_INFO="$APP/Contents/Resources/BUILD-INFO.txt"
+          mkdir -p "$(dirname "$BUNDLE_BUILD_INFO")"
+          PACKAGE_MINIMUM_MACOS="$MINOS" PACKAGE_MINIMUM_MACOS_METADATA="$MINOS_METADATA" PACKAGE_MACHO_ARCHES="$MACHO_ARCHES" python - <<'PY' > "$BUNDLE_BUILD_INFO"
+          import os
+          import platform
+          import sys
+          from importlib.metadata import version
+
+          import PySide6
+
+          print('Application version:', os.environ['APP_VERSION'])
+          print('GitHub SHA:', os.environ.get('GITHUB_SHA', 'unavailable'))
+          print('GitHub ref:', os.environ.get('GITHUB_REF', 'unavailable'))
+          print('GitHub ref name:', os.environ.get('GITHUB_REF_NAME', 'unavailable'))
+          print('Runner OS:', os.environ.get('RUNNER_OS', 'unavailable'))
+          print('Runner image OS:', os.environ.get('ImageOS', 'unavailable'))
+          print('Runner image version:', os.environ.get('ImageVersion', 'unavailable'))
+          print('Build/test host OS:', platform.platform())
+          print('Build host macOS version:', platform.mac_ver()[0])
+          print('Package architecture:', os.environ['PACKAGE_ARCH'])
+          print('Mach-O executable architecture:', os.environ['PACKAGE_MACHO_ARCHES'])
+          print('Main executable minimum-version metadata:', os.environ['PACKAGE_MINIMUM_MACOS_METADATA'])
+          print('Main executable reported minimum macOS version:', os.environ['PACKAGE_MINIMUM_MACOS'])
+          print('Python:', sys.version.replace('\n', ' '))
+          print('PySide6:', PySide6.__version__)
+          print('Nuitka:', version('Nuitka'))
+          print('Signing: ad-hoc CI signature only; not Apple-notarized')
+          PY
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          "$EXEC"
+          ZIP="artifact/PlayStoreAppAudit-v${APP_VERSION}-macOS-${PACKAGE_ARCH}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+          test "$(stat -f%z "$ZIP")" -gt 1048576
+          ditto -x -k "$ZIP" roundtrip
+          RAPP=$(find roundtrip -maxdepth 2 -type d -name '*.app' | head -n 1)
+          test -n "$RAPP"
+          test -f "$RAPP/Contents/Resources/BUILD-INFO.txt"
+          cmp "$BUNDLE_BUILD_INFO" "$RAPP/Contents/Resources/BUILD-INFO.txt"
+          RPLIST="$RAPP/Contents/Info.plist"
+          plutil -lint "$RPLIST"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$RPLIST")" = "$APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$RPLIST")" = "$APP_VERSION"
+          REXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$RPLIST")"
+          test -n "$REXECUTABLE_NAME"
+          REXEC="$RAPP/Contents/MacOS/$REXECUTABLE_NAME"
+          test -f "$REXEC"
+          test -x "$REXEC"
+          ROUNDTRIP_ARCHES="$(lipo -archs "$REXEC")"
+          test "$ROUNDTRIP_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          codesign --verify --deep --strict --verbose=2 "$RAPP"
+          "$REXEC"
+          (cd artifact && shasum -a 256 "$(basename "$ZIP")" > "$(basename "$ZIP").sha256")
+          (cd artifact && shasum -a 256 -c "$(basename "$ZIP").sha256")
+          cp "$BUNDLE_BUILD_INFO" "artifact/BUILD-INFO-${PACKAGE_ARCH}.txt"
+          ls -lh artifact/*
       - uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-macOS
-          path: artifact/PlayStoreAppAudit-macOS.zip
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macOS-${{ matrix.arch }}
+          path: artifact/
           if-no-files-found: error
           retention-days: 30

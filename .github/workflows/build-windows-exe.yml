@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Test and build PlayStoreAppAudit.exe
+    name: Test and build Windows x64 package
     runs-on: windows-latest
 
     steps:
@@ -31,6 +31,14 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+
+      - name: Read canonical project version
+        id: project_version
+        shell: pwsh
+        run: |
+          $version = python -c "from playstore_app_audit import __version__; print(__version__)"
+          if (-not $version) { throw 'Project version is empty.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Install runtime and test dependencies
         shell: pwsh
@@ -75,14 +83,52 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
           $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe | Where-Object { $_.Name -match 'PlayStoreAppAudit|main' } | Sort-Object Length -Descending | Select-Object -First 1
           if (-not $exe) { throw 'No deployed executable found.' }
-          Copy-Item $exe.FullName artifact/PlayStoreAppAudit.exe
-          $sizeMB = [math]::Round((Get-Item artifact/PlayStoreAppAudit.exe).Length / 1MB, 2)
+          $version = '${{ steps.project_version.outputs.version }}'
+          $outputName = "PlayStoreAppAudit-v$version-windows-x64.exe"
+          $outputPath = Join-Path artifact $outputName
+          Copy-Item $exe.FullName $outputPath
+          $sizeMB = [math]::Round((Get-Item $outputPath).Length / 1MB, 2)
           Write-Host "Final executable size: $sizeMB MB"
+
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = '1'
+          $process = Start-Process -FilePath $outputPath -PassThru -WindowStyle Hidden
+          if (-not $process.WaitForExit(60000)) {
+            $process.Kill()
+            $process.WaitForExit()
+            throw 'Packaged Windows executable did not finish its smoke test within 60 seconds.'
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged Windows executable smoke test failed with exit code $($process.ExitCode)."
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $outputPath).Hash.ToLowerInvariant()
+          "$hash  $outputName" | Set-Content -Encoding ascii "$outputPath.sha256"
+
+          $pythonVersion = python -c "import sys; print(sys.version.replace(chr(10), ' '))"
+          $pysideVersion = python -c "import PySide6; print(PySide6.__version__)"
+          $nuitkaVersion = python -c "from importlib.metadata import version; print(version('Nuitka'))"
+          @(
+            "Application version: $version"
+            "GitHub SHA: $env:GITHUB_SHA"
+            "GitHub ref: $env:GITHUB_REF"
+            "GitHub ref name: $env:GITHUB_REF_NAME"
+            "Runner OS: $env:RUNNER_OS"
+            "Runner image OS: $env:ImageOS"
+            "Runner image version: $env:ImageVersion"
+            "Build/test host OS: $([System.Environment]::OSVersion.VersionString)"
+            "Package architecture: x64"
+            "Build host architecture: $env:PROCESSOR_ARCHITECTURE"
+            "Python: $pythonVersion"
+            "PySide6: $pysideVersion"
+            "Nuitka: $nuitkaVersion"
+            "Signing: unsigned CI artifact"
+          ) | Set-Content -Encoding utf8 artifact/BUILD-INFO-windows-x64.txt
 
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-Windows
-          path: artifact/PlayStoreAppAudit.exe
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64
+          path: artifact/
           if-no-files-found: error
           retention-days: 30

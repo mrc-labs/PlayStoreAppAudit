@@ -33,12 +33,45 @@ def platform_label() -> str:
     return {"windows": "Windows", "macos": "macOS", "linux": "Linux"}[platform_key()]
 
 
+def machine_key() -> str:
+    machine = platform.machine().strip().lower()
+    if machine in {"x86_64", "amd64"}:
+        return "x64"
+    if machine in {"aarch64", "arm64"}:
+        return "arm64"
+    return machine or "unknown"
+
+
 def adb_executable_name() -> str:
     return "adb.exe" if platform_key() == "windows" else "adb"
 
 
 def platform_tools_url() -> str:
     return PLATFORM_TOOLS_URLS[platform_key()]
+
+
+def managed_platform_tools_download_supported() -> bool:
+    """Whether Google's fixed direct Platform-Tools archive can run on this host.
+
+    Google's direct Linux archive currently contains x86-64 executables. Linux
+    ARM64 remains fully usable with a native ADB installed by the OS/SDK, but the
+    app must not offer its managed download there because that binary cannot run.
+    """
+    return not (platform_key() == "linux" and machine_key() != "x64")
+
+
+def managed_platform_tools_unavailable_message() -> str:
+    if platform_key() == "linux" and machine_key() == "arm64":
+        return (
+            "Google's direct Linux Platform-Tools archive contains x86-64 executables and cannot run "
+            "on this ARM64 Linux computer. Install a native ADB package from your distribution "
+            "(for example, 'sudo apt install adb' on Ubuntu/Debian) or from an ARM64-compatible "
+            "Android SDK, then try Scan phone again."
+        )
+    return (
+        f"The managed Android Platform-Tools download is not available for this "
+        f"{platform_label()} {machine_key()} computer. Install a native ADB build and try again."
+    )
 
 
 def default_app_data_dir() -> Path:

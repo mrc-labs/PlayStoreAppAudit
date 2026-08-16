@@ -458,6 +458,7 @@ class WorkerSignals(QObject):
     progress = Signal(int, int, str)
     audit_done = Signal(object)
     failed = Signal(str)
+    adb_discovery_done = Signal(object)
     adb_scan_done = Signal(object, object)
     adb_install_done = Signal(str, str)
 

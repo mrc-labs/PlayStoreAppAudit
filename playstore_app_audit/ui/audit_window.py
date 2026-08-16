@@ -307,7 +307,8 @@ class AuditWindow(BaseWindow):
                         "The phone is visible to ADB but is offline. Reconnect the USB cable, unlock it and try again."
                     )
                 raise RuntimeError(
-                    "ADB is installed, but no Android phone is visible. Check USB debugging, cable/data mode and Windows USB drivers."
+                    "ADB is installed, but no Android phone is visible. Check USB debugging, "
+                    "cable/data mode and any operating-system USB permissions or drivers."
                 )
 
             command = [adb, "shell", "pm", "list", "packages"]

@@ -19,6 +19,7 @@ import requests
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
+from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 
 APP_VERSION = __version__
@@ -76,18 +77,6 @@ BUILTIN_FILTERS = (
     "Disabled",
     "Sensitive permissions",
 )
-
-ADB_SETUP_GUIDE = """ADB setup guide
-
-1. Connect the Android phone to the PC with a USB data cable.
-2. On Android enable Developer options, then enable USB debugging.
-3. In Play Store App Audit choose Scan phone with ADB.
-4. If Android Platform-Tools are missing, the app can download the current Windows Platform-Tools directly from Google's fixed download endpoint.
-5. Unlock the phone and accept the 'Allow USB debugging?' RSA prompt. Optionally select 'Always allow from this computer'.
-6. If the phone is not detected, try another data-capable cable/USB port, switch the phone USB mode to File transfer/Data, and install the manufacturer's Windows USB driver if required.
-
-The app is read-only by design. It queries package/device metadata and can open Android's App Info screen, but it does not uninstall or disable apps.
-"""
 
 CSV_EXPORT_GUIDE = """Export a package CSV directly from an Android phone
 
