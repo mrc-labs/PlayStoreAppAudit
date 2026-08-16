@@ -8,6 +8,8 @@ from typing import Any
 
 from playstore_app_audit.platform.runtime import app_data_dir
 
+CACHE_SCHEMA_VERSION = 2
+
 DEFAULT_SETTINGS: dict[str, Any] = {
     "store_language": "en",
     "cache_enabled": True,
@@ -98,7 +100,9 @@ def clear_cache() -> None:
 
 
 def _cache_key(country: str, language: str, package_name: str) -> str:
-    return f"{country.lower()}|{language.lower()}|{package_name}"
+    # Versioning the key deliberately invalidates results cached by builds that
+    # could still derive an update date from datePublished.
+    return f"v{CACHE_SCHEMA_VERSION}|{country.lower()}|{language.lower()}|{package_name}"
 
 
 def load_fresh_cache(
