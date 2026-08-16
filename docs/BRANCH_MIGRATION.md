@@ -1,53 +1,30 @@
 # Branch migration status
 
-The Qt6 v0.10.0 application has been validated on a real Android phone and promoted to `main`.
+The branch migration is complete.
 
-`main` is now the canonical production branch. The old `main` commit remains preserved in the merge history. `qt6-working` has no commits that are unique relative to the promoted Qt history.
+- `main` is the single canonical permanent branch.
+- The former `qt6`, `qt6-working`, `customtkinter` and temporary archival branch have been deleted.
+- The final CustomTkinter implementation is preserved by the Git tag `legacy-customtkinter-v9.3`.
+- The pre-Qt `main` state remains reachable through normal merge history, so no destructive history rewrite was used.
 
-Because the GitHub connector cannot create Git tags directly, the final CustomTkinter head was preserved automatically as the temporary archival branch:
+The historical CustomTkinter tag is not a maintained branch. It exists only as a named checkpoint that can be inspected, checked out or archived if the old implementation is ever needed for reference.
 
-`archive/customtkinter-v9.3`
+## Current workflow
 
-This points at the same commit that `customtkinter` pointed at when retirement started.
+Use short-lived branches such as:
 
-## Manual archival step
-
-Convert that archival pointer into a permanent tag from any local clone:
-
-```bash
-git fetch origin
-git tag legacy-customtkinter-v9.3 origin/archive/customtkinter-v9.3
-git push origin legacy-customtkinter-v9.3
+```text
+feature/...
+fix/...
+refactor/...
 ```
 
-Verify the tag appears under GitHub **Tags** before deleting the archival branch.
+Open a pull request back to `main`, validate it, merge it, then delete the temporary branch.
 
-A separate `pre-qt-main-migration` tag is optional rather than required: the former `main` commit remains a parent in the merge history, so it has not been discarded.
+Do not maintain permanent Windows/macOS/Linux branches. All three desktop builds must come from the same source revision. Windows builds automatically from `main`; macOS and Linux packaging remains manually dispatched only.
 
-## Manual branch retirement
+## Historical tag retention
 
-After the automatic Windows build from `main` is green, delete these migration branches:
+`legacy-customtkinter-v9.3` does not disappear automatically and does not duplicate the repository contents. Git stores it as a lightweight pointer to the existing historical commit.
 
-- `customtkinter`
-- `qt6-working`
-- `qt6`
-- `archive/customtkinter-v9.3` (only after the tag above exists)
-
-GitHub UI: repository → **Branches** → use the delete/trash control for each branch.
-
-CLI equivalent:
-
-```bash
-git push origin --delete customtkinter
-git push origin --delete qt6-working
-git push origin --delete qt6
-git push origin --delete archive/customtkinter-v9.3
-```
-
-Do not merge `customtkinter` or `qt6-working` into `main`.
-
-## Future workflow
-
-`main` is the single permanent production branch. Use short-lived feature/fix branches, open a pull request back to `main`, merge it, then delete the temporary branch.
-
-Do not maintain permanent Windows/macOS/Linux branches. All three desktop builds must come from the same source revision. Windows builds automatically; macOS and Linux remain manually dispatched only.
+Keep it at least through Qt/cross-platform stabilisation and the first stable 1.x release. It can be deleted later if the old CustomTkinter implementation no longer has any reference value.
