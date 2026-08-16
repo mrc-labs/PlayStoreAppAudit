@@ -16,7 +16,10 @@ for rel in (
 ):
     path = ROOT / rel
     text = path.read_text(encoding="utf-8")
-    text = text.replace("import playstore_app_audit.services.state as persistence", "import playstore_app_audit.services.state as state")
+    text = text.replace(
+        "import playstore_app_audit.services.state as persistence",
+        "import playstore_app_audit.services.state as state",
+    )
     text = text.replace("persistence.", "state.")
     path.write_text(text, encoding="utf-8")
 
@@ -32,6 +35,26 @@ if "import playstore_app_audit.ui.base_window as base_ui\n" not in text:
 text = text.replace("compact_ui.qt_base.", "base_ui.")
 text = text.replace("compact_ui.qt_base", "base_ui")
 device.write_text(text, encoding="utf-8")
+
+# Preferences still referenced nested attributes that existed only because
+# InsightsWindow used to export its parent modules as v8/features aliases.
+prefs = ROOT / "playstore_app_audit/ui/preferences_window.py"
+text = prefs.read_text(encoding="utf-8")
+if "import playstore_app_audit.services.device_metadata as device_metadata\n" not in text:
+    marker = "import playstore_app_audit.services.device_insights as device_insights\n"
+    if marker not in text:
+        raise RuntimeError("Could not place device_metadata import in preferences_window")
+    text = text.replace(marker, marker + "import playstore_app_audit.services.device_metadata as device_metadata\n", 1)
+if "import playstore_app_audit.ui.base_window as base_ui\n" not in text:
+    marker = "import playstore_app_audit.ui.insights_window as insights_ui\n"
+    if marker not in text:
+        raise RuntimeError("Could not place base_ui import in preferences_window")
+    text = text.replace(marker, "import playstore_app_audit.ui.base_window as base_ui\n" + marker, 1)
+text = text.replace("insights_ui.v8.v7.qt_base.", "base_ui.")
+text = text.replace("insights_ui.v8.features.", "device_metadata.")
+text = text.replace("insights_ui.features.", "device_insights.")
+text = text.replace("insights_ui.v8.v7.qt_base", "base_ui")
+prefs.write_text(text, encoding="utf-8")
 
 # Tests should follow the canonical names too.
 adb_test = ROOT / "tests/test_adb_bulk_metadata.py"
