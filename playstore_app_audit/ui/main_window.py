@@ -136,6 +136,14 @@ class MainWindow(results_ui.ResultsWindow):
     def _scan_phone(self) -> None:
         adb = self._find_adb()
         if not adb:
+            if not runtime.managed_platform_tools_download_supported():
+                QMessageBox.information(
+                    self,
+                    "Native ADB required",
+                    runtime.managed_platform_tools_unavailable_message(),
+                )
+                return
+
             choice = QMessageBox.question(
                 self,
                 "Install Android Platform-Tools?",
