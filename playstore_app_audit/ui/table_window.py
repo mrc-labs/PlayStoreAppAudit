@@ -11,18 +11,17 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QColor, QFont, QIcon
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.device_window as device_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
-
-# Transitional aliases for the inherited table layer.
-v9 = insights_ui
-user_state = persistence
 
 TABLE_SCHEMA_VERSION = "v9-fixed-1"
 
 
-class AuditTableModel(insights_ui.v8.v7.qt_base.AppTableModel):
+class AuditTableModel(base_ui.AppTableModel):
     """Qt model with an immutable column map.
 
     Older builds changed the module-level COLUMNS tuple while progressively
@@ -49,7 +48,7 @@ class AuditTableModel(insights_ui.v8.v7.qt_base.AppTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(self.columns):
             column = self.columns[section]
-            return insights_ui.v8.v7.qt_base.COLUMN_LABELS.get(column, column)
+            return base_ui.COLUMN_LABELS.get(column, column)
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -61,7 +60,7 @@ class AuditTableModel(insights_ui.v8.v7.qt_base.AppTableModel):
         row = self.rows[index.row()]
         column = self.columns[index.column()]
         key = str(row.get("criticality_key") or "purple")
-        info = insights_ui.v8.v7.qt_base.CRITICALITY.get(key, insights_ui.v8.v7.qt_base.CRITICALITY["purple"])
+        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
 
         if role == Qt.ItemDataRole.DisplayRole:
             value = row.get(column, "")
@@ -103,16 +102,16 @@ class TableWindow(insights_ui.InsightsWindow):
     def __init__(self) -> None:
         # QHeaderView state is not portable across a changed logical-column
         # schema. Invalidate it once when upgrading to this fixed model.
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         if str(settings.get("qt_header_schema_version") or "") != TABLE_SCHEMA_VERSION:
             settings["qt_header_state"] = ""
             settings["qt_header_schema_version"] = TABLE_SCHEMA_VERSION
-            persistence.save_settings(settings)
+            state.save_settings(settings)
 
         # Keep every Qt layer on the same schema before constructing widgets.
-        insights_ui.v8.V8_MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
-        insights_ui.v8.v7.MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
-        insights_ui.v8.v7.qt_base.COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
+        device_ui.V8_MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
+        compact_ui.MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
+        base_ui.COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
 
         super().__init__()
 
@@ -150,7 +149,7 @@ class TableWindow(insights_ui.InsightsWindow):
             "<b>Created by MRC</b><br><br>"
             "Audit Android packages against public Google Play listings, update dates, "
             "regional availability and optional connected-device metadata.<br><br>"
-            f'<a href="{insights_ui.v8.v7.PROJECT_URL}">MRC on GitHub</a><br><br>'
+            f'<a href="{compact_ui.PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
         info.setWordWrap(True)
@@ -166,7 +165,7 @@ class TableWindow(insights_ui.InsightsWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(insights_ui.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

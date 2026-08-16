@@ -16,7 +16,6 @@ def test_canonical_package_owns_core_layers() -> None:
     required = [
         "playstore_app_audit/services/audit_engine.py",
         "playstore_app_audit/services/countries.py",
-        "playstore_app_audit/services/persistence.py",
         "playstore_app_audit/services/device_metadata.py",
         "playstore_app_audit/services/device_insights.py",
         "playstore_app_audit/ui/base_window.py",
@@ -53,3 +52,26 @@ def test_main_window_does_not_patch_other_modules_at_import_time() -> None:
         ".APP_VERSION = __version__",
     )
     assert not [marker for marker in forbidden if marker in text]
+
+
+def test_legacy_state_shim_and_version_aliases_are_gone() -> None:
+    root = Path(__file__).resolve().parents[1]
+    package = root / "playstore_app_audit"
+    assert not (package / "services/persistence.py").exists()
+
+    offenders: list[str] = []
+    forbidden = (
+        "playstore_app_audit.services.persistence",
+        "qt_base = base_ui",
+        "v7 = compact_ui",
+        "v8 = device_ui",
+        "v9 = insights_ui",
+        "user_state = persistence",
+        "features = device_insights",
+    )
+    for path in package.rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        for marker in forbidden:
+            if marker in text:
+                offenders.append(f"{path.relative_to(root)}: {marker}")
+    assert not offenders, offenders

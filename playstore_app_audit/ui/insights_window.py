@@ -32,14 +32,11 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_insights as device_insights
-import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 from app_icon import ensure_runtime_icon
-
-# Transitional aliases keep nested references stable during the package migration.
-v8 = device_ui
-user_state = persistence
-features = device_insights
 
 V9_EXTRA_COLUMNS = (
     "compatibility_status",
@@ -55,9 +52,9 @@ V9_EXTRA_COLUMNS = (
 )
 V9_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(device_ui.V8_MODEL_COLUMNS) + V9_EXTRA_COLUMNS))
 device_ui.V8_MODEL_COLUMNS = V9_MODEL_COLUMNS
-device_ui.v7.MODEL_COLUMNS = V9_MODEL_COLUMNS
-device_ui.v7.qt_base.COLUMNS = V9_MODEL_COLUMNS
-device_ui.v7.DEFAULT_WIDTHS.update(
+compact_ui.MODEL_COLUMNS = V9_MODEL_COLUMNS
+base_ui.COLUMNS = V9_MODEL_COLUMNS
+compact_ui.DEFAULT_WIDTHS.update(
     {
         "compatibility_status": 150,
         "target_sdk": 90,
@@ -71,19 +68,17 @@ device_ui.v7.DEFAULT_WIDTHS.update(
         "health_score": 90,
     }
 )
-device_ui.v7.qt_base.COLUMN_LABELS.update(device_insights.V9_TECHNICAL_COLUMNS)
-device_ui.v7.qt_base.EXPORT_FIELDS = list(
-    dict.fromkeys(list(device_ui.v7.qt_base.EXPORT_FIELDS) + list(V9_EXTRA_COLUMNS))
-)
+base_ui.COLUMN_LABELS.update(device_insights.V9_TECHNICAL_COLUMNS)
+base_ui.EXPORT_FIELDS = list(dict.fromkeys(list(base_ui.EXPORT_FIELDS) + list(V9_EXTRA_COLUMNS)))
 
 # v8 imports the feature module object, so replacing these functions upgrades
 # its existing background worker without duplicating the audit engine.
-device_ui.device_insights.collect_device_metadata = device_insights.collect_device_metadata_v9
-device_ui.device_insights.enrich_rows_with_device_metadata = (
+device_ui.device_metadata.collect_device_metadata = device_insights.collect_device_metadata_v9
+device_ui.device_metadata.enrich_rows_with_device_metadata = (
     device_insights.enrich_rows_with_device_metadata_v9
 )
 
-_original_classify = device_ui.v7.qt_base.classify_criticality
+_original_classify = base_ui.classify_criticality
 
 
 def _classify_with_health(row: dict[str, Any]) -> None:
@@ -91,10 +86,10 @@ def _classify_with_health(row: dict[str, Any]) -> None:
     device_insights.apply_health_score(row)
 
 
-device_ui.v7.qt_base.classify_criticality = _classify_with_health
+base_ui.classify_criticality = _classify_with_health
 
 
-class AdvancedFilterProxy(device_ui.v7.qt_base.AppFilterProxy):
+class AdvancedFilterProxy(base_ui.AppFilterProxy):
     def __init__(self) -> None:
         super().__init__()
         self.v9_preset = "All"
@@ -107,7 +102,7 @@ class AdvancedFilterProxy(device_ui.v7.qt_base.AppFilterProxy):
         if not super().filterAcceptsRow(source_row, source_parent):
             return False
         model = self.sourceModel()
-        if not isinstance(model, device_ui.v7.qt_base.AppTableModel):
+        if not isinstance(model, base_ui.AppTableModel):
             return True
         row = model.row_dict(source_row)
         return device_insights.row_matches_filter(row, self.v9_preset)
@@ -131,7 +126,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
         proxy.set_criticality_filter(self.criticality_filter)
-        self._active_filter_preset = str(persistence.load_settings().get("active_filter_preset") or "All")
+        self._active_filter_preset = str(state.load_settings().get("active_filter_preset") or "All")
         proxy.set_v9_preset(self._active_filter_preset)
         self.proxy = proxy
         self.table.setModel(proxy)
@@ -145,7 +140,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     # ---------- Column/view presets ----------
     def _visible_column_order(self) -> list[str]:
-        self.user_settings = persistence.load_settings()
+        self.user_settings = state.load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
         compare = bool(self.user_settings.get("compare_previous", False))
         health = bool(self.user_settings.get("health_score_enabled", False))
@@ -177,7 +172,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             columns = ["criticality"]
             if compare:
                 columns.append("change")
-            columns.extend(device_ui.v7.PRIMARY_COLUMNS[1:])
+            columns.extend(compact_ui.PRIMARY_COLUMNS[1:])
 
         selected = self.user_settings.get("technical_columns", [])
         if isinstance(selected, list):
@@ -187,9 +182,9 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _set_view_preset(self, name: str) -> None:
         if name not in device_insights.VIEW_PRESETS:
             return
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         settings["view_preset"] = name
-        self.user_settings = persistence.save_settings(settings)
+        self.user_settings = state.save_settings(settings)
         self._apply_column_visibility(reset_order=True)
         self.status_label.setText(f"View preset: {name}")
 
@@ -229,7 +224,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         view_presets = view_menu.addMenu("View preset")
         group = QActionGroup(self)
         group.setExclusive(True)
-        current_view = str(persistence.load_settings().get("view_preset") or "Basic")
+        current_view = str(state.load_settings().get("view_preset") or "Basic")
         for name in device_insights.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current_view)
@@ -309,7 +304,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     # ---------- File loading / drag & drop ----------
     def _load_input_file(self, path: str) -> None:
         try:
-            apps = device_ui.v7.qt_base.load_apps(path)
+            apps = base_ui.load_apps(path)
             metadata = self._read_system_metadata_from_file(path, apps)
         except Exception as exc:
             QMessageBox.critical(self, "Invalid app list", str(exc))
@@ -504,9 +499,9 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _apply_filter_preset(self, name: str) -> None:
         self._active_filter_preset = name if name in device_insights.BUILTIN_FILTERS else "All"
         self.proxy.set_v9_preset(self._active_filter_preset)
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         settings["active_filter_preset"] = self._active_filter_preset
-        persistence.save_settings(settings)
+        state.save_settings(settings)
         self._populate_filter_menu()
         self._update_summary()
         self.status_label.setText(f"Filter preset: {self._active_filter_preset}")
@@ -571,7 +566,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
-        self.user_settings = persistence.load_settings()
+        self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setWindowTitle("Advanced settings")
         dialog.resize(720, 760)
@@ -598,7 +593,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         fallback = QLineEdit(
             str(
                 self.user_settings.get("fallback_countries")
-                or device_ui.device_insights.DEFAULT_FALLBACK_COUNTRIES
+                or device_ui.device_metadata.DEFAULT_FALLBACK_COUNTRIES
             )
         )
         cache = QCheckBox("Use intelligent cache")
@@ -665,7 +660,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         c_layout = QVBoxLayout(columns)
         checks: dict[str, QCheckBox] = {}
         selected = set(self.user_settings.get("technical_columns", []))
-        for key, label in persistence.TECHNICAL_COLUMNS.items():
+        for key, label in state.TECHNICAL_COLUMNS.items():
             check = QCheckBox(label)
             check.setChecked(key in selected)
             checks[key] = check
@@ -685,7 +680,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
         def reset_controls() -> None:
             language.setText("en")
-            fallback.setText(device_ui.device_insights.DEFAULT_FALLBACK_COUNTRIES)
+            fallback.setText(device_ui.device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             cache.setChecked(True)
             ttl.setValue(72)
             collect_device.setChecked(True)
@@ -703,7 +698,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        fallback_text, invalid = device_ui.device_insights.normalise_country_string(fallback.text())
+        fallback_text, invalid = device_ui.device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
         old_portable = device_insights.portable_mode_active()
         self.user_settings.update(
@@ -720,9 +715,9 @@ class InsightsWindow(device_ui.DeviceWindow):
                 "technical_columns": [k for k, check in checks.items() if check.isChecked()],
             }
         )
-        self.user_settings = persistence.save_settings(self.user_settings)
+        self.user_settings = state.save_settings(self.user_settings)
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
-            persistence.clear_cache()
+            state.clear_cache()
         self._apply_column_visibility(reset_order=False)
         msg = "Advanced settings saved"
         if invalid:
@@ -753,7 +748,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             not targeted
             and self.source_mode == "device"
             and self.current_rows
-            and bool(persistence.load_settings().get("inventory_history_enabled", True))
+            and bool(state.load_settings().get("inventory_history_enabled", True))
             and self._device_summary
         ):
             self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
@@ -965,7 +960,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(device_ui.v7.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

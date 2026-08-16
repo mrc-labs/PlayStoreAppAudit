@@ -19,8 +19,8 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.summary as summary_service
+import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.menu_window as menu_ui
-import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit.resources import ensure_runtime_icon
 
 
@@ -199,7 +199,7 @@ class ResultsWindow(menu_ui.MenuWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(preferences_ui.v9.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

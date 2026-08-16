@@ -16,8 +16,8 @@ from typing import Any
 
 import requests
 
-import playstore_app_audit.services.device_metadata as v8
-import playstore_app_audit.services.persistence as user_state
+import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 
@@ -144,7 +144,7 @@ def migrate_portable_mode(enable: bool) -> tuple[bool, str]:
 
 
 def install_v9_state_extensions() -> None:
-    defaults = user_state.DEFAULT_SETTINGS
+    defaults = state.DEFAULT_SETTINGS
     defaults.setdefault("permissions_audit_enabled", False)
     defaults.setdefault("health_score_enabled", False)
     defaults.setdefault("inventory_history_enabled", True)
@@ -152,21 +152,21 @@ def install_v9_state_extensions() -> None:
     defaults.setdefault("recent_sources", [])
     defaults.setdefault("saved_filters", {})
     defaults.setdefault("active_filter_preset", "All")
-    user_state.TECHNICAL_COLUMNS.update(V9_TECHNICAL_COLUMNS)
+    state.TECHNICAL_COLUMNS.update(V9_TECHNICAL_COLUMNS)
 
 
 def add_recent_source(path: str, limit: int = 8) -> None:
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     existing = settings.get("recent_sources", [])
     items = [str(Path(path))]
     if isinstance(existing, list):
         items.extend(str(x) for x in existing if str(x) != str(path))
     settings["recent_sources"] = items[:limit]
-    user_state.save_settings(settings)
+    state.save_settings(settings)
 
 
 def get_recent_sources() -> list[str]:
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     items = settings.get("recent_sources", [])
     return (
         [str(x) for x in items if isinstance(x, str) and Path(x).is_file()][:8]
@@ -176,7 +176,7 @@ def get_recent_sources() -> list[str]:
 
 
 def save_filter(name: str, query: str, criticality: str | None, hide_system: bool, preset: str) -> None:
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     saved = settings.get("saved_filters", {})
     if not isinstance(saved, dict):
         saved = {}
@@ -187,20 +187,20 @@ def save_filter(name: str, query: str, criticality: str | None, hide_system: boo
         "preset": preset if preset in BUILTIN_FILTERS else "All",
     }
     settings["saved_filters"] = saved
-    user_state.save_settings(settings)
+    state.save_settings(settings)
 
 
 def delete_filter(name: str) -> None:
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     saved = settings.get("saved_filters", {})
     if isinstance(saved, dict):
         saved.pop(name, None)
         settings["saved_filters"] = saved
-        user_state.save_settings(settings)
+        state.save_settings(settings)
 
 
 def get_saved_filters() -> dict[str, dict[str, Any]]:
-    saved = user_state.load_settings().get("saved_filters", {})
+    saved = state.load_settings().get("saved_filters", {})
     return saved if isinstance(saved, dict) else {}
 
 
@@ -371,7 +371,7 @@ def collect_device_metadata_v9(
 ) -> dict[str, dict[str, str]]:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     include_permissions = bool(settings.get("permissions_audit_enabled", False))
     packages = list(dict.fromkeys(str(p).strip() for p in packages if str(p).strip()))
     if not adb or not packages:
@@ -396,7 +396,7 @@ def collect_device_metadata_v9(
     installer_map: dict[str, str] = {}
     try:
         output = _run(adb, ["shell", "pm", "list", "packages", "-i"], 60)
-        installer_map = v8._parse_installer_map(output)
+        installer_map = device_metadata._parse_installer_map(output)
     except Exception:
         pass
 
@@ -415,7 +415,7 @@ def collect_device_metadata_v9(
                 info = _parse_package_dump(dump, package in disabled, device_sdk, include_permissions)
                 if not _metadata_is_usable(info):
                     continue
-                info["installer_source"] = v8._friendly_installer(installer_map.get(package, ""))
+                info["installer_source"] = device_metadata._friendly_installer(installer_map.get(package, ""))
                 metadata[package] = info
     except Exception:
         # Bulk dumps differ across Android/OEM versions. Falling back is a
@@ -445,7 +445,7 @@ def collect_device_metadata_v9(
                 "sensitive_permissions_count": "" if not include_permissions else "0",
                 "sensitive_permissions": "",
             }
-        info["installer_source"] = v8._friendly_installer(installer_map.get(package, ""))
+        info["installer_source"] = device_metadata._friendly_installer(installer_map.get(package, ""))
         return package, info
 
     if not remaining:
@@ -483,7 +483,9 @@ def enrich_rows_with_device_metadata_v9(
             "sensitive_permissions",
         ):
             row[key] = info.get(key, "")
-        row["version_comparison"] = v8.compare_versions(row.get("installed_version"), row.get("play_version"))
+        row["version_comparison"] = device_metadata.compare_versions(
+            row.get("installed_version"), row.get("play_version")
+        )
 
 
 def calculate_health_score(row: dict[str, Any]) -> int:
@@ -738,7 +740,7 @@ def create_diagnostic_bundle(
     path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None
 ) -> Path:
     target = Path(path)
-    settings = user_state.load_settings()
+    settings = state.load_settings()
     sanitized = dict(settings)
     sanitized.pop("recent_sources", None)
     sanitized.pop("saved_filters", None)
@@ -790,5 +792,5 @@ def open_app_info_on_device(adb: str, package_name: str) -> None:
 
 install_v9_state_extensions()
 # Make the v8 worker transparently collect the richer v9 metadata.
-v8.collect_device_metadata = collect_device_metadata_v9
-v8.enrich_rows_with_device_metadata = enrich_rows_with_device_metadata_v9
+device_metadata.collect_device_metadata = collect_device_metadata_v9
+device_metadata.enrich_rows_with_device_metadata = enrich_rows_with_device_metadata_v9

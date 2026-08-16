@@ -25,15 +25,10 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_metadata as device_metadata
-import playstore_app_audit.services.persistence as persistence
+import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
-
-# Transitional aliases keep the proven inheritance graph stable while module ownership moves into the package.
-v7 = compact_ui
-user_state = persistence
-features = device_metadata
-device_insights = device_metadata
 
 # Extend the v7 table model in-place. These extra fields remain hidden by
 # default and are available from Advanced settings / App details.
@@ -45,7 +40,7 @@ V8_EXTRA_COLUMNS = (
 )
 V8_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(compact_ui.MODEL_COLUMNS) + V8_EXTRA_COLUMNS))
 compact_ui.MODEL_COLUMNS = V8_MODEL_COLUMNS
-compact_ui.qt_base.COLUMNS = V8_MODEL_COLUMNS
+base_ui.COLUMNS = V8_MODEL_COLUMNS
 compact_ui.DEFAULT_WIDTHS.update(
     {
         "play_version": 150,
@@ -54,7 +49,7 @@ compact_ui.DEFAULT_WIDTHS.update(
         "installer_source": 230,
     }
 )
-compact_ui.qt_base.COLUMN_LABELS.update(
+base_ui.COLUMN_LABELS.update(
     {
         "play_version": "Play Store version",
         "installed_version": "Installed version",
@@ -62,9 +57,9 @@ compact_ui.qt_base.COLUMN_LABELS.update(
         "installer_source": "Installer source",
     }
 )
-compact_ui.qt_base.EXPORT_FIELDS = list(
+base_ui.EXPORT_FIELDS = list(
     dict.fromkeys(
-        list(compact_ui.qt_base.EXPORT_FIELDS)
+        list(base_ui.EXPORT_FIELDS)
         + [
             "play_version",
             "installed_version",
@@ -173,7 +168,7 @@ class DeviceWindow(compact_ui.CompactWindow):
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
-        self.user_settings = persistence.load_settings()
+        self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setWindowTitle("Advanced settings")
         dialog.setMinimumWidth(620)
@@ -258,7 +253,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
         selected = set(self.user_settings.get("technical_columns", []))
-        for key, label in persistence.TECHNICAL_COLUMNS.items():
+        for key, label in state.TECHNICAL_COLUMNS.items():
             check = QCheckBox(label)
             check.setChecked(key in selected)
             technical_checks[key] = check
@@ -304,9 +299,9 @@ class DeviceWindow(compact_ui.CompactWindow):
                 "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )
-        self.user_settings = persistence.save_settings(self.user_settings)
+        self.user_settings = state.save_settings(self.user_settings)
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
-            persistence.clear_cache()
+            state.clear_cache()
         self._apply_column_visibility(reset_order=False)
         message = "Advanced settings saved; audit-related changes apply from the next run"
         if invalid:
@@ -317,7 +312,7 @@ class DeviceWindow(compact_ui.CompactWindow):
     def _update_summary(self) -> None:
         # Keep the standard chip counters/filter state, then replace only the
         # compact summary text with the richer dashboard line.
-        compact_ui.qt_base.BaseWindow._update_summary(self)
+        base_ui.BaseWindow._update_summary(self)
         if not self.current_rows:
             return
         rows = self._rows_before_criticality_filter()
@@ -491,7 +486,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         if self._audit_active:
             super()._start_audit()
             return
-        settings = persistence.load_settings()
+        settings = state.load_settings()
         selected_country = (self.country_edit.text().strip() or "").lower()
         device_metadata.set_fallback_countries(
             settings.get("fallback_countries", device_metadata.DEFAULT_FALLBACK_COUNTRIES),
@@ -520,7 +515,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         metadata_executor: ThreadPoolExecutor | None = None
         metadata_future = None
         try:
-            settings = persistence.load_settings()
+            settings = state.load_settings()
             if self.source_mode == "device" and settings.get("collect_device_metadata", True):
                 adb = self._get_authorised_adb()
                 if adb:
@@ -604,11 +599,11 @@ class DeviceWindow(compact_ui.CompactWindow):
 
         new_rows = list(rows or [])
         compare_enabled = bool(self.user_settings.get("compare_previous", False))
-        history = persistence.load_history() if compare_enabled else {}
+        history = state.load_history() if compare_enabled else {}
         for row in new_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
-            compact_ui.qt_base.classify_criticality(row)
-            row["change"] = persistence.compare_with_history(row, history) if compare_enabled else ""
+            base_ui.classify_criticality(row)
+            row["change"] = state.compare_with_history(row, history) if compare_enabled else ""
 
         replacements = {str(row.get("package_name") or ""): row for row in new_rows}
         merged = [replacements.get(str(row.get("package_name") or ""), row) for row in old_rows]
@@ -628,7 +623,7 @@ class DeviceWindow(compact_ui.CompactWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(compact_ui.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

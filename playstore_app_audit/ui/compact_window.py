@@ -30,7 +30,7 @@ import playstore_app_audit.ui.base_window as base_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
-from playstore_app_audit.services.persistence import (
+from playstore_app_audit.services.state import (
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
     clear_cache,
@@ -43,9 +43,6 @@ from playstore_app_audit.services.persistence import (
     update_cache,
 )
 from playstore_app_audit.ui.audit_window import AuditWindow
-
-# Transitional internal alias for inherited code that still follows the old layer graph.
-qt_base = base_ui
 
 FIXED_WORKERS = 16
 PRIMARY_COLUMNS = (
