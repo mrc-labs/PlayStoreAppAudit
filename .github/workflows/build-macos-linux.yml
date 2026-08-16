@@ -57,8 +57,8 @@ jobs:
           PY
       - name: Build Linux binary
         run: |
+          mkdir -p dist artifact
           pyside6-deploy -c pysidedeploy.spec -f
-          mkdir -p artifact
           BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
           test -n "$BIN"
           cp "$BIN" artifact/PlayStoreAppAudit-linux.bin
@@ -120,8 +120,8 @@ jobs:
           PY
       - name: Build macOS app bundle
         run: |
+          mkdir -p dist artifact
           pyside6-deploy -c pysidedeploy.spec -f
-          mkdir -p artifact
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
           ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
