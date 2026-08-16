@@ -5,20 +5,20 @@ cd /d "%~dp0"
 where py >nul 2>nul
 if errorlevel 1 (
   echo Python launcher not found.
-  echo Install current Python 3.14 and enable the Python launcher.
+  echo Install current Python 3.13 and enable the Python launcher.
   pause
   exit /b 1
 )
 
-py -3.14 -c "import sys; print(sys.version)" >nul 2>nul
+py -3.13 -c "import sys; print(sys.version)" >nul 2>nul
 if errorlevel 1 (
-  echo Python 3.14 is required for the current development toolchain.
+  echo Python 3.13 is required for the current release toolchain.
   pause
   exit /b 1
 )
 
 if not exist ".venv" (
-  py -3.14 -m venv .venv
+  py -3.13 -m venv .venv
 )
 
 call .venv\Scripts\activate.bat

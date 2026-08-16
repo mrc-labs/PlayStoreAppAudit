@@ -23,7 +23,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Python: 3.14 or newer compatible 3.x release used by CI.
+- Release-build Python baseline: Python 3.13. Keep the source compatible with newer stable CPython releases and move the release baseline to Python 3.14 when the stable deployment/compiler toolchain officially supports it without an experimental warning.
 - Qt: latest stable PySide6 Essentials release satisfying `>=6.11`.
 - UI technology: Qt Widgets, not QML unless there is a demonstrated UX/performance reason to migrate.
 - Store retrieval: keep `google-play-scraper` behind a service boundary because it is unofficial and replaceable.
@@ -68,7 +68,7 @@ Windows is the normal CI build and may run automatically on pushes to the active
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
-Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact. Keep the old PyInstaller path only as a fallback until the new deployment path is proven.
+Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact. Keep a fallback deployment path only until the preferred path is proven stable.
 
 ## Tests and quality
 
@@ -76,7 +76,7 @@ Before considering a change complete:
 
 1. `python -m compileall playstore_app_audit`
 2. `python -m pytest`
-3. `ruff check .`
+3. `ruff check playstore_app_audit tests main.py`
 4. Run the Qt offscreen smoke test used by CI.
 5. For packaging changes, build the Windows artifact and verify the executable starts.
 
@@ -92,7 +92,7 @@ Add regression tests for bugs before or together with the fix when practical.
 ## Style
 
 - Use type annotations on new code.
-- Prefer `dataclass(slots=True)` and `Enum` for stable domain structures instead of open-ended dictionaries when introducing new APIs.
+- Prefer `dataclass(slots=True)` and `Enum`/`StrEnum` for stable domain structures instead of open-ended dictionaries when introducing new APIs.
 - Keep side effects at the edges (UI, filesystem, network, subprocess).
 - Prefer small focused modules over new version-suffixed files.
 - Do not create `*_v10.py`, `*_fixed.py`, `*_stable.py` files for normal evolution. Change the canonical package modules and rely on Git history/tags for versions.

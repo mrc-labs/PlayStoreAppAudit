@@ -6,12 +6,14 @@ Windows, macOS and Linux use the same Python/Qt source revision. Do not create p
 
 ## Local development
 
-Use Python 3.14 or newer compatible 3.x release and install:
+Use Python 3.13 for the current release/deployment toolchain and install:
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 ```
+
+The source should remain compatible with Python 3.14. Move the release baseline to 3.14 once the stable Nuitka/deployment toolchain no longer treats it as experimental.
 
 Quality checks:
 

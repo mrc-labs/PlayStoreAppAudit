@@ -72,7 +72,9 @@ The File menu can also export the current phone package inventory as CSV.
 
 ## Runtime
 
-The project targets Python 3.14+ and the latest stable `PySide6-Essentials` satisfying `>=6.11`.
+Release builds currently use Python 3.13 because the current stable Nuitka release still labels Python 3.14 support experimental. The source should remain compatible with newer stable CPython versions, and the release baseline should move to Python 3.14 once the stable deployment toolchain fully supports it.
+
+Qt uses the latest stable `PySide6-Essentials` satisfying `>=6.11`.
 
 The runtime intentionally avoids unnecessary Qt Addons and no longer requires `lxml`; BeautifulSoup's standard-library `html.parser` is used for the rare HTML fallback. Pillow is kept as a build/development dependency for generating native icon formats and is not a runtime dependency.
 
