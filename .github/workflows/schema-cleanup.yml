@@ -5,6 +5,7 @@ on:
     branches: ["refactor/v0.12-schema"]
     paths:
       - "tools/centralize_table_schema.py"
+      - "tools/centralize_table_schema_patch.py"
       - ".github/workflows/schema-cleanup.yml"
 
 permissions:
@@ -37,7 +38,9 @@ jobs:
 
       - name: Apply canonical schema migration
         shell: pwsh
-        run: python tools/centralize_table_schema.py
+        run: |
+          python tools/centralize_table_schema.py
+          python tools/centralize_table_schema_patch.py
 
       - name: Format, test, lint and smoke
         shell: pwsh
@@ -55,6 +58,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item tools/centralize_table_schema.py
+          Remove-Item tools/centralize_table_schema_patch.py
           Remove-Item .github/workflows/schema-cleanup.yml
           if (Test-Path tools -PathType Container) {
             if (-not (Get-ChildItem tools -Force | Select-Object -First 1)) { Remove-Item tools }
