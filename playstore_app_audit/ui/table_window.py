@@ -14,11 +14,11 @@ from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, Q
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
-import playstore_app_audit.ui.device_window as device_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.ui import schema
 
-TABLE_SCHEMA_VERSION = "v9-fixed-1"
+TABLE_SCHEMA_VERSION = "v12-schema-1"
 
 
 class AuditTableModel(base_ui.AppTableModel):
@@ -33,7 +33,7 @@ class AuditTableModel(base_ui.AppTableModel):
 
     def __init__(self) -> None:
         super().__init__()
-        self.columns = tuple(insights_ui.V9_MODEL_COLUMNS)
+        self.columns = schema.MODEL_COLUMNS
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self.columns)
@@ -107,11 +107,6 @@ class TableWindow(insights_ui.InsightsWindow):
             settings["qt_header_state"] = ""
             settings["qt_header_schema_version"] = TABLE_SCHEMA_VERSION
             state.save_settings(settings)
-
-        # Keep every Qt layer on the same schema before constructing widgets.
-        device_ui.V8_MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
-        compact_ui.MODEL_COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
-        base_ui.COLUMNS = tuple(insights_ui.V9_MODEL_COLUMNS)
 
         super().__init__()
 

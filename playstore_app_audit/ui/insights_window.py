@@ -37,39 +37,10 @@ import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.ui import schema
 
-V9_EXTRA_COLUMNS = (
-    "compatibility_status",
-    "target_sdk",
-    "min_sdk",
-    "first_install_time",
-    "last_local_update",
-    "app_enabled",
-    "sensitive_permissions_count",
-    "sensitive_permissions",
-    "device_change",
-    "health_score",
-)
-V9_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(device_ui.V8_MODEL_COLUMNS) + V9_EXTRA_COLUMNS))
-device_ui.V8_MODEL_COLUMNS = V9_MODEL_COLUMNS
-compact_ui.MODEL_COLUMNS = V9_MODEL_COLUMNS
-base_ui.COLUMNS = V9_MODEL_COLUMNS
-compact_ui.DEFAULT_WIDTHS.update(
-    {
-        "compatibility_status": 150,
-        "target_sdk": 90,
-        "min_sdk": 80,
-        "first_install_time": 155,
-        "last_local_update": 155,
-        "app_enabled": 100,
-        "sensitive_permissions_count": 105,
-        "sensitive_permissions": 360,
-        "device_change": 155,
-        "health_score": 90,
-    }
-)
-base_ui.COLUMN_LABELS.update(device_insights.V9_TECHNICAL_COLUMNS)
-base_ui.EXPORT_FIELDS = list(dict.fromkeys(list(base_ui.EXPORT_FIELDS) + list(V9_EXTRA_COLUMNS)))
+V9_EXTRA_COLUMNS = schema.INSIGHTS_EXTRA_COLUMNS
+V9_MODEL_COLUMNS = schema.MODEL_COLUMNS
 
 # v8 imports the feature module object, so replacing these functions upgrades
 # its existing background worker without duplicating the audit engine.
