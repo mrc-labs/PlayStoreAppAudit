@@ -13,10 +13,6 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-from playstore_app_audit import __version__
-from playstore_app_audit.devices.adb import find_adb, install_platform_tools
-from playstore_app_audit.platform import runtime
-
 # Compatibility imports. The versioned Qt modules are kept temporarily as a
 # tested compatibility layer while the application is migrated into this
 # package. New product code should depend on this package, not on those modules.
@@ -27,6 +23,9 @@ import playstore_audit_qt_v9_3 as legacy_ui
 import playstore_audit_v9_2_features as v92_features
 import playstore_audit_v9_3_features as v93_features
 import playstore_audit_v9_features as v9_features
+from playstore_app_audit import __version__
+from playstore_app_audit.devices.adb import find_adb, install_platform_tools
+from playstore_app_audit.platform import runtime
 
 
 # Centralise platform decisions instead of spreading Windows assumptions across
