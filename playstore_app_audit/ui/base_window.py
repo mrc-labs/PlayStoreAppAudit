@@ -48,6 +48,7 @@ from PySide6.QtWidgets import (
 
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
+from playstore_app_audit.ui import schema
 
 APP_NAME = "PlayStoreAppAudit"
 PLATFORM_TOOLS_URL = runtime.platform_tools_url()
@@ -219,29 +220,9 @@ CRITICALITY = {
     },
 }
 
-COLUMNS = (
-    "app_name",
-    "package_name",
-    "play_status",
-    "play_last_update",
-    "age_days",
-    "play_title",
-    "updated_source",
-    "notes",
-    "criticality",
-)
-COLUMN_LABELS = {
-    "app_name": "Input name",
-    "package_name": "Package",
-    "play_status": "Play status",
-    "play_last_update": "Last update",
-    "age_days": "Age (days)",
-    "play_title": "Play Store title",
-    "updated_source": "Update source",
-    "notes": "Notes",
-    "criticality": "Criticality",
-}
-EXPORT_FIELDS = list(OUTPUT_FIELDS) + ["is_system", "criticality", "age_days"]
+COLUMNS = schema.MODEL_COLUMNS
+COLUMN_LABELS = dict(schema.COLUMN_LABELS)
+EXPORT_FIELDS = list(dict.fromkeys(list(OUTPUT_FIELDS) + list(schema.EXPORT_EXTRA_FIELDS)))
 
 
 def normalise_header(value: str) -> str:

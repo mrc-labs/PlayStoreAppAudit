@@ -75,3 +75,25 @@ def test_legacy_state_shim_and_version_aliases_are_gone() -> None:
             if marker in text:
                 offenders.append(f"{path.relative_to(root)}: {marker}")
     assert not offenders, offenders
+
+
+def test_ui_modules_do_not_mutate_table_schema_across_imports() -> None:
+    root = Path(__file__).resolve().parents[1]
+    ui = root / "playstore_app_audit/ui"
+    forbidden = (
+        "base_ui.COLUMNS =",
+        "base_ui.COLUMN_LABELS.update",
+        "base_ui.EXPORT_FIELDS =",
+        "compact_ui.MODEL_COLUMNS =",
+        "compact_ui.DEFAULT_WIDTHS.update",
+        "device_ui.V8_MODEL_COLUMNS =",
+    )
+    offenders: list[str] = []
+    for path in ui.glob("*.py"):
+        if path.name == "schema.py":
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in forbidden:
+            if marker in source:
+                offenders.append(f"{path.name}: {marker}")
+    assert not offenders, offenders

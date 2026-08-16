@@ -42,68 +42,15 @@ from playstore_app_audit.services.state import (
     save_settings,
     update_cache,
 )
+from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.audit_window import AuditWindow
 
 FIXED_WORKERS = 16
-PRIMARY_COLUMNS = (
-    "criticality",
-    "package_name",
-    "play_title",
-    "play_last_update",
-    "age_days",
-    "notes",
-)
-MODEL_COLUMNS = (
-    "criticality",
-    "change",
-    "package_name",
-    "play_title",
-    "play_last_update",
-    "age_days",
-    "notes",
-    "play_status",
-    "updated_source",
-    "play_http_status",
-    "app_name",
-    "store_url",
-    "is_system",
-)
-DEFAULT_WIDTHS = {
-    "criticality": 145,
-    "change": 105,
-    "package_name": 300,
-    "play_title": 265,
-    "play_last_update": 120,
-    "age_days": 92,
-    "notes": 460,
-    "play_status": 190,
-    "updated_source": 180,
-    "play_http_status": 90,
-    "app_name": 220,
-    "store_url": 350,
-    "is_system": 90,
-}
+PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
+MODEL_COLUMNS = schema.MODEL_COLUMNS
+DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
 PROJECT_URL = "https://github.com/mrc-labs/PlayStoreAppAudit"
 
-base_ui.COLUMNS = MODEL_COLUMNS
-base_ui.COLUMN_LABELS.update(
-    {
-        "criticality": "Status",
-        "change": "Change",
-        "package_name": "Package Name",
-        "play_title": "Play Store Title",
-        "play_last_update": "Last update",
-        "age_days": "Age (days)",
-        "notes": "Notes",
-        "play_status": "Play status",
-        "updated_source": "Update source",
-        "play_http_status": "HTTP status",
-        "app_name": "Input name",
-        "store_url": "Store URL",
-        "is_system": "System app",
-    }
-)
-base_ui.EXPORT_FIELDS = list(dict.fromkeys(base_ui.EXPORT_FIELDS + ["change", "cache_hit"]))
 base_ui.audit_apps = audit_apps_multicountry
 _original_classify_criticality = base_ui.classify_criticality
 

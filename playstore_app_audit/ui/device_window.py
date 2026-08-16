@@ -29,46 +29,11 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.ui import schema
 
-# Extend the v7 table model in-place. These extra fields remain hidden by
-# default and are available from Advanced settings / App details.
-V8_EXTRA_COLUMNS = (
-    "play_version",
-    "installed_version",
-    "version_comparison",
-    "installer_source",
-)
-V8_MODEL_COLUMNS = tuple(dict.fromkeys(tuple(compact_ui.MODEL_COLUMNS) + V8_EXTRA_COLUMNS))
-compact_ui.MODEL_COLUMNS = V8_MODEL_COLUMNS
-base_ui.COLUMNS = V8_MODEL_COLUMNS
-compact_ui.DEFAULT_WIDTHS.update(
-    {
-        "play_version": 150,
-        "installed_version": 150,
-        "version_comparison": 140,
-        "installer_source": 230,
-    }
-)
-base_ui.COLUMN_LABELS.update(
-    {
-        "play_version": "Play Store version",
-        "installed_version": "Installed version",
-        "version_comparison": "Installed vs Store",
-        "installer_source": "Installer source",
-    }
-)
-base_ui.EXPORT_FIELDS = list(
-    dict.fromkeys(
-        list(base_ui.EXPORT_FIELDS)
-        + [
-            "play_version",
-            "installed_version",
-            "installed_version_code",
-            "version_comparison",
-            "installer_source",
-        ]
-    )
-)
+# Stable device-layer schema aliases. The canonical definitions live in ui.schema.
+V8_EXTRA_COLUMNS = schema.DEVICE_EXTRA_COLUMNS
+V8_MODEL_COLUMNS = schema.DEVICE_MODEL_COLUMNS
 
 # Use the enhanced v8 audit path and merge-safe history writer.
 compact_ui.audit_apps_multicountry = device_metadata.audit_apps_v8
