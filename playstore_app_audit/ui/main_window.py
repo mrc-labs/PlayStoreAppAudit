@@ -13,41 +13,9 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-import playstore_app_audit.services.device_insights as device_insights
-import playstore_app_audit.services.presentation as presentation
-import playstore_app_audit.services.summary as summary_service
-import playstore_app_audit.ui.audit_window as audit_ui
-import playstore_app_audit.ui.base_window as base_ui
-import playstore_app_audit.ui.compact_window as compact_ui
-import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.results_window as results_ui
-from playstore_app_audit import __version__
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
-from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
-from playstore_app_audit.resources import ensure_runtime_icon
-from playstore_app_audit.services import state as state_service
-
-# Compatibility imports above are a tested transition layer while the older
-# versioned Qt modules are migrated behind this canonical package entry point.
-# New product code should depend on playstore_app_audit, not versioned wrappers.
-
-# Centralise platform decisions instead of spreading Windows assumptions across
-# the UI inheritance chain.
-base_ui.detect_windows_country = runtime.detect_store_country
-audit_ui.detect_windows_country = runtime.detect_store_country
-base_ui.managed_platform_tools_dir = runtime.managed_platform_tools_dir
-base_ui.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
-compact_ui.ensure_runtime_icon = ensure_runtime_icon
-device_insights.local_data_dir = runtime.app_data_dir
-device_insights.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
-state_service.app_data_dir = device_insights.app_data_dir_v9
-
-# Surface the package version everywhere the legacy dialogs/reports read it.
-preferences_ui.v9.features.APP_VERSION = __version__
-presentation.APP_VERSION = __version__
-summary_service.APP_VERSION = __version__
-device_insights.APP_VERSION = __version__
 
 
 def _detach_layout(layout, keep: set[object]) -> None:

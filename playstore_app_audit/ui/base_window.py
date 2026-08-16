@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import csv
-import ctypes
-import locale
 import os
 import re
 import shutil
@@ -48,11 +46,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 
 APP_NAME = "PlayStoreAppAudit"
-PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
-PLATFORM_TOOLS_PAGE = "https://developer.android.com/tools/releases/platform-tools"
+PLATFORM_TOOLS_URL = runtime.platform_tools_url()
+PLATFORM_TOOLS_PAGE = runtime.PLATFORM_TOOLS_PAGE
 SDK_LICENSE_PAGE = "https://developer.android.com/studio/terms"
 
 
@@ -323,32 +322,12 @@ def classify_criticality(row: dict[str, object]) -> None:
 
 
 def detect_windows_country() -> str:
-    """Read Windows Region as ISO 3166-1 alpha-2, not UI language."""
-    if os.name == "nt":
-        try:
-            buffer = ctypes.create_unicode_buffer(16)
-            get_geo_name = ctypes.windll.kernel32.GetUserDefaultGeoName
-            result = get_geo_name(buffer, len(buffer))
-            value = buffer.value.strip()
-            if result and len(value) == 2 and value.isalpha():
-                return value.lower()
-        except Exception:
-            pass
-
-    try:
-        locale_name = locale.getlocale()[0] or ""
-        if "_" in locale_name:
-            region = locale_name.rsplit("_", 1)[-1]
-            if len(region) == 2 and region.isalpha():
-                return region.lower()
-    except Exception:
-        pass
-    return "it"
+    """Compatibility name for the canonical cross-platform Store-country detector."""
+    return runtime.detect_store_country()
 
 
 def managed_platform_tools_dir() -> Path:
-    base = Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
-    return base / APP_NAME / "platform-tools"
+    return runtime.managed_platform_tools_dir()
 
 
 def parse_adb_packages(output: str) -> set[str]:

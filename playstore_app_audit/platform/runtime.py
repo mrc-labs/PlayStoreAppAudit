@@ -41,7 +41,8 @@ def platform_tools_url() -> str:
     return PLATFORM_TOOLS_URLS[platform_key()]
 
 
-def app_data_dir() -> Path:
+def default_app_data_dir() -> Path:
+    """Return the normal per-user application data directory for this OS."""
     key = platform_key()
     if key == "windows":
         base = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
@@ -52,6 +53,52 @@ def app_data_dir() -> Path:
     target = base / APP_DIR_NAME
     target.mkdir(parents=True, exist_ok=True)
     return target
+
+
+def portable_marker() -> Path:
+    return executable_dir() / "PlayStoreAppAudit.portable"
+
+
+def portable_data_dir() -> Path:
+    return executable_dir() / "PlayStoreAppAudit-data"
+
+
+def portable_mode_active() -> bool:
+    return portable_marker().is_file()
+
+
+def app_data_dir() -> Path:
+    """Return the active data directory, honoring portable mode everywhere."""
+    target = portable_data_dir() if portable_mode_active() else default_app_data_dir()
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def migrate_portable_mode(enable: bool) -> tuple[bool, str]:
+    """Move app data between normal and portable storage, then toggle the marker."""
+    current = app_data_dir()
+    destination = portable_data_dir() if enable else default_app_data_dir()
+    destination.mkdir(parents=True, exist_ok=True)
+    try:
+        probe = destination / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        if current.resolve() != destination.resolve():
+            for item in current.iterdir():
+                target = destination / item.name
+                if item.is_dir():
+                    if target.exists():
+                        shutil.rmtree(target)
+                    shutil.copytree(item, target)
+                else:
+                    shutil.copy2(item, target)
+        if enable:
+            portable_marker().write_text("Play Store App Audit portable mode\n", encoding="utf-8")
+        else:
+            portable_marker().unlink(missing_ok=True)
+        return True, "Portable mode changed. Restart the app to use the new data location."
+    except Exception as exc:
+        return False, f"Could not change portable mode: {exc}"
 
 
 def managed_platform_tools_dir() -> Path:

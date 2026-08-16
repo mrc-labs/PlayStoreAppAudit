@@ -5,8 +5,9 @@ from datetime import datetime
 from typing import Any
 
 import playstore_app_audit.services.persistence as user_state
+from playstore_app_audit import __version__
 
-APP_VERSION = "0.9.2"
+APP_VERSION = __version__
 
 DATE_FORMATS = {
     "YYYY-MM-DD": "%Y-%m-%d",

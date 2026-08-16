@@ -5,15 +5,12 @@ import sys
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import QApplication, QMenu
 
+import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.persistence as persistence
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
-from app_icon import ensure_runtime_icon
-
-# Transitional aliases for the menu layer.
-v92ui = preferences_ui
-v92 = presentation
-user_state = persistence
+from playstore_app_audit.resources import ensure_runtime_icon
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -91,7 +88,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar.addMenu(self.help_menu)
         self.help_menu.addAction(
             "ADB setup guide…",
-            lambda: self._show_text_help("ADB setup guide", preferences_ui.v9.features.ADB_SETUP_GUIDE),
+            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
         )
         self.help_menu.addAction(
             "How to export package CSV…",
@@ -99,9 +96,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         )
         self.help_menu.addAction(
             "Health score methodology…",
-            lambda: self._show_text_help(
-                "Health score methodology", preferences_ui.v9.features.HEALTH_SCORE_GUIDE
-            ),
+            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
         )
         self.help_menu.addSeparator()
         self.help_menu.addAction("Check for updates…", self._check_for_updates)
@@ -113,7 +108,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if not hasattr(self, "summary_label"):
             return
         base_rows = self._rows_before_criticality_filter()
-        criticality = preferences_ui.v9.v8.v7.qt_base.CRITICALITY
+        criticality = base_ui.CRITICALITY
         counts = {
             key: sum(1 for row in base_rows if str(row.get("criticality_key") or "") == key)
             for key in criticality
@@ -135,7 +130,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName(preferences_ui.v9.v8.v7.qt_base.APP_NAME)
+    app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
     app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))

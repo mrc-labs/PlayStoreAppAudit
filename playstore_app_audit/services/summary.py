@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import playstore_app_audit.services.presentation as v92
+import playstore_app_audit.services.presentation as presentation
+from playstore_app_audit import __version__
 
-APP_VERSION = "0.9.3"
+APP_VERSION = __version__
 
 
 def device_change_count(inventory_changes: object) -> int:
@@ -27,7 +28,7 @@ def concise_summary(
     visible_count: int | None = None,
     inventory_changes: object = None,
 ) -> str:
-    summary = v92.concise_summary(rows, visible_count)
+    summary = presentation.concise_summary(rows, visible_count)
     changes = device_change_count(inventory_changes)
     if rows and changes:
         summary += f"  •  Device changes {changes}"

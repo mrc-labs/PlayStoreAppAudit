@@ -41,3 +41,15 @@ def test_source_does_not_import_retired_module_names() -> None:
         if any(name in text for name in retired):
             offenders.append(str(path.relative_to(root)))
     assert not offenders
+
+
+def test_main_window_does_not_patch_other_modules_at_import_time() -> None:
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "playstore_app_audit/ui/main_window.py").read_text(encoding="utf-8")
+    forbidden = (
+        "base_ui.detect_windows_country =",
+        "base_ui.managed_platform_tools_dir =",
+        "state_service.app_data_dir =",
+        ".APP_VERSION = __version__",
+    )
+    assert not [marker for marker in forbidden if marker in text]
