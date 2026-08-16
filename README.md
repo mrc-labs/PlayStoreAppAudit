@@ -2,7 +2,7 @@
 
 Play Store App Audit is a Qt 6 / PySide6 desktop utility for auditing Android packages against public Google Play listings and, when an Android phone is connected through ADB, enriching the audit with device metadata.
 
-CustomTkinter is retired. The application now has one Qt source tree intended for Windows, macOS and Linux.
+CustomTkinter is retired. The application now has one Qt source tree intended for Windows, macOS and Linux, with `main` as the canonical production branch.
 
 ## Current architecture
 
@@ -90,6 +90,6 @@ The Windows CI also opens the Qt UI using the offscreen platform plugin before p
 
 ## Builds
 
-Windows is the normal automatic GitHub Actions build. macOS and Linux builds are manual/on-demand only, but use the same source revision.
+Windows is the normal automatic GitHub Actions build from `main`. macOS and Linux builds are manual/on-demand only, but use the same source revision.
 
-Release packaging uses Qt's `pyside6-deploy` / Nuitka path. See `docs/BUILDING.md` for local and CI instructions and `docs/BRANCH_MIGRATION.md` for the planned move to a single canonical `main` branch.
+Release packaging uses Qt's `pyside6-deploy` / Nuitka path. See `docs/BUILDING.md` for local and CI instructions and `docs/BRANCH_MIGRATION.md` for the completed migration and legacy-branch retirement steps.
