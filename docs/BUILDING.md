@@ -2,7 +2,7 @@
 
 ## Shared source
 
-Windows, macOS and Linux use the same Python/Qt source revision. Do not create permanent operating-system branches.
+Windows, macOS and Linux use the same Python/Qt source revision from the canonical `main` branch. Do not create permanent operating-system branches.
 
 ## Local development
 
@@ -31,7 +31,7 @@ python main.py
 
 ## Windows
 
-`.github/workflows/build-windows-exe.yml` is the normal automatic build. It runs on pushes to the active development branch, tests the application using Qt's offscreen backend, then packages the app with `pyside6-deploy` / Nuitka.
+`.github/workflows/build-windows-exe.yml` is the normal automatic build. It runs on relevant pushes to `main`, tests the application using Qt's offscreen backend, then packages the app with `pyside6-deploy` / Nuitka.
 
 The final artifact is `PlayStoreAppAudit.exe`.
 
