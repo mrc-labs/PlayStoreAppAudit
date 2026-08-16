@@ -5,8 +5,8 @@ import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from app_icon import ensure_runtime_icon
 from playstore_app_audit import __version__
+from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui.main_window import MainWindow
 
 
