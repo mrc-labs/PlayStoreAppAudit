@@ -48,7 +48,23 @@ To build one of these platforms in GitHub:
 5. Select `linux`, `macos` or `both`.
 6. When the run completes, download the artifact from that workflow run.
 
-The workflow still runs tests against the same source before packaging.
+The workflow runs compile/tests/Ruff/Qt offscreen smoke checks against the same source before packaging, then verifies that the generated artifact is non-trivial instead of trusting the deployment command alone.
+
+### Linux runner prerequisites
+
+The GitHub Ubuntu runner needs a small Qt/EGL/XCB runtime set before importing Qt offscreen:
+
+```bash
+sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
+```
+
+These are CI/build-host dependencies, not additional Python runtime packages in the application.
+
+### macOS packaging note
+
+The application does not use Qt Virtual Keyboard. The macOS Nuitka build therefore excludes the `platforminputcontexts` plugin. With PySide6 6.11.1 on the current GitHub ARM64 macOS runner, including that unused plugin can make Nuitka follow a missing `QtVirtualKeyboardQml.framework` reference. Excluding it keeps the app bundle limited to the Qt functionality the application actually uses.
+
+The workflow also checks for a real executable under `Contents/MacOS` and requires the app/archive to exceed a minimal plausible size. This guards against a deployment wrapper reporting success after an internal compiler/plugin failure.
 
 ## ADB / Android Platform-Tools
 
