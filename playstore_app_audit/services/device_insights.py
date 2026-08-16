@@ -311,6 +311,44 @@ def _parse_package_dump(
     }
 
 
+def _extract_bulk_package_blocks(text: str, wanted: set[str] | None = None) -> dict[str, str]:
+    """Extract package sections from one ``dumpsys package`` response.
+
+    Android's own CTS utilities parse the Packages section from the same bulk
+    command. Keep this deliberately defensive: if the section shape is not
+    recognised the caller simply falls back to per-package dumpsys calls.
+    """
+    normalized = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    section_match = re.search(r"(?m)^[ \t]*Packages:[ \t]*$", normalized)
+    if not section_match:
+        return {}
+    tail = normalized[section_match.end() :].lstrip("\n")
+    section = re.split(r"\n[ \t]*\n", tail, maxsplit=1)[0]
+    header = re.compile(r"(?m)^[ \t]{2}Package \[([^\]]+)\][^\n]*$")
+    matches = list(header.finditer(section))
+    blocks: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        package = match.group(1).strip()
+        if wanted is not None and package not in wanted:
+            continue
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(section)
+        blocks[package] = section[match.start() : end].rstrip()
+    return blocks
+
+
+def _metadata_is_usable(info: dict[str, str]) -> bool:
+    return any(
+        str(info.get(key) or "").strip()
+        for key in (
+            "installed_version_code",
+            "installed_version",
+            "target_sdk",
+            "first_install_time",
+            "last_local_update",
+        )
+    )
+
+
 def compatibility_label(target_sdk: object, device_sdk: object) -> str:
     try:
         target = int(str(target_sdk))
@@ -364,6 +402,30 @@ def collect_device_metadata_v9(
 
     metadata: dict[str, dict[str, str]] = {}
 
+    # Fast path: one PackageManager dump for the entire inventory. This avoids
+    # starting hundreds of separate adb/dumpsys processes on larger phones.
+    # Any package whose block is missing or does not contain usable metadata is
+    # handled by the proven per-package fallback below.
+    try:
+        cancelled = cancel_event is not None and cancel_event.is_set()
+        if not cancelled:
+            bulk_dump = _run(adb, ["shell", "dumpsys", "package"], 60)
+            blocks = _extract_bulk_package_blocks(bulk_dump, set(packages))
+            for package, dump in blocks.items():
+                info = _parse_package_dump(dump, package in disabled, device_sdk, include_permissions)
+                if not _metadata_is_usable(info):
+                    continue
+                info["installer_source"] = v8._friendly_installer(installer_map.get(package, ""))
+                metadata[package] = info
+    except Exception:
+        # Bulk dumps differ across Android/OEM versions. Falling back is a
+        # correctness feature, not an error condition.
+        pass
+
+    remaining = [package for package in packages if package not in metadata]
+    if cancel_event is not None and cancel_event.is_set():
+        return metadata
+
     def read_one(package: str) -> tuple[str, dict[str, str]]:
         if cancel_event is not None and cancel_event.is_set():
             return package, {}
@@ -386,8 +448,11 @@ def collect_device_metadata_v9(
         info["installer_source"] = v8._friendly_installer(installer_map.get(package, ""))
         return package, info
 
+    if not remaining:
+        return metadata
+
     with ThreadPoolExecutor(max_workers=max(1, min(max_workers, 8))) as executor:
-        futures = {executor.submit(read_one, package): package for package in packages}
+        futures = {executor.submit(read_one, package): package for package in remaining}
         for future in as_completed(futures):
             if cancel_event is not None and cancel_event.is_set():
                 for pending in futures:
