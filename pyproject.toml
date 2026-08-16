@@ -13,7 +13,6 @@ dependencies = [
     "requests>=2.31",
     "beautifulsoup4>=4.12",
     "PySide6-Essentials>=6.11",
-    "Pillow>=10.0",
 ]
 
 [project.scripts]
