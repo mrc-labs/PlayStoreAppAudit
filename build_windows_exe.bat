@@ -33,6 +33,7 @@ if errorlevel 1 exit /b 1
 python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
 pyside6-deploy main.py --name PlayStoreAppAudit --init
 python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --windows-console-mode=disable --nofollow-import-to=PIL --assume-yes-for-downloads'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close()"
+if not exist "dist" mkdir dist
 pyside6-deploy -c pysidedeploy.spec -f
 if errorlevel 1 exit /b 1
 
