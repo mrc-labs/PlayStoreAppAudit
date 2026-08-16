@@ -4,11 +4,11 @@
 
 Play Store App Audit is a Python desktop application that audits Android package IDs against public Google Play listings and, optionally, enriches results from an Android device through ADB.
 
-The production UI is Qt 6 / PySide6. CustomTkinter is legacy and must not receive new features.
+The production UI is Qt 6 / PySide6. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
 ## Architecture
 
-New code belongs under `playstore_app_audit/`:
+All production application code belongs under `playstore_app_audit/`:
 
 - `playstore_app_audit/app.py`: application entry point only.
 - `playstore_app_audit/domain/`: typed domain models and pure business concepts.
@@ -17,7 +17,9 @@ New code belongs under `playstore_app_audit/`:
 - `playstore_app_audit/platform/`: Windows/macOS/Linux abstraction.
 - `playstore_app_audit/ui/`: Qt Widgets UI only.
 
-The older top-level `playstore_app_audit.ui.base_window_v*.py` and `playstore_audit_*_features.py` files are a temporary compatibility layer. Do not add new product features to older versioned UI files unless a migration fix specifically requires it. Prefer moving behaviour behind the package boundary and gradually deleting legacy wrappers.
+The version-suffixed top-level Qt and feature modules have been removed. The internal Qt layers now use descriptive package module names such as `base_window`, `audit_window`, `device_window`, `preferences_window` and `results_window`, with `main_window.py` as the public UI entry point.
+
+Some inherited UI layers still use transitional aliases/monkey-patching to preserve proven behaviour. Improve these incrementally when it makes the code clearer, but do not recreate versioned wrappers or perform a large behavioural rewrite at the same time as a structural change.
 
 UI code must not implement Google Play parsing, cache persistence, ADB discovery/download logic, or OS detection directly.
 
@@ -68,7 +70,9 @@ Windows is the normal CI build and runs automatically for relevant pushes to `ma
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
-Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact. Keep a fallback deployment path only until the preferred path is proven stable.
+Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact.
+
+Generated binaries, deployment directories and generated icon files must never be committed to source control. They belong in CI artifacts or local ignored paths.
 
 ## Tests and quality
 
@@ -82,12 +86,14 @@ Before considering a change complete:
 
 Add regression tests for bugs before or together with the fix when practical.
 
+Ruff exceptions for inherited Qt patterns are intentionally narrow and configured per-file in `pyproject.toml`. Prefer removing an exception when the relevant code is modernised rather than broadening the global ignore list.
+
 ## Git workflow
 
-- `main` is the canonical production branch.
-- Temporary feature/fix branches should be short-lived and merged back into `main`.
-- `qt6`, `qt6-working`, and `customtkinter` are legacy migration branches and should be deleted once the archival CustomTkinter checkpoint has been converted to a tag.
+- `main` is the single canonical permanent branch.
+- Use short-lived `feature/`, `fix/` or `refactor/` branches, merge them back into `main`, then delete them.
 - Do not create permanent branches per operating system. Windows/macOS/Linux must build from the same source revision.
+- Historical implementations belong in Git tags, not live maintenance branches.
 
 ## Style
 
