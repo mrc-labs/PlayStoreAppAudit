@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class StatusKey(str, Enum):
+class StatusKey(StrEnum):
     REMOVED = "red"
     STALE = "orange"
     AGING = "yellow"
@@ -31,7 +31,7 @@ class AppRecord:
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, row: dict[str, Any]) -> "AppRecord":
+    def from_mapping(cls, row: dict[str, Any]) -> AppRecord:
         known = {
             "package_name",
             "app_name",
