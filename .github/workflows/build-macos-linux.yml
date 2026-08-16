@@ -121,7 +121,7 @@ jobs:
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --nofollow-import-to=PIL --assume-yes-for-downloads'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version=0.12.0 --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
       - name: Build and validate macOS app bundle
@@ -133,6 +133,11 @@ jobs:
           EXEC=$(find "$APP/Contents/MacOS" -type f -perm +111 | head -n 1)
           test -n "$EXEC"
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
+          PLIST="$APP/Contents/Info.plist"
+          test -f "$PLIST"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$PLIST")" = "PlayStoreAppAudit"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" = "com.mrclabs.PlayStoreAppAudit"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" = "0.12.0"
           ditto -c -k --sequesterRsrc --keepParent "$APP" artifact/PlayStoreAppAudit-macOS.zip
           test "$(stat -f%z artifact/PlayStoreAppAudit-macOS.zip)" -gt 1048576
           ls -lh artifact/PlayStoreAppAudit-macOS.zip
