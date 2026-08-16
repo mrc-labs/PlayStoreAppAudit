@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 # package. New product code should depend on this package, not on those modules.
 import playstore_audit_qt as qt_base
 import playstore_audit_qt_branch as qt_branch
+import playstore_audit_qt_compact as qt_compact
 import playstore_audit_qt_v9_2 as v92ui
 import playstore_audit_qt_v9_3 as legacy_ui
 import playstore_audit_v9_2_features as v92_features
@@ -27,6 +28,7 @@ from playstore_app_audit import __version__
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.resources import ensure_runtime_icon
 
 
 # Centralise platform decisions instead of spreading Windows assumptions across
@@ -35,6 +37,7 @@ qt_base.detect_windows_country = runtime.detect_store_country
 qt_branch.detect_windows_country = runtime.detect_store_country
 qt_base.managed_platform_tools_dir = runtime.managed_platform_tools_dir
 qt_base.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
+qt_compact.ensure_runtime_icon = ensure_runtime_icon
 v9_features.local_data_dir = runtime.app_data_dir
 v9_features.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
 
