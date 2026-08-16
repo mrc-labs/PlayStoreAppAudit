@@ -39,10 +39,7 @@ def is_authorised(adb: str) -> bool:
         lines = run_adb(adb, "devices", timeout=20).stdout.splitlines()
     except Exception:
         return False
-    return any(
-        len(line.split()) >= 2 and line.split()[1] == "device"
-        for line in lines[1:]
-    )
+    return any(len(line.split()) >= 2 and line.split()[1] == "device" for line in lines[1:])
 
 
 def install_platform_tools() -> tuple[str, str]:

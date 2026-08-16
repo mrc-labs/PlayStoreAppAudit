@@ -17,7 +17,7 @@ New code belongs under `playstore_app_audit/`:
 - `playstore_app_audit/platform/`: Windows/macOS/Linux abstraction.
 - `playstore_app_audit/ui/`: Qt Widgets UI only.
 
-The older top-level `playstore_audit_qt_v*.py` and `playstore_audit_*_features.py` files are a temporary compatibility layer. Do not add new product features to older versioned UI files unless a migration fix specifically requires it. Prefer moving behaviour behind the package boundary and gradually deleting legacy wrappers.
+The older top-level `playstore_app_audit.ui.base_window_v*.py` and `playstore_audit_*_features.py` files are a temporary compatibility layer. Do not add new product features to older versioned UI files unless a migration fix specifically requires it. Prefer moving behaviour behind the package boundary and gradually deleting legacy wrappers.
 
 UI code must not implement Google Play parsing, cache persistence, ADB discovery/download logic, or OS detection directly.
 

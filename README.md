@@ -20,7 +20,7 @@ New application code lives under `playstore_app_audit/`:
 - `platform/` for Windows/macOS/Linux differences
 - `ui/` for the Qt Widgets UI
 
-The old top-level version-suffixed Qt modules are currently a tested compatibility layer during the refactor. New product features must be added to the canonical package rather than creating more `*_vN.py`, `*_fixed.py` or `*_stable.py` files. See `docs/ARCHITECTURE.md` and `AGENTS.md`.
+The application code is fully contained under `playstore_app_audit/`; version-suffixed compatibility modules have been removed. See `docs/ARCHITECTURE.md` and `AGENTS.md`.
 
 ## App source
 

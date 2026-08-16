@@ -2,7 +2,9 @@ from playstore_app_audit.platform import runtime
 
 
 def test_platform_tools_url_is_official_google_endpoint() -> None:
-    assert runtime.platform_tools_url().startswith("https://dl.google.com/android/repository/platform-tools-latest-")
+    assert runtime.platform_tools_url().startswith(
+        "https://dl.google.com/android/repository/platform-tools-latest-"
+    )
     assert runtime.platform_tools_url().endswith(".zip")
 
 
