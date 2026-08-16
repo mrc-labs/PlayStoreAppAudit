@@ -25,6 +25,7 @@ import playstore_audit_v9_3_features as v93_features
 import playstore_audit_v9_features as v9_features
 from playstore_app_audit import __version__
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
+from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 
 
@@ -35,6 +36,7 @@ qt_branch.detect_windows_country = runtime.detect_store_country
 qt_base.managed_platform_tools_dir = runtime.managed_platform_tools_dir
 qt_base.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
 v9_features.local_data_dir = runtime.app_data_dir
+v9_features.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
 
 # Surface the package version everywhere the legacy dialogs/reports read it.
 v92ui.v9.features.APP_VERSION = __version__
