@@ -4,8 +4,11 @@ __pycache__/
 venv/
 build/
 dist/
+artifact/
 *.spec
 *.log
+app_icon.ico
+app_icon.png
 *_playstore_audit_*.csv
 *_playstore_problems_*.csv
 *_playstore_results_*.zip
