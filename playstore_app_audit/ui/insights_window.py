@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -41,23 +42,6 @@ from playstore_app_audit.ui import schema
 
 V9_EXTRA_COLUMNS = schema.INSIGHTS_EXTRA_COLUMNS
 V9_MODEL_COLUMNS = schema.MODEL_COLUMNS
-
-# v8 imports the feature module object, so replacing these functions upgrades
-# its existing background worker without duplicating the audit engine.
-device_ui.device_metadata.collect_device_metadata = device_insights.collect_device_metadata_v9
-device_ui.device_metadata.enrich_rows_with_device_metadata = (
-    device_insights.enrich_rows_with_device_metadata_v9
-)
-
-_original_classify = base_ui.classify_criticality
-
-
-def _classify_with_health(row: dict[str, Any]) -> None:
-    _original_classify(row)
-    device_insights.apply_health_score(row)
-
-
-base_ui.classify_criticality = _classify_with_health
 
 
 class AdvancedFilterProxy(base_ui.AppFilterProxy):
@@ -107,7 +91,20 @@ class InsightsWindow(device_ui.DeviceWindow):
         self._build_menu_v9()
         self._apply_column_visibility(reset_order=False)
         self._update_summary()
-        device_insights.log_event("Qt6 v9 started")
+        device_insights.log_event("Qt6 insights layer started")
+
+    # ---------- Behaviour hooks ----------
+    def _collect_device_metadata(self, adb: str, packages: list[str], cancel_event):
+        return device_insights.collect_device_metadata_v9(adb, packages, cancel_event)
+
+    def _enrich_rows_with_device_metadata(
+        self, rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
+    ) -> None:
+        device_insights.enrich_rows_with_device_metadata_v9(rows, metadata)
+
+    def _classify_row(self, row: dict[str, Any]) -> None:
+        super()._classify_row(row)
+        device_insights.apply_health_score(row)
 
     # ---------- Column/view presets ----------
     def _visible_column_order(self) -> list[str]:
@@ -151,7 +148,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         return list(dict.fromkeys(c for c in columns if c in V9_MODEL_COLUMNS))
 
     def _set_view_preset(self, name: str) -> None:
-        if name not in device_insights.VIEW_PRESETS:
+        if name not in presentation.VIEW_PRESETS:
             return
         settings = state.load_settings()
         settings["view_preset"] = name
@@ -196,7 +193,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         group = QActionGroup(self)
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
-        for name in device_insights.VIEW_PRESETS:
+        for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current_view)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
@@ -233,7 +230,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         )
         help_menu.addAction(
             "How to export package CSV…",
-            lambda: self._show_text_help("Export package CSV", device_insights.CSV_EXPORT_GUIDE),
+            lambda: self._show_text_help("Export package CSV", presentation.CSV_EXPORT_GUIDE),
         )
         help_menu.addAction(
             "Health score methodology…",
@@ -925,7 +922,6 @@ class InsightsWindow(device_ui.DeviceWindow):
         QMessageBox.about(
             self,
             "About Play Store App Audit",
-            f"<b>Play Store App Audit {device_insights.APP_VERSION}</b><br><br>Created by MRC<br>Development assistance: OpenAI ChatGPT<br><br>Unofficial utility. Not affiliated with or endorsed by Google.<br><br><a href='https://github.com/mrc-labs/PlayStoreAppAudit'>MRC on GitHub</a>",
         )
 
 

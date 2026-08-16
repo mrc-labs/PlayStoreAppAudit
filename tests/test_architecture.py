@@ -97,3 +97,20 @@ def test_ui_modules_do_not_mutate_table_schema_across_imports() -> None:
             if marker in source:
                 offenders.append(f"{path.name}: {marker}")
     assert not offenders, offenders
+
+
+def test_no_runtime_cross_module_monkey_patching() -> None:
+    root = Path(__file__).resolve().parents[1]
+    forbidden = (
+        "base_ui.audit_apps =",
+        "base_ui.classify_criticality =",
+        "compact_ui.audit_apps_multicountry =",
+        "compact_ui.load_fresh_cache =",
+        "device_ui.device_metadata.collect_device_metadata =",
+        "device_insights.VIEW_PRESETS =",
+        "Development assistance: OpenAI ChatGPT",
+    )
+    for path in (root / "playstore_app_audit").rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden:
+            assert snippet not in source, f"{snippet!r} reintroduced in {path.relative_to(root)}"
