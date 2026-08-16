@@ -26,6 +26,7 @@ from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.services import state as state_service
 
 # Compatibility imports above are a tested transition layer while the older
 # versioned Qt modules are migrated behind this canonical package entry point.
@@ -40,6 +41,7 @@ qt_base.PLATFORM_TOOLS_URL = runtime.platform_tools_url()
 qt_compact.ensure_runtime_icon = ensure_runtime_icon
 v9_features.local_data_dir = runtime.app_data_dir
 v9_features.ADB_SETUP_GUIDE = ADB_SETUP_GUIDE
+state_service.app_data_dir = v9_features.app_data_dir_v9
 
 # Surface the package version everywhere the legacy dialogs/reports read it.
 v92ui.v9.features.APP_VERSION = __version__
