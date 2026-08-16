@@ -64,7 +64,7 @@ Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths, or Windows
 
 ## Build policy
 
-Windows is the normal CI build and may run automatically on pushes to the active development branch.
+Windows is the normal CI build and runs automatically for relevant pushes to `main`.
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
@@ -84,10 +84,10 @@ Add regression tests for bugs before or together with the fix when practical.
 
 ## Git workflow
 
-- `main` should eventually be the canonical production branch.
-- Temporary feature branches should be short-lived.
-- `qt6-working` and `customtkinter` are legacy branches and should be retired after the Qt package refactor is validated and the final useful differences have been reconciled.
-- Do not create permanent branches per operating system. Windows/macOS/Linux should build from the same source revision.
+- `main` is the canonical production branch.
+- Temporary feature/fix branches should be short-lived and merged back into `main`.
+- `qt6`, `qt6-working`, and `customtkinter` are legacy migration branches and should be deleted once the archival CustomTkinter checkpoint has been converted to a tag.
+- Do not create permanent branches per operating system. Windows/macOS/Linux must build from the same source revision.
 
 ## Style
 
