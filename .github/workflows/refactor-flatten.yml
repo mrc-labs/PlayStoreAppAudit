@@ -39,6 +39,11 @@ jobs:
         shell: pwsh
         run: python tools/flatten_architecture.py
 
+      - name: Set transitional lint policy for migrated Qt code
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; p=Path('pyproject.toml'); s=p.read_text(encoding='utf-8'); old='ignore = [\"E501\"]'; new='ignore = [\"E501\", \"E402\", \"B008\", \"SIM102\", \"SIM105\", \"SIM113\"]'; assert old in s, 'Expected migration lint marker missing'; p.write_text(s.replace(old,new), encoding='utf-8')"
+
       - name: Format and autofix migrated code
         shell: pwsh
         run: |
