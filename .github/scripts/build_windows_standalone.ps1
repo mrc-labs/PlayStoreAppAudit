@@ -48,6 +48,8 @@ if ([IO.Path]::IsPathRooted($OutputRoot)) {
 
 $InspectPe = Join-Path $RepoRoot ".github\scripts\inspect_pe.py"
 $ValidateStandalone = Join-Path $RepoRoot ".github\scripts\validate_windows_standalone.py"
+$PrepareReleaseLegal = Join-Path $RepoRoot ".github\scripts\prepare_release_legal_bundle.py"
+$ValidateReleaseLegal = Join-Path $RepoRoot ".github\scripts\validate_release_legal_bundle.py"
 
 if (-not (Test-Path -LiteralPath $Python)) {
     Fail "Python executable was not found: $Python"
@@ -59,15 +61,26 @@ if (-not (Test-Path -LiteralPath $ValidateStandalone)) {
     Fail "Standalone validation helper was not found: $ValidateStandalone"
 }
 
+if (-not $PrivateBuild) {
+    if (-not (Test-Path -LiteralPath $PrepareReleaseLegal)) {
+        Fail "Legal release preparation helper was not found: $PrepareReleaseLegal"
+    }
+    if (-not (Test-Path -LiteralPath $ValidateReleaseLegal)) {
+        Fail "Legal release validation helper was not found: $ValidateReleaseLegal"
+    }
+}
+
 Write-Host "=== WINDOWS STANDALONE BUILD ==="
 Write-Host "Repository: $RepoRoot"
 Write-Host "Python:     $Python"
 Write-Host "Output:     $BuildRoot"
 $CompilerLabel = if ($UseMSVC) { "MSVC latest" } else { "Nuitka default/available compiler" }
+$LegalModeLabel = if ($PrivateBuild) { "private test - legal release generation skipped" } else { "public strict - legal bundle required before ZIP" }
 
 Write-Host "Arch:       $PackageArch"
 Write-Host "Machine:    $ExpectedPlatformMachine"
 Write-Host "Compiler:   $CompilerLabel"
+Write-Host "Legal mode: $LegalModeLabel"
 Write-Host ""
 
 $ReportedMachine = (& $Python -c "import platform; print(platform.machine().upper())").Trim()
@@ -118,11 +131,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $NuitkaOutput = Join-Path $BuildRoot "nuitka"
+$NuitkaReport = Join-Path $NuitkaOutput "compilation-report.xml"
 $PackageName = "PlayStoreAppAudit-v$AppVersion-windows-$PackageArch"
 $PackageDir = Join-Path $BuildRoot $PackageName
 $ZipPath = Join-Path $BuildRoot "$PackageName.zip"
 $ChecksumPath = "$ZipPath.sha256"
 $IconPath = Join-Path $BuildRoot "app_icon.ico"
+$LegalReleaseDir = Join-Path $BuildRoot "legal-release-v$AppVersion"
 
 if (Test-Path -LiteralPath $BuildRoot) {
     Remove-Item -LiteralPath $BuildRoot -Recurse -Force
@@ -159,6 +174,7 @@ $NuitkaArgs = @(
     "--file-description=PlayStoreAppAudit",
     "--output-filename=PlayStoreAppAudit.exe",
     "--output-dir=$NuitkaOutput"
+    "--report=$NuitkaReport"
 )
 
 if ($UseMSVC) {
@@ -171,6 +187,11 @@ $NuitkaArgs += "main.py"
 if ($LASTEXITCODE -ne 0) {
     Fail "Nuitka standalone build failed."
 }
+
+if (-not (Test-Path -LiteralPath $NuitkaReport -PathType Leaf)) {
+    Fail "Nuitka compilation report was not produced: $NuitkaReport"
+}
+
 
 $DistDir = Get-ChildItem -LiteralPath $NuitkaOutput -Directory |
     Where-Object { $_.Name -like "*.dist" } |
@@ -297,7 +318,9 @@ $BuildInfoLines = @(
     "Python: $PythonVersion"
     "PySide6: $PySideVersion"
     "Nuitka: $NuitkaVersion"
+    "Compiler: $CompilerLabel"
     "Packaging: standalone"
+    "Legal packaging: $LegalModeLabel"
 )
 
 if ($env:GITHUB_ACTIONS -eq "true") {
@@ -331,9 +354,52 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 $BuildInfoLines |
     Set-Content -LiteralPath (Join-Path $PackageDir "BUILD-INFO.txt") -Encoding utf8
 
+if (-not $PrivateBuild) {
+    Write-Host ""
+    Write-Host "=== PREPARE PUBLIC LEGAL RELEASE MATERIAL ==="
+    & $Python $PrepareReleaseLegal `
+        --package-dir $PackageDir `
+        --release-dir $LegalReleaseDir `
+        --repo-root $RepoRoot `
+        --release-tag "v$AppVersion" `
+        --nuitka-report $NuitkaReport `
+        --inject
+
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Public legal release preparation failed."
+    }
+
+    Write-Host ""
+    Write-Host "=== VALIDATE PUBLIC LEGAL RELEASE MATERIAL ==="
+    & $Python $ValidateReleaseLegal `
+        --package-dir $PackageDir `
+        --release-dir $LegalReleaseDir `
+        --public
+
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Public legal release validation failed."
+    }
+
+    $SourceAssetsDir = Join-Path $LegalReleaseDir "source-assets"
+    $SourceSumsPath = Join-Path $SourceAssetsDir "SHA256SUMS.txt"
+    if (-not (Test-Path -LiteralPath $SourceSumsPath)) {
+        Fail "Public legal validation passed without the expected source-asset checksum file: $SourceSumsPath"
+    }
+}
+
+Write-Host ""
+Write-Host "=== FINAL PACKAGE VALIDATION ==="
+& $Python $ValidateStandalone $PackageDir
+if ($LASTEXITCODE -ne 0) {
+    Fail "Final versioned package validation failed."
+}
+
 if (Test-Path -LiteralPath $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
+
+Write-Host ""
+Write-Host "=== CREATE FINAL ZIP ==="
 Compress-Archive -LiteralPath $PackageDir -DestinationPath $ZipPath -CompressionLevel Optimal
 
 $ZipHash = (& $Python -c "import hashlib, sys; print(hashlib.file_digest(open(sys.argv[1], 'rb'), 'sha256').hexdigest())" $ZipPath).Trim()
@@ -343,13 +409,6 @@ if ($LASTEXITCODE -ne 0 -or -not $ZipHash) {
 
 "$ZipHash  $([IO.Path]::GetFileName($ZipPath))" |
     Set-Content -LiteralPath $ChecksumPath -Encoding ascii
-
-Write-Host ""
-Write-Host "=== FINAL PACKAGE VALIDATION ==="
-& $Python $ValidateStandalone $PackageDir
-if ($LASTEXITCODE -ne 0) {
-    Fail "Final versioned package validation failed."
-}
 
 Write-Host ""
 Write-Host "=== QT RUNTIME INVENTORY ==="
@@ -365,3 +424,7 @@ Write-Host "Executable:        $(Join-Path $PackageDir 'PlayStoreAppAudit.exe')"
 Write-Host "ZIP:               $ZipPath"
 Write-Host "ZIP SHA-256:       $ZipHash"
 Write-Host "Checksum:          $ChecksumPath"
+if (-not $PrivateBuild) {
+    Write-Host "Legal staging:      $LegalReleaseDir"
+    Write-Host "Source assets:      $(Join-Path $LegalReleaseDir 'source-assets')"
+}

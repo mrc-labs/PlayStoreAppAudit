@@ -11,11 +11,19 @@ REQUIRED_FILES = {
     "qwindows.dll",
 }
 
-FORBIDDEN_FILES = {
-    "qtvirtualkeyboardplugin.dll",
-    "qt6virtualkeyboard.dll",
+FORBIDDEN_EXACT_FILES = {
     "qpdf.dll",
 }
+
+
+def _forbidden_reason(path: Path, root: Path) -> str | None:
+    rel = path.relative_to(root).as_posix()
+    rel_compact = rel.casefold().replace("-", "").replace("_", "")
+    if path.name.casefold() in FORBIDDEN_EXACT_FILES:
+        return "qpdf.dll is intentionally excluded"
+    if "virtualkeyboard" in rel_compact:
+        return "Qt Virtual Keyboard runtime is intentionally excluded"
+    return None
 
 
 def parse_args() -> argparse.Namespace:
@@ -46,9 +54,12 @@ def main() -> int:
         name for name in REQUIRED_FILES if name.casefold() not in by_name
     )
     forbidden = sorted(
-        path
-        for name in FORBIDDEN_FILES
-        for path in by_name.get(name.casefold(), [])
+        (
+            (path, reason)
+            for path in files
+            if (reason := _forbidden_reason(path, root)) is not None
+        ),
+        key=lambda item: str(item[0]).casefold(),
     )
 
     qtcore_pyd = [
@@ -74,7 +85,10 @@ def main() -> int:
     if forbidden:
         errors.append(
             "Forbidden runtime files found:\n  "
-            + "\n  ".join(str(path.relative_to(root)) for path in forbidden)
+            + "\n  ".join(
+                f"{path.relative_to(root)} - {reason}"
+                for path, reason in forbidden
+            )
         )
     if not qtcore_pyd:
         errors.append("PySide6 QtCore.pyd was not found.")
@@ -92,9 +106,14 @@ def main() -> int:
                 + ", ".join(str(path.relative_to(root)) for path in matches)
             )
 
-    for name in sorted(FORBIDDEN_FILES):
-        if name.casefold() not in by_name:
-            print(f"forbidden PASS: {name} is absent")
+    if "qpdf.dll" not in by_name:
+        print("forbidden PASS: qpdf.dll is absent")
+    if not any(
+        "virtualkeyboard"
+        in path.relative_to(root).as_posix().casefold().replace("-", "").replace("_", "")
+        for path in files
+    ):
+        print("forbidden PASS: Qt Virtual Keyboard runtime paths are absent")
 
     if qtcore_pyd:
         print(

@@ -1,0 +1,1527 @@
+#!/usr/bin/env python3
+"""Prepare legal material and corresponding-source assets for a Windows standalone release.
+
+This script is intentionally project-specific. Run it with the same Python environment used
+for the release build so dependency metadata and toolchain versions match the packaged runtime.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import hashlib
+import importlib.metadata as metadata
+import json
+import platform
+import re
+import shutil
+import ssl
+import sys
+import tarfile
+import tempfile
+import time
+import tomllib
+import urllib.error
+import urllib.request
+import xml.etree.ElementTree as ET
+from collections import deque
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+import certifi
+
+APP_NAME = "Play Store App Audit"
+PROJECT_REPOSITORY = "https://github.com/mrc-labs/PlayStoreAppAudit"
+PROJECT_LICENSE = "GPL-3.0-only"
+MANIFEST_SCHEMA_VERSION = 1
+
+LEGAL_ROOT_FILES = {
+    "LICENSE",
+    "COMMERCIAL-LICENSING.md",
+    "LICENSING.md",
+    "THIRD_PARTY_NOTICES.md",
+    "SOURCE-AVAILABILITY.md",
+    "LEGAL-MANIFEST.json",
+}
+LEGAL_ROOT_DIRS = {"licenses"}
+LICENSE_FILE_RE = re.compile(r"^(?:licen[cs]e|copying|notice|authors?)(?:[._-].*)?$", re.IGNORECASE)
+REQUIREMENT_NAME_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+SHA256_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+SHA256_PAGE_RE = re.compile(
+    r"SHA-256\s*Hash.{0,1024}?([0-9a-fA-F]{64})",
+    re.DOTALL | re.IGNORECASE,
+)
+OPENSSL_VERSION_RE = re.compile(r"OpenSSL\s+([0-9]+\.[0-9]+\.[0-9]+)")
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
+
+@dataclass(frozen=True)
+class SourceAssetSpec:
+    component: str
+    filename: str
+    url: str
+    sha256: str
+    provenance_url: str
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _canonical_json_sha256(value: Any) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _posix(path: Path) -> str:
+    return path.as_posix()
+
+
+def _safe_relpath(path: Path, root: Path) -> str:
+    return _posix(path.resolve().relative_to(root.resolve()))
+
+
+def _open_url_with_retry(
+    request: urllib.request.Request,
+    *,
+    timeout: int,
+):
+    retryable_statuses = {429, 500, 502, 503, 504}
+    max_attempts = 4
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return urllib.request.urlopen(
+                request,
+                context=_SSL_CONTEXT,
+                timeout=timeout,
+            )
+        except urllib.error.HTTPError as exc:
+            if exc.code not in retryable_statuses or attempt == max_attempts:
+                raise RuntimeError(
+                    f"HTTP {exc.code} while fetching {request.full_url}"
+                ) from exc
+
+            retry_after = None
+            if exc.headers is not None:
+                retry_after = exc.headers.get("Retry-After")
+
+            try:
+                delay = float(retry_after) if retry_after is not None else None
+            except ValueError:
+                delay = None
+
+            if delay is None:
+                delay = min(2 ** (attempt - 1), 8)
+
+            delay = max(0.0, min(delay, 30.0))
+
+            print(
+                f"HTTP {exc.code} while fetching {request.full_url}; "
+                f"retrying after {delay:g}s "
+                f"(attempt {attempt + 1}/{max_attempts})",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
+        except urllib.error.URLError as exc:
+            if attempt == max_attempts:
+                raise RuntimeError(
+                    f"Network error while fetching {request.full_url}: "
+                    f"{exc.reason}"
+                ) from exc
+
+            delay = min(2 ** (attempt - 1), 8)
+
+            print(
+                f"Network error while fetching {request.full_url}; "
+                f"retrying after {delay:g}s "
+                f"(attempt {attempt + 1}/{max_attempts})",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"Unable to fetch URL after retries: {request.full_url}"
+    )
+
+
+_TEXT_DOWNLOAD_CACHE: dict[str, str] = {}
+
+
+def _download_text(url: str) -> str:
+    cached = _TEXT_DOWNLOAD_CACHE.get(url)
+    if cached is not None:
+        return cached
+
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "PlayStoreAppAudit-release-tooling/1"},
+    )
+
+    with _open_url_with_retry(request, timeout=60) as response:
+        text = response.read().decode("utf-8")
+
+    _TEXT_DOWNLOAD_CACHE[url] = text
+    return text
+
+
+def _download_file(url: str, destination: Path, expected_sha256: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists() and _sha256(destination) == expected_sha256:
+        return
+
+    request = urllib.request.Request(url, headers={"User-Agent": "PlayStoreAppAudit-release-tooling/1"})
+    with tempfile.NamedTemporaryFile(delete=False, dir=destination.parent, suffix=".download") as tmp:
+        temp_path = Path(tmp.name)
+        with _open_url_with_retry(request, timeout=120) as response:
+            shutil.copyfileobj(response, tmp)
+
+    try:
+        actual = _sha256(temp_path)
+        if actual != expected_sha256:
+            raise RuntimeError(
+                f"SHA-256 mismatch for {destination.name}: expected {expected_sha256}, got {actual}"
+            )
+        temp_path.replace(destination)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _qt_official_sha256(base_url: str) -> tuple[str, str]:
+    errors: list[str] = []
+
+    metalink_url = f"{base_url}.meta4"
+    try:
+        metalink_text = _download_text(metalink_url)
+        root = ET.fromstring(metalink_text)
+
+        for element in root.iter():
+            local_name = element.tag.rsplit("}", 1)[-1].casefold()
+            hash_type = element.attrib.get("type", "").casefold().replace("_", "-")
+            value = (element.text or "").strip()
+
+            if (
+                local_name == "hash"
+                and hash_type in {"sha-256", "sha256"}
+                and SHA256_HEX_RE.fullmatch(value)
+            ):
+                return value.lower(), metalink_url
+
+        errors.append(f"{metalink_url}: SHA-256 hash element not found")
+    except (
+        ET.ParseError,
+        OSError,
+        RuntimeError,
+        UnicodeDecodeError,
+    ) as exc:
+        errors.append(f"{metalink_url}: {exc}")
+
+    mirrorlist_url = f"{base_url}.mirrorlist"
+    try:
+        mirror_page = _download_text(mirrorlist_url)
+        match = SHA256_PAGE_RE.search(mirror_page)
+
+        if match:
+            return match.group(1).lower(), mirrorlist_url
+
+        errors.append(f"{mirrorlist_url}: SHA-256 hash not found")
+    except (
+        OSError,
+        RuntimeError,
+        UnicodeDecodeError,
+    ) as exc:
+        errors.append(f"{mirrorlist_url}: {exc}")
+
+    raise RuntimeError(
+        "Unable to obtain official Qt SHA-256 metadata:\n  "
+        + "\n  ".join(errors)
+    )
+
+
+def _qt_source_spec(component: str, qt_version: str) -> SourceAssetSpec:
+    major_minor = ".".join(qt_version.split(".")[:2])
+
+    if component == "pyside-setup":
+        filename = f"pyside-setup-everywhere-src-{qt_version}.tar.xz"
+        base_url = (
+            "https://download.qt.io/official_releases/QtForPython/pyside6/"
+            f"PySide6-{qt_version}-src/{filename}"
+        )
+    else:
+        filename = f"{component}-everywhere-src-{qt_version}.tar.xz"
+        base_url = (
+            f"https://download.qt.io/official_releases/qt/"
+            f"{major_minor}/{qt_version}/submodules/{filename}"
+        )
+
+    sha256, provenance_url = _qt_official_sha256(base_url)
+
+    return SourceAssetSpec(
+        component,
+        filename,
+        base_url,
+        sha256,
+        provenance_url,
+    )
+
+
+def _certifi_source_spec(certifi_version: str) -> SourceAssetSpec:
+    api_url = f"https://pypi.org/pypi/certifi/{certifi_version}/json"
+    payload = json.loads(_download_text(api_url))
+    candidates = [item for item in payload.get("urls", []) if item.get("packagetype") == "sdist"]
+    if len(candidates) != 1:
+        raise RuntimeError(f"Expected exactly one certifi sdist for {certifi_version}, found {len(candidates)}")
+    item = candidates[0]
+    return SourceAssetSpec(
+        component="certifi",
+        filename=item["filename"],
+        url=item["url"],
+        sha256=item["digests"]["sha256"].lower(),
+        provenance_url=api_url,
+    )
+
+
+def _read_project_version(repo_root: Path) -> str:
+    pyproject = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
+    version = pyproject["project"]["version"]
+    init_path = repo_root / "playstore_app_audit" / "__init__.py"
+    tree = ast.parse(init_path.read_text(encoding="utf-8"), filename=str(init_path))
+    package_version: str | None = None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets):
+            continue
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            package_version = node.value.value
+            break
+    if package_version is None:
+        raise RuntimeError(f"Unable to read canonical __version__ from {init_path}")
+    if package_version != version:
+        raise RuntimeError(f"Version mismatch: pyproject={version}, package={package_version}")
+    return version
+
+
+def _project_dependency_names(repo_root: Path) -> list[str]:
+    pyproject = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
+    names: list[str] = []
+    for requirement in pyproject["project"].get("dependencies", []):
+        match = REQUIREMENT_NAME_RE.match(requirement)
+        if match:
+            names.append(match.group(1))
+    return names
+
+
+def _normalize_dist_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _runtime_dependency_closure(
+    repo_root: Path,
+    _package_files: Iterable[str],
+) -> list[metadata.Distribution]:
+    """Return the installed dependency closure declared by the project.
+
+    Runtime inclusion is validated separately because Nuitka may compile
+    pure-Python distributions into the executable without leaving package
+    files in the standalone directory.
+    """
+
+    direct_names = _project_dependency_names(repo_root)
+    direct_keys = {_normalize_dist_name(name) for name in direct_names}
+    queue = deque(direct_names)
+    seen: set[str] = set()
+    result: list[metadata.Distribution] = []
+
+    while queue:
+        requested = queue.popleft()
+        key = _normalize_dist_name(requested)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        try:
+            dist = metadata.distribution(requested)
+        except metadata.PackageNotFoundError as exc:
+            if key in direct_keys:
+                raise RuntimeError(
+                    f"Required runtime distribution is not installed: {requested}"
+                ) from exc
+            continue
+
+        result.append(dist)
+
+        for requirement in dist.requires or []:
+            if "extra ==" in requirement.lower() or "extra==" in requirement.lower():
+                continue
+
+            match = REQUIREMENT_NAME_RE.match(requirement)
+
+            if match:
+                queue.append(match.group(1))
+
+    return sorted(
+        result,
+        key=lambda dist: _normalize_dist_name(dist.metadata["Name"]),
+    )
+
+
+def _distribution_license_files(dist: metadata.Distribution) -> list[metadata.PackagePath]:
+    result: list[metadata.PackagePath] = []
+    for entry in dist.files or []:
+        name = PurePosixPath(str(entry)).name
+        if LICENSE_FILE_RE.match(name):
+            result.append(entry)
+    return sorted(result, key=str)
+
+
+def _distribution_top_level_names(dist: metadata.Distribution) -> list[str]:
+    top_level: set[str] = set()
+    for entry in dist.files or []:
+        parts = PurePosixPath(str(entry)).parts
+        if not parts or ".dist-info" in parts[0] or ".egg-info" in parts[0]:
+            continue
+        first = parts[0]
+        if first.startswith("."):
+            continue
+        if first.endswith((".py", ".pyd")):
+            first = first.rsplit(".", 1)[0]
+        if first and first != "__pycache__":
+            top_level.add(first)
+    return sorted(top_level, key=str.casefold)
+
+
+def _runtime_inventory(package_dir: Path) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for path in sorted((item for item in package_dir.rglob("*") if item.is_file()), key=lambda p: str(p).lower()):
+        rel = _safe_relpath(path, package_dir)
+        first = PurePosixPath(rel).parts[0]
+        if rel in LEGAL_ROOT_FILES or first in LEGAL_ROOT_DIRS:
+            continue
+        entries.append({"path": rel, "size": path.stat().st_size, "sha256": _sha256(path)})
+    return entries
+
+
+def _runtime_evidence(package_files: Iterable[str], top_level_names: Iterable[str]) -> list[str]:
+    files = list(package_files)
+    evidence: list[str] = []
+    for name in top_level_names:
+        name_cf = name.casefold()
+        for rel in files:
+            path = PurePosixPath(rel)
+            parts = [part.casefold() for part in path.parts]
+            stem = path.name.casefold().split(".", 1)[0]
+            if name_cf in parts or stem == name_cf:
+                evidence.append(rel)
+                break
+    return sorted(set(evidence), key=str.casefold)
+
+
+def _forbidden_matches(package_dir: Path) -> list[dict[str, str]]:
+    matches: list[dict[str, str]] = []
+    for path in package_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = _safe_relpath(path, package_dir)
+        rel_cf = rel.casefold()
+        name_cf = path.name.casefold()
+        reason: str | None = None
+        if name_cf == "qpdf.dll":
+            reason = "qpdf image-format plugin is intentionally excluded"
+        elif "virtualkeyboard" in rel_cf.replace("-", "").replace("_", ""):
+            reason = "Qt Virtual Keyboard runtime is intentionally excluded"
+        elif "/qtquick/virtualkeyboard/" in f"/{rel_cf.strip('/')}/":
+            reason = "Qt Quick Virtual Keyboard QML is intentionally excluded"
+        if reason:
+            matches.append({"path": rel, "reason": reason})
+    return matches
+
+
+def _detect_qt_components(package_dir: Path) -> list[str]:
+    rel_paths = {_safe_relpath(path, package_dir).casefold() for path in package_dir.rglob("*") if path.is_file()}
+    basenames = {PurePosixPath(path).name for path in rel_paths}
+    components: list[str] = []
+    if any(name.startswith("qt6") and name.endswith(".dll") for name in basenames) or any(
+        "pyside6" in path for path in rel_paths
+    ):
+        components.append("qtbase")
+    if "qt6svg.dll" in basenames or any(name in {"qsvg.dll", "qsvgicon.dll"} for name in basenames):
+        components.append("qtsvg")
+    imageformats_markers = {"qicns.dll", "qtga.dll", "qtiff.dll", "qwbmp.dll", "qwebp.dll"}
+    if basenames & imageformats_markers:
+        components.append("qtimageformats")
+    if any("pyside6" in path or "shiboken6" in path for path in rel_paths):
+        components.append("pyside-setup")
+    return components
+
+
+def _tar_members(archive: Path) -> list[tarfile.TarInfo]:
+    with tarfile.open(archive, mode="r:xz") as handle:
+        return [member for member in handle.getmembers() if member.isfile()]
+
+
+def _strip_archive_root(name: str) -> PurePosixPath:
+    path = PurePosixPath(name)
+    return PurePosixPath(*path.parts[1:]) if len(path.parts) > 1 else path
+
+
+def _extract_tar_member(archive: Path, member_name: str, destination: Path) -> None:
+    with tarfile.open(archive, mode="r:xz") as handle:
+        member = handle.getmember(member_name)
+        source = handle.extractfile(member)
+        if source is None:
+            raise RuntimeError(f"Cannot extract {member_name} from {archive.name}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("wb") as output:
+            shutil.copyfileobj(source, output)
+
+
+def _normalize_qt_archive_candidate(
+    candidate: PurePosixPath,
+) -> PurePosixPath | None:
+    """Normalize a relative Qt archive path without allowing archive-root escape."""
+
+    if candidate.is_absolute():
+        return None
+
+    normalized_parts: list[str] = []
+
+    for part in candidate.parts:
+        if part in {"", "."}:
+            continue
+
+        if part == "..":
+            if not normalized_parts:
+                return None
+            normalized_parts.pop()
+            continue
+
+        normalized_parts.append(part)
+
+    if not normalized_parts:
+        return None
+
+    return PurePosixPath(*normalized_parts)
+
+
+def _resolve_qt_license_reference(
+    attribution_rel: PurePosixPath,
+    reference: str,
+    members_by_rel: dict[str, str],
+) -> tuple[PurePosixPath, str]:
+    reference = reference.strip()
+
+    if not reference:
+        raise RuntimeError("Empty Qt attribution license reference")
+
+    if "\\" in reference:
+        raise RuntimeError(
+            f"Unsafe/non-POSIX Qt attribution license reference: {reference!r}"
+        )
+
+    reference_path = PurePosixPath(reference)
+
+    if reference_path.is_absolute():
+        raise RuntimeError(
+            f"Unsafe absolute Qt attribution license reference: {reference!r}"
+        )
+
+    # Qt attribution files may legitimately use ../LICENSE-style references.
+    # Resolve them relative to the attribution file first, but accept the result
+    # only when lexical normalization remains inside the source-archive root.
+    raw_candidates = [
+        attribution_rel.parent / reference_path,
+        reference_path,
+    ]
+
+    for raw_candidate in raw_candidates:
+        candidate = _normalize_qt_archive_candidate(raw_candidate)
+
+        if candidate is None:
+            continue
+
+        normalized = candidate.as_posix()
+
+        if normalized in members_by_rel:
+            return candidate, members_by_rel[normalized]
+
+    # Some Qt metadata historically names a license file without giving its
+    # complete archive-relative location. Preserve the previous conservative
+    # fallback only when the basename is unique across the source archive.
+    basename = reference_path.name.casefold()
+
+    basename_matches = [
+        (PurePosixPath(rel), member_name)
+        for rel, member_name in members_by_rel.items()
+        if PurePosixPath(rel).name.casefold() == basename
+    ]
+
+    if len(basename_matches) == 1:
+        return basename_matches[0]
+
+    if not basename_matches:
+        raise RuntimeError(
+            f"Qt attribution references missing license file "
+            f"{reference!r}: {attribution_rel}"
+        )
+
+    raise RuntimeError(
+        f"Qt attribution license reference is ambiguous by basename "
+        f"{reference!r}: "
+        f"{[rel.as_posix() for rel, _ in basename_matches]}"
+    )
+
+
+def _extract_qt_legal_material(
+    component: str,
+    archive: Path,
+    licenses_root: Path,
+) -> tuple[list[str], list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+    license_files: list[str] = []
+    attribution_files: list[str] = []
+    attribution_records: list[dict[str, Any]] = []
+    attribution_license_mappings: list[dict[str, Any]] = []
+    members = _tar_members(archive)
+    members_by_rel = {
+        _strip_archive_root(member.name).as_posix(): member.name
+        for member in members
+    }
+
+    bundled_by_archive_rel: dict[str, str] = {}
+    for member in members:
+        rel = _strip_archive_root(member.name)
+        if "LICENSES" not in rel.parts:
+            continue
+        licenses_index = rel.parts.index("LICENSES")
+        tail = PurePosixPath(*rel.parts[licenses_index + 1 :])
+        destination = licenses_root / "qt" / component / tail
+        _extract_tar_member(archive, member.name, destination)
+        bundled_rel = _safe_relpath(destination, licenses_root.parent)
+        license_files.append(bundled_rel)
+        bundled_by_archive_rel[rel.as_posix()] = bundled_rel
+
+    for member in members:
+        if PurePosixPath(member.name).name != "qt_attribution.json":
+            continue
+        rel = _strip_archive_root(member.name)
+        destination = licenses_root / "qt-attributions" / component / rel
+        _extract_tar_member(archive, member.name, destination)
+        attribution_bundle_rel = _safe_relpath(destination, licenses_root.parent)
+        attribution_files.append(attribution_bundle_rel)
+        try:
+            # Qt upstream attribution metadata can contain literal control characters inside strings.
+            data = json.loads(
+                destination.read_text(encoding="utf-8"), strict=False
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Invalid Qt attribution JSON: {component}/{rel}") from exc
+        records = data if isinstance(data, list) else [data]
+        if not records or not all(isinstance(record, dict) for record in records):
+            raise RuntimeError(f"Unexpected Qt attribution structure: {component}/{rel}")
+
+        for record_index, record in enumerate(records):
+            if not any(key in record for key in ("Name", "Id", "Description")):
+                raise RuntimeError(f"Qt attribution lacks identity fields: {component}/{rel}")
+            if not any(key in record for key in ("License", "LicenseId", "LicenseFile", "LicenseFiles")):
+                raise RuntimeError(f"Qt attribution lacks license fields: {component}/{rel}")
+
+            referenced = record.get("LicenseFile") or record.get("LicenseFiles")
+            references = [referenced] if isinstance(referenced, str) else list(referenced or [])
+            bundled_for_record: list[str] = []
+            for reference in references:
+                if not isinstance(reference, str) or not reference.strip():
+                    raise RuntimeError(f"Invalid LicenseFile entry in {component}/{rel}")
+                source_rel, member_name = _resolve_qt_license_reference(
+                    rel, reference, members_by_rel
+                )
+                source_key = source_rel.as_posix()
+                bundled_rel = bundled_by_archive_rel.get(source_key)
+                if bundled_rel is None:
+                    bundled_destination = (
+                        licenses_root
+                        / "qt-attribution-licenses"
+                        / component
+                        / source_rel
+                    )
+                    if not bundled_destination.is_file():
+                        _extract_tar_member(archive, member_name, bundled_destination)
+                    bundled_rel = _safe_relpath(
+                        bundled_destination, licenses_root.parent
+                    )
+                    bundled_by_archive_rel[source_key] = bundled_rel
+                bundled_for_record.append(bundled_rel)
+                attribution_license_mappings.append(
+                    {
+                        "attribution_file": attribution_bundle_rel,
+                        "record_index": record_index,
+                        "reference": reference,
+                        "source_member": f"{component}/{source_rel.as_posix()}",
+                        "bundled_file": bundled_rel,
+                    }
+                )
+
+            attribution_records.append(
+                {
+                    "component": component,
+                    "source": f"{component}/{rel.as_posix()}",
+                    "data": record,
+                    "bundled_license_files": sorted(
+                        set(bundled_for_record), key=str.casefold
+                    ),
+                }
+            )
+
+    return (
+        sorted(set(license_files), key=str.casefold),
+        sorted(set(attribution_files), key=str.casefold),
+        attribution_records,
+        sorted(
+            attribution_license_mappings,
+            key=lambda item: (
+                item["attribution_file"].casefold(),
+                item["record_index"],
+                item["reference"].casefold(),
+            ),
+        ),
+    )
+
+def _render_qt_attributions(records: list[dict[str, Any]]) -> str:
+    lines = [
+        "Qt third-party attributions",
+        "===========================",
+        "",
+        "This file is generated from qt_attribution.json metadata contained in the exact",
+        "Qt/PySide source archives staged for this release. The raw JSON files are preserved",
+        "under licenses/qt-attributions/.",
+        "",
+    ]
+    field_order = [
+        "Name",
+        "Id",
+        "Description",
+        "Homepage",
+        "Version",
+        "QtUsage",
+        "License",
+        "LicenseId",
+        "LicenseFile",
+        "LicenseFiles",
+        "Copyright",
+    ]
+    for index, item in enumerate(records, start=1):
+        data = item["data"]
+        title = data.get("Name") or data.get("Id") or data.get("Description") or f"Attribution {index}"
+        lines.extend([f"[{index}] {title}", f"Source metadata: {item['source']}"])
+        for key in field_order:
+            if key not in data:
+                continue
+            value = data[key]
+            if isinstance(value, (dict, list)):
+                rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+            else:
+                rendered = str(value).strip()
+            if rendered:
+                lines.append(f"{key}: {rendered}")
+        for bundled_file in item.get("bundled_license_files", []):
+            lines.append(f"Bundled license file: {bundled_file}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _load_nuitka_compilation_report(
+    report_path: Path,
+) -> tuple[str, list[dict[str, str]]]:
+    try:
+        root = ET.parse(report_path).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise RuntimeError(
+            f"Unable to parse Nuitka compilation report: {report_path}: {exc}"
+        ) from exc
+
+    if _xml_local_name(root.tag) != "nuitka-compilation-report":
+        raise RuntimeError(
+            f"Unexpected Nuitka report root element: {root.tag}"
+        )
+
+    nuitka_version = root.attrib.get("nuitka_version", "").strip()
+    if not nuitka_version:
+        raise RuntimeError("Nuitka compilation report has no nuitka_version")
+
+    modules_by_name: dict[str, dict[str, str]] = {}
+
+    for element in root.iter():
+        if _xml_local_name(element.tag) != "module":
+            continue
+
+        name = element.attrib.get("name", "").strip()
+        if not name:
+            continue
+
+        kind = element.attrib.get("kind", "").strip()
+
+        existing = modules_by_name.get(name)
+        if existing is not None and existing.get("kind") != kind:
+            raise RuntimeError(
+                f"Nuitka report contains conflicting module entries for {name}"
+            )
+
+        modules_by_name[name] = {
+            "name": name,
+            "kind": kind,
+        }
+
+    modules = [
+        modules_by_name[name]
+        for name in sorted(modules_by_name, key=str.casefold)
+    ]
+
+    if not modules:
+        raise RuntimeError(
+            "Nuitka compilation report contains no compiled/included module records"
+        )
+
+    return nuitka_version, modules
+
+
+def _compiled_module_evidence(
+    report_modules: list[dict[str, str]],
+    top_level_names: list[str],
+) -> list[str]:
+    result: set[str] = set()
+
+    for item in report_modules:
+        module_name = item["name"]
+
+        for top_level in top_level_names:
+            if (
+                module_name == top_level
+                or module_name.startswith(top_level + ".")
+            ):
+                result.add(module_name)
+                break
+
+    return sorted(result, key=str.casefold)
+
+
+def _write_nuitka_build_evidence(
+    package_legal_dir: Path,
+    report_path: Path,
+    nuitka_version: str,
+    report_modules: list[dict[str, str]],
+) -> tuple[str, str]:
+    destination = (
+        package_legal_dir
+        / "licenses"
+        / "build-evidence"
+        / "NUITKA-COMPILATION-EVIDENCE.json"
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    evidence = {
+        "schema_version": 1,
+        "source": "Nuitka compilation report",
+        "nuitka_version": nuitka_version,
+        "source_report_sha256": _sha256(report_path),
+        "module_count": len(report_modules),
+        "modules": report_modules,
+    }
+
+    destination.write_text(
+        json.dumps(evidence, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    return (
+        _safe_relpath(destination, package_legal_dir),
+        _sha256(destination),
+    )
+
+def _copy_distribution_legal_files(
+    dist: metadata.Distribution,
+    licenses_root: Path,
+) -> tuple[list[str], list[str]]:
+    dist_name = dist.metadata["Name"]
+    version = dist.version
+    target_root = licenses_root / "python-packages" / f"{dist_name}-{version}"
+    copied: list[str] = []
+    source_entries: list[str] = []
+    for entry in _distribution_license_files(dist):
+        source = Path(dist.locate_file(entry))
+        if not source.is_file():
+            continue
+        destination = target_root / PurePosixPath(str(entry)).name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        copied.append(_safe_relpath(destination, licenses_root.parent))
+        source_entries.append(str(entry))
+    return sorted(copied), sorted(source_entries)
+
+
+def _copy_cpython_license(licenses_root: Path) -> str:
+    candidates = [Path(sys.base_prefix) / "LICENSE.txt", Path(sys.prefix) / "LICENSE.txt"]
+    source = next((path for path in candidates if path.is_file()), None)
+    if source is None:
+        raise RuntimeError("Unable to locate CPython LICENSE.txt in the release Python environment")
+    destination = licenses_root / "cpython" / "LICENSE.txt"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    return _safe_relpath(destination, licenses_root.parent)
+
+
+def _copy_nuitka_legal_files(licenses_root: Path) -> tuple[str, list[str]]:
+    try:
+        dist = metadata.distribution("Nuitka")
+    except metadata.PackageNotFoundError as exc:
+        raise RuntimeError("Nuitka is not installed in the release environment") from exc
+
+    required = {"license-runtime.txt", "license.txt", "notice.txt"}
+    found: dict[str, Path] = {}
+    for entry in dist.files or []:
+        name = PurePosixPath(str(entry)).name.casefold()
+        if name in required:
+            source = Path(dist.locate_file(entry))
+            if source.is_file():
+                found[name] = source
+    missing = required - found.keys()
+    if missing:
+        raise RuntimeError(f"Nuitka legal files missing from installed distribution: {sorted(missing)}")
+
+    copied: list[str] = []
+    for key in sorted(required):
+        source = found[key]
+        destination = licenses_root / "nuitka" / source.name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        copied.append(_safe_relpath(destination, licenses_root.parent))
+    return dist.version, copied
+
+
+def _copy_openssl_license(
+    licenses_root: Path,
+    openssl_version: str,
+) -> tuple[str, str]:
+    version_match = OPENSSL_VERSION_RE.search(openssl_version)
+
+    if not version_match:
+        raise RuntimeError(
+            f"Unable to parse OpenSSL version: {openssl_version}"
+        )
+
+    numeric_version = version_match.group(1)
+    version_parts = tuple(
+        int(part)
+        for part in numeric_version.split(".")
+    )
+
+    if version_parts < (3, 0):
+        raise RuntimeError(
+            f"Unsupported OpenSSL license mapping for version "
+            f"{numeric_version}: release tooling currently expects "
+            f"OpenSSL 3.0 or later"
+        )
+
+    url = (
+        "https://www.openssl-library.org/source/license/"
+        "apache-license-2.0.txt"
+    )
+
+    license_text = _download_text(url)
+
+    if (
+        "Apache License" not in license_text
+        or "Version 2.0" not in license_text
+        or "TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"
+        not in license_text
+    ):
+        raise RuntimeError(
+            f"Unexpected OpenSSL Apache-2.0 license content from {url}"
+        )
+
+    destination = licenses_root / "openssl" / "LICENSE.txt"
+    destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    destination.write_text(
+        license_text,
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    return (
+        _safe_relpath(
+            destination,
+            licenses_root.parent,
+        ),
+        url,
+    )
+
+
+def _write_release_licensing(package_legal_dir: Path) -> None:
+    text = f"""# Licensing model
+
+## Project code
+
+{APP_NAME}'s own code is licensed to the public under the GNU General Public License
+version 3 only (`GPL-3.0-only`). The complete GPLv3 text is in [LICENSE](LICENSE).
+
+GPLv3 permits commercial use. A business does not need a separate commercial license simply
+because it uses the software commercially. GPLv3 conditions apply when covered copies or
+modified versions are conveyed.
+
+## Alternative commercial licensing
+
+The project owner may separately offer rights in project-owned code under proprietary or
+commercial terms. See [COMMERCIAL-LICENSING.md](COMMERCIAL-LICENSING.md).
+
+Those alternative terms do not relicense Qt, PySide6, Shiboken6, CPython, OpenSSL or other
+third-party software.
+
+## Contributions
+
+Contribution rules and the Contributor License Agreement are maintained in the public project
+repository: {PROJECT_REPOSITORY}/blob/main/CONTRIBUTING.md and
+{PROJECT_REPOSITORY}/blob/main/CLA.md.
+
+## Third-party software
+
+Third-party components retain their own licenses. The Windows standalone package therefore
+contains third-party notices and license texts under `licenses/`, plus corresponding-source
+availability information where required.
+
+Qt/PySide shared libraries and plugins remain separate files. Unwanted components, including
+Qt Virtual Keyboard, are excluded and validated during public release packaging.
+
+## Corresponding source
+
+For public binary releases, required corresponding-source assets must match the exact component
+versions in the final binary artifact. Publication remains blocked until those source assets,
+the final runtime inventory and legal notices are validated against the exact final CI build.
+
+## Trademarks and affiliation
+
+Third-party product names and trademarks are used descriptively. {APP_NAME} is not affiliated
+with or endorsed by Google, Android, Google Play, The Qt Company, or other third-party vendors
+whose products or services are referenced by the application.
+"""
+    (package_legal_dir / "LICENSING.md").write_text(text, encoding="utf-8", newline="\n")
+
+
+def _write_source_availability(
+    package_legal_dir: Path,
+    version: str,
+    release_tag: str,
+    assets: list[dict[str, Any]],
+) -> None:
+    release_url = f"{PROJECT_REPOSITORY}/releases/tag/{release_tag}"
+    lines = [
+        "# Third-party corresponding source availability",
+        "",
+        f"This notice applies to {APP_NAME} v{version} binary releases.",
+        "",
+        "The exact source archives corresponding to the LGPL-covered Qt/PySide components",
+        "distributed with the Windows package, and the official MPL-covered certifi source",
+        "distribution, are provided as release assets alongside the binary package.",
+        "",
+        f"Release location: {release_url}",
+        "",
+        "## Third-party source assets",
+        "",
+    ]
+    for asset in assets:
+        lines.append(f"- `{asset['filename']}` - SHA-256 `{asset['sha256']}`")
+    lines.extend(
+        [
+            "",
+            "Qt/PySide source archives are the exact unmodified upstream archives. The certifi",
+            "asset is the official PyPI source distribution for the exact installed version.",
+            "",
+            f"The GPL-covered {APP_NAME} source corresponding to the application binary must be",
+            f"available from the exact `{release_tag}` tag before the binary is published.",
+            "The public release process must verify project-source availability separately from",
+            "these third-party source assets.",
+            "",
+            "The binary release must not be published until every source asset listed above is",
+            "present at the release location and its SHA-256 matches this notice.",
+            "",
+        ]
+    )
+    (package_legal_dir / "SOURCE-AVAILABILITY.md").write_text(
+        "\n".join(lines), encoding="utf-8", newline="\n"
+    )
+
+
+def _write_third_party_notices(
+    package_legal_dir: Path,
+    qt_version: str,
+    dependencies: list[dict[str, Any]],
+    cpython_version: str,
+    cpython_license: str,
+    nuitka_version: str,
+    nuitka_files: list[str],
+    openssl: dict[str, Any] | None,
+) -> None:
+    lines = [
+        "# Third-party notices",
+        "",
+        f"{APP_NAME} includes or is distributed with third-party software. {APP_NAME} itself is",
+        "distributed under GPL-3.0-only in the community edition; that project license does not",
+        "replace or restrict third-party licenses.",
+        "",
+        "## Qt / PySide6 / Shiboken6",
+        "",
+        f"- Runtime/source version: {qt_version}.",
+        "- Distribution basis for shipped LGPL-capable Qt/PySide/Shiboken components: GNU LGPL v3.",
+        "- Community license texts are under `licenses/qt/pyside-setup/`, including",
+        "  `LGPL-3.0-only.txt`, `GPL-2.0-only.txt`, `GPL-3.0-only.txt`, and the Qt GPL exception.",
+        "- `LicenseRef-Qt-Commercial.txt`, if present in the upstream source archive, documents an",
+        "  alternative upstream licensing option and is not the license basis used for this package.",
+        "- Qt Virtual Keyboard is intentionally excluded.",
+        "- Exact Qt/PySide source license material and raw attribution metadata are under",
+        "  `licenses/qt/` and `licenses/qt-attributions/`.",
+        "- A human-readable attribution rendering is in `licenses/QT-ATTRIBUTIONS.txt`.",
+        "",
+        "### LGPL library replacement",
+        "",
+        "The Windows standalone ZIP keeps Qt/PySide/Shiboken shared libraries, extension modules",
+        "and plugins as separate files. A recipient may replace a compatible LGPL-covered library",
+        "with a modified compatible build by substituting the corresponding DLL, PYD or plugin file",
+        "in the extracted standalone directory while preserving the package layout and ABI",
+        "compatibility. The application is not distributed as a single inseparable executable.",
+        "",
+        "## CPython",
+        "",
+        f"- CPython {cpython_version} - Python Software Foundation licensing.",
+        f"- License: `{cpython_license}`.",
+        "",
+        "## Python runtime distributions",
+        "",
+    ]
+    for item in dependencies:
+        if _normalize_dist_name(item["name"]) in {"pyside6-essentials", "shiboken6"}:
+            license_summary = "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
+            license_paths = [
+                "licenses/qt/pyside-setup/LGPL-3.0-only.txt",
+                "licenses/qt/pyside-setup/GPL-2.0-only.txt",
+                "licenses/qt/pyside-setup/GPL-3.0-only.txt",
+                "licenses/qt/pyside-setup/Qt-GPL-exception-1.0.txt",
+            ]
+        else:
+            license_summary = item["license"] or "See bundled license files"
+            license_paths = item["license_files"]
+        rendered_paths = ", ".join(f"`{path}`" for path in license_paths) or "metadata only"
+        lines.append(
+            f"- **{item['name']} {item['version']}** - {license_summary} - license/notice files: "
+            f"{rendered_paths}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Nuitka-generated runtime",
+            "",
+            f"- Nuitka {nuitka_version} is the build tool.",
+            "- Nuitka itself is AGPLv3; its runtime exception permits generated target code to be",
+            "  conveyed under other terms.",
+            "- Bundled Nuitka legal files: " + ", ".join(f"`{path}`" for path in nuitka_files) + ".",
+        ]
+    )
+    if openssl is not None:
+        lines.extend(
+            [
+                "",
+                "## OpenSSL",
+                "",
+                f"- {openssl['version']}.",
+                "- OpenSSL 3.x is licensed under Apache License 2.0.",
+                f"- License: `{openssl['license_file']}`.",
+                "- Packaged files: " + ", ".join(f"`{path}`" for path in openssl["runtime_files"]) + ".",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## Google Android Platform-Tools / ADB",
+            "",
+            "Android Platform-Tools are not bundled in this release. When managed ADB setup is",
+            "requested, the application downloads Google's Platform-Tools archive directly.",
+            "Google and Android are not affiliated with or endorsers of Play Store App Audit.",
+            "",
+            "## Trademarks",
+            "",
+            "All third-party product names and trademarks remain the property of their respective",
+            "owners. Their mention is descriptive only.",
+            "",
+        ]
+    )
+    (package_legal_dir / "THIRD_PARTY_NOTICES.md").write_text(
+        "\n".join(lines), encoding="utf-8", newline="\n"
+    )
+
+
+def _write_sha256s(source_assets_dir: Path, assets: list[dict[str, Any]]) -> None:
+    lines = [f"{item['sha256']}  {item['filename']}" for item in assets]
+    (source_assets_dir / "SHA256SUMS.txt").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8", newline="\n"
+    )
+
+
+def _copy_package_legal_into_runtime(package_legal_dir: Path, package_dir: Path) -> None:
+    for item in package_legal_dir.iterdir():
+        destination = package_dir / item.name
+        if item.is_dir():
+            if destination.exists():
+                shutil.rmtree(destination)
+            shutil.copytree(item, destination)
+        else:
+            shutil.copy2(item, destination)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--package-dir", type=Path, required=True)
+    parser.add_argument("--release-dir", type=Path, required=True)
+    parser.add_argument("--repo-root", type=Path)
+    parser.add_argument("--release-tag")
+    parser.add_argument("--nuitka-report", type=Path, required=True)
+    parser.add_argument("--inject", action="store_true", help="Copy generated package legal files into package-dir")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = _parse_args()
+    repo_root = (args.repo_root or Path(__file__).resolve().parents[2]).resolve()
+    package_dir = args.package_dir.resolve()
+    release_dir = args.release_dir.resolve()
+    nuitka_report = args.nuitka_report.resolve()
+    package_legal_dir = release_dir / "package-legal"
+    source_assets_dir = release_dir / "source-assets"
+    licenses_root = package_legal_dir / "licenses"
+
+    if not nuitka_report.is_file():
+        raise RuntimeError(
+            f"Nuitka compilation report does not exist: {nuitka_report}"
+        )
+
+    report_nuitka_version, report_modules = (
+        _load_nuitka_compilation_report(nuitka_report)
+    )
+
+    if not package_dir.is_dir():
+        raise RuntimeError(f"Package directory does not exist: {package_dir}")
+    if _forbidden_matches(package_dir):
+        formatted = "\n".join(f"  {item['path']}: {item['reason']}" for item in _forbidden_matches(package_dir))
+        raise RuntimeError(f"Forbidden runtime components detected:\n{formatted}")
+    if any(path.name.casefold() == "adb.exe" for path in package_dir.rglob("*")):
+        raise RuntimeError("adb.exe is bundled, but public release policy requires managed ADB to stay external")
+
+    version = _read_project_version(repo_root)
+    release_tag = args.release_tag or f"v{version}"
+    expected_tag = f"v{version}"
+    if release_tag != expected_tag:
+        raise RuntimeError(f"Release tag must match canonical version: expected {expected_tag}, got {release_tag}")
+
+    runtime_inventory = _runtime_inventory(package_dir)
+    runtime_paths = [item["path"] for item in runtime_inventory]
+    runtime_inventory_sha256 = _canonical_json_sha256(runtime_inventory)
+    qt_components = _detect_qt_components(package_dir)
+    if "qtbase" not in qt_components or "pyside-setup" not in qt_components:
+        raise RuntimeError(f"Expected Qt/PySide runtime was not detected: {qt_components}")
+
+    pyside_version = metadata.version("PySide6_Essentials")
+    shiboken_version = metadata.version("shiboken6")
+    if pyside_version != shiboken_version:
+        raise RuntimeError(
+            f"PySide6_Essentials/shiboken6 version mismatch: {pyside_version} vs {shiboken_version}"
+        )
+
+    if package_legal_dir.exists():
+        shutil.rmtree(package_legal_dir)
+    package_legal_dir.mkdir(parents=True, exist_ok=True)
+    source_assets_dir.mkdir(parents=True, exist_ok=True)
+    licenses_root.mkdir(parents=True)
+
+    shutil.copy2(repo_root / "LICENSE", package_legal_dir / "LICENSE")
+    shutil.copy2(repo_root / "COMMERCIAL-LICENSING.md", package_legal_dir / "COMMERCIAL-LICENSING.md")
+    _write_release_licensing(package_legal_dir)
+
+    source_specs = [_qt_source_spec(component, pyside_version) for component in qt_components]
+    certifi_version = metadata.version("certifi")
+    source_specs.append(_certifi_source_spec(certifi_version))
+    expected_source_names = {spec.filename for spec in source_specs}
+    for stale in source_assets_dir.iterdir():
+        if stale.is_file() and stale.name != "SHA256SUMS.txt" and stale.name not in expected_source_names:
+            stale.unlink()
+
+    source_assets: list[dict[str, Any]] = []
+    qt_license_files: list[str] = []
+    qt_attribution_files: list[str] = []
+    qt_attribution_records: list[dict[str, Any]] = []
+    qt_attribution_license_mappings: list[dict[str, Any]] = []
+    qt_source_components: list[dict[str, Any]] = []
+
+    for spec in source_specs:
+        destination = source_assets_dir / spec.filename
+        _download_file(spec.url, destination, spec.sha256)
+        entry: dict[str, Any] = {
+            "component": spec.component,
+            "filename": spec.filename,
+            "sha256": spec.sha256,
+            "size": destination.stat().st_size,
+            "download_url": spec.url,
+            "provenance_url": spec.provenance_url,
+        }
+        source_assets.append(entry)
+        if spec.component == "certifi":
+            continue
+        licenses, attributions, records, license_mappings = _extract_qt_legal_material(
+            spec.component, destination, licenses_root
+        )
+        qt_license_files.extend(licenses)
+        qt_attribution_files.extend(attributions)
+        qt_attribution_records.extend(records)
+        qt_attribution_license_mappings.extend(license_mappings)
+        qt_source_components.append(
+            {
+                "component": spec.component,
+                "source_asset": spec.filename,
+                "license_files_extracted": len(licenses),
+                "attribution_files_extracted": len(attributions),
+            }
+        )
+
+    qt_human_path = licenses_root / "QT-ATTRIBUTIONS.txt"
+    qt_human_path.write_text(
+        _render_qt_attributions(qt_attribution_records), encoding="utf-8", newline="\n"
+    )
+
+    dependencies: list[dict[str, Any]] = []
+    for dist in _runtime_dependency_closure(repo_root, runtime_paths):
+        copied_files, metadata_files = _copy_distribution_legal_files(
+            dist,
+            licenses_root,
+        )
+
+        normalized_name = _normalize_dist_name(dist.metadata["Name"])
+        is_qt_python = normalized_name in {
+            "pyside6-essentials",
+            "shiboken6",
+        }
+
+        community_files = [
+            "licenses/qt/pyside-setup/LGPL-3.0-only.txt",
+            "licenses/qt/pyside-setup/GPL-2.0-only.txt",
+            "licenses/qt/pyside-setup/GPL-3.0-only.txt",
+            "licenses/qt/pyside-setup/Qt-GPL-exception-1.0.txt",
+        ]
+
+        if is_qt_python:
+            missing_community_files = [
+                rel
+                for rel in community_files
+                if not (package_legal_dir / PurePosixPath(rel)).is_file()
+            ]
+
+            if missing_community_files:
+                raise RuntimeError(
+                    f"Required Qt/PySide community license files are missing "
+                    f"for {dist.metadata['Name']} {dist.version}: "
+                    f"{missing_community_files}"
+                )
+
+        elif not copied_files:
+            raise RuntimeError(
+                f"No license/notice files found for packaged dependency "
+                f"{dist.metadata['Name']} {dist.version}"
+            )
+
+        top_level = _distribution_top_level_names(dist)
+        evidence = _runtime_evidence(runtime_paths, top_level)
+        compiled_evidence = _compiled_module_evidence(
+            report_modules,
+            top_level,
+        )
+
+        if not evidence and not compiled_evidence:
+            raise RuntimeError(
+                f"No file-backed or Nuitka-compiled runtime evidence found for "
+                f"dependency {dist.metadata['Name']} {dist.version}"
+            )
+        dependencies.append(
+            {
+                "name": dist.metadata["Name"],
+                "version": dist.version,
+                "license": (
+                    "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
+                    if is_qt_python
+                    else dist.metadata.get("License-Expression") or dist.metadata.get("License") or ""
+                ),
+                "distribution_license_basis": "LGPL-3.0-only" if is_qt_python else None,
+                "license_files": community_files if is_qt_python else copied_files,
+                "upstream_metadata_license_files": copied_files if is_qt_python else [],
+                "metadata_license_entries": metadata_files,
+                "top_level_names": top_level,
+                "runtime_evidence": evidence,
+                "nuitka_compiled_modules": compiled_evidence,
+            }
+        )
+
+    cpython_license = _copy_cpython_license(licenses_root)
+    nuitka_version, nuitka_files = _copy_nuitka_legal_files(licenses_root)
+
+    if report_nuitka_version != nuitka_version:
+        raise RuntimeError(
+            "Nuitka report/version mismatch: "
+            f"report={report_nuitka_version}, installed={nuitka_version}"
+        )
+
+    build_evidence_rel, build_evidence_sha256 = (
+        _write_nuitka_build_evidence(
+            package_legal_dir,
+            nuitka_report,
+            report_nuitka_version,
+            report_modules,
+        )
+    )
+
+    openssl_runtime_files = sorted(
+        {
+            item["path"]
+            for item in runtime_inventory
+            if PurePosixPath(item["path"]).name.casefold().startswith(("libssl-", "libcrypto-"))
+            and item["path"].casefold().endswith(".dll")
+        },
+        key=str.casefold,
+    )
+    openssl: dict[str, Any] | None = None
+    if openssl_runtime_files:
+        openssl_license, openssl_source = _copy_openssl_license(licenses_root, ssl.OPENSSL_VERSION)
+        openssl = {
+            "version": ssl.OPENSSL_VERSION,
+            "runtime_files": openssl_runtime_files,
+            "license_file": openssl_license,
+            "license_source": openssl_source,
+        }
+
+    _write_source_availability(package_legal_dir, version, release_tag, source_assets)
+    _write_third_party_notices(
+        package_legal_dir=package_legal_dir,
+        qt_version=pyside_version,
+        dependencies=dependencies,
+        cpython_version=platform.python_version(),
+        cpython_license=cpython_license,
+        nuitka_version=nuitka_version,
+        nuitka_files=nuitka_files,
+        openssl=openssl,
+    )
+    _write_sha256s(source_assets_dir, source_assets)
+
+    build_info = next(
+        (item for item in runtime_inventory if PurePosixPath(item["path"]).name.casefold() == "build-info.txt"),
+        None,
+    )
+    manifest = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "application": {
+            "name": APP_NAME,
+            "version": version,
+            "project_license": PROJECT_LICENSE,
+            "release_tag": release_tag,
+            "repository": PROJECT_REPOSITORY,
+        },
+        "package": {
+            "directory_name": package_dir.name,
+            "platform": "windows",
+            "architecture": platform.machine(),
+            "runtime_file_count": len(runtime_inventory),
+            "runtime_inventory_sha256": runtime_inventory_sha256,
+            "runtime_inventory": runtime_inventory,
+            "build_info": build_info,
+        },
+        "toolchain": {
+            "python": {
+                "version": platform.python_version(),
+                "implementation": platform.python_implementation(),
+                "architecture": platform.architecture()[0],
+            },
+            "nuitka": {
+                "version": nuitka_version,
+                "compilation_report_sha256": _sha256(nuitka_report),
+                "sanitized_evidence_file": build_evidence_rel,
+                "sanitized_evidence_sha256": build_evidence_sha256,
+            },
+            "openssl": openssl,
+        },
+        "runtime_dependencies": dependencies,
+        "qt": {
+            "version": pyside_version,
+            "distribution_basis": "LGPL-3.0-only",
+            "detected_components": qt_components,
+            "source_components": qt_source_components,
+            "community_license_files": sorted(
+                path
+                for path in qt_license_files
+                if PurePosixPath(path).name
+                in {
+                    "LGPL-3.0-only.txt",
+                    "GPL-2.0-only.txt",
+                    "GPL-3.0-only.txt",
+                    "Qt-GPL-exception-1.0.txt",
+                }
+            ),
+            "all_extracted_license_files": sorted(set(qt_license_files)),
+            "attribution_files": sorted(set(qt_attribution_files)),
+            "attribution_record_count": len(qt_attribution_records),
+            "attribution_license_mappings": qt_attribution_license_mappings,
+            "attribution_license_files": sorted(
+                {item["bundled_file"] for item in qt_attribution_license_mappings},
+                key=str.casefold,
+            ),
+            "human_readable_attributions": "licenses/QT-ATTRIBUTIONS.txt",
+        },
+        "source_assets": source_assets,
+        "policy": {
+            "forbidden_runtime_matches": [],
+            "adb_bundled": False,
+            "final_msvc_revalidation_required": True,
+            "project_source_tag_must_exist_before_publication": True,
+        },
+    }
+    (package_legal_dir / "LEGAL-MANIFEST.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
+    )
+
+    if args.inject:
+        _copy_package_legal_into_runtime(package_legal_dir, package_dir)
+
+    print(f"Prepared permanent legal release staging for {APP_NAME} v{version}")
+    print(f"Package legal staging: {package_legal_dir}")
+    print(f"Source release assets: {source_assets_dir}")
+    print(f"Runtime payload files fingerprinted: {len(runtime_inventory)}")
+    print(f"Qt attribution records rendered: {len(qt_attribution_records)}")
+    print("Final MSVC main artifact still requires a fresh legal/runtime validation before publication.")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:  # noqa: BLE001
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc

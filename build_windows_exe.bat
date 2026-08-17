@@ -67,11 +67,11 @@ echo.
 echo === Static checks and regression tests ===
 "%PYTHON%" -m compileall -q playstore_app_audit
 if errorlevel 1 exit /b 1
-"%PYTHON%" -m py_compile .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py
+"%PYTHON%" -m py_compile .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py .github\scripts\prepare_release_legal_bundle.py .github\scripts\validate_release_legal_bundle.py
 if errorlevel 1 exit /b 1
 "%PYTHON%" -m pytest
 if errorlevel 1 exit /b 1
-"%PYTHON%" -m ruff check playstore_app_audit tests main.py .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py
+"%PYTHON%" -m ruff check playstore_app_audit tests main.py .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py .github\scripts\prepare_release_legal_bundle.py .github\scripts\validate_release_legal_bundle.py
 if errorlevel 1 exit /b 1
 
 echo.

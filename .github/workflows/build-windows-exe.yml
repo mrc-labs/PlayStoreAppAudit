@@ -19,9 +19,14 @@ on:
       - "pyproject.toml"
       - "requirements*.txt"
       - "AGENTS.md"
+      - "LICENSE"
+      - "COMMERCIAL-LICENSING.md"
+      - "docs/LICENSING.md"
       - "build_windows_exe.bat"
       - ".github/scripts/inspect_pe.py"
       - ".github/scripts/validate_windows_standalone.py"
+      - ".github/scripts/prepare_release_legal_bundle.py"
+      - ".github/scripts/validate_release_legal_bundle.py"
       - ".github/scripts/build_windows_standalone.ps1"
       - ".github/workflows/build-windows-exe.yml"
 
@@ -133,11 +138,11 @@ jobs:
         run: |
           python -m compileall -q playstore_app_audit
           if ($LASTEXITCODE -ne 0) { throw 'compileall failed.' }
-          python -m py_compile .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py
+          python -m py_compile .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/validate_release_legal_bundle.py
           if ($LASTEXITCODE -ne 0) { throw 'Build helper compilation failed.' }
           python -m pytest
           if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
-          ruff check playstore_app_audit tests main.py .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py
+          ruff check playstore_app_audit tests main.py .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/validate_release_legal_bundle.py
           if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
 
       - name: Qt source smoke tests
@@ -248,9 +253,27 @@ jobs:
             throw "Expected SHA-256 sidecar was not produced: $checksumPath"
           }
 
+          $legalReleaseDir = Join-Path $outputRoot "legal-release-v$version"
+          $sourceAssetsDir = Join-Path $legalReleaseDir "source-assets"
+          $sourceSumsPath = Join-Path $sourceAssetsDir "SHA256SUMS.txt"
+
+          if (-not (Test-Path -LiteralPath $sourceSumsPath)) {
+            throw "Strict public legal build did not produce source-assets/SHA256SUMS.txt: $sourceSumsPath"
+          }
+
+          $sourceAssetFiles = @(
+            Get-ChildItem -LiteralPath $sourceAssetsDir -File |
+              Where-Object { $_.Name -ne "SHA256SUMS.txt" }
+          )
+          if ($sourceAssetFiles.Count -eq 0) {
+            throw 'Strict public legal build produced no corresponding-source assets.'
+          }
+
           $checksum = (Get-Content -LiteralPath $checksumPath -Raw).Trim()
           Write-Host "Final package: $zipPath"
           Write-Host "Checksum: $checksum"
+          Write-Host "Legal source assets: $sourceAssetsDir"
+          Write-Host "Corresponding-source asset count: $($sourceAssetFiles.Count)"
 
           @"
           ### Windows $env:PACKAGE_ARCH standalone package
@@ -259,16 +282,20 @@ jobs:
           - Compiler: MSVC latest
           - Package: ``$zipName``
           - SHA-256: ``$checksum``
+          - Public legal gate: prepare/inject/strict validation PASS
+          - Corresponding-source assets: $($sourceAssetFiles.Count) plus ``SHA256SUMS.txt``
           - Qt Virtual Keyboard: excluded and validated absent
           - Qt PDF image plugin qpdf.dll: removed and validated absent
+          - Final release compliance: requires revalidation of this exact final-main MSVC artifact before publication
           "@ >> $env:GITHUB_STEP_SUMMARY
 
-      - name: Upload Windows standalone ZIP
+      - name: Upload Windows standalone release candidate
         uses: actions/upload-artifact@v4
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
           path: |
             artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip
             artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip.sha256
+            artifact/windows-${{ matrix.arch }}-ci/legal-release-v${{ steps.project_version.outputs.version }}/
           if-no-files-found: error
           retention-days: 30
