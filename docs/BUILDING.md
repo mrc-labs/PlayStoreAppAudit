@@ -33,7 +33,14 @@ python main.py
 
 `.github/workflows/build-windows-exe.yml` is the normal automatic build. It runs on relevant pushes to `main`, tests the application using Qt's offscreen backend, then packages the app with `pyside6-deploy` / Nuitka.
 
-The x64 artifact is named `PlayStoreAppAudit-vVERSION-windows-x64`. It contains the versioned `.exe`, its SHA-256 checksum and `BUILD-INFO-windows-x64.txt`. CI also starts the packaged executable with Qt's deterministic offscreen backend before uploading it.
+The workflow uses an architecture-aware matrix:
+
+- Windows x64 runs on the explicit `windows-2025` hosted-runner label and expects `IMAGE_FILE_MACHINE_AMD64` (`0x8664`).
+- Windows ARM64 runs on `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64` (`0xAA64`). GitHub currently marks this hosted runner as public preview.
+
+Each job installs the matching native Python 3.13 interpreter, requires a native `PySide6-Essentials` wheel and QtCore extension, and inspects the final executable's PE header rather than trusting the runner label or filename. The generated Windows file/product version is derived from the canonical application version and verified after packaging. Both jobs run compile/tests/Ruff, Qt source smoke checks and the deterministic packaged executable smoke test.
+
+The workflow artifacts are named `PlayStoreAppAudit-vVERSION-windows-x64` and `PlayStoreAppAudit-vVERSION-windows-arm64`. Each contains the matching versioned `.exe`, `.exe.sha256` checksum and `BUILD-INFO-windows-ARCH.txt`. `BUILD-INFO` records source/run provenance and the measured Python, QtCore, managed ADB and packaged executable architectures.
 
 ## macOS and Linux
 
@@ -79,10 +86,12 @@ The runner version is the build host, not a minimum-supported-macOS declaration.
 
 At runtime, managed Platform-Tools support depends on the host OS and architecture:
 
-- Windows: the managed `platform-tools-latest-windows.zip` archive is available where supported by the application.
+- Windows x64 and ARM64: the managed `platform-tools-latest-windows.zip` archive is available. The native ARM64 application package and Google's `adb.exe` are separate architecture concerns.
 - macOS: the managed `platform-tools-latest-darwin.zip` archive is available where supported by the application.
 - Linux x64: the application supports Google's managed `platform-tools-latest-linux.zip` archive.
 - Linux ARM64: Google does not provide the managed Linux archive used by this application. Install a native ADB from the system, distribution or an ARM64-compatible Android SDK instead.
+
+The Windows matrix calls the application's real `install_platform_tools()` path, runs the returned executable with `adb version`, inspects its PE header and records whether execution was native or used Windows x64/x86 emulation. It does not claim that Google's ADB executable is ARM64 unless the measured PE header says so, and the build fails if the managed executable cannot run.
 
 The platform abstraction also searches `PATH`, typical Android SDK locations and `ANDROID_SDK_ROOT` / `ANDROID_HOME`. All ADB operations performed by the application remain read-only.
 
@@ -95,7 +104,7 @@ For a normal release:
 1. Update both version values in the same change.
 2. Update `CHANGELOG.md`.
 3. Merge only after the PR quality workflow is green.
-4. Confirm the automatic Windows build from the resulting `main` commit.
+4. Confirm both automatic Windows x64 and Windows ARM64 builds from the resulting `main` commit.
 5. Validate Linux and macOS from the same source revision when the release affects packaging/platform code.
 6. Tag the validated `main` commit as `vMAJOR.MINOR.PATCH`.
 

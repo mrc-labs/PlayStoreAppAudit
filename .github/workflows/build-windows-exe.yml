@@ -9,6 +9,7 @@ on:
       - "pyproject.toml"
       - "requirements*.txt"
       - "AGENTS.md"
+      - ".github/scripts/inspect_pe.py"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
@@ -16,54 +17,212 @@ permissions:
 
 jobs:
   build-windows:
-    name: Test and build Windows x64 package
-    runs-on: windows-latest
+    name: Test and build Windows ${{ matrix.arch }} package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            arch: x64
+            python_arch: x64
+            expected_runner_arch: X64
+            expected_platform_machine: AMD64
+            expected_pe_machine: "0x8664"
+            pyside_wheel_platform: win_amd64
+            runner_status: generally available
+          # GitHub currently provides windows-11-arm as a public-preview hosted runner.
+          - os: windows-11-arm
+            arch: arm64
+            python_arch: arm64
+            expected_runner_arch: ARM64
+            expected_platform_machine: ARM64
+            expected_pe_machine: "0xAA64"
+            pyside_wheel_platform: win_arm64
+            runner_status: public preview
+    runs-on: ${{ matrix.os }}
+    env:
+      PACKAGE_ARCH: ${{ matrix.arch }}
+      EXPECTED_RUNNER_ARCH: ${{ matrix.expected_runner_arch }}
+      EXPECTED_PLATFORM_MACHINE: ${{ matrix.expected_platform_machine }}
+      EXPECTED_PE_MACHINE: ${{ matrix.expected_pe_machine }}
+      PYSIDE_WHEEL_PLATFORM: ${{ matrix.pyside_wheel_platform }}
+      RUNNER_LABEL: ${{ matrix.os }}
+      RUNNER_STATUS: ${{ matrix.runner_status }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up native Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          architecture: ${{ matrix.python_arch }}
           cache: "pip"
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
 
-      - name: Read canonical project version
+      - name: Verify native Python architecture
+        shell: pwsh
+        run: |
+          $pythonExe = python -c "import sys; print(sys.executable)"
+          $reportedMachine = python -c "import platform; print(platform.machine().upper())"
+          $pointerBits = python -c "import struct; print(struct.calcsize('P') * 8)"
+          $pythonPlatform = python -c "import sysconfig; print(sysconfig.get_platform())"
+          python -c "import sys, sysconfig; print(sys.version); assert sys.version_info[:2] == (3, 13); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Standard Python 3.13 verification failed.' }
+          if ($env:RUNNER_ARCH -ne $env:EXPECTED_RUNNER_ARCH) {
+            throw "Expected runner architecture $env:EXPECTED_RUNNER_ARCH, but RUNNER_ARCH is $env:RUNNER_ARCH."
+          }
+          if ($reportedMachine -ne $env:EXPECTED_PLATFORM_MACHINE) {
+            throw "Expected native $env:EXPECTED_PLATFORM_MACHINE Python, but platform.machine() reported $reportedMachine."
+          }
+          if ($pointerBits -ne '64') { throw "Expected 64-bit Python, but found $pointerBits-bit Python." }
+
+          $pythonPeArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $pythonExe
+          if ($LASTEXITCODE -ne 0) { throw 'Python executable PE architecture verification failed.' }
+          Write-Host "Python executable: $pythonExe"
+          Write-Host "Python PE architecture: $pythonPeArchitecture"
+          "PYTHON_REPORTED_MACHINE=$reportedMachine" >> $env:GITHUB_ENV
+          "PYTHON_PLATFORM_TAG=$pythonPlatform" >> $env:GITHUB_ENV
+          "PYTHON_PE_ARCHITECTURE=$pythonPeArchitecture" >> $env:GITHUB_ENV
+
+      - name: Read and verify canonical project version
         id: project_version
         shell: pwsh
         run: |
           $version = python -c "from playstore_app_audit import __version__; print(__version__)"
+          $metadataVersion = python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version'])"
           if (-not $version) { throw 'Project version is empty.' }
+          if ($version -ne $metadataVersion) {
+            throw "Package version $version does not match pyproject.toml version $metadataVersion."
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Project version is not a numeric SemVer triplet: $version"
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Install runtime and test dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
+          python -m pip install -r requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install project dependencies.' }
 
-      - name: Verify current runtime versions
+      - name: Verify native PySide6 runtime
         shell: pwsh
         run: |
-          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info >= (3,13); assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6,11)"
+          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 13); assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6, 11)"
+          if ($LASTEXITCODE -ne 0) { throw 'PySide6 import or version verification failed.' }
+
+          $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6-Essentials').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the PySide6-Essentials wheel metadata.' }
+          $nativeWheelTag = $wheelTags | Where-Object { $_ -match "-$([regex]::Escape($env:PYSIDE_WHEEL_PLATFORM))$" } | Select-Object -First 1
+          if (-not $nativeWheelTag) {
+            throw "PySide6-Essentials is not installed from a $env:PYSIDE_WHEEL_PLATFORM wheel. Found: $($wheelTags -join ', ')"
+          }
+
+          $qtCoreBinary = python -c "from PySide6 import QtCore; print(QtCore.__file__)"
+          $qtCorePeArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $qtCoreBinary
+          if ($LASTEXITCODE -ne 0) { throw 'QtCore native extension PE architecture verification failed.' }
+          Write-Host "PySide6-Essentials wheel tag: $nativeWheelTag"
+          Write-Host "QtCore PE architecture: $qtCorePeArchitecture"
+          "PYSIDE6_WHEEL_TAG=$nativeWheelTag" >> $env:GITHUB_ENV
+          "PYSIDE6_QTCORE_PE_ARCHITECTURE=$qtCorePeArchitecture" >> $env:GITHUB_ENV
 
       - name: Static checks and regression tests
         shell: pwsh
         run: |
           python -m compileall -q playstore_app_audit
+          if ($LASTEXITCODE -ne 0) { throw 'compileall failed.' }
+          python -m py_compile .github/scripts/inspect_pe.py
+          if ($LASTEXITCODE -ne 0) { throw 'PE inspection helper compilation failed.' }
           python -m pytest
+          if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
           ruff check playstore_app_audit tests main.py
+          if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
+          ruff check .github/scripts/inspect_pe.py
+          if ($LASTEXITCODE -ne 0) { throw 'PE inspection helper Ruff check failed.' }
 
-      - name: Qt offscreen smoke test
+      - name: Qt source smoke tests
         shell: pwsh
         env:
           QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; old='Audit completed • 10 cached • 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt package smoke test OK'); w.close()"
+          if ($LASTEXITCODE -ne 0) { throw 'Qt widget smoke test failed.' }
+          python main.py
+          if ($LASTEXITCODE -ne 0) { throw 'Qt event-loop smoke test failed.' }
+
+      - name: Validate the managed ADB path
+        shell: pwsh
+        run: |
+          $adbScript = @'
+          from pathlib import Path
+
+          from playstore_app_audit.devices.adb import install_platform_tools, run_adb
+          from playstore_app_audit.platform.runtime import (
+              adb_executable_name,
+              managed_platform_tools_dir,
+              managed_platform_tools_download_supported,
+          )
+
+          assert managed_platform_tools_download_supported(), "managed Platform-Tools must be enabled on Windows"
+          adb, _installed_version = install_platform_tools()
+          actual_path = Path(adb).resolve()
+          expected_path = (managed_platform_tools_dir() / adb_executable_name()).resolve()
+          assert actual_path == expected_path, f"managed ADB path mismatch: {actual_path} != {expected_path}"
+          result = run_adb(str(actual_path), "version", timeout=20)
+          version_lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+          assert version_lines and "Android Debug Bridge" in version_lines[0]
+          print(actual_path)
+          print(" | ".join(version_lines))
+          '@
+          $adbDetails = @($adbScript | python -)
+          if ($LASTEXITCODE -ne 0) { throw 'The application managed ADB path failed validation.' }
+          if ($adbDetails.Count -ne 2) { throw "Unexpected managed ADB validation output: $($adbDetails -join ' | ')" }
+
+          $adbPath = $adbDetails[0]
+          $adbVersion = $adbDetails[1]
+          $adbPeArchitecture = python .github/scripts/inspect_pe.py $adbPath
+          if ($LASTEXITCODE -ne 0) { throw 'Managed adb.exe PE inspection failed.' }
+
+          if ($env:PACKAGE_ARCH -eq 'arm64') {
+            if ($adbPeArchitecture -like 'IMAGE_FILE_MACHINE_ARM64*') {
+              $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully as a native ARM64 executable.'
+            } elseif ($adbPeArchitecture -like 'IMAGE_FILE_MACHINE_AMD64*') {
+              $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully through Windows ARM64 x64 emulation.'
+            } elseif ($adbPeArchitecture -like 'IMAGE_FILE_MACHINE_I386*') {
+              $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully through Windows ARM64 x86 emulation.'
+            } else {
+              $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully; its exact PE machine is recorded separately.'
+            }
+          } elseif ($adbPeArchitecture -like 'IMAGE_FILE_MACHINE_AMD64*') {
+            $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully as a native x64 executable.'
+          } elseif ($adbPeArchitecture -like 'IMAGE_FILE_MACHINE_I386*') {
+            $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully through the Windows x86 compatibility layer (WOW64).'
+          } else {
+            $adbExecution = 'Google Windows Platform-Tools adb.exe ran successfully; its exact PE machine is recorded separately.'
+          }
+
+          Write-Host "Managed ADB path: $adbPath"
+          Write-Host "Managed ADB PE architecture: $adbPeArchitecture"
+          Write-Host $adbExecution
+          "MANAGED_ADB_PATH=$adbPath" >> $env:GITHUB_ENV
+          "MANAGED_ADB_VERSION=$adbVersion" >> $env:GITHUB_ENV
+          "MANAGED_ADB_PE_ARCHITECTURE=$adbPeArchitecture" >> $env:GITHUB_ENV
+          "MANAGED_ADB_EXECUTION=$adbExecution" >> $env:GITHUB_ENV
+          $summary = @"
+          ### Windows $env:PACKAGE_ARCH managed ADB validation
+
+          - Path: ``$adbPath``
+          - PE architecture: $adbPeArchitecture
+          - Result: $adbExecution
+          "@
+          $summary >> $env:GITHUB_STEP_SUMMARY
 
       - name: Generate Windows icon
         shell: pwsh
@@ -71,27 +230,69 @@ jobs:
 
       - name: Initialise Qt deployment configuration
         shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
           pyside6-deploy main.py --name PlayStoreAppAudit --init
-          python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --windows-console-mode=disable --nofollow-import-to=PIL --assume-yes-for-downloads'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close()"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not initialise pyside6-deploy.' }
+          $deployConfig = @'
+          import os
+          from configparser import ConfigParser
+          from pathlib import Path
 
-      - name: Build optimized Windows executable
+          version = os.environ["APP_VERSION"]
+          config = ConfigParser()
+          config.read("pysidedeploy.spec")
+          config["app"]["exec_directory"] = str(Path("dist").resolve())
+          config["app"]["icon"] = str(Path("app_icon.ico").resolve())
+          config["nuitka"]["mode"] = "onefile"
+          config["nuitka"]["extra_args"] = (
+              "--quiet --noinclude-qt-translations --windows-console-mode=disable "
+              "--nofollow-import-to=PIL --assume-yes-for-downloads --msvc=latest "
+              f"--file-version={version} --product-version={version} "
+              "--product-name=PlayStoreAppAudit --file-description=PlayStoreAppAudit"
+          )
+          with open("pysidedeploy.spec", "w", encoding="utf-8") as output:
+              config.write(output)
+          '@
+          $deployConfig | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Could not configure pyside6-deploy.' }
+
+      - name: Build, inspect and smoke Windows executable
         shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           pyside6-deploy -c pysidedeploy.spec -f
+          if ($LASTEXITCODE -ne 0) { throw 'pyside6-deploy failed.' }
+
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
           $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe | Where-Object { $_.Name -match 'PlayStoreAppAudit|main' } | Sort-Object Length -Descending | Select-Object -First 1
           if (-not $exe) { throw 'No deployed executable found.' }
-          $version = '${{ steps.project_version.outputs.version }}'
-          $outputName = "PlayStoreAppAudit-v$version-windows-x64.exe"
+          $outputName = "PlayStoreAppAudit-v$env:APP_VERSION-windows-$env:PACKAGE_ARCH.exe"
           $outputPath = Join-Path artifact $outputName
           Copy-Item $exe.FullName $outputPath
-          $sizeMB = [math]::Round((Get-Item $outputPath).Length / 1MB, 2)
+          $sizeBytes = (Get-Item $outputPath).Length
+          if ($sizeBytes -le 1MB) { throw "Packaged executable is implausibly small: $sizeBytes bytes." }
+          $sizeMB = [math]::Round($sizeBytes / 1MB, 2)
           Write-Host "Final executable size: $sizeMB MB"
 
-          $env:QT_QPA_PLATFORM = 'offscreen'
-          $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = '1'
+          $peArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $outputPath
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged executable PE architecture verification failed.' }
+          Write-Host "Packaged executable PE architecture: $peArchitecture"
+
+          $expectedWindowsVersion = "$env:APP_VERSION.0"
+          $versionInfo = (Get-Item $outputPath).VersionInfo
+          if ($versionInfo.FileVersion -ne $expectedWindowsVersion) {
+            throw "Expected file version $expectedWindowsVersion, found $($versionInfo.FileVersion)."
+          }
+          if ($versionInfo.ProductVersion -ne $expectedWindowsVersion) {
+            throw "Expected product version $expectedWindowsVersion, found $($versionInfo.ProductVersion)."
+          }
+
           $process = Start-Process -FilePath $outputPath -PassThru -WindowStyle Hidden
           if (-not $process.WaitForExit(60000)) {
             $process.Kill()
@@ -103,32 +304,63 @@ jobs:
           }
 
           $hash = (Get-FileHash -Algorithm SHA256 $outputPath).Hash.ToLowerInvariant()
-          "$hash  $outputName" | Set-Content -Encoding ascii "$outputPath.sha256"
+          $checksumLine = "$hash  $outputName"
+          $checksumPath = "$outputPath.sha256"
+          $checksumLine | Set-Content -Encoding ascii $checksumPath
+          $recordedHash = ((Get-Content -Raw $checksumPath).Trim() -split '\s+', 2)[0]
+          $verifiedHash = (Get-FileHash -Algorithm SHA256 $outputPath).Hash.ToLowerInvariant()
+          if ($recordedHash -ne $verifiedHash) {
+            throw "SHA-256 verification failed: recorded $recordedHash, calculated $verifiedHash."
+          }
 
           $pythonVersion = python -c "import sys; print(sys.version.replace(chr(10), ' '))"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not record the Python version.' }
           $pysideVersion = python -c "import PySide6; print(PySide6.__version__)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not record the PySide6 version.' }
           $nuitkaVersion = python -c "from importlib.metadata import version; print(version('Nuitka'))"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not record the Nuitka version.' }
           @(
-            "Application version: $version"
+            "Application version: $env:APP_VERSION"
+            "Windows file version: $($versionInfo.FileVersion)"
+            "Windows product version: $($versionInfo.ProductVersion)"
+            "GitHub repository: $env:GITHUB_REPOSITORY"
             "GitHub SHA: $env:GITHUB_SHA"
             "GitHub ref: $env:GITHUB_REF"
             "GitHub ref name: $env:GITHUB_REF_NAME"
+            "GitHub event: $env:GITHUB_EVENT_NAME"
+            "GitHub workflow: $env:GITHUB_WORKFLOW"
+            "GitHub run ID: $env:GITHUB_RUN_ID"
+            "GitHub run attempt: $env:GITHUB_RUN_ATTEMPT"
             "Runner OS: $env:RUNNER_OS"
+            "Runner architecture: $env:RUNNER_ARCH"
+            "Runner label: $env:RUNNER_LABEL"
+            "Runner label status: $env:RUNNER_STATUS"
             "Runner image OS: $env:ImageOS"
             "Runner image version: $env:ImageVersion"
             "Build/test host OS: $([System.Environment]::OSVersion.VersionString)"
-            "Package architecture: x64"
+            "Package architecture: $env:PACKAGE_ARCH"
+            "PE executable architecture: $peArchitecture"
             "Build host architecture: $env:PROCESSOR_ARCHITECTURE"
+            "Python reported machine: $env:PYTHON_REPORTED_MACHINE"
+            "Python platform tag: $env:PYTHON_PLATFORM_TAG"
+            "Python PE architecture: $env:PYTHON_PE_ARCHITECTURE"
+            "PySide6-Essentials wheel tag: $env:PYSIDE6_WHEEL_TAG"
+            "PySide6 QtCore PE architecture: $env:PYSIDE6_QTCORE_PE_ARCHITECTURE"
+            "Managed ADB path: $env:MANAGED_ADB_PATH"
+            "Managed ADB version: $env:MANAGED_ADB_VERSION"
+            "Managed ADB PE architecture: $env:MANAGED_ADB_PE_ARCHITECTURE"
+            "Managed ADB execution validation: $env:MANAGED_ADB_EXECUTION"
+            "Executable SHA-256: $hash"
             "Python: $pythonVersion"
             "PySide6: $pysideVersion"
             "Nuitka: $nuitkaVersion"
             "Signing: unsigned CI artifact"
-          ) | Set-Content -Encoding utf8 artifact/BUILD-INFO-windows-x64.txt
+          ) | Set-Content -Encoding utf8 "artifact/BUILD-INFO-windows-$env:PACKAGE_ARCH.txt"
 
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
-          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
           retention-days: 30

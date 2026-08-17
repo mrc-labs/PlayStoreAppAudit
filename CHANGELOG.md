@@ -2,7 +2,7 @@
 
 All notable user-facing and maintenance changes to Play Store App Audit are recorded here.
 
-## [0.12.0] - 2026-08-16
+## [1.0.0] - 2026-08-17
 
 ### Added
 
@@ -14,10 +14,11 @@ All notable user-facing and maintenance changes to Play Store App Audit are reco
 - Regression coverage for country parsing, version comparison, Android compatibility labels, Health score, filters, portable paths, ADB bulk parsing, architecture constraints and UI schema integrity.
 - Lightweight pull-request quality workflow covering compile, tests, Ruff and Qt offscreen smoke checks.
 - Manual Linux and macOS packaging workflows with platform-specific runtime validation.
+- Native Windows ARM64 application packaging alongside the Windows x64 package.
 
 ### Changed
 
-- Application version is now 0.12.0 across the package and project metadata.
+- Application version is now 1.0.0 across the package and project metadata.
 - State/settings/cache/history code now uses `services.state` directly; the temporary persistence compatibility shim has been removed.
 - Historical `v7`/`v8`/`v9`, `qt_base`, `features` and `user_state` module aliases have been replaced by descriptive imports.
 - Table columns, labels, widths and export extras no longer depend on UI import order.
@@ -27,6 +28,9 @@ All notable user-facing and maintenance changes to Play Store App Audit are reco
 - Linux CI installs the EGL/X11 libraries required by Qt on the hosted runner.
 - macOS packaging excludes the unused Qt Virtual Keyboard platform-input-context plugin.
 - macOS/Linux packaging now validates the actual generated binary/app bundle so a deployment-tool false positive cannot upload an empty artifact.
+- Release packaging now covers Windows x64 and ARM64, Linux x64 and ARM64, and macOS Apple Silicon and Intel from the same source revision.
+- Windows packaging validates native Python/PySide6 inputs; packaging asserts actual PE/ELF/Mach-O architecture, runs deterministic source and packaged smoke tests, and records release provenance in `BUILD-INFO`.
+- ADB validation is architecture-aware: each supported managed or native path must execute successfully, while Windows records the downloaded `adb.exe` architecture separately from the native application package.
 
 ### Fixed
 
@@ -43,6 +47,8 @@ All notable user-facing and maintenance changes to Play Store App Audit are reco
 - Windows remains the primary automatic release build.
 - Linux and macOS use the same Qt/PySide6 source tree and are manual/on-demand release targets.
 - CustomTkinter remains retired and preserved only by the historical `legacy-customtkinter-v9.3` tag.
+- The v1.0.0 release matrix targets Windows x64, native Windows ARM64, Linux x64, Linux ARM64, macOS ARM64 / Apple Silicon and macOS x64 / Intel packages.
+- The GitHub-hosted Windows ARM64 runner is currently public preview; Windows packages are unsigned, while macOS packages are ad-hoc signed but not Apple-notarized.
 
 ## [0.11.0] - 2026-08-16
 

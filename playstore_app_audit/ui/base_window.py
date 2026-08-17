@@ -46,6 +46,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 from playstore_app_audit.ui import schema
@@ -1010,7 +1011,7 @@ class BaseWindow(QMainWindow):
                 temp_root = Path(temp_dir)
                 archive_path = temp_root / "platform-tools.zip"
                 request = urllib.request.Request(
-                    PLATFORM_TOOLS_URL, headers={"User-Agent": f"{APP_NAME}/2.0"}
+                    PLATFORM_TOOLS_URL, headers={"User-Agent": f"{APP_NAME}/{__version__}"}
                 )
                 with (
                     urllib.request.urlopen(request, timeout=90) as response,
