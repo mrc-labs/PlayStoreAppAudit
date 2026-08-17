@@ -19,7 +19,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 ## Download and installation
 
-Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases). This branch contains unreleased v1.2.0 source; do not expect a v1.2.0 download until that release is published.
+Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
 The normal prebuilt distribution target is Windows x64. Download the Windows x64 ZIP from the release you want, extract it to a normal folder and run `PlayStoreAppAudit.exe` from the extracted package. Windows builds are currently unsigned, so Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the file. That warning reflects signing and reputation status, not a finding that the application is unsafe.
 
