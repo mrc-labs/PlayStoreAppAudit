@@ -87,18 +87,48 @@ def test_qt_application_version_comes_from_the_canonical_version(
 
 def test_windows_build_metadata_is_derived_from_the_canonical_version() -> None:
     root = Path(__file__).resolve().parents[1]
-    workflow = (root / ".github/workflows/build-windows-exe.yml").read_text(encoding="utf-8")
+    workflow = (
+        root / ".github/workflows/build-windows-exe.yml"
+    ).read_text(encoding="utf-8")
+    builder = (
+        root / ".github/scripts/build_windows_standalone.ps1"
+    ).read_text(encoding="utf-8")
 
-    assert 'from playstore_app_audit import __version__; print(__version__)' in workflow
-    assert "f\"--file-version={version} --product-version={version} \"" in workflow
-    assert '$expectedWindowsVersion = "$env:APP_VERSION.0"' in workflow
+    assert "from playstore_app_audit import __version__; print(__version__)" in workflow
+    assert "build_windows_standalone.ps1" in workflow
+    assert "-ExpectedPeMachine $env:EXPECTED_PE_MACHINE" in workflow
+    assert "-ExpectedPlatformMachine $env:EXPECTED_PLATFORM_MACHINE" in workflow
+    assert "-UseMSVC" in workflow
+
+    assert "--mode=standalone" in builder
+    assert "from playstore_app_audit import __version__; print(__version__)" in builder
+    assert "--file-version=$AppVersion" in builder
+    assert "--product-version=$AppVersion" in builder
+    assert '$ExpectedWindowsVersion = "$AppVersion.0"' in builder
 
 
 def test_local_windows_build_uses_canonical_version_and_x64_validation() -> None:
     root = Path(__file__).resolve().parents[1]
     helper = (root / "build_windows_exe.bat").read_text(encoding="utf-8")
+    builder = (
+        root / ".github/scripts/build_windows_standalone.ps1"
+    ).read_text(encoding="utf-8")
+    validator = (
+        root / ".github/scripts/validate_windows_standalone.py"
+    ).read_text(encoding="utf-8")
 
-    assert "from playstore_app_audit import __version__; print(__version__)" in helper
-    assert "--file-version=' + version + ' --product-version=' + version" in helper
-    assert "$expected=$env:APP_VERSION + '.0'" in helper
-    assert "inspect_pe.py --expect 0x8664" in helper
+    assert "build_windows_standalone.ps1" in helper
+    assert '-ExpectedPeMachine "0x8664"' in helper
+    assert '-ExpectedPlatformMachine "AMD64"' in helper
+
+    assert "--mode=standalone" in builder
+    assert "from playstore_app_audit import __version__; print(__version__)" in builder
+    assert "--file-version=$AppVersion" in builder
+    assert "--product-version=$AppVersion" in builder
+    assert '$ExpectedWindowsVersion = "$AppVersion.0"' in builder
+    assert "$InspectPe --expect $ExpectedPeMachine" in builder
+    assert "validate_windows_standalone.py" in builder
+
+    assert '"qtvirtualkeyboardplugin.dll"' in validator
+    assert '"qt6virtualkeyboard.dll"' in validator
+    assert '"qpdf.dll"' in validator

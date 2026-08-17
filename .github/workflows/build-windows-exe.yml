@@ -19,7 +19,10 @@ on:
       - "pyproject.toml"
       - "requirements*.txt"
       - "AGENTS.md"
+      - "build_windows_exe.bat"
       - ".github/scripts/inspect_pe.py"
+      - ".github/scripts/validate_windows_standalone.py"
+      - ".github/scripts/build_windows_standalone.ps1"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
@@ -27,7 +30,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Test and build Windows ${{ matrix.arch }} package
+    name: Test and build Windows ${{ matrix.arch }} standalone package
     strategy:
       fail-fast: false
       matrix:
@@ -96,13 +99,13 @@ jobs:
           }
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Install runtime and test dependencies
+      - name: Install runtime, test and build dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
-          python -m pip install -r requirements-dev.txt
-          if ($LASTEXITCODE -ne 0) { throw 'Could not install project dependencies.' }
+          python -m pip install -r requirements-dev.txt "Nuitka==4.1.3"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install project/build dependencies.' }
 
       - name: Verify native PySide6 runtime
         shell: pwsh
@@ -130,14 +133,12 @@ jobs:
         run: |
           python -m compileall -q playstore_app_audit
           if ($LASTEXITCODE -ne 0) { throw 'compileall failed.' }
-          python -m py_compile .github/scripts/inspect_pe.py
-          if ($LASTEXITCODE -ne 0) { throw 'PE inspection helper compilation failed.' }
+          python -m py_compile .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py
+          if ($LASTEXITCODE -ne 0) { throw 'Build helper compilation failed.' }
           python -m pytest
           if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
-          ruff check playstore_app_audit tests main.py
+          ruff check playstore_app_audit tests main.py .github/scripts/inspect_pe.py .github/scripts/validate_windows_standalone.py
           if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
-          ruff check .github/scripts/inspect_pe.py
-          if ($LASTEXITCODE -ne 0) { throw 'PE inspection helper Ruff check failed.' }
 
       - name: Qt source smoke tests
         shell: pwsh
@@ -208,6 +209,7 @@ jobs:
           "MANAGED_ADB_VERSION=$adbVersion" >> $env:GITHUB_ENV
           "MANAGED_ADB_PE_ARCHITECTURE=$adbPeArchitecture" >> $env:GITHUB_ENV
           "MANAGED_ADB_EXECUTION=$adbExecution" >> $env:GITHUB_ENV
+
           $summary = @"
           ### Windows $env:PACKAGE_ARCH managed ADB validation
 
@@ -217,143 +219,56 @@ jobs:
           "@
           $summary >> $env:GITHUB_STEP_SUMMARY
 
-      - name: Generate Windows icon
+      - name: Build and validate Windows standalone package
         shell: pwsh
-        run: python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
-
-      - name: Initialise Qt deployment configuration
-        shell: pwsh
-        env:
-          APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
-          pyside6-deploy main.py --name PlayStoreAppAudit --init
-          if ($LASTEXITCODE -ne 0) { throw 'Could not initialise pyside6-deploy.' }
-          $deployConfig = @'
-          import os
-          from configparser import ConfigParser
-          from pathlib import Path
+          $pythonExe = (Get-Command python).Source
+          $outputRoot = "artifact\windows-$env:PACKAGE_ARCH-ci"
 
-          version = os.environ["APP_VERSION"]
-          config = ConfigParser()
-          config.read("pysidedeploy.spec")
-          config["app"]["exec_directory"] = str(Path("dist").resolve())
-          config["app"]["icon"] = str(Path("app_icon.ico").resolve())
-          config["nuitka"]["mode"] = "onefile"
-          config["nuitka"]["extra_args"] = (
-              "--quiet --noinclude-qt-translations --windows-console-mode=disable "
-              "--nofollow-import-to=PIL --assume-yes-for-downloads --msvc=latest "
-              f"--file-version={version} --product-version={version} "
-              "--product-name=PlayStoreAppAudit --file-description=PlayStoreAppAudit"
-          )
-          with open("pysidedeploy.spec", "w", encoding="utf-8") as output:
-              config.write(output)
-          '@
-          $deployConfig | python -
-          if ($LASTEXITCODE -ne 0) { throw 'Could not configure pyside6-deploy.' }
+          & .\.github\scripts\build_windows_standalone.ps1 `
+            -PythonExe $pythonExe `
+            -RepoRoot $PWD.Path `
+            -OutputRoot $outputRoot `
+            -ExpectedPeMachine $env:EXPECTED_PE_MACHINE `
+            -ExpectedPlatformMachine $env:EXPECTED_PLATFORM_MACHINE `
+            -PackageArch $env:PACKAGE_ARCH `
+            -UseMSVC
 
-      - name: Build, inspect and smoke Windows executable
-        shell: pwsh
-        env:
-          APP_VERSION: ${{ steps.project_version.outputs.version }}
-          QT_QPA_PLATFORM: offscreen
-          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          pyside6-deploy -c pysidedeploy.spec -f
-          if ($LASTEXITCODE -ne 0) { throw 'pyside6-deploy failed.' }
+          if ($LASTEXITCODE -ne 0) { throw 'Standalone package build failed.' }
 
-          New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          $exe = Get-ChildItem -Path dist -Recurse -Filter *.exe | Where-Object { $_.Name -match 'PlayStoreAppAudit|main' } | Sort-Object Length -Descending | Select-Object -First 1
-          if (-not $exe) { throw 'No deployed executable found.' }
-          $outputName = "PlayStoreAppAudit-v$env:APP_VERSION-windows-$env:PACKAGE_ARCH.exe"
-          $outputPath = Join-Path artifact $outputName
-          Copy-Item $exe.FullName $outputPath
-          $sizeBytes = (Get-Item $outputPath).Length
-          if ($sizeBytes -le 1MB) { throw "Packaged executable is implausibly small: $sizeBytes bytes." }
-          $sizeMB = [math]::Round($sizeBytes / 1MB, 2)
-          Write-Host "Final executable size: $sizeMB MB"
+          $version = '${{ steps.project_version.outputs.version }}'
+          $zipName = "PlayStoreAppAudit-v$version-windows-$env:PACKAGE_ARCH.zip"
+          $zipPath = Join-Path $outputRoot $zipName
+          $checksumPath = "$zipPath.sha256"
 
-          $peArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $outputPath
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged executable PE architecture verification failed.' }
-          Write-Host "Packaged executable PE architecture: $peArchitecture"
-
-          $expectedWindowsVersion = "$env:APP_VERSION.0"
-          $versionInfo = (Get-Item $outputPath).VersionInfo
-          if ($versionInfo.FileVersion -ne $expectedWindowsVersion) {
-            throw "Expected file version $expectedWindowsVersion, found $($versionInfo.FileVersion)."
+          if (-not (Test-Path -LiteralPath $zipPath)) {
+            throw "Expected ZIP artifact was not produced: $zipPath"
           }
-          if ($versionInfo.ProductVersion -ne $expectedWindowsVersion) {
-            throw "Expected product version $expectedWindowsVersion, found $($versionInfo.ProductVersion)."
+          if (-not (Test-Path -LiteralPath $checksumPath)) {
+            throw "Expected SHA-256 sidecar was not produced: $checksumPath"
           }
 
-          $process = Start-Process -FilePath $outputPath -PassThru -WindowStyle Hidden
-          if (-not $process.WaitForExit(60000)) {
-            $process.Kill()
-            $process.WaitForExit()
-            throw 'Packaged Windows executable did not finish its smoke test within 60 seconds.'
-          }
-          if ($process.ExitCode -ne 0) {
-            throw "Packaged Windows executable smoke test failed with exit code $($process.ExitCode)."
-          }
+          $checksum = (Get-Content -LiteralPath $checksumPath -Raw).Trim()
+          Write-Host "Final package: $zipPath"
+          Write-Host "Checksum: $checksum"
 
-          $hash = (Get-FileHash -Algorithm SHA256 $outputPath).Hash.ToLowerInvariant()
-          $checksumLine = "$hash  $outputName"
-          $checksumPath = "$outputPath.sha256"
-          $checksumLine | Set-Content -Encoding ascii $checksumPath
-          $recordedHash = ((Get-Content -Raw $checksumPath).Trim() -split '\s+', 2)[0]
-          $verifiedHash = (Get-FileHash -Algorithm SHA256 $outputPath).Hash.ToLowerInvariant()
-          if ($recordedHash -ne $verifiedHash) {
-            throw "SHA-256 verification failed: recorded $recordedHash, calculated $verifiedHash."
-          }
+          @"
+          ### Windows $env:PACKAGE_ARCH standalone package
 
-          $pythonVersion = python -c "import sys; print(sys.version.replace(chr(10), ' '))"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not record the Python version.' }
-          $pysideVersion = python -c "import PySide6; print(PySide6.__version__)"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not record the PySide6 version.' }
-          $nuitkaVersion = python -c "from importlib.metadata import version; print(version('Nuitka'))"
-          if ($LASTEXITCODE -ne 0) { throw 'Could not record the Nuitka version.' }
-          @(
-            "Application version: $env:APP_VERSION"
-            "Windows file version: $($versionInfo.FileVersion)"
-            "Windows product version: $($versionInfo.ProductVersion)"
-            "GitHub repository: $env:GITHUB_REPOSITORY"
-            "GitHub SHA: $env:GITHUB_SHA"
-            "GitHub ref: $env:GITHUB_REF"
-            "GitHub ref name: $env:GITHUB_REF_NAME"
-            "GitHub event: $env:GITHUB_EVENT_NAME"
-            "GitHub workflow: $env:GITHUB_WORKFLOW"
-            "GitHub run ID: $env:GITHUB_RUN_ID"
-            "GitHub run attempt: $env:GITHUB_RUN_ATTEMPT"
-            "Runner OS: $env:RUNNER_OS"
-            "Runner architecture: $env:RUNNER_ARCH"
-            "Runner label: $env:RUNNER_LABEL"
-            "Runner label status: $env:RUNNER_STATUS"
-            "Runner image OS: $env:ImageOS"
-            "Runner image version: $env:ImageVersion"
-            "Build/test host OS: $([System.Environment]::OSVersion.VersionString)"
-            "Package architecture: $env:PACKAGE_ARCH"
-            "PE executable architecture: $peArchitecture"
-            "Build host architecture: $env:PROCESSOR_ARCHITECTURE"
-            "Python reported machine: $env:PYTHON_REPORTED_MACHINE"
-            "Python platform tag: $env:PYTHON_PLATFORM_TAG"
-            "Python PE architecture: $env:PYTHON_PE_ARCHITECTURE"
-            "PySide6-Essentials wheel tag: $env:PYSIDE6_WHEEL_TAG"
-            "PySide6 QtCore PE architecture: $env:PYSIDE6_QTCORE_PE_ARCHITECTURE"
-            "Managed ADB path: $env:MANAGED_ADB_PATH"
-            "Managed ADB version: $env:MANAGED_ADB_VERSION"
-            "Managed ADB PE architecture: $env:MANAGED_ADB_PE_ARCHITECTURE"
-            "Managed ADB execution validation: $env:MANAGED_ADB_EXECUTION"
-            "Executable SHA-256: $hash"
-            "Python: $pythonVersion"
-            "PySide6: $pysideVersion"
-            "Nuitka: $nuitkaVersion"
-            "Signing: unsigned CI artifact"
-          ) | Set-Content -Encoding utf8 "artifact/BUILD-INFO-windows-$env:PACKAGE_ARCH.txt"
+          - Packaging: Nuitka standalone ZIP
+          - Compiler: MSVC latest
+          - Package: ``$zipName``
+          - SHA-256: ``$checksum``
+          - Qt Virtual Keyboard: excluded and validated absent
+          - Qt PDF image plugin qpdf.dll: removed and validated absent
+          "@ >> $env:GITHUB_STEP_SUMMARY
 
-      - name: Upload Windows executable
+      - name: Upload Windows standalone ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
-          path: artifact/
+          path: |
+            artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip
+            artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip.sha256
           if-no-files-found: error
           retention-days: 30
