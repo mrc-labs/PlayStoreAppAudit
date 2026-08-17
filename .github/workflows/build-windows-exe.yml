@@ -2,6 +2,16 @@ name: Build Windows - Qt6
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Windows architecture to build
+        required: false
+        default: x64
+        type: choice
+        options:
+          - x64
+          - arm64
+          - both
   push:
     branches: [main]
     paths:
@@ -21,33 +31,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2025
-            arch: x64
-            python_arch: x64
-            expected_runner_arch: X64
-            expected_platform_machine: AMD64
-            expected_pe_machine: "0x8664"
-            pyside_wheel_platform: win_amd64
-            runner_status: generally available
-          # GitHub currently provides windows-11-arm as a public-preview hosted runner.
-          - os: windows-11-arm
-            arch: arm64
-            python_arch: arm64
-            expected_runner_arch: ARM64
-            expected_platform_machine: ARM64
-            expected_pe_machine: "0xAA64"
-            pyside_wheel_platform: win_arm64
-            runner_status: public preview
-    runs-on: ${{ matrix.os }}
+        arch: ${{ fromJSON(github.event_name == 'push' && '["x64"]' || inputs.target == 'both' && '["x64", "arm64"]' || inputs.target == 'arm64' && '["arm64"]' || '["x64"]') }}
+    runs-on: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
     env:
       PACKAGE_ARCH: ${{ matrix.arch }}
-      EXPECTED_RUNNER_ARCH: ${{ matrix.expected_runner_arch }}
-      EXPECTED_PLATFORM_MACHINE: ${{ matrix.expected_platform_machine }}
-      EXPECTED_PE_MACHINE: ${{ matrix.expected_pe_machine }}
-      PYSIDE_WHEEL_PLATFORM: ${{ matrix.pyside_wheel_platform }}
-      RUNNER_LABEL: ${{ matrix.os }}
-      RUNNER_STATUS: ${{ matrix.runner_status }}
+      EXPECTED_RUNNER_ARCH: ${{ matrix.arch == 'x64' && 'X64' || 'ARM64' }}
+      EXPECTED_PLATFORM_MACHINE: ${{ matrix.arch == 'x64' && 'AMD64' || 'ARM64' }}
+      EXPECTED_PE_MACHINE: ${{ matrix.arch == 'x64' && '0x8664' || '0xAA64' }}
+      PYSIDE_WHEEL_PLATFORM: ${{ matrix.arch == 'x64' && 'win_amd64' || 'win_arm64' }}
+      RUNNER_LABEL: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
+      RUNNER_STATUS: ${{ matrix.arch == 'x64' && 'generally available' || 'public preview' }}
 
     steps:
       - name: Checkout repository
@@ -57,7 +50,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          architecture: ${{ matrix.python_arch }}
+          architecture: ${{ matrix.arch }}
           cache: "pip"
           cache-dependency-path: |
             requirements.txt

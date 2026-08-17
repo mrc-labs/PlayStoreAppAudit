@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QPoint, Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QSizePolicy,
     QStyle,
+    QToolButton,
+    QWidget,
 )
 
+import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.platform import runtime
@@ -39,7 +44,77 @@ class MainWindow(results_ui.ResultsWindow):
     def __init__(self) -> None:
         super().__init__()
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
+        self._remove_redundant_content_heading()
         self._rebuild_source_area_v10()
+
+    def _remove_redundant_content_heading(self) -> None:
+        central = self.centralWidget()
+        root = central.layout() if central is not None else None
+        if root is None:
+            return
+        for label in central.findChildren(QLabel):
+            if label.objectName() == "Title" and label.text().strip() == "Play Store App Audit":
+                root.removeWidget(label)
+                label.setParent(None)
+                label.deleteLater()
+                break
+        self.subtitle_label = next(
+            (
+                label
+                for label in central.findChildren(QLabel)
+                if label.objectName() == "Subtitle"
+                and label.text().strip()
+                == "Check Android packages against Google Play, classify update risk and inspect everything in one table."
+            ),
+            None,
+        )
+        root.setSpacing(9)
+
+    def _populate_recent_source_menu(self, menu: QMenu, paths: list[str]) -> None:
+        menu.clear()
+        if not paths:
+            menu.addAction("No recent files").setEnabled(False)
+            return
+        for path in paths:
+            menu.addAction(Path(path).name, lambda _checked=False, p=path: self._load_input_file(p))
+
+    def _populate_recent_menu(self) -> None:
+        paths = device_insights.get_recent_sources()
+        menus: list[QMenu] = []
+        for name in ("recent_menu", "_recent_menu", "recent_sources_button_menu"):
+            menu = getattr(self, name, None)
+            if isinstance(menu, QMenu) and menu not in menus:
+                menus.append(menu)
+        for menu in menus:
+            self._populate_recent_source_menu(menu, paths)
+
+    def _file_source_controls(self) -> QWidget:
+        controls = QWidget()
+        controls.setObjectName("FileSourceControls")
+        layout = QHBoxLayout(controls)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        self.choose_button.setMinimumWidth(108)
+        layout.addWidget(self.choose_button)
+
+        self.recent_sources_button = QToolButton()
+        self.recent_sources_button.setObjectName("RecentSourcesButton")
+        self.recent_sources_button.setToolTip("Recent sources")
+        self.recent_sources_button.setAccessibleName("Recent sources")
+        self.recent_sources_button.setArrowType(Qt.ArrowType.DownArrow)
+        self.recent_sources_button.setFixedWidth(30)
+        self.recent_sources_button_menu = QMenu("Recent sources", self.recent_sources_button)
+        self.recent_sources_button.clicked.connect(self._show_recent_sources_menu)
+        layout.addWidget(self.recent_sources_button)
+
+        self._populate_recent_menu()
+        return controls
+
+    def _show_recent_sources_menu(self) -> None:
+        self._populate_recent_menu()
+        button = self.recent_sources_button
+        self.recent_sources_button_menu.popup(button.mapToGlobal(QPoint(0, button.height())))
 
     # ---------- UX ----------
     def _source_option(self, label_text: str, button) -> QFrame:
@@ -102,7 +177,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.scan_button.setText("Scan phone")
         self.scan_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
 
-        row.addWidget(self._source_option("CSV / TSV / TXT file", self.choose_button), 1)
+        row.addWidget(self._source_option("CSV / TSV / TXT file", self._file_source_controls()), 1)
         or_label = QLabel("or")
         or_label.setObjectName("Muted")
         row.addWidget(or_label)

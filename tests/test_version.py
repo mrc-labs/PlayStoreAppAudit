@@ -12,6 +12,10 @@ def test_package_version_matches_project_metadata() -> None:
     assert __version__ == project["project"]["version"]
 
 
+def test_v110_release_version() -> None:
+    assert __version__ == "1.1.0"
+
+
 def test_release_version_is_semver_triplet() -> None:
     parts = __version__.split(".")
     assert len(parts) == 3

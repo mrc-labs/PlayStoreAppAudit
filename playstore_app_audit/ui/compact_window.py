@@ -49,7 +49,6 @@ FIXED_WORKERS = 16
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
 DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
-PROJECT_URL = "https://github.com/mrc-labs/PlayStoreAppAudit"
 
 _original_classify_criticality = base_ui.classify_criticality
 
@@ -441,7 +440,6 @@ class CompactWindow(AuditWindow):
         info = QLabel(
             "<b>Created by MRC</b><br>"
             "Audit Android packages against public Google Play listings, update dates and regional availability.<br><br>"
-            f'<a href="{PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
         info.setWordWrap(True)

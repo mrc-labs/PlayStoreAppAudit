@@ -97,9 +97,9 @@ The Windows CI also opens the Qt UI using the offscreen platform plugin before p
 
 ## Builds
 
-Windows is the normal automatic GitHub Actions build from `main`, with separate x64 and native ARM64 jobs. The ARM64 job uses GitHub's `windows-11-arm` hosted runner, which is currently public preview. macOS and Linux builds are manual/on-demand only, but use the same source revision.
+For v1.1.0, the prebuilt release target is **Windows x64 only**. Relevant pushes to `main` build one Windows x64 package, and the default manual Windows workflow target is also x64. Windows ARM64 remains available only as an explicit manual engineering target; macOS and Linux workflows remain manual-only.
 
-The intended v1.0.0 release package matrix is:
+v1.0.0 remains the last release with the full six-package prebuilt matrix:
 
 - Windows x64
 - Windows ARM64 (native application package)
@@ -109,5 +109,7 @@ The intended v1.0.0 release package matrix is:
 - macOS x64 / Intel
 
 Each packaging job validates the generated architecture and performs a deterministic packaged startup smoke test. Windows packages are unsigned. macOS packages are ad-hoc signed for bundle integrity but are not Apple-notarized.
+
+This release-policy change does not remove source-level support for Windows ARM64, Linux or macOS. All platforms continue to use the same source tree, and the v1.0.0 Windows ARM64 support remains available for explicit engineering builds.
 
 Release packaging uses Qt's `pyside6-deploy` / Nuitka path. See `docs/BUILDING.md` for local and CI instructions and `docs/BRANCH_MIGRATION.md` for the completed migration and legacy-branch retirement steps.
