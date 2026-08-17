@@ -175,12 +175,19 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
+        self.file_menu.addAction("Run Play Store audit", self._start_audit)
         self.file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
         self.file_menu.addSeparator()
-        self.file_menu.addAction("Export all results as CSV…", self._export_results)
-        self.file_menu.addAction("Export visible results as CSV…", self._export_visible_results)
-        self.file_menu.addAction("Export all results as HTML…", self._export_html_report)
-        self.file_menu.addAction("Export visible results as HTML…", self._export_visible_html_report)
+        self.file_export_results_menu = self.file_menu.addMenu("Export results")
+        self.file_export_results_menu.addAction("Export all results as CSV…", self._export_results)
+        self.file_export_results_menu.addAction(
+            "Export visible results as CSV…", self._export_visible_results
+        )
+        self.file_export_results_menu.addSeparator()
+        self.file_export_results_menu.addAction("Export all results as HTML…", self._export_html_report)
+        self.file_export_results_menu.addAction(
+            "Export visible results as HTML…", self._export_visible_html_report
+        )
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
 

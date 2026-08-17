@@ -2,6 +2,35 @@
 
 All notable user-facing and maintenance changes to Play Store App Audit are recorded here.
 
+## [1.1.0] - 2026-08-17
+
+### Added
+
+- A compact Recent sources chevron beside Choose file, synchronized with File → Recent sources.
+- File → Run Play Store audit, routed through the same pause-aware audit command as the main Run button.
+- A focused Export results submenu containing all/visible CSV and HTML result exports.
+- Reusable native rich-help dialogs for the ADB setup and app-list import guides.
+- Focused UI, menu, help, icon and Windows-workflow regression coverage.
+
+### Changed
+
+- Application and project metadata versions are now 1.1.0.
+- The redundant large in-content product heading has been removed from the final MainWindow while retaining the compact explanatory subtitle.
+- The embedded application icon now trims excessive transparent padding without changing or resampling its visible artwork pixels.
+- The app-list guide is reorganized around importing CSV/TSV/TXT sources, Recent sources, drag-and-drop, ADB generation and phone-only alternatives.
+- Normal Windows builds and the default manual Windows target now build x64 only; ARM64 remains available only as an explicit manual engineering target.
+- Superseded Quality workflow runs for the same pull request can be cancelled without affecting other pull requests.
+
+### Removed
+
+- The LinkedIn link and its unused URL constant from the About dialog implementation.
+
+### Compatibility
+
+- The v1.1.0 prebuilt release target is Windows x64 only.
+- v1.0.0 remains the last release with the full six-package Windows, Linux and macOS prebuilt matrix.
+- Source-level Windows ARM64, Linux and macOS support remains in the shared codebase; their packaging workflows and platform abstractions were not removed.
+
 ## [1.0.0] - 2026-08-17
 
 ### Added

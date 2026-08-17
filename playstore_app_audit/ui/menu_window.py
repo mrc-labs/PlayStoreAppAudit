@@ -10,7 +10,9 @@ import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
+from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.ui import rich_help
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -88,11 +90,15 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar.addMenu(self.help_menu)
         self.help_menu.addAction(
             "ADB setup guide…",
-            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
+            lambda: rich_help.show_rich_help(
+                self, "ADB setup guide", help_texts.ADB_SETUP_GUIDE_HTML
+            ),
         )
         self.help_menu.addAction(
-            "How to export package CSV…",
-            lambda: self._show_text_help("Export package CSV", presentation.CSV_EXPORT_GUIDE),
+            "How to import an app list…",
+            lambda: rich_help.show_rich_help(
+                self, "How to import an app list", help_texts.IMPORT_APP_LIST_GUIDE_HTML
+            ),
         )
         self.help_menu.addAction(
             "Health score methodology…",

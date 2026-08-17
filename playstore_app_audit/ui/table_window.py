@@ -13,7 +13,6 @@ from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, Q
 
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
-import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit.ui import schema
@@ -144,7 +143,6 @@ class TableWindow(insights_ui.InsightsWindow):
             "<b>Created by MRC</b><br><br>"
             "Audit Android packages against public Google Play listings, update dates, "
             "regional availability and optional connected-device metadata.<br><br>"
-            f'<a href="{compact_ui.PROJECT_URL}">MRC on GitHub</a><br><br>'
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
         info.setWordWrap(True)

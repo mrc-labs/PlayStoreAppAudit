@@ -29,18 +29,28 @@ Run from source:
 python main.py
 ```
 
+### v1.1.0 validation and Actions usage
+
+During local development, run compile/tests/Ruff, the Qt smoke test and the Windows x64 package build locally. Produce and manually test the local x64 executable before committing or pushing; do not dispatch GitHub Actions merely to repeat local checks.
+
+After that manual approval, let the Quality workflow run once through the pull request's normal trigger. Its concurrency group is scoped to the PR, so a newer commit can cancel an older still-running Quality job without cancelling another PR. Do not manually dispatch a duplicate Quality run.
+
+After merge, let the normal `main` push build Windows x64 once and use that exact final-main artifact for release validation. Do not manually dispatch a duplicate Windows run. Windows ARM64 remains an explicit engineering target, while macOS/Linux remain manual-only; none is part of the v1.1.0 release build.
+
 ## Windows
 
-`.github/workflows/build-windows-exe.yml` is the normal automatic build. It runs on relevant pushes to `main`, tests the application using Qt's offscreen backend, then packages the app with `pyside6-deploy` / Nuitka.
+`.github/workflows/build-windows-exe.yml` is the normal automatic build. For v1.1.0, relevant pushes to `main` test and package Windows x64 only using Qt's offscreen backend and `pyside6-deploy` / Nuitka.
 
-The workflow uses an architecture-aware matrix:
+The manual workflow target defaults to `x64`. It also retains explicit `arm64` and `both` engineering targets without duplicating the build logic:
 
 - Windows x64 runs on the explicit `windows-2025` hosted-runner label and expects `IMAGE_FILE_MACHINE_AMD64` (`0x8664`).
 - Windows ARM64 runs on `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64` (`0xAA64`). GitHub currently marks this hosted runner as public preview.
 
-Each job installs the matching native Python 3.13 interpreter, requires a native `PySide6-Essentials` wheel and QtCore extension, and inspects the final executable's PE header rather than trusting the runner label or filename. The generated Windows file/product version is derived from the canonical application version and verified after packaging. Both jobs run compile/tests/Ruff, Qt source smoke checks and the deterministic packaged executable smoke test.
+Each selected job installs the matching native Python 3.13 interpreter, requires a native `PySide6-Essentials` wheel and QtCore extension, and inspects the final executable's PE header rather than trusting the runner label or filename. The generated Windows file/product version is derived from the canonical application version and verified after packaging. Selected jobs run compile/tests/Ruff, Qt source smoke checks and the deterministic packaged executable smoke test.
 
 The workflow artifacts are named `PlayStoreAppAudit-vVERSION-windows-x64` and `PlayStoreAppAudit-vVERSION-windows-arm64`. Each contains the matching versioned `.exe`, `.exe.sha256` checksum and `BUILD-INFO-windows-ARCH.txt`. `BUILD-INFO` records source/run provenance and the measured Python, QtCore, managed ADB and packaged executable architectures.
+
+The v1.1.0 prebuilt release contains only the Windows x64 artifact. v1.0.0 remains the last release with the full six-package prebuilt matrix. Source-level Windows ARM64, Linux and macOS support remains in place.
 
 ## macOS and Linux
 
@@ -104,8 +114,8 @@ For a normal release:
 1. Update both version values in the same change.
 2. Update `CHANGELOG.md`.
 3. Merge only after the PR quality workflow is green.
-4. Confirm both automatic Windows x64 and Windows ARM64 builds from the resulting `main` commit.
-5. Validate Linux and macOS from the same source revision when the release affects packaging/platform code.
+4. For v1.1.0, confirm the one automatic Windows x64 build from the resulting `main` commit and use that exact artifact for release validation.
+5. Do not dispatch Windows ARM64, Linux or macOS packaging for v1.1.0 unless a separate engineering investigation explicitly requires it.
 6. Tag the validated `main` commit as `vMAJOR.MINOR.PATCH`.
 
 Release tags identify immutable source checkpoints. Feature/fix development continues from `main` on short-lived branches rather than version-specific permanent branches.
