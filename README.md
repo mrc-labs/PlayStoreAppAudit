@@ -83,11 +83,17 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 All platforms use the same source tree. Platform-specific behavior is kept behind the application's platform and device layers.
 
-## License status
+## License
 
-No project license has been granted yet. Until a license is selected and published, the source is provided without permission to use, copy, modify or redistribute it beyond rights that may apply independently under law. Licensing will be finalized before the repository is made public.
+Play Store App Audit's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (GPL-3.0-only).
 
-Third-party dependency licensing will be reviewed separately before public publication.
+GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
+
+Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and corresponding-source material where required.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Material contributions require acceptance of the project's [Contributor License Agreement](CLA.md).
 
 ## Development
 

@@ -17,6 +17,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 - Separated **Clear current results** from persistent cache and audit-history maintenance.
 - Grouped cache and previous-audit clearing under **Tools → Data maintenance**.
 - Kept phone-package export enabled only while a current phone inventory is available.
+- Adopted `GPL-3.0-only` for the public project, with alternative commercial licensing available separately and a CLA-based contribution policy.
 
 ### Compatibility
 
