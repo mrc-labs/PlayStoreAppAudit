@@ -71,7 +71,7 @@ There are no permanent operating-system branches.
 
 ## Deployment policy
 
-Release builds use Python 3.13 and the Qt Essentials subset. `pyside6-deploy` / Nuitka is the preferred packaging route when the produced artifact passes architecture and startup validation.
+Release builds use Python 3.13 and the Qt Essentials subset. Windows packaging uses Nuitka standalone mode through the shared build helper, with the produced runtime validated for architecture, version, required components, forbidden components and startup.
 
 The current build policy is:
 

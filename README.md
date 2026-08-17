@@ -21,7 +21,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases). This branch contains unreleased v1.2.0 source; do not expect a v1.2.0 download until that release is published.
 
-The normal prebuilt distribution target is Windows x64. Download the Windows x64 executable from the release you want and run it directly. Windows builds are currently unsigned, so Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the file. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+The normal prebuilt distribution target is Windows x64. Download the Windows x64 ZIP from the release you want, extract it to a normal folder and run `PlayStoreAppAudit.exe` from the extracted package. Windows builds are currently unsigned, so Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the file. That warning reflects signing and reputation status, not a finding that the application is unsafe.
 
 Windows ARM64 remains an explicit manual engineering build capability. macOS and Linux remain supported from the shared source tree, with packaging performed manually or on demand. For historical context, v1.0.0 was the last release that provided six prebuilt packages across Windows, macOS and Linux architectures.
 
@@ -109,4 +109,4 @@ Developer references:
 
 ## Building from source
 
-Qt's supported `pyside6-deploy` / Nuitka route is used for release packaging. On Windows x64, `build_windows_exe.bat` creates and validates a local executable using Python 3.13. Platform-specific prerequisites, architecture validation, signing status and the release lifecycle are documented in [Building Play Store App Audit](docs/BUILDING.md).
+Windows release packaging uses Nuitka standalone mode with the PySide6 plugin. On Windows x64, `build_windows_exe.bat` creates and validates a versioned standalone package using Python 3.13. Platform-specific prerequisites, architecture validation, signing status and the release lifecycle are documented in [Building Play Store App Audit](docs/BUILDING.md).

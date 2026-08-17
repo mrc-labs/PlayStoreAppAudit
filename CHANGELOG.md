@@ -13,6 +13,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 ### Changed
 
 - Reorganized the File, Tools and Help menus so source actions, result actions, maintenance commands and guidance are easier to find.
+- Switched Windows release packaging from a one-file executable to a validated Nuitka standalone ZIP with explicit runtime-content checks and a SHA-256 sidecar.
 - Separated **Clear current results** from persistent cache and audit-history maintenance.
 - Grouped cache and previous-audit clearing under **Tools → Data maintenance**.
 - Kept phone-package export enabled only while a current phone inventory is available.

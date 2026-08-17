@@ -58,8 +58,8 @@ Remove-Item Env:QT_QPA_PLATFORM
 - creates or reuses `.venv` and installs `requirements-dev.txt`;
 - runs compileall, pytest, Ruff and the Qt source smoke checks;
 - derives package and Windows version metadata from `playstore_app_audit.__version__`;
-- builds a one-file executable through `pyside6-deploy` / Nuitka;
-- verifies the x64 PE architecture, artifact size and `MAJOR.MINOR.PATCH.0` Windows version;
+- builds a standalone application directory through Nuitka and packages it as a versioned ZIP;
+- verifies the x64 PE architecture, required and forbidden runtime contents, and `MAJOR.MINOR.PATCH.0` Windows version;
 - runs the packaged smoke test and writes a SHA-256 sidecar.
 
 Run it from a normal Command Prompt:
@@ -82,7 +82,7 @@ The helper intentionally builds x64 only. Use the GitHub workflow's explicit ARM
 
 The x64 job uses `windows-2025` and expects `IMAGE_FILE_MACHINE_AMD64`. The ARM64 job uses `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64`; the hosted ARM64 runner is currently a preview service and is not part of the normal release path.
 
-Each selected job validates native Python and PySide6 inputs, the generated PE architecture, Windows file/product version, source startup and packaged startup. Artifacts include the executable, SHA-256 sidecar and build provenance.
+Each selected job validates native Python and PySide6 inputs, the generated PE architecture, Windows file/product version, standalone runtime contents, source startup and packaged startup. The uploaded artifacts are a versioned standalone ZIP and its SHA-256 sidecar; build provenance is recorded inside the package.
 
 `.github/workflows/quality.yml` runs compile, tests, Ruff and Qt offscreen smoke checks for pull requests to `main`. Do not manually dispatch a duplicate Quality run when the pull-request trigger already covers the change.
 
@@ -119,7 +119,7 @@ For a release:
 1. Update both canonical version values in the same change.
 2. Add an unreleased changelog section and finalize its date only when the release is ready.
 3. Complete local compile, tests, Ruff, Qt smoke and Windows x64 packaging.
-4. Have the user manually test the local Windows x64 executable.
+4. Have the user manually test the local Windows x64 standalone package, including `PlayStoreAppAudit.exe` together with its bundled runtime files.
 5. Open one pull request and let its normal Quality run complete.
 6. Merge to `main` and let the one automatic final-main Windows x64 build complete.
 7. Validate and publish the artifact from that exact final-main run.
@@ -129,7 +129,7 @@ Do not dispatch duplicate Actions runs without a concrete reason. Windows ARM64 
 
 ## Packaged smoke tests
 
-Set `PLAYSTORE_APP_AUDIT_SMOKE_TEST=1` when starting a packaged binary in automation. The application creates its Qt event loop, shows the main window briefly and exits deterministically. A package is not considered valid merely because the deployment command returned success: verify that the artifact exists, has a plausible non-trivial size, reports the intended architecture/version and completes this smoke test.
+Set `PLAYSTORE_APP_AUDIT_SMOKE_TEST=1` when starting a packaged binary in automation. The application creates its Qt event loop, shows the main window briefly and exits deterministically. A package is not considered valid merely because the compiler returned success: verify the standalone runtime contents, the intended architecture and version, and successful completion of this smoke test.
 
 ## Signing and distribution
 
