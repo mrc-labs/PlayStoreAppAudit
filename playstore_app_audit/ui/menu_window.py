@@ -5,7 +5,6 @@ import sys
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import QApplication, QMenu
 
-import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
@@ -83,8 +82,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.snapshots_menu.addAction("Compare current device with snapshot…", self._compare_device_snapshot)
         self.tools_menu.addAction("Device inventory changes…", self._show_inventory_changes)
         self.tools_menu.addSeparator()
-        self.tools_menu.addAction("Clear audit cache", self._clear_audit_cache)
-        self.tools_menu.addAction("Clear previous-audit history", self._clear_audit_history)
+        self.data_maintenance_menu = QMenu("Data maintenance", self.tools_menu)
+        self.tools_menu.addMenu(self.data_maintenance_menu)
+        self.data_maintenance_menu.addAction("Clear audit cache", self._clear_audit_cache)
+        self.data_maintenance_menu.addAction(
+            "Clear previous-audit history", self._clear_audit_history
+        )
 
         self.help_menu = QMenu("Help", bar)
         bar.addMenu(self.help_menu)
@@ -100,9 +103,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 self, "How to import an app list", help_texts.IMPORT_APP_LIST_GUIDE_HTML
             ),
         )
+        self.help_menu.addSeparator()
         self.help_menu.addAction(
             "Health score methodology…",
-            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
+            lambda: rich_help.show_rich_help(
+                self, "Health score methodology", help_texts.HEALTH_SCORE_GUIDE_HTML
+            ),
         )
         self.help_menu.addSeparator()
         self.help_menu.addAction("Check for updates…", self._check_for_updates)

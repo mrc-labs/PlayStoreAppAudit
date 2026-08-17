@@ -116,6 +116,37 @@ class MainWindow(results_ui.ResultsWindow):
         button = self.recent_sources_button
         self.recent_sources_button_menu.popup(button.mapToGlobal(QPoint(0, button.height())))
 
+    def _phone_source_controls(self) -> QWidget:
+        controls = QWidget()
+        controls.setObjectName("PhoneSourceControls")
+        layout = QHBoxLayout(controls)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        self.scan_button.setMinimumWidth(108)
+        layout.addWidget(self.scan_button)
+
+        self.scan_phone_options_button = QToolButton()
+        self.scan_phone_options_button.setObjectName("ScanPhoneOptionsButton")
+        self.scan_phone_options_button.setToolTip("Phone package list options")
+        self.scan_phone_options_button.setAccessibleName("Phone package list options")
+        self.scan_phone_options_button.setArrowType(Qt.ArrowType.DownArrow)
+        self.scan_phone_options_button.setFixedWidth(30)
+        self.scan_phone_options_menu = QMenu("Phone package list options", self.scan_phone_options_button)
+        self.scan_phone_package_export_action = self.scan_phone_options_menu.addAction(
+            "Export current phone package list as CSV…", self._export_phone_packages_csv
+        )
+        self.scan_phone_options_button.clicked.connect(self._show_scan_phone_options_menu)
+        layout.addWidget(self.scan_phone_options_button)
+
+        self._sync_phone_package_export_actions()
+        return controls
+
+    def _show_scan_phone_options_menu(self) -> None:
+        self._sync_phone_package_export_actions()
+        button = self.scan_phone_options_button
+        self.scan_phone_options_menu.popup(button.mapToGlobal(QPoint(0, button.height())))
+
     # ---------- UX ----------
     def _source_option(self, label_text: str, button) -> QFrame:
         frame = QFrame()
@@ -181,7 +212,7 @@ class MainWindow(results_ui.ResultsWindow):
         or_label = QLabel("or")
         or_label.setObjectName("Muted")
         row.addWidget(or_label)
-        row.addWidget(self._source_option("Android phone (ADB)", self.scan_button), 1)
+        row.addWidget(self._source_option("Android phone (ADB)", self._phone_source_controls()), 1)
         row.addSpacing(10)
 
         country_label = QLabel("Store country")

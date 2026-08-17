@@ -15,6 +15,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
 
 TABLE_SCHEMA_VERSION = "v12-schema-1"
@@ -138,6 +139,10 @@ class TableWindow(insights_ui.InsightsWindow):
         font.setBold(True)
         title.setFont(font)
         layout.addWidget(title)
+
+        version = QLabel(f"Version {__version__}")
+        version.setObjectName("AboutVersion")
+        layout.addWidget(version)
 
         info = QLabel(
             "<b>Created by MRC</b><br><br>"
