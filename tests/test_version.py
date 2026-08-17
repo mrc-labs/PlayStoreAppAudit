@@ -129,6 +129,6 @@ def test_local_windows_build_uses_canonical_version_and_x64_validation() -> None
     assert "$InspectPe --expect $ExpectedPeMachine" in builder
     assert "validate_windows_standalone.py" in builder
 
-    assert '"qtvirtualkeyboardplugin.dll"' in validator
-    assert '"qt6virtualkeyboard.dll"' in validator
+    assert '"virtualkeyboard" in rel_compact' in validator
+    assert '"Qt Virtual Keyboard runtime is intentionally excluded"' in validator
     assert '"qpdf.dll"' in validator
