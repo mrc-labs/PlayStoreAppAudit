@@ -2,7 +2,7 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here.
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-08-17
 
 ### Added
 
