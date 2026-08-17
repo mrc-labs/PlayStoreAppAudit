@@ -68,7 +68,9 @@ Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths, or Windows
 
 ## Build policy
 
-Windows is the normal CI build and runs automatically for relevant pushes to `main`.
+Windows x64 is the normal CI build and runs automatically for relevant pushes to `main`.
+
+Windows ARM64 remains available only as an explicit manual engineering build.
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
@@ -96,7 +98,7 @@ Ruff exceptions for inherited Qt patterns are intentionally narrow and configure
 ## Git workflow
 
 - `main` is the single canonical permanent branch.
-- Use short-lived `feature/`, `fix/` or `refactor/` branches, merge them back into `main`, then delete them.
+- Use short-lived `feature/`, `fix/`, `refactor/` or `release/` branches as appropriate, merge them back into `main`, then delete them.
 - Do not create permanent branches per operating system. Windows/macOS/Linux must build from the same source revision.
 - Historical implementations belong in Git tags, not live maintenance branches.
 

@@ -1,131 +1,138 @@
 # Building Play Store App Audit
 
-## Shared source
+Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The release-build Python baseline is 3.13.
 
-Windows, macOS and Linux use the same Python/Qt source revision from the canonical `main` branch. Do not create permanent operating-system branches.
+## Local development environment
 
-## Local development
+Create a virtual environment and install the development dependencies:
 
-Use Python 3.13 for the current release/deployment toolchain and install:
+```bash
+python -m venv .venv
+```
+
+Activate it with `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` on macOS/Linux, then run:
 
 ```bash
 python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt
 ```
 
-The source should remain compatible with Python 3.14. Move the release baseline to 3.14 once the stable Nuitka/deployment toolchain no longer treats it as experimental.
+The source should remain compatible with newer stable CPython releases. Move the release baseline to Python 3.14 only when the stable deployment/compiler toolchain supports it without an experimental warning.
 
-Quality checks:
-
-```bash
-python -m compileall -q playstore_app_audit
-python -m pytest
-ruff check playstore_app_audit tests main.py
-```
-
-Run from source:
+## Run from source
 
 ```bash
 python main.py
 ```
 
-### v1.1.0 validation and Actions usage
+The package entry points are equivalent:
 
-During local development, run compile/tests/Ruff, the Qt smoke test and the Windows x64 package build locally. Produce and manually test the local x64 executable before committing or pushing; do not dispatch GitHub Actions merely to repeat local checks.
+```bash
+python -m playstore_app_audit
+playstore-app-audit
+```
 
-After that manual approval, let the Quality workflow run once through the pull request's normal trigger. Its concurrency group is scoped to the PR, so a newer commit can cancel an older still-running Quality job without cancelling another PR. Do not manually dispatch a duplicate Quality run.
+## Quality and source smoke checks
 
-After merge, let the normal `main` push build Windows x64 once and use that exact final-main artifact for release validation. Do not manually dispatch a duplicate Windows run. Windows ARM64 remains an explicit engineering target, while macOS/Linux remain manual-only; none is part of the v1.1.0 release build.
+Run the standard quality commands before packaging:
 
-## Windows
+```bash
+python -m compileall playstore_app_audit
+python -m pytest
+ruff check playstore_app_audit tests main.py
+```
 
-`.github/workflows/build-windows-exe.yml` is the normal automatic build. For v1.1.0, relevant pushes to `main` test and package Windows x64 only using Qt's offscreen backend and `pyside6-deploy` / Nuitka.
+Run the Qt widget smoke check with the offscreen platform plugin. In PowerShell:
 
-The manual workflow target defaults to `x64`. It also retains explicit `arm64` and `both` engineering targets without duplicating the build logic:
+```powershell
+$env:QT_QPA_PLATFORM = "offscreen"
+python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; old='Audit completed • 10 cached • 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
+Remove-Item Env:QT_QPA_PLATFORM
+```
 
-- Windows x64 runs on the explicit `windows-2025` hosted-runner label and expects `IMAGE_FILE_MACHINE_AMD64` (`0x8664`).
-- Windows ARM64 runs on `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64` (`0xAA64`). GitHub currently marks this hosted runner as public preview.
+## Local Windows x64 package
 
-Each selected job installs the matching native Python 3.13 interpreter, requires a native `PySide6-Essentials` wheel and QtCore extension, and inspects the final executable's PE header rather than trusting the runner label or filename. The generated Windows file/product version is derived from the canonical application version and verified after packaging. Selected jobs run compile/tests/Ruff, Qt source smoke checks and the deterministic packaged executable smoke test.
+`build_windows_exe.bat` is the supported local Windows x64 build helper. It:
 
-The workflow artifacts are named `PlayStoreAppAudit-vVERSION-windows-x64` and `PlayStoreAppAudit-vVERSION-windows-arm64`. Each contains the matching versioned `.exe`, `.exe.sha256` checksum and `BUILD-INFO-windows-ARCH.txt`. `BUILD-INFO` records source/run provenance and the measured Python, QtCore, managed ADB and packaged executable architectures.
+- requires native x64 Python 3.13 through the Windows Python launcher;
+- creates or reuses `.venv` and installs `requirements-dev.txt`;
+- runs compileall, pytest, Ruff and the Qt source smoke checks;
+- derives package and Windows version metadata from `playstore_app_audit.__version__`;
+- builds a one-file executable through `pyside6-deploy` / Nuitka;
+- verifies the x64 PE architecture, artifact size and `MAJOR.MINOR.PATCH.0` Windows version;
+- runs the packaged smoke test and writes a SHA-256 sidecar.
 
-The v1.1.0 prebuilt release contains only the Windows x64 artifact. v1.0.0 remains the last release with the full six-package prebuilt matrix. Source-level Windows ARM64, Linux and macOS support remains in place.
+Run it from a normal Command Prompt:
 
-## macOS and Linux
+```bat
+build_windows_exe.bat
+```
 
-`.github/workflows/build-macos-linux.yml` has **only** `workflow_dispatch`. It consumes no runner resources on ordinary pushes.
+The versioned output is placed under `dist/`. Generated icons, deployment configuration and build directories are ignored and must not be committed.
 
-To build one of these platforms in GitHub:
+The helper intentionally builds x64 only. Use the GitHub workflow's explicit ARM64 engineering target when a native Windows ARM64 package must be validated.
 
-1. Open the repository on GitHub.
-2. Open **Actions**.
-3. Select **Build macOS / Linux - Qt6 (manual)**.
-4. Choose **Run workflow**.
-5. Select `linux`, `macos` or `both`.
-6. When the run completes, download the artifact from that workflow run.
+## GitHub Actions build policy
 
-The workflow runs compile/tests/Ruff/Qt offscreen smoke checks against the same source before packaging, then verifies that the generated artifact is non-trivial instead of trusting the deployment command alone. Package names include the project version and architecture:
+`.github/workflows/build-windows-exe.yml` is the normal automatic package workflow:
 
-- Linux: `PlayStoreAppAudit-vVERSION-linux-x64.tar.gz` or `PlayStoreAppAudit-vVERSION-linux-arm64.tar.gz`
-- macOS: `PlayStoreAppAudit-vVERSION-macOS-x64.zip` or `PlayStoreAppAudit-vVERSION-macOS-arm64.zip`
+- a relevant push to `main` builds Windows x64 only;
+- a manual dispatch defaults to x64;
+- manual `arm64` and `both` inputs remain available for engineering validation.
 
-Each package has an SHA-256 checksum and source/build provenance in `BUILD-INFO`. Linux keeps the executable and `BUILD-INFO.txt` together inside the tar archive so the executable mode survives GitHub artifact handling. The macOS app carries the same information under `Contents/Resources`, with an additional copy beside the ZIP in the workflow artifact.
+The x64 job uses `windows-2025` and expects `IMAGE_FILE_MACHINE_AMD64`. The ARM64 job uses `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64`; the hosted ARM64 runner is currently a preview service and is not part of the normal release path.
 
-### Linux runner prerequisites
+Each selected job validates native Python and PySide6 inputs, the generated PE architecture, Windows file/product version, source startup and packaged startup. Artifacts include the executable, SHA-256 sidecar and build provenance.
 
-The GitHub Ubuntu runner needs a small Qt/EGL/XCB runtime set before importing Qt offscreen:
+`.github/workflows/quality.yml` runs compile, tests, Ruff and Qt offscreen smoke checks for pull requests to `main`. Do not manually dispatch a duplicate Quality run when the pull-request trigger already covers the change.
+
+## macOS and Linux packaging
+
+`.github/workflows/build-macos-linux.yml` runs only through manual dispatch. Choose `linux`, `macos` or `both`; no macOS or Linux package job runs on an ordinary push.
+
+Linux runner prerequisites include:
 
 ```bash
 sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
 ```
 
-These are CI/build-host dependencies, not additional Python runtime packages in the application.
+The packaging job also uses Xvfb and the Qt XCB runtime for extracted-artifact startup validation. Linux x64 can use the managed Google Platform-Tools archive. Linux ARM64 needs a native ADB from the distribution or an ARM64-compatible Android SDK.
 
-The packaging job additionally installs Xvfb and Qt's XCB support libraries. After extracting the tar archive, it checks the executable bit and exact ELF machine architecture, then starts that extracted binary through Xvfb using the native XCB plugin. This complements rather than replaces the deterministic offscreen smoke test.
+The macOS build excludes the unused `platforminputcontexts` / Qt Virtual Keyboard plugin, validates the thin Mach-O architecture and bundle version, applies an ad-hoc signature and repeats startup validation after archive extraction. The runner OS version alone is not a minimum-supported-macOS guarantee.
 
-### macOS packaging note
+## Architecture validation
 
-The application does not use Qt Virtual Keyboard. The macOS Nuitka build therefore excludes the `platforminputcontexts` plugin. With PySide6 6.11.1 on the current GitHub ARM64 macOS runner, including that unused plugin can make Nuitka follow a missing `QtVirtualKeyboardQml.framework` reference. Excluding it keeps the app bundle limited to the Qt functionality the application actually uses.
+Do not infer package architecture from a filename or runner label alone:
 
-The ARM64 build uses the deterministic `macos-15` Apple Silicon runner label and the Intel/x64 build uses `macos-15-intel`; they remain separate thin packages. The workflow resolves the main executable from `CFBundleExecutable`, requires the exact expected `lipo` architecture, and sets both `CFBundleShortVersionString` and `CFBundleVersion` before the final ad-hoc signing step. It verifies the plist values, signature and architecture again after ZIP extraction, then repeats the deterministic offscreen startup against the extracted app.
+- Windows uses `.github/scripts/inspect_pe.py` against Python, QtCore, managed ADB and the packaged executable where applicable.
+- Linux verifies the ELF machine field and executable mode after archive extraction.
+- macOS verifies the Mach-O architecture reported by `lipo` and reads deployment metadata from the built executable.
 
-The runner version is the build host, not a minimum-supported-macOS declaration. `BUILD-INFO` records the build-host macOS version and the main executable's actual `LC_BUILD_VERSION` `minos` value. The workflow does not claim macOS 13 compatibility; a broader compatibility claim requires deliberately configured and verified deployment targeting.
+Managed Google ADB and the application package can have different architectures. In particular, a native Windows ARM64 application package does not imply that Google's downloaded `adb.exe` is ARM64.
 
-## ADB / Android Platform-Tools
+## Version handling
 
-At runtime, managed Platform-Tools support depends on the host OS and architecture:
+The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.2.0` becomes Windows version `1.2.0.0`.
 
-- Windows x64 and ARM64: the managed `platform-tools-latest-windows.zip` archive is available. The native ARM64 application package and Google's `adb.exe` are separate architecture concerns.
-- macOS: the managed `platform-tools-latest-darwin.zip` archive is available where supported by the application.
-- Linux x64: the application supports Google's managed `platform-tools-latest-linux.zip` archive.
-- Linux ARM64: Google does not provide the managed Linux archive used by this application. Install a native ADB from the system, distribution or an ARM64-compatible Android SDK instead.
+For a release:
 
-The Windows matrix calls the application's real `install_platform_tools()` path, runs the returned executable with `adb version`, inspects its PE header and records whether execution was native or used Windows x64/x86 emulation. It does not claim that Google's ADB executable is ARM64 unless the measured PE header says so, and the build fails if the managed executable cannot run.
+1. Update both canonical version values in the same change.
+2. Add an unreleased changelog section and finalize its date only when the release is ready.
+3. Complete local compile, tests, Ruff, Qt smoke and Windows x64 packaging.
+4. Have the user manually test the local Windows x64 executable.
+5. Open one pull request and let its normal Quality run complete.
+6. Merge to `main` and let the one automatic final-main Windows x64 build complete.
+7. Validate and publish the artifact from that exact final-main run.
+8. Tag the validated commit as `vMAJOR.MINOR.PATCH` and create the release.
 
-The platform abstraction also searches `PATH`, typical Android SDK locations and `ANDROID_SDK_ROOT` / `ANDROID_HOME`. All ADB operations performed by the application remain read-only.
+Do not dispatch duplicate Actions runs without a concrete reason. Windows ARM64 and macOS/Linux packages remain optional manual engineering outputs rather than part of the normal release sequence.
 
-## Release versioning
+## Packaged smoke tests
 
-The canonical version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`. A regression test requires them to match.
-
-For a normal release:
-
-1. Update both version values in the same change.
-2. Update `CHANGELOG.md`.
-3. Merge only after the PR quality workflow is green.
-4. For v1.1.0, confirm the one automatic Windows x64 build from the resulting `main` commit and use that exact artifact for release validation.
-5. Do not dispatch Windows ARM64, Linux or macOS packaging for v1.1.0 unless a separate engineering investigation explicitly requires it.
-6. Tag the validated `main` commit as `vMAJOR.MINOR.PATCH`.
-
-Release tags identify immutable source checkpoints. Feature/fix development continues from `main` on short-lived branches rather than version-specific permanent branches.
+Set `PLAYSTORE_APP_AUDIT_SMOKE_TEST=1` when starting a packaged binary in automation. The application creates its Qt event loop, shows the main window briefly and exits deterministically. A package is not considered valid merely because the deployment command returned success: verify that the artifact exists, has a plausible non-trivial size, reports the intended architecture/version and completes this smoke test.
 
 ## Signing and distribution
 
-The Windows and Linux CI artifacts are unsigned, while the macOS bundle has only an ad-hoc CI signature and is not notarized. These artifacts are suitable for testing. Public distribution should eventually add:
+Windows and Linux artifacts are currently unsigned. The macOS bundle receives only an ad-hoc CI signature and is not Apple-notarized. Windows users can therefore encounter SmartScreen or reputation warnings.
 
-- Windows code signing and installer/package strategy
-- Apple Developer ID signing, hardened runtime and notarisation for macOS
-- Linux AppImage/Flatpak/deb packaging only if there is a real distribution need
-
-Signing secrets must be stored in GitHub Actions secrets and must never be committed to the repository.
+Production signing and notarization are future distribution work. Signing credentials must be stored outside the repository in the appropriate secret store.

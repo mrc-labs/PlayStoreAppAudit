@@ -92,3 +92,13 @@ def test_windows_build_metadata_is_derived_from_the_canonical_version() -> None:
     assert 'from playstore_app_audit import __version__; print(__version__)' in workflow
     assert "f\"--file-version={version} --product-version={version} \"" in workflow
     assert '$expectedWindowsVersion = "$env:APP_VERSION.0"' in workflow
+
+
+def test_local_windows_build_uses_canonical_version_and_x64_validation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    helper = (root / "build_windows_exe.bat").read_text(encoding="utf-8")
+
+    assert "from playstore_app_audit import __version__; print(__version__)" in helper
+    assert "--file-version=' + version + ' --product-version=' + version" in helper
+    assert "$expected=$env:APP_VERSION + '.0'" in helper
+    assert "inspect_pe.py --expect 0x8664" in helper
