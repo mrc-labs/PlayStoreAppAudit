@@ -1,5 +1,10 @@
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 build/
@@ -9,6 +14,10 @@ artifact/
 *.log
 app_icon.ico
 app_icon.png
+app_icon.icns
+app_icon.iconset/
+PlayStoreAppAudit.portable
+PlayStoreAppAudit-data/
 *_playstore_audit_*.csv
 *_playstore_problems_*.csv
 *_playstore_results_*.zip

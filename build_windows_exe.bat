@@ -1,42 +1,95 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
 
-where py >nul 2>nul
-if errorlevel 1 (
-  echo Python launcher not found.
-  echo Install current Python 3.13 and enable the Python launcher.
-  pause
-  exit /b 1
+echo === Play Store App Audit Windows x64 standalone build ===
+echo.
+
+set "PYTHON="
+
+if defined PLAYSTORE_RELEASE_PYTHON (
+  if exist "%PLAYSTORE_RELEASE_PYTHON%" (
+    set "PYTHON=%PLAYSTORE_RELEASE_PYTHON%"
+  ) else (
+    echo PLAYSTORE_RELEASE_PYTHON does not exist:
+    echo %PLAYSTORE_RELEASE_PYTHON%
+    exit /b 1
+  )
 )
 
-py -3.13 -c "import sys; print(sys.version)" >nul 2>nul
-if errorlevel 1 (
-  echo Python 3.13 is required for the current release toolchain.
-  pause
-  exit /b 1
+if not defined PYTHON if exist "dist\release313env\Scripts\python.exe" (
+  set "PYTHON=%CD%\dist\release313env\Scripts\python.exe"
 )
 
-if not exist ".venv" (
+if not defined PYTHON if exist ".venv\Scripts\python.exe" (
+  ".venv\Scripts\python.exe" -c "import platform, sys; assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
+  if not errorlevel 1 set "PYTHON=%CD%\.venv\Scripts\python.exe"
+)
+
+if not defined PYTHON (
+  where py >nul 2>nul
+  if errorlevel 1 (
+    echo Native Windows x64 Python 3.13 is required.
+    echo Install Python 3.13 with the Windows Python launcher.
+    exit /b 1
+  )
+
+  py -3.13 -c "import platform, sys; assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
+  if errorlevel 1 (
+    echo Native Windows x64 Python 3.13 is required.
+    exit /b 1
+  )
+
+  if exist ".venv" (
+    echo The existing .venv is not a native Windows x64 Python 3.13 environment.
+    echo Remove or rename it, or set PLAYSTORE_RELEASE_PYTHON to a valid Python 3.13 x64 executable.
+    exit /b 1
+  )
+
   py -3.13 -m venv .venv
+  if errorlevel 1 exit /b 1
+  set "PYTHON=%CD%\.venv\Scripts\python.exe"
 )
 
-call .venv\Scripts\activate.bat
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-
-python -m pytest
-if errorlevel 1 exit /b 1
-ruff check playstore_app_audit tests main.py
-if errorlevel 1 exit /b 1
-
-python -c "from app_icon import generate_windows_ico; print(generate_windows_ico('.'))"
-pyside6-deploy main.py --name PlayStoreAppAudit --init
-python -c "from configparser import ConfigParser; from pathlib import Path; p=ConfigParser(); p.read('pysidedeploy.spec'); p['app']['exec_directory']=str(Path('dist').resolve()); p['app']['icon']=str(Path('app_icon.ico').resolve()); p['nuitka']['mode']='onefile'; p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --windows-console-mode=disable --nofollow-import-to=PIL --assume-yes-for-downloads'; f=open('pysidedeploy.spec','w',encoding='utf-8'); p.write(f); f.close()"
-if not exist "dist" mkdir dist
-pyside6-deploy -c pysidedeploy.spec -f
+echo Release Python:
+echo %PYTHON%
+"%PYTHON%" -c "import platform, sys; print(sys.version); print(platform.machine()); assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}"
 if errorlevel 1 exit /b 1
 
 echo.
-echo Build completed. Check the dist folder for the deployed executable.
-pause
+echo === Install/update build dependencies ===
+"%PYTHON%" -m pip install --upgrade pip
+if errorlevel 1 exit /b 1
+"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.1.3"
+if errorlevel 1 exit /b 1
+
+echo.
+echo === Static checks and regression tests ===
+"%PYTHON%" -m compileall -q playstore_app_audit
+if errorlevel 1 exit /b 1
+"%PYTHON%" -m py_compile .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py .github\scripts\prepare_release_legal_bundle.py .github\scripts\validate_release_legal_bundle.py
+if errorlevel 1 exit /b 1
+"%PYTHON%" -m pytest
+if errorlevel 1 exit /b 1
+"%PYTHON%" -m ruff check playstore_app_audit tests main.py .github\scripts\inspect_pe.py .github\scripts\validate_windows_standalone.py .github\scripts\prepare_release_legal_bundle.py .github\scripts\validate_release_legal_bundle.py
+if errorlevel 1 exit /b 1
+
+echo.
+echo === Qt source smoke tests ===
+set "QT_QPA_PLATFORM=offscreen"
+"%PYTHON%" -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose file'; assert w.scan_button.text()=='Scan phone'; old='Audit completed - 10 cached - 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
+if errorlevel 1 exit /b 1
+set "PLAYSTORE_APP_AUDIT_SMOKE_TEST=1"
+"%PYTHON%" main.py
+if errorlevel 1 exit /b 1
+set "PLAYSTORE_APP_AUDIT_SMOKE_TEST="
+set "QT_QPA_PLATFORM="
+
+echo.
+echo === Build standalone package ===
+powershell -NoProfile -ExecutionPolicy Bypass -File ".github\scripts\build_windows_standalone.ps1" -PythonExe "%PYTHON%" -RepoRoot "%CD%" -OutputRoot "artifact\windows-x64-local" -ExpectedPeMachine "0x8664" -ExpectedPlatformMachine "AMD64" -PackageArch "x64" -PrivateBuild
+if errorlevel 1 exit /b 1
+
+echo.
+echo Windows x64 standalone build completed successfully.
+echo Output: artifact\windows-x64-local

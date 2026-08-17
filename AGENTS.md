@@ -68,11 +68,13 @@ Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths, or Windows
 
 ## Build policy
 
-Windows is the normal CI build and runs automatically for relevant pushes to `main`.
+Windows x64 is the normal CI build and runs automatically for relevant pushes to `main`.
+
+Windows ARM64 remains available only as an explicit manual engineering build.
 
 macOS and Linux packaging are manual/on-demand builds only, to reduce CI time and resource usage. Source changes must nevertheless remain cross-platform.
 
-Prefer Qt's supported `pyside6-deploy` / Nuitka path for release packaging when it passes our smoke tests and produces a smaller/faster artifact. Validate the actual output artifact, not only the deployment command exit code, because deployment wrappers can occasionally leave an incomplete bundle after a compiler/plugin failure.
+Prefer the shared Nuitka standalone build path for Windows release packaging. Validate the actual packaged runtime, not only the compiler exit code: required Qt/PySide files must be present, forbidden components must be absent, and the packaged application must pass architecture, version and startup validation.
 
 Linux CI runners require the small Qt/X11/EGL runtime set installed by the manual build workflow. macOS packaging intentionally excludes the unused `platforminputcontexts`/Qt Virtual Keyboard plugin, which avoids pulling an unavailable QtVirtualKeyboardQml framework into the app bundle.
 
@@ -96,7 +98,7 @@ Ruff exceptions for inherited Qt patterns are intentionally narrow and configure
 ## Git workflow
 
 - `main` is the single canonical permanent branch.
-- Use short-lived `feature/`, `fix/` or `refactor/` branches, merge them back into `main`, then delete them.
+- Use short-lived `feature/`, `fix/`, `refactor/` or `release/` branches as appropriate, merge them back into `main`, then delete them.
 - Do not create permanent branches per operating system. Windows/macOS/Linux must build from the same source revision.
 - Historical implementations belong in Git tags, not live maintenance branches.
 

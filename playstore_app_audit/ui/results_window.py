@@ -128,6 +128,18 @@ class ResultsWindow(menu_ui.MenuWindow):
                 text = text[len("File selected: ") :]
             self.source_label.setText(f"{Path(path).name}  •  {text}")
             self.source_label.setToolTip(path)
+        self._sync_phone_package_export_actions()
+
+    def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        super()._on_adb_scan_done(apps, system_packages)
+        self._sync_phone_package_export_actions()
+
+    def _sync_phone_package_export_actions(self) -> None:
+        available = bool(self.device_apps_all)
+        for name in ("file_phone_package_export_action", "scan_phone_package_export_action"):
+            action = getattr(self, name, None)
+            if action is not None:
+                action.setEnabled(available)
 
     # ---------- Export UX ----------
     def _setup_export_button_menu(self) -> None:
@@ -175,8 +187,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
+        self.file_phone_package_export_action = self.file_menu.addAction(
+            "Export current phone package list as CSV…", self._export_phone_packages_csv
+        )
+        self.file_menu.addSeparator()
         self.file_menu.addAction("Run Play Store audit", self._start_audit)
-        self.file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
+        self.file_menu.addAction("Clear current results", self._clear_results)
         self.file_menu.addSeparator()
         self.file_export_results_menu = self.file_menu.addMenu("Export results")
         self.file_export_results_menu.addAction("Export all results as CSV…", self._export_results)
@@ -190,6 +206,11 @@ class ResultsWindow(menu_ui.MenuWindow):
         )
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
+        self._sync_phone_package_export_actions()
+
+    def _clear_results(self) -> None:
+        super()._clear_results()
+        self._sync_phone_package_export_actions()
 
     # ---------- Concise summary ----------
     def _update_summary(self) -> None:

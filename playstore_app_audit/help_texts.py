@@ -52,7 +52,7 @@ installed-package inventory and optional device metadata directly from your phon
       <a href="https://developer.android.com/tools/releases/platform-tools">Android Platform-Tools</a>.</li>
 </ol>
 
-<div class="note"><b>Release note:</b> v1.1.0 is distributed as a prebuilt Windows x64 application.
+<div class="note"><b>Release note:</b> the normal prebuilt release target is Windows x64.
 The shared source still supports Windows, macOS and Linux, and the ADB rules below also apply to
 source builds on those platforms.</div>
 
@@ -137,4 +137,49 @@ pm list packages -3 | sed "s/^package://" &gt;&gt; /sdcard/Download/packages.csv
 <div class="warning"><b>Limitation:</b> an ordinary terminal app may not have shell-level package access.
 The command can require Shizuku, local ADB or equivalent authorised access. Root is not required when an
 authorised shell-level method is available.</div>
+"""
+
+HEALTH_SCORE_GUIDE_HTML = r"""
+<h1>Health score methodology</h1>
+<p class="lead">Health score is an optional, transparent maintenance heuristic from
+<b>0 to 100</b>. It highlights signals that may deserve review; it does not decide whether an app
+is safe, trustworthy or suitable for you.</p>
+
+<div class="warning"><b>Not a security rating:</b> Health score is not a malware or security score.
+It does not inspect application code, decide whether permissions are justified, or prove that an app
+is harmful. A low or high score should never replace your own security assessment.</div>
+
+<h2>How the score is calculated</h2>
+<p>Every app starts at <b>100</b>. The applicable penalties below are added together, and the final
+value is kept within the 0–100 range.</p>
+<ul>
+  <li><b>Removed from the checked Play markets:</b> −60</li>
+  <li><b>Store anomaly:</b> −20</li>
+  <li><b>Other or inconclusive Store state:</b> −15</li>
+  <li><b>Stale listing, updated more than 730 days ago:</b> −25</li>
+  <li><b>Aging listing, updated more than 365 and no more than 730 days ago:</b> −10</li>
+  <li><b>Legacy target SDK relative to the connected device:</b> −15</li>
+  <li><b>Aging target SDK relative to the connected device:</b> −7</li>
+  <li><b>Installed version differs from the Play Store version:</b> −5</li>
+</ul>
+
+<h2>Target SDK comparison</h2>
+<p>When connected-device metadata is available, the app compares the package target SDK with the
+device Android API level. A gap of up to two API levels is treated as <b>Modern</b>, a gap of three to
+five as <b>Aging target</b>, and a larger gap as <b>Legacy target</b>. Missing or unusable metadata is
+treated as unknown and does not add either target-SDK penalty.</p>
+
+<h2>Important interpretation notes</h2>
+<ul>
+  <li>A listing unavailable in one country is not automatically globally removed. The audit uses its
+      configured multi-country checks and preserves anomaly or inconclusive states when appropriate.</li>
+  <li>A different installed and Store version is not automatically “outdated.” Device-specific builds,
+      staged rollouts and regional variations can legitimately differ.</li>
+  <li>Installer source and requested permissions do <b>not</b> reduce the score.</li>
+  <li>The methodology does not change the audit’s status classification; it summarizes existing
+      maintenance signals in a separate number.</li>
+</ul>
+
+<div class="note"><b>Optional feature:</b> Health score is experimental and disabled by default.
+Enable it in <b>Tools → Advanced settings</b> when you want the extra column.</div>
 """

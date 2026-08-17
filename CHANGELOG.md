@@ -1,89 +1,85 @@
 # Changelog
 
-All notable user-facing and maintenance changes to Play Store App Audit are recorded here.
+Notable user-facing and compatibility changes to Play Store App Audit are recorded here.
+
+## [1.2.0] - Unreleased
+
+### Added
+
+- A split **Scan phone** control with direct access to exporting the current phone package inventory as CSV.
+- A detailed rich-text guide explaining the optional Health Score methodology and its limitations.
+- The application version in the About dialog and in support diagnostics.
+
+### Changed
+
+- Reorganized the File, Tools and Help menus so source actions, result actions, maintenance commands and guidance are easier to find.
+- Switched Windows release packaging from a one-file executable to a validated Nuitka standalone ZIP with explicit runtime-content checks and a SHA-256 sidecar.
+- Separated **Clear current results** from persistent cache and audit-history maintenance.
+- Grouped cache and previous-audit clearing under **Tools → Data maintenance**.
+- Kept phone-package export enabled only while a current phone inventory is available.
+- Adopted `GPL-3.0-only` for the public project, with alternative commercial licensing available separately and a CLA-based contribution policy.
+
+### Compatibility
+
+- Windows x64 remains the normal prebuilt release target.
+- Windows ARM64 remains an explicit manual engineering build capability.
+- Windows, macOS and Linux continue to share the same supported source tree; macOS and Linux packaging remains manual/on demand.
 
 ## [1.1.0] - 2026-08-17
 
 ### Added
 
-- A compact Recent sources chevron beside Choose file, synchronized with File → Recent sources.
-- File → Run Play Store audit, routed through the same pause-aware audit command as the main Run button.
-- A focused Export results submenu containing all/visible CSV and HTML result exports.
-- Reusable native rich-help dialogs for the ADB setup and app-list import guides.
-- Focused UI, menu, help, icon and Windows-workflow regression coverage.
+- A compact **Recent sources** menu beside **Choose file**, synchronized with the File menu.
+- File-menu access to running an audit and exporting all or visible results as CSV or HTML.
+- Rich in-app guides for ADB setup and CSV/TSV/TXT package-list imports.
 
 ### Changed
 
-- Application and project metadata versions are now 1.1.0.
-- The redundant large in-content product heading has been removed from the final MainWindow while retaining the compact explanatory subtitle.
-- The embedded application icon now trims excessive transparent padding without changing or resampling its visible artwork pixels.
-- The app-list guide is reorganized around importing CSV/TSV/TXT sources, Recent sources, drag-and-drop, ADB generation and phone-only alternatives.
-- Normal Windows builds and the default manual Windows target now build x64 only; ARM64 remains available only as an explicit manual engineering target.
-- Superseded Quality workflow runs for the same pull request can be cancelled without affecting other pull requests.
-
-### Removed
-
-- The LinkedIn link and its unused URL constant from the About dialog implementation.
+- Made the source area more compact while retaining the two file/phone input choices and source status.
+- Improved application-icon presentation without changing the visible artwork.
+- Simplified the About dialog by removing the LinkedIn link.
 
 ### Compatibility
 
-- The v1.1.0 prebuilt release target is Windows x64 only.
-- v1.0.0 remains the last release with the full six-package Windows, Linux and macOS prebuilt matrix.
-- Source-level Windows ARM64, Linux and macOS support remains in the shared codebase; their packaging workflows and platform abstractions were not removed.
+- Changed the normal prebuilt release policy to Windows x64 only.
+- Kept Windows ARM64, Linux and macOS support in the shared source tree and retained manual engineering packaging for those targets.
+- v1.0.0 remains the last release with the six-package Windows, Linux and macOS prebuilt matrix.
 
 ## [1.0.0] - 2026-08-17
 
 ### Added
 
-- Cross-platform runtime abstraction for application data, Store-country detection and Android Platform-Tools paths.
-- Portable-mode data-path handling in the canonical platform layer.
-- Bulk Android package metadata collection through one read-only `dumpsys package` request, with conservative per-package fallback.
-- Canonical immutable Qt table schema in `playstore_app_audit/ui/schema.py`.
-- Explicit UI behaviour hooks for row classification, cache loading and device metadata collection/enrichment.
-- Regression coverage for country parsing, version comparison, Android compatibility labels, Health score, filters, portable paths, ADB bulk parsing, architecture constraints and UI schema integrity.
-- Lightweight pull-request quality workflow covering compile, tests, Ruff and Qt offscreen smoke checks.
-- Manual Linux and macOS packaging workflows with platform-specific runtime validation.
-- Native Windows ARM64 application packaging alongside the Windows x64 package.
+- The first stable Qt 6 / PySide6 desktop release.
+- CSV, TSV and TXT package-list imports with Google Play availability and latest-update checks.
+- Multi-country fallback checks that distinguish regional absence from broader unavailability or inconclusive results.
+- Current, Aging, Stale, Removed, Store anomaly and Other result classifications.
+- Optional Health Score maintenance guidance, previous-audit comparison and configurable technical views.
+- Read-only ADB package scanning, installed-device metadata, device summaries, inventory history and snapshots.
+- CSV and HTML reports, phone-inventory export and portable-mode data storage.
+- A shared Windows, macOS and Linux source tree with prebuilt packages for Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Apple Silicon and macOS Intel.
 
 ### Changed
 
-- Application version is now 1.0.0 across the package and project metadata.
-- State/settings/cache/history code now uses `services.state` directly; the temporary persistence compatibility shim has been removed.
-- Historical `v7`/`v8`/`v9`, `qt_base`, `features` and `user_state` module aliases have been replaced by descriptive imports.
-- Table columns, labels, widths and export extras no longer depend on UI import order.
-- Cross-module runtime monkey-patching for audit selection, classification, cache bypass and ADB enrichment has been replaced by explicit overridable methods.
-- Device metadata collection can avoid hundreds of individual `dumpsys package <package>` subprocesses on large app inventories.
-- Service/report version strings now follow the package version rather than historical 0.9.x literals.
-- Linux CI installs the EGL/X11 libraries required by Qt on the hosted runner.
-- macOS packaging excludes the unused Qt Virtual Keyboard platform-input-context plugin.
-- macOS/Linux packaging now validates the actual generated binary/app bundle so a deployment-tool false positive cannot upload an empty artifact.
-- Release packaging now covers Windows x64 and ARM64, Linux x64 and ARM64, and macOS Apple Silicon and Intel from the same source revision.
-- Windows packaging validates native Python/PySide6 inputs; packaging asserts actual PE/ELF/Mach-O architecture, runs deterministic source and packaged smoke tests, and records release provenance in `BUILD-INFO`.
-- ADB validation is architecture-aware: each supported managed or native path must execute successfully, while Windows records the downloaded `adb.exe` architecture separately from the native application package.
+- Adopted the canonical `playstore_app_audit` package and `main.py` entry point for the stable application.
+- Improved large-device audit performance by collecting Android package metadata in bulk where available.
 
 ### Fixed
 
-- MainWindow no longer mutates platform, state or version modules at import time.
-- Final source controls are no longer rebuilt twice during window construction.
-- Saved Qt header state is invalidated once for the canonical table schema.
-- Google Play `datePublished` is not accepted as a latest-update date.
-- ADB subprocesses no longer flash console windows on Windows.
-- The macOS deployment path no longer attempts to bundle the unused `QtVirtualKeyboardQml` framework through `platforminputcontexts`.
-- The Linux Qt smoke/build workflow now provides `libEGL` and related XCB runtime libraries.
+- Restricted latest-update parsing to update-specific fields and visible **Updated on** text; original publication dates are not treated as updates.
+- Hid ADB subprocess console windows on Windows.
+- Added architecture and packaged-startup validation to release builds.
 
 ### Compatibility
 
-- Windows remains the primary automatic release build.
-- Linux and macOS use the same Qt/PySide6 source tree and are manual/on-demand release targets.
-- CustomTkinter remains retired and preserved only by the historical `legacy-customtkinter-v9.3` tag.
-- The v1.0.0 release matrix targets Windows x64, native Windows ARM64, Linux x64, Linux ARM64, macOS ARM64 / Apple Silicon and macOS x64 / Intel packages.
-- The GitHub-hosted Windows ARM64 runner is currently public preview; Windows packages are unsigned, while macOS packages are ad-hoc signed but not Apple-notarized.
+- Windows was the primary automatic build; macOS and Linux packages were built on demand from the same revision.
+- Windows and Linux packages were unsigned. macOS packages were ad-hoc signed for bundle integrity but not Apple-notarized.
+- The former CustomTkinter application was retired and retained only at the historical `legacy-customtkinter-v9.3` tag.
 
 ## [0.11.0] - 2026-08-16
 
 ### Changed
 
-- Flattened the application into the canonical `playstore_app_audit/` package.
-- Retired version-suffixed top-level Qt modules and obsolete Tkinter launchers.
-- Established `main.py` / `playstore_app_audit.app` as the canonical application entry point.
-- Adopted PySide6 Essentials with the Nuitka-based `pyside6-deploy` release path.
+- Consolidated the application into the canonical `playstore_app_audit` package.
+- Retired version-suffixed Qt modules and obsolete Tkinter launchers.
+- Established `main.py` / `playstore_app_audit.app` as the application entry point.
+- Adopted PySide6 Essentials and the Nuitka-based `pyside6-deploy` packaging route.

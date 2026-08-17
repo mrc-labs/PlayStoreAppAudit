@@ -5,11 +5,13 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+from playstore_app_audit import __version__
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -52,6 +54,10 @@ def window(
 
 def _action_texts(menu) -> list[str]:
     return [action.text() for action in menu.actions() if not action.isSeparator()]
+
+
+def _action_structure(menu) -> list[str | None]:
+    return [None if action.isSeparator() else action.text() for action in menu.actions()]
 
 
 def test_final_main_window_has_subtitle_without_redundant_h1(window: MainWindow) -> None:
@@ -98,12 +104,26 @@ def test_missing_recent_files_are_still_filtered(monkeypatch: pytest.MonkeyPatch
 
 
 def test_file_menu_and_export_results_hierarchy(window: MainWindow) -> None:
-    file_actions = _action_texts(window.file_menu)
-    assert "Recent sources" in file_actions
-    assert "Run Play Store audit" in file_actions
-    assert "Export results" in file_actions
-    assert "Export current phone package list as CSV…" in file_actions
-    assert _action_texts(window.file_export_results_menu) == RESULT_EXPORTS
+    assert _action_structure(window.file_menu) == [
+        "Choose app list…",
+        "Recent sources",
+        "Scan phone with ADB",
+        "Export current phone package list as CSV…",
+        None,
+        "Run Play Store audit",
+        "Clear current results",
+        None,
+        "Export results",
+        None,
+        "Exit",
+    ]
+    assert _action_structure(window.file_export_results_menu) == [
+        "Export all results as CSV…",
+        "Export visible results as CSV…",
+        None,
+        "Export all results as HTML…",
+        "Export visible results as HTML…",
+    ]
     assert "Export current phone package list as CSV…" not in _action_texts(
         window.file_export_results_menu
     )
@@ -114,6 +134,8 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
 ) -> None:
     calls: list[MainWindow] = []
     choose_calls: list[MainWindow] = []
+    clear_calls: list[MainWindow] = []
+    scan_calls: list[MainWindow] = []
     settings: dict[str, object] = {"view_preset": "Basic", "recent_sources": []}
     monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
     monkeypatch.setattr(state, "save_settings", lambda values: dict(values))
@@ -121,13 +143,20 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     monkeypatch.setattr(compact_ui, "save_settings", lambda values: dict(values))
     monkeypatch.setattr(MainWindow, "_start_audit", lambda self: calls.append(self))
     monkeypatch.setattr(MainWindow, "_choose_input", lambda self: choose_calls.append(self))
+    monkeypatch.setattr(MainWindow, "_clear_results", lambda self: clear_calls.append(self))
+    monkeypatch.setattr(MainWindow, "_scan_phone", lambda self: scan_calls.append(self))
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
     created = MainWindow()
     created.choose_button.click()
+    created.scan_button.click()
     created.run_button.click()
+    created.clear_button.click()
     next(action for action in created.file_menu.actions() if action.text() == "Run Play Store audit").trigger()
+    next(action for action in created.file_menu.actions() if action.text() == "Clear current results").trigger()
     assert choose_calls == [created]
+    assert scan_calls == [created]
     assert calls == [created, created]
+    assert clear_calls == [created, created]
     created.close()
     app.processEvents()
 
@@ -137,10 +166,93 @@ def test_main_export_button_and_clear_controls_remain_available(window: MainWind
     assert window.export_button.menu() is window._export_results_menu
     assert _action_texts(window.export_button.menu()) == RESULT_EXPORTS
     assert window.clear_button.text() == "Clear"
-    tools = _action_texts(window.tools_menu)
-    assert "Clear audit cache" in tools
-    assert "Clear previous-audit history" in tools
-    assert "Force full refresh (ignore cache)" in tools
+    assert _action_structure(window.tools_menu) == [
+        "Advanced settings…",
+        None,
+        "Force full refresh (ignore cache)",
+        "Recheck Removed / Anomaly / Other",
+        None,
+        "Device summary…",
+        "Device snapshots",
+        "Device inventory changes…",
+        None,
+        "Data maintenance",
+    ]
+    assert _action_texts(window.data_maintenance_menu) == [
+        "Clear audit cache",
+        "Clear previous-audit history",
+    ]
+    assert "Force full refresh (ignore cache)" not in _action_texts(
+        window.data_maintenance_menu
+    )
+
+
+def test_clear_current_results_preserves_phone_inventory_and_persistent_data(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    persistent_deletions: list[str] = []
+    monkeypatch.setattr(compact_ui, "clear_cache", lambda: persistent_deletions.append("cache"))
+    monkeypatch.setattr(
+        device_metadata, "clear_history", lambda: persistent_deletions.append("history")
+    )
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
+
+    window._on_adb_scan_done(
+        [{"app_name": "Example", "package_name": "com.example.app"}], set()
+    )
+    window.current_rows = [{"package_name": "com.example.app", "criticality_key": "green"}]
+    window.model.set_rows(window.current_rows)
+    next(
+        action for action in window.file_menu.actions() if action.text() == "Clear current results"
+    ).trigger()
+
+    assert window.current_rows == []
+    assert window.device_apps_all == [
+        {"app_name": "Example", "package_name": "com.example.app"}
+    ]
+    assert window.file_phone_package_export_action.isEnabled()
+    assert window.scan_phone_package_export_action.isEnabled()
+    assert persistent_deletions == []
+
+
+def test_scan_phone_split_control_tracks_current_phone_inventory(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    controls = window.scan_phone_options_button.parentWidget().layout()
+    assert controls.itemAt(0).widget() is window.scan_button
+    assert controls.itemAt(1).widget() is window.scan_phone_options_button
+    assert window.scan_button.text() == "Scan phone"
+    assert _action_texts(window.scan_phone_options_menu) == [
+        "Export current phone package list as CSV…"
+    ]
+    assert not window.scan_phone_package_export_action.isEnabled()
+    assert not window.file_phone_package_export_action.isEnabled()
+
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
+    window._on_adb_scan_done(
+        [{"app_name": "First", "package_name": "com.example.first"}], set()
+    )
+    assert window.scan_phone_package_export_action.isEnabled()
+    assert window.file_phone_package_export_action.isEnabled()
+
+    window._on_adb_scan_done(
+        [{"app_name": "Second", "package_name": "com.example.second"}], set()
+    )
+    window.search_edit.setText("second")
+    window._set_view_preset("Device")
+    assert window.scan_phone_package_export_action.isEnabled()
+    assert window.file_phone_package_export_action.isEnabled()
+
+    source = tmp_path / "source.csv"
+    source.write_text("package_name\ncom.example.file\n", encoding="utf-8")
+    monkeypatch.setattr(device_insights, "log_event", lambda _message: None)
+    window._load_input_file(str(source))
+    assert window.source_mode == "file"
+    assert window.device_apps_all == []
+    assert not window.scan_phone_package_export_action.isEnabled()
+    assert not window.file_phone_package_export_action.isEnabled()
 
 
 def test_static_adb_and_import_help_open_as_rich_dialogs(
@@ -153,18 +265,62 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         return 0
 
     monkeypatch.setattr(rich_help.RichHelpDialog, "exec", record)
+    monkeypatch.setattr(
+        window,
+        "_show_text_help",
+        lambda *_args: pytest.fail("Static guides must use the rich-help dialog"),
+    )
+    assert _action_structure(window.help_menu) == [
+        "ADB setup guide…",
+        "How to import an app list…",
+        None,
+        "Health score methodology…",
+        None,
+        "Check for updates…",
+        "Create diagnostic bundle…",
+        None,
+        "About Play Store App Audit",
+    ]
     actions = {action.text(): action for action in window.help_menu.actions()}
     actions["ADB setup guide…"].trigger()
     actions["How to import an app list…"].trigger()
+    actions["Health score methodology…"].trigger()
 
     assert [title for title, _text in opened] == [
         "ADB setup guide",
         "How to import an app list",
+        "Health score methodology",
     ]
     assert "USB debugging" in opened[0][1]
     assert "Read-only use" in opened[0][1]
     assert "package_name" in opened[1][1]
     assert "Recent sources" in opened[1][1]
+    assert "maintenance heuristic" in opened[2][1]
+    assert "not a malware or security score" in opened[2][1]
+    assert "Removed from the checked Play markets: −60" in opened[2][1]
+
+
+def test_about_dialog_displays_the_canonical_version(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: dict[str, object] = {}
+
+    def inspect_dialog(dialog: QDialog) -> int:
+        captured["title"] = dialog.windowTitle()
+        captured["labels"] = {
+            label.objectName(): label.text() for label in dialog.findChildren(QLabel)
+        }
+        captured["text"] = " ".join(label.text() for label in dialog.findChildren(QLabel))
+        return 0
+
+    monkeypatch.setattr(QDialog, "exec", inspect_dialog)
+    window._show_about()
+
+    assert captured["title"] == "About Play Store App Audit"
+    assert captured["labels"]["AboutVersion"] == f"Version {__version__}"  # type: ignore[index]
+    assert "Created by MRC" in str(captured["text"])
+    assert "Not affiliated with or endorsed by Google" in str(captured["text"])
+    assert '"1.2.0"' not in inspect.getsource(window._show_about)
 
 
 def test_linkedin_url_and_link_are_removed() -> None:
