@@ -21,7 +21,7 @@ The migration away from version-suffixed top-level modules is complete. Producti
 
 The Qt window is organised into focused internal layers (`base_window`, `audit_window`, `compact_window`, `device_window`, `insights_window`, `table_window`, `preferences_window`, `menu_window`, `results_window`) with `main_window.py` as the only public UI entry point. Services and platform code are likewise inside the package.
 
-The v0.12 cleanup centralises portable/application-data paths in the platform layer, removes the persistence compatibility shim and historical v7/v8/v9 aliases, makes `ui/schema.py` the immutable source of table columns/labels/widths, and replaces cross-module runtime monkey-patching with explicit behaviour hooks. Audit classification, force-refresh cache bypass and ADB metadata enrichment can now be overridden by UI layers without mutating imported modules.
+The v1.0 cleanup centralises portable/application-data paths in the platform layer, removes the persistence compatibility shim and historical v7/v8/v9 aliases, makes `ui/schema.py` the immutable source of table columns/labels/widths, and replaces cross-module runtime monkey-patching with explicit behaviour hooks. Audit classification, force-refresh cache bypass and ADB metadata enrichment can now be overridden by UI layers without mutating imported modules.
 
 The remaining layered Qt inheritance is intentional transitional structure rather than a versioning mechanism. Future cleanup should prefer composition for clearly separable controllers/widgets, but only in small behaviour-preserving steps with regression coverage.
 
@@ -61,6 +61,6 @@ Platform-specific concerns are abstracted behind `playstore_app_audit.platform` 
 
 Runtime uses the Qt Essentials subset, not the full PySide6 Addons meta-package.
 
-`pyside6-deploy` / Nuitka is the preferred release deployment path. Windows builds automatically in CI. macOS and Linux packaging is manually dispatched only.
+`pyside6-deploy` / Nuitka is the preferred release deployment path. Native Windows x64 and ARM64 packages build automatically in an architecture-aware CI matrix. macOS and Linux packaging is manually dispatched only.
 
-Linux CI installs the small EGL/X11 runtime set needed to load Qt offscreen and package the application. macOS excludes the unused `platforminputcontexts`/Qt Virtual Keyboard plugin to avoid pulling QtVirtualKeyboardQml into the bundle. Packaging workflows validate that the resulting binary/app bundle is non-trivial rather than trusting the deployment command alone.
+Windows CI verifies native Python/PySide6 inputs and the actual PE machine type of each output. Linux CI installs the small EGL/X11 runtime set needed to load Qt offscreen and package the application. macOS excludes the unused `platforminputcontexts`/Qt Virtual Keyboard plugin to avoid pulling QtVirtualKeyboardQml into the bundle. Packaging workflows validate that the resulting binary/app bundle is non-trivial rather than trusting the deployment command alone.

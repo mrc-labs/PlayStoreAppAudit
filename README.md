@@ -53,9 +53,9 @@ The HTML fallback accepts only update-specific date signals. `datePublished` is 
 
 ADB support is read-only. Depending on enabled options, an ADB audit can collect installed version, installer source, Target/Min SDK, install/update metadata, enabled state and declared sensitive permissions. Device summary, inventory history and device snapshots are also supported.
 
-If ADB is missing, managed Platform-Tools support depends on the desktop:
+If ADB is missing, managed Platform-Tools support depends on the desktop and architecture:
 
-- Windows: managed Platform-Tools are available where supported by the application.
+- Windows x64 and ARM64: the application can install Google's managed Windows Platform-Tools archive. The ARM64 application package is native, but that does not imply Google's `adb.exe` is ARM64; Windows CI records its actual PE architecture and requires it to run successfully from the application's managed path.
 - macOS: managed Platform-Tools are available where supported by the application.
 - Linux x64: Google's managed Linux Platform-Tools are supported.
 - Linux ARM64: Google does not provide the managed Linux archive used by this application, so use a native ADB from the system, distribution or an ARM64-compatible Android SDK.
@@ -97,6 +97,17 @@ The Windows CI also opens the Qt UI using the offscreen platform plugin before p
 
 ## Builds
 
-Windows is the normal automatic GitHub Actions build from `main`. macOS and Linux builds are manual/on-demand only, but use the same source revision.
+Windows is the normal automatic GitHub Actions build from `main`, with separate x64 and native ARM64 jobs. The ARM64 job uses GitHub's `windows-11-arm` hosted runner, which is currently public preview. macOS and Linux builds are manual/on-demand only, but use the same source revision.
+
+The intended v1.0.0 release package matrix is:
+
+- Windows x64
+- Windows ARM64 (native application package)
+- Linux x64
+- Linux ARM64
+- macOS ARM64 / Apple Silicon
+- macOS x64 / Intel
+
+Each packaging job validates the generated architecture and performs a deterministic packaged startup smoke test. Windows packages are unsigned. macOS packages are ad-hoc signed for bundle integrity but are not Apple-notarized.
 
 Release packaging uses Qt's `pyside6-deploy` / Nuitka path. See `docs/BUILDING.md` for local and CI instructions and `docs/BRANCH_MIGRATION.md` for the completed migration and legacy-branch retirement steps.
