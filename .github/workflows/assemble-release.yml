@@ -1,0 +1,299 @@
+name: Assemble v1.3 release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact final-main commit SHA used by every release-candidate build
+        required: true
+        type: string
+      windows_run_id:
+        description: Successful Build Windows - Qt6 run ID containing x64 and ARM64 artifacts
+        required: true
+        type: string
+      desktop_run_id:
+        description: Successful Build macOS / Linux - Qt6 run ID containing all four desktop artifacts
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  assemble:
+    name: Validate and assemble final release assets
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify final-main commit
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+
+          expected="$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')"
+          dispatch="$(printf '%s' "$DISPATCH_SHA" | tr '[:upper:]' '[:lower:]')"
+          actual="$(git rev-parse HEAD | tr '[:upper:]' '[:lower:]')"
+
+          if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "expected_sha must be a full 40-character Git commit SHA." >&2
+            exit 1
+          fi
+
+          if [[ "$DISPATCH_REF" != "refs/heads/main" ]]; then
+            echo "Release assembly must be dispatched from main, got $DISPATCH_REF." >&2
+            exit 1
+          fi
+
+          if [[ "$dispatch" != "$expected" ]]; then
+            echo "Dispatch SHA $dispatch does not match expected_sha $expected." >&2
+            exit 1
+          fi
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Checkout SHA $actual does not match expected_sha $expected." >&2
+            exit 1
+          fi
+
+          echo "Final-main release SHA verified: $actual"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Read canonical project version
+        id: project_version
+        run: |
+          set -euo pipefail
+
+          version="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
+          metadata_version="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])')"
+
+          test -n "$version"
+          test "$version" = "$metadata_version"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Project version is not a numeric SemVer triplet: $version" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version"
+
+      - name: Verify source workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
+          DESKTOP_RUN_ID: ${{ inputs.desktop_run_id }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          expected_sha = os.environ["EXPECTED_SHA"].strip().casefold()
+          repository = os.environ["REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+
+          specs = (
+              (
+                  "Windows",
+                  os.environ["WINDOWS_RUN_ID"].strip(),
+                  "Build Windows - Qt6",
+              ),
+              (
+                  "macOS/Linux",
+                  os.environ["DESKTOP_RUN_ID"].strip(),
+                  "Build macOS / Linux - Qt6 (manual)",
+              ),
+          )
+
+          run_ids = [raw_id for _, raw_id, _ in specs]
+          if len(set(run_ids)) != len(run_ids):
+              raise RuntimeError(
+                  "Windows and desktop run IDs must be different"
+              )
+
+          for label, raw_id, expected_name in specs:
+              if not raw_id.isdigit() or int(raw_id) <= 0:
+                  raise RuntimeError(
+                      f"{label} run ID must be a positive integer"
+                  )
+
+              request = urllib.request.Request(
+                  (
+                      "https://api.github.com/repos/"
+                      f"{repository}/actions/runs/{raw_id}"
+                  ),
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "X-GitHub-Api-Version": "2026-03-10",
+                  },
+              )
+
+              with urllib.request.urlopen(
+                  request,
+                  timeout=30,
+              ) as response:
+                  run = json.load(response)
+
+              failures = []
+
+              if run.get("name") != expected_name:
+                  failures.append(
+                      "workflow name "
+                      f"{run.get('name')!r} != {expected_name!r}"
+                  )
+
+              if run.get("event") != "workflow_dispatch":
+                  failures.append(
+                      f"event {run.get('event')!r} != 'workflow_dispatch'"
+                  )
+
+              if run.get("status") != "completed":
+                  failures.append(
+                      f"status {run.get('status')!r} != 'completed'"
+                  )
+
+              if run.get("conclusion") != "success":
+                  failures.append(
+                      f"conclusion {run.get('conclusion')!r} != 'success'"
+                  )
+
+              actual_sha = str(
+                  run.get("head_sha", "")
+              ).casefold()
+              if actual_sha != expected_sha:
+                  failures.append(
+                      f"head_sha {actual_sha!r} != {expected_sha!r}"
+                  )
+
+              head_repository = run.get("head_repository")
+              if not isinstance(head_repository, dict):
+                  failures.append("head_repository is missing")
+              elif head_repository.get("full_name") != repository:
+                  failures.append(
+                      "head repository "
+                      f"{head_repository.get('full_name')!r} "
+                      f"!= {repository!r}"
+                  )
+
+              if failures:
+                  raise RuntimeError(
+                      f"{label} run {raw_id} rejected: "
+                      + "; ".join(failures)
+                  )
+
+              print(
+                  f"{label} run {raw_id}: "
+                  f"completed/success at {actual_sha}"
+              )
+          PY
+
+      - name: Compile release assembler
+        run: |
+          python -m py_compile \
+            .github/scripts/assemble_release_assets.py \
+            .github/scripts/release_asset_layout.py
+
+      - name: Download Windows release candidates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-*
+          path: rc-input/windows
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.windows_run_id }}
+
+      - name: Download Linux release candidates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-*
+          path: rc-input/linux
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.desktop_run_id }}
+
+      - name: Download macOS release candidates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-*
+          path: rc-input/macos
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.desktop_run_id }}
+
+      - name: Assemble and validate final asset set
+        env:
+          VERSION: ${{ steps.project_version.outputs.version }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+
+          python .github/scripts/assemble_release_assets.py \
+            --input-dir rc-input \
+            --output-dir final-release \
+            --version "$VERSION" \
+            --expected-sha "$EXPECTED_SHA"
+
+          python .github/scripts/release_asset_layout.py validate \
+            --asset-dir final-release \
+            --version "$VERSION" \
+            --require-all-platforms
+
+          asset_count="$(
+            find final-release -maxdepth 1 -type f -printf '.' |
+            wc -c |
+            tr -d '[:space:]'
+          )"
+          test "$asset_count" = "8"
+
+          if find final-release -mindepth 1 -maxdepth 1 -type d -print -quit |
+            grep -q .
+          then
+            echo "Final release output unexpectedly contains directories." >&2
+            exit 1
+          fi
+
+          echo "Final release asset set contains exactly 8 files."
+
+      - name: Write assembly summary
+        env:
+          VERSION: ${{ steps.project_version.outputs.version }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
+          DESKTOP_RUN_ID: ${{ inputs.desktop_run_id }}
+        run: |
+          {
+            echo "### Play Store App Audit v${VERSION} release assembly"
+            echo
+            echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
+            echo "- Windows RC run: \`${WINDOWS_RUN_ID}\`"
+            echo "- macOS/Linux RC run: \`${DESKTOP_RUN_ID}\`"
+            echo "- Final asset count: 8"
+            echo
+            echo '```text'
+            cat final-release/SHA256SUMS.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload validated final release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-final-release-assets
+          path: final-release/
+          if-no-files-found: error
+          retention-days: 30
