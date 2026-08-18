@@ -74,17 +74,30 @@ The helper intentionally builds x64 only. Use the GitHub workflow's explicit ARM
 
 ## GitHub Actions build policy
 
-`.github/workflows/build-windows-exe.yml` is the normal automatic package workflow:
+`.github/workflows/quality.yml` is the normal cheap CI path:
 
-- a relevant push to `main` builds Windows x64 only;
+- relevant pull requests to `main` run compile, tests, Ruff and Qt offscreen smoke checks on Python 3.13 and 3.14;
+- relevant ordinary pushes to `main` run the same cheap Python 3.13/3.14 validation;
+- obsolete concurrent runs for the same pull request or ref are cancelled.
+
+Python 3.13 remains the release-packaging baseline. Python 3.14 is exercised by Quality CI as a source-compatibility target; moving release packaging to Python 3.14 requires a deliberate Nuitka/toolchain upgrade and package validation.
+
+`.github/workflows/build-windows-exe.yml` is an intentional manual package workflow:
+
+- ordinary pushes to `main` do not build the standalone package;
+- release-tag pushes do not build the standalone package;
 - a manual dispatch defaults to x64;
-- manual `arm64` and `both` inputs remain available for engineering validation.
+- manual `arm64` and `both` inputs remain available for deliberate engineering validation;
+- every dispatch requires an `expected_sha` containing the exact 40-character commit SHA intended for the build;
+- the job verifies that the dispatch SHA and checked-out SHA both match `expected_sha` before expensive build work starts.
 
-The x64 job uses `windows-2025` and expects `IMAGE_FILE_MACHINE_AMD64`. The ARM64 job uses `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64`; the hosted ARM64 runner is currently a preview service and is not part of the normal release path.
+For a release candidate, dispatch the workflow against final `main` and supply the exact final `main` SHA as `expected_sha`. If `main` changed before the dispatch was created, the SHA guard fails before the expensive package build.
 
-Each selected job validates native Python and PySide6 inputs, the generated PE architecture, Windows file/product version, standalone runtime contents, source startup and packaged startup. The uploaded artifacts are a versioned standalone ZIP and its SHA-256 sidecar; build provenance is recorded inside the package.
+The x64 job uses `windows-2025` and expects `IMAGE_FILE_MACHINE_AMD64`. The ARM64 job uses `windows-11-arm` and expects `IMAGE_FILE_MACHINE_ARM64`.
 
-`.github/workflows/quality.yml` runs compile, tests, Ruff and Qt offscreen smoke checks for pull requests to `main`. Do not manually dispatch a duplicate Quality run when the pull-request trigger already covers the change.
+Each selected package job validates native Python and PySide6 inputs, the generated PE architecture, Windows file/product version, standalone runtime contents, source startup and packaged startup. Build provenance is recorded inside the package.
+
+Do not manually dispatch a duplicate Quality or package build without a concrete reason.
 
 ## macOS and Linux packaging
 
@@ -117,13 +130,15 @@ The canonical application version is recorded in both `playstore_app_audit.__ver
 For a release:
 
 1. Update both canonical version values in the same change.
-2. Add an unreleased changelog section and finalize its date only when the release is ready.
-3. Complete local compile, tests, Ruff, Qt smoke and Windows x64 packaging.
-4. Have the user manually test the local Windows x64 standalone package, including `PlayStoreAppAudit.exe` together with its bundled runtime files.
-5. Open one pull request and let its normal Quality run complete.
-6. Merge to `main` and let the one automatic final-main Windows x64 build complete.
-7. Validate and publish the artifact from that exact final-main run.
-8. Tag the validated commit as `vMAJOR.MINOR.PATCH` and create the release.
+2. Add the changelog section and finalize its date only when the release is ready.
+3. Complete local compile, tests, Ruff and Qt source smoke validation.
+4. Open the final release pull request and let its normal Quality run complete.
+5. Merge to `main` and verify the cheap Quality run for the final commit.
+6. Fetch `main` and record the exact final commit SHA that will become the release commit.
+7. Manually dispatch the Windows x64 package workflow against `main`, supplying that same SHA as `expected_sha`.
+8. Verify that the successful workflow run reports the expected SHA, then download, validate and manually test that exact artifact.
+9. Create the annotated `vMAJOR.MINOR.PATCH` tag on the exact same validated SHA.
+10. Publish the GitHub Release using the already-validated artifact. Creating the release tag does not trigger another package build.
 
 Do not dispatch duplicate Actions runs without a concrete reason. Windows ARM64 and macOS/Linux packages remain optional manual engineering outputs rather than part of the normal release sequence.
 

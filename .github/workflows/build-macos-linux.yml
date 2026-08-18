@@ -34,8 +34,8 @@ jobs:
             managed_adb: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -180,7 +180,7 @@ jobs:
           (cd artifact && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
           (cd artifact && sha256sum -c "$(basename "$ARCHIVE").sha256")
           ls -lh artifact/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
           path: artifact/
@@ -202,8 +202,8 @@ jobs:
             expected_macho_arch: x86_64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
@@ -366,7 +366,7 @@ jobs:
           (cd artifact && shasum -a 256 -c "$(basename "$ZIP").sha256")
           cp "$BUNDLE_BUILD_INFO" "artifact/BUILD-INFO-${PACKAGE_ARCH}.txt"
           ls -lh artifact/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macOS-${{ matrix.arch }}
           path: artifact/

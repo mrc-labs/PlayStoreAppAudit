@@ -12,23 +12,10 @@ on:
           - x64
           - arm64
           - both
-  push:
-    branches: [main]
-    paths:
-      - "**/*.py"
-      - "pyproject.toml"
-      - "requirements*.txt"
-      - "AGENTS.md"
-      - "LICENSE"
-      - "COMMERCIAL-LICENSING.md"
-      - "docs/LICENSING.md"
-      - "build_windows_exe.bat"
-      - ".github/scripts/inspect_pe.py"
-      - ".github/scripts/validate_windows_standalone.py"
-      - ".github/scripts/prepare_release_legal_bundle.py"
-      - ".github/scripts/validate_release_legal_bundle.py"
-      - ".github/scripts/build_windows_standalone.ps1"
-      - ".github/workflows/build-windows-exe.yml"
+      expected_sha:
+        description: Exact commit SHA expected for this deliberate build
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -39,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ${{ fromJSON(github.event_name == 'push' && '["x64"]' || inputs.target == 'both' && '["x64", "arm64"]' || inputs.target == 'arm64' && '["arm64"]' || '["x64"]') }}
+        arch: ${{ fromJSON(inputs.target == 'both' && '["x64", "arm64"]' || inputs.target == 'arm64' && '["arm64"]' || '["x64"]') }}
     runs-on: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
     env:
       PACKAGE_ARCH: ${{ matrix.arch }}
@@ -52,10 +39,36 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify requested build commit
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          $expected = $env:EXPECTED_SHA.Trim().ToLowerInvariant()
+          $dispatch = $env:DISPATCH_SHA.Trim().ToLowerInvariant()
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+
+          if ($expected -notmatch '^[0-9a-f]{40}$') {
+            throw "expected_sha must be a full 40-character Git commit SHA."
+          }
+
+          if ($dispatch -ne $expected) {
+            throw "The dispatched ref resolved to $dispatch, but expected_sha is $expected. STOP before expensive build work."
+          }
+
+          if ($actual -ne $expected) {
+            throw "Checkout produced $actual, but expected_sha is $expected. STOP before expensive build work."
+          }
+
+          Write-Host "Release-candidate source SHA verified: $actual"
 
       - name: Set up native Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           architecture: ${{ matrix.arch }}
@@ -290,7 +303,7 @@ jobs:
           "@ >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Windows standalone release candidate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
           path: |
