@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import tempfile
 from io import BytesIO
 from pathlib import Path
-import tempfile
-
 
 # Final generated PlayStoreAppAudit icon, stored directly in the source so the
 # GitHub connector/build does not need to distribute a separate binary asset.
