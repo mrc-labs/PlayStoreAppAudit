@@ -134,7 +134,7 @@ def _write_rc(
                 "# Third-party corresponding source availability",
                 "",
                 f"`{bundle.name}`",
-                f"SHA-256 `{bundle_digest}`",
+                "Verify with `SHA256SUMS.txt` from the same release.",
                 "",
             ]
         ),
@@ -291,6 +291,46 @@ def test_assemble_release_produces_exact_eight_assets(
             f"{root}/sources/"
             f"{platform_name}-source.tar.xz"
             in names
+        )
+
+
+def test_assembler_rejects_per_rc_source_bundle_digest(
+    tmp_path: Path,
+) -> None:
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    input_dir.mkdir()
+
+    _write_all_rcs(input_dir)
+
+    availability = next(
+        input_dir.rglob("SOURCE-AVAILABILITY.md")
+    )
+    release_dir = availability.parents[1]
+    manifest = json.loads(
+        (
+            release_dir
+            / "package-legal"
+            / "LEGAL-MANIFEST.json"
+        ).read_text(encoding="utf-8")
+    )
+    bundle_digest = manifest["source_bundle"]["sha256"]
+
+    availability.write_text(
+        availability.read_text(encoding="utf-8")
+        + f"SHA-256 `{bundle_digest}`\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="must not pin the per-RC source bundle SHA-256",
+    ):
+        assembler.assemble_release(
+            input_dir,
+            output_dir,
+            VERSION,
+            EXPECTED_SHA,
         )
 
 

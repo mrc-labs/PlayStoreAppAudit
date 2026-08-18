@@ -18,8 +18,22 @@ def test_package_version_matches_project_metadata() -> None:
     assert __version__ == project["project"]["version"]
 
 
-def test_v120_release_version() -> None:
-    assert __version__ == "1.2.0"
+def test_v130_release_version() -> None:
+    assert __version__ == "1.3.0"
+
+
+def test_release_qt_baseline_is_pinned() -> None:
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads(
+        (root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    requirements = (
+        root / "requirements.txt"
+    ).read_text(encoding="utf-8").splitlines()
+
+    qt_requirement = "PySide6-Essentials==6.11.1"
+    assert qt_requirement in project["project"]["dependencies"]
+    assert qt_requirement in requirements
 
 
 def test_release_version_is_semver_triplet() -> None:

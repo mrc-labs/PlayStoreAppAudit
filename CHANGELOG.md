@@ -2,6 +2,26 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here.
 
+## [1.3.0] - 2026-08-19
+
+### Changed
+
+- Standardized public desktop release packaging across Windows, macOS and Linux on x64 and ARM64.
+- Consolidated corresponding-source delivery into one release-wide source archive and one `SHA256SUMS.txt`.
+- Made expensive package workflows manual-only and tied every release candidate to an exact final-main commit SHA.
+- Pinned the release Qt/PySide baseline to PySide6 Essentials 6.11.1 so packaged runtimes and published corresponding sources stay aligned.
+
+### Fixed
+
+- Replaced deprecated Qt filter invalidation calls with the Qt 6.11 filter-change API.
+- Hardened cross-platform legal/source validation and official Qt source-archive hash discovery.
+- Kept Android Platform-Tools outside the shipped application runtime while preserving managed ADB support.
+
+### Compatibility
+
+- Release packages target Windows x64/ARM64, macOS x64/ARM64 and Linux x64/ARM64.
+- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 are covered by normal Quality CI.
+
 ## [1.2.0] - 2026-08-17
 
 ### Added
