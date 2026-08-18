@@ -37,7 +37,41 @@ from release_asset_layout import build_third_party_source_bundle
 APP_NAME = "Play Store App Audit"
 PROJECT_REPOSITORY = "https://github.com/mrc-labs/PlayStoreAppAudit"
 PROJECT_LICENSE = "GPL-3.0-only"
-MANIFEST_SCHEMA_VERSION = 2
+MANIFEST_SCHEMA_VERSION = 3
+RELEASE_PLATFORMS = {"windows", "linux", "macos"}
+
+
+def _host_platform_key() -> str:
+    system = platform.system().casefold()
+
+    mapping = {
+        "windows": "windows",
+        "linux": "linux",
+        "darwin": "macos",
+    }
+
+    try:
+        return mapping[system]
+    except KeyError as exc:
+        raise RuntimeError(
+            f"Unsupported release host platform: {platform.system()}"
+        ) from exc
+
+
+def _is_openssl_runtime_name(name: str) -> bool:
+    name_cf = name.casefold()
+
+    return (
+        (
+            name_cf.startswith(("libssl-", "libcrypto-"))
+            and name_cf.endswith(".dll")
+        )
+        or name_cf.startswith(("libssl.so", "libcrypto.so"))
+        or (
+            name_cf.startswith(("libssl.", "libcrypto."))
+            and name_cf.endswith(".dylib")
+        )
+    )
 
 LEGAL_ROOT_FILES = {
     "LICENSE",
@@ -401,14 +435,60 @@ def _distribution_top_level_names(dist: metadata.Distribution) -> list[str]:
     return sorted(top_level, key=str.casefold)
 
 
-def _runtime_inventory(package_dir: Path) -> list[dict[str, Any]]:
+def _runtime_legal_root(package_dir: Path) -> Path:
+    if (
+        package_dir.name.casefold().endswith(".app")
+        and (package_dir / "Contents").is_dir()
+    ):
+        return package_dir / "Contents" / "Resources"
+
+    return package_dir
+
+
+def _runtime_inventory(
+    package_dir: Path,
+) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
-    for path in sorted((item for item in package_dir.rglob("*") if item.is_file()), key=lambda p: str(p).lower()):
-        rel = _safe_relpath(path, package_dir)
-        first = PurePosixPath(rel).parts[0]
-        if rel in LEGAL_ROOT_FILES or first in LEGAL_ROOT_DIRS:
+    legal_root = _runtime_legal_root(package_dir)
+
+    for path in sorted(
+        (
+            item
+            for item in package_dir.rglob("*")
+            if item.is_file()
+        ),
+        key=lambda item: str(item).casefold(),
+    ):
+        skip_as_legal = False
+
+        try:
+            legal_rel = path.relative_to(legal_root)
+        except ValueError:
+            legal_rel = None
+
+        if legal_rel is not None and legal_rel.parts:
+            legal_rel_posix = legal_rel.as_posix()
+            first = legal_rel.parts[0]
+
+            if (
+                legal_rel_posix in LEGAL_ROOT_FILES
+                or first in LEGAL_ROOT_DIRS
+            ):
+                skip_as_legal = True
+
+        if skip_as_legal:
             continue
-        entries.append({"path": rel, "size": path.stat().st_size, "sha256": _sha256(path)})
+
+        rel = _safe_relpath(path, package_dir)
+
+        entries.append(
+            {
+                "path": rel,
+                "size": path.stat().st_size,
+                "sha256": _sha256(path),
+            }
+        )
+
     return entries
 
 
@@ -427,41 +507,138 @@ def _runtime_evidence(package_files: Iterable[str], top_level_names: Iterable[st
     return sorted(set(evidence), key=str.casefold)
 
 
+def _shared_library_matches(name: str, stem: str) -> bool:
+    name_cf = name.casefold()
+    stem_cf = stem.casefold()
+
+    return (
+        name_cf == f"{stem_cf}.dll"
+        or name_cf == f"lib{stem_cf}.dylib"
+        or name_cf == f"lib{stem_cf}.so"
+        or name_cf.startswith(f"lib{stem_cf}.so.")
+    )
+
+
+def _bundled_adb_paths(package_dir: Path) -> list[str]:
+    return sorted(
+        (
+            _safe_relpath(path, package_dir)
+            for path in package_dir.rglob("*")
+            if path.is_file()
+            and path.name.casefold()
+            in {
+                "adb",
+                "adb.exe",
+                "adbwinapi.dll",
+                "adbwinusbapi.dll",
+            }
+        ),
+        key=str.casefold,
+    )
+
+
 def _forbidden_matches(package_dir: Path) -> list[dict[str, str]]:
     matches: list[dict[str, str]] = []
+
     for path in package_dir.rglob("*"):
         if not path.is_file():
             continue
+
         rel = _safe_relpath(path, package_dir)
         rel_cf = rel.casefold()
         name_cf = path.name.casefold()
         reason: str | None = None
-        if name_cf == "qpdf.dll":
+
+        if (
+            name_cf == "qpdf.dll"
+            or name_cf == "libqpdf.dylib"
+            or name_cf == "libqpdf.so"
+            or name_cf.startswith("libqpdf.so.")
+        ):
             reason = "qpdf image-format plugin is intentionally excluded"
         elif "virtualkeyboard" in rel_cf.replace("-", "").replace("_", ""):
             reason = "Qt Virtual Keyboard runtime is intentionally excluded"
         elif "/qtquick/virtualkeyboard/" in f"/{rel_cf.strip('/')}/":
             reason = "Qt Quick Virtual Keyboard QML is intentionally excluded"
+
         if reason:
-            matches.append({"path": rel, "reason": reason})
+            matches.append(
+                {
+                    "path": rel,
+                    "reason": reason,
+                }
+            )
+
     return matches
 
 
 def _detect_qt_components(package_dir: Path) -> list[str]:
-    rel_paths = {_safe_relpath(path, package_dir).casefold() for path in package_dir.rglob("*") if path.is_file()}
-    basenames = {PurePosixPath(path).name for path in rel_paths}
+    rel_paths = {
+        _safe_relpath(path, package_dir).casefold()
+        for path in package_dir.rglob("*")
+        if path.is_file()
+    }
+    basenames = {
+        PurePosixPath(path).name
+        for path in rel_paths
+    }
+
     components: list[str] = []
-    if any(name.startswith("qt6") and name.endswith(".dll") for name in basenames) or any(
-        "pyside6" in path for path in rel_paths
-    ):
+
+    qtbase_detected = (
+        any(
+            _shared_library_matches(name, "qt6core")
+            for name in basenames
+        )
+        or any(
+            "/qtcore.framework/" in f"/{rel}/"
+            for rel in rel_paths
+        )
+        or any(
+            "pyside6" in rel
+            for rel in rel_paths
+        )
+    )
+
+    if qtbase_detected:
         components.append("qtbase")
-    if "qt6svg.dll" in basenames or any(name in {"qsvg.dll", "qsvgicon.dll"} for name in basenames):
+
+    qtsvg_detected = (
+        any(
+            _shared_library_matches(name, stem)
+            for name in basenames
+            for stem in ("qt6svg", "qsvg", "qsvgicon")
+        )
+        or any(
+            "/qtsvg.framework/" in f"/{rel}/"
+            for rel in rel_paths
+        )
+    )
+
+    if qtsvg_detected:
         components.append("qtsvg")
-    imageformats_markers = {"qicns.dll", "qtga.dll", "qtiff.dll", "qwbmp.dll", "qwebp.dll"}
-    if basenames & imageformats_markers:
+
+    imageformat_stems = (
+        "qicns",
+        "qtga",
+        "qtiff",
+        "qwbmp",
+        "qwebp",
+    )
+
+    if any(
+        _shared_library_matches(name, stem)
+        for name in basenames
+        for stem in imageformat_stems
+    ):
         components.append("qtimageformats")
-    if any("pyside6" in path or "shiboken6" in path for path in rel_paths):
+
+    if any(
+        "pyside6" in rel or "shiboken6" in rel
+        for rel in rel_paths
+    ):
         components.append("pyside-setup")
+
     return components
 
 
@@ -1116,11 +1293,11 @@ def _write_third_party_notices(
         "",
         "### LGPL library replacement",
         "",
-        "The Windows standalone ZIP keeps Qt/PySide/Shiboken shared libraries, extension modules",
-        "and plugins as separate files. A recipient may replace a compatible LGPL-covered library",
-        "with a modified compatible build by substituting the corresponding DLL, PYD or plugin file",
-        "in the extracted standalone directory while preserving the package layout and ABI",
-        "compatibility. The application is not distributed as a single inseparable executable.",
+        "The standalone package keeps Qt/PySide/Shiboken runtime libraries, extension modules",
+        "and plugins as separate files rather than embedding them into one inseparable executable.",
+        "A recipient may replace a compatible LGPL-covered shared runtime library or plugin by",
+        "substituting the corresponding file in the extracted package layout while preserving the",
+        "ABI compatibility required by the application.",
         "",
         "## CPython",
         "",
@@ -1201,12 +1378,14 @@ def _write_sha256s(source_assets_dir: Path, assets: list[dict[str, Any]]) -> Non
 
 def _copy_package_legal_into_runtime(package_legal_dir: Path, package_dir: Path) -> None:
     staging_only = {"LEGAL-MANIFEST.json"}
+    runtime_legal_root = _runtime_legal_root(package_dir)
+    runtime_legal_root.mkdir(parents=True, exist_ok=True)
 
     for item in package_legal_dir.iterdir():
         if item.name in staging_only:
             continue
 
-        destination = package_dir / item.name
+        destination = runtime_legal_root / item.name
         if item.is_dir():
             if destination.exists():
                 shutil.rmtree(destination)
@@ -1215,22 +1394,138 @@ def _copy_package_legal_into_runtime(package_legal_dir: Path, package_dir: Path)
             shutil.copy2(item, destination)
 
 
+def _refresh_runtime_evidence(
+    package_dir: Path,
+    release_dir: Path,
+) -> None:
+    manifest_path = (
+        release_dir
+        / "package-legal"
+        / "LEGAL-MANIFEST.json"
+    )
+
+    if not package_dir.is_dir():
+        raise RuntimeError(
+            f"Package directory does not exist: {package_dir}"
+        )
+
+    if not manifest_path.is_file():
+        raise RuntimeError(
+            f"Staged legal manifest does not exist: {manifest_path}"
+        )
+
+    manifest = json.loads(
+        manifest_path.read_text(encoding="utf-8")
+    )
+
+    if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
+        raise RuntimeError(
+            "Cannot refresh runtime evidence for an incompatible "
+            "legal manifest schema"
+        )
+
+    package = manifest.get("package")
+
+    if not isinstance(package, dict):
+        raise RuntimeError(
+            "Legal manifest package object is missing"
+        )
+
+    runtime_inventory = _runtime_inventory(package_dir)
+
+    build_info = next(
+        (
+            item
+            for item in runtime_inventory
+            if PurePosixPath(
+                item["path"]
+            ).name.casefold() == "build-info.txt"
+        ),
+        None,
+    )
+
+    package.update(
+        {
+            "directory_name": package_dir.name,
+            "platform": _host_platform_key(),
+            "architecture": platform.machine(),
+            "runtime_file_count": len(runtime_inventory),
+            "runtime_inventory_sha256": (
+                _canonical_json_sha256(runtime_inventory)
+            ),
+            "runtime_inventory": runtime_inventory,
+            "build_info": build_info,
+        }
+    )
+
+    manifest_path.write_text(
+        json.dumps(
+            manifest,
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--package-dir", type=Path, required=True)
     parser.add_argument("--release-dir", type=Path, required=True)
     parser.add_argument("--repo-root", type=Path)
     parser.add_argument("--release-tag")
-    parser.add_argument("--nuitka-report", type=Path, required=True)
-    parser.add_argument("--inject", action="store_true", help="Copy generated package legal files into package-dir")
+    parser.add_argument("--nuitka-report", type=Path)
+    parser.add_argument(
+        "--inject",
+        action="store_true",
+        help="Copy generated package legal files into package-dir",
+    )
+    parser.add_argument(
+        "--refresh-runtime-evidence",
+        action="store_true",
+        help=(
+            "Refresh only runtime inventory evidence after a "
+            "package mutation such as macOS signing"
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = _parse_args()
-    repo_root = (args.repo_root or Path(__file__).resolve().parents[2]).resolve()
+    repo_root = (
+        args.repo_root
+        or Path(__file__).resolve().parents[2]
+    ).resolve()
     package_dir = args.package_dir.resolve()
     release_dir = args.release_dir.resolve()
+
+    if args.refresh_runtime_evidence:
+        if args.inject:
+            raise RuntimeError(
+                "--refresh-runtime-evidence cannot be combined "
+                "with --inject"
+            )
+
+        _refresh_runtime_evidence(
+            package_dir,
+            release_dir,
+        )
+
+        print(
+            "Refreshed runtime evidence for "
+            f"{package_dir}"
+        )
+        return 0
+
+    if args.nuitka_report is None:
+        raise RuntimeError(
+            "--nuitka-report is required when preparing "
+            "legal release material"
+        )
+
     nuitka_report = args.nuitka_report.resolve()
     package_legal_dir = release_dir / "package-legal"
     source_assets_dir = release_dir / "source-assets"
@@ -1250,8 +1545,11 @@ def main() -> int:
     if _forbidden_matches(package_dir):
         formatted = "\n".join(f"  {item['path']}: {item['reason']}" for item in _forbidden_matches(package_dir))
         raise RuntimeError(f"Forbidden runtime components detected:\n{formatted}")
-    if any(path.name.casefold() == "adb.exe" for path in package_dir.rglob("*")):
-        raise RuntimeError("adb.exe is bundled, but public release policy requires managed ADB to stay external")
+    if _bundled_adb_paths(package_dir):
+        raise RuntimeError(
+            "ADB is bundled, but public release policy requires "
+            "managed ADB to stay external"
+        )
 
     version = _read_project_version(repo_root)
     release_tag = args.release_tag or f"v{version}"
@@ -1437,8 +1735,9 @@ def main() -> int:
         {
             item["path"]
             for item in runtime_inventory
-            if PurePosixPath(item["path"]).name.casefold().startswith(("libssl-", "libcrypto-"))
-            and item["path"].casefold().endswith(".dll")
+            if _is_openssl_runtime_name(
+                PurePosixPath(item["path"]).name
+            )
         },
         key=str.casefold,
     )
@@ -1498,7 +1797,7 @@ def main() -> int:
         },
         "package": {
             "directory_name": package_dir.name,
-            "platform": "windows",
+            "platform": _host_platform_key(),
             "architecture": platform.machine(),
             "runtime_file_count": len(runtime_inventory),
             "runtime_inventory_sha256": runtime_inventory_sha256,
@@ -1566,7 +1865,7 @@ def main() -> int:
         "policy": {
             "forbidden_runtime_matches": [],
             "adb_bundled": False,
-            "final_msvc_revalidation_required": True,
+            "final_artifact_revalidation_required": True,
             "project_source_tag_must_exist_before_publication": True,
         },
     }
