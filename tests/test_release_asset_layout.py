@@ -234,7 +234,7 @@ def test_legal_validator_accepts_consolidated_source_bundle(
                 "# Third-party corresponding source availability",
                 "",
                 f"`{bundle.name}`",
-                f"SHA-256 `{bundle_hash}`",
+                "Verify with `SHA256SUMS.txt` from the same release.",
                 "",
             ]
         ),

@@ -1066,8 +1066,12 @@ def _validate_source_assets(
         "SOURCE-AVAILABILITY.md omits consolidated source bundle name",
     )
     _require(
-        str(source_bundle["sha256"]) in availability,
-        "SOURCE-AVAILABILITY.md omits consolidated source bundle SHA-256",
+        "SHA256SUMS.txt" in availability,
+        "SOURCE-AVAILABILITY.md must direct users to the release-wide checksum manifest",
+    )
+    _require(
+        str(source_bundle["sha256"]) not in availability,
+        "SOURCE-AVAILABILITY.md must not pin the per-RC source bundle SHA-256",
     )
 
     for filename in declared_names:

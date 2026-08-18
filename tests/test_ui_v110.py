@@ -320,7 +320,7 @@ def test_about_dialog_displays_the_canonical_version(
     assert captured["labels"]["AboutVersion"] == f"Version {__version__}"  # type: ignore[index]
     assert "Created by MRC" in str(captured["text"])
     assert "Not affiliated with or endorsed by Google" in str(captured["text"])
-    assert '"1.2.0"' not in inspect.getsource(window._show_about)
+    assert f'"{__version__}"' not in inspect.getsource(window._show_about)
 
 
 def test_linkedin_url_and_link_are_removed() -> None:

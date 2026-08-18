@@ -84,7 +84,7 @@ LICENSE_FILE_RE = re.compile(r"^(?:licen[cs]e|copying|notice|authors?)(?:[._-].*
 REQUIREMENT_NAME_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 SHA256_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 SHA256_PAGE_RE = re.compile(
-    r"SHA-256\s*Hash.{0,1024}?([0-9a-fA-F]{64})",
+    r"\bSHA\s*[-_ ]?\s*256(?:\s+Hash)?\b.{0,1024}?\b([0-9a-fA-F]{64})\b",
     re.DOTALL | re.IGNORECASE,
 )
 OPENSSL_VERSION_RE = re.compile(r"OpenSSL\s+([0-9]+\.[0-9]+\.[0-9]+)")
@@ -229,42 +229,73 @@ def _download_file(url: str, destination: Path, expected_sha256: str) -> None:
         temp_path.unlink(missing_ok=True)
 
 
+def _normalise_hash_type(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+
+def _extract_metalink_sha256(text: str) -> str | None:
+    root = ET.fromstring(text)
+
+    for element in root.iter():
+        local_name = element.tag.rsplit("}", 1)[-1].casefold()
+        if local_name != "hash":
+            continue
+
+        hash_type = _normalise_hash_type(
+            element.attrib.get("type", "")
+        )
+        if hash_type != "sha256":
+            continue
+
+        for candidate in (
+            element.text or "",
+            element.attrib.get("value", ""),
+            element.attrib.get("hash", ""),
+        ):
+            value = candidate.strip()
+            if SHA256_HEX_RE.fullmatch(value):
+                return value.lower()
+
+    return None
+
+
+def _extract_page_sha256(text: str) -> str | None:
+    match = SHA256_PAGE_RE.search(text)
+    if match is None:
+        return None
+    return match.group(1).lower()
+
+
 def _qt_official_sha256(base_url: str) -> tuple[str, str]:
     errors: list[str] = []
 
-    metalink_url = f"{base_url}.meta4"
-    try:
-        metalink_text = _download_text(metalink_url)
-        root = ET.fromstring(metalink_text)
+    for suffix in (".meta4", ".metalink"):
+        metalink_url = f"{base_url}{suffix}"
+        try:
+            metalink_text = _download_text(metalink_url)
+            digest = _extract_metalink_sha256(metalink_text)
 
-        for element in root.iter():
-            local_name = element.tag.rsplit("}", 1)[-1].casefold()
-            hash_type = element.attrib.get("type", "").casefold().replace("_", "-")
-            value = (element.text or "").strip()
+            if digest is not None:
+                return digest, metalink_url
 
-            if (
-                local_name == "hash"
-                and hash_type in {"sha-256", "sha256"}
-                and SHA256_HEX_RE.fullmatch(value)
-            ):
-                return value.lower(), metalink_url
-
-        errors.append(f"{metalink_url}: SHA-256 hash element not found")
-    except (
-        ET.ParseError,
-        OSError,
-        RuntimeError,
-        UnicodeDecodeError,
-    ) as exc:
-        errors.append(f"{metalink_url}: {exc}")
+            errors.append(
+                f"{metalink_url}: SHA-256 hash element not found"
+            )
+        except (
+            ET.ParseError,
+            OSError,
+            RuntimeError,
+            UnicodeDecodeError,
+        ) as exc:
+            errors.append(f"{metalink_url}: {exc}")
 
     mirrorlist_url = f"{base_url}.mirrorlist"
     try:
         mirror_page = _download_text(mirrorlist_url)
-        match = SHA256_PAGE_RE.search(mirror_page)
+        digest = _extract_page_sha256(mirror_page)
 
-        if match:
-            return match.group(1).lower(), mirrorlist_url
+        if digest is not None:
+            return digest, mirrorlist_url
 
         errors.append(f"{mirrorlist_url}: SHA-256 hash not found")
     except (
@@ -1242,7 +1273,9 @@ def _write_source_availability(
         "components is provided in one release-wide archive:",
         "",
         f"- `{source_bundle['filename']}`",
-        f"- SHA-256 `{source_bundle['sha256']}`",
+        "",
+        "Verify the final release-wide archive checksum using `SHA256SUMS.txt`",
+        "attached to the same GitHub Release.",
         "",
         f"Release location: {release_url}",
         "",

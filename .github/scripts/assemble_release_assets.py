@@ -277,13 +277,22 @@ def _validate_rc_legal(
     availability_text = availability.read_text(
         encoding="utf-8"
     )
-    if (
-        expected_bundle_name not in availability_text
-        or bundle_digest not in availability_text
-    ):
+    if expected_bundle_name not in availability_text:
         raise RuntimeError(
             "SOURCE-AVAILABILITY.md does not identify the "
-            f"validated source bundle: {release_dir}"
+            f"canonical source bundle: {release_dir}"
+        )
+
+    if "SHA256SUMS.txt" not in availability_text:
+        raise RuntimeError(
+            "SOURCE-AVAILABILITY.md does not identify the "
+            f"release-wide checksum manifest: {release_dir}"
+        )
+
+    if bundle_digest in availability_text:
+        raise RuntimeError(
+            "SOURCE-AVAILABILITY.md must not pin the per-RC "
+            f"source bundle SHA-256: {release_dir}"
         )
 
     return assets
