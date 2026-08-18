@@ -437,7 +437,6 @@ class DeviceWindow(compact_ui.CompactWindow):
         if self._audit_active and self._merge_base_rows is not None:
             self.current_rows = [dict(row) for row in self._merge_base_rows]
             self.model.set_rows(self.current_rows)
-            self.proxy.invalidateFilter()
             self._update_summary()
 
     def _get_apps_to_audit(self):
@@ -557,7 +556,6 @@ class DeviceWindow(compact_ui.CompactWindow):
         if error:
             self.current_rows = old_rows
             self.model.set_rows(old_rows)
-            self.proxy.invalidateFilter()
             self.status_label.setText(f"{label} failed")
             QMessageBox.critical(self, "Recheck failed", str(error))
             self._update_summary()
@@ -578,7 +576,6 @@ class DeviceWindow(compact_ui.CompactWindow):
 
         self.current_rows = merged
         self.model.set_rows(merged)
-        self.proxy.invalidateFilter()
         self.export_button.setEnabled(bool(merged))
         self.progress.setRange(0, max(live_count, 1))
         self.progress.setValue(live_count)

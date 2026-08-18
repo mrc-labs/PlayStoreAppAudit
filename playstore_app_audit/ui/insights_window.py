@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QModelIndex, Qt, QUrl
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, QUrl
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QDragEnterEvent, QDropEvent, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -50,8 +50,9 @@ class AdvancedFilterProxy(base_ui.AppFilterProxy):
         self.v9_preset = "All"
 
     def set_v9_preset(self, preset: str) -> None:
+        self.beginFilterChange()
         self.v9_preset = preset if preset in device_insights.BUILTIN_FILTERS else "All"
-        self.invalidateFilter()
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):
@@ -724,7 +725,6 @@ class InsightsWindow(device_ui.DeviceWindow):
             )
         if self.current_rows:
             self.model.set_rows(self.current_rows)
-            self.proxy.invalidateFilter()
             self._apply_column_visibility(reset_order=False)
             self._update_summary()
 

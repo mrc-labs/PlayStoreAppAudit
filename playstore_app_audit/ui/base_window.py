@@ -399,16 +399,19 @@ class AppFilterProxy(QSortFilterProxyModel):
         self.setDynamicSortFilter(True)
 
     def set_query(self, query: str) -> None:
+        self.beginFilterChange()
         self.query = query.strip().casefold()
-        self.invalidateFilter()
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def set_hide_system(self, hide: bool) -> None:
+        self.beginFilterChange()
         self.hide_system = hide
-        self.invalidateFilter()
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def set_criticality_filter(self, key: str | None) -> None:
+        self.beginFilterChange()
         self.criticality_filter = key
-        self.invalidateFilter()
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         model = self.sourceModel()
@@ -1276,7 +1279,6 @@ class BaseWindow(QMainWindow):
 
         self.current_rows = typed_rows
         self.model.set_rows(typed_rows)
-        self.proxy.invalidateFilter()
         self.progress.setRange(0, max(len(typed_rows), 1))
         self.progress.setValue(len(typed_rows))
         self.status_label.setText("Audit completed")

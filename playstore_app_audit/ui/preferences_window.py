@@ -7,7 +7,7 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -62,8 +62,9 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
         self.set_criticality_filter(None)
 
     def set_status_filters(self, filters: set[str]) -> None:
+        self.beginFilterChange()
         self.status_filters = set(filters)
-        self.invalidateFilter()
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):

@@ -595,7 +595,6 @@ class CompactWindow(AuditWindow):
         )
         self.current_rows = []
         self.model.set_rows([])
-        self.proxy.invalidateFilter()
         self.export_button.setEnabled(False)
         self.progress.setRange(0, len(apps))
         self.progress.setValue(cached_count)
@@ -714,7 +713,6 @@ class CompactWindow(AuditWindow):
 
         self.current_rows = typed_rows
         self.model.set_rows(typed_rows)
-        self.proxy.invalidateFilter()
         self.progress.setRange(0, max(len(typed_rows), 1))
         self.progress.setValue(len(typed_rows))
         self.export_button.setEnabled(bool(typed_rows))
