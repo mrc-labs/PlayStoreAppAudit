@@ -135,7 +135,6 @@ $NuitkaReport = Join-Path $NuitkaOutput "compilation-report.xml"
 $PackageName = "PlayStoreAppAudit-v$AppVersion-windows-$PackageArch"
 $PackageDir = Join-Path $BuildRoot $PackageName
 $ZipPath = Join-Path $BuildRoot "$PackageName.zip"
-$ChecksumPath = "$ZipPath.sha256"
 $IconPath = Join-Path $BuildRoot "app_icon.ico"
 $LegalReleaseDir = Join-Path $BuildRoot "legal-release-v$AppVersion"
 
@@ -383,7 +382,15 @@ if (-not $PrivateBuild) {
     $SourceAssetsDir = Join-Path $LegalReleaseDir "source-assets"
     $SourceSumsPath = Join-Path $SourceAssetsDir "SHA256SUMS.txt"
     if (-not (Test-Path -LiteralPath $SourceSumsPath)) {
-        Fail "Public legal validation passed without the expected source-asset checksum file: $SourceSumsPath"
+        Fail "Public legal validation passed without the expected internal source checksum file: $SourceSumsPath"
+    }
+
+    $SourceBundlePath = Join-Path `
+        $LegalReleaseDir `
+        "PlayStoreAppAudit-v$AppVersion-third-party-sources.tar.xz"
+
+    if (-not (Test-Path -LiteralPath $SourceBundlePath)) {
+        Fail "Consolidated third-party source bundle was not produced: $SourceBundlePath"
     }
 }
 
@@ -407,9 +414,6 @@ if ($LASTEXITCODE -ne 0 -or -not $ZipHash) {
     Fail "Could not calculate the ZIP SHA-256."
 }
 
-"$ZipHash  $([IO.Path]::GetFileName($ZipPath))" |
-    Set-Content -LiteralPath $ChecksumPath -Encoding ascii
-
 Write-Host ""
 Write-Host "=== QT RUNTIME INVENTORY ==="
 Get-ChildItem -LiteralPath $PackageDir -Recurse -File |
@@ -423,8 +427,8 @@ Write-Host "Package directory: $PackageDir"
 Write-Host "Executable:        $(Join-Path $PackageDir 'PlayStoreAppAudit.exe')"
 Write-Host "ZIP:               $ZipPath"
 Write-Host "ZIP SHA-256:       $ZipHash"
-Write-Host "Checksum:          $ChecksumPath"
 if (-not $PrivateBuild) {
     Write-Host "Legal staging:      $LegalReleaseDir"
-    Write-Host "Source assets:      $(Join-Path $LegalReleaseDir 'source-assets')"
+    Write-Host "Source staging:     $(Join-Path $LegalReleaseDir 'source-assets')"
+    Write-Host "Source bundle:      $SourceBundlePath"
 }

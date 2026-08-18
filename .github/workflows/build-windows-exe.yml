@@ -257,21 +257,23 @@ jobs:
           $version = '${{ steps.project_version.outputs.version }}'
           $zipName = "PlayStoreAppAudit-v$version-windows-$env:PACKAGE_ARCH.zip"
           $zipPath = Join-Path $outputRoot $zipName
-          $checksumPath = "$zipPath.sha256"
 
           if (-not (Test-Path -LiteralPath $zipPath)) {
             throw "Expected ZIP artifact was not produced: $zipPath"
-          }
-          if (-not (Test-Path -LiteralPath $checksumPath)) {
-            throw "Expected SHA-256 sidecar was not produced: $checksumPath"
           }
 
           $legalReleaseDir = Join-Path $outputRoot "legal-release-v$version"
           $sourceAssetsDir = Join-Path $legalReleaseDir "source-assets"
           $sourceSumsPath = Join-Path $sourceAssetsDir "SHA256SUMS.txt"
+          $sourceBundleName = "PlayStoreAppAudit-v$version-third-party-sources.tar.xz"
+          $sourceBundlePath = Join-Path $legalReleaseDir $sourceBundleName
 
           if (-not (Test-Path -LiteralPath $sourceSumsPath)) {
-            throw "Strict public legal build did not produce source-assets/SHA256SUMS.txt: $sourceSumsPath"
+            throw "Strict public legal build did not produce internal source-assets/SHA256SUMS.txt: $sourceSumsPath"
+          }
+
+          if (-not (Test-Path -LiteralPath $sourceBundlePath)) {
+            throw "Strict public legal build did not produce consolidated source bundle: $sourceBundlePath"
           }
 
           $sourceAssetFiles = @(
@@ -282,10 +284,14 @@ jobs:
             throw 'Strict public legal build produced no corresponding-source assets.'
           }
 
-          $checksum = (Get-Content -LiteralPath $checksumPath -Raw).Trim()
+          $checksum = (
+            Get-FileHash -LiteralPath $zipPath -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
+
           Write-Host "Final package: $zipPath"
-          Write-Host "Checksum: $checksum"
-          Write-Host "Legal source assets: $sourceAssetsDir"
+          Write-Host "SHA-256: $checksum"
+          Write-Host "Legal source staging: $sourceAssetsDir"
+          Write-Host "Consolidated source bundle: $sourceBundlePath"
           Write-Host "Corresponding-source asset count: $($sourceAssetFiles.Count)"
 
           @"
@@ -296,7 +302,7 @@ jobs:
           - Package: ``$zipName``
           - SHA-256: ``$checksum``
           - Public legal gate: prepare/inject/strict validation PASS
-          - Corresponding-source assets: $($sourceAssetFiles.Count) plus ``SHA256SUMS.txt``
+          - Corresponding-source bundle: ``$sourceBundleName`` containing $($sourceAssetFiles.Count) exact source archives
           - Qt Virtual Keyboard: excluded and validated absent
           - Qt PDF image plugin qpdf.dll: removed and validated absent
           - Final release compliance: requires revalidation of this exact final-main MSVC artifact before publication
@@ -308,7 +314,6 @@ jobs:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
           path: |
             artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip
-            artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip.sha256
             artifact/windows-${{ matrix.arch }}-ci/legal-release-v${{ steps.project_version.outputs.version }}/
           if-no-files-found: error
           retention-days: 30

@@ -20,16 +20,17 @@ from prepare_release_legal_bundle import (
     _runtime_inventory,
     _sha256,
 )
+from release_asset_layout import (
+    source_bundle_filename,
+    validate_third_party_source_bundle,
+)
 
 ABSOLUTE_WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 ABSOLUTE_USER_PATH_RE = re.compile(r"(?:^|[\\/])(?:Users|home)[\\/]", re.IGNORECASE)
 REQUIRED_PACKAGE_FILES = {
     "LICENSE",
-    "COMMERCIAL-LICENSING.md",
-    "LICENSING.md",
     "THIRD_PARTY_NOTICES.md",
     "SOURCE-AVAILABILITY.md",
-    "LEGAL-MANIFEST.json",
 }
 REQUIRED_QT_COMMUNITY_LICENSES = {
     "licenses/qt/pyside-setup/LGPL-3.0-only.txt",
@@ -101,12 +102,24 @@ def _validate_required_files(package_dir: Path, package_legal_dir: Path) -> None
             package_path.read_bytes() == staged_path.read_bytes(),
             f"Package/staged legal file mismatch: {name}",
         )
+    staged_manifest = package_legal_dir / "LEGAL-MANIFEST.json"
+    package_manifest = package_dir / "LEGAL-MANIFEST.json"
+
+    _require(
+        staged_manifest.is_file(),
+        "Staged LEGAL-MANIFEST.json is missing",
+    )
+    _require(
+        not package_manifest.exists(),
+        "LEGAL-MANIFEST.json is validation evidence and must not ship",
+    )
+
     _require((package_dir / "licenses").is_dir(), "Package licenses/ directory is missing")
     _require((package_legal_dir / "licenses").is_dir(), "Staged licenses/ directory is missing")
 
 
 def _validate_markdown_paths(package_dir: Path) -> None:
-    for name in ("LICENSING.md", "THIRD_PARTY_NOTICES.md", "SOURCE-AVAILABILITY.md"):
+    for name in ("THIRD_PARTY_NOTICES.md", "SOURCE-AVAILABILITY.md"):
         text = (package_dir / name).read_text(encoding="utf-8")
         _require("](../" not in text and "](..\\" not in text, f"Broken parent-relative link found in {name}")
         _require("SOURCE-OFFER.md" not in text, f"Obsolete SOURCE-OFFER.md reference found in {name}")
@@ -166,6 +179,132 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
         "Qt community_license_files does not explicitly map LGPL/GPL community license texts",
     )
 
+    license_mappings = qt.get("license_mappings")
+    _require(
+        isinstance(license_mappings, list) and license_mappings,
+        "Qt license_mappings must be non-empty",
+    )
+
+    source_members: set[str] = set()
+    mapped_license_files: list[str] = []
+
+    for mapping in license_mappings:
+        _require(
+            isinstance(mapping, dict),
+            "Qt license mapping must be an object",
+        )
+
+        source_member = mapping.get("source_member")
+        bundled_rel = mapping.get("bundled_file")
+        expected_sha = mapping.get("sha256")
+
+        _require(
+            isinstance(source_member, str)
+            and "/" in source_member,
+            f"Malformed Qt license source provenance: {mapping}",
+        )
+        _require(
+            source_member not in source_members,
+            f"Duplicate Qt license source mapping: {source_member}",
+        )
+        source_members.add(source_member)
+
+        _require(
+            isinstance(bundled_rel, str) and bundled_rel,
+            f"Qt license mapping lacks bundled_file: {mapping}",
+        )
+        _require(
+            isinstance(expected_sha, str)
+            and re.fullmatch(r"[0-9a-f]{64}", expected_sha) is not None,
+            f"Qt license mapping has invalid SHA-256: {mapping}",
+        )
+
+        bundled_path = package_dir / PurePosixPath(bundled_rel)
+
+        _require(
+            bundled_path.is_file(),
+            f"Mapped Qt license file is missing: {bundled_rel}",
+        )
+        _require(
+            _sha256(bundled_path) == expected_sha,
+            f"Mapped Qt license SHA-256 mismatch: {bundled_rel}",
+        )
+
+        if bundled_rel in REQUIRED_QT_COMMUNITY_LICENSES:
+            _require(
+                source_member.startswith("pyside-setup/"),
+                "Stable Qt community-license path must originate "
+                f"from pyside-setup: {source_member}",
+            )
+            _require(
+                PurePosixPath(source_member).name
+                == PurePosixPath(bundled_rel).name,
+                "Stable Qt community-license filename does not match "
+                f"its source member: {source_member}",
+            )
+        else:
+            parts = PurePosixPath(bundled_rel).parts
+            _require(
+                len(parts) == 3
+                and parts[:2] == ("licenses", "qt-third-party")
+                and parts[2] == expected_sha,
+                "Non-community Qt license is not stored under its "
+                f"canonical SHA-256 path: {bundled_rel}",
+            )
+
+        mapped_license_files.append(bundled_rel)
+
+    declared_all = qt.get("all_extracted_license_files")
+    _require(
+        isinstance(declared_all, list),
+        "Qt all_extracted_license_files must be a list",
+    )
+
+    expected_declared = sorted(
+        set(mapped_license_files),
+        key=str.casefold,
+    )
+
+    _require(
+        declared_all == expected_declared,
+        "Qt all_extracted_license_files does not match license_mappings",
+    )
+
+    attribution_mappings = qt.get("attribution_license_mappings")
+    _require(
+        isinstance(attribution_mappings, list),
+        "Qt attribution_license_mappings must be a list",
+    )
+
+    canonical_declared = {
+        rel
+        for rel in [
+            *mapped_license_files,
+            *[
+                str(item.get("bundled_file", ""))
+                for item in attribution_mappings
+                if isinstance(item, dict)
+            ],
+        ]
+        if rel.startswith("licenses/qt-third-party/")
+    }
+
+    canonical_root = package_dir / "licenses" / "qt-third-party"
+    canonical_actual = (
+        {
+            path.relative_to(package_dir).as_posix()
+            for path in canonical_root.iterdir()
+            if path.is_file()
+        }
+        if canonical_root.is_dir()
+        else set()
+    )
+
+    _require(
+        canonical_actual == canonical_declared,
+        "Canonical Qt legal payload store contains stale or missing files",
+    )
+
     dependencies = manifest.get("runtime_dependencies")
     _require(isinstance(dependencies, list), "Manifest runtime_dependencies is missing")
     qt_python_seen: set[str] = set()
@@ -199,86 +338,209 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
     )
 
 
-def _iter_attribution_objects(value: Any) -> list[dict[str, Any]]:
-    if isinstance(value, dict):
-        return [value]
-    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
-        return value
-    raise ValidationError("Qt attribution JSON must contain an object or a list of objects")
-
-
-def _validate_qt_attributions(package_dir: Path, manifest: dict[str, Any]) -> None:
+def _validate_qt_attributions(
+    package_dir: Path,
+    manifest: dict[str, Any],
+) -> None:
     qt = manifest["qt"]
-    attribution_paths = qt.get("attribution_files")
-    _require(isinstance(attribution_paths, list) and attribution_paths, "Qt attribution_files must be non-empty")
+
+    sources = qt.get("attribution_sources")
+    _require(
+        isinstance(sources, list) and sources,
+        "Qt attribution_sources must be non-empty",
+    )
+
+    records = qt.get("attribution_records")
+    _require(
+        isinstance(records, list) and records,
+        "Qt attribution_records must be non-empty",
+    )
+
+    _require(
+        qt.get("attribution_record_count") == len(records),
+        "Qt attribution_record_count does not match manifest records",
+    )
 
     mappings = qt.get("attribution_license_mappings")
-    _require(isinstance(mappings, list), "Qt attribution_license_mappings must be a list")
-    mapping_index: dict[tuple[str, int, str], dict[str, Any]] = {}
-    for mapping in mappings:
-        _require(isinstance(mapping, dict), "Qt attribution license mapping must be an object")
-        key = (
-            str(mapping.get("attribution_file", "")),
-            int(mapping.get("record_index", -1)),
-            str(mapping.get("reference", "")),
-        )
-        _require(
-            all(key_part != "" for key_part in (key[0], key[2])) and key[1] >= 0,
-            f"Malformed Qt attribution license mapping: {mapping}",
-        )
-        _require(key not in mapping_index, f"Duplicate Qt attribution license mapping: {key}")
-        bundled_rel = mapping.get("bundled_file")
-        _require(isinstance(bundled_rel, str), f"Qt attribution mapping lacks bundled_file: {mapping}")
-        _require(
-            (package_dir / PurePosixPath(bundled_rel)).is_file(),
-            f"Qt attribution referenced license was not bundled: {bundled_rel}",
-        )
-        source_member = mapping.get("source_member")
-        _require(
-            isinstance(source_member, str) and "/" in source_member,
-            f"Qt attribution mapping lacks source provenance: {mapping}",
-        )
-        mapping_index[key] = mapping
-
-    total_records = 0
-    expected_mapping_keys: set[tuple[str, int, str]] = set()
-    for rel in attribution_paths:
-        path = package_dir / PurePosixPath(rel)
-        _require(path.is_file(), f"Qt attribution file missing: {rel}")
-        # Qt upstream attribution metadata can contain literal control characters inside strings.
-        data = json.loads(path.read_text(encoding="utf-8"), strict=False)
-        records = _iter_attribution_objects(data)
-        for record_index, record in enumerate(records):
-            _require(
-                any(key in record for key in ("Name", "Id", "Description")),
-                f"Qt attribution lacks identity fields: {rel}",
-            )
-            _require(
-                any(key in record for key in ("License", "LicenseId", "LicenseFile", "LicenseFiles")),
-                f"Qt attribution lacks license fields: {rel}",
-            )
-            referenced = record.get("LicenseFile") or record.get("LicenseFiles")
-            references = [referenced] if isinstance(referenced, str) else list(referenced or [])
-            for reference in references:
-                _require(
-                    isinstance(reference, str) and reference.strip(),
-                    f"Invalid Qt attribution license reference in {rel}",
-                )
-                key = (rel, record_index, reference)
-                expected_mapping_keys.add(key)
-                _require(
-                    key in mapping_index,
-                    f"Qt attribution referenced license is not mapped into the bundle: {key}",
-                )
-        total_records += len(records)
-
     _require(
-        set(mapping_index) == expected_mapping_keys,
-        "Qt attribution license mappings contain stale or missing entries",
+        isinstance(mappings, list),
+        "Qt attribution_license_mappings must be a list",
+    )
+
+    raw_root = package_dir / "licenses" / "qt-attributions"
+    raw_files = (
+        [path for path in raw_root.rglob("*") if path.is_file()]
+        if raw_root.is_dir()
+        else []
     )
     _require(
-        total_records == qt.get("attribution_record_count"),
-        "Qt attribution_record_count does not match parsed raw attribution metadata",
+        not raw_files,
+        "Raw Qt attribution metadata must not be packaged",
+    )
+
+    mapping_index: dict[tuple[str, int, str], dict[str, Any]] = {}
+
+    for mapping in mappings:
+        _require(
+            isinstance(mapping, dict),
+            "Qt attribution license mapping must be an object",
+        )
+
+        source = mapping.get("attribution_source")
+        index = mapping.get("record_index")
+        reference = mapping.get("reference")
+        bundled_rel = mapping.get("bundled_file")
+        source_member = mapping.get("source_member")
+
+        _require(
+            isinstance(source, str) and source,
+            f"Qt attribution mapping lacks source: {mapping}",
+        )
+        _require(
+            isinstance(index, int) and index >= 0,
+            f"Qt attribution mapping has invalid record_index: {mapping}",
+        )
+        _require(
+            isinstance(reference, str) and reference.strip(),
+            f"Qt attribution mapping lacks reference: {mapping}",
+        )
+        _require(
+            isinstance(bundled_rel, str) and bundled_rel,
+            f"Qt attribution mapping lacks bundled_file: {mapping}",
+        )
+        _require(
+            isinstance(source_member, str) and "/" in source_member,
+            f"Qt attribution mapping lacks source_member: {mapping}",
+        )
+
+        key = (source, index, reference)
+        _require(
+            key not in mapping_index,
+            f"Duplicate Qt attribution license mapping: {key}",
+        )
+
+        bundled_path = package_dir / PurePosixPath(bundled_rel)
+        _require(
+            bundled_path.is_file(),
+            f"Qt attribution license file is missing: {bundled_rel}",
+        )
+
+        if bundled_rel.startswith("licenses/qt-third-party/"):
+            digest = PurePosixPath(bundled_rel).name
+            _require(
+                re.fullmatch(r"[0-9a-f]{64}", digest) is not None,
+                f"Invalid canonical Qt legal payload path: {bundled_rel}",
+            )
+            _require(
+                _sha256(bundled_path) == digest,
+                f"Canonical Qt legal payload SHA-256 mismatch: {bundled_rel}",
+            )
+
+        mapping_index[key] = mapping
+
+    expected_mapping_keys: set[tuple[str, int, str]] = set()
+    seen_records: set[tuple[str, int]] = set()
+    seen_sources: set[str] = set()
+
+    for item in records:
+        _require(
+            isinstance(item, dict),
+            "Qt attribution record must be an object",
+        )
+
+        source = item.get("source")
+        index = item.get("record_index")
+        component = item.get("component")
+        data = item.get("data")
+        bundled_files = item.get("bundled_license_files")
+
+        _require(
+            isinstance(source, str) and source in sources,
+            f"Qt attribution record has invalid source: {item}",
+        )
+        _require(
+            isinstance(index, int) and index >= 0,
+            f"Qt attribution record has invalid record_index: {item}",
+        )
+        _require(
+            isinstance(component, str)
+            and source.startswith(f"{component}/"),
+            f"Qt attribution component/source mismatch: {item}",
+        )
+        _require(
+            isinstance(data, dict),
+            f"Qt attribution record data is invalid: {source}",
+        )
+        _require(
+            isinstance(bundled_files, list),
+            f"Qt attribution bundled_license_files is invalid: {source}",
+        )
+
+        record_key = (source, index)
+        _require(
+            record_key not in seen_records,
+            f"Duplicate Qt attribution record: {record_key}",
+        )
+        seen_records.add(record_key)
+        seen_sources.add(source)
+
+        _require(
+            any(key in data for key in ("Name", "Id", "Description")),
+            f"Qt attribution lacks identity fields: {record_key}",
+        )
+        _require(
+            any(
+                key in data
+                for key in (
+                    "License",
+                    "LicenseId",
+                    "LicenseFile",
+                    "LicenseFiles",
+                )
+            ),
+            f"Qt attribution lacks license fields: {record_key}",
+        )
+
+        referenced = data.get("LicenseFile") or data.get("LicenseFiles")
+        references = (
+            [referenced]
+            if isinstance(referenced, str)
+            else list(referenced or [])
+        )
+
+        mapped_files: list[str] = []
+
+        for reference in references:
+            _require(
+                isinstance(reference, str) and reference.strip(),
+                f"Invalid Qt attribution license reference: {record_key}",
+            )
+
+            key = (source, index, reference)
+            expected_mapping_keys.add(key)
+
+            _require(
+                key in mapping_index,
+                f"Qt attribution referenced license is not mapped: {key}",
+            )
+
+            mapped_files.append(
+                str(mapping_index[key]["bundled_file"])
+            )
+
+        _require(
+            sorted(set(bundled_files), key=str.casefold)
+            == sorted(set(mapped_files), key=str.casefold),
+            f"Qt attribution bundled license list mismatch: {record_key}",
+        )
+
+    _require(
+        seen_sources == set(sources),
+        "Qt attribution_sources does not exactly match record provenance",
+    )
+    _require(
+        set(mapping_index) == expected_mapping_keys,
+        "Qt attribution mappings contain stale or missing entries",
     )
 
     declared_license_files = qt.get("attribution_license_files")
@@ -286,31 +548,55 @@ def _validate_qt_attributions(package_dir: Path, manifest: dict[str, Any]) -> No
         isinstance(declared_license_files, list),
         "Qt attribution_license_files must be a list",
     )
+
     mapped_license_files = sorted(
-        {str(mapping["bundled_file"]) for mapping in mappings},
+        {
+            str(mapping["bundled_file"])
+            for mapping in mappings
+        },
         key=str.casefold,
     )
+
     _require(
         declared_license_files == mapped_license_files,
-        "Qt attribution_license_files does not match attribution license mappings",
+        "Qt attribution_license_files does not match mappings",
     )
 
     human_rel = qt.get("human_readable_attributions")
-    _require(isinstance(human_rel, str), "Qt human_readable_attributions path is missing")
-    human_path = package_dir / PurePosixPath(human_rel)
-    _require(human_path.is_file(), f"Human-readable Qt attribution output missing: {human_rel}")
-    human_text = human_path.read_text(encoding="utf-8")
     _require(
-        human_text.count("Source metadata:") == total_records,
-        "Human-readable Qt attribution output does not cover every parsed attribution record",
+        isinstance(human_rel, str),
+        "Qt human_readable_attributions path is missing",
     )
+
+    human_path = package_dir / PurePosixPath(human_rel)
+    _require(
+        human_path.is_file(),
+        f"Human-readable Qt attribution output missing: {human_rel}",
+    )
+
+    human_text = human_path.read_text(encoding="utf-8")
+
+    _require(
+        human_text.count("Source metadata:") == len(records),
+        "Human-readable Qt attribution output does not cover every record",
+    )
+
+    for source in sources:
+        _require(
+            f"Source metadata: {source}" in human_text,
+            f"Human-readable Qt attribution output omits source: {source}",
+        )
+
     for bundled_rel in mapped_license_files:
         _require(
             bundled_rel in human_text,
-            f"Human-readable Qt attribution output omits bundled license path: {bundled_rel}",
+            "Human-readable Qt attribution output omits bundled "
+            f"license path: {bundled_rel}",
         )
 
+
 def _validate_nuitka_build_evidence(
+    release_dir: Path,
     package_dir: Path,
     manifest: dict[str, Any],
 ) -> set[str]:
@@ -323,10 +609,42 @@ def _validate_nuitka_build_evidence(
         "Nuitka sanitized evidence path is missing",
     )
 
-    evidence_path = package_dir / PurePosixPath(evidence_rel)
+    expected_rel = (
+        "validation-evidence/"
+        "NUITKA-COMPILATION-EVIDENCE.json"
+    )
+
+    _require(
+        evidence_rel == expected_rel,
+        "Nuitka sanitized evidence path is not canonical",
+    )
+
+    evidence_path = release_dir / PurePosixPath(evidence_rel)
+
     _require(
         evidence_path.is_file(),
         f"Nuitka sanitized build evidence is missing: {evidence_rel}",
+    )
+
+    packaged_evidence_root = (
+        package_dir
+        / "licenses"
+        / "build-evidence"
+    )
+
+    packaged_evidence = (
+        [
+            path
+            for path in packaged_evidence_root.rglob("*")
+            if path.is_file()
+        ]
+        if packaged_evidence_root.is_dir()
+        else []
+    )
+
+    _require(
+        not packaged_evidence,
+        "Nuitka build evidence is validation-only and must not ship",
     )
 
     expected_sha = nuitka.get("sanitized_evidence_sha256")
@@ -508,51 +826,170 @@ def _parse_sha256s(path: Path) -> dict[str, str]:
     return result
 
 
-def _validate_source_assets(release_dir: Path, package_dir: Path, manifest: dict[str, Any], public: bool) -> None:
-    source_assets_dir = release_dir / "source-assets"
+def _validate_source_assets(
+    release_dir: Path,
+    package_dir: Path,
+    manifest: dict[str, Any],
+    public: bool,
+) -> None:
     if not public:
         return
-    _require(source_assets_dir.is_dir(), "Public validation requires release-dir/source-assets")
+
+    source_assets_dir = release_dir / "source-assets"
+
+    _require(
+        source_assets_dir.is_dir(),
+        "Public validation requires internal source-assets staging",
+    )
+
     sums_path = source_assets_dir / "SHA256SUMS.txt"
-    _require(sums_path.is_file(), "Public validation requires source-assets/SHA256SUMS.txt")
+    _require(
+        sums_path.is_file(),
+        "Public validation requires internal source-assets/SHA256SUMS.txt",
+    )
+
     sums = _parse_sha256s(sums_path)
+
     declared = manifest.get("source_assets")
-    _require(isinstance(declared, list) and declared, "Manifest source_assets must be non-empty")
+    _require(
+        isinstance(declared, list) and declared,
+        "Manifest source_assets must be non-empty",
+    )
+
     declared_names = {item["filename"] for item in declared}
-    _require(set(sums) == declared_names, "SHA256SUMS entries do not exactly match manifest source assets")
+
+    _require(
+        set(sums) == declared_names,
+        "Internal SHA256SUMS entries do not exactly match source assets",
+    )
 
     for item in declared:
         filename = item["filename"]
-        path = source_assets_dir / filename
-        _require(path.is_file(), f"Required corresponding-source asset missing: {filename}")
-        actual = _sha256(path)
-        _require(actual == item["sha256"], f"Source asset SHA-256 mismatch: {filename}")
-        _require(sums[filename] == item["sha256"], f"SHA256SUMS mismatch: {filename}")
-        _require(path.stat().st_size == item["size"], f"Source asset size mismatch: {filename}")
-        _require(str(item.get("download_url", "")).startswith("https://"), f"Missing HTTPS provenance: {filename}")
-        _require(str(item.get("provenance_url", "")).startswith("https://"), f"Missing provenance URL: {filename}")
+        source_path = source_assets_dir / filename
 
-    certifi_assets = [item for item in declared if item.get("component") == "certifi"]
-    _require(len(certifi_assets) == 1, "Exactly one certifi source asset is required")
-    certifi_asset = certifi_assets[0]
-    _require(certifi_asset["filename"].endswith(".tar.gz"), "certifi must use the official PyPI source distribution")
+        _require(
+            source_path.is_file(),
+            f"Required source staging file missing: {filename}",
+        )
+        _require(
+            _sha256(source_path) == item["sha256"],
+            f"Source staging SHA-256 mismatch: {filename}",
+        )
+        _require(
+            sums[filename] == item["sha256"],
+            f"Internal SHA256SUMS mismatch: {filename}",
+        )
+        _require(
+            source_path.stat().st_size == item["size"],
+            f"Source staging size mismatch: {filename}",
+        )
+        _require(
+            str(item.get("download_url", "")).startswith("https://"),
+            f"Missing HTTPS source URL: {filename}",
+        )
+        _require(
+            str(item.get("provenance_url", "")).startswith("https://"),
+            f"Missing HTTPS provenance URL: {filename}",
+        )
+
+    actual_source_names = {
+        item.name
+        for item in source_assets_dir.iterdir()
+        if item.is_file() and item.name != "SHA256SUMS.txt"
+    }
+
     _require(
-        "pypi.org/pypi/certifi/" in certifi_asset["provenance_url"],
+        actual_source_names == declared_names,
+        "Internal source staging contains unlisted or missing files",
+    )
+
+    certifi_assets = [
+        item
+        for item in declared
+        if item.get("component") == "certifi"
+    ]
+
+    _require(
+        len(certifi_assets) == 1,
+        "Exactly one certifi source asset is required",
+    )
+
+    certifi_asset = certifi_assets[0]
+
+    _require(
+        str(certifi_asset.get("filename", "")).endswith(".tar.gz"),
+        "certifi must use the official PyPI source distribution",
+    )
+    _require(
+        "pypi.org/pypi/certifi/"
+        in str(certifi_asset.get("provenance_url", "")),
         "certifi provenance must be the PyPI release JSON",
     )
 
-    availability = (package_dir / "SOURCE-AVAILABILITY.md").read_text(encoding="utf-8")
-    for item in declared:
-        _require(item["filename"] in availability, f"SOURCE-AVAILABILITY.md omits {item['filename']}")
-        _require(item["sha256"] in availability, f"SOURCE-AVAILABILITY.md omits SHA-256 for {item['filename']}")
+    application = manifest.get("application")
+    _require(
+        isinstance(application, dict),
+        "Manifest application object is missing",
+    )
 
-    actual_files = {
-        path.name
-        for path in source_assets_dir.iterdir()
-        if path.is_file() and path.name != "SHA256SUMS.txt"
-    }
-    _require(actual_files == declared_names, "source-assets contains unlisted or missing release assets")
+    version = str(application.get("version", ""))
+    expected_bundle_name = source_bundle_filename(version)
 
+    source_bundle = manifest.get("source_bundle")
+    _require(
+        isinstance(source_bundle, dict),
+        "Manifest source_bundle object is missing",
+    )
+    _require(
+        source_bundle.get("filename") == expected_bundle_name,
+        "Manifest source bundle filename is not canonical",
+    )
+
+    bundle_path = release_dir / expected_bundle_name
+
+    _require(
+        bundle_path.is_file(),
+        f"Consolidated source bundle missing: {expected_bundle_name}",
+    )
+    _require(
+        _sha256(bundle_path) == source_bundle.get("sha256"),
+        "Consolidated source bundle SHA-256 mismatch",
+    )
+    _require(
+        bundle_path.stat().st_size == source_bundle.get("size"),
+        "Consolidated source bundle size mismatch",
+    )
+
+    try:
+        validate_third_party_source_bundle(
+            bundle_path,
+            version,
+            declared,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValidationError(
+            f"Third-party source bundle validation failed: {exc}"
+        ) from exc
+
+    availability = (
+        package_dir / "SOURCE-AVAILABILITY.md"
+    ).read_text(encoding="utf-8")
+
+    _require(
+        expected_bundle_name in availability,
+        "SOURCE-AVAILABILITY.md omits consolidated source bundle name",
+    )
+    _require(
+        str(source_bundle["sha256"]) in availability,
+        "SOURCE-AVAILABILITY.md omits consolidated source bundle SHA-256",
+    )
+
+    for filename in declared_names:
+        _require(
+            filename not in availability,
+            "SOURCE-AVAILABILITY.md still exposes individual source asset "
+            f"name: {filename}",
+        )
 
 def _validate_staged_tree(package_dir: Path, package_legal_dir: Path) -> None:
     package_legal_files = {
@@ -561,6 +998,9 @@ def _validate_staged_tree(package_dir: Path, package_legal_dir: Path) -> None:
         if path.is_file()
     }
     for rel, digest in package_legal_files.items():
+        if rel == "LEGAL-MANIFEST.json":
+            continue
+
         package_path = package_dir / PurePosixPath(rel)
         _require(package_path.is_file(), f"Generated package legal file was not injected: {rel}")
         _require(_sha256(package_path) == digest, f"Injected package legal file differs from staging: {rel}")
@@ -589,10 +1029,9 @@ def main() -> int:
     _validate_required_files(package_dir, package_legal_dir)
     _validate_staged_tree(package_dir, package_legal_dir)
 
-    manifest_path = package_dir / "LEGAL-MANIFEST.json"
-    manifest = _read_json(manifest_path)
-    staged_manifest = _read_json(package_legal_dir / "LEGAL-MANIFEST.json")
-    _require(manifest == staged_manifest, "Injected/staged LEGAL-MANIFEST.json objects differ")
+    manifest = _read_json(
+        package_legal_dir / "LEGAL-MANIFEST.json"
+    )
     _require(manifest.get("schema_version") == MANIFEST_SCHEMA_VERSION, "Unsupported legal manifest schema")
     _validate_portable_manifest(manifest)
     _validate_markdown_paths(package_dir)
@@ -601,6 +1040,7 @@ def main() -> int:
     _validate_qt_license_mapping(package_dir, manifest)
     _validate_qt_attributions(package_dir, manifest)
     compiled_modules = _validate_nuitka_build_evidence(
+        release_dir,
         package_dir,
         manifest,
     )
