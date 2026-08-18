@@ -84,10 +84,14 @@ def test_adb_detection_on_all_desktop_platforms(
     _touch(
         tmp_path,
         "windows/adb.exe",
+        "windows/AdbWinApi.dll",
+        "windows/AdbWinUsbApi.dll",
         "unix/adb",
     )
 
     assert legal._bundled_adb_paths(tmp_path) == [
         "unix/adb",
         "windows/adb.exe",
+        "windows/AdbWinApi.dll",
+        "windows/AdbWinUsbApi.dll",
     ]

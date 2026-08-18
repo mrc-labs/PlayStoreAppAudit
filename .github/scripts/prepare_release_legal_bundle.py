@@ -525,7 +525,13 @@ def _bundled_adb_paths(package_dir: Path) -> list[str]:
             _safe_relpath(path, package_dir)
             for path in package_dir.rglob("*")
             if path.is_file()
-            and path.name.casefold() in {"adb", "adb.exe"}
+            and path.name.casefold()
+            in {
+                "adb",
+                "adb.exe",
+                "adbwinapi.dll",
+                "adbwinusbapi.dll",
+            }
         ),
         key=str.casefold,
     )
