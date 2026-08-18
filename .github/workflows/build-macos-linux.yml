@@ -12,6 +12,10 @@ on:
           - linux
           - macos
           - both
+      expected_sha:
+        description: Exact commit SHA expected for this deliberate build
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -34,7 +38,39 @@ jobs:
             managed_adb: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify requested build commit
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          expected="$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')"
+          dispatch="$(printf '%s' "$DISPATCH_SHA" | tr '[:upper:]' '[:lower:]')"
+          actual="$(git rev-parse HEAD | tr '[:upper:]' '[:lower:]')"
+
+          if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "expected_sha must be a full 40-character Git commit SHA." >&2
+            exit 1
+          fi
+
+          if [[ "$dispatch" != "$expected" ]]; then
+            echo "The dispatched ref resolved to $dispatch, but expected_sha is $expected. STOP before expensive build work." >&2
+            exit 1
+          fi
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Checkout produced $actual, but expected_sha is $expected. STOP before expensive build work." >&2
+            exit 1
+          fi
+
+          echo "Release-candidate source SHA verified: $actual"
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -73,11 +109,13 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xkb1 \
             libxkbcommon-x11-0 \
+            unzip \
             xauth \
-            xvfb
+            xvfb \
+            zip
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r requirements-dev.txt "Nuitka==4.1.3"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
@@ -114,34 +152,75 @@ jobs:
           p=ConfigParser(); p.read('pysidedeploy.spec')
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.png').resolve())
-          p['nuitka']['mode']='onefile'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads'
+          p['nuitka']['mode']='standalone'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build, inspect and smoke packaged Linux binary
+      - name: Build, inspect and smoke packaged Linux standalone tree
         env:
           APP_VERSION: ${{ steps.project_version.outputs.version }}
           PACKAGE_ARCH: ${{ matrix.arch }}
           QT_QPA_PLATFORM: offscreen
           PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
+          set -euo pipefail
+
           mkdir -p dist artifact package roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
-          BIN=$(find dist -type f \( -name 'PlayStoreAppAudit*.bin' -o -name 'main*.bin' -o -name 'PlayStoreAppAudit' \) | head -n 1)
+          test -s compilation-report.xml
+
+          STANDALONE_DIR="$(find dist -maxdepth 1 -type d -name '*.dist' -print -quit)"
+          test -n "$STANDALONE_DIR"
+
+          BIN="$(find "$STANDALONE_DIR" -maxdepth 1 -type f \
+            \( -name 'PlayStoreAppAudit' \
+            -o -name 'PlayStoreAppAudit.bin' \
+            -o -name 'main' \
+            -o -name 'main.bin' \) -print -quit)"
+
           test -n "$BIN"
           test "$(stat -c%s "$BIN")" -gt 1048576
           chmod +x "$BIN"
+
           file "$BIN"
-          ELF_MACHINE="$(readelf -h "$BIN" | awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+
+          ELF_MACHINE="$(readelf -h "$BIN" |
+            awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+
           echo "ELF machine architecture: $ELF_MACHINE"
           test "$ELF_MACHINE" = "${{ matrix.expected_elf_machine }}"
           export PACKAGE_ELF_MACHINE="$ELF_MACHINE"
+
           "$BIN"
 
           PACKAGE_NAME="PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}"
           PACKAGE_DIR="package/$PACKAGE_NAME"
+
           mkdir -p "$PACKAGE_DIR"
-          install -m 0755 "$BIN" "$PACKAGE_DIR/PlayStoreAppAudit"
+          cp -a "$STANDALONE_DIR/." "$PACKAGE_DIR/"
+
+          SOURCE_BIN_NAME="$(basename "$BIN")"
+          PACKAGE_BIN="$PACKAGE_DIR/PlayStoreAppAudit"
+
+          if [ "$SOURCE_BIN_NAME" != "PlayStoreAppAudit" ]; then
+            mv "$PACKAGE_DIR/$SOURCE_BIN_NAME" "$PACKAGE_BIN"
+          fi
+
+          chmod +x "$PACKAGE_BIN"
+          test -x "$PACKAGE_BIN"
+
+          QT_CORE="$(find "$PACKAGE_DIR" -type f             -name 'libQt6Core.so*' -print -quit)"
+          PYSIDE_LIB="$(find "$PACKAGE_DIR" -type f             -name 'libpyside6*.so*' -print -quit)"
+          SHIBOKEN_LIB="$(find "$PACKAGE_DIR" -type f             -name 'libshiboken6*.so*' -print -quit)"
+
+          test -n "$QT_CORE"
+          test -n "$PYSIDE_LIB"
+          test -n "$SHIBOKEN_LIB"
+
+          echo "Qt Core shared library: $QT_CORE"
+          echo "PySide6 shared library: $PYSIDE_LIB"
+          echo "Shiboken6 shared library: $SHIBOKEN_LIB"
+
           python - <<'PY' > "$PACKAGE_DIR/BUILD-INFO.txt"
           import os
           import platform
@@ -157,31 +236,93 @@ jobs:
           print('Runner OS:', os.environ.get('RUNNER_OS', 'unavailable'))
           print('Runner image OS:', os.environ.get('ImageOS', 'unavailable'))
           print('Runner image version:', os.environ.get('ImageVersion', 'unavailable'))
-          print('Build/test host OS:', platform.freedesktop_os_release().get('PRETTY_NAME', platform.platform()))
+          print(
+              'Build/test host OS:',
+              platform.freedesktop_os_release().get(
+                  'PRETTY_NAME',
+                  platform.platform(),
+              ),
+          )
           print('Build/test host kernel:', platform.platform())
           print('Package architecture:', os.environ['PACKAGE_ARCH'])
-          print('ELF machine architecture:', os.environ['PACKAGE_ELF_MACHINE'])
+          print(
+              'ELF machine architecture:',
+              os.environ['PACKAGE_ELF_MACHINE'],
+          )
           print('Build host architecture:', platform.machine())
           print('Python:', sys.version.replace('\n', ' '))
           print('PySide6:', PySide6.__version__)
           print('Nuitka:', version('Nuitka'))
           PY
 
+          LEGAL_RELEASE_DIR="$PWD/artifact/legal-release-v${APP_VERSION}"
+
+          python .github/scripts/prepare_release_legal_bundle.py \
+            --package-dir "$PACKAGE_DIR" \
+            --release-dir "$LEGAL_RELEASE_DIR" \
+            --repo-root "$PWD" \
+            --release-tag "v${APP_VERSION}" \
+            --nuitka-report "$PWD/compilation-report.xml" \
+            --inject
+
+          python .github/scripts/validate_release_legal_bundle.py \
+            --package-dir "$PACKAGE_DIR" \
+            --release-dir "$LEGAL_RELEASE_DIR" \
+            --public
+
+          SOURCE_SUMS="$LEGAL_RELEASE_DIR/source-assets/SHA256SUMS.txt"
+          SOURCE_BUNDLE="$LEGAL_RELEASE_DIR/PlayStoreAppAudit-v${APP_VERSION}-third-party-sources.tar.xz"
+
+          test -s "$SOURCE_SUMS"
+          test -s "$SOURCE_BUNDLE"
+
+          test -f "$PACKAGE_DIR/LICENSE"
+          test -f "$PACKAGE_DIR/THIRD_PARTY_NOTICES.md"
+          test -f "$PACKAGE_DIR/SOURCE-AVAILABILITY.md"
+          test -d "$PACKAGE_DIR/licenses"
+
+          test ! -e "$PACKAGE_DIR/LEGAL-MANIFEST.json"
+          test ! -e "$PACKAGE_DIR/validation-evidence"
+
           ARCHIVE="$PWD/artifact/$PACKAGE_NAME.zip"
+
           (
             cd package
             zip -qr "$ARCHIVE" "$PACKAGE_NAME"
           )
+
           test "$(stat -c%s "$ARCHIVE")" -gt 1048576
+
           unzip -q "$ARCHIVE" -d roundtrip
-          ROUNDTRIP_BIN="roundtrip/$PACKAGE_NAME/PlayStoreAppAudit"
+
+          ROUNDTRIP_DIR="roundtrip/$PACKAGE_NAME"
+          ROUNDTRIP_BIN="$ROUNDTRIP_DIR/PlayStoreAppAudit"
+
           test -x "$ROUNDTRIP_BIN"
-          test -f "roundtrip/$PACKAGE_NAME/BUILD-INFO.txt"
-          ROUNDTRIP_MACHINE="$(readelf -h "$ROUNDTRIP_BIN" | awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+          test -f "$ROUNDTRIP_DIR/BUILD-INFO.txt"
+
+          test -f "$ROUNDTRIP_DIR/LICENSE"
+          test -f "$ROUNDTRIP_DIR/THIRD_PARTY_NOTICES.md"
+          test -f "$ROUNDTRIP_DIR/SOURCE-AVAILABILITY.md"
+          test -d "$ROUNDTRIP_DIR/licenses"
+
+          test ! -e "$ROUNDTRIP_DIR/LEGAL-MANIFEST.json"
+          test ! -e "$ROUNDTRIP_DIR/validation-evidence"
+
+          test -n "$(find "$ROUNDTRIP_DIR" -type f             -name 'libQt6Core.so*' -print -quit)"
+          test -n "$(find "$ROUNDTRIP_DIR" -type f             -name 'libpyside6*.so*' -print -quit)"
+          test -n "$(find "$ROUNDTRIP_DIR" -type f             -name 'libshiboken6*.so*' -print -quit)"
+
+          ROUNDTRIP_MACHINE="$(readelf -h "$ROUNDTRIP_BIN" |
+            awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+
           test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
-          timeout 30s xvfb-run -a env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+
+          timeout 30s xvfb-run -a             env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+
           sha256sum "$ARCHIVE"
           ls -lh artifact/*
+
       - uses: actions/upload-artifact@v7
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
@@ -204,7 +345,39 @@ jobs:
             expected_macho_arch: x86_64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify requested build commit
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          expected="$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')"
+          dispatch="$(printf '%s' "$DISPATCH_SHA" | tr '[:upper:]' '[:lower:]')"
+          actual="$(git rev-parse HEAD | tr '[:upper:]' '[:lower:]')"
+
+          if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "expected_sha must be a full 40-character Git commit SHA." >&2
+            exit 1
+          fi
+
+          if [[ "$dispatch" != "$expected" ]]; then
+            echo "The dispatched ref resolved to $dispatch, but expected_sha is $expected. STOP before expensive build work." >&2
+            exit 1
+          fi
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "Checkout produced $actual, but expected_sha is $expected. STOP before expensive build work." >&2
+            exit 1
+          fi
+
+          echo "Release-candidate source SHA verified: $actual"
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -221,7 +394,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r requirements-dev.txt "Nuitka==4.1.3"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
@@ -267,7 +440,7 @@ jobs:
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
           version = os.environ['APP_VERSION']
-          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads'
+          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
       - name: Build, inspect and smoke packaged macOS app
@@ -279,6 +452,7 @@ jobs:
         run: |
           mkdir -p dist artifact roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
+          test -s compilation-report.xml
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
@@ -340,9 +514,45 @@ jobs:
           print('Nuitka:', version('Nuitka'))
           print('Signing: ad-hoc CI signature only; not Apple-notarized')
           PY
+
+          LEGAL_RELEASE_DIR="$PWD/artifact/legal-release-v${APP_VERSION}"
+
+          python .github/scripts/prepare_release_legal_bundle.py \
+            --package-dir "$APP" \
+            --release-dir "$LEGAL_RELEASE_DIR" \
+            --repo-root "$PWD" \
+            --release-tag "v${APP_VERSION}" \
+            --nuitka-report "$PWD/compilation-report.xml" \
+            --inject
+
+          test -f "$APP/Contents/Resources/LICENSE"
+          test -f "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
+          test -f "$APP/Contents/Resources/SOURCE-AVAILABILITY.md"
+          test -d "$APP/Contents/Resources/licenses"
+
+          test ! -e "$APP/Contents/Resources/LEGAL-MANIFEST.json"
+          test ! -e "$APP/Contents/Resources/validation-evidence"
+
           codesign --force --deep --sign - "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           "$EXEC"
+
+          python .github/scripts/prepare_release_legal_bundle.py \
+            --package-dir "$APP" \
+            --release-dir "$LEGAL_RELEASE_DIR" \
+            --refresh-runtime-evidence
+
+          python .github/scripts/validate_release_legal_bundle.py \
+            --package-dir "$APP" \
+            --release-dir "$LEGAL_RELEASE_DIR" \
+            --public
+
+          SOURCE_SUMS="$LEGAL_RELEASE_DIR/source-assets/SHA256SUMS.txt"
+          SOURCE_BUNDLE="$LEGAL_RELEASE_DIR/PlayStoreAppAudit-v${APP_VERSION}-third-party-sources.tar.xz"
+
+          test -s "$SOURCE_SUMS"
+          test -s "$SOURCE_BUNDLE"
+
           ZIP="artifact/PlayStoreAppAudit-v${APP_VERSION}-macos-${PACKAGE_ARCH}.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
           test "$(stat -f%z "$ZIP")" -gt 1048576
@@ -350,6 +560,14 @@ jobs:
           RAPP=$(find roundtrip -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$RAPP"
           test -f "$RAPP/Contents/Resources/BUILD-INFO.txt"
+
+          test -f "$RAPP/Contents/Resources/LICENSE"
+          test -f "$RAPP/Contents/Resources/THIRD_PARTY_NOTICES.md"
+          test -f "$RAPP/Contents/Resources/SOURCE-AVAILABILITY.md"
+          test -d "$RAPP/Contents/Resources/licenses"
+
+          test ! -e "$RAPP/Contents/Resources/LEGAL-MANIFEST.json"
+          test ! -e "$RAPP/Contents/Resources/validation-evidence"
           cmp "$BUNDLE_BUILD_INFO" "$RAPP/Contents/Resources/BUILD-INFO.txt"
           RPLIST="$RAPP/Contents/Info.plist"
           plutil -lint "$RPLIST"
@@ -365,7 +583,6 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$RAPP"
           "$REXEC"
           shasum -a 256 "$ZIP"
-          cp "$BUNDLE_BUILD_INFO" "artifact/BUILD-INFO-${PACKAGE_ARCH}.txt"
           ls -lh artifact/*
       - uses: actions/upload-artifact@v7
         with:

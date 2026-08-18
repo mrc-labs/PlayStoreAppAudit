@@ -14,10 +14,14 @@ from prepare_release_legal_bundle import (
     LEGAL_ROOT_DIRS,
     LEGAL_ROOT_FILES,
     MANIFEST_SCHEMA_VERSION,
+    _bundled_adb_paths,
     _canonical_json_sha256,
     _forbidden_matches,
+    _host_platform_key,
+    _is_openssl_runtime_name,
     _normalize_dist_name,
     _runtime_inventory,
+    _runtime_legal_root,
     _sha256,
 )
 from release_asset_layout import (
@@ -62,6 +66,16 @@ def _require(condition: bool, message: str) -> None:
         raise ValidationError(message)
 
 
+def _runtime_legal_path(
+    package_dir: Path,
+    relative: str | PurePosixPath,
+) -> Path:
+    return (
+        _runtime_legal_root(package_dir)
+        / PurePosixPath(relative)
+    )
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -92,42 +106,90 @@ def _validate_portable_manifest(manifest: dict[str, Any]) -> None:
             raise ValidationError(f"Manifest path/value is not portable POSIX-style text at {json_path}: {value}")
 
 
-def _validate_required_files(package_dir: Path, package_legal_dir: Path) -> None:
+def _validate_required_files(
+    package_dir: Path,
+    package_legal_dir: Path,
+) -> None:
+    runtime_legal_root = _runtime_legal_root(package_dir)
+
     for name in sorted(REQUIRED_PACKAGE_FILES):
-        package_path = package_dir / name
+        package_path = runtime_legal_root / name
         staged_path = package_legal_dir / name
-        _require(package_path.is_file(), f"Package legal file missing: {name}")
-        _require(staged_path.is_file(), f"Staged package legal file missing: {name}")
+
+        _require(
+            package_path.is_file(),
+            f"Package legal file missing: {name}",
+        )
+        _require(
+            staged_path.is_file(),
+            f"Staged package legal file missing: {name}",
+        )
         _require(
             package_path.read_bytes() == staged_path.read_bytes(),
             f"Package/staged legal file mismatch: {name}",
         )
-    staged_manifest = package_legal_dir / "LEGAL-MANIFEST.json"
-    package_manifest = package_dir / "LEGAL-MANIFEST.json"
+
+    staged_manifest = (
+        package_legal_dir / "LEGAL-MANIFEST.json"
+    )
+
+    packaged_manifests = [
+        item
+        for item in package_dir.rglob("LEGAL-MANIFEST.json")
+        if item.is_file()
+    ]
 
     _require(
         staged_manifest.is_file(),
         "Staged LEGAL-MANIFEST.json is missing",
     )
     _require(
-        not package_manifest.exists(),
-        "LEGAL-MANIFEST.json is validation evidence and must not ship",
+        not packaged_manifests,
+        "LEGAL-MANIFEST.json is validation evidence "
+        "and must not ship",
     )
 
-    _require((package_dir / "licenses").is_dir(), "Package licenses/ directory is missing")
-    _require((package_legal_dir / "licenses").is_dir(), "Staged licenses/ directory is missing")
+    _require(
+        (runtime_legal_root / "licenses").is_dir(),
+        "Package licenses/ directory is missing",
+    )
+    _require(
+        (package_legal_dir / "licenses").is_dir(),
+        "Staged licenses/ directory is missing",
+    )
 
 
-def _validate_markdown_paths(package_dir: Path) -> None:
-    for name in ("THIRD_PARTY_NOTICES.md", "SOURCE-AVAILABILITY.md"):
-        text = (package_dir / name).read_text(encoding="utf-8")
-        _require("](../" not in text and "](..\\" not in text, f"Broken parent-relative link found in {name}")
-        _require("SOURCE-OFFER.md" not in text, f"Obsolete SOURCE-OFFER.md reference found in {name}")
+def _validate_markdown_paths(
+    package_dir: Path,
+) -> None:
+    runtime_legal_root = _runtime_legal_root(package_dir)
+
+    for name in (
+        "THIRD_PARTY_NOTICES.md",
+        "SOURCE-AVAILABILITY.md",
+    ):
+        text = (
+            runtime_legal_root / name
+        ).read_text(encoding="utf-8")
+
+        _require(
+            "](../" not in text
+            and "](..\\" not in text,
+            f"Broken parent-relative link found in {name}",
+        )
+        _require(
+            "SOURCE-OFFER.md" not in text,
+            f"Obsolete SOURCE-OFFER.md reference found in {name}",
+        )
 
 
 def _validate_runtime_inventory(package_dir: Path, manifest: dict[str, Any]) -> None:
     package = manifest.get("package")
     _require(isinstance(package, dict), "Manifest package object is missing")
+    _require(
+        package.get("platform") == _host_platform_key(),
+        "Manifest package platform does not match the release host",
+    )
     recorded = package.get("runtime_inventory")
     _require(isinstance(recorded, list), "Manifest runtime_inventory is missing")
     current = _runtime_inventory(package_dir)
@@ -150,25 +212,21 @@ def _validate_runtime_inventory(package_dir: Path, manifest: dict[str, Any]) -> 
 def _validate_forbidden_runtime(package_dir: Path, manifest: dict[str, Any]) -> None:
     matches = _forbidden_matches(package_dir)
     _require(not matches, f"Forbidden runtime components detected: {matches}")
-    adb_files = [
-        path
-        for path in package_dir.rglob("*")
-        if path.is_file() and path.name.casefold() in {"adb.exe", "adbwinapi.dll", "adbwinusbapi.dll"}
-    ]
+    adb_files = _bundled_adb_paths(package_dir)
     _require(not adb_files, f"Android Platform-Tools files are unexpectedly bundled: {adb_files}")
     policy = manifest.get("policy")
     _require(isinstance(policy, dict), "Manifest policy object is missing")
     _require(policy.get("forbidden_runtime_matches") == [], "Manifest must record no forbidden runtime matches")
     _require(policy.get("adb_bundled") is False, "Manifest must record adb_bundled=false")
     _require(
-        policy.get("final_msvc_revalidation_required") is True,
-        "Manifest must preserve final MSVC revalidation requirement",
+        policy.get("final_artifact_revalidation_required") is True,
+        "Manifest must preserve final artifact revalidation requirement",
     )
 
 
 def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) -> None:
     for rel in sorted(REQUIRED_QT_COMMUNITY_LICENSES):
-        _require((package_dir / PurePosixPath(rel)).is_file(), f"Required Qt community license missing: {rel}")
+        _require(_runtime_legal_path(package_dir, rel).is_file(), f"Required Qt community license missing: {rel}")
 
     qt = manifest.get("qt")
     _require(isinstance(qt, dict), "Manifest qt object is missing")
@@ -219,7 +277,10 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
             f"Qt license mapping has invalid SHA-256: {mapping}",
         )
 
-        bundled_path = package_dir / PurePosixPath(bundled_rel)
+        bundled_path = _runtime_legal_path(
+            package_dir,
+            bundled_rel,
+        )
 
         _require(
             bundled_path.is_file(),
@@ -289,10 +350,15 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
         if rel.startswith("licenses/qt-third-party/")
     }
 
-    canonical_root = package_dir / "licenses" / "qt-third-party"
+    runtime_legal_root = _runtime_legal_root(package_dir)
+    canonical_root = (
+        runtime_legal_root
+        / "licenses"
+        / "qt-third-party"
+    )
     canonical_actual = (
         {
-            path.relative_to(package_dir).as_posix()
+            path.relative_to(runtime_legal_root).as_posix()
             for path in canonical_root.iterdir()
             if path.is_file()
         }
@@ -329,7 +395,10 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
         )
     _require(qt_python_seen == QT_PYTHON_DISTS, "PySide6_Essentials and shiboken6 must both be inventoried")
 
-    notices = (package_dir / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    notices = _runtime_legal_path(
+        package_dir,
+        "THIRD_PARTY_NOTICES.md",
+    ).read_text(encoding="utf-8")
     _require("Distribution basis" in notices, "Third-party notices must state the Qt distribution basis")
     _require("LGPL library replacement" in notices, "Third-party notices must include LGPL replacement instructions")
     _require(
@@ -367,7 +436,10 @@ def _validate_qt_attributions(
         "Qt attribution_license_mappings must be a list",
     )
 
-    raw_root = package_dir / "licenses" / "qt-attributions"
+    raw_root = _runtime_legal_path(
+        package_dir,
+        "licenses/qt-attributions",
+    )
     raw_files = (
         [path for path in raw_root.rglob("*") if path.is_file()]
         if raw_root.is_dir()
@@ -419,7 +491,10 @@ def _validate_qt_attributions(
             f"Duplicate Qt attribution license mapping: {key}",
         )
 
-        bundled_path = package_dir / PurePosixPath(bundled_rel)
+        bundled_path = _runtime_legal_path(
+            package_dir,
+            bundled_rel,
+        )
         _require(
             bundled_path.is_file(),
             f"Qt attribution license file is missing: {bundled_rel}",
@@ -568,7 +643,10 @@ def _validate_qt_attributions(
         "Qt human_readable_attributions path is missing",
     )
 
-    human_path = package_dir / PurePosixPath(human_rel)
+    human_path = _runtime_legal_path(
+        package_dir,
+        human_rel,
+    )
     _require(
         human_path.is_file(),
         f"Human-readable Qt attribution output missing: {human_rel}",
@@ -627,7 +705,7 @@ def _validate_nuitka_build_evidence(
     )
 
     packaged_evidence_root = (
-        package_dir
+        _runtime_legal_root(package_dir)
         / "licenses"
         / "build-evidence"
     )
@@ -785,7 +863,7 @@ def _validate_dependency_evidence(
 
         for rel in item.get("license_files") or []:
             _require(
-                (package_dir / PurePosixPath(rel)).is_file(),
+                _runtime_legal_path(package_dir, rel).is_file(),
                 f"Dependency license file missing: {rel}",
             )
 
@@ -795,21 +873,26 @@ def _validate_openssl(package_dir: Path, manifest: dict[str, Any]) -> None:
         path.relative_to(package_dir).as_posix()
         for path in package_dir.rglob("*")
         if path.is_file()
-        and path.name.casefold().startswith(("libssl-", "libcrypto-"))
-        and path.suffix.casefold() == ".dll"
+        and _is_openssl_runtime_name(path.name)
     )
     openssl = manifest.get("toolchain", {}).get("openssl")
     if runtime_openssl:
-        _require(isinstance(openssl, dict), "OpenSSL DLLs are packaged but manifest OpenSSL metadata is missing")
+        _require(isinstance(openssl, dict), "OpenSSL runtime libraries are packaged but manifest OpenSSL metadata is missing")
         _require(
             sorted(openssl.get("runtime_files") or []) == runtime_openssl,
-            "OpenSSL manifest runtime_files do not match packaged DLLs",
+            "OpenSSL manifest runtime_files do not match packaged libraries",
         )
         license_rel = openssl.get("license_file")
         _require(isinstance(license_rel, str), "OpenSSL license path is missing")
-        _require((package_dir / PurePosixPath(license_rel)).is_file(), f"OpenSSL license missing: {license_rel}")
+        _require(
+            _runtime_legal_path(
+                package_dir,
+                license_rel,
+            ).is_file(),
+            f"OpenSSL license missing: {license_rel}",
+        )
     else:
-        _require(openssl is None, "Manifest declares OpenSSL although no OpenSSL DLLs are packaged")
+        _require(openssl is None, "Manifest declares OpenSSL although no OpenSSL runtime libraries are packaged")
 
 
 def _parse_sha256s(path: Path) -> dict[str, str]:
@@ -972,7 +1055,10 @@ def _validate_source_assets(
         ) from exc
 
     availability = (
-        package_dir / "SOURCE-AVAILABILITY.md"
+        _runtime_legal_path(
+            package_dir,
+            "SOURCE-AVAILABILITY.md",
+        )
     ).read_text(encoding="utf-8")
 
     _require(
@@ -1001,7 +1087,10 @@ def _validate_staged_tree(package_dir: Path, package_legal_dir: Path) -> None:
         if rel == "LEGAL-MANIFEST.json":
             continue
 
-        package_path = package_dir / PurePosixPath(rel)
+        package_path = _runtime_legal_path(
+            package_dir,
+            rel,
+        )
         _require(package_path.is_file(), f"Generated package legal file was not injected: {rel}")
         _require(_sha256(package_path) == digest, f"Injected package legal file differs from staging: {rel}")
 
