@@ -167,18 +167,20 @@ jobs:
           print('Nuitka:', version('Nuitka'))
           PY
 
-          ARCHIVE="artifact/$PACKAGE_NAME.tar.gz"
-          tar -czf "$ARCHIVE" -C package "$PACKAGE_NAME"
+          ARCHIVE="$PWD/artifact/$PACKAGE_NAME.zip"
+          (
+            cd package
+            zip -qr "$ARCHIVE" "$PACKAGE_NAME"
+          )
           test "$(stat -c%s "$ARCHIVE")" -gt 1048576
-          tar -xzf "$ARCHIVE" -C roundtrip
+          unzip -q "$ARCHIVE" -d roundtrip
           ROUNDTRIP_BIN="roundtrip/$PACKAGE_NAME/PlayStoreAppAudit"
           test -x "$ROUNDTRIP_BIN"
           test -f "roundtrip/$PACKAGE_NAME/BUILD-INFO.txt"
           ROUNDTRIP_MACHINE="$(readelf -h "$ROUNDTRIP_BIN" | awk -F: '/Machine:/{sub(/^[[:space:]]+/, "", $2); print $2; exit}')"
           test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
           timeout 30s xvfb-run -a env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
-          (cd artifact && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
-          (cd artifact && sha256sum -c "$(basename "$ARCHIVE").sha256")
+          sha256sum "$ARCHIVE"
           ls -lh artifact/*
       - uses: actions/upload-artifact@v7
         with:
@@ -341,7 +343,7 @@ jobs:
           codesign --force --deep --sign - "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           "$EXEC"
-          ZIP="artifact/PlayStoreAppAudit-v${APP_VERSION}-macOS-${PACKAGE_ARCH}.zip"
+          ZIP="artifact/PlayStoreAppAudit-v${APP_VERSION}-macos-${PACKAGE_ARCH}.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
           test "$(stat -f%z "$ZIP")" -gt 1048576
           ditto -x -k "$ZIP" roundtrip
@@ -362,13 +364,12 @@ jobs:
           test "$ROUNDTRIP_ARCHES" = "${{ matrix.expected_macho_arch }}"
           codesign --verify --deep --strict --verbose=2 "$RAPP"
           "$REXEC"
-          (cd artifact && shasum -a 256 "$(basename "$ZIP")" > "$(basename "$ZIP").sha256")
-          (cd artifact && shasum -a 256 -c "$(basename "$ZIP").sha256")
+          shasum -a 256 "$ZIP"
           cp "$BUNDLE_BUILD_INFO" "artifact/BUILD-INFO-${PACKAGE_ARCH}.txt"
           ls -lh artifact/*
       - uses: actions/upload-artifact@v7
         with:
-          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macOS-${{ matrix.arch }}
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
           retention-days: 30

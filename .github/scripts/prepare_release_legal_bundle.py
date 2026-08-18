@@ -31,16 +31,16 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import certifi
+from legal_payload_store import store_canonical_legal_payload
+from release_asset_layout import build_third_party_source_bundle
 
 APP_NAME = "Play Store App Audit"
 PROJECT_REPOSITORY = "https://github.com/mrc-labs/PlayStoreAppAudit"
 PROJECT_LICENSE = "GPL-3.0-only"
-MANIFEST_SCHEMA_VERSION = 1
+MANIFEST_SCHEMA_VERSION = 2
 
 LEGAL_ROOT_FILES = {
     "LICENSE",
-    "COMMERCIAL-LICENSING.md",
-    "LICENSING.md",
     "THIRD_PARTY_NOTICES.md",
     "SOURCE-AVAILABILITY.md",
     "LEGAL-MANIFEST.json",
@@ -486,6 +486,23 @@ def _extract_tar_member(archive: Path, member_name: str, destination: Path) -> N
             shutil.copyfileobj(source, output)
 
 
+
+def _read_tar_member_bytes(
+    archive: Path,
+    member_name: str,
+) -> bytes:
+    with tarfile.open(archive, mode="r:xz") as handle:
+        member = handle.getmember(member_name)
+        source = handle.extractfile(member)
+
+        if source is None:
+            raise RuntimeError(
+                f"Cannot read {member_name} from {archive.name}"
+            )
+
+        return source.read()
+
+
 def _normalize_qt_archive_candidate(
     candidate: PurePosixPath,
 ) -> PurePosixPath | None:
@@ -586,9 +603,16 @@ def _extract_qt_legal_material(
     component: str,
     archive: Path,
     licenses_root: Path,
-) -> tuple[list[str], list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[
+    list[str],
+    list[dict[str, Any]],
+    list[str],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
     license_files: list[str] = []
-    attribution_files: list[str] = []
+    license_mappings: list[dict[str, Any]] = []
+    attribution_sources: list[str] = []
     attribution_records: list[dict[str, Any]] = []
     attribution_license_mappings: list[dict[str, Any]] = []
     members = _tar_members(archive)
@@ -597,31 +621,80 @@ def _extract_qt_legal_material(
         for member in members
     }
 
+    stable_pyside_community_licenses = {
+        "LGPL-3.0-only.txt",
+        "GPL-2.0-only.txt",
+        "GPL-3.0-only.txt",
+        "Qt-GPL-exception-1.0.txt",
+    }
+
     bundled_by_archive_rel: dict[str, str] = {}
+
     for member in members:
         rel = _strip_archive_root(member.name)
+
         if "LICENSES" not in rel.parts:
             continue
+
         licenses_index = rel.parts.index("LICENSES")
         tail = PurePosixPath(*rel.parts[licenses_index + 1 :])
-        destination = licenses_root / "qt" / component / tail
-        _extract_tar_member(archive, member.name, destination)
-        bundled_rel = _safe_relpath(destination, licenses_root.parent)
+
+        preserve_stable_path = (
+            component == "pyside-setup"
+            and tail.as_posix() in stable_pyside_community_licenses
+        )
+
+        if preserve_stable_path:
+            destination = licenses_root / "qt" / component / tail
+            _extract_tar_member(
+                archive,
+                member.name,
+                destination,
+            )
+            bundled_rel = _safe_relpath(
+                destination,
+                licenses_root.parent,
+            )
+            digest = _sha256(destination)
+        else:
+            payload = _read_tar_member_bytes(
+                archive,
+                member.name,
+            )
+            bundled_rel, digest = store_canonical_legal_payload(
+                licenses_root,
+                payload,
+            )
+
         license_files.append(bundled_rel)
         bundled_by_archive_rel[rel.as_posix()] = bundled_rel
+
+        license_mappings.append(
+            {
+                "source_member": (
+                    f"{component}/{rel.as_posix()}"
+                ),
+                "bundled_file": bundled_rel,
+                "sha256": digest,
+            }
+        )
 
     for member in members:
         if PurePosixPath(member.name).name != "qt_attribution.json":
             continue
         rel = _strip_archive_root(member.name)
-        destination = licenses_root / "qt-attributions" / component / rel
-        _extract_tar_member(archive, member.name, destination)
-        attribution_bundle_rel = _safe_relpath(destination, licenses_root.parent)
-        attribution_files.append(attribution_bundle_rel)
+        attribution_source = f"{component}/{rel.as_posix()}"
+        attribution_sources.append(attribution_source)
+
         try:
-            # Qt upstream attribution metadata can contain literal control characters inside strings.
+            # Qt upstream attribution metadata can contain literal
+            # control characters inside strings.
             data = json.loads(
-                destination.read_text(encoding="utf-8"), strict=False
+                _read_tar_member_bytes(
+                    archive,
+                    member.name,
+                ).decode("utf-8"),
+                strict=False,
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Invalid Qt attribution JSON: {component}/{rel}") from exc
@@ -647,22 +720,19 @@ def _extract_qt_legal_material(
                 source_key = source_rel.as_posix()
                 bundled_rel = bundled_by_archive_rel.get(source_key)
                 if bundled_rel is None:
-                    bundled_destination = (
-                        licenses_root
-                        / "qt-attribution-licenses"
-                        / component
-                        / source_rel
+                    payload = _read_tar_member_bytes(
+                        archive,
+                        member_name,
                     )
-                    if not bundled_destination.is_file():
-                        _extract_tar_member(archive, member_name, bundled_destination)
-                    bundled_rel = _safe_relpath(
-                        bundled_destination, licenses_root.parent
+                    bundled_rel, _ = store_canonical_legal_payload(
+                        licenses_root,
+                        payload,
                     )
                     bundled_by_archive_rel[source_key] = bundled_rel
                 bundled_for_record.append(bundled_rel)
                 attribution_license_mappings.append(
                     {
-                        "attribution_file": attribution_bundle_rel,
+                        "attribution_source": attribution_source,
                         "record_index": record_index,
                         "reference": reference,
                         "source_member": f"{component}/{source_rel.as_posix()}",
@@ -673,7 +743,8 @@ def _extract_qt_legal_material(
             attribution_records.append(
                 {
                     "component": component,
-                    "source": f"{component}/{rel.as_posix()}",
+                    "source": attribution_source,
+                    "record_index": record_index,
                     "data": record,
                     "bundled_license_files": sorted(
                         set(bundled_for_record), key=str.casefold
@@ -683,12 +754,16 @@ def _extract_qt_legal_material(
 
     return (
         sorted(set(license_files), key=str.casefold),
-        sorted(set(attribution_files), key=str.casefold),
+        sorted(
+            license_mappings,
+            key=lambda item: item["source_member"].casefold(),
+        ),
+        sorted(set(attribution_sources), key=str.casefold),
         attribution_records,
         sorted(
             attribution_license_mappings,
             key=lambda item: (
-                item["attribution_file"].casefold(),
+                item["attribution_source"].casefold(),
                 item["record_index"],
                 item["reference"].casefold(),
             ),
@@ -701,8 +776,9 @@ def _render_qt_attributions(records: list[dict[str, Any]]) -> str:
         "===========================",
         "",
         "This file is generated from qt_attribution.json metadata contained in the exact",
-        "Qt/PySide source archives staged for this release. The raw JSON files are preserved",
-        "under licenses/qt-attributions/.",
+        "Qt/PySide source archives staged for this release. Parsed attribution records and",
+        "source provenance are retained in release validation evidence; original metadata remains",
+        "available in the exact upstream source archives.",
         "",
     ]
     field_order = [
@@ -819,15 +895,14 @@ def _compiled_module_evidence(
 
 
 def _write_nuitka_build_evidence(
-    package_legal_dir: Path,
+    release_dir: Path,
     report_path: Path,
     nuitka_version: str,
     report_modules: list[dict[str, str]],
 ) -> tuple[str, str]:
     destination = (
-        package_legal_dir
-        / "licenses"
-        / "build-evidence"
+        release_dir
+        / "validation-evidence"
         / "NUITKA-COMPILATION-EVIDENCE.json"
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -848,7 +923,7 @@ def _write_nuitka_build_evidence(
     )
 
     return (
-        _safe_relpath(destination, package_legal_dir),
+        _safe_relpath(destination, release_dir),
         _sha256(destination),
     )
 
@@ -973,97 +1048,39 @@ def _copy_openssl_license(
     )
 
 
-def _write_release_licensing(package_legal_dir: Path) -> None:
-    text = f"""# Licensing model
-
-## Project code
-
-{APP_NAME}'s own code is licensed to the public under the GNU General Public License
-version 3 only (`GPL-3.0-only`). The complete GPLv3 text is in [LICENSE](LICENSE).
-
-GPLv3 permits commercial use. A business does not need a separate commercial license simply
-because it uses the software commercially. GPLv3 conditions apply when covered copies or
-modified versions are conveyed.
-
-## Alternative commercial licensing
-
-The project owner may separately offer rights in project-owned code under proprietary or
-commercial terms. See [COMMERCIAL-LICENSING.md](COMMERCIAL-LICENSING.md).
-
-Those alternative terms do not relicense Qt, PySide6, Shiboken6, CPython, OpenSSL or other
-third-party software.
-
-## Contributions
-
-Contribution rules and the Contributor License Agreement are maintained in the public project
-repository: {PROJECT_REPOSITORY}/blob/main/CONTRIBUTING.md and
-{PROJECT_REPOSITORY}/blob/main/CLA.md.
-
-## Third-party software
-
-Third-party components retain their own licenses. The Windows standalone package therefore
-contains third-party notices and license texts under `licenses/`, plus corresponding-source
-availability information where required.
-
-Qt/PySide shared libraries and plugins remain separate files. Unwanted components, including
-Qt Virtual Keyboard, are excluded and validated during public release packaging.
-
-## Corresponding source
-
-For public binary releases, required corresponding-source assets must match the exact component
-versions in the final binary artifact. Publication remains blocked until those source assets,
-the final runtime inventory and legal notices are validated against the exact final CI build.
-
-## Trademarks and affiliation
-
-Third-party product names and trademarks are used descriptively. {APP_NAME} is not affiliated
-with or endorsed by Google, Android, Google Play, The Qt Company, or other third-party vendors
-whose products or services are referenced by the application.
-"""
-    (package_legal_dir / "LICENSING.md").write_text(text, encoding="utf-8", newline="\n")
-
-
 def _write_source_availability(
     package_legal_dir: Path,
     version: str,
     release_tag: str,
-    assets: list[dict[str, Any]],
+    source_bundle: dict[str, Any],
 ) -> None:
     release_url = f"{PROJECT_REPOSITORY}/releases/tag/{release_tag}"
+
     lines = [
         "# Third-party corresponding source availability",
         "",
         f"This notice applies to {APP_NAME} v{version} binary releases.",
         "",
-        "The exact source archives corresponding to the LGPL-covered Qt/PySide components",
-        "distributed with the Windows package, and the official MPL-covered certifi source",
-        "distribution, are provided as release assets alongside the binary package.",
+        "Required corresponding source for redistributed LGPL/MPL third-party",
+        "components is provided in one release-wide archive:",
+        "",
+        f"- `{source_bundle['filename']}`",
+        f"- SHA-256 `{source_bundle['sha256']}`",
         "",
         f"Release location: {release_url}",
         "",
-        "## Third-party source assets",
+        "The bundle contains its own README, internal SHA256SUMS.txt and the",
+        "exact unmodified upstream source archives under sources/.",
+        "",
+        f"The GPL-covered {APP_NAME} source corresponding to the application",
+        f"binary must also be available from the exact `{release_tag}` tag.",
         "",
     ]
-    for asset in assets:
-        lines.append(f"- `{asset['filename']}` - SHA-256 `{asset['sha256']}`")
-    lines.extend(
-        [
-            "",
-            "Qt/PySide source archives are the exact unmodified upstream archives. The certifi",
-            "asset is the official PyPI source distribution for the exact installed version.",
-            "",
-            f"The GPL-covered {APP_NAME} source corresponding to the application binary must be",
-            f"available from the exact `{release_tag}` tag before the binary is published.",
-            "The public release process must verify project-source availability separately from",
-            "these third-party source assets.",
-            "",
-            "The binary release must not be published until every source asset listed above is",
-            "present at the release location and its SHA-256 matches this notice.",
-            "",
-        ]
-    )
+
     (package_legal_dir / "SOURCE-AVAILABILITY.md").write_text(
-        "\n".join(lines), encoding="utf-8", newline="\n"
+        "\n".join(lines),
+        encoding="utf-8",
+        newline="\n",
     )
 
 
@@ -1093,8 +1110,8 @@ def _write_third_party_notices(
         "- `LicenseRef-Qt-Commercial.txt`, if present in the upstream source archive, documents an",
         "  alternative upstream licensing option and is not the license basis used for this package.",
         "- Qt Virtual Keyboard is intentionally excluded.",
-        "- Exact Qt/PySide source license material and raw attribution metadata are under",
-        "  `licenses/qt/` and `licenses/qt-attributions/`.",
+        "- Qt community license texts and canonical third-party legal payloads are under",
+        "  `licenses/qt/` and `licenses/qt-third-party/`.",
         "- A human-readable attribution rendering is in `licenses/QT-ATTRIBUTIONS.txt`.",
         "",
         "### LGPL library replacement",
@@ -1183,7 +1200,12 @@ def _write_sha256s(source_assets_dir: Path, assets: list[dict[str, Any]]) -> Non
 
 
 def _copy_package_legal_into_runtime(package_legal_dir: Path, package_dir: Path) -> None:
+    staging_only = {"LEGAL-MANIFEST.json"}
+
     for item in package_legal_dir.iterdir():
+        if item.name in staging_only:
+            continue
+
         destination = package_dir / item.name
         if item.is_dir():
             if destination.exists():
@@ -1258,8 +1280,6 @@ def main() -> int:
     licenses_root.mkdir(parents=True)
 
     shutil.copy2(repo_root / "LICENSE", package_legal_dir / "LICENSE")
-    shutil.copy2(repo_root / "COMMERCIAL-LICENSING.md", package_legal_dir / "COMMERCIAL-LICENSING.md")
-    _write_release_licensing(package_legal_dir)
 
     source_specs = [_qt_source_spec(component, pyside_version) for component in qt_components]
     certifi_version = metadata.version("certifi")
@@ -1271,7 +1291,8 @@ def main() -> int:
 
     source_assets: list[dict[str, Any]] = []
     qt_license_files: list[str] = []
-    qt_attribution_files: list[str] = []
+    qt_license_mappings: list[dict[str, Any]] = []
+    qt_attribution_sources: list[str] = []
     qt_attribution_records: list[dict[str, Any]] = []
     qt_attribution_license_mappings: list[dict[str, Any]] = []
     qt_source_components: list[dict[str, Any]] = []
@@ -1290,19 +1311,31 @@ def main() -> int:
         source_assets.append(entry)
         if spec.component == "certifi":
             continue
-        licenses, attributions, records, license_mappings = _extract_qt_legal_material(
-            spec.component, destination, licenses_root
+        (
+            licenses,
+            license_mappings,
+            attributions,
+            records,
+            attribution_license_mappings,
+        ) = _extract_qt_legal_material(
+            spec.component,
+            destination,
+            licenses_root,
         )
+
         qt_license_files.extend(licenses)
-        qt_attribution_files.extend(attributions)
+        qt_license_mappings.extend(license_mappings)
+        qt_attribution_sources.extend(attributions)
         qt_attribution_records.extend(records)
-        qt_attribution_license_mappings.extend(license_mappings)
+        qt_attribution_license_mappings.extend(
+            attribution_license_mappings
+        )
         qt_source_components.append(
             {
                 "component": spec.component,
                 "source_asset": spec.filename,
                 "license_files_extracted": len(licenses),
-                "attribution_files_extracted": len(attributions),
+                "attribution_sources_found": len(attributions),
             }
         )
 
@@ -1393,7 +1426,7 @@ def main() -> int:
 
     build_evidence_rel, build_evidence_sha256 = (
         _write_nuitka_build_evidence(
-            package_legal_dir,
+            release_dir,
             nuitka_report,
             report_nuitka_version,
             report_modules,
@@ -1419,7 +1452,26 @@ def main() -> int:
             "license_source": openssl_source,
         }
 
-    _write_source_availability(package_legal_dir, version, release_tag, source_assets)
+    _write_sha256s(source_assets_dir, source_assets)
+
+    source_bundle = build_third_party_source_bundle(
+        source_assets_dir,
+        release_dir,
+        version,
+        source_assets,
+    )
+
+    _write_source_availability(
+        package_legal_dir,
+        version,
+        release_tag,
+        {
+            "filename": source_bundle.name,
+            "sha256": _sha256(source_bundle),
+            "size": source_bundle.stat().st_size,
+        },
+    )
+
     _write_third_party_notices(
         package_legal_dir=package_legal_dir,
         qt_version=pyside_version,
@@ -1430,7 +1482,6 @@ def main() -> int:
         nuitka_files=nuitka_files,
         openssl=openssl,
     )
-    _write_sha256s(source_assets_dir, source_assets)
 
     build_info = next(
         (item for item in runtime_inventory if PurePosixPath(item["path"]).name.casefold() == "build-info.txt"),
@@ -1485,8 +1536,19 @@ def main() -> int:
                     "Qt-GPL-exception-1.0.txt",
                 }
             ),
-            "all_extracted_license_files": sorted(set(qt_license_files)),
-            "attribution_files": sorted(set(qt_attribution_files)),
+            "all_extracted_license_files": sorted(
+                set(qt_license_files),
+                key=str.casefold,
+            ),
+            "license_mappings": sorted(
+                qt_license_mappings,
+                key=lambda item: item["source_member"].casefold(),
+            ),
+            "attribution_sources": sorted(
+                set(qt_attribution_sources),
+                key=str.casefold,
+            ),
+            "attribution_records": qt_attribution_records,
             "attribution_record_count": len(qt_attribution_records),
             "attribution_license_mappings": qt_attribution_license_mappings,
             "attribution_license_files": sorted(
@@ -1494,6 +1556,11 @@ def main() -> int:
                 key=str.casefold,
             ),
             "human_readable_attributions": "licenses/QT-ATTRIBUTIONS.txt",
+        },
+        "source_bundle": {
+            "filename": source_bundle.name,
+            "sha256": _sha256(source_bundle),
+            "size": source_bundle.stat().st_size,
         },
         "source_assets": source_assets,
         "policy": {
