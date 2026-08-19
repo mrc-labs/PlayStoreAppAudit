@@ -89,9 +89,9 @@ Every public release is an exact-SHA assembly rather than a collection of indepe
 
 If source or release tooling changes after the SHA freeze, every candidate required by the selected profile must be rebuilt from the new exact SHA. Artifacts from different source revisions must never be mixed.
 
-### v1.4 Windows x64 engineering profile
+### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
-v1.4 intentionally publishes only one unsigned Windows x64 engineering/test package.
+v1.4 intentionally publishes only one unsigned Windows x64 Engineering Test Build (ETB) package.
 
 - The package comes from one frozen SHA via `.github/workflows/build-windows-exe.yml` with `target=x64`.
 - Windows ARM64, Linux and macOS release jobs are not run for v1.4.
@@ -123,4 +123,4 @@ At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS us
 
 Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
 
-The detailed v1.4 engineering and v1.5 production procedures and current workflow names are documented in `BUILDING.md`.
+The detailed v1.4 ETB and v1.5 production procedures and current workflow names are documented in `BUILDING.md`.

@@ -6,7 +6,7 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`.
 
 ## Architecture
 
@@ -84,10 +84,11 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - If source or release tooling changes after the SHA is frozen, discard and rebuild every candidate required by the selected release profile from the new exact SHA. Never mix artifacts from different SHAs.
 - Do not weaken legal/source validation to make a build pass.
 - Do not delete files under `.github/scripts/` merely because there are several. Verify workflow references, imports and tests before removal.
+- GitHub Actions retention follows the generational policy in `docs/CI_MAINTENANCE.md`; failed/cancelled runs never replace successful generations.
 
-### v1.4 Windows x64 engineering profile
+### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
-v1.4 is intentionally a public Windows x64 engineering/test release while production signing and the broader platform matrix are deferred to v1.5.
+v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB) while production signing and the broader platform matrix are deferred to v1.5.
 
 - Build Windows x64 only from the frozen SHA.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
@@ -96,7 +97,7 @@ v1.4 is intentionally a public Windows x64 engineering/test release while produc
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - The engineering assembler must accept only the successful unsigned Windows x64 `Build Windows - Qt6` run from the same repository and exact SHA and must reject ARM64 input.
 - The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
-- The release notes must clearly state that the v1.4 Windows x64 package is unsigned and is an engineering/test build.
+- Engineering GitHub Releases use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; the package must be clearly described as unsigned.
 
 ### v1.5 production profile
 

@@ -257,4 +257,4 @@ jobs:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64-engineering-release-assets
           path: final-release/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 0

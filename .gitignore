@@ -10,6 +10,8 @@ venv/
 build/
 dist/
 artifact/
+release-v*-candidate-*/
+actions-artifact-audit.txt
 *.spec
 *.log
 app_icon.ico

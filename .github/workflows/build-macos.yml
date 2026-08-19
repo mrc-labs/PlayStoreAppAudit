@@ -495,7 +495,7 @@ jobs:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 0
 
       - name: Upload engineering macOS artifact
         if: ${{ inputs.signing_mode == 'engineering' }}
@@ -504,4 +504,4 @@ jobs:
           name: PlayStoreAppAudit-engineering-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 0
