@@ -35,8 +35,8 @@ def test_production_codesign_uses_runtime_timestamp_and_keychain() -> None:
         "ABCDEF",
     ]
     assert "--deep" not in command
-    assert ["--keychain", "release.keychain-db"] == command[4:6]
-    assert ["--options", "runtime", "--timestamp"] == command[6:9]
+    assert command[4:6] == ["--keychain", "release.keychain-db"]
+    assert command[6:9] == ["--options", "runtime", "--timestamp"]
     assert command[-1] == "App.app"
 
 
