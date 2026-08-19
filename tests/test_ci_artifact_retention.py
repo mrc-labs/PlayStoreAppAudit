@@ -22,29 +22,26 @@ def _retention_days(workflow: str) -> list[int]:
     ]
 
 
-def test_ui_style_audit_artifacts_expire_after_three_days() -> None:
-    assert _retention_days(_workflow("ui-style-audit.yml")) == [3]
-
-
-def test_release_pipeline_artifacts_expire_after_seven_days() -> None:
+def test_artifact_uploads_use_repository_default_retention() -> None:
     expected = {
-        "build-windows-exe.yml": [7],
-        "assemble-windows-engineering-release.yml": [7],
-        "build-linux.yml": [7],
-        "build-macos.yml": [7, 7],
-        "sign-windows.yml": [7],
-        "assemble-release.yml": [7],
+        "ui-style-audit.yml": [0],
+        "build-windows-exe.yml": [0],
+        "assemble-windows-engineering-release.yml": [0],
+        "build-linux.yml": [0],
+        "build-macos.yml": [0, 0],
+        "sign-windows.yml": [0],
+        "assemble-release.yml": [0],
     }
 
     for name, expected_values in expected.items():
         values = _retention_days(_workflow(name))
-        assert values, f"{name} must set explicit artifact retention"
         assert values == expected_values, (
-            f"unexpected retention in {name}: {values}"
+            f"{name} must defer artifact lifetime to repository settings; "
+            f"found {values}"
         )
 
 
-def test_every_upload_artifact_step_has_explicit_retention() -> None:
+def test_every_upload_artifact_step_has_explicit_retention_policy() -> None:
     for path in sorted(WORKFLOWS.glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
         uploads = workflow.count("uses: actions/upload-artifact@")
