@@ -100,10 +100,10 @@ v1.4 is intentionally a public Windows x64 engineering/test release while produc
 
 ### v1.5 production profile
 
-The already implemented full production path is preserved for v1.5 credential-backed trust validation.
+The full six-platform production path remains implemented for v1.5, while the final Windows public-trust signing provider is deliberately not locked yet.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
-- Windows final candidates pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- Windows final candidates must use a publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing is retained as an implemented option, but the final v1.5 provider remains TBD pending publisher eligibility and cost review.
 - macOS final candidates use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.

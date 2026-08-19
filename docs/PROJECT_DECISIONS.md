@@ -78,7 +78,7 @@ Rationale: v1.4 provides a real public engineering checkpoint while minimizing r
 The full six-platform production release architecture remains implemented and is deferred to v1.5.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates all derive from one exact frozen SHA.
-- Windows final candidates pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- Windows final candidates must use a validated publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing remains an implemented option, but provider selection is deferred to the v1.5 signing milestone after publisher eligibility and cost review.
 - macOS final candidates pass through Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - Linux remains Nuitka standalone with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six candidates validate.
@@ -191,7 +191,7 @@ Required production secrets:
 
 ### Windows, v1.5 production target
 
-Production Windows release candidates use Microsoft Artifact Signing with a Public Trust certificate profile suitable for publicly distributed Win32 applications.
+Production Windows release candidates require a publicly trusted code-signing provider suitable for publicly distributed Win32 applications. The repository currently implements Microsoft Artifact Signing Public Trust as one option, but the final v1.5 provider remains TBD until publisher eligibility and cost are revalidated.
 
 - Native x64 and ARM64 packages are compiled first by `build-windows-exe.yml` from the exact frozen SHA.
 - `.github/workflows/sign-windows.yml` accepts only a successful exact-SHA Windows build from the same repository.
@@ -202,12 +202,12 @@ Production Windows release candidates use Microsoft Artifact Signing with a Publ
 - Non-target package files are hash-guarded; legal evidence and strict package validation are refreshed after signing.
 - Self-signed certificates and Private Trust/test profiles are not valid for public release distribution.
 
-Required production configuration outside source control:
+If Microsoft Artifact Signing is selected, required production configuration outside source control:
 
 - GitHub Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - GitHub repository variables: `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
 
-Rationale: production trust remains a separate milestone from v1.4 engineering publication. The implementation stays ready without making v1.4 depend on account provisioning or signing costs.
+Rationale: production trust remains a separate milestone from v1.4 engineering publication. The current Microsoft implementation stays ready as one option without locking v1.5 to a provider before eligibility and cost are known.
 
 ## UI style policy
 

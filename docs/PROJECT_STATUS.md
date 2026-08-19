@@ -29,7 +29,7 @@ The repository is being prepared for `v1.4.0` as a public Windows x64 engineerin
 
 The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native x64 architecture checks, packaged smoke tests, corresponding-source validation and release-wide checksums.
 
-No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until PR #34 is merged and its post-merge Quality/UI validation passes.
+No v1.4 Nuitka release-candidate build has been dispatched yet. PR #34 has merged normally to `main`; its Quality checks passed on Python 3.13 and 3.14 and its cross-platform UI style audit passed on Windows, macOS and Linux. The first `main` SHA containing this final documentation checkpoint and passing Quality is the v1.4 freeze candidate.
 
 ## Current baselines
 
@@ -109,14 +109,15 @@ Completed:
 - PR #31: adopted Qt platform/default production style
 - PR #32: removed shared hard-coded font/scrollbar QSS and several stale developer Fusion overrides
 - PR #33: bumped the canonical version to 1.4.0, added the Windows engineering release assembler/workflow and aligned durable/public documentation to the v1.4 engineering and v1.5 production profiles
+- PR #34: finalized the Windows x64-only v1.4 profile and removed all remaining first-party Fusion style overrides
 
 PR #33 merged to `main` as `9262164ab08a8c8602ebbea03a615e0d950692a1` after Quality passed on Python 3.13 and 3.14.
 
-After PR #33, the intended v1.4 engineering target was corrected from Windows x64+ARM64 to Windows x64 only before any release build was dispatched. PR #34 carries that correction through the assembler, workflow, tests and durable/public documentation.
+After PR #33, the intended v1.4 engineering target was corrected from Windows x64+ARM64 to Windows x64 only before any release build was dispatched. PR #34 carried that correction through the assembler, workflow, tests and durable/public documentation and merged normally to `main` as `47147f3ac1cec5e7a7e07d8ac77a6a5018b6e71f`.
 
 ### v1.4 Windows x64 engineering release preparation
 
-PR #34 corrects the PR #33 engineering profile to:
+PR #34 finalized the PR #33 engineering profile as:
 
 - canonical application version `1.4.0`
 - Windows x64 only
@@ -131,7 +132,7 @@ The full six-platform production assembler and both signing implementations rema
 
 ### Final UI modernization cleanup before v1.4 freeze
 
-PR #34: `release: finalize v1.4 x64 engineering profile`.
+PR #34, `release: finalize v1.4 x64 engineering profile`, merged normally to `main` as `47147f3ac1cec5e7a7e07d8ac77a6a5018b6e71f`.
 
 The five remaining developer-only `app.setStyle("Fusion")` overrides were removed in commit `fd6668c9c70104554d998cec9d975e21caf18c80` from:
 
@@ -143,7 +144,7 @@ The five remaining developer-only `app.setStyle("Fusion")` overrides were remove
 
 Each UI module changed by exactly one deletion and no additions. The cleanup branch also replaces the temporary allowlist regression test with a repository-wide assertion that first-party package code contains no `.setStyle(...)` call.
 
-Local targeted validation on Python 3.14.6 passed `tests/test_app_style_policy.py` and `tests/test_windows_engineering_release.py` with 5 tests passing. PR #34 Quality and cross-platform UI style audit are the remaining pre-merge gates. After PR #34 merges normally and post-merge validation is green, refresh this status once more and freeze the v1.4 release SHA.
+Local targeted validation on Python 3.14.6 passed `tests/test_app_style_policy.py` and `tests/test_windows_engineering_release.py` with 5 tests passing. PR #34 Quality passed on Python 3.13 and 3.14, and the cross-platform UI style audit passed on Windows, macOS and Linux. No further UI change is planned before the v1.4 freeze.
 
 ### GitHub Actions / Node
 
@@ -172,22 +173,21 @@ macOS:
 
 Before any heavy build:
 
-1. PR #34 must pass Quality on Python 3.13/3.14 and the cross-platform UI style audit;
-2. merge PR #34 with a normal merge commit;
-3. require post-merge Quality/UI validation on `main` to remain green;
-4. refresh `PROJECT_STATUS.md` to record the merged cleanup and confirm README/changelog/version/durable docs still describe the intended v1.4 Windows x64 engineering profile;
-5. freeze the exact final `main` SHA only after the above is complete.
+1. this final documentation checkpoint must be present on `main`;
+2. Quality on that resulting `main` SHA must be green;
+3. confirm README, changelog, version and durable documentation still describe the intended Windows x64-only unsigned v1.4 profile;
+4. freeze that exact full `main` SHA.
 
 Then:
 
-6. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=x64`;
-7. require the x64 package/legal/smoke validation job to pass;
-8. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows x64 run ID;
-9. require exactly three validated final assets;
-10. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows x64 package;
-11. create the annotated `v1.4.0` tag on the frozen SHA;
-12. publish the already validated three assets without rebuilding, clearly labeling the binary as Windows x64 only and unsigned;
-13. treat the published v1.4.0 tag/assets as immutable.
+5. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=x64`;
+6. require the x64 package/legal/smoke validation job to pass;
+7. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows x64 run ID;
+8. require exactly three validated final assets;
+9. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows x64 package;
+10. create the annotated `v1.4.0` tag on the frozen SHA;
+11. publish the already validated three assets without rebuilding, clearly labeling the binary as Windows x64 only and unsigned;
+12. treat the published v1.4.0 tag/assets as immutable.
 
 ## Housekeeping that does not block v1.4
 
