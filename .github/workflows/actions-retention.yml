@@ -1,0 +1,50 @@
+name: Actions retention housekeeping
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_run:
+    workflows:
+      - Build Windows - Qt6
+      - Build Linux - Qt6 (manual)
+      - Build macOS - Qt6 (manual)
+      - Sign Windows release candidates
+      - Assemble Windows engineering release
+      - Assemble release assets
+      - UI style audit
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: actions-retention-housekeeping
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Apply generational Actions retention
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout canonical maintenance logic
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Compile retention policy
+        run: python -m py_compile .github/scripts/cleanup_actions_retention.py
+
+      - name: Apply retention policy
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/cleanup_actions_retention.py \
+            --apply \
+            --grace-days 7
