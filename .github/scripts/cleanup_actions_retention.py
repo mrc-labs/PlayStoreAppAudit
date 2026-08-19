@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 API_VERSION = "2026-03-10"
-VERSION_RE = re.compile(r"v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
+VERSION_RE = re.compile(r"v\d+\.\d+\.\d+")
 BAD_CONCLUSIONS = {"failure", "cancelled"}
 
 
