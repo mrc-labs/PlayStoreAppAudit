@@ -8,6 +8,7 @@ import importlib.metadata as metadata
 import json
 import platform
 import re
+import sys
 import tempfile
 import tomllib
 from pathlib import Path
@@ -208,5 +209,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
-        print(f"ERROR: {exc}", file=__import__("sys").stderr)
+        print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
