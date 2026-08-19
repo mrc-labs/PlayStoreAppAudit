@@ -15,7 +15,7 @@ Changing a decision here should be deliberate and should normally happen in the 
 - Delete short-lived branches after merge.
 - Published release history is immutable. Do not rewrite, squash, retag or replace already published release commits/assets.
 
-Rationale: one canonical integration line keeps Windows, Linux and macOS tied to the same source history and avoids platform drift.
+Rationale: one canonical integration line keeps platform work tied to the same source history and avoids release drift.
 
 ## Application architecture
 
@@ -39,34 +39,53 @@ These are product semantics, not presentation choices.
 
 ## Exact-SHA release model
 
-A production release uses one exact source commit.
+Every public release profile uses one exact source commit.
 
 - Quality validation comes before freezing the release SHA.
 - Freeze one exact full `main` SHA.
-- Build six release candidates from that exact SHA.
 - Reject a build when expected, dispatch or checkout SHA differ.
-- Assemble and validate all release candidates before tagging.
+- Assemble and validate every candidate required by the selected release profile before tagging.
 - Create the annotated version tag only after artifact validation.
 - Tag pushes do not rebuild release binaries.
 - Do not create public RC tags.
-- If source or release tooling changes after the SHA freeze, rebuild all six candidates from the new SHA.
+- If source or release tooling changes after the SHA freeze, rebuild every candidate required by that profile from the new SHA.
+- Never mix release artifacts from different source SHAs.
 
-Rationale: release tags must identify the source that produced the already validated artifacts. A tag-triggered rebuild could produce different binaries or mix dependency states after validation.
+Rationale: release tags identify the source that produced already validated artifacts. A tag-triggered rebuild could produce different binaries or dependency states after validation.
 
-## Public asset model
+## Release profiles
 
-A production release contains exactly eight public files:
+### v1.4 Windows engineering/test release
 
-1. Windows x64 ZIP
-2. Windows ARM64 ZIP
-3. Linux x64 ZIP
-4. Linux ARM64 ZIP
-5. macOS x64 ZIP
-6. macOS ARM64 ZIP
-7. one consolidated third-party source `tar.xz`
-8. one release-wide `SHA256SUMS.txt`
+v1.4 intentionally publishes only unsigned Windows x64 and ARM64 engineering packages.
 
-Rationale: one predictable release surface is easier for users to understand and easier to validate than platform-specific checksum/source sidecars.
+- Both Windows packages come from one exact frozen SHA.
+- Build them together with `.github/workflows/build-windows-exe.yml` using `target=both`.
+- Do not invoke Windows production signing for v1.4.
+- Do not build Linux or macOS release candidates for v1.4.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- The engineering assembler accepts only the successful unsigned `Build Windows - Qt6` run from the same repository and exact SHA.
+- The public v1.4 asset set is exactly four files:
+  1. Windows x64 ZIP
+  2. Windows ARM64 ZIP
+  3. one consolidated third-party source `tar.xz`
+  4. one release-wide `SHA256SUMS.txt`
+- Public release notes must identify v1.4 as Windows-only and unsigned.
+
+Rationale: v1.4 provides a real public engineering checkpoint without paying for unnecessary macOS builds or claiming production trust before credential-backed signing validation exists.
+
+### v1.5 full production release
+
+The full six-platform production release architecture remains implemented and is deferred to v1.5.
+
+- Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates all derive from one exact frozen SHA.
+- Windows final candidates pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- macOS final candidates pass through Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
+- Linux remains Nuitka standalone with replaceable Qt/PySide/Shiboken shared libraries.
+- Assemble with `.github/workflows/assemble-release.yml` only after all six candidates validate.
+- The full production asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+
+Rationale: signing implementation can remain merged and testable while the cost and account/credential work are deferred until the project is ready for the production-trust milestone.
 
 ## Packaging and legal model
 
@@ -79,35 +98,41 @@ Rationale: one predictable release surface is easier for users to understand and
 
 Linux remains standalone because the bundled LGPL-covered Qt/PySide/Shiboken libraries must remain practically replaceable.
 
-The release-wide source archive centralizes the corresponding-source material required by the binary packages and avoids six duplicated source bundles.
+The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: v1.4 merges the two Windows candidates; the v1.5 production profile merges all six platform candidates.
 
 ## Runtime policy
 
-- v1.3 packaging baseline is Python 3.13.
+- Packaging baseline is Python 3.13.
 - Quality/source compatibility is checked on Python 3.13 and 3.14.
 - Move the packaging baseline only as a deliberate compiler/deployment-toolchain migration.
-- v1.3 Qt/PySide baseline is `PySide6-Essentials==6.11.1`.
-- v1.3 Nuitka pin is `Nuitka==4.1.3`.
+- Current Qt/PySide baseline is `PySide6-Essentials==6.11.1`.
+- Current Nuitka pin is `Nuitka==4.1.3`.
 
-Rationale: source compatibility can move ahead of the release compiler without making production packaging depend on an experimental or insufficiently validated toolchain.
+Rationale: source compatibility can move ahead of the release compiler without making packaging depend on an insufficiently validated toolchain.
 
 ## Release workflow structure
 
-The release architecture is platform-isolated but source-SHA unified.
+Package workflows are platform-isolated and exact-SHA guarded:
 
-- Windows, Linux and macOS use separate manual package workflows.
-- The Linux and macOS workflows each build both x64 and ARM64 release candidates in one architecture matrix.
-- The Windows package workflow retains its native x64/ARM64 target matrix.
-- Windows production candidates pass through a separate signing workflow after native compilation. The signing workflow accepts only a successful exact-SHA Windows package run, signs both owned primary executables, then revalidates each signed package on its native architecture.
-- All package and signing stages require the same exact frozen `expected_sha` for a production release.
-- The release assembler accepts distinct Windows, Linux and macOS run IDs. Its Windows input accepts only the successful production signing workflow, while Linux and macOS inputs accept their production package workflows.
-- The assembler verifies workflow identity, successful completion, repository and exact head SHA before assembling the common six-candidate/eight-public-asset release.
+- `.github/workflows/build-windows-exe.yml`
+- `.github/workflows/build-linux.yml`
+- `.github/workflows/build-macos.yml`
 
-Rationale: separate platform workflows improve failure isolation and selective reruns without creating independent platform release lines. Windows signing is separated because the managed signing action runs on supported x64 Windows runners while the ARM64 application must still be compiled and finally smoke-tested on a native ARM64 runner. The frozen SHA, not the workflow file or signing host, defines release source identity.
+Trust/assembly workflows are purpose-specific:
+
+- `.github/workflows/sign-windows.yml`: Windows production signing stage, deferred to v1.5 execution
+- `.github/workflows/assemble-windows-engineering-release.yml`: v1.4 unsigned Windows x64/ARM64 engineering asset assembly
+- `.github/workflows/assemble-release.yml`: v1.5 six-platform production asset assembly
+
+The v1.4 engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, then validates both Windows candidates and emits exactly four files.
+
+The v1.5 full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies their workflow identity/status/repository/exact SHA, validates all six candidates, and emits exactly eight files.
+
+Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while avoiding unnecessary platform builds for the v1.4 engineering release.
 
 ## Legal-material preflight
 
-Every production package workflow runs a deterministic legal-material preflight after release dependencies are installed and before Nuitka compilation.
+Every package workflow runs a deterministic legal-material preflight after release dependencies are installed and before Nuitka compilation.
 
 The preflight:
 
@@ -118,9 +143,7 @@ The preflight:
 - verifies CPython license availability, including the exact-version upstream fallback used by the strict legal tooling;
 - verifies required Nuitka legal files and the release build pin.
 
-It intentionally resolves metadata and small legal text only. It does not download the large Qt/PySide source archives before compilation.
-
-The preflight is an early failure gate only. Package-aware source selection, source archive downloads, legal injection and strict final validation still run after packaging. Never weaken or remove the later strict legal gate merely because the preflight passed.
+It intentionally resolves metadata and small legal text only. Package-aware source selection, source archive downloads, legal injection and strict final validation still run after packaging. Never weaken or remove the later strict legal gate merely because the preflight passed.
 
 ## Dependency/API policy
 
@@ -142,7 +165,9 @@ Rationale: the action author, not this Python application, owns the bundled Java
 
 ## Signing policy
 
-### macOS
+Production signing is implemented in source but deliberately deferred from v1.4 public release execution to the v1.5 trust milestone.
+
+### macOS, v1.5 production target
 
 Production macOS release candidates use Developer ID Application signing followed by Apple notarization.
 
@@ -152,39 +177,44 @@ Production macOS release candidates use Developer ID Application signing followe
 - `codesign --deep` is used for recursive verification, not as the production signing strategy.
 - The notarization upload archive is temporary and is not a public release artifact.
 - Production flow requires Apple notarization status `Accepted`, staples the ticket to the app, validates the staple, verifies the code signature and passes a Gatekeeper assessment before creating the release ZIP.
-- The strict legal runtime evidence is refreshed after the final signed/stapled app state and validated before the release ZIP is created.
-- A production macOS workflow run uploads the canonical release-candidate artifact names expected by the assembler.
-- Engineering mode remains available with ad-hoc signing, but uploads non-canonical `PlayStoreAppAudit-engineering-*` artifact names so it cannot be selected accidentally by the release assembler.
-- Developer ID certificate material and App Store Connect notary API credentials live in GitHub Secrets and are materialized only in temporary runner files/keychains that are removed after the job.
+- Strict legal runtime evidence is refreshed after the final signed/stapled app state and validated before the release ZIP is created.
+- Engineering mode remains available with ad-hoc signing and non-canonical artifact names.
+- Developer ID certificate material and App Store Connect notary API credentials live in GitHub Secrets and are materialized only in temporary runner files/keychains.
 
-Rationale: the release assembler should only be able to consume macOS candidates that completed the production trust flow, while ordinary engineering builds can remain cheaper and credential-free.
+Required production secrets:
 
-### Windows
+- `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`
+- `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`
+- `MACOS_DEVELOPER_ID_TEAM_ID`
+- `MACOS_NOTARY_API_KEY_P8_BASE64`
+- `MACOS_NOTARY_KEY_ID`
+- `MACOS_NOTARY_ISSUER_ID`
+
+### Windows, v1.5 production target
 
 Production Windows release candidates use Microsoft Artifact Signing with a Public Trust certificate profile suitable for publicly distributed Win32 applications.
 
-- Native x64 and ARM64 standalone packages are compiled first by `build-windows-exe.yml` from the exact frozen SHA.
-- `.github/workflows/sign-windows.yml` accepts only a successful `Build Windows - Qt6` run from that same exact SHA and repository.
+- Native x64 and ARM64 packages are compiled first by `build-windows-exe.yml` from the exact frozen SHA.
+- `.github/workflows/sign-windows.yml` accepts only a successful exact-SHA Windows build from the same repository.
 - Azure authentication uses GitHub OIDC through `azure/login`; no publisher private key or PFX is stored in the repository or GitHub Secrets.
-- The Artifact Signing action runs on a supported x64 Windows runner. It signs only the owned top-level `PlayStoreAppAudit.exe`; bundled third-party DLLs and other binaries are not re-signed.
-- The ARM64 executable may be signed on the x64 signing host because Authenticode signing does not change its PE machine architecture. The final signed ARM64 ZIP is then re-extracted, signature-verified and smoke-tested on a native Windows ARM64 runner.
-- The signing workflow requires SHA-256 file digests and RFC3161 timestamping.
-- It verifies the signature and timestamp, proves non-target package files were unchanged by signing, updates `BUILD-INFO.txt`, refreshes runtime legal evidence and reruns the strict public legal validator before creating the final signed ZIP.
-- Only the successful signing workflow emits the canonical Windows production release candidates accepted by the assembler. An unsigned `Build Windows - Qt6` run is not a valid assembler Windows source.
+- The signing action runs on a supported x64 Windows runner and signs only the owned top-level `PlayStoreAppAudit.exe`.
+- The final signed ARM64 package is re-extracted, signature-verified and smoke-tested on a native Windows ARM64 runner.
+- SHA-256 file digests and RFC3161 timestamping are required.
+- Non-target package files are hash-guarded; legal evidence and strict package validation are refreshed after signing.
 - Self-signed certificates and Private Trust/test profiles are not valid for public release distribution.
 
-Required production configuration is kept outside source control:
+Required production configuration outside source control:
 
 - GitHub Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - GitHub repository variables: `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
 
-Rationale: Artifact Signing keeps signing authority in a managed service and avoids exporting a long-lived code-signing private key into CI. The split signing/native-verification flow preserves native ARM64 package evidence even though the signing action itself does not run on GitHub-hosted Windows ARM runners.
+Rationale: production trust remains a separate milestone from v1.4 engineering publication. The implementation stays ready without making v1.4 depend on account provisioning or signing costs.
 
 ## UI style policy
 
 Qt selects the production application QStyle from the platform/default environment. The application does not globally force Fusion or another QStyle.
 
-The v1.4 cross-platform render audit on the current Qt/PySide 6.11.1 baseline established:
+The v1.4 cross-platform render audit on Qt/PySide 6.11.1 established:
 
 - Windows default style is `windows11` and provides a more platform-appropriate control treatment than explicit Fusion.
 - macOS default style is `macos` and provides a more platform-appropriate control treatment than explicit Fusion.
@@ -196,11 +226,8 @@ Policy:
 - Preserve Qt Widgets; the audit provides no reason to migrate to QML.
 - Do not add a theme dependency merely to make controls look newer.
 - Preserve semantic app-specific colours and branded primary actions.
-- Narrow generic application QSS separately where it masks or degrades native platform controls.
-- Audit the global font rule and `QScrollBar` styling first; do not remove layout-critical or semantic rules indiscriminately.
+- Let Qt/platform style own generic font and scrollbar presentation unless new evidence justifies an override.
 - Re-run the cross-platform UI style audit for changes to `app.py`, shared UI QSS or the audit harness.
-
-Rationale: native/default Qt styles improve Windows and macOS integration without adding a dependency or a UI technology migration, while Linux can continue to use its available/default Fusion style. Separating QStyle selection from QSS cleanup keeps visual changes attributable and reversible.
 
 ## Release-script maintenance
 
