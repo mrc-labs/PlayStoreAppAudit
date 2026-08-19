@@ -20,7 +20,7 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 - `PySide6-Essentials`: 6.11.1
 - Nuitka: 4.1.3
 - UI: Qt Widgets
-- Current application style: forced Fusion
+- Current production application style: forced Fusion
 - Windows v1.3 signing: unsigned
 - Linux v1.3 signing: unsigned
 - macOS v1.3 signing: ad-hoc only, not notarized
@@ -30,6 +30,7 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 ## Current workflows
 
 - `.github/workflows/quality.yml`
+- `.github/workflows/ui-style-audit.yml`
 - `.github/workflows/build-windows-exe.yml`
 - `.github/workflows/sign-windows.yml`
 - `.github/workflows/build-linux.yml`
@@ -46,10 +47,13 @@ The production release-candidate model is:
 
 All package/signing workflows remain deliberate manual release operations and exact-SHA guarded. The assembler must not accept an unsigned Windows build run as its Windows release source.
 
-## Current release scripts
+The UI style audit is source/render validation only. It does not build release packages.
+
+## Current release and audit scripts
 
 - `.github/scripts/assemble_release_assets.py`
 - `.github/scripts/build_windows_standalone.ps1`
+- `.github/scripts/capture_ui_style.py`
 - `.github/scripts/inspect_pe.py`
 - `.github/scripts/legal_payload_store.py`
 - `.github/scripts/preflight_release_legal_material.py`
@@ -59,7 +63,7 @@ All package/signing workflows remain deliberate manual release operations and ex
 - `.github/scripts/validate_release_legal_bundle.py`
 - `.github/scripts/validate_windows_standalone.py`
 
-No current script has been identified as dead. `prepare_release_legal_bundle.py` and `validate_release_legal_bundle.py` are candidates for later modularization, not deletion.
+No current release script has been identified as dead. `prepare_release_legal_bundle.py` and `validate_release_legal_bundle.py` are candidates for later modularization, not deletion.
 
 ## Release invariants
 
@@ -165,7 +169,7 @@ Still required before calling production Windows signing validated:
 
 ### P2 - Forward compatibility
 
-The proactive v1.4 sweep is covered by PR #29.
+The proactive v1.4 sweep was completed in PR #29.
 
 Audit result:
 
@@ -188,12 +192,25 @@ Python 3.14 remains a Quality compatibility target; production packaging remains
 
 ### P2 - UI modernization
 
-- Test removing `app.setStyle("Fusion")` and compare native Windows/macOS/Linux styles.
-- Audit QSS that overrides native appearance, especially scrollbar styling.
-- Check dark/light palettes, high-DPI behaviour, hover/disabled/focus states, tables/headers, spacing and keyboard/focus behaviour.
-- Preserve semantic app colours.
-- Evaluate native platform style before adding a theme dependency.
-- Keep Qt Widgets unless a demonstrated reason justifies migration.
+The native-style experiment is implemented in PR #30 with a cross-platform render audit that compares plain Qt controls and the real `MainWindow` under platform/default style and explicit Fusion.
+
+Validated audit result on Qt/PySide 6.11.1:
+
+- Windows default style: `windows11`; platform plugin: `windows`; native and Fusion renders differ.
+- macOS default style: `macos`; platform plugin: `cocoa`; native and Fusion renders differ.
+- Linux hosted/Xvfb default style: `fusion`; platform plugin: `xcb`; default and explicit-Fusion renders are byte-identical.
+- Windows and macOS native plain-control renders provide more platform-appropriate checkbox/radio, combo-box, slider/progress and scrollbar treatment than Fusion.
+- The real application also changes under native Windows/macOS styles, but the difference is smaller because `BaseWindow` QSS overrides many generic control visuals.
+- Existing broad QSS includes a global `Segoe UI` font declaration and a `QScrollBar` background/border override, so removing forced Fusion alone is not the complete UI-modernization step.
+
+Recommended controlled follow-up sequence:
+
+1. Stop forcing Fusion in `app.py` and let Qt select the platform/default style. This gives Windows the `windows11` style and macOS the `macos` style; Linux can continue to use its available/default Fusion style.
+2. Validate that style-policy change with Quality plus the cross-platform UI render audit, without a package build.
+3. In a separate PR, narrow generic QSS that interferes with native presentation, starting with the global font override and `QScrollBar` rules while preserving semantic status colours, branded primary actions and layout-critical rules.
+4. Re-run the render audit before considering any theme dependency.
+
+Qt Widgets remains the UI technology. The audit provides no reason to migrate to QML or add a theme framework.
 
 ## Known v1.3 release lessons
 
@@ -204,4 +221,4 @@ Python 3.14 remains a Quality compatibility target; production packaging remains
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path, PR #28 implemented the Windows production signing path and PR #29 records the proactive forward-compatibility sweep with regression sentinels. Credential-backed production validation for both signing platforms remains deliberate release work. Node-runtime monitoring and UI modernization remain separate follow-up workstreams.
+PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path, PR #28 implemented the Windows production signing path, PR #29 completed the proactive forward-compatibility sweep and PR #30 adds the cross-platform native-vs-Fusion UI evidence harness. Credential-backed production validation for both signing platforms remains deliberate release work. The next UI change should stop forcing Fusion, followed separately by targeted QSS narrowing. Node-runtime monitoring remains future work tied to official action support.

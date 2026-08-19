@@ -1,0 +1,185 @@
+name: UI style audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "playstore_app_audit/app.py"
+      - "playstore_app_audit/ui/**"
+      - ".github/scripts/capture_ui_style.py"
+      - ".github/workflows/ui-style-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: ${{ matrix.label }} native vs Fusion
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            label: Windows
+            platform_key: windows
+          - os: macos-15
+            label: macOS
+            platform_key: macos
+          - os: ubuntu-24.04
+            label: Linux
+            platform_key: linux
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install Linux display/runtime prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libegl1 \
+            libfontconfig1 \
+            libgl1 \
+            libx11-xcb1 \
+            libxcb1 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-shm0 \
+            libxcb-sync1 \
+            libxcb-util1 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1 \
+            libxkbcommon-x11-0 \
+            xauth \
+            xvfb
+
+      - name: Install source-mode UI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Capture Windows native and Fusion styles
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          QT_SCALE_FACTOR: "1"
+        run: |
+          python .github/scripts/capture_ui_style.py --style native --output-dir ui-style-audit
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows UI capture failed.' }
+          python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
+          if ($LASTEXITCODE -ne 0) { throw 'Fusion Windows UI capture failed.' }
+
+      - name: Capture macOS native and Fusion styles
+        if: runner.os == 'macOS'
+        env:
+          QT_SCALE_FACTOR: "1"
+        run: |
+          set -euo pipefail
+          python .github/scripts/capture_ui_style.py --style native --output-dir ui-style-audit
+          python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
+
+      - name: Capture Linux default and Fusion styles under Xvfb
+        if: runner.os == 'Linux'
+        env:
+          QT_SCALE_FACTOR: "1"
+        run: |
+          set -euo pipefail
+          xvfb-run -a python .github/scripts/capture_ui_style.py --style native --output-dir ui-style-audit
+          xvfb-run -a python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
+
+      - name: Validate audit evidence
+        shell: bash
+        env:
+          PLATFORM_KEY: ${{ matrix.platform_key }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("ui-style-audit")
+          native = json.loads((root / "metadata-native.json").read_text(encoding="utf-8"))
+          fusion = json.loads((root / "metadata-fusion.json").read_text(encoding="utf-8"))
+          platform_key = os.environ["PLATFORM_KEY"]
+
+          native_style = str(native["active_style"]).casefold()
+          fusion_style = str(fusion["active_style"]).casefold()
+          if fusion_style != "fusion":
+              raise RuntimeError(f"Fusion audit did not use Fusion: {fusion_style!r}")
+          if platform_key in {"windows", "macos"} and native_style == "fusion":
+              raise RuntimeError(
+                  f"{platform_key} native/default audit unexpectedly resolved to Fusion; "
+                  "the run would not test the requested native platform style"
+              )
+
+          expected = {
+              "plain-native.png",
+              "plain-fusion.png",
+              "app-native.png",
+              "app-fusion.png",
+              "metadata-native.json",
+              "metadata-fusion.json",
+          }
+          present = {path.name for path in root.iterdir() if path.is_file()}
+          if present != expected:
+              raise RuntimeError(f"Unexpected UI audit files: {sorted(present)}")
+
+          def sha256(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          native_probe_hash = sha256(root / "plain-native.png")
+          fusion_probe_hash = sha256(root / "plain-fusion.png")
+          if platform_key in {"windows", "macos"} and native_probe_hash == fusion_probe_hash:
+              raise RuntimeError(
+                  f"{platform_key} native and Fusion plain-control captures are byte-identical"
+              )
+
+          summary = {
+              "platform": platform_key,
+              "native_active_style": native["active_style"],
+              "fusion_active_style": fusion["active_style"],
+              "native_platform_plugin": native["qt_platform_plugin"],
+              "style_factory_keys": native["style_factory_keys"],
+              "native_application_font": native["application_font_family"],
+              "native_plain_sha256": native_probe_hash,
+              "fusion_plain_sha256": fusion_probe_hash,
+              "native_app_sha256": sha256(root / "app-native.png"),
+              "fusion_app_sha256": sha256(root / "app-fusion.png"),
+          }
+          (root / "summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload UI audit screenshots and metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-style-audit-${{ matrix.platform_key }}
+          path: ui-style-audit/
+          if-no-files-found: error
+          retention-days: 14
