@@ -93,17 +93,21 @@ This helper is for local x64 engineering. Production releases use the GitHub Act
 
 Heavy package workflows are deliberate manual dispatches. Ordinary pushes and release-tag pushes do not build release packages.
 
-Every production release uses three source workflow runs, all dispatched from the same exact frozen `main` SHA:
+Every production release starts with three package workflow runs, all dispatched from the same exact frozen `main` SHA:
 
 - `.github/workflows/build-windows-exe.yml`
 - `.github/workflows/build-linux.yml`
 - `.github/workflows/build-macos.yml`
 
-Each workflow verifies that the dispatch SHA and checked-out SHA equal its required `expected_sha` before expensive build work begins.
+Windows then has a separate production trust stage:
+
+- `.github/workflows/sign-windows.yml`
+
+Every package/signing workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
 
 After release dependencies are installed, every package job runs the deterministic legal-material preflight described below. Nuitka compilation does not begin until that preflight succeeds.
 
-### Windows
+### Windows native package build
 
 `.github/workflows/build-windows-exe.yml` accepts:
 
@@ -112,7 +116,47 @@ After release dependencies are installed, every package job runs the determinist
 
 For a production release, use `target=both`. The x64 job runs on `windows-2025`; ARM64 runs on `windows-11-arm`.
 
-Each selected job validates native Python/PySide6 inputs, PE architecture, Windows version metadata, managed ADB behaviour, source checks, packaged startup, legal material and release provenance.
+Each selected job validates native Python/PySide6 inputs, PE architecture, Windows version metadata, managed ADB behaviour, source checks, packaged startup, legal material and release provenance. The native package workflow intentionally produces an unsigned intermediate Windows candidate. It is not accepted directly by the production release assembler after Windows production signing is enabled.
+
+### Windows production signing
+
+`.github/workflows/sign-windows.yml` accepts:
+
+- `expected_sha`: the same exact frozen SHA used by the unsigned build
+- `build_run_id`: the successful `Build Windows - Qt6` run containing both x64 and ARM64 unsigned artifacts
+
+The workflow has three stages:
+
+1. a cheap Ubuntu preflight verifies the exact SHA, `main` dispatch, unsigned source workflow identity/status/repository and signing configuration;
+2. x64 and ARM64 `PlayStoreAppAudit.exe` files are signed on `windows-2025` with Microsoft Artifact Signing Public Trust;
+3. each final signed ZIP is re-extracted, signature-checked and smoke-tested on its native Windows architecture, including `windows-11-arm` for ARM64.
+
+The signing action itself is kept on a supported x64 Windows runner. Signing an ARM64 PE does not replace its native build evidence: the workflow rechecks the ARM64 PE machine and runs the final signed application on the native ARM64 runner before the signing workflow can succeed.
+
+Only the owned top-level `PlayStoreAppAudit.exe` is signed. Before signing, the workflow records SHA-256 hashes for every other package file except `BUILD-INFO.txt`; after signing it fails if any non-target file changed. Third-party DLLs are not re-signed merely for consistency.
+
+Production signing uses:
+
+- `azure/login@v3` with GitHub OIDC
+- `azure/artifact-signing-action@v2`
+- SHA-256 file digest
+- RFC3161 timestamping with SHA-256
+
+Required GitHub Secrets:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+
+Required GitHub repository variables:
+
+- `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`
+- `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`
+- `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+
+The Azure identity must have permission to sign with the configured Artifact Signing account/certificate profile. The configured profile must be a production Public Trust profile appropriate for public Win32 distribution, not a self-signed, Private Trust or test profile.
+
+After Authenticode signing, the workflow requires a valid signature and timestamp, updates `BUILD-INFO.txt`, refreshes runtime legal evidence, reruns the strict public legal validator and standalone validator, creates the final signed ZIP, and verifies the signature again after ZIP roundtrip. A signing workflow run is not a valid Windows release source unless all native post-sign verification jobs also pass.
 
 ### Linux
 
@@ -152,13 +196,13 @@ Required GitHub Secrets for production mode:
 
 The P12 and App Store Connect API key are materialized only in temporary runner paths. The certificate is imported into a temporary keychain, and the workflow removes the temporary signing/notary material in an `always()` cleanup step.
 
-Separating Linux and macOS improves failure isolation and selective reruns. It does not make them independent release sources: all three platform workflows still have to use the same frozen SHA.
+Separating platform workflows improves failure isolation and selective reruns. It does not make them independent release sources: every production package and signing stage still has to use the same frozen SHA.
 
 ## Architecture validation
 
 Do not infer package architecture from a filename or runner label alone:
 
-- Windows uses `.github/scripts/inspect_pe.py` against Python, QtCore, managed ADB and the packaged executable where applicable.
+- Windows uses `.github/scripts/inspect_pe.py` against Python, QtCore, managed ADB and the packaged executable where applicable. Production signing rechecks the signed executable and final ZIP, then repeats verification on the native target runner.
 - Linux verifies the ELF machine field and executable mode after archive extraction.
 - macOS verifies Mach-O architecture and bundle metadata.
 
@@ -193,6 +237,8 @@ Passing the preflight is not release compliance evidence by itself. After packag
 
 For macOS production builds, legal/public files are injected before the production signature. After signing/notarization/stapling, runtime evidence is refreshed against that final app state and the strict public legal validator runs before the release ZIP is created. Do not add or modify app-bundle files after the production signature except through the deliberate notarization/stapling process.
 
+For Windows production builds, the unsigned native package already passed the strict legal gate. Authenticode changes the owned executable bytes and the signing workflow deliberately updates `BUILD-INFO.txt`, so runtime evidence is refreshed and the strict public legal validator runs again before the final signed ZIP is created. The release ZIP and checksum always refer to this final signed state, never the unsigned intermediate ZIP.
+
 ## Frozen-SHA production release procedure
 
 A production release uses one exact immutable source revision for all six platform packages.
@@ -201,24 +247,25 @@ A production release uses one exact immutable source revision for all six platfo
 2. Merge the final release PR to `main` with a normal merge commit.
 3. Require the cheap post-merge Quality run to pass.
 4. Record the exact full `main` SHA. This becomes the frozen release SHA.
-5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=both` and `expected_sha=<frozen SHA>`.
-6. Dispatch `.github/workflows/build-linux.yml` from `main` with `expected_sha=<frozen SHA>`.
-7. Dispatch `.github/workflows/build-macos.yml` from `main` with `expected_sha=<frozen SHA>` and `signing_mode=production`.
-8. Confirm that all six release-candidate jobs succeeded from that exact SHA:
-   - Windows x64
-   - Windows ARM64
+5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=both` and `expected_sha=<frozen SHA>`; record its successful unsigned Windows build run ID.
+6. Dispatch `.github/workflows/sign-windows.yml` from the same frozen `main` SHA with `expected_sha=<frozen SHA>` and `build_run_id=<successful unsigned Windows build run>`. Require both signing jobs and both native post-sign verification jobs to pass; record this successful signed-Windows run ID.
+7. Dispatch `.github/workflows/build-linux.yml` from `main` with `expected_sha=<frozen SHA>`.
+8. Dispatch `.github/workflows/build-macos.yml` from `main` with `expected_sha=<frozen SHA>` and `signing_mode=production`.
+9. Confirm that all six final release candidates succeeded from that exact SHA:
+   - Windows x64 signed and natively verified
+   - Windows ARM64 signed and natively verified
    - Linux x64
    - Linux ARM64
    - macOS x64 with production Developer ID/notarization evidence
    - macOS ARM64 with production Developer ID/notarization evidence
-9. Dispatch `.github/workflows/assemble-release.yml` from the same frozen `main` SHA with:
-   - `expected_sha=<frozen SHA>`
-   - `windows_run_id=<successful Windows run>`
-   - `linux_run_id=<successful Linux run>`
-   - `macos_run_id=<successful production macOS run>`
-10. The assembler verifies each source workflow's identity, event, status, repository and exact head SHA before downloading artifacts. The three run IDs must be distinct. Its canonical macOS artifact pattern cannot match engineering-mode artifact names.
-11. The assembler validates the six release candidates, their provenance and legal/source material, then produces the final public asset set.
-12. Require the assembler output to contain exactly 8 files and no extra directories:
+10. Dispatch `.github/workflows/assemble-release.yml` from the same frozen `main` SHA with:
+    - `expected_sha=<frozen SHA>`
+    - `windows_run_id=<successful Sign Windows release candidates run>`
+    - `linux_run_id=<successful Linux run>`
+    - `macos_run_id=<successful production macOS run>`
+11. The assembler verifies each input workflow's identity, event, successful completion, repository and exact head SHA before downloading artifacts. The three run IDs must be distinct. The Windows input cannot accept the unsigned native build workflow, and the canonical macOS artifact pattern cannot match engineering-mode artifact names.
+12. The assembler validates the six release candidates, their provenance and legal/source material, then produces the final public asset set.
+13. Require the assembler output to contain exactly 8 files and no extra directories:
     - `PlayStoreAppAudit-vVERSION-windows-x64.zip`
     - `PlayStoreAppAudit-vVERSION-windows-arm64.zip`
     - `PlayStoreAppAudit-vVERSION-linux-x64.zip`
@@ -227,13 +274,13 @@ A production release uses one exact immutable source revision for all six platfo
     - `PlayStoreAppAudit-vVERSION-macos-arm64.zip`
     - `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
     - `SHA256SUMS.txt`
-13. Verify the final asset checksums and perform any deliberate release smoke/manual checks against those exact artifacts.
-14. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
-15. Create the GitHub Release and upload the already validated eight assets.
-16. Do not rebuild because the tag was pushed. The tag identifies the validated source commit; it is not a package-build trigger.
-17. Once published, treat the tag, release history and binary assets as immutable.
+14. Verify the final asset checksums and perform any deliberate release smoke/manual checks against those exact artifacts.
+15. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
+16. Create the GitHub Release and upload the already validated eight assets.
+17. Do not rebuild because the tag was pushed. The tag identifies the validated source commit; it is not a package-build trigger.
+18. Once published, treat the tag, release history and binary assets as immutable.
 
-If source code or release tooling changes after step 4, discard the affected release candidates, freeze the new exact `main` SHA and rebuild all six candidates. Never mix artifacts from different SHAs.
+If source code or release tooling changes after step 4, discard the affected release candidates, freeze the new exact `main` SHA and rebuild all six final candidates. Never mix artifacts from different SHAs.
 
 Documentation-only changes after a published release do not justify rebuilding, retagging or replacing that release's binary assets.
 
@@ -265,4 +312,8 @@ Do not treat the implementation as credential-validated until a deliberate `sign
 
 ### Windows v1.4 production path
 
-Windows Authenticode remains separate follow-up work. The chosen integration must keep signing authority/private-key material out of the repository, sign the final owned PE file(s) before the public ZIP/checksum stage, verify the resulting signature in CI and preserve the strict legal/runtime validation sequence.
+`.github/workflows/sign-windows.yml` is the production Authenticode trust stage. It uses Microsoft Artifact Signing with a configured production Public Trust profile and GitHub OIDC, signs only `PlayStoreAppAudit.exe`, requires SHA-256 plus RFC3161 timestamping, refreshes strict legal evidence after signing, and repeats final package/signature validation after ZIP roundtrip.
+
+The Artifact Signing action runs on a supported x64 Windows hosted runner. ARM64 remains a native package target: after its ARM64 PE is signed, the final ZIP is reverified and smoke-tested on `windows-11-arm` before the signing workflow can succeed.
+
+Do not treat the implementation as production-validated until the Azure Artifact Signing account, identity validation, certificate profile, federated GitHub identity and repository configuration are provisioned and one deliberate signing workflow run succeeds for both architectures. The assembler accepts only that successful signing workflow as its Windows source.

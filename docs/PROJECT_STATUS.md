@@ -25,23 +25,26 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 - Linux v1.3 signing: unsigned
 - macOS v1.3 signing: ad-hoc only, not notarized
 - macOS v1.4 production path: Developer ID + hardened runtime + secure timestamp + notarization/stapling/Gatekeeper implemented in workflow code; real credential-backed production validation still pending
+- Windows v1.4 production path: Microsoft Artifact Signing Public Trust + SHA-256/RFC3161 + native x64/ARM64 post-sign verification implemented in workflow code; real Azure credential/profile-backed production validation still pending
 
 ## Current workflows
 
 - `.github/workflows/quality.yml`
 - `.github/workflows/build-windows-exe.yml`
+- `.github/workflows/sign-windows.yml`
 - `.github/workflows/build-linux.yml`
 - `.github/workflows/build-macos.yml`
 - `.github/workflows/assemble-release.yml`
 
 The production release-candidate model is:
 
-- Windows workflow: x64 + ARM64
+- Windows native build workflow: x64 + ARM64 unsigned intermediate packages from the frozen SHA
+- Windows signing workflow: accepts only a successful exact-SHA native Windows build, signs both owned primary executables, reruns strict legal checks and natively verifies both final packages
 - Linux workflow: x64 + ARM64
-- macOS workflow: x64 + ARM64
-- assembler: accepts distinct Windows/Linux/macOS run IDs, validates all six candidates and emits exactly eight public files
+- macOS workflow: x64 + ARM64 production signing/notarization mode
+- assembler: accepts the signed Windows run plus distinct Linux/macOS run IDs, validates all six final candidates and emits exactly eight public files
 
-All three package workflows remain manual and exact-SHA guarded. Splitting Linux and macOS improves isolation and selective reruns without changing the one-SHA release invariant.
+All package/signing workflows remain deliberate manual release operations and exact-SHA guarded. The assembler must not accept an unsigned Windows build run as its Windows release source.
 
 ## Current release scripts
 
@@ -76,7 +79,7 @@ See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and procedure.
 
 ### P0 - Documentation and persistent context
 
-Completed in PR #24 except for the separate audit/edit of published GitHub Release descriptions, which requires release-write access rather than repository-content access.
+Repository documentation/context cleanup was completed in PR #24.
 
 Completed repository work:
 
@@ -85,6 +88,13 @@ Completed repository work:
 - corrected README six-platform v1.3.0 distribution text
 - corrected `BUILDING.md` and `ARCHITECTURE.md` release model
 - cleaned CHANGELOG maintainer-only process details
+
+Still open outside repository-content changes:
+
+- audit/edit published GitHub Release descriptions where maintainer-only pipeline notes remain, once a release-write connector/action is available
+- delete merged short-lived remote branches when branch-delete capability is available
+
+Neither housekeeping item justifies changing v1.3.0 binaries, tags or release history.
 
 ### P1 - Release workflow isolation
 
@@ -114,7 +124,7 @@ The later package-aware source download, legal injection and strict legal valida
 
 ### P1/P2 - Production signing
 
-macOS implementation is present in the current v1.4 signing PR:
+macOS workflow implementation was merged in PR #27:
 
 - explicit engineering vs production workflow modes
 - production credentials fail closed before dependency installation/build work
@@ -133,13 +143,25 @@ Still required before calling production macOS signing validated:
 - run one deliberate production build for both architectures
 - confirm Developer ID, notarization, staple and Gatekeeper evidence on the resulting artifacts
 
-Windows remains pending:
+Windows workflow implementation in PR #28 defines:
 
-- select and integrate a trusted Authenticode route suitable for direct GitHub ZIP distribution
-- keep signing authority/private-key material in compliant hardware/cloud protection or an approved signing service
-- use SHA-256 and RFC3161 timestamping
-- verify signatures in CI
-- do not use self-signed certificates for public distribution
+- native x64 + ARM64 build remains in `build-windows-exe.yml`
+- a separate `sign-windows.yml` accepts only the successful exact-SHA unsigned Windows build
+- Microsoft Artifact Signing Public Trust through GitHub OIDC
+- only the owned top-level `PlayStoreAppAudit.exe` is signed
+- SHA-256 file digest and RFC3161 timestamp are required
+- non-target package hashes must remain unchanged
+- legal runtime evidence is refreshed and strict public legal validation reruns after signing
+- final signed x64 and ARM64 packages are re-extracted, signature-verified and smoke-tested on native Windows runners
+- the release assembler accepts only the successful signed-Windows run, not the unsigned build run
+
+Still required before calling production Windows signing validated:
+
+- provision an eligible Artifact Signing account, completed identity validation and production Public Trust certificate profile
+- configure GitHub OIDC/federated Azure identity and the documented secrets/repository variables
+- grant the Azure identity the required signing role on the Artifact Signing resources
+- run one deliberate production Windows native build + signing workflow for both architectures
+- confirm public-trust Authenticode, timestamp and native x64/ARM64 package evidence
 
 ### P2 - Forward compatibility
 
@@ -172,4 +194,4 @@ Windows remains pending:
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context, PR #25 split the desktop release workflows, and PR #26 added the cheap legal-material preflight. The current controlled PR implements the macOS production signing/notarization path without running an expensive credential-backed package build yet. Windows signing, forward-compatibility and UI modernization remain separate follow-up work.
+PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path and PR #28 implements the Windows production signing path. Credential-backed production validation for both signing platforms remains deliberate release work. Forward-compatibility and UI modernization remain separate follow-up workstreams.

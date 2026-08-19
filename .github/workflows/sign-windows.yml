@@ -1,0 +1,598 @@
+name: Sign Windows release candidates
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact final-main commit SHA used by the unsigned Windows build
+        required: true
+        type: string
+      build_run_id:
+        description: Successful Build Windows - Qt6 run ID containing x64 and ARM64 unsigned artifacts
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight:
+    name: Verify exact SHA, unsigned source run and signing configuration
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.project_version.outputs.version }}
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify dispatch and unsigned Windows source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+          SOURCE_RUN_ID: ${{ inputs.build_run_id }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import urllib.request
+
+          expected = os.environ["EXPECTED_SHA"].strip().casefold()
+          dispatch = os.environ["DISPATCH_SHA"].strip().casefold()
+          dispatch_ref = os.environ["DISPATCH_REF"]
+          source_run_id = os.environ["SOURCE_RUN_ID"].strip()
+          repository = os.environ["REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          actual = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip().casefold()
+
+          if re.fullmatch(r"[0-9a-f]{40}", expected) is None:
+              raise RuntimeError(
+                  "expected_sha must be a full 40-character Git commit SHA"
+              )
+          if dispatch_ref != "refs/heads/main":
+              raise RuntimeError(
+                  "Windows production signing must be dispatched from main, "
+                  f"got {dispatch_ref}"
+              )
+          if dispatch != expected:
+              raise RuntimeError(
+                  f"Dispatch SHA {dispatch} does not match expected_sha {expected}"
+              )
+          if actual != expected:
+              raise RuntimeError(
+                  f"Checkout SHA {actual} does not match expected_sha {expected}"
+              )
+          if not source_run_id.isdigit() or int(source_run_id) <= 0:
+              raise RuntimeError("build_run_id must be a positive integer")
+
+          request = urllib.request.Request(
+              (
+                  "https://api.github.com/repos/"
+                  f"{repository}/actions/runs/{source_run_id}"
+              ),
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {token}",
+                  "X-GitHub-Api-Version": "2026-03-10",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              run = json.load(response)
+
+          failures = []
+          if run.get("name") != "Build Windows - Qt6":
+              failures.append(
+                  f"workflow name {run.get('name')!r} != 'Build Windows - Qt6'"
+              )
+          if run.get("event") != "workflow_dispatch":
+              failures.append(
+                  f"event {run.get('event')!r} != 'workflow_dispatch'"
+              )
+          if run.get("status") != "completed":
+              failures.append(
+                  f"status {run.get('status')!r} != 'completed'"
+              )
+          if run.get("conclusion") != "success":
+              failures.append(
+                  f"conclusion {run.get('conclusion')!r} != 'success'"
+              )
+          if str(run.get("head_sha", "")).casefold() != expected:
+              failures.append(
+                  f"head_sha {run.get('head_sha')!r} != {expected!r}"
+              )
+          head_repository = run.get("head_repository")
+          if not isinstance(head_repository, dict):
+              failures.append("head_repository is missing")
+          elif head_repository.get("full_name") != repository:
+              failures.append(
+                  "head repository "
+                  f"{head_repository.get('full_name')!r} != {repository!r}"
+              )
+
+          if failures:
+              raise RuntimeError(
+                  f"Unsigned Windows source run {source_run_id} rejected: "
+                  + "; ".join(failures)
+              )
+
+          print(
+              "Unsigned Windows source run "
+              f"{source_run_id} verified at exact SHA {expected}."
+          )
+          PY
+
+      - name: Verify Artifact Signing configuration
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          SIGNING_ENDPOINT: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ENDPOINT }}
+          SIGNING_ACCOUNT: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          SIGNING_PROFILE: ${{ vars.WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for name in \
+            AZURE_CLIENT_ID \
+            AZURE_TENANT_ID \
+            AZURE_SUBSCRIPTION_ID \
+            SIGNING_ENDPOINT \
+            SIGNING_ACCOUNT \
+            SIGNING_PROFILE
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf 'Missing Windows production signing configuration: %s\n' \
+              "${missing[*]}" >&2
+            exit 1
+          fi
+
+          if [[ ! "$SIGNING_ENDPOINT" =~ ^https://[A-Za-z0-9.-]+/$ ]]; then
+            echo 'WINDOWS_ARTIFACT_SIGNING_ENDPOINT must be an HTTPS endpoint ending in /.' >&2
+            exit 1
+          fi
+
+          echo 'Windows production signing configuration is present.'
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Read canonical project version
+        id: project_version
+        run: |
+          set -euo pipefail
+
+          version="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
+          metadata_version="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])')"
+
+          test -n "$version"
+          test "$version" = "$metadata_version"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Project version is not a numeric SemVer triplet: $version" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  sign-windows:
+    name: Sign Windows ${{ matrix.arch }} release candidate
+    needs: preflight
+    runs-on: windows-2025
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            expected_pe_machine: "0x8664"
+          - arch: arm64
+            expected_pe_machine: "0xAA64"
+    env:
+      PACKAGE_ARCH: ${{ matrix.arch }}
+      EXPECTED_PE_MACHINE: ${{ matrix.expected_pe_machine }}
+      APP_VERSION: ${{ needs.preflight.outputs.version }}
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify exact release SHA
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          $expected = $env:EXPECTED_SHA.Trim().ToLowerInvariant()
+          $dispatch = $env:DISPATCH_SHA.Trim().ToLowerInvariant()
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($expected -notmatch '^[0-9a-f]{40}$' -or $dispatch -ne $expected -or $actual -ne $expected) {
+            throw "Signing SHA mismatch: expected=$expected dispatch=$dispatch actual=$actual"
+          }
+
+      - name: Set up Python 3.13 signing environment
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install legal-validation dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
+          python -m pip install -r requirements-dev.txt "Nuitka==4.1.3"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install legal-validation dependencies.' }
+
+      - name: Download unsigned Windows build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
+          path: unsigned-input/${{ matrix.arch }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.build_run_id }}
+
+      - name: Prepare exact signing target
+        id: prepare
+        shell: pwsh
+        run: |
+          $artifactName = "PlayStoreAppAudit-v$env:APP_VERSION-windows-$env:PACKAGE_ARCH"
+          $inputRoot = Join-Path $PWD "unsigned-input\$env:PACKAGE_ARCH"
+          $zipPath = Join-Path $inputRoot "$artifactName.zip"
+          $legalReleaseDir = Join-Path $inputRoot "legal-release-v$env:APP_VERSION"
+          $extractRoot = Join-Path $PWD "signing\$env:PACKAGE_ARCH"
+          $packageDir = Join-Path $extractRoot $artifactName
+
+          if (-not (Test-Path -LiteralPath $zipPath -PathType Leaf)) {
+            throw "Unsigned source ZIP is missing: $zipPath"
+          }
+          if (-not (Test-Path -LiteralPath $legalReleaseDir -PathType Container)) {
+            throw "Unsigned source legal-release directory is missing: $legalReleaseDir"
+          }
+
+          New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+          Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot
+          if (-not (Test-Path -LiteralPath $packageDir -PathType Container)) {
+            throw "Expected package directory is missing after extraction: $packageDir"
+          }
+
+          $targets = @(Get-ChildItem -LiteralPath $packageDir -File -Filter 'PlayStoreAppAudit.exe')
+          if ($targets.Count -ne 1) {
+            throw "Expected exactly one top-level PlayStoreAppAudit.exe, found $($targets.Count)."
+          }
+          $topLevelExecutables = @(Get-ChildItem -LiteralPath $packageDir -File -Filter '*.exe')
+          if ($topLevelExecutables.Count -ne 1 -or $topLevelExecutables[0].Name -ne 'PlayStoreAppAudit.exe') {
+            throw 'Signing folder must contain exactly one top-level EXE and it must be PlayStoreAppAudit.exe.'
+          }
+          $appExe = $targets[0].FullName
+
+          $pe = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $appExe
+          if ($LASTEXITCODE -ne 0) { throw 'Unsigned primary executable architecture verification failed.' }
+
+          $unsignedSignature = Get-AuthenticodeSignature -FilePath $appExe
+          if ($unsignedSignature.Status -ne 'NotSigned') {
+            throw "Expected unsigned source executable, found Authenticode status $($unsignedSignature.Status)."
+          }
+
+          $buildInfo = Join-Path $packageDir 'BUILD-INFO.txt'
+          if (-not (Test-Path -LiteralPath $buildInfo -PathType Leaf)) {
+            throw 'BUILD-INFO.txt is missing from the unsigned package.'
+          }
+          $buildInfoText = Get-Content -LiteralPath $buildInfo -Raw
+          if (-not $buildInfoText.Contains('Signing: unsigned CI artifact')) {
+            throw 'Unsigned package BUILD-INFO.txt does not declare the expected unsigned CI state.'
+          }
+
+          $integrity = @{}
+          Get-ChildItem -LiteralPath $packageDir -Recurse -File | ForEach-Object {
+            $relative = [IO.Path]::GetRelativePath($packageDir, $_.FullName)
+            if ($relative -notin @('PlayStoreAppAudit.exe', 'BUILD-INFO.txt')) {
+              $integrity[$relative] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          }
+          $integrityPath = Join-Path $extractRoot 'non-signing-target-sha256.json'
+          $integrity | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $integrityPath -Encoding utf8
+
+          "package_dir=$packageDir" >> $env:GITHUB_OUTPUT
+          "app_exe=$appExe" >> $env:GITHUB_OUTPUT
+          "build_info=$buildInfo" >> $env:GITHUB_OUTPUT
+          "legal_release_dir=$legalReleaseDir" >> $env:GITHUB_OUTPUT
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+          "integrity_manifest=$integrityPath" >> $env:GITHUB_OUTPUT
+          Write-Host "Signing target: $appExe"
+          Write-Host "PE architecture: $pe"
+
+      - name: Azure login with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign PlayStoreAppAudit.exe with Microsoft Artifact Signing
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ steps.prepare.outputs.app_exe }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify signature, refresh legal evidence and repack
+        id: finalize
+        shell: pwsh
+        env:
+          PACKAGE_DIR: ${{ steps.prepare.outputs.package_dir }}
+          APP_EXE: ${{ steps.prepare.outputs.app_exe }}
+          BUILD_INFO: ${{ steps.prepare.outputs.build_info }}
+          LEGAL_RELEASE_DIR: ${{ steps.prepare.outputs.legal_release_dir }}
+          ZIP_PATH: ${{ steps.prepare.outputs.zip_path }}
+          INTEGRITY_MANIFEST: ${{ steps.prepare.outputs.integrity_manifest }}
+        run: |
+          $signature = Get-AuthenticodeSignature -FilePath $env:APP_EXE
+          if ($signature.Status -ne 'Valid') {
+            throw "Artifact Signing produced Authenticode status $($signature.Status): $($signature.StatusMessage)"
+          }
+          if (-not $signature.SignerCertificate) {
+            throw 'Signed executable has no signer certificate.'
+          }
+          if (-not $signature.TimeStamperCertificate) {
+            throw 'Signed executable has no RFC3161 timestamp certificate.'
+          }
+
+          $pe = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $env:APP_EXE
+          if ($LASTEXITCODE -ne 0) { throw 'Signed primary executable architecture verification failed.' }
+
+          $before = Get-Content -LiteralPath $env:INTEGRITY_MANIFEST -Raw | ConvertFrom-Json -AsHashtable
+          $after = @{}
+          Get-ChildItem -LiteralPath $env:PACKAGE_DIR -Recurse -File | ForEach-Object {
+            $relative = [IO.Path]::GetRelativePath($env:PACKAGE_DIR, $_.FullName)
+            if ($relative -notin @('PlayStoreAppAudit.exe', 'BUILD-INFO.txt')) {
+              $after[$relative] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          }
+          if ($before.Count -ne $after.Count) {
+            throw "Non-signing-target file count changed during signing: before=$($before.Count), after=$($after.Count)."
+          }
+          foreach ($relative in $before.Keys) {
+            if (-not $after.ContainsKey($relative)) {
+              throw "Non-signing-target file disappeared during signing: $relative"
+            }
+            if ($after[$relative] -ne $before[$relative]) {
+              throw "Non-signing-target file changed during signing: $relative"
+            }
+          }
+
+          $signingLines = @(
+            'Signing: Microsoft Artifact Signing Public Trust; SHA-256 file digest; RFC3161 timestamp',
+            "Signer subject: $($signature.SignerCertificate.Subject)",
+            "Signer thumbprint: $($signature.SignerCertificate.Thumbprint)",
+            "Timestamp subject: $($signature.TimeStamperCertificate.Subject)"
+          ) -join [Environment]::NewLine
+          $buildInfoText = Get-Content -LiteralPath $env:BUILD_INFO -Raw
+          if (-not $buildInfoText.Contains('Signing: unsigned CI artifact')) {
+            throw 'BUILD-INFO signing marker changed unexpectedly before finalization.'
+          }
+          $buildInfoText = $buildInfoText.Replace('Signing: unsigned CI artifact', $signingLines)
+          Set-Content -LiteralPath $env:BUILD_INFO -Value $buildInfoText -Encoding utf8 -NoNewline
+
+          python .github/scripts/prepare_release_legal_bundle.py `
+            --package-dir $env:PACKAGE_DIR `
+            --release-dir $env:LEGAL_RELEASE_DIR `
+            --refresh-runtime-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Could not refresh legal runtime evidence after signing.' }
+
+          python .github/scripts/validate_release_legal_bundle.py `
+            --package-dir $env:PACKAGE_DIR `
+            --release-dir $env:LEGAL_RELEASE_DIR `
+            --public
+          if ($LASTEXITCODE -ne 0) { throw 'Strict public legal validation failed after signing.' }
+
+          python .github/scripts/validate_windows_standalone.py $env:PACKAGE_DIR
+          if ($LASTEXITCODE -ne 0) { throw 'Signed standalone directory validation failed.' }
+
+          if (Test-Path -LiteralPath $env:ZIP_PATH) {
+            Remove-Item -LiteralPath $env:ZIP_PATH -Force
+          }
+          Compress-Archive -LiteralPath $env:PACKAGE_DIR -DestinationPath $env:ZIP_PATH -CompressionLevel Optimal
+
+          $roundtripRoot = Join-Path $PWD "roundtrip\$env:PACKAGE_ARCH"
+          New-Item -ItemType Directory -Force -Path $roundtripRoot | Out-Null
+          Expand-Archive -LiteralPath $env:ZIP_PATH -DestinationPath $roundtripRoot
+          $roundtripPackage = Join-Path $roundtripRoot "PlayStoreAppAudit-v$env:APP_VERSION-windows-$env:PACKAGE_ARCH"
+          $roundtripExe = Join-Path $roundtripPackage 'PlayStoreAppAudit.exe'
+
+          $roundtripSignature = Get-AuthenticodeSignature -FilePath $roundtripExe
+          if ($roundtripSignature.Status -ne 'Valid' -or -not $roundtripSignature.TimeStamperCertificate) {
+            throw 'Authenticode signature or RFC3161 timestamp did not survive final ZIP roundtrip.'
+          }
+          python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $roundtripExe
+          if ($LASTEXITCODE -ne 0) { throw 'Final ZIP roundtrip PE architecture validation failed.' }
+          python .github/scripts/validate_windows_standalone.py $roundtripPackage
+          if ($LASTEXITCODE -ne 0) { throw 'Final ZIP roundtrip standalone validation failed.' }
+
+          if (-not (Test-Path -LiteralPath (Join-Path $roundtripPackage 'LICENSE'))) {
+            throw 'Final signed package is missing LICENSE.'
+          }
+          if (Test-Path -LiteralPath (Join-Path $roundtripPackage 'LEGAL-MANIFEST.json')) {
+            throw 'Internal LEGAL-MANIFEST.json leaked into final signed package.'
+          }
+          if (Test-Path -LiteralPath (Join-Path $roundtripPackage 'validation-evidence')) {
+            throw 'Internal validation-evidence leaked into final signed package.'
+          }
+
+          $zipHash = (Get-FileHash -LiteralPath $env:ZIP_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
+          "zip_sha256=$zipHash" >> $env:GITHUB_OUTPUT
+
+          @"
+          ### Windows $env:PACKAGE_ARCH production signing
+
+          - Signer: $($signature.SignerCertificate.Subject)
+          - Authenticode: Valid
+          - File digest: SHA-256
+          - RFC3161 timestamp: present
+          - PE architecture: $pe
+          - Third-party/non-target files changed by signing: none
+          - Strict legal validation after signing: PASS
+          - Final ZIP SHA-256: ``$zipHash``
+          "@ >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload signed Windows release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
+          path: |
+            unsigned-input/${{ matrix.arch }}/PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}.zip
+            unsigned-input/${{ matrix.arch }}/legal-release-v${{ needs.preflight.outputs.version }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-windows:
+    name: Verify signed Windows ${{ matrix.arch }} package natively
+    needs:
+      - preflight
+      - sign-windows
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-2025
+            python_arch: x64
+            expected_runner_arch: X64
+            expected_pe_machine: "0x8664"
+          - arch: arm64
+            runner: windows-11-arm
+            python_arch: arm64
+            expected_runner_arch: ARM64
+            expected_pe_machine: "0xAA64"
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      actions: read
+    env:
+      APP_VERSION: ${{ needs.preflight.outputs.version }}
+      PACKAGE_ARCH: ${{ matrix.arch }}
+      EXPECTED_RUNNER_ARCH: ${{ matrix.expected_runner_arch }}
+      EXPECTED_PE_MACHINE: ${{ matrix.expected_pe_machine }}
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify exact release SHA
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          $expected = $env:EXPECTED_SHA.Trim().ToLowerInvariant()
+          $dispatch = $env:DISPATCH_SHA.Trim().ToLowerInvariant()
+          $actual = (git rev-parse HEAD).Trim().ToLowerInvariant()
+          if ($expected -notmatch '^[0-9a-f]{40}$' -or $dispatch -ne $expected -or $actual -ne $expected) {
+            throw "Native verification SHA mismatch: expected=$expected dispatch=$dispatch actual=$actual"
+          }
+
+      - name: Set up native Python 3.13
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          architecture: ${{ matrix.python_arch }}
+
+      - name: Download signed Windows release candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
+          path: signed-input
+
+      - name: Verify signed package natively
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
+        run: |
+          if ($env:RUNNER_ARCH -ne $env:EXPECTED_RUNNER_ARCH) {
+            throw "Expected native runner architecture $env:EXPECTED_RUNNER_ARCH, got $env:RUNNER_ARCH."
+          }
+
+          $artifactName = "PlayStoreAppAudit-v$env:APP_VERSION-windows-$env:PACKAGE_ARCH"
+          $zipPath = Join-Path $PWD "signed-input\$artifactName.zip"
+          if (-not (Test-Path -LiteralPath $zipPath -PathType Leaf)) {
+            throw "Signed ZIP is missing: $zipPath"
+          }
+
+          $roundtripRoot = Join-Path $PWD 'native-roundtrip'
+          New-Item -ItemType Directory -Force -Path $roundtripRoot | Out-Null
+          Expand-Archive -LiteralPath $zipPath -DestinationPath $roundtripRoot
+          $packageDir = Join-Path $roundtripRoot $artifactName
+          $appExe = Join-Path $packageDir 'PlayStoreAppAudit.exe'
+
+          python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $appExe
+          if ($LASTEXITCODE -ne 0) { throw 'Native final PE architecture validation failed.' }
+          python .github/scripts/validate_windows_standalone.py $packageDir
+          if ($LASTEXITCODE -ne 0) { throw 'Native final standalone validation failed.' }
+
+          $signature = Get-AuthenticodeSignature -FilePath $appExe
+          if ($signature.Status -ne 'Valid') {
+            throw "Native Authenticode verification failed: $($signature.Status) $($signature.StatusMessage)"
+          }
+          if (-not $signature.TimeStamperCertificate) {
+            throw 'Native verification found no RFC3161 timestamp certificate.'
+          }
+
+          $buildInfo = Get-Content -LiteralPath (Join-Path $packageDir 'BUILD-INFO.txt') -Raw
+          if (-not $buildInfo.Contains('Signing: Microsoft Artifact Signing Public Trust')) {
+            throw 'Final BUILD-INFO does not record Microsoft Artifact Signing Public Trust.'
+          }
+
+          $process = Start-Process `
+            -FilePath $appExe `
+            -WorkingDirectory $packageDir `
+            -PassThru `
+            -WindowStyle Hidden
+          if (-not $process.WaitForExit(60000)) {
+            $process.Kill()
+            $process.WaitForExit()
+            throw 'Signed packaged application did not finish its deterministic smoke test within 60 seconds.'
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "Signed packaged application smoke test failed with exit code $($process.ExitCode)."
+          }
+
+          @"
+          ### Windows $env:PACKAGE_ARCH native signed-package verification
+
+          - Native runner: $env:RUNNER_ARCH
+          - Authenticode: Valid
+          - RFC3161 timestamp: present
+          - Deterministic packaged smoke test: PASS
+          "@ >> $env:GITHUB_STEP_SUMMARY

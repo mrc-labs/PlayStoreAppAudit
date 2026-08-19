@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       windows_run_id:
-        description: Successful Build Windows - Qt6 run ID containing x64 and ARM64 artifacts
+        description: Successful Sign Windows release candidates run ID containing signed x64 and ARM64 artifacts
         required: true
         type: string
       linux_run_id:
@@ -113,7 +113,7 @@ jobs:
               (
                   "Windows",
                   os.environ["WINDOWS_RUN_ID"].strip(),
-                  "Build Windows - Qt6",
+                  "Sign Windows release candidates",
               ),
               (
                   "Linux",
@@ -292,7 +292,7 @@ jobs:
             echo "### Play Store App Audit v${VERSION} release assembly"
             echo
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
-            echo "- Windows RC run: \`${WINDOWS_RUN_ID}\`"
+            echo "- Windows signed RC run: \`${WINDOWS_RUN_ID}\`"
             echo "- Linux RC run: \`${LINUX_RUN_ID}\`"
             echo "- macOS RC run: \`${MACOS_RUN_ID}\`"
             echo "- Final asset count: 8"
