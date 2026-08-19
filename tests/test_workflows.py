@@ -135,7 +135,7 @@ def test_linux_release_runs_legal_gate_before_zip() -> None:
     assert 'test ! -e "$ROUNDTRIP_DIR/LEGAL-MANIFEST.json"' in linux
 
 
-def test_macos_release_signs_then_refreshes_and_validates() -> None:
+def test_macos_release_signs_notarizes_then_refreshes_and_validates() -> None:
     macos = _workflow("build-macos.yml")
 
     assert macos.count("prepare_release_legal_bundle.py") == 2
@@ -149,7 +149,9 @@ def test_macos_release_signs_then_refreshes_and_validates() -> None:
     assert '--nuitka-report "$PWD/compilation-report.xml"' in macos
 
     prepare = macos.index("prepare_release_legal_bundle.py")
-    codesign = macos.index('codesign --force --deep --sign - "$APP"')
+    sign = macos.index('--identity "$MACOS_SIGNING_IDENTITY"')
+    notarize = macos.index("xcrun notarytool submit")
+    staple = macos.index('xcrun stapler staple "$APP"')
     refresh = macos.index("--refresh-runtime-evidence")
     validate = macos.index("validate_release_legal_bundle.py")
     archive = macos.index(
@@ -157,7 +159,13 @@ def test_macos_release_signs_then_refreshes_and_validates() -> None:
         '${APP_VERSION}-macos-${PACKAGE_ARCH}.zip"'
     )
 
-    assert prepare < codesign < refresh < validate < archive
+    assert prepare < sign < notarize < staple < refresh < validate < archive
+
+    assert "codesign --force --deep --sign" not in macos
+    assert "--production" in macos
+    assert "--options runtime" not in macos
+    assert "spctl --assess --type execute --verbose=4" in macos
+    assert 'xcrun stapler validate "$RAPP"' in macos
 
     assert 'test -f "$APP/Contents/Resources/LICENSE"' in macos
     assert (
@@ -172,6 +180,41 @@ def test_macos_release_signs_then_refreshes_and_validates() -> None:
     )
 
     assert "BUILD-INFO-${PACKAGE_ARCH}.txt" not in macos
+
+
+def test_macos_production_credentials_fail_before_expensive_build() -> None:
+    macos = _workflow("build-macos.yml")
+
+    verify = macos.index("Verify production signing configuration")
+    install = macos.index("Install dependencies")
+    build = macos.index(
+        "Build, sign, notarize and validate packaged macOS app"
+    )
+
+    assert verify < install < build
+    assert "MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64" in macos
+    assert "MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD" in macos
+    assert "MACOS_DEVELOPER_ID_TEAM_ID" in macos
+    assert "MACOS_NOTARY_API_KEY_P8_BASE64" in macos
+    assert "MACOS_NOTARY_KEY_ID" in macos
+    assert "MACOS_NOTARY_ISSUER_ID" in macos
+
+
+def test_macos_engineering_artifacts_cannot_match_release_download_pattern() -> None:
+    macos = _workflow("build-macos.yml")
+
+    assert "Upload production macOS release candidate" in macos
+    assert (
+        "name: PlayStoreAppAudit-v${{ "
+        "steps.project_version.outputs.version }}-macos-${{ matrix.arch }}"
+        in macos
+    )
+    assert "Upload engineering macOS artifact" in macos
+    assert (
+        "name: PlayStoreAppAudit-engineering-v${{ "
+        "steps.project_version.outputs.version }}-macos-${{ matrix.arch }}"
+        in macos
+    )
 
 
 def test_platform_release_prunes_forbidden_qt_plugins_before_legal_gate() -> None:
