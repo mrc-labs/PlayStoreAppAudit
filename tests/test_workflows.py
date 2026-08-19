@@ -198,6 +198,8 @@ def test_macos_production_credentials_fail_before_expensive_build() -> None:
     assert "MACOS_NOTARY_API_KEY_P8_BASE64" in macos
     assert "MACOS_NOTARY_KEY_ID" in macos
     assert "MACOS_NOTARY_ISSUER_ID" in macos
+    assert "export P12_PATH NOTARY_KEY_PATH" in macos
+    assert "Expected exactly one Developer ID Application identity" in macos
 
 
 def test_macos_engineering_artifacts_cannot_match_release_download_pattern() -> None:
