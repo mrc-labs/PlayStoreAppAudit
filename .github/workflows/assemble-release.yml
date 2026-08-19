@@ -1,4 +1,4 @@
-name: Assemble v1.3 release assets
+name: Assemble release assets
 
 on:
   workflow_dispatch:
@@ -11,8 +11,12 @@ on:
         description: Successful Build Windows - Qt6 run ID containing x64 and ARM64 artifacts
         required: true
         type: string
-      desktop_run_id:
-        description: Successful Build macOS / Linux - Qt6 run ID containing all four desktop artifacts
+      linux_run_id:
+        description: Successful Build Linux - Qt6 run ID containing x64 and ARM64 artifacts
+        required: true
+        type: string
+      macos_run_id:
+        description: Successful Build macOS - Qt6 run ID containing x64 and ARM64 artifacts
         required: true
         type: string
 
@@ -93,7 +97,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
-          DESKTOP_RUN_ID: ${{ inputs.desktop_run_id }}
+          LINUX_RUN_ID: ${{ inputs.linux_run_id }}
+          MACOS_RUN_ID: ${{ inputs.macos_run_id }}
         run: |
           python - <<'PY'
           import json
@@ -111,16 +116,21 @@ jobs:
                   "Build Windows - Qt6",
               ),
               (
-                  "macOS/Linux",
-                  os.environ["DESKTOP_RUN_ID"].strip(),
-                  "Build macOS / Linux - Qt6 (manual)",
+                  "Linux",
+                  os.environ["LINUX_RUN_ID"].strip(),
+                  "Build Linux - Qt6 (manual)",
+              ),
+              (
+                  "macOS",
+                  os.environ["MACOS_RUN_ID"].strip(),
+                  "Build macOS - Qt6 (manual)",
               ),
           )
 
           run_ids = [raw_id for _, raw_id, _ in specs]
           if len(set(run_ids)) != len(run_ids):
               raise RuntimeError(
-                  "Windows and desktop run IDs must be different"
+                  "Windows, Linux and macOS run IDs must be different"
               )
 
           for label, raw_id, expected_name in specs:
@@ -224,7 +234,7 @@ jobs:
           merge-multiple: false
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.desktop_run_id }}
+          run-id: ${{ inputs.linux_run_id }}
 
       - name: Download macOS release candidates
         uses: actions/download-artifact@v8
@@ -234,7 +244,7 @@ jobs:
           merge-multiple: false
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.desktop_run_id }}
+          run-id: ${{ inputs.macos_run_id }}
 
       - name: Assemble and validate final asset set
         env:
@@ -275,14 +285,16 @@ jobs:
           VERSION: ${{ steps.project_version.outputs.version }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
-          DESKTOP_RUN_ID: ${{ inputs.desktop_run_id }}
+          LINUX_RUN_ID: ${{ inputs.linux_run_id }}
+          MACOS_RUN_ID: ${{ inputs.macos_run_id }}
         run: |
           {
             echo "### Play Store App Audit v${VERSION} release assembly"
             echo
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
             echo "- Windows RC run: \`${WINDOWS_RUN_ID}\`"
-            echo "- macOS/Linux RC run: \`${DESKTOP_RUN_ID}\`"
+            echo "- Linux RC run: \`${LINUX_RUN_ID}\`"
+            echo "- macOS RC run: \`${MACOS_RUN_ID}\`"
             echo "- Final asset count: 8"
             echo
             echo '```text'
