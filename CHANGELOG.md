@@ -12,10 +12,10 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- v1.4.0 is published as a Windows engineering/test release with prebuilt x64 and ARM64 ZIP packages.
-- The Windows v1.4.0 packages are intentionally unsigned. Production code signing is planned for v1.5.
-- Linux and macOS remain supported by the shared source tree, but v1.4.0 does not publish new Linux or macOS prebuilt packages.
-- The release includes one consolidated third-party source archive and one release-wide `SHA256SUMS.txt` alongside the two Windows packages.
+- v1.4.0 is published as a Windows engineering/test release with one prebuilt x64 ZIP package.
+- The Windows v1.4.0 package is intentionally unsigned. Production code signing is planned for v1.5.
+- Windows ARM64, Linux and macOS remain supported by the shared source tree, but v1.4.0 does not publish new prebuilt packages for those targets.
+- The release includes one consolidated third-party source archive and one release-wide `SHA256SUMS.txt` alongside the Windows x64 package.
 - Python 3.13 remains the release-packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
 
 ## [1.3.0] - 2026-08-19
