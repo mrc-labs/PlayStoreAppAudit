@@ -182,4 +182,4 @@ jobs:
           name: ui-style-audit-${{ matrix.platform_key }}
           path: ui-style-audit/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
