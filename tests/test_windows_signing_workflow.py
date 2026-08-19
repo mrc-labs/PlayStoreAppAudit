@@ -38,8 +38,10 @@ def test_windows_signing_uses_public_trust_action_on_supported_runner() -> None:
     assert "WINDOWS_ARTIFACT_SIGNING_ENDPOINT" in text
     assert "WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME" in text
     assert "WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME" in text
-    assert 'files-folder-filter: "*.exe"' in text
-    assert "files-folder-recurse: false" in text
+    assert "files: ${{ steps.prepare.outputs.app_exe }}" in text
+    assert "files-folder:" not in text
+    assert "files-folder-filter:" not in text
+    assert "correlation-id:" not in text
     assert "file-digest: SHA256" in text
     assert "timestamp-rfc3161: http://timestamp.acs.microsoft.com" in text
     assert "timestamp-digest: SHA256" in text
