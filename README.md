@@ -21,9 +21,24 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The normal prebuilt distribution target is Windows x64. Download the Windows x64 ZIP from the release you want, extract it to a normal folder and run `PlayStoreAppAudit.exe` from the extracted package. Windows builds are currently unsigned, so Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the file. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+The current v1.3.0 release provides six prebuilt desktop packages:
 
-Windows ARM64 remains an explicit manual engineering build capability. macOS and Linux remain supported from the shared source tree, with packaging performed manually or on demand. For historical context, v1.0.0 was the last release that provided six prebuilt packages across Windows, macOS and Linux architectures.
+- Windows x64
+- Windows ARM64
+- Linux x64
+- Linux ARM64
+- macOS Intel / x64
+- macOS Apple Silicon / ARM64
+
+Download the ZIP matching your operating system and architecture, extract it to a normal folder, then start the application from the extracted package.
+
+Windows v1.3.0 packages are unsigned, so Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+
+macOS v1.3.0 packages use an ad-hoc CI signature and are not Apple-notarized, so macOS may require an explicit user approval before first launch.
+
+Linux v1.3.0 packages are standalone application trees distributed in ZIP files. Keep the extracted directory together rather than moving only the executable.
+
+Each v1.3.0 release also includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` for integrity verification.
 
 ## Quick start
 
@@ -45,9 +60,9 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 - **Store anomaly:** Store responses were inconsistent or otherwise unusual.
 - **Other:** the check was incomplete, failed or could not be classified confidently.
 
-The optional Health Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help → Health score methodology**.
+The optional Health Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Health score methodology**.
 
-An installed version that differs from the Store version is reported as a difference, not automatically as “outdated.” Device-specific variants, staged rollouts and regional releases can legitimately differ.
+An installed version that differs from the Store version is reported as a difference, not automatically as outdated. Device-specific variants, staged rollouts and regional releases can legitimately differ.
 
 ## Android phone and ADB support
 
@@ -74,14 +89,16 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 ## Platform support
 
-| Platform | Source support | Prebuilt policy |
+| Platform | Source support | v1.3.0 prebuilt release |
 | --- | --- | --- |
-| Windows x64 | Supported | Normal release target; automatic build after relevant pushes to `main` |
-| Windows ARM64 | Supported | Explicit manual engineering build |
-| macOS | Supported | Manual/on-demand packaging |
-| Linux | Supported | Manual/on-demand packaging; Linux ARM64 requires native ADB |
+| Windows x64 | Supported | ZIP |
+| Windows ARM64 | Supported | ZIP |
+| Linux x64 | Supported | Standalone ZIP; managed ADB available |
+| Linux ARM64 | Supported | Standalone ZIP; native ADB required |
+| macOS Intel / x64 | Supported | App bundle in ZIP |
+| macOS Apple Silicon / ARM64 | Supported | App bundle in ZIP |
 
-All platforms use the same source tree. Platform-specific behavior is kept behind the application's platform and device layers.
+All six v1.3.0 packages were produced from the same validated release commit. Platform-specific behaviour remains behind the application's platform and device layers.
 
 ## License
 
@@ -89,7 +106,7 @@ Play Store App Audit's own code is licensed under the [GNU General Public Licens
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
-Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and corresponding-source material where required.
+Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The release-wide corresponding-source archive is published alongside the six platform ZIPs.
 
 ## Contributing
 
@@ -97,7 +114,9 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 ## Development
 
-The release-build baseline is Python 3.13. Install the development dependencies, run the application and execute the quality checks with:
+The release-packaging baseline is Python 3.13. Quality CI also exercises Python 3.14 source compatibility.
+
+Install the development dependencies, run the application and execute the quality checks with:
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -111,8 +130,12 @@ Developer references:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Building and release workflow](docs/BUILDING.md)
+- [Durable project decisions](docs/PROJECT_DECISIONS.md)
+- [Current project status and backlog](docs/PROJECT_STATUS.md)
 - [Project guidance for coding agents](AGENTS.md)
 
 ## Building from source
 
-Windows release packaging uses Nuitka standalone mode with the PySide6 plugin. On Windows x64, `build_windows_exe.bat` creates and validates a versioned standalone package using Python 3.13. Platform-specific prerequisites, architecture validation, signing status and the release lifecycle are documented in [Building Play Store App Audit](docs/BUILDING.md).
+Release packages use Python 3.13 and Nuitka standalone packaging. The production release process freezes one exact `main` SHA, builds all six platform release candidates from that SHA, validates and assembles the final eight-file public asset set, then tags and publishes the already validated artifacts.
+
+Platform-specific prerequisites, architecture validation, legal/source handling and the full release lifecycle are documented in [Building Play Store App Audit](docs/BUILDING.md).
