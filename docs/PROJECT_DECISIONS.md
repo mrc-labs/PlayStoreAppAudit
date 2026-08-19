@@ -95,11 +95,13 @@ Rationale: source compatibility can move ahead of the release compiler without m
 
 The release architecture is platform-isolated but source-SHA unified.
 
-- Windows, Linux and macOS package workflows may be separated for clearer ownership and selective reruns.
-- A workflow split must not weaken the exact-SHA guards or change the six-candidate/eight-public-asset model.
-- The release assembler must verify each source workflow run and its exact head SHA before accepting artifacts.
+- Windows, Linux and macOS use separate manual package workflows.
+- The Linux and macOS workflows each build both x64 and ARM64 release candidates in one architecture matrix.
+- The Windows workflow retains its x64/ARM64 target matrix.
+- All three source workflows require the same exact frozen `expected_sha` for a production release.
+- The release assembler accepts distinct Windows, Linux and macOS run IDs, verifies each source workflow run and its exact head SHA, then assembles the common six-candidate/eight-public-asset release.
 
-Rationale: separate platform workflows improve isolation and rerun control, but they are not independent release sources.
+Rationale: separate platform workflows improve failure isolation and selective reruns without creating independent platform release lines. The frozen SHA, not the workflow file, defines release source identity.
 
 ## Legal-material preflight
 
