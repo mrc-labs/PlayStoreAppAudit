@@ -251,3 +251,35 @@ def test_macos_release_signs_then_refreshes_and_validates() -> None:
     )
 
     assert "BUILD-INFO-${PACKAGE_ARCH}.txt" not in macos
+def test_desktop_release_prunes_forbidden_qt_plugins_before_legal_gate() -> None:
+    root = Path(__file__).resolve().parents[1]
+    workflow = (
+        root / ".github/workflows/build-macos-linux.yml"
+    ).read_text(encoding="utf-8")
+
+    linux, macos = workflow.split("  build-macos:", 1)
+
+    linux_qpdf = (
+        'find "$STANDALONE_DIR" -type f '
+        "-name 'libqpdf.so*' -print -delete"
+    )
+    macos_qpdf = (
+        'find "$APP" -type f '
+        "-name 'libqpdf*.dylib' -print -delete"
+    )
+
+    assert (
+        "--noinclude-qt-plugins=platforminputcontexts"
+        in linux
+    )
+    assert linux_qpdf in linux
+    assert macos_qpdf in macos
+
+    assert (
+        linux.index(linux_qpdf)
+        < linux.index("prepare_release_legal_bundle.py")
+    )
+    assert (
+        macos.index(macos_qpdf)
+        < macos.index("prepare_release_legal_bundle.py")
+    )
