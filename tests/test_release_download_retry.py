@@ -49,6 +49,8 @@ def test_download_file_retries_mid_stream_timeout_without_partial_output(
     def open_url(*_args, **_kwargs):
         nonlocal attempts
         attempts += 1
+        if attempts == 2:
+            assert list(tmp_path.glob("*.download")) == []
         return _ChunkedResponse(
             payload,
             fail_on_second_read=attempts == 1,
