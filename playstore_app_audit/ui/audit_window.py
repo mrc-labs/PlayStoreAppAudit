@@ -387,7 +387,6 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("MRC")
-    app.setStyle("Fusion")
     window = AuditWindow()
     window.show()
     return app.exec()

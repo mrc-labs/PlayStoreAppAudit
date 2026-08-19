@@ -25,62 +25,76 @@ from release_asset_layout import (
     validate_third_party_source_bundle,
 )
 
+ENGINEERING_ARCHITECTURE = "x64"
 
-def _discover_windows_candidates(
+
+def _discover_windows_candidate(
     input_dir: Path,
     version: str,
     expected_sha: str,
-) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
+) -> dict[str, Any]:
+    filename = binary_asset_filename(
+        version,
+        "windows",
+        ENGINEERING_ARCHITECTURE,
+    )
+    matches = sorted(
+        (
+            path
+            for path in input_dir.rglob(filename)
+            if path.is_file()
+        ),
+        key=lambda path: str(path).casefold(),
+    )
+
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Expected exactly one {filename}, found {len(matches)}"
+        )
 
     for architecture in ARCHITECTURES:
-        filename = binary_asset_filename(
+        if architecture == ENGINEERING_ARCHITECTURE:
+            continue
+        unexpected_name = binary_asset_filename(
             version,
             "windows",
             architecture,
         )
-        matches = sorted(
-            (
-                path
-                for path in input_dir.rglob(filename)
-                if path.is_file()
-            ),
-            key=lambda path: str(path).casefold(),
-        )
-
-        if len(matches) != 1:
+        unexpected_matches = [
+            path
+            for path in input_dir.rglob(unexpected_name)
+            if path.is_file()
+        ]
+        if unexpected_matches:
             raise RuntimeError(
-                f"Expected exactly one {filename}, found {len(matches)}"
+                "v1.4 Windows engineering input must contain x64 only; "
+                f"found {len(unexpected_matches)} {unexpected_name} artifact(s)"
             )
 
-        archive_path = matches[0]
-        release_dir = archive_path.parent / f"legal-release-v{version}"
+    archive_path = matches[0]
+    release_dir = archive_path.parent / f"legal-release-v{version}"
 
-        if not release_dir.is_dir():
-            raise RuntimeError(
-                "Release candidate legal staging must be a sibling of its ZIP: "
-                f"{archive_path}"
-            )
-
-        _validate_binary_build_sha(archive_path, expected_sha)
-        source_assets = _validate_rc_legal(
-            release_dir,
-            version,
-            "windows",
-            architecture,
+    if not release_dir.is_dir():
+        raise RuntimeError(
+            "Release candidate legal staging must be a sibling of its ZIP: "
+            f"{archive_path}"
         )
 
-        candidates.append(
-            {
-                "platform": "windows",
-                "architecture": architecture,
-                "archive_path": archive_path,
-                "release_dir": release_dir,
-                "source_assets": source_assets,
-            }
-        )
+    _validate_binary_build_sha(archive_path, expected_sha)
+    source_assets = _validate_rc_legal(
+        release_dir,
+        version,
+        "windows",
+        ENGINEERING_ARCHITECTURE,
+    )
 
-    return candidates
+    return {
+        "platform": "windows",
+        "architecture": ENGINEERING_ARCHITECTURE,
+        "archive_path": archive_path,
+        "release_dir": release_dir,
+        "source_assets": source_assets,
+    }
 
 
 def assemble_windows_engineering_release(
@@ -96,23 +110,23 @@ def assemble_windows_engineering_release(
     if not input_dir.is_dir():
         raise RuntimeError(f"Input directory does not exist: {input_dir}")
 
-    candidates = _discover_windows_candidates(
+    candidate = _discover_windows_candidate(
         input_dir,
         version,
         expected_sha,
     )
+    candidates = [candidate]
 
     _prepare_output_dir(output_dir)
 
-    for candidate in candidates:
-        source = candidate["archive_path"]
-        destination = output_dir / source.name
-        shutil.copy2(source, destination)
+    source = candidate["archive_path"]
+    destination = output_dir / source.name
+    shutil.copy2(source, destination)
 
-        if sha256_file(destination) != sha256_file(source):
-            raise RuntimeError(
-                f"Copied binary SHA-256 mismatch: {source.name}"
-            )
+    if sha256_file(destination) != sha256_file(source):
+        raise RuntimeError(
+            f"Copied binary SHA-256 mismatch: {source.name}"
+        )
 
     with tempfile.TemporaryDirectory(
         prefix="playstore-windows-engineering-sources-"
@@ -144,9 +158,11 @@ def assemble_windows_engineering_release(
     )
 
     expected_names = {
-        binary_asset_filename(version, "windows", architecture)
-        for architecture in ARCHITECTURES
-    } | {
+        binary_asset_filename(
+            version,
+            "windows",
+            ENGINEERING_ARCHITECTURE,
+        ),
         source_bundle_filename(version),
         "SHA256SUMS.txt",
     }
@@ -185,7 +201,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.expected_sha,
     )
 
-    print("Windows engineering release assembly PASS")
+    print("Windows x64 engineering release assembly PASS")
     for asset in assets:
         print(asset.name)
 

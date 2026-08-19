@@ -89,15 +89,15 @@ Every public release is an exact-SHA assembly rather than a collection of indepe
 
 If source or release tooling changes after the SHA freeze, every candidate required by the selected profile must be rebuilt from the new exact SHA. Artifacts from different source revisions must never be mixed.
 
-### v1.4 Windows engineering profile
+### v1.4 Windows x64 engineering profile
 
-v1.4 intentionally publishes only unsigned Windows x64 and Windows ARM64 engineering/test packages.
+v1.4 intentionally publishes only one unsigned Windows x64 engineering/test package.
 
-- Both packages come from one frozen SHA via `.github/workflows/build-windows-exe.yml` with `target=both`.
+- The package comes from one frozen SHA via `.github/workflows/build-windows-exe.yml` with `target=x64`.
+- Windows ARM64, Linux and macOS release jobs are not run for v1.4.
 - Production signing is not invoked.
-- Linux and macOS package workflows are not run for the v1.4 release.
-- `.github/workflows/assemble-windows-engineering-release.yml` consumes only the successful unsigned Windows run from the same repository and exact SHA.
-- The engineering assembler emits exactly four public assets: the two Windows ZIPs, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- `.github/workflows/assemble-windows-engineering-release.yml` consumes only the successful unsigned Windows x64 run from the same repository and exact SHA and rejects ARM64 source input.
+- The engineering assembler emits exactly three public assets: the Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
 - Strict public legal/source validation is unchanged.
 
 This profile reduces release cost without weakening source identity, legal evidence or package validation.
@@ -119,7 +119,7 @@ The existing production path is preserved for v1.5:
 
 Windows package validation covers native Python/PySide inputs, PE architecture, version metadata, runtime content, startup and legal material. Linux validates ELF architecture, runtime content and startup. macOS validates Mach-O architecture, bundle metadata, runtime content, signature state and startup.
 
-At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. v1.4 deliberately remains unsigned on Windows. Production signing execution is deferred to v1.5.
+At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. v1.4 deliberately remains unsigned on Windows x64. Production signing execution is deferred to v1.5.
 
 Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
 

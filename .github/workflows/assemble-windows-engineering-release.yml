@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: Exact final-main commit SHA used by both Windows engineering candidates
+        description: Exact final-main commit SHA used by the Windows x64 engineering candidate
         required: true
         type: string
       windows_run_id:
-        description: Successful Build Windows - Qt6 run ID containing unsigned x64 and ARM64 artifacts
+        description: Successful Build Windows - Qt6 run ID containing the unsigned x64 artifact
         required: true
         type: string
 
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   assemble:
-    name: Validate and assemble Windows engineering release assets
+    name: Validate and assemble Windows x64 engineering release assets
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout exact release source
@@ -58,7 +58,7 @@ jobs:
             exit 1
           fi
 
-          echo "Final-main Windows engineering release SHA verified: $actual"
+          echo "Final-main Windows x64 engineering release SHA verified: $actual"
 
       - uses: actions/setup-python@v7
         with:
@@ -89,6 +89,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
+          VERSION: ${{ steps.project_version.outputs.version }}
         run: |
           python - <<'PY'
           import json
@@ -99,17 +100,19 @@ jobs:
           repository = os.environ["REPOSITORY"]
           token = os.environ["GH_TOKEN"]
           raw_id = os.environ["WINDOWS_RUN_ID"].strip()
+          version = os.environ["VERSION"]
 
           if not raw_id.isdigit() or int(raw_id) <= 0:
               raise RuntimeError("Windows run ID must be a positive integer")
 
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2026-03-10",
+          }
           request = urllib.request.Request(
               f"https://api.github.com/repos/{repository}/actions/runs/{raw_id}",
-              headers={
-                  "Accept": "application/vnd.github+json",
-                  "Authorization": f"Bearer {token}",
-                  "X-GitHub-Api-Version": "2026-03-10",
-              },
+              headers=headers,
           )
 
           with urllib.request.urlopen(request, timeout=30) as response:
@@ -148,13 +151,33 @@ jobs:
                   f"{head_repository.get('full_name')!r} != {repository!r}"
               )
 
+          artifacts_request = urllib.request.Request(
+              f"https://api.github.com/repos/{repository}/actions/runs/{raw_id}/artifacts?per_page=100",
+              headers=headers,
+          )
+          with urllib.request.urlopen(artifacts_request, timeout=30) as response:
+              artifacts_payload = json.load(response)
+
+          artifact_names = {
+              str(item.get("name", ""))
+              for item in artifacts_payload.get("artifacts", [])
+          }
+          expected_x64 = f"PlayStoreAppAudit-v{version}-windows-x64"
+          unexpected_arm64 = f"PlayStoreAppAudit-v{version}-windows-arm64"
+          if expected_x64 not in artifact_names:
+              failures.append(f"required x64 artifact {expected_x64!r} is missing")
+          if unexpected_arm64 in artifact_names:
+              failures.append(
+                  "source run contains a Windows ARM64 artifact; v1.4 engineering must be built with target=x64 only"
+              )
+
           if failures:
               raise RuntimeError(
                   f"Windows run {raw_id} rejected: " + "; ".join(failures)
               )
 
           print(
-              f"Windows run {raw_id}: completed/success at {actual_sha}"
+              f"Windows x64 run {raw_id}: completed/success at {actual_sha}"
           )
           PY
 
@@ -165,17 +188,17 @@ jobs:
             .github/scripts/assemble_release_assets.py \
             .github/scripts/release_asset_layout.py
 
-      - name: Download unsigned Windows engineering candidates
+      - name: Download unsigned Windows x64 engineering candidate
         uses: actions/download-artifact@v8
         with:
-          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-*
+          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64
           path: rc-input/windows
           merge-multiple: false
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: ${{ inputs.windows_run_id }}
 
-      - name: Assemble and validate four-file engineering asset set
+      - name: Assemble and validate three-file engineering asset set
         env:
           VERSION: ${{ steps.project_version.outputs.version }}
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -197,7 +220,7 @@ jobs:
             wc -c |
             tr -d '[:space:]'
           )"
-          test "$asset_count" = "4"
+          test "$asset_count" = "3"
 
           if find final-release -mindepth 1 -maxdepth 1 -type d -print -quit |
             grep -q .
@@ -206,7 +229,7 @@ jobs:
             exit 1
           fi
 
-          echo "Windows engineering release asset set contains exactly 4 files."
+          echo "Windows x64 engineering release asset set contains exactly 3 files."
 
       - name: Write engineering release summary
         env:
@@ -215,13 +238,13 @@ jobs:
           WINDOWS_RUN_ID: ${{ inputs.windows_run_id }}
         run: |
           {
-            echo "### Play Store App Audit v${VERSION} Windows engineering release"
+            echo "### Play Store App Audit v${VERSION} Windows x64 engineering release"
             echo
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
             echo "- Unsigned Windows source run: \`${WINDOWS_RUN_ID}\`"
-            echo "- Windows architectures: x64 + ARM64"
+            echo "- Windows architecture: x64 only"
             echo "- Signing: intentionally deferred to v1.5"
-            echo "- Final asset count: 4"
+            echo "- Final asset count: 3"
             echo
             echo '```text'
             cat final-release/SHA256SUMS.txt
@@ -231,7 +254,7 @@ jobs:
       - name: Upload validated Windows engineering release assets
         uses: actions/upload-artifact@v7
         with:
-          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-engineering-release-assets
+          name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64-engineering-release-assets
           path: final-release/
           if-no-files-found: error
           retention-days: 30
