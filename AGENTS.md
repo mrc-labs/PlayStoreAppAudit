@@ -85,18 +85,18 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - Do not weaken legal/source validation to make a build pass.
 - Do not delete files under `.github/scripts/` merely because there are several. Verify workflow references, imports and tests before removal.
 
-### v1.4 Windows engineering profile
+### v1.4 Windows x64 engineering profile
 
-v1.4 is intentionally a public Windows engineering/test release while production signing is deferred to v1.5.
+v1.4 is intentionally a public Windows x64 engineering/test release while production signing and the broader platform matrix are deferred to v1.5.
 
-- Build Windows x64 and Windows ARM64 only, both from the same frozen SHA.
-- Use `.github/workflows/build-windows-exe.yml` with `target=both`.
+- Build Windows x64 only from the frozen SHA.
+- Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
 - Do not invoke `.github/workflows/sign-windows.yml` for v1.4.
-- Do not spend Linux or macOS runner capacity for the v1.4 release.
+- Do not build Windows ARM64, Linux or macOS release candidates for v1.4.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
-- The engineering assembler must accept only the successful unsigned `Build Windows - Qt6` run from the same repository and exact SHA.
-- The public asset set is exactly four files: Windows x64 ZIP, Windows ARM64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
-- The release notes must clearly state that the v1.4 Windows packages are unsigned engineering/test builds.
+- The engineering assembler must accept only the successful unsigned Windows x64 `Build Windows - Qt6` run from the same repository and exact SHA and must reject ARM64 input.
+- The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+- The release notes must clearly state that the v1.4 Windows x64 package is unsigned and is an engineering/test build.
 
 ### v1.5 production profile
 
