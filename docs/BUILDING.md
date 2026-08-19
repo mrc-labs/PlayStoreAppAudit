@@ -101,6 +101,8 @@ Every production release uses three source workflow runs, all dispatched from th
 
 Each workflow verifies that the dispatch SHA and checked-out SHA equal its required `expected_sha` before expensive build work begins.
 
+After release dependencies are installed, every package job runs the deterministic legal-material preflight described below. Nuitka compilation does not begin until that preflight succeeds.
+
 ### Windows
 
 `.github/workflows/build-windows-exe.yml` accepts:
@@ -156,7 +158,22 @@ The consolidated public source archive is:
 
 The release process validates the expected corresponding-source set and checksums. Do not relax legal validation merely to make CI pass.
 
-v1.4 should add a cheap deterministic legal-material preflight before Nuitka compilation. That preflight complements the later strict legal gate; it does not replace it.
+### Cheap pre-Nuitka preflight
+
+`.github/scripts/preflight_release_legal_material.py` runs after the release Python dependencies are installed and before Qt deployment/Nuitka compilation in the Windows, Linux and macOS package workflows.
+
+It deliberately reuses the source/license resolution functions from `prepare_release_legal_bundle.py` and fails closed when deterministic prerequisites cannot be established. It checks:
+
+- the canonical project version;
+- the exact `PySide6-Essentials` project pin and the installed PySide6/Shiboken version match;
+- official Qt/PySide source archive names, URLs and SHA-256 provenance metadata for `pyside-setup`, `qtbase`, `qtimageformats` and `qtsvg`;
+- the exact certifi source distribution metadata and SHA-256 digest;
+- CPython license resolution, including the exact-version upstream fallback used by the strict legal tooling;
+- the required Nuitka legal files and the exact release build pin.
+
+The preflight resolves metadata and small legal text only. It does not download the large Qt/PySide source archives, because the final package determines the authoritative source-component set and the full corresponding-source download still belongs to the package-aware legal stage.
+
+Passing the preflight is not release compliance evidence by itself. After packaging, `prepare_release_legal_bundle.py` still detects the actual runtime, downloads the exact required source archives, injects public legal material and creates validation evidence. `validate_release_legal_bundle.py` then performs the strict public package/source validation. The preflight complements these gates and never replaces or weakens them.
 
 ## Frozen-SHA production release procedure
 
