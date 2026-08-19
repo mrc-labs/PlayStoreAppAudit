@@ -12,7 +12,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- v1.4.0 is published as a Windows engineering/test release with one prebuilt x64 ZIP package.
+- v1.4.0 is published as an Engineering Test Build (ETB) for Windows x64 with one prebuilt x64 ZIP package.
 - The Windows v1.4.0 package is intentionally unsigned. Production code signing is planned for v1.5.
 - Windows ARM64, Linux and macOS remain supported by the shared source tree, but v1.4.0 does not publish new prebuilt packages for those targets.
 - The release includes one consolidated third-party source archive and one release-wide `SHA256SUMS.txt` alongside the Windows x64 package.

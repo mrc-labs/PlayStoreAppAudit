@@ -335,4 +335,4 @@ jobs:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 0

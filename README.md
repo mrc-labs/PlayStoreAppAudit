@@ -21,7 +21,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The current v1.4.0 release is a Windows engineering/test release and provides one prebuilt package:
+The current v1.4.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
 
 - Windows x64
 
@@ -29,7 +29,7 @@ Download the Windows x64 ZIP, extract it to a normal folder, then start the appl
 
 The Windows v1.4.0 package is intentionally unsigned while the production signing path is being validated for v1.5. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
 
-Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.4.0 deliberately does not rebuild those targets in order to keep this engineering release focused and inexpensive.
+Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.4.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
 
 The v1.4.0 release also includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` for integrity verification.
 
@@ -84,7 +84,7 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 | Platform | Source support | v1.4.0 prebuilt release | Latest older prebuilt |
 | --- | --- | --- | --- |
-| Windows x64 | Supported | Engineering ZIP | v1.3.0 ZIP |
+| Windows x64 | Supported | ETB ZIP | v1.3.0 ZIP |
 | Windows ARM64 | Supported | Not rebuilt for v1.4.0 | v1.3.0 ZIP |
 | Linux x64 | Supported | Not rebuilt for v1.4.0 | v1.3.0 standalone ZIP |
 | Linux ARM64 | Supported | Not rebuilt for v1.4.0 | v1.3.0 standalone ZIP |
@@ -123,12 +123,13 @@ Developer references:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Building and release workflow](docs/BUILDING.md)
+- [CI and release maintenance](docs/CI_MAINTENANCE.md)
 - [Durable project decisions](docs/PROJECT_DECISIONS.md)
 - [Current project status and backlog](docs/PROJECT_STATUS.md)
 - [Project guidance for coding agents](AGENTS.md)
 
 ## Building from source
 
-Release packages use Python 3.13 and Nuitka standalone packaging. v1.4 freezes one exact `main` SHA, builds only the Windows x64 engineering candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 engineering release set, then tags and publishes the already validated artifacts without rebuilding.
+Release packages use Python 3.13 and Nuitka standalone packaging. v1.4 freezes one exact `main` SHA, builds only the Windows x64 ETB candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 ETB asset set, then tags and publishes the already validated artifacts without rebuilding.
 
 The full signed six-platform production release path remains implemented for the planned v1.5 milestone. Platform-specific prerequisites, architecture validation, legal/source handling and both release profiles are documented in [Building Play Store App Audit](docs/BUILDING.md).

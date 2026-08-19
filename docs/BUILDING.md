@@ -71,9 +71,9 @@ Do not change these as incidental cleanup. Toolchain migration requires a dedica
 
 The project intentionally has two release profiles while production signing is being introduced.
 
-### v1.4 Windows x64 engineering release
+### v1.4 Windows x64 Engineering Test Build (ETB)
 
-v1.4 is the public engineering/test release. It publishes only the Windows x64 standalone package and deliberately does not build Windows ARM64, Linux or macOS or invoke production signing.
+v1.4 is the public Engineering Test Build (ETB). It publishes only the Windows x64 standalone package and deliberately does not build Windows ARM64, Linux or macOS or invoke production signing.
 
 The three public assets are exactly:
 
@@ -95,6 +95,20 @@ v1.5 is the target for production trust validation and the full six-platform rel
 - the existing six-candidate assembler with exactly eight final public assets
 
 Production signing is considered implemented but not credential-validated until deliberate real signing runs succeed.
+
+## GitHub Actions retention
+
+Artifact-producing workflows use repository-default retention as their
+hard safety ceiling. `.github/workflows/actions-retention.yml` applies
+the generational cleanup policy documented in `CI_MAINTENANCE.md`.
+
+The newest successful equivalent generation remains current. The
+previous generation receives a 7-day grace period after its successor
+completes. Older successful generations are removed, and failed/cancelled
+runs are removed after the 7-day threshold.
+
+This housekeeping never alters GitHub Release assets, tags or source
+commits.
 
 ## Local Windows x64 package
 
@@ -134,7 +148,7 @@ Production Windows trust uses:
 
 Assembly is profile-specific:
 
-- `.github/workflows/assemble-windows-engineering-release.yml` for the v1.4 Windows x64 engineering release
+- `.github/workflows/assemble-windows-engineering-release.yml` for the v1.4 Windows x64 ETB
 - `.github/workflows/assemble-release.yml` for the v1.5 full production release
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
@@ -281,7 +295,7 @@ For macOS production builds, legal/public files are injected before the producti
 
 For Windows production builds, Authenticode changes the owned executable bytes and the signing workflow deliberately updates `BUILD-INFO.txt`, so runtime evidence is refreshed and the strict public legal validator runs again before the final signed ZIP is created.
 
-## Frozen-SHA v1.4 Windows x64 engineering release procedure
+## Frozen-SHA v1.4 Windows x64 Engineering Test Build procedure
 
 The v1.4 engineering release uses one exact immutable source revision for one Windows x64 package.
 
@@ -302,7 +316,7 @@ The v1.4 engineering release uses one exact immutable source revision for one Wi
     - `SHA256SUMS.txt`
 11. Verify the final checksums and manually smoke-check the exact Windows x64 package if desired.
 12. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
-13. Create the GitHub Release and upload the already validated three assets. The release notes must state clearly that v1.4 is Windows x64 only and unsigned.
+13. Create the GitHub Release and upload the already validated three assets. Use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; clearly state that the package is unsigned.
 14. Do not rebuild because the tag was pushed.
 15. Once published, treat the tag, release history and binary assets as immutable.
 

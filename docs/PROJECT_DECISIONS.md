@@ -55,9 +55,9 @@ Rationale: release tags identify the source that produced already validated arti
 
 ## Release profiles
 
-### v1.4 Windows x64 engineering/test release
+### v1.4 Windows x64 Engineering Test Build (ETB)
 
-v1.4 intentionally publishes only one unsigned Windows x64 engineering package.
+v1.4 intentionally publishes one unsigned Windows x64 Engineering Test Build (ETB).
 
 - The Windows x64 package comes from one exact frozen SHA.
 - Build it with `.github/workflows/build-windows-exe.yml` using `target=x64`.
@@ -69,9 +69,9 @@ v1.4 intentionally publishes only one unsigned Windows x64 engineering package.
   1. Windows x64 ZIP
   2. one consolidated third-party source `tar.xz`
   3. one release-wide `SHA256SUMS.txt`
-- Public release notes must identify v1.4 as Windows x64 only and unsigned.
+- Engineering GitHub Releases use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; the package remains clearly described as unsigned.
 
-Rationale: v1.4 provides a real public engineering checkpoint while minimizing runner cost and avoiding production-trust claims before credential-backed signing validation exists.
+Rationale: v1.4 provides a real public ETB checkpoint while minimizing runner cost and avoiding production-trust claims before credential-backed signing validation exists.
 
 ### v1.5 full production release
 
@@ -128,6 +128,28 @@ The v1.4 engineering assembler verifies source workflow identity, manual-dispatc
 The v1.5 full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies their workflow identity/status/repository/exact SHA, validates all six candidates, and emits exactly eight files.
 
 Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while avoiding unnecessary platform builds for the v1.4 engineering release.
+
+## GitHub Actions generational retention
+
+GitHub Actions artifacts and artifact-producing run history use a
+generational cleanup policy. Published GitHub Release assets remain
+outside this cleanup.
+
+- The newest successful equivalent generation is the current valid build.
+- A superseded previous successful generation receives a 7-day grace period.
+- A third successful equivalent generation deletes the oldest immediately.
+- Failed/cancelled runs do not replace successful generations and are
+  retained for at most 7 days.
+- Equivalence includes workflow identity and normalized
+  artifact/platform/architecture identity.
+- Artifact uploads use repository-default retention as the hard safety
+  ceiling.
+
+Implementation and operational details live in `CI_MAINTENANCE.md`.
+
+Rationale: preserve the latest valid build during inactive periods while
+preventing redundant generations from recreating multi-gigabyte Actions
+storage growth.
 
 ## Legal-material preflight
 
