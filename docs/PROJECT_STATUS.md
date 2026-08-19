@@ -65,21 +65,25 @@ The broader production path remains deferred to v1.5:
 
 The repository contains a Microsoft Artifact Signing implementation as one possible Windows path, but the final v1.5 provider is not locked.
 
-## Post-v1.4 Actions maintenance
+## Post-v1.4 maintenance completed
 
-The first post-v1.4 CI/storage maintenance PR is merged on `main` at `4538793ea5da5e5ac30d894bcf80f27bf53320a0`.
+The post-v1.4 CI/storage and release-tooling maintenance workstreams are complete on `main`.
 
-Operational cleanup completed before that merge:
+Merged checkpoints:
+
+- CI/storage maintenance merge: `4538793ea5da5e5ac30d894bcf80f27bf53320a0`
+- legal-source download resilience merge: `6c6080c89f841355d760c19de00e94a6c43daa2d`
+
+Operational cleanup completed:
 
 - Actions artifacts removed: 140
 - Retained artifact data removed: approximately 5372.7 MB
 - Completed historical workflow runs removed through 2026-08-16: 94
 - Obsolete Python 3.12 dependency caches removed: 9, approximately 2007 MB
 - Repository artifact/log retention safety ceiling: 400 days, the maximum currently allowed for this private repository
+- All stale merged remote `agent/*` branches from the v1.4 workstream were deleted after merge verification
 
-This cleanup did not alter GitHub Release assets, source commits or tags.
-
-The durable replacement policy is generational rather than a short fixed artifact lifetime:
+The durable Actions replacement policy is generational rather than a short fixed artifact lifetime:
 
 - newest successful equivalent generation: keep as current valid build;
 - previous successful equivalent generation: 7-day grace after its successor completes;
@@ -87,30 +91,22 @@ The durable replacement policy is generational rather than a short fixed artifac
 - failed/cancelled runs: maximum 7 days;
 - GitHub Release assets: permanent and outside automated Actions cleanup.
 
-Artifact uploads use repository-default retention as a hard safety ceiling. Intelligent early cleanup is implemented by `.github/scripts/cleanup_actions_retention.py` plus `.github/workflows/actions-retention.yml`. See `CI_MAINTENANCE.md`.
+Artifact uploads use repository-default retention as a hard safety ceiling. Intelligent early cleanup is implemented by `.github/scripts/cleanup_actions_retention.py` plus `.github/workflows/actions-retention.yml`. A manual post-merge housekeeping run completed successfully and removed two superseded successful runs, with no failed/cancelled runs old enough for deletion at that checkpoint.
 
-## Current maintenance work
+The v1.4 release also exposed one transient network read timeout while preparing legal/source material. The downloader now retries transient metadata/archive read failures that occur after connection establishment, discards partial `.download` files before retry, keeps source archives streamed to disk, does not retry deterministic SHA-256 mismatch, and replaces the destination only after exact expected SHA-256 verification. Focused regression coverage and timing instrumentation for legal preparation are now in place.
 
-The active post-v1.4 workstream is release-tooling reliability. It remains intentionally limited to cheap static/unit validation unless package evidence becomes necessary.
+## Remaining backlog
 
-Active/remaining items:
+There is no unfinished v1.4 release work.
 
-- make legal/source metadata and archive reads retry transient mid-stream network failures, not only URL-open failures;
-- discard partial downloads before every retry and retain exact SHA-256 verification before atomic destination replacement;
-- add focused regression tests for timeout-then-success, non-retryable SHA mismatch and verified-file reuse;
-- add timing output for legal source metadata resolution, per-source preparation and final source-bundle assembly;
-- use timing evidence before deciding whether cross-run caching of verified immutable source archives is worthwhile;
-- preserve strict fail-closed legal/source validation and exact source provenance;
-- delete stale merged short-lived branches after current maintenance is complete;
-- keep public engineering-build naming aligned to the ETB convention.
+Future work should start from current `main` and the durable project documents rather than recreating v1.4 release state. Remaining items are intentionally future-facing:
 
-Production signing and the full production platform profile remain v1.5 work, not unfinished v1.4 work.
-
-## Known v1.4 release lesson
-
-The first Windows x64 release-build attempt reached `PREPARE PUBLIC LEGAL RELEASE MATERIAL` after compilation and validation had already succeeded, then failed because a network read operation timed out while downloading legal/source material. Re-running the same job at the same frozen SHA succeeded without source changes.
-
-The downloader already retries retryable HTTP/connection-opening failures, but the v1.4 incident showed that a timeout during the response read/copy phase must also be retried. The retry fix must remain fail closed: partial files are discarded, deterministic hash mismatches are not retried, and an archive replaces its destination only after the expected SHA-256 matches.
+- use timing output from the next real package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
+- select and validate the final publicly trusted Windows code-signing provider for v1.5;
+- validate the macOS Developer ID/notarization path with real credentials before v1.5 publication;
+- exercise the full Windows/Linux/macOS x64/ARM64 production profile for v1.5 from one exact frozen SHA;
+- keep ETB naming and generational Actions retention unchanged unless a dedicated engineering decision replaces them;
+- continue ordinary dependency/API maintenance only with targeted evidence and without weakening release/legal gates.
 
 ## Durable release invariants
 
