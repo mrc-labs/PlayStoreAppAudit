@@ -15,9 +15,12 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     for input_name in (
         "expected_sha:",
         "windows_run_id:",
-        "desktop_run_id:",
+        "linux_run_id:",
+        "macos_run_id:",
     ):
         assert input_name in text
+
+    assert "desktop_run_id:" not in text
 
     assert "contents: read" in text
     assert "actions: read" in text
@@ -28,11 +31,14 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert '"refs/heads/main"' in text
 
     assert "Build Windows - Qt6" in text
-    assert "Build macOS / Linux - Qt6 (manual)" in text
+    assert "Build Linux - Qt6 (manual)" in text
+    assert "Build macOS - Qt6 (manual)" in text
+    assert "Build macOS / Linux - Qt6 (manual)" not in text
     assert '"workflow_dispatch"' in text
     assert '"completed"' in text
     assert '"success"' in text
     assert 'run.get("head_sha"' in text
+    assert "Windows, Linux and macOS run IDs must be different" in text
 
     assert text.count("actions/download-artifact@v8") == 3
     assert text.count("github-token: ${{ github.token }}") == 3
@@ -50,6 +56,10 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
         "PlayStoreAppAudit-v${{ "
         "steps.project_version.outputs.version }}-macos-*"
     ) in text
+
+    assert "run-id: ${{ inputs.windows_run_id }}" in text
+    assert "run-id: ${{ inputs.linux_run_id }}" in text
+    assert "run-id: ${{ inputs.macos_run_id }}" in text
 
     assert "assemble_release_assets.py" in text
     assert '--expected-sha "$EXPECTED_SHA"' in text
