@@ -143,7 +143,7 @@ Still required before calling production macOS signing validated:
 - run one deliberate production build for both architectures
 - confirm Developer ID, notarization, staple and Gatekeeper evidence on the resulting artifacts
 
-Windows workflow implementation in PR #28 defines:
+Windows workflow implementation was merged in PR #28:
 
 - native x64 + ARM64 build remains in `build-windows-exe.yml`
 - a separate `sign-windows.yml` accepts only the successful exact-SHA unsigned Windows build
@@ -165,10 +165,20 @@ Still required before calling production Windows signing validated:
 
 ### P2 - Forward compatibility
 
-- Replace APIs already deprecated or scheduled for deprecation when behaviour is understood.
-- Evaluate explicitly documented preferred replacements where behaviour is equivalent.
-- Do not rewrite stable supported APIs merely because they are old.
-- Audit Python 3.14 compatibility while keeping production packaging on Python 3.13 until deliberately migrated.
+The proactive v1.4 sweep is covered by PR #29.
+
+Audit result:
+
+- no first-party migration candidate was found that met the policy of documented deprecation/supersession plus behaviour-equivalent replacement;
+- the custom `QSortFilterProxyModel` already uses `beginFilterChange()` / `endFilterChange()` rather than the invalidation APIs scheduled for deprecation;
+- no deprecated `QCheckBox.stateChanged(int)` connections were found;
+- no obsolete Qt mouse-position accessors or legacy PySide `exec_` calls were found;
+- no Python `datetime.utcnow()` / `utcfromtimestamp()`, `locale.getdefaultlocale()` or `logging.warn()` calls were found;
+- no imports of the Python 3.13-removed legacy standard-library modules checked by the sweep were found.
+
+PR #29 adds a curated first-party regression sentinel for the deprecated/superseded APIs reviewed in this sweep. It is intentionally not an exhaustive static deprecation detector and should be extended only with primary documentation evidence.
+
+Python 3.14 remains a Quality compatibility target; production packaging remains on Python 3.13 until a deliberate toolchain migration.
 
 ### P2 - GitHub Actions / Node
 
@@ -194,4 +204,4 @@ Still required before calling production Windows signing validated:
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path and PR #28 implements the Windows production signing path. Credential-backed production validation for both signing platforms remains deliberate release work. Forward-compatibility and UI modernization remain separate follow-up workstreams.
+PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path, PR #28 implemented the Windows production signing path and PR #29 records the proactive forward-compatibility sweep with regression sentinels. Credential-backed production validation for both signing platforms remains deliberate release work. Node-runtime monitoring and UI modernization remain separate follow-up workstreams.
