@@ -105,16 +105,20 @@ Rationale: separate platform workflows improve failure isolation and selective r
 
 ## Legal-material preflight
 
-v1.4 should resolve deterministic legal prerequisites before expensive Nuitka compilation, including:
+Every production package workflow runs a deterministic legal-material preflight after release dependencies are installed and before Nuitka compilation.
 
-- CPython license availability or exact-version upstream fallback
-- exact PySide6/Qt version metadata
-- official Qt source archive metadata/digests
-- expected source archive list
-- certifi source material
-- other deterministic legal prerequisites
+The preflight:
 
-The preflight is an early failure gate only. It does not replace the strict post-build legal validation.
+- reuses the canonical source/license resolver in `prepare_release_legal_bundle.py` rather than duplicating legal policy;
+- requires the installed `PySide6-Essentials` version to match the exact project pin and `shiboken6` to match it;
+- resolves official Qt/PySide source archive names and SHA-256 provenance for `pyside-setup`, `qtbase`, `qtimageformats` and `qtsvg`;
+- resolves the exact certifi source distribution and digest from PyPI metadata;
+- verifies CPython license availability, including the exact-version upstream fallback used by the strict legal tooling;
+- verifies required Nuitka legal files and the release build pin.
+
+It intentionally resolves metadata and small legal text only. It does not download the large Qt/PySide source archives before compilation.
+
+The preflight is an early failure gate only. Package-aware source selection, source archive downloads, legal injection and strict final validation still run after packaging. Never weaken or remove the later strict legal gate merely because the preflight passed.
 
 ## Dependency/API policy
 
