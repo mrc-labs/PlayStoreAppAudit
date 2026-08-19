@@ -750,7 +750,6 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(base_ui.APP_NAME)
     app.setOrganizationName("MRC")
-    app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = CompactWindow()
     window.show()
