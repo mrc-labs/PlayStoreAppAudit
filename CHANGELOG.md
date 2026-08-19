@@ -1,26 +1,27 @@
 # Changelog
 
-Notable user-facing and compatibility changes to Play Store App Audit are recorded here.
+Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
 ## [1.3.0] - 2026-08-19
 
 ### Changed
 
-- Standardized public desktop release packaging across Windows, macOS and Linux on x64 and ARM64.
-- Consolidated corresponding-source delivery into one release-wide source archive and one `SHA256SUMS.txt`.
-- Made expensive package workflows manual-only and tied every release candidate to an exact final-main commit SHA.
-- Pinned the release Qt/PySide baseline to PySide6 Essentials 6.11.1 so packaged runtimes and published corresponding sources stay aligned.
+- Added prebuilt release packages for Windows, Linux and macOS on both x64 and ARM64.
+- Consolidated third-party corresponding-source delivery into one release-wide source archive with one `SHA256SUMS.txt`.
+- Updated the packaged Qt/PySide baseline to PySide6 Essentials 6.11.1.
 
 ### Fixed
 
-- Replaced deprecated Qt filter invalidation calls with the Qt 6.11 filter-change API.
-- Hardened cross-platform legal/source validation and official Qt source-archive hash discovery.
-- Kept Android Platform-Tools outside the shipped application runtime while preserving managed ADB support.
+- Improved compatibility with current Qt filtering APIs.
+- Improved the reliability of third-party license/source material included with release packages.
+- Preserved managed ADB support while keeping Android Platform-Tools outside the shipped application runtime.
 
 ### Compatibility
 
-- Release packages target Windows x64/ARM64, macOS x64/ARM64 and Linux x64/ARM64.
-- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 are covered by normal Quality CI.
+- v1.3.0 provides Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 ZIP packages.
+- Python 3.13 remains the release-packaging baseline.
+- Windows packages are unsigned. macOS packages use an ad-hoc signature and are not Apple-notarized.
+- Linux packages use a standalone directory layout inside the ZIP.
 
 ## [1.2.0] - 2026-08-17
 
@@ -33,17 +34,17 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 ### Changed
 
 - Reorganized the File, Tools and Help menus so source actions, result actions, maintenance commands and guidance are easier to find.
-- Switched Windows release packaging from a one-file executable to a validated Nuitka standalone ZIP with explicit runtime-content checks and a SHA-256 sidecar.
+- Changed the Windows x64 prebuilt package from a one-file executable to a standalone ZIP.
 - Separated **Clear current results** from persistent cache and audit-history maintenance.
-- Grouped cache and previous-audit clearing under **Tools → Data maintenance**.
+- Grouped cache and previous-audit clearing under **Tools > Data maintenance**.
 - Kept phone-package export enabled only while a current phone inventory is available.
 - Adopted `GPL-3.0-only` for the public project, with alternative commercial licensing available separately and a CLA-based contribution policy.
 
 ### Compatibility
 
-- Windows x64 remains the normal prebuilt release target.
-- Windows ARM64 remains an explicit manual engineering build capability.
-- Windows, macOS and Linux continue to share the same supported source tree; macOS and Linux packaging remains manual/on demand.
+- v1.2.0 provides a prebuilt Windows x64 ZIP.
+- Windows v1.2.0 is unsigned.
+- Windows ARM64, macOS and Linux remain supported by the shared source tree but were not published as v1.2.0 prebuilt release assets.
 
 ## [1.1.0] - 2026-08-17
 
@@ -61,9 +62,8 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- Changed the normal prebuilt release policy to Windows x64 only.
-- Kept Windows ARM64, Linux and macOS support in the shared source tree and retained manual engineering packaging for those targets.
-- v1.0.0 remains the last release with the six-package Windows, Linux and macOS prebuilt matrix.
+- v1.1.0 provides a prebuilt Windows x64 package.
+- v1.0.0 remains available for the previously published Windows ARM64, Linux and macOS packages.
 
 ## [1.0.0] - 2026-08-17
 
@@ -76,7 +76,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 - Optional Health Score maintenance guidance, previous-audit comparison and configurable technical views.
 - Read-only ADB package scanning, installed-device metadata, device summaries, inventory history and snapshots.
 - CSV and HTML reports, phone-inventory export and portable-mode data storage.
-- A shared Windows, macOS and Linux source tree with prebuilt packages for Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Apple Silicon and macOS Intel.
+- Prebuilt packages for Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Apple Silicon and macOS Intel.
 
 ### Changed
 
@@ -87,12 +87,12 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 - Restricted latest-update parsing to update-specific fields and visible **Updated on** text; original publication dates are not treated as updates.
 - Hid ADB subprocess console windows on Windows.
-- Added architecture and packaged-startup validation to release builds.
+- Added packaged architecture and startup validation.
 
 ### Compatibility
 
-- Windows was the primary automatic build; macOS and Linux packages were built on demand from the same revision.
-- Windows and Linux packages were unsigned. macOS packages were ad-hoc signed for bundle integrity but not Apple-notarized.
+- Windows and Linux v1.0.0 packages are unsigned.
+- macOS v1.0.0 packages are ad-hoc signed for bundle integrity but not Apple-notarized.
 - The former CustomTkinter application was retired and retained only at the historical `legacy-customtkinter-v9.3` tag.
 
 ## [0.11.0] - 2026-08-16
