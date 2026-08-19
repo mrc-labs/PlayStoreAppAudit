@@ -71,20 +71,19 @@ Do not change these as incidental cleanup. Toolchain migration requires a dedica
 
 The project intentionally has two release profiles while production signing is being introduced.
 
-### v1.4 Windows engineering release
+### v1.4 Windows x64 engineering release
 
-v1.4 is the public engineering/test release. It publishes only the two Windows standalone packages and deliberately does not spend macOS runner capacity or invoke production signing.
+v1.4 is the public engineering/test release. It publishes only the Windows x64 standalone package and deliberately does not build Windows ARM64, Linux or macOS or invoke production signing.
 
-The four public assets are exactly:
+The three public assets are exactly:
 
 1. `PlayStoreAppAudit-vVERSION-windows-x64.zip`
-2. `PlayStoreAppAudit-vVERSION-windows-arm64.zip`
-3. `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
-4. `SHA256SUMS.txt`
+2. `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
+3. `SHA256SUMS.txt`
 
-Both Windows packages must come from the same exact frozen `main` SHA. They remain unsigned. The normal package legal/source gate remains mandatory and the release-wide source archive is assembled from the exact source evidence emitted by both Windows candidates.
+The Windows x64 package must come from the exact frozen `main` SHA and remains unsigned. The normal package legal/source gate remains mandatory and the release-wide source archive is assembled from the exact source evidence emitted by that x64 candidate.
 
-The v1.4 engineering assembler accepts only a successful manual `Build Windows - Qt6` run from the same repository and exact SHA. It does not accept a signing run and does not build Linux or macOS.
+The v1.4 engineering assembler accepts only a successful manual `Build Windows - Qt6` run from the same repository and exact SHA, requires the x64 artifact, and rejects a source run that also emitted the canonical Windows ARM64 artifact. It does not accept a signing run and does not build any other platform or architecture.
 
 ### v1.5 full production release
 
@@ -135,7 +134,7 @@ Production Windows trust uses:
 
 Assembly is profile-specific:
 
-- `.github/workflows/assemble-windows-engineering-release.yml` for the v1.4 Windows engineering release
+- `.github/workflows/assemble-windows-engineering-release.yml` for the v1.4 Windows x64 engineering release
 - `.github/workflows/assemble-release.yml` for the v1.5 full production release
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
@@ -149,11 +148,13 @@ After release dependencies are installed, every package job runs the determinist
 - `target`: `x64`, `arm64` or `both`
 - `expected_sha`: the exact 40-character commit SHA intended for the build
 
-For v1.4 engineering and future production releases, use `target=both`. The x64 job runs on `windows-2025`; ARM64 runs on `windows-11-arm`.
+For v1.4 engineering, use `target=x64`. The x64 job runs on `windows-2025`. Do not select `arm64` or `both` for the v1.4 release.
+
+For v1.5 production, use `target=both`; ARM64 runs on `windows-11-arm`.
 
 Each selected job validates native Python/PySide6 inputs, PE architecture, Windows version metadata, managed ADB behaviour, source checks, packaged startup, legal material and release provenance.
 
-For v1.4, the successful unsigned run is the direct source of `.github/workflows/assemble-windows-engineering-release.yml`. For v1.5 production, the same native build is only an intermediate and must pass through `.github/workflows/sign-windows.yml` before the full production assembler can accept it.
+For v1.4, the successful unsigned x64 run is the direct source of `.github/workflows/assemble-windows-engineering-release.yml`. For v1.5 production, the x64+ARM64 native build is only an intermediate and must pass through `.github/workflows/sign-windows.yml` before the full production assembler can accept it.
 
 ### Windows production signing, planned for v1.5
 
@@ -235,7 +236,7 @@ Required GitHub Secrets for production mode:
 
 The P12 and App Store Connect API key are materialized only in temporary runner paths. The certificate is imported into a temporary keychain, and the workflow removes the temporary signing/notary material in an `always()` cleanup step.
 
-macOS is deliberately not built for v1.4 because the public engineering release is Windows-only. Production macOS signing/notarization is deferred to the v1.5 trust milestone.
+macOS is deliberately not built for v1.4 because the public engineering release is Windows x64 only. Production macOS signing/notarization is deferred to the v1.5 trust milestone.
 
 ## Architecture validation
 
@@ -274,39 +275,38 @@ The preflight resolves metadata and small legal text only. It does not download 
 
 Passing the preflight is not release compliance evidence by itself. After packaging, `prepare_release_legal_bundle.py` still detects the actual runtime, downloads the exact required source archives, injects public legal material and creates validation evidence. `validate_release_legal_bundle.py` then performs the strict public package/source validation. The preflight complements these gates and never replaces or weakens them.
 
-For the unsigned v1.4 Windows engineering release, the native package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
+For the unsigned v1.4 Windows x64 engineering release, the native x64 package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
 
 For macOS production builds, legal/public files are injected before the production signature. After signing/notarization/stapling, runtime evidence is refreshed against that final app state and the strict public legal validator runs before the release ZIP is created. Do not add or modify app-bundle files after the production signature except through the deliberate notarization/stapling process.
 
 For Windows production builds, Authenticode changes the owned executable bytes and the signing workflow deliberately updates `BUILD-INFO.txt`, so runtime evidence is refreshed and the strict public legal validator runs again before the final signed ZIP is created.
 
-## Frozen-SHA v1.4 Windows engineering release procedure
+## Frozen-SHA v1.4 Windows x64 engineering release procedure
 
-The v1.4 engineering release uses one exact immutable source revision for both Windows packages.
+The v1.4 engineering release uses one exact immutable source revision for one Windows x64 package.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release change to `main` with a normal merge commit.
 3. Require the cheap post-merge Quality run to pass.
 4. Record the exact full `main` SHA. This becomes the frozen v1.4 release SHA.
-5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=both` and `expected_sha=<frozen SHA>`.
-6. Require both native Windows jobs to succeed from that exact SHA. Do not dispatch Windows signing, Linux or macOS for v1.4.
+5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=x64` and `expected_sha=<frozen SHA>`.
+6. Require the native Windows x64 job to succeed from that exact SHA. Do not dispatch Windows ARM64, Windows signing, Linux or macOS for v1.4.
 7. Record the successful `Build Windows - Qt6` run ID.
 8. Dispatch `.github/workflows/assemble-windows-engineering-release.yml` from the same frozen `main` SHA with:
    - `expected_sha=<frozen SHA>`
-   - `windows_run_id=<successful Build Windows - Qt6 run>`
-9. The engineering assembler verifies workflow identity, manual-dispatch status, success, repository and exact head SHA before downloading the two Windows artifacts.
-10. Require exactly four final files and no extra directories:
+   - `windows_run_id=<successful x64-only Build Windows - Qt6 run>`
+9. The engineering assembler verifies workflow identity, manual-dispatch status, success, repository and exact head SHA, requires the x64 artifact and rejects the canonical ARM64 artifact.
+10. Require exactly three final files and no extra directories:
     - `PlayStoreAppAudit-vVERSION-windows-x64.zip`
-    - `PlayStoreAppAudit-vVERSION-windows-arm64.zip`
     - `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
     - `SHA256SUMS.txt`
-11. Verify the final checksums and manually smoke-check the exact Windows packages if desired.
+11. Verify the final checksums and manually smoke-check the exact Windows x64 package if desired.
 12. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
-13. Create the GitHub Release and upload the already validated four assets. The release notes must state clearly that v1.4 is Windows-only and unsigned.
+13. Create the GitHub Release and upload the already validated three assets. The release notes must state clearly that v1.4 is Windows x64 only and unsigned.
 14. Do not rebuild because the tag was pushed.
 15. Once published, treat the tag, release history and binary assets as immutable.
 
-If source code or release tooling changes after step 4, discard the candidates, freeze the new exact `main` SHA and rebuild both Windows candidates. Never mix artifacts from different SHAs.
+If source code or release tooling changes after step 4, discard the candidate, freeze the new exact `main` SHA and rebuild the Windows x64 candidate. Never mix artifacts from different SHAs.
 
 ## Frozen-SHA v1.5 full production release procedure
 
@@ -347,7 +347,7 @@ A package is not valid merely because the compiler returned success. Verify stan
 
 At the immutable v1.3.0 baseline, Windows and Linux packages are unsigned and macOS bundles have only an ad-hoc CI signature.
 
-v1.4 deliberately remains an unsigned Windows engineering release. Production trust validation is deferred to v1.5.
+v1.4 deliberately remains an unsigned Windows x64 engineering release. Production trust validation is deferred to v1.5.
 
 ### macOS v1.5 production path
 
