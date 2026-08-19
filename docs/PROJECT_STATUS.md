@@ -20,7 +20,7 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 - `PySide6-Essentials`: 6.11.1
 - Nuitka: 4.1.3
 - UI technology: Qt Widgets
-- v1.4 application style policy: Qt platform/default QStyle; no global forced Fusion
+- v1.4 application style policy: Qt platform/default QStyle; no production/global forced Fusion
 - Windows v1.3 signing: unsigned
 - Linux v1.3 signing: unsigned
 - macOS v1.3 signing: ad-hoc only, not notarized
@@ -146,18 +146,28 @@ PR #30 added the cross-platform native-vs-Fusion evidence harness. The validated
 - Windows/macOS native plain controls look more platform-appropriate than Fusion, especially checkbox/radio, combo-box, slider/progress and scrollbar treatment.
 - The real application changes less because broad `BaseWindow` QSS overrides many generic control visuals.
 
-PR #31 adopts the resulting style policy:
+PR #31 adopted the resulting production style policy:
 
-- remove `app.setStyle("Fusion")`
+- removed `app.setStyle("Fusion")` from the canonical application launcher
 - let Qt select the platform/default style
-- add a regression guard against globally forcing a QStyle again
-- validate the change with Quality on Python 3.13/3.14 plus the full Windows/macOS/Linux render audit
+- added a regression guard around production style selection
+- validated the change with Quality on Python 3.13/3.14 plus the full Windows/macOS/Linux render audit
 
-Next UI step, in a separate PR:
+PR #32 performs the first targeted QSS cleanup:
 
-- narrow generic QSS that masks native presentation, starting with the global font rule and `QScrollBar` override
-- preserve semantic status colours, branded primary actions and layout-critical rules
-- re-run the render audit before considering any theme dependency
+- removes the global hard-coded `Segoe UI` / 10pt QSS rule, leaving application font selection to Qt/platform style
+- removes the generic transparent/borderless `QScrollBar` override, restoring native scrollbar rendering
+- keeps semantic colours, branded primary/criticality controls, cards, table treatment and layout-critical QSS unchanged
+- removes stale Fusion overrides from the shared base direct-entry launcher and the small `table_window`, `menu_window` and `results_window` developer launchers
+- isolates five remaining large-module developer-only Fusion launchers in an exact regression-test allowlist so no new forced-style call can be introduced silently
+
+Render comparison for the QSS change confirmed that Windows and macOS restore the native horizontal scrollbar without a layout regression. Windows continues to use Segoe UI naturally because it is supplied by the native `windows11` style rather than by application QSS.
+
+Remaining UI cleanup debt:
+
+- mechanically remove the developer-only Fusion override from `audit_window.py`, `compact_window.py`, `device_window.py`, `insights_window.py` and `preferences_window.py` when those files can be patched safely without risky whole-file connector rewrites
+- keep the allowlist exact until then
+- do not add a theme dependency unless a future evidence-based audit demonstrates a need
 
 Qt Widgets remains the UI technology. The audit gives no reason to migrate to QML or add a theme framework.
 
@@ -174,4 +184,4 @@ The application itself does not use Node. Monitor official action majors for the
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context, PR #25 split desktop release workflows, PR #26 added legal preflight, PR #27 implemented macOS production trust, PR #28 implemented Windows production trust, PR #29 completed the proactive API sweep, PR #30 added cross-platform UI style evidence and PR #31 adopts platform/default Qt styling. Remaining controlled work includes targeted QSS narrowing, credential-backed signing validation and future official-action Node-runtime monitoring.
+PR #24 established durable project context, PR #25 split desktop release workflows, PR #26 added legal preflight, PR #27 implemented macOS production trust, PR #28 implemented Windows production trust, PR #29 completed the proactive API sweep, PR #30 added cross-platform UI style evidence, PR #31 adopted platform/default Qt styling and PR #32 narrows generic QSS that masked native presentation. Remaining controlled work is credential-backed signing validation, the five developer-only Fusion cleanup lines, published Release-description housekeeping when write capability exists, and future official-action Node-runtime monitoring.

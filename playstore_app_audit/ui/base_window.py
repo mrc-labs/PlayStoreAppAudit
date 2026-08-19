@@ -506,8 +506,6 @@ class BaseWindow(QMainWindow):
             QMainWindow, QWidget#Central {
                 background: #F5F7FA;
                 color: #20252B;
-                font-family: "Segoe UI";
-                font-size: 10pt;
             }
             QFrame#Card {
                 background: #FFFFFF;
@@ -602,10 +600,6 @@ class BaseWindow(QMainWindow):
                 border-bottom: 1px solid #D7DEE5;
                 padding: 8px 7px;
                 font-weight: 650;
-            }
-            QScrollBar:vertical, QScrollBar:horizontal {
-                background: transparent;
-                border: none;
             }
             """
         )
@@ -1408,7 +1402,6 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("MRC")
-    app.setStyle("Fusion")
     window = BaseWindow()
     window.show()
     return app.exec()
