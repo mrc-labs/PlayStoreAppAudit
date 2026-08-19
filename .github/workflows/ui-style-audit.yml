@@ -111,6 +111,7 @@ jobs:
           xvfb-run -a python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Validate audit evidence
+        shell: bash
         env:
           PLATFORM_KEY: ${{ matrix.platform_key }}
         run: |
