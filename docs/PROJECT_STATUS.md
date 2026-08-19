@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-19
+Last updated: 2026-08-20
 
 ## Published release
 
@@ -65,14 +65,17 @@ The broader production path remains deferred to v1.5:
 
 The repository contains a Microsoft Artifact Signing implementation as one possible Windows path, but the final v1.5 provider is not locked.
 
-## Post-v1.4 Actions cleanup
+## Post-v1.4 Actions maintenance
 
-After v1.4.0 publication, the retained GitHub Actions inventory was audited and cleaned.
+The first post-v1.4 CI/storage maintenance PR is merged on `main` at `4538793ea5da5e5ac30d894bcf80f27bf53320a0`.
+
+Operational cleanup completed before that merge:
 
 - Actions artifacts removed: 140
 - Retained artifact data removed: approximately 5372.7 MB
 - Completed historical workflow runs removed through 2026-08-16: 94
 - Obsolete Python 3.12 dependency caches removed: 9, approximately 2007 MB
+- Repository artifact/log retention safety ceiling: 400 days, the maximum currently allowed for this private repository
 
 This cleanup did not alter GitHub Release assets, source commits or tags.
 
@@ -84,27 +87,30 @@ The durable replacement policy is generational rather than a short fixed artifac
 - failed/cancelled runs: maximum 7 days;
 - GitHub Release assets: permanent and outside automated Actions cleanup.
 
-The implementation is `.github/scripts/cleanup_actions_retention.py` plus `.github/workflows/actions-retention.yml`. See `CI_MAINTENANCE.md`.
+Artifact uploads use repository-default retention as a hard safety ceiling. Intelligent early cleanup is implemented by `.github/scripts/cleanup_actions_retention.py` plus `.github/workflows/actions-retention.yml`. See `CI_MAINTENANCE.md`.
 
 ## Current maintenance work
 
-The first post-v1.4 maintenance workstream is intentionally scoped to cheap CI/release hygiene and reliability improvements, with no heavy package builds unless a change truly requires them.
+The active post-v1.4 workstream is release-tooling reliability. It remains intentionally limited to cheap static/unit validation unless package evidence becomes necessary.
 
 Active/remaining items:
 
-- finish and merge the generational Actions retention housekeeping policy;
-- configure repository-level artifact/log retention as the long safety ceiling used by current successful artifacts;
-- improve legal-source download resilience for transient read timeouts without weakening SHA-256/provenance validation;
-- measure legal-material preparation time and evaluate safe caching of already verified immutable source archives;
-- preserve strict fail-closed legal/source validation;
+- make legal/source metadata and archive reads retry transient mid-stream network failures, not only URL-open failures;
+- discard partial downloads before every retry and retain exact SHA-256 verification before atomic destination replacement;
+- add focused regression tests for timeout-then-success, non-retryable SHA mismatch and verified-file reuse;
+- add timing output for legal source metadata resolution, per-source preparation and final source-bundle assembly;
+- use timing evidence before deciding whether cross-run caching of verified immutable source archives is worthwhile;
+- preserve strict fail-closed legal/source validation and exact source provenance;
 - delete stale merged short-lived branches after current maintenance is complete;
-- keep public engineering-release naming aligned to the ETB convention.
+- keep public engineering-build naming aligned to the ETB convention.
+
+Production signing and the full production platform profile remain v1.5 work, not unfinished v1.4 work.
 
 ## Known v1.4 release lesson
 
 The first Windows x64 release-build attempt reached `PREPARE PUBLIC LEGAL RELEASE MATERIAL` after compilation and validation had already succeeded, then failed because a network read operation timed out while downloading legal/source material. Re-running the same job at the same frozen SHA succeeded without source changes.
 
-The current downloader retries HTTP opening failures, but the actual streaming read/copy path is not equally resilient to a timeout that occurs after the connection has opened. This is a post-v1.4 maintenance target. Any fix must retain exact source provenance, expected SHA-256 verification and fail-closed behaviour.
+The downloader already retries retryable HTTP/connection-opening failures, but the v1.4 incident showed that a timeout during the response read/copy phase must also be retried. The retry fix must remain fail closed: partial files are discarded, deterministic hash mismatches are not retried, and an archive replaces its destination only after the expected SHA-256 matches.
 
 ## Durable release invariants
 
