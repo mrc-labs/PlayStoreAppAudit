@@ -29,16 +29,18 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 
 - `.github/workflows/quality.yml`
 - `.github/workflows/build-windows-exe.yml`
-- `.github/workflows/build-macos-linux.yml`
+- `.github/workflows/build-linux.yml`
+- `.github/workflows/build-macos.yml`
 - `.github/workflows/assemble-release.yml`
 
-The current production-release candidate model is:
+The production release-candidate model is:
 
 - Windows workflow: x64 + ARM64
-- combined macOS/Linux workflow: Linux x64 + ARM64 and macOS x64 + ARM64
-- assembler: validates all six candidates and emits exactly eight public files
+- Linux workflow: x64 + ARM64
+- macOS workflow: x64 + ARM64
+- assembler: accepts distinct Windows/Linux/macOS run IDs, validates all six candidates and emits exactly eight public files
 
-The v1.4 workflow-split PR will replace the combined desktop workflow with separate Linux and macOS workflows and update the assembler to accept three run IDs.
+All three package workflows remain manual and exact-SHA guarded. Splitting Linux and macOS improves isolation and selective reruns without changing the one-SHA release invariant.
 
 ## Current release scripts
 
@@ -71,22 +73,27 @@ See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and procedure.
 
 ### P0 - Documentation and persistent context
 
-- Update `AGENTS.md` to the current release/build invariants.
-- Add `PROJECT_DECISIONS.md` and `PROJECT_STATUS.md`.
-- Correct README distribution text for the six-platform v1.3.0 release.
-- Correct `BUILDING.md` and `ARCHITECTURE.md` to the frozen-SHA/six-RC/assembler/eight-asset release model.
-- Keep CHANGELOG user-facing and move internal CI/process decisions to engineering docs.
-- Audit published GitHub Release descriptions for the same user-vs-maintainer separation.
-- Use cheap validation only; no Nuitka build is justified for documentation-only changes.
+Completed in PR #24 except for the separate audit/edit of published GitHub Release descriptions, which requires release-write access rather than repository-content access.
+
+Completed repository work:
+
+- refreshed `AGENTS.md`
+- added `PROJECT_DECISIONS.md` and `PROJECT_STATUS.md`
+- corrected README six-platform v1.3.0 distribution text
+- corrected `BUILDING.md` and `ARCHITECTURE.md` release model
+- cleaned CHANGELOG maintainer-only process details
 
 ### P1 - Release workflow isolation
 
-- Replace `.github/workflows/build-macos-linux.yml` with:
-  - `.github/workflows/build-linux.yml` using x64 + ARM64 matrix
-  - `.github/workflows/build-macos.yml` using x64 + ARM64 matrix
-- Keep `.github/workflows/build-windows-exe.yml` x64 + ARM64 matrix.
-- Change assembler inputs to `windows_run_id`, `linux_run_id` and `macos_run_id`.
-- Preserve exact-SHA enforcement across all three source runs.
+Implemented for v1.4:
+
+- separate `.github/workflows/build-linux.yml` x64 + ARM64 matrix
+- separate `.github/workflows/build-macos.yml` x64 + ARM64 matrix
+- Windows x64 + ARM64 workflow retained
+- assembler inputs changed to `windows_run_id`, `linux_run_id` and `macos_run_id`
+- exact-SHA verification retained across all source runs
+
+Heavy package validation is deliberately not triggered merely to prove the workflow-file split. Targeted workflow tests and normal Quality CI are the first validation gate.
 
 ### P1 - Cheap legal-material preflight
 
@@ -151,4 +158,4 @@ Windows:
 
 ## Maintenance checkpoint
 
-The first v1.4 maintenance PR is documentation/context-only. Subsequent workflow, legal preflight, signing, API and UI work should remain in separate controlled PRs.
+PR #24 established durable project context. The workflow split is the next controlled v1.4 PR. Legal preflight, signing, API and UI work remain separate follow-up PRs.
