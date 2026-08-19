@@ -97,11 +97,13 @@ The release architecture is platform-isolated but source-SHA unified.
 
 - Windows, Linux and macOS use separate manual package workflows.
 - The Linux and macOS workflows each build both x64 and ARM64 release candidates in one architecture matrix.
-- The Windows workflow retains its x64/ARM64 target matrix.
-- All three source workflows require the same exact frozen `expected_sha` for a production release.
-- The release assembler accepts distinct Windows, Linux and macOS run IDs, verifies each source workflow run and its exact head SHA, then assembles the common six-candidate/eight-public-asset release.
+- The Windows package workflow retains its native x64/ARM64 target matrix.
+- Windows production candidates pass through a separate signing workflow after native compilation. The signing workflow accepts only a successful exact-SHA Windows package run, signs both owned primary executables, then revalidates each signed package on its native architecture.
+- All package and signing stages require the same exact frozen `expected_sha` for a production release.
+- The release assembler accepts distinct Windows, Linux and macOS run IDs. Its Windows input accepts only the successful production signing workflow, while Linux and macOS inputs accept their production package workflows.
+- The assembler verifies workflow identity, successful completion, repository and exact head SHA before assembling the common six-candidate/eight-public-asset release.
 
-Rationale: separate platform workflows improve failure isolation and selective reruns without creating independent platform release lines. The frozen SHA, not the workflow file, defines release source identity.
+Rationale: separate platform workflows improve failure isolation and selective reruns without creating independent platform release lines. Windows signing is separated because the managed signing action runs on supported x64 Windows runners while the ARM64 application must still be compiled and finally smoke-tested on a native ARM64 runner. The frozen SHA, not the workflow file or signing host, defines release source identity.
 
 ## Legal-material preflight
 
@@ -159,12 +161,24 @@ Rationale: the release assembler should only be able to consume macOS candidates
 
 ### Windows
 
-- Public Windows distribution must use trusted Authenticode signing, not a self-signed certificate.
-- Signing credentials must remain in a compliant cloud/hardware-backed signing service or secret store, never in the repository.
-- Sign only owned release binaries that need the publisher signature; do not re-sign third-party binaries without a specific technical/legal reason.
-- Signing must happen before final ZIP creation, legal/runtime revalidation and release checksums.
+Production Windows release candidates use Microsoft Artifact Signing with a Public Trust certificate profile suitable for publicly distributed Win32 applications.
 
-The exact Windows provider/integration remains a separate v1.4 implementation decision.
+- Native x64 and ARM64 standalone packages are compiled first by `build-windows-exe.yml` from the exact frozen SHA.
+- `.github/workflows/sign-windows.yml` accepts only a successful `Build Windows - Qt6` run from that same exact SHA and repository.
+- Azure authentication uses GitHub OIDC through `azure/login`; no publisher private key or PFX is stored in the repository or GitHub Secrets.
+- The Artifact Signing action runs on a supported x64 Windows runner. It signs only the owned top-level `PlayStoreAppAudit.exe`; bundled third-party DLLs and other binaries are not re-signed.
+- The ARM64 executable may be signed on the x64 signing host because Authenticode signing does not change its PE machine architecture. The final signed ARM64 ZIP is then re-extracted, signature-verified and smoke-tested on a native Windows ARM64 runner.
+- The signing workflow requires SHA-256 file digests and RFC3161 timestamping.
+- It verifies the signature and timestamp, proves non-target package files were unchanged by signing, updates `BUILD-INFO.txt`, refreshes runtime legal evidence and reruns the strict public legal validator before creating the final signed ZIP.
+- Only the successful signing workflow emits the canonical Windows production release candidates accepted by the assembler. An unsigned `Build Windows - Qt6` run is not a valid assembler Windows source.
+- Self-signed certificates and Private Trust/test profiles are not valid for public release distribution.
+
+Required production configuration is kept outside source control:
+
+- GitHub Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- GitHub repository variables: `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+
+Rationale: Artifact Signing keeps signing authority in a managed service and avoids exporting a long-lived code-signing private key into CI. The split signing/native-verification flow preserves native ARM64 package evidence even though the signing action itself does not run on GitHub-hosted Windows ARM runners.
 
 ## UI style policy
 
