@@ -7,13 +7,21 @@ on:
         description: Exact commit SHA expected for this deliberate build
         required: true
         type: string
+      signing_mode:
+        description: Engineering uses ad-hoc signing; production requires Developer ID and notarization
+        required: false
+        default: engineering
+        type: choice
+        options:
+          - engineering
+          - production
 
 permissions:
   contents: read
 
 jobs:
   build-macos:
-    name: macOS ${{ matrix.arch }}
+    name: macOS ${{ matrix.arch }} / ${{ inputs.signing_mode }}
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +67,33 @@ jobs:
 
           echo "Release-candidate source SHA verified: $actual"
 
+      - name: Verify production signing configuration
+        if: ${{ inputs.signing_mode == 'production' }}
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+          DEVELOPER_ID_TEAM_ID: ${{ secrets.MACOS_DEVELOPER_ID_TEAM_ID }}
+          NOTARY_API_KEY_P8_BASE64: ${{ secrets.MACOS_NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_API_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            DEVELOPER_ID_P12_BASE64 \
+            DEVELOPER_ID_P12_PASSWORD \
+            DEVELOPER_ID_TEAM_ID \
+            NOTARY_API_KEY_P8_BASE64 \
+            NOTARY_API_KEY_ID \
+            NOTARY_API_ISSUER_ID
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required production signing secret: $name" >&2
+              missing=1
+            fi
+          done
+          test "$missing" = "0"
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -87,8 +122,9 @@ jobs:
           PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
+          python -m py_compile .github/scripts/sign_macos_app.py
           python -m pytest
-          ruff check playstore_app_audit tests main.py
+          ruff check playstore_app_audit tests main.py .github/scripts/sign_macos_app.py
           python main.py
       - name: Validate managed ADB
         run: |
@@ -129,13 +165,87 @@ jobs:
           p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
-      - name: Build, inspect and smoke packaged macOS app
+
+      - name: Configure Developer ID keychain and notary credentials
+        if: ${{ inputs.signing_mode == 'production' }}
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+          DEVELOPER_ID_TEAM_ID: ${{ secrets.MACOS_DEVELOPER_ID_TEAM_ID }}
+          NOTARY_API_KEY_P8_BASE64: ${{ secrets.MACOS_NOTARY_API_KEY_P8_BASE64 }}
+          NOTARY_API_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN="$RUNNER_TEMP/playstore-release-signing.keychain-db"
+          P12_PATH="$RUNNER_TEMP/developer-id-application.p12"
+          NOTARY_KEY_PATH="$RUNNER_TEMP/AuthKey_${NOTARY_API_KEY_ID}.p8"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          export P12_PATH NOTARY_KEY_PATH
+
+          python - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          Path(os.environ['P12_PATH']).write_bytes(
+              base64.b64decode(os.environ['DEVELOPER_ID_P12_BASE64'])
+          )
+          Path(os.environ['NOTARY_KEY_PATH']).write_bytes(
+              base64.b64decode(os.environ['NOTARY_API_KEY_P8_BASE64'])
+          )
+          PY
+
+          test -s "$P12_PATH"
+          test -s "$NOTARY_KEY_PATH"
+          chmod 600 "$P12_PATH" "$NOTARY_KEY_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$P12_PATH" \
+            -k "$KEYCHAIN" \
+            -P "$DEVELOPER_ID_P12_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN"
+
+          identity_lines="$(
+            security find-identity -v -p codesigning "$KEYCHAIN" |
+            grep -E "Developer ID Application:.*\(${DEVELOPER_ID_TEAM_ID}\)" || true
+          )"
+          identity_count="$(printf '%s\n' "$identity_lines" | grep -c . || true)"
+          if [ "$identity_count" != "1" ]; then
+            echo "Expected exactly one Developer ID Application identity for configured team, found $identity_count." >&2
+            exit 1
+          fi
+
+          identity_hash="$(printf '%s\n' "$identity_lines" | awk '{print $2}')"
+          if [[ ! "$identity_hash" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+            echo "Could not resolve the Developer ID Application identity hash." >&2
+            exit 1
+          fi
+
+          echo "Developer ID Application identity resolved for configured team."
+          echo "MACOS_SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "MACOS_SIGNING_IDENTITY=$identity_hash" >> "$GITHUB_ENV"
+          echo "MACOS_NOTARY_API_KEY_PATH=$NOTARY_KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Build, sign, notarize and validate packaged macOS app
         env:
           APP_VERSION: ${{ steps.project_version.outputs.version }}
           PACKAGE_ARCH: ${{ matrix.arch }}
+          RELEASE_SIGNING_MODE: ${{ inputs.signing_mode }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
           QT_QPA_PLATFORM: offscreen
           PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
+          set -euo pipefail
+
           mkdir -p dist artifact roundtrip
           pyside6-deploy -c pysidedeploy.spec -f
           test -s compilation-report.xml
@@ -180,6 +290,7 @@ jobs:
           fi
           test -n "$MINOS"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
+
           BUNDLE_BUILD_INFO="$APP/Contents/Resources/BUILD-INFO.txt"
           mkdir -p "$(dirname "$BUNDLE_BUILD_INFO")"
           PACKAGE_MINIMUM_MACOS="$MINOS" PACKAGE_MINIMUM_MACOS_METADATA="$MINOS_METADATA" PACKAGE_MACHO_ARCHES="$MACHO_ARCHES" python - <<'PY' > "$BUNDLE_BUILD_INFO"
@@ -189,6 +300,8 @@ jobs:
           from importlib.metadata import version
 
           import PySide6
+
+          signing_mode = os.environ['RELEASE_SIGNING_MODE']
 
           print('Application version:', os.environ['APP_VERSION'])
           print('GitHub SHA:', os.environ.get('GITHUB_SHA', 'unavailable'))
@@ -206,7 +319,11 @@ jobs:
           print('Python:', sys.version.replace('\n', ' '))
           print('PySide6:', PySide6.__version__)
           print('Nuitka:', version('Nuitka'))
-          print('Signing: ad-hoc CI signature only; not Apple-notarized')
+          print('Release signing mode:', signing_mode)
+          if signing_mode == 'production':
+              print('Signing: Developer ID Application with hardened runtime and secure timestamp; notarization required before artifact upload')
+          else:
+              print('Signing: ad-hoc engineering signature only; not Apple-notarized')
           PY
 
           LEGAL_RELEASE_DIR="$PWD/artifact/legal-release-v${APP_VERSION}"
@@ -227,8 +344,65 @@ jobs:
           test ! -e "$APP/Contents/Resources/LEGAL-MANIFEST.json"
           test ! -e "$APP/Contents/Resources/validation-evidence"
 
-          codesign --force --deep --sign - "$APP"
-          codesign --verify --deep --strict --verbose=2 "$APP"
+          NOTARIZATION_ID=""
+
+          if [ "$RELEASE_SIGNING_MODE" = "production" ]; then
+            test -n "${MACOS_SIGNING_IDENTITY:-}"
+            test -n "${MACOS_SIGNING_KEYCHAIN:-}"
+            test -s "${MACOS_NOTARY_API_KEY_PATH:-}"
+            test -n "$MACOS_NOTARY_KEY_ID"
+            test -n "$MACOS_NOTARY_ISSUER_ID"
+
+            python .github/scripts/sign_macos_app.py \
+              --app "$APP" \
+              --identity "$MACOS_SIGNING_IDENTITY" \
+              --keychain "$MACOS_SIGNING_KEYCHAIN" \
+              --production
+
+            codesign --display --verbose=4 "$APP" 2>&1 | tee "$RUNNER_TEMP/codesign-details.txt"
+            grep -q '^Authority=Developer ID Application:' "$RUNNER_TEMP/codesign-details.txt"
+            grep -q '^Timestamp=' "$RUNNER_TEMP/codesign-details.txt"
+
+            NOTARY_UPLOAD="$RUNNER_TEMP/PlayStoreAppAudit-v${APP_VERSION}-macos-${PACKAGE_ARCH}-notary.zip"
+            NOTARY_RESULT="$RUNNER_TEMP/notary-result-${PACKAGE_ARCH}.json"
+            ditto -c -k --sequesterRsrc --keepParent "$APP" "$NOTARY_UPLOAD"
+
+            if ! xcrun notarytool submit "$NOTARY_UPLOAD" \
+              --key "$MACOS_NOTARY_API_KEY_PATH" \
+              --key-id "$MACOS_NOTARY_KEY_ID" \
+              --issuer "$MACOS_NOTARY_ISSUER_ID" \
+              --wait \
+              --output-format json > "$NOTARY_RESULT"
+            then
+              cat "$NOTARY_RESULT" >&2 || true
+              exit 1
+            fi
+
+            cat "$NOTARY_RESULT"
+            NOTARIZATION_STATUS="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("status", ""))' "$NOTARY_RESULT")"
+            NOTARIZATION_ID="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("id", ""))' "$NOTARY_RESULT")"
+
+            if [ "$NOTARIZATION_STATUS" != "Accepted" ] || [ -z "$NOTARIZATION_ID" ]; then
+              if [ -n "$NOTARIZATION_ID" ]; then
+                xcrun notarytool log "$NOTARIZATION_ID" \
+                  --key "$MACOS_NOTARY_API_KEY_PATH" \
+                  --key-id "$MACOS_NOTARY_KEY_ID" \
+                  --issuer "$MACOS_NOTARY_ISSUER_ID" || true
+              fi
+              echo "Apple notarization did not return Accepted status." >&2
+              exit 1
+            fi
+
+            xcrun stapler staple "$APP"
+            xcrun stapler validate "$APP"
+            codesign --verify --deep --strict --verbose=2 "$APP"
+            spctl --assess --type execute --verbose=4 "$APP"
+          else
+            python .github/scripts/sign_macos_app.py \
+              --app "$APP" \
+              --identity -
+          fi
+
           "$EXEC"
 
           python .github/scripts/prepare_release_legal_bundle.py \
@@ -263,6 +437,7 @@ jobs:
           test ! -e "$RAPP/Contents/Resources/LEGAL-MANIFEST.json"
           test ! -e "$RAPP/Contents/Resources/validation-evidence"
           cmp "$BUNDLE_BUILD_INFO" "$RAPP/Contents/Resources/BUILD-INFO.txt"
+          grep -q "^Release signing mode: $RELEASE_SIGNING_MODE$" "$RAPP/Contents/Resources/BUILD-INFO.txt"
           RPLIST="$RAPP/Contents/Info.plist"
           plutil -lint "$RPLIST"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$RPLIST")" = "$APP_VERSION"
@@ -275,12 +450,58 @@ jobs:
           ROUNDTRIP_ARCHES="$(lipo -archs "$REXEC")"
           test "$ROUNDTRIP_ARCHES" = "${{ matrix.expected_macho_arch }}"
           codesign --verify --deep --strict --verbose=2 "$RAPP"
+
+          if [ "$RELEASE_SIGNING_MODE" = "production" ]; then
+            xcrun stapler validate "$RAPP"
+            spctl --assess --type execute --verbose=4 "$RAPP"
+          fi
+
           "$REXEC"
           shasum -a 256 "$ZIP"
           ls -lh artifact/*
-      - uses: actions/upload-artifact@v7
+
+          {
+            echo "### macOS $PACKAGE_ARCH package"
+            echo
+            echo "- Signing mode: \`$RELEASE_SIGNING_MODE\`"
+            if [ "$RELEASE_SIGNING_MODE" = "production" ]; then
+              echo "- Developer ID signing: verified"
+              echo "- Apple notarization: Accepted (submission \`$NOTARIZATION_ID\`)"
+              echo "- Stapling: validated"
+              echo "- Gatekeeper assessment: passed"
+            else
+              echo "- Signature: ad-hoc engineering only"
+              echo "- Apple notarization: not performed"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove production signing material
+        if: ${{ always() && inputs.signing_mode == 'production' }}
+        run: |
+          if [ -n "${MACOS_SIGNING_KEYCHAIN:-}" ] && [ -e "$MACOS_SIGNING_KEYCHAIN" ]; then
+            security delete-keychain "$MACOS_SIGNING_KEYCHAIN" || true
+          fi
+          rm -f \
+            "$RUNNER_TEMP/developer-id-application.p12" \
+            "$RUNNER_TEMP"/AuthKey_*.p8 \
+            "$RUNNER_TEMP"/notary-result-*.json \
+            "$RUNNER_TEMP"/*-notary.zip \
+            "$RUNNER_TEMP/codesign-details.txt"
+
+      - name: Upload production macOS release candidate
+        if: ${{ inputs.signing_mode == 'production' }}
+        uses: actions/upload-artifact@v7
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload engineering macOS artifact
+        if: ${{ inputs.signing_mode == 'engineering' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: PlayStoreAppAudit-engineering-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 14

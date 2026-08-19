@@ -132,9 +132,25 @@ Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the c
 - Apple Silicon / ARM64 on `macos-15`
 - Intel / x64 on `macos-15-intel`
 
-Its only release input is the required exact `expected_sha`.
+It accepts:
 
-macOS packaging produces a thin `.app` for each architecture, validates Mach-O architecture and bundle version, excludes unused Qt Virtual Keyboard/platform-input-context components, applies an ad-hoc signature at the v1.3 baseline and validates startup after archive extraction.
+- `expected_sha`: the exact frozen source commit
+- `signing_mode`: `engineering` or `production`
+
+`engineering` is the default for deliberate package experiments. It uses an ad-hoc signature and uploads non-canonical artifact names beginning with `PlayStoreAppAudit-engineering-`, so those artifacts cannot match the assembler's production download pattern.
+
+`production` is required for a production release. It fails before dependency installation if the required Apple signing/notary secrets are missing. After the app and public legal material are complete, the workflow signs nested Mach-O code and nested bundles inside-out, signs the top-level app with a Developer ID Application identity, enables hardened runtime and secure timestamping, submits a temporary ZIP to Apple's notary service, requires `Accepted`, staples and validates the ticket, verifies the signature and runs a Gatekeeper assessment. The final release ZIP is created only after those checks and the final strict legal validation have passed.
+
+Required GitHub Secrets for production mode:
+
+- `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`
+- `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`
+- `MACOS_DEVELOPER_ID_TEAM_ID`
+- `MACOS_NOTARY_API_KEY_P8_BASE64`
+- `MACOS_NOTARY_KEY_ID`
+- `MACOS_NOTARY_ISSUER_ID`
+
+The P12 and App Store Connect API key are materialized only in temporary runner paths. The certificate is imported into a temporary keychain, and the workflow removes the temporary signing/notary material in an `always()` cleanup step.
 
 Separating Linux and macOS improves failure isolation and selective reruns. It does not make them independent release sources: all three platform workflows still have to use the same frozen SHA.
 
@@ -175,6 +191,8 @@ The preflight resolves metadata and small legal text only. It does not download 
 
 Passing the preflight is not release compliance evidence by itself. After packaging, `prepare_release_legal_bundle.py` still detects the actual runtime, downloads the exact required source archives, injects public legal material and creates validation evidence. `validate_release_legal_bundle.py` then performs the strict public package/source validation. The preflight complements these gates and never replaces or weakens them.
 
+For macOS production builds, legal/public files are injected before the production signature. After signing/notarization/stapling, runtime evidence is refreshed against that final app state and the strict public legal validator runs before the release ZIP is created. Do not add or modify app-bundle files after the production signature except through the deliberate notarization/stapling process.
+
 ## Frozen-SHA production release procedure
 
 A production release uses one exact immutable source revision for all six platform packages.
@@ -185,20 +203,20 @@ A production release uses one exact immutable source revision for all six platfo
 4. Record the exact full `main` SHA. This becomes the frozen release SHA.
 5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=both` and `expected_sha=<frozen SHA>`.
 6. Dispatch `.github/workflows/build-linux.yml` from `main` with `expected_sha=<frozen SHA>`.
-7. Dispatch `.github/workflows/build-macos.yml` from `main` with `expected_sha=<frozen SHA>`.
+7. Dispatch `.github/workflows/build-macos.yml` from `main` with `expected_sha=<frozen SHA>` and `signing_mode=production`.
 8. Confirm that all six release-candidate jobs succeeded from that exact SHA:
    - Windows x64
    - Windows ARM64
    - Linux x64
    - Linux ARM64
-   - macOS x64
-   - macOS ARM64
+   - macOS x64 with production Developer ID/notarization evidence
+   - macOS ARM64 with production Developer ID/notarization evidence
 9. Dispatch `.github/workflows/assemble-release.yml` from the same frozen `main` SHA with:
    - `expected_sha=<frozen SHA>`
    - `windows_run_id=<successful Windows run>`
    - `linux_run_id=<successful Linux run>`
-   - `macos_run_id=<successful macOS run>`
-10. The assembler verifies each source workflow's identity, event, status, repository and exact head SHA before downloading artifacts. The three run IDs must be distinct.
+   - `macos_run_id=<successful production macOS run>`
+10. The assembler verifies each source workflow's identity, event, status, repository and exact head SHA before downloading artifacts. The three run IDs must be distinct. Its canonical macOS artifact pattern cannot match engineering-mode artifact names.
 11. The assembler validates the six release candidates, their provenance and legal/source material, then produces the final public asset set.
 12. Require the assembler output to contain exactly 8 files and no extra directories:
     - `PlayStoreAppAudit-vVERSION-windows-x64.zip`
@@ -231,12 +249,20 @@ A package is not valid merely because the compiler returned success. Verify stan
 
 ## Signing and distribution
 
-At the v1.3.0 baseline:
+At the immutable v1.3.0 baseline:
 
 - Windows packages are unsigned.
 - Linux packages are unsigned.
 - macOS bundles have only an ad-hoc CI signature and are not Apple-notarized.
 
-Production Windows Authenticode signing and macOS Developer ID signing/notarization are v1.4 distribution work. Signing credentials must remain in GitHub Secrets or an external signing/secret service, never in the repository.
+### macOS v1.4 production path
 
-Signing must occur before final ZIP/checksum assembly, and strict package/legal validation must remain in force.
+`.github/scripts/sign_macos_app.py` is the canonical app-bundle signing helper. It discovers Mach-O files and nested code bundles, signs them inside-out, signs the top-level app last and then performs strict recursive verification. Production mode adds hardened runtime and secure timestamping. It deliberately does not use `codesign --deep` as the signing strategy.
+
+The production workflow then notarizes with `xcrun notarytool`, requires an accepted result, staples the ticket and validates both the stapled app and the extracted final release app with code-signing and Gatekeeper checks.
+
+Do not treat the implementation as credential-validated until a deliberate `signing_mode=production` workflow run succeeds on both macOS architectures with real Developer ID and App Store Connect notary credentials.
+
+### Windows v1.4 production path
+
+Windows Authenticode remains separate follow-up work. The chosen integration must keep signing authority/private-key material out of the repository, sign the final owned PE file(s) before the public ZIP/checksum stage, verify the resulting signature in CI and preserve the strict legal/runtime validation sequence.

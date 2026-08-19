@@ -140,13 +140,31 @@ Rationale: the action author, not this Python application, owns the bundled Java
 
 ## Signing policy
 
-- Public Windows distribution should use trusted Authenticode signing, not a self-signed certificate.
-- Public macOS distribution should use Developer ID Application signing and Apple notarization.
-- Signing credentials belong in GitHub Secrets or an external signing/secret service, never in the repository.
-- Sign owned binaries/app bundles before final ZIP creation and release checksums.
-- Do not re-sign third-party binaries without a specific technical/legal reason.
+### macOS
 
-The exact Windows certificate/provider is still a v1.4 implementation choice and should be recorded here once selected.
+Production macOS release candidates use Developer ID Application signing followed by Apple notarization.
+
+- Legal/public package files are injected before the final signature.
+- Nested Mach-O code and nested bundles are signed inside-out, then the top-level `.app` is signed.
+- Production signatures enable the hardened runtime and a secure timestamp.
+- `codesign --deep` is used for recursive verification, not as the production signing strategy.
+- The notarization upload archive is temporary and is not a public release artifact.
+- Production flow requires Apple notarization status `Accepted`, staples the ticket to the app, validates the staple, verifies the code signature and passes a Gatekeeper assessment before creating the release ZIP.
+- The strict legal runtime evidence is refreshed after the final signed/stapled app state and validated before the release ZIP is created.
+- A production macOS workflow run uploads the canonical release-candidate artifact names expected by the assembler.
+- Engineering mode remains available with ad-hoc signing, but uploads non-canonical `PlayStoreAppAudit-engineering-*` artifact names so it cannot be selected accidentally by the release assembler.
+- Developer ID certificate material and App Store Connect notary API credentials live in GitHub Secrets and are materialized only in temporary runner files/keychains that are removed after the job.
+
+Rationale: the release assembler should only be able to consume macOS candidates that completed the production trust flow, while ordinary engineering builds can remain cheaper and credential-free.
+
+### Windows
+
+- Public Windows distribution must use trusted Authenticode signing, not a self-signed certificate.
+- Signing credentials must remain in a compliant cloud/hardware-backed signing service or secret store, never in the repository.
+- Sign only owned release binaries that need the publisher signature; do not re-sign third-party binaries without a specific technical/legal reason.
+- Signing must happen before final ZIP creation, legal/runtime revalidation and release checksums.
+
+The exact Windows provider/integration remains a separate v1.4 implementation decision.
 
 ## UI style policy
 
