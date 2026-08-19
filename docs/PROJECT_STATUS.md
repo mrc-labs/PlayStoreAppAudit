@@ -143,7 +143,7 @@ Still required before calling production macOS signing validated:
 - run one deliberate production build for both architectures
 - confirm Developer ID, notarization, staple and Gatekeeper evidence on the resulting artifacts
 
-Windows workflow implementation now defines:
+Windows workflow implementation in PR #28 defines:
 
 - native x64 + ARM64 build remains in `build-windows-exe.yml`
 - a separate `sign-windows.yml` accepts only the successful exact-SHA unsigned Windows build
@@ -194,4 +194,4 @@ Still required before calling production Windows signing validated:
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight and PR #27 implemented the macOS production signing/notarization path. Windows production signing workflow code is the next controlled release-engineering change. Credential-backed production validation for both signing platforms remains deliberate release work. Forward-compatibility and UI modernization remain separate follow-up workstreams.
+PR #24 established durable project context, PR #25 split the desktop release workflows, PR #26 added the cheap legal-material preflight, PR #27 implemented the macOS production signing/notarization path and PR #28 implements the Windows production signing path. Credential-backed production validation for both signing platforms remains deliberate release work. Forward-compatibility and UI modernization remain separate follow-up workstreams.
