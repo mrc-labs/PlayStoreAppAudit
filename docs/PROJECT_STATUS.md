@@ -48,6 +48,7 @@ All three package workflows remain manual and exact-SHA guarded. Splitting Linux
 - `.github/scripts/build_windows_standalone.ps1`
 - `.github/scripts/inspect_pe.py`
 - `.github/scripts/legal_payload_store.py`
+- `.github/scripts/preflight_release_legal_material.py`
 - `.github/scripts/prepare_release_legal_bundle.py`
 - `.github/scripts/release_asset_layout.py`
 - `.github/scripts/validate_release_legal_bundle.py`
@@ -85,7 +86,7 @@ Completed repository work:
 
 ### P1 - Release workflow isolation
 
-Implemented for v1.4:
+Completed in PR #25:
 
 - separate `.github/workflows/build-linux.yml` x64 + ARM64 matrix
 - separate `.github/workflows/build-macos.yml` x64 + ARM64 matrix
@@ -93,20 +94,21 @@ Implemented for v1.4:
 - assembler inputs changed to `windows_run_id`, `linux_run_id` and `macos_run_id`
 - exact-SHA verification retained across all source runs
 
-Heavy package validation is deliberately not triggered merely to prove the workflow-file split. Targeted workflow tests and normal Quality CI are the first validation gate.
+Heavy package validation was deliberately not triggered merely to prove the workflow-file split. Targeted workflow tests and normal Quality CI passed before merge.
 
 ### P1 - Cheap legal-material preflight
 
-Add a pre-Nuitka deterministic legal/source prerequisite check covering:
+Implemented for v1.4 in the package workflows:
 
-- CPython license resolution
-- exact PySide6/Qt version metadata
-- official Qt source archive metadata and digests
-- expected source archive list
-- certifi source material
-- other deterministic legal prerequisites already knowable before compilation
+- runs after release dependencies are installed and before Nuitka compilation
+- requires installed `PySide6-Essentials` to match the exact project pin and requires matching `shiboken6`
+- resolves official Qt/PySide metadata and SHA-256 provenance for `pyside-setup`, `qtbase`, `qtimageformats` and `qtsvg`
+- resolves certifi source-distribution metadata and digest
+- resolves/validates the CPython license using the same exact-version fallback as the strict legal tooling
+- verifies required Nuitka legal files and the 4.1.3 release pin
+- downloads metadata and small legal text only, not the large Qt/PySide source archives
 
-The later strict legal gate remains mandatory.
+The later package-aware source download, legal injection and strict legal validation remain mandatory and unchanged.
 
 ### P1/P2 - Production signing
 
@@ -158,4 +160,4 @@ Windows:
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context. The workflow split is the next controlled v1.4 PR. Legal preflight, signing, API and UI work remain separate follow-up PRs.
+PR #24 established durable project context. PR #25 split the desktop release workflows. The legal preflight is the current controlled v1.4 PR; signing, API and UI work remain separate follow-up PRs.
