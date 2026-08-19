@@ -4,81 +4,90 @@ Last updated: 2026-08-19
 
 ## Published release
 
-- Version: `v1.3.0`
-- Release commit: `fb2193dfc13d0f0e6b7be660c1342bbf87d26081`
-- State: published, latest until v1.4.0 is published
-- Release history/assets: immutable
-- Public assets: exactly 8
-- Prebuilt platforms: Windows x64/ARM64, Linux x64/ARM64, macOS x64/ARM64
-
-v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary assets replaced.
-
-## v1.4 release target
-
-The repository is being prepared for `v1.4.0` as a public Windows x64 engineering/test release.
-
-- Canonical application version on `main`: `1.4.0`
-- Prebuilt v1.4 platform: Windows x64 only
-- Signing: intentionally unsigned for v1.4
-- Windows ARM64/Linux/macOS: source support retained; no new v1.4 package builds
-- Production signing and the full six-platform production release are deferred to v1.5
-- v1.4 public asset model: exactly 3 files
-  - Windows x64 ZIP
-  - consolidated third-party source `tar.xz`
+- Latest version: `v1.4.0`
+- Release commit: `6830e0c4a03e355f442070f00dd5008322f5dbc4`
+- State: published and immutable
+- Public asset count: exactly 3
+- Prebuilt platform: Windows x64 only
+- Signing: intentionally unsigned engineering/test release
+- Permanent release assets:
+  - `PlayStoreAppAudit-v1.4.0-windows-x64.zip`
+  - `PlayStoreAppAudit-v1.4.0-third-party-sources.tar.xz`
   - `SHA256SUMS.txt`
 
-The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native x64 architecture checks, packaged smoke tests, corresponding-source validation and release-wide checksums.
+The v1.4.0 release was assembled from the exact frozen SHA after post-merge Quality passed. The Windows x64 build and three-file engineering assembler both passed strict package, architecture, startup, provenance, legal/source and checksum validation before tagging. The annotated `v1.4.0` tag points to the frozen SHA and the published assets must not be rebuilt, retagged, rewritten or replaced.
 
-No v1.4 Nuitka release-candidate build has been dispatched yet. PR #34 has merged normally to `main`; its Quality checks passed on Python 3.13 and 3.14 and its cross-platform UI style audit passed on Windows, macOS and Linux. The first `main` SHA containing this final documentation checkpoint and passing Quality is the v1.4 freeze candidate.
+Previous `v1.3.0` remains published and immutable at `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` with exactly 8 public assets covering Windows, Linux and macOS on x64 and ARM64.
 
 ## Current baselines
 
+- Canonical application version on `main`: `1.4.0`
 - Packaging Python: 3.13
 - Quality Python: 3.13 + 3.14
 - `PySide6-Essentials`: 6.11.1
 - Nuitka: 4.1.3
 - UI technology: Qt Widgets
 - Production application style: Qt platform/default QStyle; no production/global forced Fusion
-- Windows v1.4 release signing: unsigned by deliberate policy
-- Windows v1.5 production signing: Microsoft Artifact Signing Public Trust implementation exists with SHA-256/RFC3161 and native x64/ARM64 post-sign verification, but the final public-trust provider is not locked until v1.5. Revalidate publisher eligibility and cost before execution and adapt the signing stage if another trusted provider is required.
-- macOS v1.5 production path: Developer ID + hardened runtime + secure timestamp + notarization/stapling/Gatekeeper implemented; real credential-backed validation deferred to v1.5
+- Managed ADB behaviour: read-only with respect to installed Android apps
 
-## Current workflows
+## Release profiles
 
-- `.github/workflows/quality.yml`
-- `.github/workflows/ui-style-audit.yml`
-- `.github/workflows/build-windows-exe.yml`
-- `.github/workflows/assemble-windows-engineering-release.yml`
-- `.github/workflows/sign-windows.yml`
-- `.github/workflows/build-linux.yml`
-- `.github/workflows/build-macos.yml`
-- `.github/workflows/assemble-release.yml`
+### v1.4 published profile
 
-Profile usage:
+- Windows x64 only
+- unsigned engineering/test publication
+- build workflow: `.github/workflows/build-windows-exe.yml` with `target=x64`
+- assembler: `.github/workflows/assemble-windows-engineering-release.yml`
+- exact three-file public asset model
+- no Windows ARM64, Linux or macOS v1.4 prebuilt packages
 
-- v1.4: `build-windows-exe.yml` with `target=x64`, then `assemble-windows-engineering-release.yml`
-- v1.5 production target: Windows build + validated public-trust Windows signing + Linux build + macOS production build, then `assemble-release.yml`
+### v1.5 production target
 
-The v1.4 engineering assembler requires the x64 artifact and rejects a source run that also contains the canonical Windows ARM64 artifact.
+The broader production path remains deferred to v1.5:
 
-The UI style audit is source/render validation only and never builds release packages.
+- Windows x64/ARM64
+- Linux x64/ARM64
+- macOS x64/ARM64
+- validated publicly trusted Windows signing provider still to be selected after eligibility/cost review
+- macOS Developer ID signing, hardened runtime, notarization, stapling and Gatekeeper validation
+- full production assembly through `.github/workflows/assemble-release.yml`
 
-## Current release and audit scripts
+The repository contains a Microsoft Artifact Signing implementation as one possible Windows path, but the final v1.5 provider is not locked.
 
-- `.github/scripts/assemble_release_assets.py`
-- `.github/scripts/assemble_windows_engineering_release.py`
-- `.github/scripts/build_windows_standalone.ps1`
-- `.github/scripts/capture_ui_style.py`
-- `.github/scripts/inspect_pe.py`
-- `.github/scripts/legal_payload_store.py`
-- `.github/scripts/preflight_release_legal_material.py`
-- `.github/scripts/prepare_release_legal_bundle.py`
-- `.github/scripts/release_asset_layout.py`
-- `.github/scripts/sign_macos_app.py`
-- `.github/scripts/validate_release_legal_bundle.py`
-- `.github/scripts/validate_windows_standalone.py`
+## Post-v1.4 Actions cleanup
 
-No current release script has been identified as dead. `prepare_release_legal_bundle.py` and `validate_release_legal_bundle.py` are candidates for later modularization, not deletion.
+After v1.4.0 publication, the repository's retained GitHub Actions artifact inventory was audited.
+
+- Remaining Actions artifacts before cleanup: 140
+- Retained artifact data before cleanup: approximately 5372.7 MB
+- Cleanup result: all 140 retained Actions artifacts deleted
+- Remaining Actions artifacts immediately after cleanup: 0
+
+This cleanup did not alter GitHub Release assets, source commits, tags or workflow history.
+
+The durable policy is now: GitHub Release assets are the permanent distribution archive; GitHub Actions artifacts are temporary pipeline material. See `CI_MAINTENANCE.md`.
+
+## Current maintenance work
+
+The first post-v1.4 maintenance workstream is intentionally scoped to cheap CI/release hygiene and reliability improvements, with no heavy package builds unless a change truly requires them.
+
+Planned/active items:
+
+- shorten Actions artifact retention for active workflows;
+- ignore disposable local `release-v*-candidate-*` directories;
+- document mandatory post-release Actions artifact cleanup;
+- audit all remaining workflow retention settings before v1.5 production builds;
+- improve legal-source download resilience for transient read timeouts without weakening SHA-256/provenance validation;
+- measure legal-material preparation time and evaluate safe caching of already verified immutable source archives;
+- preserve strict fail-closed legal/source validation;
+- delete stale merged short-lived branches after current maintenance is complete;
+- optionally clean maintainer-only wording from older GitHub Release descriptions.
+
+## Known v1.4 release lesson
+
+The first Windows x64 release-build attempt reached `PREPARE PUBLIC LEGAL RELEASE MATERIAL` after compilation and validation had already succeeded, then failed because a network read operation timed out while downloading legal/source material. Re-running the same job at the same frozen SHA succeeded without source changes.
+
+The current downloader retries HTTP opening failures, but the actual streaming read/copy path is not equally resilient to a timeout that occurs after the connection has opened. This is a post-v1.4 maintenance target. Any fix must retain exact source provenance, expected SHA-256 verification and fail-closed behaviour.
 
 ## Durable release invariants
 
@@ -88,118 +97,7 @@ No current release script has been identified as dead. `prepare_release_legal_bu
 - Every release profile derives all of its artifacts from one exact frozen SHA.
 - No public RC tag and no tag-triggered binary rebuild.
 - Strict legal/source validation remains mandatory.
-- Managed ADB remains read-only with respect to installed Android apps.
 - If source or release tooling changes after a release SHA is frozen, discard and rebuild all candidates required by that selected release profile from the new SHA.
+- Do not keep long-lived Actions artifact duplicates after permanent GitHub Release publication.
 
-See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and exact procedures.
-
-## v1.4 progress
-
-### Durable context and release architecture
-
-Completed:
-
-- PR #24: refreshed durable project context and release documentation
-- PR #25: split Linux and macOS release workflows
-- PR #26: added pre-Nuitka legal-material preflight
-- PR #27: implemented macOS Developer ID/notarization production path
-- PR #28: implemented Windows Microsoft Artifact Signing production path
-- PR #29: added proactive forward-compatibility regression guard
-- PR #30: added cross-platform Qt native-style audit
-- PR #31: adopted Qt platform/default production style
-- PR #32: removed shared hard-coded font/scrollbar QSS and several stale developer Fusion overrides
-- PR #33: bumped the canonical version to 1.4.0, added the Windows engineering release assembler/workflow and aligned durable/public documentation to the v1.4 engineering and v1.5 production profiles
-- PR #34: finalized the Windows x64-only v1.4 profile and removed all remaining first-party Fusion style overrides
-
-PR #33 merged to `main` as `9262164ab08a8c8602ebbea03a615e0d950692a1` after Quality passed on Python 3.13 and 3.14.
-
-After PR #33, the intended v1.4 engineering target was corrected from Windows x64+ARM64 to Windows x64 only before any release build was dispatched. PR #34 carried that correction through the assembler, workflow, tests and durable/public documentation and merged normally to `main` as `47147f3ac1cec5e7a7e07d8ac77a6a5018b6e71f`.
-
-### v1.4 Windows x64 engineering release preparation
-
-PR #34 finalized the PR #33 engineering profile as:
-
-- canonical application version `1.4.0`
-- Windows x64 only
-- unsigned engineering/test publication
-- a dedicated x64-only engineering assembler
-- a manual exact-SHA `Assemble Windows engineering release` workflow
-- exact three-asset validation
-- rejection of Windows ARM64 input for the v1.4 engineering assembler
-- README, changelog and durable release documentation aligned to x64-only v1.4 publication and v1.5 signing/full production
-
-The full six-platform production assembler and both signing implementations remain intact for v1.5.
-
-### Final UI modernization cleanup before v1.4 freeze
-
-PR #34, `release: finalize v1.4 x64 engineering profile`, merged normally to `main` as `47147f3ac1cec5e7a7e07d8ac77a6a5018b6e71f`.
-
-The five remaining developer-only `app.setStyle("Fusion")` overrides were removed in commit `fd6668c9c70104554d998cec9d975e21caf18c80` from:
-
-- `playstore_app_audit/ui/audit_window.py`
-- `playstore_app_audit/ui/compact_window.py`
-- `playstore_app_audit/ui/device_window.py`
-- `playstore_app_audit/ui/insights_window.py`
-- `playstore_app_audit/ui/preferences_window.py`
-
-Each UI module changed by exactly one deletion and no additions. The cleanup branch also replaces the temporary allowlist regression test with a repository-wide assertion that first-party package code contains no `.setStyle(...)` call.
-
-Local targeted validation on Python 3.14.6 passed `tests/test_app_style_policy.py` and `tests/test_windows_engineering_release.py` with 5 tests passing. PR #34 Quality passed on Python 3.13 and 3.14, and the cross-platform UI style audit passed on Windows, macOS and Linux. No further UI change is planned before the v1.4 freeze.
-
-### GitHub Actions / Node
-
-The application itself does not use Node. Monitor official action majors for future Node 26 runtime adoption and upgrade only when official actions support/adopt it. Do not add `setup-node` merely to force Node 26.
-
-A daily conditional monitor has been created outside the repository to surface meaningful official Node 26 action-major changes without changing source control.
-
-### Signing work deferred to v1.5
-
-Do not run real Windows public-trust signing or macOS Developer ID/notarization for v1.4.
-
-Windows:
-
-- the repository currently implements Microsoft Artifact Signing Public Trust through `.github/workflows/sign-windows.yml`
-- do not assume Microsoft is the final v1.5 provider until publisher eligibility and cost are revalidated at the v1.5 signing milestone
-- if Microsoft remains usable, the existing OIDC path requires `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` plus `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, and `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
-- if another publicly trusted code-signing provider is chosen, adapt or replace the signing stage while retaining exact-SHA provenance, signature/timestamp verification, native x64/ARM64 post-sign verification, legal revalidation and fail-closed assembly
-
-macOS:
-
-- Apple Developer membership and Developer ID Application certificate
-- App Store Connect notary API credentials
-- secrets: `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`, `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`, `MACOS_DEVELOPER_ID_TEAM_ID`, `MACOS_NOTARY_API_KEY_P8_BASE64`, `MACOS_NOTARY_KEY_ID`, `MACOS_NOTARY_ISSUER_ID`
-
-## v1.4 remaining sequence
-
-Before any heavy build:
-
-1. this final documentation checkpoint must be present on `main`;
-2. Quality on that resulting `main` SHA must be green;
-3. confirm README, changelog, version and durable documentation still describe the intended Windows x64-only unsigned v1.4 profile;
-4. freeze that exact full `main` SHA.
-
-Then:
-
-5. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=x64`;
-6. require the x64 package/legal/smoke validation job to pass;
-7. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows x64 run ID;
-8. require exactly three validated final assets;
-9. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows x64 package;
-10. create the annotated `v1.4.0` tag on the frozen SHA;
-11. publish the already validated three assets without rebuilding, clearly labeling the binary as Windows x64 only and unsigned;
-12. treat the published v1.4.0 tag/assets as immutable.
-
-## Housekeeping that does not block v1.4
-
-- Edit older published GitHub Release descriptions where maintainer-only pipeline notes remain when release-write capability is available.
-- Delete merged short-lived remote branches when a safe branch-delete capability or authenticated local shell is available.
-
-Neither housekeeping item justifies changing published v1.3.0 binaries or delaying the v1.4 Windows engineering release.
-
-## Known release lessons
-
-- Catch deterministic legal/source failures before expensive compilation where possible.
-- Compiler success alone is not release evidence; package, architecture, startup, legal and provenance validation remain mandatory.
-- Never mix release artifacts from different source SHAs.
-- Platform workflow isolation must not weaken release source identity.
-- A reduced-cost engineering release must have its own explicit asset/profile validator rather than weakening the full production assembler.
+See `PROJECT_DECISIONS.md`, `BUILDING.md` and `CI_MAINTENANCE.md` for durable policy and procedures.
