@@ -17,7 +17,7 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 
 The repository is being prepared for `v1.4.0` as a public Windows engineering/test release.
 
-- Canonical application version in the v1.4 release-preparation change: `1.4.0`
+- Canonical application version on `main`: `1.4.0`
 - Prebuilt v1.4 platforms: Windows x64 + Windows ARM64 only
 - Signing: intentionally unsigned for v1.4
 - Linux/macOS: source support retained; no new v1.4 package builds
@@ -30,7 +30,7 @@ The repository is being prepared for `v1.4.0` as a public Windows engineering/te
 
 The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native architecture checks, packaged smoke tests, consolidated corresponding-source validation and release-wide checksums.
 
-No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until the remaining source/release-preparation changes are merged and post-merge Quality passes.
+No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until the remaining UI cleanup is merged and post-merge Quality/UI audit passes.
 
 ## Current baselines
 
@@ -96,7 +96,7 @@ See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and exact procedures.
 
 ### Durable context and release architecture
 
-Completed before the release-preparation change:
+Completed:
 
 - PR #24: refreshed durable project context and release documentation
 - PR #25: split Linux and macOS release workflows
@@ -107,10 +107,13 @@ Completed before the release-preparation change:
 - PR #30: added cross-platform Qt native-style audit
 - PR #31: adopted Qt platform/default production style
 - PR #32: removed shared hard-coded font/scrollbar QSS and several stale developer Fusion overrides
+- PR #33: bumped the canonical version to 1.4.0, added the Windows-only engineering release assembler/workflow and aligned durable/public documentation to the v1.4 engineering and v1.5 production profiles
+
+PR #33 merged to `main` as `9262164ab08a8c8602ebbea03a615e0d950692a1` after Quality passed on Python 3.13 and 3.14.
 
 ### v1.4 Windows engineering release preparation
 
-The current release-preparation change adds:
+Merged in PR #33:
 
 - canonical application version `1.4.0`
 - a dedicated Windows-only engineering assembler
@@ -122,9 +125,11 @@ The current release-preparation change adds:
 
 The full six-platform production assembler and both signing implementations remain intact for v1.5.
 
-### UI modernization debt before v1.4 freeze
+### Final UI modernization cleanup before v1.4 freeze
 
-Five developer-only standalone launchers still contain a stale `app.setStyle("Fusion")` line:
+Active branch: `agent/v1.4-finish-native-style-cleanup`.
+
+Five developer-only standalone launchers still contain exactly one stale `app.setStyle("Fusion")` line each:
 
 - `playstore_app_audit/ui/audit_window.py`
 - `playstore_app_audit/ui/compact_window.py`
@@ -132,11 +137,15 @@ Five developer-only standalone launchers still contain a stale `app.setStyle("Fu
 - `playstore_app_audit/ui/insights_window.py`
 - `playstore_app_audit/ui/preferences_window.py`
 
-They do not affect canonical production startup, but they should be mechanically removed before freezing the v1.4 release SHA. `tests/test_app_style_policy.py` currently keeps an exact allowlist so no additional override can appear silently. After the five lines are removed, replace the allowlist policy with a repository-wide assertion that no first-party `QApplication.setStyle(...)` override remains.
+They do not affect canonical production startup. The cleanup branch has already replaced the temporary allowlist regression test with a repository-wide assertion that first-party package code contains no `.setStyle(...)` call. The five identical developer-only lines are the only remaining code edits before that test can pass.
+
+After the five lines are removed, run normal Quality plus the cross-platform UI style audit, merge the branch normally, update this status to mark the cleanup complete, and only then freeze the v1.4 release SHA.
 
 ### GitHub Actions / Node
 
 The application itself does not use Node. Monitor official action majors for future Node 26 runtime adoption and upgrade only when official actions support/adopt it. Do not add `setup-node` merely to force Node 26.
+
+A daily conditional monitor has been created outside the repository to surface meaningful official Node 26 action-major changes without changing source control.
 
 ### Signing work deferred to v1.5
 
@@ -161,9 +170,9 @@ macOS:
 
 Before any heavy build:
 
-1. merge the v1.4 release-preparation change and require Quality to pass on Python 3.13 and 3.14;
-2. remove the five developer-only Fusion lines and the temporary allowlist, then merge and re-run Quality/UI style audit;
-3. confirm README/changelog/version/durable docs still describe the intended v1.4 Windows engineering profile;
+1. remove the five developer-only Fusion lines on `agent/v1.4-finish-native-style-cleanup`;
+2. run/merge that cleanup with Quality on Python 3.13/3.14 and the cross-platform UI style audit green;
+3. refresh `PROJECT_STATUS.md` to record the merged cleanup and confirm README/changelog/version/durable docs still describe the intended v1.4 Windows engineering profile;
 4. freeze the exact final `main` SHA only after the above is complete.
 
 Then:
