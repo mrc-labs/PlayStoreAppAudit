@@ -102,11 +102,21 @@ v1.4 intentionally publishes only one unsigned Windows x64 Engineering Test Buil
 
 This profile reduces release cost without weakening source identity, legal evidence or package validation.
 
-### v1.5 full production profile
+### v1.5 Windows x64 Engineering Test Build (ETB) profile
 
-The existing production path is preserved for v1.5:
+v1.5.0 keeps the same reduced public profile as v1.4: one unsigned Windows x64 package from one frozen SHA.
 
-- Windows x64/ARM64 native packages are built, then pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- Build with `.github/workflows/build-windows-exe.yml` using `target=x64`.
+- Do not run Windows ARM64, Linux or macOS v1.5 release jobs.
+- Do not invoke production signing.
+- `.github/workflows/assemble-windows-engineering-release.yml` validates the Windows x64 candidate and emits exactly three public assets: `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
+- The GitHub Release uses title suffix `(ETB Win x64)` and the Windows x64-only ETB body heading.
+
+### v1.6 full production profile
+
+The existing production path is preserved for v1.6:
+
+- Windows x64/ARM64 native packages are built, then pass through a validated publicly trusted signing provider and native post-sign verification.
 - Linux x64/ARM64 packages use Nuitka standalone layout.
 - macOS x64/ARM64 packages use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - `.github/workflows/assemble-release.yml` validates all six final candidates from one frozen SHA and emits exactly eight public assets: six platform ZIPs, one consolidated third-party source archive and one `SHA256SUMS.txt`.
@@ -119,8 +129,8 @@ The existing production path is preserved for v1.5:
 
 Windows package validation covers native Python/PySide inputs, PE architecture, version metadata, runtime content, startup and legal material. Linux validates ELF architecture, runtime content and startup. macOS validates Mach-O architecture, bundle metadata, runtime content, signature state and startup.
 
-At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. v1.4 deliberately remains unsigned on Windows x64. Production signing execution is deferred to v1.5.
+At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. v1.4 and v1.5 deliberately remain unsigned on Windows x64. Production signing execution is deferred to v1.6.
 
 Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
 
-The detailed v1.4 ETB and v1.5 production procedures and current workflow names are documented in `BUILDING.md`.
+The detailed v1.4/v1.5 ETB and v1.6 production procedures and current workflow names are documented in `BUILDING.md`.
