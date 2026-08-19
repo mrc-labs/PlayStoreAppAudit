@@ -55,3 +55,14 @@ def test_every_upload_artifact_step_has_explicit_retention_policy() -> None:
             f"{path.name} has {uploads} upload-artifact steps "
             f"but {len(retentions)} explicit retention values"
         )
+
+
+def test_housekeeping_workflow_uses_canonical_logic_and_write_scope() -> None:
+    workflow = _workflow("actions-retention.yml")
+
+    assert "actions: write" in workflow
+    assert "contents: read" in workflow
+    assert "ref: main" in workflow
+    assert ".github/scripts/cleanup_actions_retention.py" in workflow
+    assert "--grace-days 7" in workflow
+    assert "cancel-in-progress: false" in workflow
