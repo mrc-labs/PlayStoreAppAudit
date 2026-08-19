@@ -308,4 +308,4 @@ jobs:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-final-release-assets
           path: final-release/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7

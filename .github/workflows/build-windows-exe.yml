@@ -322,4 +322,4 @@ jobs:
             artifact/windows-${{ matrix.arch }}-ci/PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}.zip
             artifact/windows-${{ matrix.arch }}-ci/legal-release-v${{ steps.project_version.outputs.version }}/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7

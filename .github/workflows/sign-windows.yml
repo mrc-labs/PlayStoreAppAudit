@@ -472,7 +472,7 @@ jobs:
             unsigned-input/${{ matrix.arch }}/PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}.zip
             unsigned-input/${{ matrix.arch }}/legal-release-v${{ needs.preflight.outputs.version }}/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
 
   verify-windows:
     name: Verify signed Windows ${{ matrix.arch }} package natively
