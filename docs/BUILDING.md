@@ -93,6 +93,14 @@ This helper is for local x64 engineering. Production releases use the GitHub Act
 
 Heavy package workflows are deliberate manual dispatches. Ordinary pushes and release-tag pushes do not build release packages.
 
+Every production release uses three source workflow runs, all dispatched from the same exact frozen `main` SHA:
+
+- `.github/workflows/build-windows-exe.yml`
+- `.github/workflows/build-linux.yml`
+- `.github/workflows/build-macos.yml`
+
+Each workflow verifies that the dispatch SHA and checked-out SHA equal its required `expected_sha` before expensive build work begins.
+
 ### Windows
 
 `.github/workflows/build-windows-exe.yml` accepts:
@@ -100,28 +108,33 @@ Heavy package workflows are deliberate manual dispatches. Ordinary pushes and re
 - `target`: `x64`, `arm64` or `both`
 - `expected_sha`: the exact 40-character commit SHA intended for the build
 
-For a production release, use `target=both`.
-
-The workflow verifies that the dispatch SHA and checked-out SHA equal `expected_sha` before expensive build work. The x64 job runs on `windows-2025`; ARM64 runs on `windows-11-arm`.
+For a production release, use `target=both`. The x64 job runs on `windows-2025`; ARM64 runs on `windows-11-arm`.
 
 Each selected job validates native Python/PySide6 inputs, PE architecture, Windows version metadata, managed ADB behaviour, source checks, packaged startup, legal material and release provenance.
 
-### Linux and macOS
+### Linux
 
-At the v1.3.0 baseline, `.github/workflows/build-macos-linux.yml` accepts:
+`.github/workflows/build-linux.yml` always builds both release architectures from one manual dispatch:
 
-- `target`: `linux`, `macos` or `both`
-- `expected_sha`: the exact 40-character commit SHA intended for the build
+- x64 on `ubuntu-22.04`
+- ARM64 on `ubuntu-24.04-arm`
 
-For a production release, use `target=both`, which produces Linux x64/ARM64 and macOS x64/ARM64 release candidates from the same dispatch SHA.
-
-The workflow performs the same exact-SHA guard before compilation.
+Its only release input is the required exact `expected_sha`.
 
 Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the complete standalone tree so Qt/PySide/Shiboken shared libraries remain individually replaceable. Linux x64 can use the managed Google Platform-Tools archive; Linux ARM64 requires a native compatible ADB.
 
+### macOS
+
+`.github/workflows/build-macos.yml` always builds both release architectures from one manual dispatch:
+
+- Apple Silicon / ARM64 on `macos-15`
+- Intel / x64 on `macos-15-intel`
+
+Its only release input is the required exact `expected_sha`.
+
 macOS packaging produces a thin `.app` for each architecture, validates Mach-O architecture and bundle version, excludes unused Qt Virtual Keyboard/platform-input-context components, applies an ad-hoc signature at the v1.3 baseline and validates startup after archive extraction.
 
-The v1.4 backlog plans to split this combined workflow into separate Linux and macOS workflow files. Until that PR is merged, this section describes the current canonical workflow.
+Separating Linux and macOS improves failure isolation and selective reruns. It does not make them independent release sources: all three platform workflows still have to use the same frozen SHA.
 
 ## Architecture validation
 
@@ -154,20 +167,23 @@ A production release uses one exact immutable source revision for all six platfo
 3. Require the cheap post-merge Quality run to pass.
 4. Record the exact full `main` SHA. This becomes the frozen release SHA.
 5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=both` and `expected_sha=<frozen SHA>`.
-6. Dispatch `.github/workflows/build-macos-linux.yml` from `main` with `target=both` and the same `expected_sha=<frozen SHA>`.
-7. Confirm that all six release-candidate jobs succeeded from that exact SHA:
+6. Dispatch `.github/workflows/build-linux.yml` from `main` with `expected_sha=<frozen SHA>`.
+7. Dispatch `.github/workflows/build-macos.yml` from `main` with `expected_sha=<frozen SHA>`.
+8. Confirm that all six release-candidate jobs succeeded from that exact SHA:
    - Windows x64
    - Windows ARM64
    - Linux x64
    - Linux ARM64
    - macOS x64
    - macOS ARM64
-8. Dispatch `.github/workflows/assemble-release.yml` from the same frozen `main` SHA with:
+9. Dispatch `.github/workflows/assemble-release.yml` from the same frozen `main` SHA with:
    - `expected_sha=<frozen SHA>`
    - `windows_run_id=<successful Windows run>`
-   - `desktop_run_id=<successful combined macOS/Linux run>`
-9. The assembler verifies source workflow identity/status/SHA, downloads all six candidate artifacts, validates their release provenance and legal/source material, and creates the final public asset set.
-10. Require the assembler output to contain exactly 8 files and no extra directories:
+   - `linux_run_id=<successful Linux run>`
+   - `macos_run_id=<successful macOS run>`
+10. The assembler verifies each source workflow's identity, event, status, repository and exact head SHA before downloading artifacts. The three run IDs must be distinct.
+11. The assembler validates the six release candidates, their provenance and legal/source material, then produces the final public asset set.
+12. Require the assembler output to contain exactly 8 files and no extra directories:
     - `PlayStoreAppAudit-vVERSION-windows-x64.zip`
     - `PlayStoreAppAudit-vVERSION-windows-arm64.zip`
     - `PlayStoreAppAudit-vVERSION-linux-x64.zip`
@@ -176,11 +192,11 @@ A production release uses one exact immutable source revision for all six platfo
     - `PlayStoreAppAudit-vVERSION-macos-arm64.zip`
     - `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
     - `SHA256SUMS.txt`
-11. Verify the final asset checksums and perform any deliberate release smoke/manual checks against those exact artifacts.
-12. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
-13. Create the GitHub Release and upload the already validated eight assets.
-14. Do not rebuild because the tag was pushed. The tag identifies the validated source commit; it is not a package-build trigger.
-15. Once published, treat the tag, release history and binary assets as immutable.
+13. Verify the final asset checksums and perform any deliberate release smoke/manual checks against those exact artifacts.
+14. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
+15. Create the GitHub Release and upload the already validated eight assets.
+16. Do not rebuild because the tag was pushed. The tag identifies the validated source commit; it is not a package-build trigger.
+17. Once published, treat the tag, release history and binary assets as immutable.
 
 If source code or release tooling changes after step 4, discard the affected release candidates, freeze the new exact `main` SHA and rebuild all six candidates. Never mix artifacts from different SHAs.
 
