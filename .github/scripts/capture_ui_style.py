@@ -6,12 +6,17 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import sys
 from pathlib import Path
 
-import PySide6
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import (
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+import PySide6  # noqa: E402
+from PySide6.QtCore import Qt, qVersion  # noqa: E402
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QCheckBox,
     QComboBox,
@@ -32,7 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from playstore_app_audit.ui.main_window import MainWindow
+from playstore_app_audit.ui.main_window import MainWindow  # noqa: E402
 
 
 def _process_events(app: QApplication, cycles: int = 8) -> None:
@@ -65,7 +70,8 @@ def _build_plain_probe() -> QWidget:
 
     title = QLabel("Plain Qt Widgets style probe")
     font = title.font()
-    font.setPointSize(font.pointSize() + 4)
+    point_size = font.pointSize()
+    font.setPointSize(point_size + 4 if point_size > 0 else 14)
     font.setBold(True)
     title.setFont(font)
     root.addWidget(title)
@@ -153,7 +159,8 @@ def _metadata(app: QApplication, requested_style: str) -> dict[str, object]:
         "active_style": app.style().objectName(),
         "style_factory_keys": QStyleFactory.keys(),
         "qt_platform_plugin": QGuiApplication.platformName(),
-        "qt_version": PySide6.__version__,
+        "qt_version": qVersion(),
+        "pyside_version": PySide6.__version__,
         "python_platform": platform.platform(),
         "system": platform.system(),
         "machine": platform.machine(),
