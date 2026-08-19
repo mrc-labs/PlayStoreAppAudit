@@ -182,13 +182,25 @@ Rationale: Artifact Signing keeps signing authority in a managed service and avo
 
 ## UI style policy
 
-- v1.3 forces Qt Fusion style.
-- During v1.4, test native platform style and audit custom QSS before adding a theme framework.
-- Pay particular attention to QScrollBar rules, palette behaviour, focus/hover/disabled states, tables/headers and control density.
-- Preserve semantic app-specific colours and usability while preferring native controls where they improve platform integration.
-- If native styling is inconsistent on Linux, a platform-specific native-on-Windows/macOS and Fusion-on-Linux policy may be evaluated before adding a theme dependency.
+Qt selects the production application QStyle from the platform/default environment. The application does not globally force Fusion or another QStyle.
 
-Rationale: Qt Widgets remains current; a forced cross-platform style and QSS overrides should be evaluated before introducing a new UI technology or theme package.
+The v1.4 cross-platform render audit on the current Qt/PySide 6.11.1 baseline established:
+
+- Windows default style is `windows11` and provides a more platform-appropriate control treatment than explicit Fusion.
+- macOS default style is `macos` and provides a more platform-appropriate control treatment than explicit Fusion.
+- Linux hosted/Xvfb default style resolves to Fusion, so removing the global override preserves the existing Fusion appearance in that validated Linux environment.
+
+Policy:
+
+- Do not call `QApplication.setStyle(...)` globally without a new cross-platform evidence-based reason.
+- Preserve Qt Widgets; the audit provides no reason to migrate to QML.
+- Do not add a theme dependency merely to make controls look newer.
+- Preserve semantic app-specific colours and branded primary actions.
+- Narrow generic application QSS separately where it masks or degrades native platform controls.
+- Audit the global font rule and `QScrollBar` styling first; do not remove layout-critical or semantic rules indiscriminately.
+- Re-run the cross-platform UI style audit for changes to `app.py`, shared UI QSS or the audit harness.
+
+Rationale: native/default Qt styles improve Windows and macOS integration without adding a dependency or a UI technology migration, while Linux can continue to use its available/default Fusion style. Separating QStyle selection from QSS cleanup keeps visual changes attributable and reversible.
 
 ## Release-script maintenance
 
