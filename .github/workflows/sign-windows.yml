@@ -340,13 +340,10 @@ jobs:
           endpoint: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ENDPOINT }}
           signing-account-name: ${{ vars.WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ vars.WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
-          files-folder: ${{ steps.prepare.outputs.package_dir }}
-          files-folder-filter: "*.exe"
-          files-folder-recurse: false
+          files: ${{ steps.prepare.outputs.app_exe }}
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-          correlation-id: ${{ github.run_id }}-${{ matrix.arch }}
 
       - name: Verify signature, refresh legal evidence and repack
         id: finalize
