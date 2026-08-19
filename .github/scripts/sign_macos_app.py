@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 NESTED_BUNDLE_SUFFIXES = {
     ".app",
