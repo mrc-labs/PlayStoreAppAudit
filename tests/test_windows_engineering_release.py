@@ -103,7 +103,9 @@ def test_windows_engineering_discovery_rejects_arm64_input(
 ) -> None:
     input_dir = tmp_path / "input"
     input_dir.mkdir()
+    x64_name = release.binary_asset_filename(VERSION, "windows", "x64")
     arm64_name = release.binary_asset_filename(VERSION, "windows", "arm64")
+    (input_dir / x64_name).write_bytes(b"x64")
     (input_dir / arm64_name).write_bytes(b"unexpected")
 
     with pytest.raises(RuntimeError, match="x64 only"):
