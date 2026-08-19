@@ -1157,14 +1157,59 @@ def _copy_distribution_legal_files(
 
 
 def _copy_cpython_license(licenses_root: Path) -> str:
-    candidates = [Path(sys.base_prefix) / "LICENSE.txt", Path(sys.prefix) / "LICENSE.txt"]
-    source = next((path for path in candidates if path.is_file()), None)
-    if source is None:
-        raise RuntimeError("Unable to locate CPython LICENSE.txt in the release Python environment")
+    roots = list(
+        dict.fromkeys(
+            (
+                Path(sys.base_prefix),
+                Path(sys.prefix),
+            )
+        )
+    )
+    candidates = [
+        root / filename
+        for root in roots
+        for filename in ("LICENSE.txt", "LICENSE")
+    ]
+
+    source = next(
+        (path for path in candidates if path.is_file()),
+        None,
+    )
+
     destination = licenses_root / "cpython" / "LICENSE.txt"
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, destination)
-    return _safe_relpath(destination, licenses_root.parent)
+
+    if source is not None:
+        shutil.copy2(source, destination)
+    else:
+        python_version = platform.python_version()
+        license_url = (
+            "https://raw.githubusercontent.com/python/cpython/"
+            f"v{python_version}/LICENSE"
+        )
+
+        license_text = _download_text(license_url)
+
+        if (
+            len(license_text) < 1000
+            or "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2"
+            not in license_text
+        ):
+            raise RuntimeError(
+                "Unexpected CPython license payload from "
+                f"{license_url}"
+            )
+
+        destination.write_text(
+            license_text,
+            encoding="utf-8",
+            newline="\n",
+        )
+
+    return _safe_relpath(
+        destination,
+        licenses_root.parent,
+    )
 
 
 def _copy_nuitka_legal_files(licenses_root: Path) -> tuple[str, list[str]]:

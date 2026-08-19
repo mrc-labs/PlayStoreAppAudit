@@ -185,3 +185,113 @@ def test_refresh_runtime_evidence_cli_is_available() -> None:
         "--nuitka-report is required when preparing"
         in script
     )
+
+def test_cpython_license_prefers_local_release_copy(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+
+    local_license = runtime / "LICENSE.txt"
+    local_license.write_text(
+        "LOCAL CPYTHON LICENSE\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        legal.sys,
+        "base_prefix",
+        str(runtime),
+    )
+    monkeypatch.setattr(
+        legal.sys,
+        "prefix",
+        str(runtime),
+    )
+
+    def unexpected_download(url: str) -> str:
+        raise AssertionError(
+            f"Unexpected network fallback: {url}"
+        )
+
+    monkeypatch.setattr(
+        legal,
+        "_download_text",
+        unexpected_download,
+    )
+
+    licenses_root = tmp_path / "licenses"
+
+    bundled = legal._copy_cpython_license(
+        licenses_root,
+    )
+
+    assert bundled == "licenses/cpython/LICENSE.txt"
+    assert (
+        licenses_root / "cpython" / "LICENSE.txt"
+    ).read_text(encoding="utf-8") == (
+        "LOCAL CPYTHON LICENSE\n"
+    )
+
+
+def test_cpython_license_falls_back_to_exact_upstream_tag(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+
+    monkeypatch.setattr(
+        legal.sys,
+        "base_prefix",
+        str(runtime),
+    )
+    monkeypatch.setattr(
+        legal.sys,
+        "prefix",
+        str(runtime),
+    )
+    monkeypatch.setattr(
+        legal.platform,
+        "python_version",
+        lambda: "3.13.15",
+    )
+
+    requested_urls: list[str] = []
+
+    upstream_license = (
+        "CPython license\n"
+        + "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2\n"
+        + ("license text\n" * 100)
+    )
+
+    def fake_download(url: str) -> str:
+        requested_urls.append(url)
+        return upstream_license
+
+    monkeypatch.setattr(
+        legal,
+        "_download_text",
+        fake_download,
+    )
+
+    licenses_root = tmp_path / "licenses"
+
+    bundled = legal._copy_cpython_license(
+        licenses_root,
+    )
+
+    assert requested_urls == [
+        "https://raw.githubusercontent.com/python/cpython/"
+        "v3.13.15/LICENSE"
+    ]
+    assert bundled == "licenses/cpython/LICENSE.txt"
+
+    destination = (
+        licenses_root / "cpython" / "LICENSE.txt"
+    )
+
+    assert destination.read_text(
+        encoding="utf-8"
+    ) == upstream_license
