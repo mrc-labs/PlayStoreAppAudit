@@ -15,22 +15,21 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 
 ## v1.4 release target
 
-The repository is being prepared for `v1.4.0` as a public Windows engineering/test release.
+The repository is being prepared for `v1.4.0` as a public Windows x64 engineering/test release.
 
 - Canonical application version on `main`: `1.4.0`
-- Prebuilt v1.4 platforms: Windows x64 + Windows ARM64 only
+- Prebuilt v1.4 platform: Windows x64 only
 - Signing: intentionally unsigned for v1.4
-- Linux/macOS: source support retained; no new v1.4 package builds
+- Windows ARM64/Linux/macOS: source support retained; no new v1.4 package builds
 - Production signing and the full six-platform production release are deferred to v1.5
-- v1.4 public asset model: exactly 4 files
+- v1.4 public asset model: exactly 3 files
   - Windows x64 ZIP
-  - Windows ARM64 ZIP
   - consolidated third-party source `tar.xz`
   - `SHA256SUMS.txt`
 
-The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native architecture checks, packaged smoke tests, consolidated corresponding-source validation and release-wide checksums.
+The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native x64 architecture checks, packaged smoke tests, corresponding-source validation and release-wide checksums.
 
-No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until the remaining UI cleanup is merged and post-merge Quality/UI audit passes.
+No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until the remaining UI cleanup and the x64-only release-profile correction are merged and post-merge Quality/UI audit passes.
 
 ## Current baselines
 
@@ -57,8 +56,10 @@ No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze th
 
 Profile usage:
 
-- v1.4: `build-windows-exe.yml` with `target=both`, then `assemble-windows-engineering-release.yml`
+- v1.4: `build-windows-exe.yml` with `target=x64`, then `assemble-windows-engineering-release.yml`
 - v1.5 production target: Windows build + Windows signing + Linux build + macOS production build, then `assemble-release.yml`
+
+The v1.4 engineering assembler requires the x64 artifact and rejects a source run that also contains the canonical Windows ARM64 artifact.
 
 The UI style audit is source/render validation only and never builds release packages.
 
@@ -107,21 +108,24 @@ Completed:
 - PR #30: added cross-platform Qt native-style audit
 - PR #31: adopted Qt platform/default production style
 - PR #32: removed shared hard-coded font/scrollbar QSS and several stale developer Fusion overrides
-- PR #33: bumped the canonical version to 1.4.0, added the Windows-only engineering release assembler/workflow and aligned durable/public documentation to the v1.4 engineering and v1.5 production profiles
+- PR #33: bumped the canonical version to 1.4.0, added the Windows engineering release assembler/workflow and aligned durable/public documentation to the v1.4 engineering and v1.5 production profiles
 
 PR #33 merged to `main` as `9262164ab08a8c8602ebbea03a615e0d950692a1` after Quality passed on Python 3.13 and 3.14.
 
-### v1.4 Windows engineering release preparation
+After PR #33, the intended v1.4 engineering target was corrected from Windows x64+ARM64 to Windows x64 only before any release build was dispatched. The active cleanup branch carries that correction through the assembler, workflow, tests and durable/public documentation.
 
-Merged in PR #33:
+### v1.4 Windows x64 engineering release preparation
+
+The active branch corrects the PR #33 engineering profile to:
 
 - canonical application version `1.4.0`
-- a dedicated Windows-only engineering assembler
+- Windows x64 only
+- unsigned engineering/test publication
+- a dedicated x64-only engineering assembler
 - a manual exact-SHA `Assemble Windows engineering release` workflow
-- exact four-asset validation
-- tests for the Windows engineering profile
-- Quality compilation/lint coverage for the new assembler helper
-- README, changelog and durable release documentation aligned to v1.4 Windows-only unsigned publication and v1.5 signing
+- exact three-asset validation
+- rejection of Windows ARM64 input for the v1.4 engineering assembler
+- README, changelog and durable release documentation aligned to x64-only v1.4 publication and v1.5 signing/full production
 
 The full six-platform production assembler and both signing implementations remain intact for v1.5.
 
@@ -137,9 +141,9 @@ Five developer-only standalone launchers still contain exactly one stale `app.se
 - `playstore_app_audit/ui/insights_window.py`
 - `playstore_app_audit/ui/preferences_window.py`
 
-They do not affect canonical production startup. The cleanup branch has already replaced the temporary allowlist regression test with a repository-wide assertion that first-party package code contains no `.setStyle(...)` call. The five identical developer-only lines are the only remaining code edits before that test can pass.
+They do not affect canonical production startup. The cleanup branch has already replaced the temporary allowlist regression test with a repository-wide assertion that first-party package code contains no `.setStyle(...)` call. The five identical developer-only lines are the only remaining manual code edits before that test can pass.
 
-After the five lines are removed, run normal Quality plus the cross-platform UI style audit, merge the branch normally, update this status to mark the cleanup complete, and only then freeze the v1.4 release SHA.
+After the five lines are removed, run normal Quality plus the cross-platform UI style audit, merge the branch normally, update this status to mark the cleanup/correction complete, and only then freeze the v1.4 release SHA.
 
 ### GitHub Actions / Node
 
@@ -171,19 +175,19 @@ macOS:
 Before any heavy build:
 
 1. remove the five developer-only Fusion lines on `agent/v1.4-finish-native-style-cleanup`;
-2. run/merge that cleanup with Quality on Python 3.13/3.14 and the cross-platform UI style audit green;
-3. refresh `PROJECT_STATUS.md` to record the merged cleanup and confirm README/changelog/version/durable docs still describe the intended v1.4 Windows engineering profile;
+2. run/merge that cleanup and x64-only profile correction with Quality on Python 3.13/3.14 and the cross-platform UI style audit green;
+3. refresh `PROJECT_STATUS.md` to record the merged cleanup and confirm README/changelog/version/durable docs still describe the intended v1.4 Windows x64 engineering profile;
 4. freeze the exact final `main` SHA only after the above is complete.
 
 Then:
 
-5. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=both`;
-6. require both x64 and ARM64 jobs and their package/legal/smoke validations to pass;
-7. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows run ID;
-8. require exactly four validated final assets;
-9. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows packages;
+5. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=x64`;
+6. require the x64 package/legal/smoke validation job to pass;
+7. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows x64 run ID;
+8. require exactly three validated final assets;
+9. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows x64 package;
 10. create the annotated `v1.4.0` tag on the frozen SHA;
-11. publish the already validated four assets without rebuilding, clearly labeling them Windows-only and unsigned;
+11. publish the already validated three assets without rebuilding, clearly labeling the binary as Windows x64 only and unsigned;
 12. treat the published v1.4.0 tag/assets as immutable.
 
 ## Housekeeping that does not block v1.4
