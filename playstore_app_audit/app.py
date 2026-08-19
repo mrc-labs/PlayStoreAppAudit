@@ -19,7 +19,6 @@ def main() -> int:
     app.setApplicationName("Play Store App Audit")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("MRC")
-    app.setStyle("Fusion")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = MainWindow()
     window.show()
