@@ -21,9 +21,10 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 - Nuitka: 4.1.3
 - UI: Qt Widgets
 - Current application style: forced Fusion
-- Windows signing: unsigned
-- Linux signing: unsigned
-- macOS signing: ad-hoc only, not notarized
+- Windows v1.3 signing: unsigned
+- Linux v1.3 signing: unsigned
+- macOS v1.3 signing: ad-hoc only, not notarized
+- macOS v1.4 production path: Developer ID + hardened runtime + secure timestamp + notarization/stapling/Gatekeeper implemented in workflow code; real credential-backed production validation still pending
 
 ## Current workflows
 
@@ -51,6 +52,7 @@ All three package workflows remain manual and exact-SHA guarded. Splitting Linux
 - `.github/scripts/preflight_release_legal_material.py`
 - `.github/scripts/prepare_release_legal_bundle.py`
 - `.github/scripts/release_asset_layout.py`
+- `.github/scripts/sign_macos_app.py`
 - `.github/scripts/validate_release_legal_bundle.py`
 - `.github/scripts/validate_windows_standalone.py`
 
@@ -98,7 +100,7 @@ Heavy package validation was deliberately not triggered merely to prove the work
 
 ### P1 - Cheap legal-material preflight
 
-Implemented for v1.4 in the package workflows:
+Completed in PR #26:
 
 - runs after release dependencies are installed and before Nuitka compilation
 - requires installed `PySide6-Essentials` to match the exact project pin and requires matching `shiboken6`
@@ -112,19 +114,29 @@ The later package-aware source download, legal injection and strict legal valida
 
 ### P1/P2 - Production signing
 
-macOS:
+macOS implementation is present in the current v1.4 signing PR:
 
-- Developer ID Application signing
-- hardened runtime as appropriate
-- secure timestamp
-- notarization with Apple's current tooling
-- staple and Gatekeeper verification
-- final ZIP/checksums only after notarization succeeds
+- explicit engineering vs production workflow modes
+- production credentials fail closed before dependency installation/build work
+- Developer ID certificate imported into a temporary runner keychain
+- nested Mach-O/bundle signing inside-out
+- hardened runtime and secure timestamp
+- Apple notarization must return `Accepted`
+- staple, signature verification and Gatekeeper checks occur before final ZIP creation
+- strict legal evidence is refreshed/validated against the final signed/stapled app
+- only production mode emits canonical macOS release-candidate artifact names
+- engineering mode remains ad-hoc and emits non-canonical artifact names
 
-Windows:
+Still required before calling production macOS signing validated:
 
-- select a trusted Authenticode route suitable for direct GitHub ZIP distribution
-- keep the private key in compliant hardware/cloud protection or an approved signing service
+- provision the documented GitHub Secrets with real Apple credentials
+- run one deliberate production build for both architectures
+- confirm Developer ID, notarization, staple and Gatekeeper evidence on the resulting artifacts
+
+Windows remains pending:
+
+- select and integrate a trusted Authenticode route suitable for direct GitHub ZIP distribution
+- keep signing authority/private-key material in compliant hardware/cloud protection or an approved signing service
 - use SHA-256 and RFC3161 timestamping
 - verify signatures in CI
 - do not use self-signed certificates for public distribution
@@ -160,4 +172,4 @@ Windows:
 
 ## Maintenance checkpoint
 
-PR #24 established durable project context. PR #25 split the desktop release workflows. The legal preflight is the current controlled v1.4 PR; signing, API and UI work remain separate follow-up PRs.
+PR #24 established durable project context, PR #25 split the desktop release workflows, and PR #26 added the cheap legal-material preflight. The current controlled PR implements the macOS production signing/notarization path without running an expensive credential-backed package build yet. Windows signing, forward-compatibility and UI modernization remain separate follow-up work.
