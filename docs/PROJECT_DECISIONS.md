@@ -55,24 +55,23 @@ Rationale: release tags identify the source that produced already validated arti
 
 ## Release profiles
 
-### v1.4 Windows engineering/test release
+### v1.4 Windows x64 engineering/test release
 
-v1.4 intentionally publishes only unsigned Windows x64 and ARM64 engineering packages.
+v1.4 intentionally publishes only one unsigned Windows x64 engineering package.
 
-- Both Windows packages come from one exact frozen SHA.
-- Build them together with `.github/workflows/build-windows-exe.yml` using `target=both`.
+- The Windows x64 package comes from one exact frozen SHA.
+- Build it with `.github/workflows/build-windows-exe.yml` using `target=x64`.
 - Do not invoke Windows production signing for v1.4.
-- Do not build Linux or macOS release candidates for v1.4.
+- Do not build Windows ARM64, Linux or macOS release candidates for v1.4.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
-- The engineering assembler accepts only the successful unsigned `Build Windows - Qt6` run from the same repository and exact SHA.
-- The public v1.4 asset set is exactly four files:
+- The engineering assembler accepts only the successful unsigned Windows x64 `Build Windows - Qt6` run from the same repository and exact SHA and rejects ARM64 input.
+- The public v1.4 asset set is exactly three files:
   1. Windows x64 ZIP
-  2. Windows ARM64 ZIP
-  3. one consolidated third-party source `tar.xz`
-  4. one release-wide `SHA256SUMS.txt`
-- Public release notes must identify v1.4 as Windows-only and unsigned.
+  2. one consolidated third-party source `tar.xz`
+  3. one release-wide `SHA256SUMS.txt`
+- Public release notes must identify v1.4 as Windows x64 only and unsigned.
 
-Rationale: v1.4 provides a real public engineering checkpoint without paying for unnecessary macOS builds or claiming production trust before credential-backed signing validation exists.
+Rationale: v1.4 provides a real public engineering checkpoint while minimizing runner cost and avoiding production-trust claims before credential-backed signing validation exists.
 
 ### v1.5 full production release
 
@@ -98,7 +97,7 @@ Rationale: signing implementation can remain merged and testable while the cost 
 
 Linux remains standalone because the bundled LGPL-covered Qt/PySide/Shiboken libraries must remain practically replaceable.
 
-The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: v1.4 merges the two Windows candidates; the v1.5 production profile merges all six platform candidates.
+The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: v1.4 uses the exact source evidence from the Windows x64 candidate; the v1.5 production profile merges all six platform candidates.
 
 ## Runtime policy
 
@@ -121,10 +120,10 @@ Package workflows are platform-isolated and exact-SHA guarded:
 Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: Windows production signing stage, deferred to v1.5 execution
-- `.github/workflows/assemble-windows-engineering-release.yml`: v1.4 unsigned Windows x64/ARM64 engineering asset assembly
+- `.github/workflows/assemble-windows-engineering-release.yml`: v1.4 unsigned Windows x64 engineering asset assembly
 - `.github/workflows/assemble-release.yml`: v1.5 six-platform production asset assembly
 
-The v1.4 engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, then validates both Windows candidates and emits exactly four files.
+The v1.4 engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits exactly three files.
 
 The v1.5 full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies their workflow identity/status/repository/exact SHA, validates all six candidates, and emits exactly eight files.
 
