@@ -69,13 +69,13 @@ jobs:
           python -m compileall -q playstore_app_audit
           if ($LASTEXITCODE -ne 0) { throw 'compileall failed.' }
 
-          python -m py_compile .github/scripts/preflight_release_legal_material.py .github/scripts/sign_macos_app.py
-          if ($LASTEXITCODE -ne 0) { throw 'Release helper compilation failed.' }
+          python -m py_compile .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/sign_macos_app.py
+          if ($LASTEXITCODE -ne 0) { throw 'Release/audit helper compilation failed.' }
 
           python -m pytest
           if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
 
-          ruff check playstore_app_audit tests main.py .github/scripts/preflight_release_legal_material.py .github/scripts/sign_macos_app.py
+          ruff check playstore_app_audit tests main.py .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/sign_macos_app.py
           if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
 
       - name: Qt offscreen smoke test
