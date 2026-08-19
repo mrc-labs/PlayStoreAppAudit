@@ -181,6 +181,7 @@ jobs:
           P12_PATH="$RUNNER_TEMP/developer-id-application.p12"
           NOTARY_KEY_PATH="$RUNNER_TEMP/AuthKey_${NOTARY_API_KEY_ID}.p8"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          export P12_PATH NOTARY_KEY_PATH
 
           python - <<'PY'
           import base64
@@ -212,16 +213,19 @@ jobs:
             -k "$KEYCHAIN_PASSWORD" \
             "$KEYCHAIN"
 
-          identity_line="$(
+          identity_lines="$(
             security find-identity -v -p codesigning "$KEYCHAIN" |
-            grep -E "Developer ID Application:.*\(${DEVELOPER_ID_TEAM_ID}\)" |
-            head -n 1
+            grep -E "Developer ID Application:.*\(${DEVELOPER_ID_TEAM_ID}\)" || true
           )"
-          test -n "$identity_line"
+          identity_count="$(printf '%s\n' "$identity_lines" | grep -c . || true)"
+          if [ "$identity_count" != "1" ]; then
+            echo "Expected exactly one Developer ID Application identity for configured team, found $identity_count." >&2
+            exit 1
+          fi
 
-          identity_hash="$(printf '%s\n' "$identity_line" | awk '{print $2}')"
+          identity_hash="$(printf '%s\n' "$identity_lines" | awk '{print $2}')"
           if [[ ! "$identity_hash" =~ ^[0-9A-Fa-f]{40}$ ]]; then
-            echo "Could not resolve a unique Developer ID Application identity." >&2
+            echo "Could not resolve the Developer ID Application identity hash." >&2
             exit 1
           fi
 
