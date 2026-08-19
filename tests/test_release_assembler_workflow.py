@@ -30,7 +30,8 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert 'DISPATCH_REF: ${{ github.ref }}' in text
     assert '"refs/heads/main"' in text
 
-    assert "Build Windows - Qt6" in text
+    assert "Sign Windows release candidates" in text
+    assert '"Build Windows - Qt6"' not in text
     assert "Build Linux - Qt6 (manual)" in text
     assert "Build macOS - Qt6 (manual)" in text
     assert "Build macOS / Linux - Qt6 (manual)" not in text
