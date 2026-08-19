@@ -6,7 +6,7 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedure lives in `docs/BUILDING.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`.
 
 ## Architecture
 
@@ -31,8 +31,8 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 - Release packaging baseline: Python 3.13 until a deliberate, validated toolchain migration.
 - Quality CI: Python 3.13 and 3.14.
-- v1.3 PySide6 baseline: `PySide6-Essentials==6.11.1`.
-- v1.3 release compiler pin: `Nuitka==4.1.3`.
+- Current PySide6 baseline: `PySide6-Essentials==6.11.1`.
+- Current release compiler pin: `Nuitka==4.1.3`.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
 - Keep `google-play-scraper` behind a service boundary because it is unofficial and replaceable.
 - HTTP fallback uses `requests` + BeautifulSoup with Python's built-in `html.parser`; do not re-add `lxml` without a measured need.
@@ -54,7 +54,7 @@ Avoid adding libraries for functionality available cleanly in the Python standar
 - Presentation-only actions, including changing View presets, must not overwrite the more relevant audit/progress/status message.
 - Avoid adding vertical UI sections when an existing row, menu or dialog can contain the feature cleanly.
 - Status chips above the table support multi-selection.
-- Before adding a theme dependency, evaluate native platform styling and audit existing QSS, especially scrollbar rules.
+- Production startup uses Qt's platform/default QStyle. Do not globally force Fusion or add a theme dependency without new cross-platform evidence.
 
 ## Cross-platform rules
 
@@ -77,19 +77,39 @@ These are hard constraints unless deliberately changed through a dedicated engin
 
 - `main` is the only permanent branch. Use short-lived branches and normal PR merge commits.
 - Published release history is immutable. Do not squash, rewrite, retag or replace published release assets.
-- A production release freezes one exact full `main` SHA after Quality CI passes.
-- Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 release candidates must all come from that same exact SHA.
+- A release profile freezes one exact full `main` SHA after Quality CI passes.
 - Build workflows must reject mismatches between expected SHA, dispatch SHA and checked-out SHA.
-- Assemble and validate all six release candidates before tagging.
-- A production release exposes exactly 8 public assets: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
 - Do not create public RC tags.
 - Release-tag pushes must not rebuild binaries. Publish the already validated artifacts.
-- If source or release tooling changes after the SHA is frozen, rebuild all six candidates from the new exact SHA. Never mix artifacts from different SHAs.
-- Linux release packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
+- If source or release tooling changes after the SHA is frozen, discard and rebuild every candidate required by the selected release profile from the new exact SHA. Never mix artifacts from different SHAs.
 - Do not weaken legal/source validation to make a build pass.
 - Do not delete files under `.github/scripts/` merely because there are several. Verify workflow references, imports and tests before removal.
 
-v1.3.0 at commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` is already published and immutable. Documentation-only v1.4 work must not rebuild, retag or replace v1.3.0 artifacts.
+### v1.4 Windows engineering profile
+
+v1.4 is intentionally a public Windows engineering/test release while production signing is deferred to v1.5.
+
+- Build Windows x64 and Windows ARM64 only, both from the same frozen SHA.
+- Use `.github/workflows/build-windows-exe.yml` with `target=both`.
+- Do not invoke `.github/workflows/sign-windows.yml` for v1.4.
+- Do not spend Linux or macOS runner capacity for the v1.4 release.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- The engineering assembler must accept only the successful unsigned `Build Windows - Qt6` run from the same repository and exact SHA.
+- The public asset set is exactly four files: Windows x64 ZIP, Windows ARM64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+- The release notes must clearly state that the v1.4 Windows packages are unsigned engineering/test builds.
+
+### v1.5 production profile
+
+The already implemented full production path is preserved for v1.5 credential-backed trust validation.
+
+- Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
+- Windows final candidates pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- macOS final candidates use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
+- Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
+- Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
+- The full production public asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+
+v1.3.0 at commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` is already published and immutable. Do not rebuild, retag or replace its artifacts.
 
 ## Tests and validation
 
@@ -111,8 +131,8 @@ Ruff exceptions for inherited Qt patterns are intentionally narrow and configure
 ## Git workflow
 
 - `main` is the single canonical permanent branch.
-- Use short-lived `feature/`, `fix/`, `refactor/`, `docs/` or release-maintenance branches, merge them back with normal PR merge commits, then delete them.
-- Keep maintenance work scoped. Documentation cleanup, workflow restructuring, signing, API migrations and UI redesign should not be bundled into one PR.
+- Use short-lived `feature/`, `fix/`, `refactor/`, `docs/`, `release/` or `agent/` branches, merge them back with normal PR merge commits, then delete them.
+- Keep maintenance work scoped. Documentation cleanup, workflow restructuring, signing, API migrations and UI redesign should not be bundled without a release-engineering reason.
 - Do not create permanent branches per operating system.
 - Historical implementations belong in Git tags, not live maintenance branches.
 

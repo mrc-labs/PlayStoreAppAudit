@@ -2,16 +2,35 @@
 
 Last updated: 2026-08-19
 
-## Current release
+## Published release
 
 - Version: `v1.3.0`
 - Release commit: `fb2193dfc13d0f0e6b7be660c1342bbf87d26081`
-- State: published, latest, not prerelease
+- State: published, latest until v1.4.0 is published
 - Release history/assets: immutable
 - Public assets: exactly 8
 - Prebuilt platforms: Windows x64/ARM64, Linux x64/ARM64, macOS x64/ARM64
 
-v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary assets replaced as part of v1.4 maintenance.
+v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary assets replaced.
+
+## v1.4 release target
+
+The repository is being prepared for `v1.4.0` as a public Windows engineering/test release.
+
+- Canonical application version in the v1.4 release-preparation change: `1.4.0`
+- Prebuilt v1.4 platforms: Windows x64 + Windows ARM64 only
+- Signing: intentionally unsigned for v1.4
+- Linux/macOS: source support retained; no new v1.4 package builds
+- Production signing and the full six-platform production release are deferred to v1.5
+- v1.4 public asset model: exactly 4 files
+  - Windows x64 ZIP
+  - Windows ARM64 ZIP
+  - consolidated third-party source `tar.xz`
+  - `SHA256SUMS.txt`
+
+The v1.4 engineering release still uses one frozen exact `main` SHA, strict package/legal validation, native architecture checks, packaged smoke tests, consolidated corresponding-source validation and release-wide checksums.
+
+No v1.4 Nuitka release-candidate build has been dispatched yet. Do not freeze the final v1.4 SHA until the remaining source/release-preparation changes are merged and post-merge Quality passes.
 
 ## Current baselines
 
@@ -20,30 +39,33 @@ v1.3.0 must not be rebuilt, retagged, rewritten or have its published binary ass
 - `PySide6-Essentials`: 6.11.1
 - Nuitka: 4.1.3
 - UI technology: Qt Widgets
-- v1.4 application style policy: Qt platform/default QStyle; no production/global forced Fusion
-- Windows v1.3 signing: unsigned
-- Linux v1.3 signing: unsigned
-- macOS v1.3 signing: ad-hoc only, not notarized
-- macOS v1.4 production path: Developer ID + hardened runtime + secure timestamp + notarization/stapling/Gatekeeper implemented; real credential-backed validation still pending
-- Windows v1.4 production path: Microsoft Artifact Signing Public Trust + SHA-256/RFC3161 + native x64/ARM64 post-sign verification implemented; real Azure credential/profile-backed validation still pending
+- Production application style: Qt platform/default QStyle; no production/global forced Fusion
+- Windows v1.4 release signing: unsigned by deliberate policy
+- Windows v1.5 production path: Microsoft Artifact Signing Public Trust + SHA-256/RFC3161 + native x64/ARM64 post-sign verification implemented; real Azure credential/profile-backed validation deferred to v1.5
+- macOS v1.5 production path: Developer ID + hardened runtime + secure timestamp + notarization/stapling/Gatekeeper implemented; real credential-backed validation deferred to v1.5
 
 ## Current workflows
 
 - `.github/workflows/quality.yml`
 - `.github/workflows/ui-style-audit.yml`
 - `.github/workflows/build-windows-exe.yml`
+- `.github/workflows/assemble-windows-engineering-release.yml`
 - `.github/workflows/sign-windows.yml`
 - `.github/workflows/build-linux.yml`
 - `.github/workflows/build-macos.yml`
 - `.github/workflows/assemble-release.yml`
 
-Production release candidates remain exact-SHA guarded and manually dispatched. Windows native x64/ARM64 builds pass through the dedicated production signing workflow; Linux and macOS each build x64/ARM64; the assembler accepts the signed Windows run plus distinct Linux/macOS run IDs and emits exactly eight public files.
+Profile usage:
+
+- v1.4: `build-windows-exe.yml` with `target=both`, then `assemble-windows-engineering-release.yml`
+- v1.5 production target: Windows build + Windows signing + Linux build + macOS production build, then `assemble-release.yml`
 
 The UI style audit is source/render validation only and never builds release packages.
 
 ## Current release and audit scripts
 
 - `.github/scripts/assemble_release_assets.py`
+- `.github/scripts/assemble_windows_engineering_release.py`
 - `.github/scripts/build_windows_standalone.ps1`
 - `.github/scripts/capture_ui_style.py`
 - `.github/scripts/inspect_pe.py`
@@ -57,131 +79,115 @@ The UI style audit is source/render validation only and never builds release pac
 
 No current release script has been identified as dead. `prepare_release_legal_bundle.py` and `validate_release_legal_bundle.py` are candidates for later modularization, not deletion.
 
-## Release invariants
+## Durable release invariants
 
 - `main` is the only permanent branch.
 - Use short-lived branches and normal PR merge commits.
 - Published release history is immutable.
-- All six production packages derive from one exact frozen SHA.
+- Every release profile derives all of its artifacts from one exact frozen SHA.
 - No public RC tag and no tag-triggered binary rebuild.
-- Public asset model is exactly six platform ZIPs + one consolidated third-party source archive + one `SHA256SUMS.txt`.
-- Linux production packaging remains standalone with replaceable Qt/PySide/Shiboken shared libraries.
-- Strict legal validation remains mandatory.
+- Strict legal/source validation remains mandatory.
 - Managed ADB remains read-only with respect to installed Android apps.
+- If source or release tooling changes after a release SHA is frozen, discard and rebuild all candidates required by that selected release profile from the new SHA.
 
-See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and procedure.
+See `PROJECT_DECISIONS.md` and `BUILDING.md` for rationale and exact procedures.
 
 ## v1.4 progress
 
-### Documentation and persistent context
+### Durable context and release architecture
 
-Completed in PR #24:
+Completed before the release-preparation change:
 
-- refreshed `AGENTS.md`
-- added `PROJECT_DECISIONS.md` and `PROJECT_STATUS.md`
-- corrected README six-platform v1.3.0 distribution text
-- corrected `BUILDING.md` and `ARCHITECTURE.md` release model
-- cleaned CHANGELOG maintainer-only process details
+- PR #24: refreshed durable project context and release documentation
+- PR #25: split Linux and macOS release workflows
+- PR #26: added pre-Nuitka legal-material preflight
+- PR #27: implemented macOS Developer ID/notarization production path
+- PR #28: implemented Windows Microsoft Artifact Signing production path
+- PR #29: added proactive forward-compatibility regression guard
+- PR #30: added cross-platform Qt native-style audit
+- PR #31: adopted Qt platform/default production style
+- PR #32: removed shared hard-coded font/scrollbar QSS and several stale developer Fusion overrides
 
-Still open outside repository-content changes:
+### v1.4 Windows engineering release preparation
 
-- edit published GitHub Release descriptions where maintainer-only pipeline notes remain when a release-write connector/action is available
-- delete merged short-lived remote branches when branch-delete capability is available
+The current release-preparation change adds:
 
-Neither housekeeping item justifies changing v1.3.0 binaries, tags or release history.
+- canonical application version `1.4.0`
+- a dedicated Windows-only engineering assembler
+- a manual exact-SHA `Assemble Windows engineering release` workflow
+- exact four-asset validation
+- tests for the Windows engineering profile
+- Quality compilation/lint coverage for the new assembler helper
+- README, changelog and durable release documentation aligned to v1.4 Windows-only unsigned publication and v1.5 signing
 
-### Release workflow isolation
+The full six-platform production assembler and both signing implementations remain intact for v1.5.
 
-Completed in PR #25:
+### UI modernization debt before v1.4 freeze
 
-- separate Linux x64/ARM64 workflow
-- separate macOS x64/ARM64 workflow
-- Windows x64/ARM64 workflow retained
-- assembler uses `windows_run_id`, `linux_run_id` and `macos_run_id`
-- exact-SHA verification retained across all source runs
+Five developer-only standalone launchers still contain a stale `app.setStyle("Fusion")` line:
 
-No heavy package build was launched merely to validate the workflow split.
+- `playstore_app_audit/ui/audit_window.py`
+- `playstore_app_audit/ui/compact_window.py`
+- `playstore_app_audit/ui/device_window.py`
+- `playstore_app_audit/ui/insights_window.py`
+- `playstore_app_audit/ui/preferences_window.py`
 
-### Cheap legal-material preflight
-
-Completed in PR #26. It runs before Nuitka and resolves deterministic CPython, PySide6/Shiboken, Qt source metadata/digests, certifi source metadata and Nuitka legal prerequisites using the canonical legal resolver. It intentionally avoids large Qt/PySide source downloads. The later package-aware source download, legal injection and strict final validation remain mandatory.
-
-### Production signing
-
-macOS implementation merged in PR #27:
-
-- engineering vs production modes
-- Developer ID signing inside-out
-- hardened runtime and secure timestamp
-- accepted notarization required
-- staple/signature/Gatekeeper verification before final ZIP
-- strict legal evidence refreshed against final signed/stapled app
-- only production mode emits canonical release-candidate artifact names
-
-Windows implementation merged in PR #28:
-
-- native x64/ARM64 compilation remains separate from signing
-- dedicated signing workflow accepts only a successful exact-SHA Windows build
-- Microsoft Artifact Signing Public Trust through GitHub OIDC
-- only owned top-level `PlayStoreAppAudit.exe` is signed
-- SHA-256 + RFC3161 required
-- non-target files hash-guarded
-- strict legal evidence refreshed after signing
-- final x64/ARM64 ZIPs signature-verified and smoke-tested on native runners
-- assembler rejects unsigned Windows build runs
-
-Credential-backed production validation remains pending for both platforms and should be run deliberately only after the required Apple/Azure resources and secrets are provisioned.
-
-### Forward compatibility
-
-Completed in PR #29. No first-party migration candidate met the policy of documented deprecation/supersession plus behaviour-equivalent replacement. A curated regression sentinel now guards the deprecated/superseded APIs reviewed in the sweep. Python 3.14 remains a Quality target while production packaging remains on Python 3.13.
-
-### UI modernization
-
-PR #30 added the cross-platform native-vs-Fusion evidence harness. The validated Qt/PySide 6.11.1 audit found:
-
-- Windows default style: `windows11`; platform plugin: `windows`; native and Fusion renders differ.
-- macOS default style: `macos`; platform plugin: `cocoa`; native and Fusion renders differ.
-- Linux hosted/Xvfb default style: `fusion`; platform plugin: `xcb`; default and explicit-Fusion renders are byte-identical.
-- Windows/macOS native plain controls look more platform-appropriate than Fusion, especially checkbox/radio, combo-box, slider/progress and scrollbar treatment.
-- The real application changes less because broad `BaseWindow` QSS overrides many generic control visuals.
-
-PR #31 adopted the resulting production style policy:
-
-- removed `app.setStyle("Fusion")` from the canonical application launcher
-- let Qt select the platform/default style
-- added a regression guard around production style selection
-- validated the change with Quality on Python 3.13/3.14 plus the full Windows/macOS/Linux render audit
-
-PR #32 performs the first targeted QSS cleanup:
-
-- removes the global hard-coded `Segoe UI` / 10pt QSS rule, leaving application font selection to Qt/platform style
-- removes the generic transparent/borderless `QScrollBar` override, restoring native scrollbar rendering
-- keeps semantic colours, branded primary/criticality controls, cards, table treatment and layout-critical QSS unchanged
-- removes stale Fusion overrides from the shared base direct-entry launcher and the small `table_window`, `menu_window` and `results_window` developer launchers
-- isolates five remaining large-module developer-only Fusion launchers in an exact regression-test allowlist so no new forced-style call can be introduced silently
-
-Render comparison for the QSS change confirmed that Windows and macOS restore the native horizontal scrollbar without a layout regression. Windows continues to use Segoe UI naturally because it is supplied by the native `windows11` style rather than by application QSS.
-
-Remaining UI cleanup debt:
-
-- mechanically remove the developer-only Fusion override from `audit_window.py`, `compact_window.py`, `device_window.py`, `insights_window.py` and `preferences_window.py` when those files can be patched safely without risky whole-file connector rewrites
-- keep the allowlist exact until then
-- do not add a theme dependency unless a future evidence-based audit demonstrates a need
-
-Qt Widgets remains the UI technology. The audit gives no reason to migrate to QML or add a theme framework.
+They do not affect canonical production startup, but they should be mechanically removed before freezing the v1.4 release SHA. `tests/test_app_style_policy.py` currently keeps an exact allowlist so no additional override can appear silently. After the five lines are removed, replace the allowlist policy with a repository-wide assertion that no first-party `QApplication.setStyle(...)` override remains.
 
 ### GitHub Actions / Node
 
-The application itself does not use Node. Monitor official action majors for their future Node 26 runtime and upgrade only when the official actions adopt/support it. Do not add `setup-node` merely to force Node 26.
+The application itself does not use Node. Monitor official action majors for future Node 26 runtime adoption and upgrade only when official actions support/adopt it. Do not add `setup-node` merely to force Node 26.
 
-## Known v1.3 release lessons
+### Signing work deferred to v1.5
+
+Do not run real Windows Artifact Signing or macOS Developer ID/notarization for v1.4.
+
+For v1.5, credential-backed validation still requires:
+
+Windows:
+
+- eligible Microsoft Artifact Signing account and Public Trust certificate profile
+- GitHub OIDC/federated Azure identity with the required signing role
+- secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- repository variables: `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+
+macOS:
+
+- Apple Developer membership and Developer ID Application certificate
+- App Store Connect notary API credentials
+- secrets: `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`, `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`, `MACOS_DEVELOPER_ID_TEAM_ID`, `MACOS_NOTARY_API_KEY_P8_BASE64`, `MACOS_NOTARY_KEY_ID`, `MACOS_NOTARY_ISSUER_ID`
+
+## v1.4 remaining sequence
+
+Before any heavy build:
+
+1. merge the v1.4 release-preparation change and require Quality to pass on Python 3.13 and 3.14;
+2. remove the five developer-only Fusion lines and the temporary allowlist, then merge and re-run Quality/UI style audit;
+3. confirm README/changelog/version/durable docs still describe the intended v1.4 Windows engineering profile;
+4. freeze the exact final `main` SHA only after the above is complete.
+
+Then:
+
+5. manually dispatch `Build Windows - Qt6` from that exact SHA with `target=both`;
+6. require both x64 and ARM64 jobs and their package/legal/smoke validations to pass;
+7. dispatch `Assemble Windows engineering release` from the same SHA using that successful Windows run ID;
+8. require exactly four validated final assets;
+9. manually verify the final checksum manifest and, if desired, smoke-test the downloaded Windows packages;
+10. create the annotated `v1.4.0` tag on the frozen SHA;
+11. publish the already validated four assets without rebuilding, clearly labeling them Windows-only and unsigned;
+12. treat the published v1.4.0 tag/assets as immutable.
+
+## Housekeeping that does not block v1.4
+
+- Edit older published GitHub Release descriptions where maintainer-only pipeline notes remain when release-write capability is available.
+- Delete merged short-lived remote branches when a safe branch-delete capability or authenticated local shell is available.
+
+Neither housekeeping item justifies changing published v1.3.0 binaries or delaying the v1.4 Windows engineering release.
+
+## Known release lessons
 
 - Catch deterministic legal/source failures before expensive compilation where possible.
 - Compiler success alone is not release evidence; package, architecture, startup, legal and provenance validation remain mandatory.
 - Never mix release artifacts from different source SHAs.
-- Platform workflow isolation must not weaken one-SHA release identity.
-
-## Maintenance checkpoint
-
-PR #24 established durable project context, PR #25 split desktop release workflows, PR #26 added legal preflight, PR #27 implemented macOS production trust, PR #28 implemented Windows production trust, PR #29 completed the proactive API sweep, PR #30 added cross-platform UI style evidence, PR #31 adopted platform/default Qt styling and PR #32 narrows generic QSS that masked native presentation. Remaining controlled work is credential-backed signing validation, the five developer-only Fusion cleanup lines, published Release-description housekeeping when write capability exists, and future official-action Node-runtime monitoring.
+- Platform workflow isolation must not weaken release source identity.
+- A reduced-cost engineering release must have its own explicit asset/profile validator rather than weakening the full production assembler.

@@ -41,7 +41,7 @@ The layered inheritance structure preserves proven behaviour but remains a maint
 
 UI customization should use explicit local hooks for classification, cache loading and device metadata collection/enrichment rather than mutating imported modules at runtime.
 
-Qt Widgets remains the production UI technology unless a demonstrated UX, maintainability or performance reason justifies migration. v1.3 explicitly forces the Qt Fusion style; v1.4 should test native platform style and audit custom QSS, especially scrollbar rules, before considering a theme dependency.
+Qt Widgets remains the production UI technology unless a demonstrated UX, maintainability or performance reason justifies migration. v1.4 uses Qt's platform/default QStyle in production. Cross-platform render evidence showed the native/default Windows and macOS styles integrate better than a forced Fusion style, while the validated Linux environment naturally resolves to Fusion. Shared QSS retains semantic application styling but no longer hard-codes the default application font or generic scrollbar presentation.
 
 ## Data and network boundaries
 
@@ -53,7 +53,7 @@ ADB operations are read-only with respect to installed applications. Device inte
 
 ## Cross-platform policy
 
-Windows, macOS and Linux production releases derive from one exact frozen `main` commit. Platform-specific behaviour is kept behind `playstore_app_audit.platform` or `playstore_app_audit.devices`, including:
+The application source remains cross-platform even when a particular public release profile publishes only a subset of platform binaries. Platform-specific behaviour is kept behind `playstore_app_audit.platform` or `playstore_app_audit.devices`, including:
 
 - Platform-Tools URLs and executable names
 - application-data directories and portable paths
@@ -75,19 +75,41 @@ There are no permanent operating-system branches.
 
 ## Deployment and release architecture
 
-Release packaging uses Python 3.13 and the Qt Essentials subset. The v1.3 release baseline pins `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`.
+Release packaging uses Python 3.13, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`.
 
-A production release is an exact-SHA assembly, not a collection of independently built platform packages:
+Every public release is an exact-SHA assembly rather than a collection of independently built packages:
 
 1. Cheap Quality CI passes on the final `main` commit.
 2. One exact full `main` SHA is frozen.
-3. Six release candidates are built from that SHA: Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64.
+3. Every candidate required by the selected release profile is built from that SHA.
 4. Build workflows reject expected/dispatch/checkout SHA mismatches.
-5. The assembler validates the six candidates and produces exactly eight public assets: six platform ZIPs, one consolidated third-party source archive and one `SHA256SUMS.txt`.
-6. The annotated version tag is created on the frozen SHA after artifact validation.
+5. The profile-specific assembler validates candidate provenance, architecture/legal evidence and the exact public asset layout.
+6. The annotated version tag is created on the frozen SHA only after artifact validation.
 7. The already validated assets are published. Tag pushes do not rebuild them.
 
-If source or release tooling changes after the SHA freeze, all six candidates must be rebuilt from the new exact SHA. Artifacts from different source revisions must never be mixed.
+If source or release tooling changes after the SHA freeze, every candidate required by the selected profile must be rebuilt from the new exact SHA. Artifacts from different source revisions must never be mixed.
+
+### v1.4 Windows engineering profile
+
+v1.4 intentionally publishes only unsigned Windows x64 and Windows ARM64 engineering/test packages.
+
+- Both packages come from one frozen SHA via `.github/workflows/build-windows-exe.yml` with `target=both`.
+- Production signing is not invoked.
+- Linux and macOS package workflows are not run for the v1.4 release.
+- `.github/workflows/assemble-windows-engineering-release.yml` consumes only the successful unsigned Windows run from the same repository and exact SHA.
+- The engineering assembler emits exactly four public assets: the two Windows ZIPs, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- Strict public legal/source validation is unchanged.
+
+This profile reduces release cost without weakening source identity, legal evidence or package validation.
+
+### v1.5 full production profile
+
+The existing production path is preserved for v1.5:
+
+- Windows x64/ARM64 native packages are built, then pass through Microsoft Artifact Signing Public Trust and native post-sign verification.
+- Linux x64/ARM64 packages use Nuitka standalone layout.
+- macOS x64/ARM64 packages use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
+- `.github/workflows/assemble-release.yml` validates all six final candidates from one frozen SHA and emits exactly eight public assets: six platform ZIPs, one consolidated third-party source archive and one `SHA256SUMS.txt`.
 
 ### Platform package forms
 
@@ -97,8 +119,8 @@ If source or release tooling changes after the SHA freeze, all six candidates mu
 
 Windows package validation covers native Python/PySide inputs, PE architecture, version metadata, runtime content, startup and legal material. Linux validates ELF architecture, runtime content and startup. macOS validates Mach-O architecture, bundle metadata, runtime content, signature state and startup.
 
-At the v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization.
+At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. v1.4 deliberately remains unsigned on Windows. Production signing execution is deferred to v1.5.
 
 Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
 
-The detailed release procedure and current workflow names are documented in `BUILDING.md`.
+The detailed v1.4 engineering and v1.5 production procedures and current workflow names are documented in `BUILDING.md`.
