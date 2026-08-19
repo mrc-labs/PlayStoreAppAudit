@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import http.client
 import importlib.metadata as metadata
 import json
 import platform
@@ -199,34 +200,149 @@ def _download_text(url: str) -> str:
         url,
         headers={"User-Agent": "PlayStoreAppAudit-release-tooling/1"},
     )
+    max_attempts = 4
 
-    with _open_url_with_retry(request, timeout=60) as response:
-        text = response.read().decode("utf-8")
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with _open_url_with_retry(
+                request,
+                timeout=60,
+            ) as response:
+                text = response.read().decode("utf-8")
+        except (
+            OSError,
+            http.client.IncompleteRead,
+        ) as exc:
+            if attempt == max_attempts:
+                raise RuntimeError(
+                    f"Network read error while fetching {url} "
+                    f"after {max_attempts} attempts: {exc}"
+                ) from exc
 
-    _TEXT_DOWNLOAD_CACHE[url] = text
-    return text
+            delay = min(2 ** (attempt - 1), 8)
+
+            print(
+                f"Network read error while fetching {url}: {exc}; "
+                f"retrying after {delay:g}s "
+                f"(attempt {attempt + 1}/{max_attempts})",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+            continue
+
+        _TEXT_DOWNLOAD_CACHE[url] = text
+        return text
+
+    raise RuntimeError(
+        f"Unable to read URL after retries: {url}"
+    )
 
 
 def _download_file(url: str, destination: Path, expected_sha256: str) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if destination.exists() and _sha256(destination) == expected_sha256:
+
+    if (
+        destination.exists()
+        and _sha256(destination) == expected_sha256
+    ):
+        print(
+            f"Reusing verified source asset {destination.name}",
+            file=sys.stderr,
+        )
         return
 
-    request = urllib.request.Request(url, headers={"User-Agent": "PlayStoreAppAudit-release-tooling/1"})
-    with tempfile.NamedTemporaryFile(delete=False, dir=destination.parent, suffix=".download") as tmp:
-        temp_path = Path(tmp.name)
-        with _open_url_with_retry(request, timeout=120) as response:
-            shutil.copyfileobj(response, tmp)
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "PlayStoreAppAudit-release-tooling/1"},
+    )
+    max_attempts = 4
 
-    try:
-        actual = _sha256(temp_path)
-        if actual != expected_sha256:
-            raise RuntimeError(
-                f"SHA-256 mismatch for {destination.name}: expected {expected_sha256}, got {actual}"
+    for attempt in range(1, max_attempts + 1):
+        temp_path: Path | None = None
+        read_error: BaseException | None = None
+
+        try:
+            print(
+                f"Downloading source asset {destination.name} "
+                f"from {url} "
+                f"(attempt {attempt}/{max_attempts})",
+                file=sys.stderr,
             )
-        temp_path.replace(destination)
-    finally:
-        temp_path.unlink(missing_ok=True)
+
+            with _open_url_with_retry(
+                request,
+                timeout=120,
+            ) as response, tempfile.NamedTemporaryFile(
+                delete=False,
+                dir=destination.parent,
+                suffix=".download",
+            ) as tmp:
+                temp_path = Path(tmp.name)
+
+                while True:
+                    try:
+                        chunk = response.read(1024 * 1024)
+                    except (
+                        OSError,
+                        http.client.IncompleteRead,
+                    ) as exc:
+                        read_error = exc
+                        break
+
+                    if not chunk:
+                        break
+
+                    tmp.write(chunk)
+
+            if read_error is not None:
+                if attempt == max_attempts:
+                    raise RuntimeError(
+                        f"Network read error while downloading "
+                        f"{destination.name} from {url} after "
+                        f"{max_attempts} attempts: {read_error}"
+                    ) from read_error
+
+                delay = min(2 ** (attempt - 1), 8)
+
+                print(
+                    f"Network read error while downloading "
+                    f"{destination.name} from {url}: {read_error}; "
+                    f"discarding partial file and retrying after "
+                    f"{delay:g}s "
+                    f"(attempt {attempt + 1}/{max_attempts})",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+                continue
+
+            if temp_path is None:
+                raise RuntimeError(
+                    f"No temporary download was created for "
+                    f"{destination.name}"
+                )
+
+            actual = _sha256(temp_path)
+
+            if actual != expected_sha256:
+                raise RuntimeError(
+                    f"SHA-256 mismatch for {destination.name}: "
+                    f"expected {expected_sha256}, got {actual}"
+                )
+
+            temp_path.replace(destination)
+
+            print(
+                f"Verified source asset {destination.name}",
+                file=sys.stderr,
+            )
+            return
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+
+    raise RuntimeError(
+        f"Unable to download source asset after retries: {url}"
+    )
 
 
 def _normalise_hash_type(value: str) -> str:
@@ -1598,6 +1714,8 @@ def main() -> int:
         )
         return 0
 
+    legal_preparation_started = time.perf_counter()
+
     if args.nuitka_report is None:
         raise RuntimeError(
             "--nuitka-report is required when preparing "
@@ -1635,7 +1753,13 @@ def main() -> int:
     if release_tag != expected_tag:
         raise RuntimeError(f"Release tag must match canonical version: expected {expected_tag}, got {release_tag}")
 
+    runtime_inventory_started = time.perf_counter()
     runtime_inventory = _runtime_inventory(package_dir)
+    print(
+        "Legal timing: runtime inventory "
+        f"{time.perf_counter() - runtime_inventory_started:.2f}s",
+        file=sys.stderr,
+    )
     runtime_paths = [item["path"] for item in runtime_inventory]
     runtime_inventory_sha256 = _canonical_json_sha256(runtime_inventory)
     qt_components = _detect_qt_components(package_dir)
@@ -1657,9 +1781,18 @@ def main() -> int:
 
     shutil.copy2(repo_root / "LICENSE", package_legal_dir / "LICENSE")
 
-    source_specs = [_qt_source_spec(component, pyside_version) for component in qt_components]
+    source_metadata_started = time.perf_counter()
+    source_specs = [
+        _qt_source_spec(component, pyside_version)
+        for component in qt_components
+    ]
     certifi_version = metadata.version("certifi")
     source_specs.append(_certifi_source_spec(certifi_version))
+    print(
+        "Legal timing: source provenance metadata "
+        f"{time.perf_counter() - source_metadata_started:.2f}s",
+        file=sys.stderr,
+    )
     expected_source_names = {spec.filename for spec in source_specs}
     for stale in source_assets_dir.iterdir():
         if stale.is_file() and stale.name != "SHA256SUMS.txt" and stale.name not in expected_source_names:
@@ -1675,7 +1808,13 @@ def main() -> int:
 
     for spec in source_specs:
         destination = source_assets_dir / spec.filename
+        source_started = time.perf_counter()
         _download_file(spec.url, destination, spec.sha256)
+        print(
+            f"Legal timing: source asset {spec.filename} "
+            f"{time.perf_counter() - source_started:.2f}s",
+            file=sys.stderr,
+        )
         entry: dict[str, Any] = {
             "component": spec.component,
             "filename": spec.filename,
@@ -1687,6 +1826,7 @@ def main() -> int:
         source_assets.append(entry)
         if spec.component == "certifi":
             continue
+        extraction_started = time.perf_counter()
         (
             licenses,
             license_mappings,
@@ -1697,6 +1837,11 @@ def main() -> int:
             spec.component,
             destination,
             licenses_root,
+        )
+        print(
+            f"Legal timing: Qt extraction {spec.component} "
+            f"{time.perf_counter() - extraction_started:.2f}s",
+            file=sys.stderr,
         )
 
         qt_license_files.extend(licenses)
@@ -1831,11 +1976,17 @@ def main() -> int:
 
     _write_sha256s(source_assets_dir, source_assets)
 
+    source_bundle_started = time.perf_counter()
     source_bundle = build_third_party_source_bundle(
         source_assets_dir,
         release_dir,
         version,
         source_assets,
+    )
+    print(
+        "Legal timing: source bundle assembly "
+        f"{time.perf_counter() - source_bundle_started:.2f}s",
+        file=sys.stderr,
     )
 
     _write_source_availability(
@@ -1959,6 +2110,11 @@ def main() -> int:
     print(f"Source release assets: {source_assets_dir}")
     print(f"Runtime payload files fingerprinted: {len(runtime_inventory)}")
     print(f"Qt attribution records rendered: {len(qt_attribution_records)}")
+    print(
+        "Legal timing: total preparation "
+        f"{time.perf_counter() - legal_preparation_started:.2f}s",
+        file=sys.stderr,
+    )
     print("Final MSVC main artifact still requires a fresh legal/runtime validation before publication.")
     return 0
 
