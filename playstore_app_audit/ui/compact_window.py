@@ -38,6 +38,7 @@ from playstore_app_audit.services.state import (
     load_fresh_cache,
     load_history,
     load_settings,
+    normalise_store_workers,
     save_history,
     save_settings,
     update_cache,
@@ -45,7 +46,6 @@ from playstore_app_audit.services.state import (
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.audit_window import AuditWindow
 
-FIXED_WORKERS = 16
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
 DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
@@ -110,7 +110,7 @@ class CompactWindow(AuditWindow):
         self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
         self.resize(1500, 800)
         self.setMinimumHeight(620)
-        self.workers_spin.setValue(FIXED_WORKERS)
+        self.workers_spin.setValue(normalise_store_workers(self.user_settings.get("store_workers")))
 
         self.exclude_system_source_check.setText("Exclude system apps from source")
         self.exclude_system_source_check.setToolTip(
@@ -580,6 +580,8 @@ class CompactWindow(AuditWindow):
         self.user_settings = load_settings()
         country = (self.country_edit.text().strip() or base_ui.detect_windows_country()).lower()
         language = str(self.user_settings.get("store_language") or "en").lower()
+        store_workers = normalise_store_workers(self.user_settings.get("store_workers"))
+        self.workers_spin.setValue(store_workers)
         cache_enabled = bool(self.user_settings.get("cache_enabled", True))
         ttl = int(self.user_settings.get("cache_ttl_hours", 72))
         cached = self._load_fresh_cache(apps, country, language, ttl) if cache_enabled else {}
@@ -614,7 +616,7 @@ class CompactWindow(AuditWindow):
         self._set_audit_source_controls_enabled(False)
         self._set_run_mode("pause")
 
-        config = AuditConfig(country=country, language=language, max_workers=FIXED_WORKERS)
+        config = AuditConfig(country=country, language=language, max_workers=store_workers)
         threading.Thread(
             target=self._controlled_audit_worker,
             args=(
