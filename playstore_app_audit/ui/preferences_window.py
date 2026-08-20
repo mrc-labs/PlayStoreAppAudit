@@ -289,6 +289,8 @@ class PreferencesWindow(table_ui.TableWindow):
         workers.setValue(
             state.normalise_store_workers(self.user_settings.get("store_workers"))
         )
+        show_icons = QCheckBox("Show Play Store app icons (experimental)")
+        show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
         date_format = QComboBox()
         date_format.addItems(list(presentation.DATE_FORMATS))
         date_format.setCurrentText(
@@ -313,6 +315,12 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         workers_note.setWordWrap(True)
         form.addRow("", workers_note)
+        form.addRow("", show_icons)
+        icons_note = QLabel(
+            "Off by default. Icons load on demand and are kept in memory only for this session."
+        )
+        icons_note.setWordWrap(True)
+        form.addRow("", icons_note)
         form.addRow("Date display format", date_format)
         form.addRow("", cache)
         form.addRow("Healthy-result cache TTL", ttl)
@@ -394,6 +402,7 @@ class PreferencesWindow(table_ui.TableWindow):
             language.setText("en")
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             workers.setValue(state.DEFAULT_STORE_WORKERS)
+            show_icons.setChecked(False)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             cache.setChecked(True)
             ttl.setValue(72)
@@ -423,6 +432,7 @@ class PreferencesWindow(table_ui.TableWindow):
                 "store_language": (language.text().strip() or "en").lower(),
                 "fallback_countries": fallback_text,
                 "store_workers": workers.value(),
+                "show_app_icons": show_icons.isChecked(),
                 "date_format": date_format.currentText(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
@@ -438,6 +448,8 @@ class PreferencesWindow(table_ui.TableWindow):
         self.workers_spin.setValue(
             state.normalise_store_workers(self.user_settings.get("store_workers"))
         )
+        if hasattr(self.model, "set_app_icons_enabled"):
+            self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
             state.clear_cache()
         if portable.isChecked() != old_portable:

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from playstore_app_audit import __version__
 from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.services.app_icon_metadata import install_app_icon_metadata_capture
 from playstore_app_audit.services.performance_diagnostics import install_performance_diagnostics
 from playstore_app_audit.services.scraper_transport import install_scraper_transport_timeout
 from playstore_app_audit.services.store_path_diagnostics import install_store_path_diagnostics
@@ -21,6 +22,7 @@ def main() -> int:
     install_scraper_transport_timeout()
     install_performance_diagnostics()
     install_store_path_diagnostics()
+    install_app_icon_metadata_capture()
 
     app = QApplication(sys.argv)
     app.setApplicationName("Play Store App Audit")
