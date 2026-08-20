@@ -143,7 +143,7 @@ def test_windows_engineering_workflow_is_manual_exact_sha_and_unsigned() -> None
     assert "--require-all-platforms" not in text
     assert 'test "$asset_count" = "3"' in text
     assert "Windows architecture: x64 only" in text
-    assert "Signing: intentionally deferred to v1.5" in text
+    assert "Signing: intentionally deferred to v1.6" in text
     assert text.count("actions/upload-artifact@v7") == 1
 
     forbidden = (
