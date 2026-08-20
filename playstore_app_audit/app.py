@@ -15,17 +15,17 @@ from playstore_app_audit.services.store_path_diagnostics import install_store_pa
 from playstore_app_audit.ui.main_window import MainWindow
 
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
-BENCHMARK_STORE_WORKERS = 24
+BENCHMARK_STORE_WORKERS = 20
 
 
 def main() -> int:
     install_performance_diagnostics()
     install_store_path_diagnostics()
 
-    # Controlled v1.5 benchmark: raise the existing bounded Store-request ceiling
-    # from 16 to 24 without changing retry, fallback-market or classification semantics.
-    # This startup override is intentionally temporary until the real-device benchmark
-    # decides the safe default and the later Advanced setting is implemented explicitly.
+    # Controlled v1.5 benchmark: test the midpoint between the proven 16-worker
+    # baseline and the 24-worker run that increased per-request latency without
+    # improving wall-clock time. Retry, fallback-market and classification
+    # semantics remain unchanged.
     compact_window.FIXED_WORKERS = BENCHMARK_STORE_WORKERS
 
     app = QApplication(sys.argv)
