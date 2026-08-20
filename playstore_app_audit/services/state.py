@@ -9,9 +9,13 @@ from typing import Any
 from playstore_app_audit.platform.runtime import app_data_dir
 
 CACHE_SCHEMA_VERSION = 2
+DEFAULT_STORE_WORKERS = 16
+MIN_STORE_WORKERS = 4
+MAX_STORE_WORKERS = 32
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "store_language": "en",
+    "store_workers": DEFAULT_STORE_WORKERS,
     "cache_enabled": True,
     "cache_ttl_hours": 72,
     "compare_previous": False,
@@ -29,6 +33,14 @@ TECHNICAL_COLUMNS = {
     "store_url": "Store URL",
     "is_system": "System app",
 }
+
+
+def normalise_store_workers(value: object) -> int:
+    try:
+        workers = int(value)
+    except (TypeError, ValueError):
+        workers = DEFAULT_STORE_WORKERS
+    return max(MIN_STORE_WORKERS, min(MAX_STORE_WORKERS, workers))
 
 
 def _read_json(path: Path, fallback: Any) -> Any:
@@ -66,6 +78,7 @@ def load_settings() -> dict[str, Any]:
         settings.update(data)
     language = str(settings.get("store_language") or "en").strip().lower()
     settings["store_language"] = language or "en"
+    settings["store_workers"] = normalise_store_workers(settings.get("store_workers"))
     try:
         settings["cache_ttl_hours"] = max(0, min(24 * 30, int(settings.get("cache_ttl_hours", 72))))
     except (TypeError, ValueError):
@@ -85,6 +98,7 @@ def load_settings() -> dict[str, Any]:
 def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged = load_settings()
     merged.update(settings)
+    merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
     _write_json(settings_path(), merged)
     return merged
 

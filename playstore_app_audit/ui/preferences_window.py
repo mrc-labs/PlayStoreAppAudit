@@ -284,6 +284,11 @@ class PreferencesWindow(table_ui.TableWindow):
         fallback = QLineEdit(
             str(self.user_settings.get("fallback_countries") or device_metadata.DEFAULT_FALLBACK_COUNTRIES)
         )
+        workers = QSpinBox()
+        workers.setRange(state.MIN_STORE_WORKERS, state.MAX_STORE_WORKERS)
+        workers.setValue(
+            state.normalise_store_workers(self.user_settings.get("store_workers"))
+        )
         date_format = QComboBox()
         date_format.addItems(list(presentation.DATE_FORMATS))
         date_format.setCurrentText(
@@ -302,6 +307,12 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         fallback_note.setWordWrap(True)
         form.addRow("", fallback_note)
+        form.addRow("Concurrent Store workers", workers)
+        workers_note = QLabel(
+            "16 is recommended. Higher values can increase Play Store throttling, connection errors and latency; above 16 may be less stable and can be slower."
+        )
+        workers_note.setWordWrap(True)
+        form.addRow("", workers_note)
         form.addRow("Date display format", date_format)
         form.addRow("", cache)
         form.addRow("Healthy-result cache TTL", ttl)
@@ -382,6 +393,7 @@ class PreferencesWindow(table_ui.TableWindow):
         def reset_controls() -> None:
             language.setText("en")
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
+            workers.setValue(state.DEFAULT_STORE_WORKERS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             cache.setChecked(True)
             ttl.setValue(72)
@@ -410,6 +422,7 @@ class PreferencesWindow(table_ui.TableWindow):
             {
                 "store_language": (language.text().strip() or "en").lower(),
                 "fallback_countries": fallback_text,
+                "store_workers": workers.value(),
                 "date_format": date_format.currentText(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
@@ -422,6 +435,9 @@ class PreferencesWindow(table_ui.TableWindow):
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
+        self.workers_spin.setValue(
+            state.normalise_store_workers(self.user_settings.get("store_workers"))
+        )
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
             state.clear_cache()
         if portable.isChecked() != old_portable:
