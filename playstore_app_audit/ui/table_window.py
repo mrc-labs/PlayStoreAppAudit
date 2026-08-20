@@ -7,22 +7,25 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 # Install this before the UI modules start invoking adb.exe or other console tools.
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtCore import QModelIndex, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QIcon
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
+import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
+from playstore_app_audit.ui.app_icon_loader import AppIconLoader
 
 TABLE_SCHEMA_VERSION = "v12-schema-1"
+ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 
 
 class AuditTableModel(base_ui.AppTableModel):
-    """Qt model with an immutable column map.
+    """Qt model with an immutable column map and optional lazy app icons.
 
     Older builds changed the module-level COLUMNS tuple while progressively
     extending the table. A QTableView can retain header state between versions,
@@ -34,6 +37,46 @@ class AuditTableModel(base_ui.AppTableModel):
     def __init__(self) -> None:
         super().__init__()
         self.columns = schema.MODEL_COLUMNS
+        self._icons_enabled = bool(state.load_settings().get("show_app_icons", False))
+        self._icon_loader = AppIconLoader(self)
+        self._icon_loader.icon_ready.connect(self._on_icon_ready)
+
+    def set_rows(self, rows: list[dict[str, object]]) -> None:
+        for row in rows:
+            if str(row.get("play_status") or "") not in ICON_STATUSES:
+                continue
+            if row.get("play_icon_url"):
+                continue
+            icon_url = app_icon_metadata.icon_url_for_package(row.get("package_name"))
+            if icon_url:
+                row["play_icon_url"] = icon_url
+        super().set_rows(rows)
+
+    def set_app_icons_enabled(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if enabled == self._icons_enabled:
+            return
+        self._icons_enabled = enabled
+        if not self.rows or "package_name" not in self.columns:
+            return
+        column = self.columns.index("package_name")
+        top_left = self.index(0, column)
+        bottom_right = self.index(len(self.rows) - 1, column)
+        self.dataChanged.emit(
+            top_left,
+            bottom_right,
+            [Qt.ItemDataRole.DecorationRole],
+        )
+
+    def _on_icon_ready(self, icon_url: str) -> None:
+        if not self._icons_enabled or "package_name" not in self.columns:
+            return
+        column = self.columns.index("package_name")
+        for row_index, row in enumerate(self.rows):
+            if str(row.get("play_icon_url") or "") != icon_url:
+                continue
+            index = self.index(row_index, column)
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.DecorationRole])
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self.columns)
@@ -67,6 +110,13 @@ class AuditTableModel(base_ui.AppTableModel):
             if isinstance(value, bool):
                 return "Yes" if value else "No"
             return "" if value is None else str(value)
+
+        if role == Qt.ItemDataRole.DecorationRole and column == "package_name":
+            if not self._icons_enabled:
+                return None
+            if str(row.get("play_status") or "") not in ICON_STATUSES:
+                return None
+            return self._icon_loader.icon_for_url(row.get("play_icon_url"))
 
         if role == Qt.ItemDataRole.BackgroundRole:
             return QColor(info["background"])
@@ -124,6 +174,7 @@ class TableWindow(insights_ui.InsightsWindow):
         self.model = stable_model
         self.proxy = proxy
         self.table.setModel(proxy)
+        self.table.setIconSize(QSize(22, 22))
         old_proxy.deleteLater()
         self._apply_column_visibility(reset_order=True)
 
