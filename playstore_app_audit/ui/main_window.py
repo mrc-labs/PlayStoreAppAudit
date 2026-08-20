@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Qt, QUrl
+from PySide6.QtCore import QPoint, QTimer, Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QFrame,
@@ -42,6 +42,9 @@ class MainWindow(results_ui.ResultsWindow):
     """
 
     def __init__(self) -> None:
+        self._audit_cached_count = 0
+        self._audit_live_count = 0
+        self._finalizing_session: int | None = None
         super().__init__()
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._remove_redundant_content_heading()
@@ -235,6 +238,91 @@ class MainWindow(results_ui.ResultsWindow):
         super()._set_view_preset(name)
         if hasattr(self, "status_label"):
             self.status_label.setText(status_text)
+
+    # ---------- Audit progress/finalization ----------
+    def _restore_device_source_identity(self) -> None:
+        if self.source_mode != "device":
+            return
+        summary = getattr(self, "_device_summary", {})
+        if not isinstance(summary, dict):
+            return
+        identity = results_ui._device_source_identity(summary)
+        if not identity:
+            return
+
+        current = self.source_label.text().strip()
+        for prefix in ("Phone scan:", "Phone source:"):
+            if current.startswith(prefix):
+                current = current[len(prefix) :].strip()
+                break
+        if current.startswith(identity):
+            current = current[len(identity) :].lstrip(" •")
+        self.source_label.setText(
+            f"Phone scan: {identity} • {current}" if current else f"Phone scan: {identity}"
+        )
+
+    def _start_audit(self) -> None:
+        was_active = self._audit_active
+        super()._start_audit()
+        if was_active or not self._audit_active:
+            return
+
+        self._audit_cached_count = max(0, self.progress.value())
+        total = max(0, self.progress.maximum())
+        self._audit_live_count = max(0, total - self._audit_cached_count)
+        self._restore_device_source_identity()
+        self.status_label.setText(
+            "Audit running • "
+            f"{self._audit_cached_count} cached • {self._audit_live_count} live"
+        )
+
+    def _on_controlled_progress(
+        self, session: int, done: int, total: int, package_name: str
+    ) -> None:
+        super()._on_controlled_progress(session, done, total, package_name)
+        if session != self._audit_session or not self._audit_active or self._audit_paused:
+            return
+
+        cached = min(max(0, self._audit_cached_count), total)
+        live_total = max(0, total - cached)
+        live_done = min(max(0, done - cached), live_total)
+        if live_total:
+            package_suffix = f" • {package_name}" if package_name else ""
+            self.status_label.setText(
+                f"Checking Play Store • {live_done}/{live_total} live • {cached} cached"
+                f"{package_suffix}"
+            )
+        else:
+            self.status_label.setText(f"Using cached results • {cached}/{total} cached")
+
+    def _on_controlled_done(self, payload: object) -> None:
+        session, _rows, error, cached_count, live_count = payload  # type: ignore[misc]
+        if session != self._audit_session:
+            return
+        if error:
+            super()._on_controlled_done(payload)
+            return
+
+        self._finalizing_session = session
+        self._audit_paused = False
+        self._audit_pause_event.set()
+        self._set_audit_source_controls_enabled(False)
+        self.run_button.setText("Finalizing…")
+        self.run_button.setEnabled(False)
+        self.export_button.setEnabled(False)
+        self.progress.setRange(0, 0)
+        self.status_label.setText(
+            f"Finalizing audit results • {cached_count} cached • {live_count} live"
+        )
+        QTimer.singleShot(0, lambda: self._complete_controlled_done(payload))
+
+    def _complete_controlled_done(self, payload: object) -> None:
+        session = payload[0]  # type: ignore[index]
+        if session != self._audit_session or self._finalizing_session != session:
+            return
+        self._finalizing_session = None
+        super()._on_controlled_done(payload)
+        self._restore_device_source_identity()
 
     # ---------- Cross-platform ADB ----------
     def _find_adb(self) -> str | None:
