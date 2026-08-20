@@ -39,6 +39,60 @@ def test_icon_metadata_accepts_only_https_urls() -> None:
     assert metadata.icon_url_for_package("com.example.bad") == ""
 
 
+def test_live_available_rows_receive_icon_url_for_normal_cache_write() -> None:
+    metadata.clear_icon_metadata()
+    metadata._remember_result_icon(
+        {"appId": "com.example.app", "icon": "https://example.invalid/icon.png"}
+    )
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_status": "available",
+            "play_last_update": "2026-08-01",
+        }
+    ]
+
+    result = metadata._enrich_rows_with_icon_urls(rows)
+
+    assert result is rows
+    assert rows[0]["play_icon_url"] == "https://example.invalid/icon.png"
+
+
+def test_unavailable_rows_do_not_receive_captured_icon_url() -> None:
+    metadata.clear_icon_metadata()
+    metadata._remember_result_icon(
+        {"appId": "com.example.removed", "icon": "https://example.invalid/icon.png"}
+    )
+    rows = [
+        {
+            "package_name": "com.example.removed",
+            "play_status": "not_found_in_checked_countries",
+        }
+    ]
+
+    metadata._enrich_rows_with_icon_urls(rows)
+
+    assert "play_icon_url" not in rows[0]
+
+
+def test_existing_https_icon_metadata_is_preserved() -> None:
+    metadata.clear_icon_metadata()
+    metadata._remember_result_icon(
+        {"appId": "com.example.app", "icon": "https://example.invalid/new.png"}
+    )
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_status": "available",
+            "play_icon_url": "https://example.invalid/cached.png",
+        }
+    ]
+
+    metadata._enrich_rows_with_icon_urls(rows)
+
+    assert rows[0]["play_icon_url"] == "https://example.invalid/cached.png"
+
+
 def test_loader_url_normalisation_rejects_non_https() -> None:
     assert _normalise_icon_url("https://example.invalid/icon.png")
     assert _normalise_icon_url("http://example.invalid/icon.png") == ""
