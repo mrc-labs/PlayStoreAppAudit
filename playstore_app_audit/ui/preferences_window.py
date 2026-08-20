@@ -309,7 +309,7 @@ class PreferencesWindow(table_ui.TableWindow):
         form.addRow("", fallback_note)
         form.addRow("Concurrent Store workers", workers)
         workers_note = QLabel(
-            "16 is recommended. Higher values can increase Play Store throttling, connection errors and latency; above 16 may be less stable and can be slower."
+            "16 is recommended. Higher values can increase Play Store throttling, connection errors and latency; more workers are not always faster."
         )
         workers_note.setWordWrap(True)
         form.addRow("", workers_note)
