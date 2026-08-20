@@ -52,9 +52,23 @@ Use "build" rather than "release" in the label because ETB describes the validat
 - exact three-file public asset model
 - no Windows ARM64, Linux or macOS v1.4 prebuilt packages
 
-### v1.5 production target
+### v1.5 target
 
-The broader production path remains deferred to v1.5:
+`v1.5.0` remains a Windows x64-only Engineering Test Build (ETB):
+
+- unsigned Windows x64 only
+- one exact frozen `main` SHA
+- build workflow: `.github/workflows/build-windows-exe.yml` with `target=x64`
+- engineering assembler: `.github/workflows/assemble-windows-engineering-release.yml`
+- exactly 3 public assets: `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`
+- release title suffix: `(ETB Win x64)`
+- release body heading: `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`
+- no Windows ARM64, Linux or macOS v1.5 release candidates
+- no production signing or signing spend
+
+### v1.6 production target
+
+The broader production path is deferred to v1.6:
 
 - Windows x64/ARM64
 - Linux x64/ARM64
@@ -63,7 +77,7 @@ The broader production path remains deferred to v1.5:
 - macOS Developer ID signing, hardened runtime, notarization, stapling and Gatekeeper validation
 - full production assembly through `.github/workflows/assemble-release.yml`
 
-The repository contains a Microsoft Artifact Signing implementation as one possible Windows path, but the final v1.5 provider is not locked.
+The repository contains a Microsoft Artifact Signing implementation as one possible Windows path, but the final v1.6 provider is not locked.
 
 ## Post-v1.4 maintenance completed
 
@@ -101,10 +115,10 @@ There is no unfinished v1.4 release work.
 
 Future work should start from current `main` and the durable project documents rather than recreating v1.4 release state. Remaining items are intentionally future-facing:
 
-- use timing output from the next real package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
-- select and validate the final publicly trusted Windows code-signing provider for v1.5;
-- validate the macOS Developer ID/notarization path with real credentials before v1.5 publication;
-- exercise the full Windows/Linux/macOS x64/ARM64 production profile for v1.5 from one exact frozen SHA;
+- v1.5 product/UI backlog: File-menu ordering/ownership; connected-phone source summary; HiDPI unchecked-checkbox investigation; default `Exclude system apps from source` to checked; status-chip bold-width clipping; clearer cached/live/finalization audit state; evidence-driven audit performance work; experimental app icons; typed numeric Health Score sorting;
+- use timing output from the next real Windows x64 package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
+- keep v1.5 as an unsigned Windows x64-only ETB with exactly three public assets and no signing spend;
+- move publicly trusted Windows signing, macOS Developer ID/notarization validation and the full Windows/Linux/macOS x64/ARM64 production profile to v1.6;
 - keep ETB naming and generational Actions retention unchanged unless a dedicated engineering decision replaces them;
 - continue ordinary dependency/API maintenance only with targeted evidence and without weakening release/legal gates.
 

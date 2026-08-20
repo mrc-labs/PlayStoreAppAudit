@@ -27,7 +27,7 @@ The current v1.4.0 release is a Windows x64 Engineering Test Build (ETB) and pro
 
 Download the Windows x64 ZIP, extract it to a normal folder, then start the application from the extracted package.
 
-The Windows v1.4.0 package is intentionally unsigned while the production signing path is being validated for v1.5. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+The Windows v1.4.0 package is intentionally unsigned. v1.5.0 will remain an unsigned Windows x64 Engineering Test Build, while production signing and the full six-platform release are deferred to v1.6. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
 
 Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.4.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
 
@@ -132,4 +132,4 @@ Developer references:
 
 Release packages use Python 3.13 and Nuitka standalone packaging. v1.4 freezes one exact `main` SHA, builds only the Windows x64 ETB candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 ETB asset set, then tags and publishes the already validated artifacts without rebuilding.
 
-The full signed six-platform production release path remains implemented for the planned v1.5 milestone. Platform-specific prerequisites, architecture validation, legal/source handling and both release profiles are documented in [Building Play Store App Audit](docs/BUILDING.md).
+v1.5.0 will use the same unsigned Windows x64-only ETB profile with exactly three public assets and the `(ETB Win x64)` release-title suffix. The full signed six-platform production release path remains implemented for the planned v1.6 milestone. Platform-specific prerequisites, architecture validation, legal/source handling and the release profiles are documented in [Building Play Store App Audit](docs/BUILDING.md).

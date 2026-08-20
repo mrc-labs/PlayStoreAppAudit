@@ -88,7 +88,7 @@ These are hard constraints unless deliberately changed through a dedicated engin
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
-v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB) while production signing and the broader platform matrix are deferred to v1.5.
+v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB). v1.5 keeps the same unsigned Windows x64 ETB release profile, while production signing and the broader six-platform matrix are deferred to v1.6.
 
 - Build Windows x64 only from the frozen SHA.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
@@ -99,12 +99,25 @@ v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB) while pr
 - The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
 - Engineering GitHub Releases use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; the package must be clearly described as unsigned.
 
-### v1.5 production profile
+### v1.5 Windows x64 Engineering Test Build (ETB) profile
 
-The full six-platform production path remains implemented for v1.5, while the final Windows public-trust signing provider is deliberately not locked yet.
+v1.5.0 remains an unsigned Windows x64 Engineering Test Build (ETB).
+
+- Build Windows x64 only from the frozen SHA.
+- Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
+- Do not invoke `.github/workflows/sign-windows.yml` for v1.5.
+- Do not build Windows ARM64, Linux or macOS release candidates for v1.5.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- The public asset set is exactly three files: `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
+- Use GitHub Release title suffix `(ETB Win x64)` and release-body heading `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`.
+- Keep the package clearly described as unsigned. Do not spend money on signing for v1.5.
+
+### v1.6 production profile
+
+The full six-platform production path remains implemented for v1.6, while the final Windows public-trust signing provider is deliberately not locked yet.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
-- Windows final candidates must use a publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing is retained as an implemented option, but the final v1.5 provider remains TBD pending publisher eligibility and cost review.
+- Windows final candidates must use a publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing is retained as an implemented option, but the final v1.6 provider remains TBD pending publisher eligibility and cost review.
 - macOS final candidates use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
