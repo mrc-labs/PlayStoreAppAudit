@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.summary as summary_service
+import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
@@ -89,10 +90,15 @@ class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
         self._setup_export_button_menu()
         self._rebuild_file_menu()
         self._update_summary()
+
+    def _persist_exclude_system_source(self, checked: bool) -> None:
+        self.user_settings["exclude_system_source"] = bool(checked)
+        self.user_settings = state.save_settings(self.user_settings)
 
     def _install_numeric_sort_proxy(self) -> None:
         old_proxy = self.proxy
