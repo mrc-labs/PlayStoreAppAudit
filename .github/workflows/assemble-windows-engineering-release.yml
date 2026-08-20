@@ -243,7 +243,7 @@ jobs:
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
             echo "- Unsigned Windows source run: \`${WINDOWS_RUN_ID}\`"
             echo "- Windows architecture: x64 only"
-            echo "- Signing: intentionally deferred to v1.5"
+            echo "- Signing: intentionally deferred to v1.6"
             echo "- Final asset count: 3"
             echo
             echo '```text'
