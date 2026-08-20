@@ -111,6 +111,36 @@ def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
     assert max_fallback_active <= config.max_workers
 
 
+def test_regional_verification_emits_live_progress_without_regressing_app_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SimpleNamespace(country="ch", language="de", max_workers=2)
+    monkeypatch.setattr(
+        diagnostics.device_metadata, "get_fallback_countries", lambda _selected: ("us", "gb")
+    )
+
+    def fake_fetch(_package: str, _language: str, country: str, _config: object):
+        return _locale_result("not_found_or_unavailable", country)
+
+    monkeypatch.setattr(diagnostics.device_metadata.core, "_fetch_locale", fake_fetch)
+    progress: list[tuple[int, int, str]] = []
+
+    rows = diagnostics._audit_apps_bounded(
+        [{"app_name": "Example", "package_name": "com.example.app"}],
+        config,
+        lambda done, total, text: progress.append((done, total, text)),
+    )
+
+    assert rows[0]["play_status"] == "not_found_in_checked_countries"
+    regional = [item for item in progress if item[2].startswith("Verifying regional availability")]
+    assert regional
+    assert any("2 country checks completed" in text for _done, _total, text in regional)
+    assert progress[-1] == (1, 1, "com.example.app")
+    assert [done for done, _total, _text in progress] == sorted(
+        done for done, _total, _text in progress
+    )
+
+
 def test_healthy_complete_listing_does_not_schedule_fallbacks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
