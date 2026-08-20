@@ -109,14 +109,30 @@ Artifact uploads use repository-default retention as a hard safety ceiling. Inte
 
 The v1.4 release also exposed one transient network read timeout while preparing legal/source material. The downloader now retries transient metadata/archive read failures that occur after connection establishment, discards partial `.download` files before retry, keeps source archives streamed to disk, does not retry deterministic SHA-256 mismatch, and replaces the destination only after exact expected SHA-256 verification. Focused regression coverage and timing instrumentation for legal preparation are now in place.
 
+## v1.5 implementation progress
+
+The first v1.5 product/UI workstream is complete on `main`:
+
+- File-menu result actions now have one canonical late-stage builder and appear as one uninterrupted `Run Play Store audit` / `Export Results` / `Clear Results` section.
+- Connected-phone scans enrich the compact App source summary with manufacturer/model and Android version/API by reusing the device summary already collected after ADB scanning; security patch and masked serial remain available in the tooltip.
+- `Exclude system apps from source` now defaults to checked, persists explicit user choices, preserves an already stored `false`, and resets to the default `true`.
+- Selected/bold status chips size against their actual selected font with `QFontMetrics` and native style margins/frame metrics instead of fixed padding.
+- Health Score and the other numeric table fields use typed numeric sorting, including deterministic blank/None handling.
+- Audit status now distinguishes cached and live work and exposes a real native indeterminate `Finalizing…` state before final rows, health scoring, inventory annotations, summary and column updates are presented as completed.
+- The unchecked-checkbox HiDPI investigation is resolved by evidence without a product workaround. Diagnostic PR #47 reproduced the supplied Windows appearance using Qt/PySide 6.11.1 with the native `windows11` style at 175% scaling. Checked and unchecked states reported the same 16 x 16 logical indicator metrics and the same control size hint, so there is no state-dependent HiDPI sizing defect. The visual difference is the native Windows checkbox state rendering. Keep the platform/default style; do not add forced Fusion, a theme dependency or a custom global checkbox indicator override for v1.5.
+
+The diagnostic checkbox branch/PR was deliberately closed unmerged after collecting evidence; it does not alter production UI or CI configuration.
+
 ## Remaining backlog
 
 There is no unfinished v1.4 release work.
 
 Future work should start from current `main` and the durable project documents rather than recreating v1.4 release state. Remaining items are intentionally future-facing:
 
-- v1.5 product/UI backlog: File-menu ordering/ownership; connected-phone source summary; HiDPI unchecked-checkbox investigation; default `Exclude system apps from source` to checked; status-chip bold-width clipping; clearer cached/live/finalization audit state; evidence-driven audit performance work; experimental app icons; typed numeric Health Score sorting;
+- v1.5 product backlog: evidence-driven audit performance investigation/optimization and experimental opt-in app icons;
+- measure before changing audit concurrency or retry behaviour; do not increase the existing worker count without evidence;
 - use timing output from the next real Windows x64 package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
+- complete v1.5 version/changelog hardening only after the remaining product work is merged, then freeze one exact `main` SHA and build Windows x64 only;
 - keep v1.5 as an unsigned Windows x64-only ETB with exactly three public assets and no signing spend;
 - move publicly trusted Windows signing, macOS Developer ID/notarization validation and the full Windows/Linux/macOS x64/ARM64 production profile to v1.6;
 - keep ETB naming and generational Actions retention unchanged unless a dedicated engineering decision replaces them;
