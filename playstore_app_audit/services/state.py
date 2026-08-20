@@ -15,6 +15,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "cache_enabled": True,
     "cache_ttl_hours": 72,
     "compare_previous": False,
+    "exclude_system_source": True,
     "technical_columns": [],
     "qt_header_state": "",
     "ctk_column_widths": {},
@@ -71,6 +72,7 @@ def load_settings() -> dict[str, Any]:
         settings["cache_ttl_hours"] = 72
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
+    settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
     cols = settings.get("technical_columns", [])
     settings["technical_columns"] = (
         [c for c in cols if c in TECHNICAL_COLUMNS] if isinstance(cols, list) else []
