@@ -112,9 +112,8 @@ def test_file_menu_and_export_results_hierarchy(window: MainWindow) -> None:
         "Export current phone package list as CSV…",
         None,
         "Run Play Store audit",
-        "Clear current results",
-        None,
-        "Export results",
+        "Export Results",
+        "Clear Results",
         None,
         "Exit",
     ]
@@ -153,7 +152,7 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     created.run_button.click()
     created.clear_button.click()
     next(action for action in created.file_menu.actions() if action.text() == "Run Play Store audit").trigger()
-    next(action for action in created.file_menu.actions() if action.text() == "Clear current results").trigger()
+    next(action for action in created.file_menu.actions() if action.text() == "Clear Results").trigger()
     assert choose_calls == [created]
     assert scan_calls == [created]
     assert calls == [created, created]
@@ -222,9 +221,7 @@ def test_clear_current_results_preserves_phone_inventory_and_persistent_data(
     )
     window.current_rows = [{"package_name": "com.example.app", "criticality_key": "green"}]
     window.model.set_rows(window.current_rows)
-    next(
-        action for action in window.file_menu.actions() if action.text() == "Clear current results"
-    ).trigger()
+    next(action for action in window.file_menu.actions() if action.text() == "Clear Results").trigger()
 
     assert window.current_rows == []
     assert window.device_apps_all == [
