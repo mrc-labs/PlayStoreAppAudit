@@ -14,7 +14,7 @@ Published v1.4.0 must never be rebuilt, retagged, rewritten or have its assets r
 
 ## Current v1.5 baseline
 
-- Canonical application version remains `1.4.0` until the final release-hardening PR.
+- Canonical application version on the release-hardening candidate: `1.5.0`
 - Packaging Python: 3.13
 - Quality Python: 3.13 + 3.14
 - `PySide6-Essentials`: 6.11.1
@@ -47,7 +47,7 @@ The broader Windows/Linux/macOS x64/ARM64 production profile and production sign
 
 ## v1.5 product work completed
 
-The v1.5 product and UI workstream is complete on `main`.
+The v1.5 product and UI workstream is complete.
 
 - File-menu result actions are consolidated into one canonical Run / Export / Clear section.
 - Connected-phone source summaries show manufacturer/model and Android version/API without extra ADB calls.
@@ -71,7 +71,7 @@ The v1.5 product and UI workstream is complete on `main`.
 
 The real Windows/device investigation established the Store path as the dominant audit cost. ADB metadata and UI finalization are not material bottlenecks on the measured 333-package workload.
 
-Low-risk changes now retained for v1.5:
+Low-risk changes retained for v1.5:
 
 - negative multi-country checks run in small ordered batches while a shared semaphore caps total in-flight Store locale requests at the configured worker limit;
 - fallback-country priority and classifications remain unchanged;
@@ -80,7 +80,7 @@ Low-risk changes now retained for v1.5:
 - the scraper transport receives a 25-second timeout, matching the HTML path;
 - timeout/network failures remain transient or inconclusive and are never converted into Store not-found evidence;
 - useful aggregate Store/ADB/total audit timing diagnostics remain available without package names;
-- benchmark-only detailed Store path/scraper instrumentation is no longer installed at normal application startup for the v1.5 release path.
+- benchmark-only detailed Store path/scraper instrumentation is not installed at normal application startup.
 
 Measured full-refresh checkpoints with 333 live packages and the same final classification of 324 available plus 9 not found in checked countries:
 
@@ -96,30 +96,29 @@ The separate 14-vs-16 cooldown repeat is deliberately deferred to the next relea
 
 Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
 
-## Pre-freeze decision on architecture cleanup
+## Deferred architecture cleanup
 
 Two deeper refactors are intentionally deferred rather than introduced immediately before the v1.5 freeze:
 
 - moving the bounded fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service;
 - consolidating the terminal NotFound retry implementation so the base and device-enriched Store paths cannot drift.
 
-Both are worthwhile cleanup targets, but they touch proven production Store behaviour. v1.5 keeps the validated implementation and removes only benchmark-only startup instrumentation. Perform these refactors in the next development cycle with focused semantic regression tests and fresh device benchmarks.
+Both touch validated production Store behaviour. Perform them in the next development cycle with focused semantic regression tests and fresh device benchmarks.
 
-## Remaining v1.5 work
+## Remaining v1.5 release steps
 
-There is no unfinished v1.4 work and no additional product feature planned before v1.5.
+No additional product feature is planned before v1.5. Version, changelog and public release text are now being hardened for `1.5.0`.
 
-Remaining release steps only:
+After this release-hardening PR merges:
 
-1. final version/changelog/release-text hardening for `1.5.0`;
-2. post-merge Quality validation;
-3. freeze one exact `main` SHA;
-4. prepare strict legal/source material from that SHA;
-5. build Windows x64 from that same SHA;
-6. assemble and validate the exact three-file ETB release set;
-7. publish without modifying the frozen SHA, tag or assets afterward.
+1. require post-merge Quality validation;
+2. freeze one exact `main` SHA;
+3. prepare strict legal/source material from that SHA;
+4. build Windows x64 from that same SHA;
+5. assemble and validate the exact three-file ETB release set;
+6. publish without modifying the frozen SHA, tag or assets afterward.
 
-Do not start heavy package builds before the final release-hardening code/documentation PR is merged and the candidate SHA is selected.
+Heavy package builds start only after the release-hardening PR is merged and the candidate SHA is frozen.
 
 ## Durable release invariants
 

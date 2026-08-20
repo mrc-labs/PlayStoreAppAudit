@@ -2,6 +2,39 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [1.5.0] - 2026-08-21
+
+### Added
+
+- Configurable concurrent Google Play workers in **Advanced settings**, with 16 retained as the default/recommended value.
+- Live regional-verification progress while fallback Store countries are being checked.
+- Optional experimental Play Store app icons in the results table. The feature is off by default, downloads only when enabled, and keeps image bytes in a bounded session-only memory cache.
+- Connected-device source summaries with manufacturer/model and Android version/API using metadata already collected during the phone scan.
+
+### Changed
+
+- Reduced negative multi-country audit latency with bounded ordered fallback batches while preserving configured country priority and final classifications.
+- Treat propagated `google_play_scraper.exceptions.NotFoundError` as terminal for the outer retry loop after the scraper has already performed its own internal fallback, while retaining retry/backoff for transient failures.
+- Added a 25-second default timeout to the scraper transport so a stalled network request cannot occupy an audit worker indefinitely.
+- Improved audit progress to distinguish cached/live work and show a real finalization phase before completed results are presented.
+- Consolidated File-menu result actions and improved numeric table sorting and native status-chip sizing.
+- Defaulted source-level system-app exclusion to enabled while preserving explicit saved choices.
+- Stopped installing benchmark-only detailed Store path diagnostics during normal application startup.
+
+### Fixed
+
+- Avoided deterministic retry delays for Store listings that are definitively not found by the scraper.
+- Preserved uncertainty semantics for timeout/network failures so they are never converted into false Store not-found results.
+- Kept unavailable/removed rows from displaying stale experimental app icons.
+
+### Compatibility
+
+- v1.5.0 is an unsigned Windows x64 Engineering Test Build (ETB).
+- The public release contains exactly one Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- Windows ARM64, Linux and macOS remain supported by the shared source tree but are not rebuilt for v1.5.0.
+- Production signing and the full Windows/Linux/macOS x64/ARM64 release profile remain planned for v1.6.
+- Python 3.13 remains the release-packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
+
 ## [1.4.0] - 2026-08-19
 
 ### Changed
