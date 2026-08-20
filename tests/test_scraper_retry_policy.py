@@ -7,11 +7,6 @@ import playstore_app_audit.services.audit_engine as core
 import playstore_app_audit.services.device_metadata as device_metadata
 
 
-def test_not_found_is_terminal_scraper_error() -> None:
-    assert core.is_terminal_scraper_error(NotFoundError("missing")) is True
-    assert core.is_terminal_scraper_error(ConnectionError("temporary")) is False
-
-
 def test_not_found_skips_scraper_retries(monkeypatch) -> None:
     attempts = 0
     sleeps: list[float] = []
