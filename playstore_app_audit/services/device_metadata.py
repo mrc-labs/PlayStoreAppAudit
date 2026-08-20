@@ -236,6 +236,7 @@ def install_core_version_support() -> None:
     ) -> dict[str, Any]:
         try:
             from google_play_scraper import app as play_app
+            from google_play_scraper.exceptions import NotFoundError
         except ImportError as exc:
             return {
                 "ok": False,
@@ -256,6 +257,9 @@ def install_core_version_support() -> None:
                     "version": _normalise_version(data.get("version")),
                     "error": "",
                 }
+            except NotFoundError as exc:
+                last_error = str(exc)[:300]
+                break
             except Exception as exc:
                 last_error = str(exc)[:300]
                 if attempt < config.max_retries:
