@@ -12,6 +12,7 @@ import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
+from playstore_app_audit.ui.file_menu import add_result_actions
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -43,9 +44,14 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
         self.file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
         self.file_menu.addSeparator()
-        self.file_menu.addAction("Export all results as CSV…", self._export_results)
-        self.file_menu.addAction("Export visible results as CSV…", self._export_visible_results)
-        self.file_menu.addAction("Export HTML report…", self._export_html_report)
+        self.file_export_results_menu = add_result_actions(
+            self.file_menu,
+            run_audit=self._start_audit,
+            export_all_csv=self._export_results,
+            export_visible_csv=self._export_visible_results,
+            clear_results=self._clear_results,
+            export_all_html=self._export_html_report,
+        )
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
 
