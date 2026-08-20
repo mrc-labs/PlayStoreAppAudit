@@ -40,6 +40,9 @@ Use "build" rather than "release" in the label because ETB describes the validat
 - UI technology: Qt Widgets
 - Production application style: Qt platform/default QStyle; no production/global forced Fusion
 - Managed ADB behaviour: read-only with respect to installed Android apps
+- Recommended/default concurrent Store workers: 16, configurable in Advanced settings from 4 to 32
+- HTML Store request timeout: 25 seconds
+- `google-play-scraper` urllib transport default timeout: 25 seconds
 
 ## Release profiles
 
@@ -119,21 +122,60 @@ The first v1.5 product/UI workstream is complete on `main`:
 - Selected/bold status chips size against their actual selected font with `QFontMetrics` and native style margins/frame metrics instead of fixed padding.
 - Health Score and the other numeric table fields use typed numeric sorting, including deterministic blank/None handling.
 - Audit status now distinguishes cached and live work and exposes a real native indeterminate `Finalizing…` state before final rows, health scoring, inventory annotations, summary and column updates are presented as completed.
+- Regional verification now emits live progress while fallback markets are being checked, so a long negative Store tail no longer appears idle.
+- Advanced settings explain that adding many fallback countries can increase audit time.
+- Concurrent Store workers are now persisted as an Advanced setting with a bounded 4-32 range. The current recommended/default value remains 16. The concise warning states that higher values can increase Play Store throttling, connection errors and latency, and that more workers are not always faster.
 - The unchecked-checkbox HiDPI investigation is resolved by evidence without a product workaround. Diagnostic PR #47 reproduced the supplied Windows appearance using Qt/PySide 6.11.1 with the native `windows11` style at 175% scaling. Checked and unchecked states reported the same 16 x 16 logical indicator metrics and the same control size hint, so there is no state-dependent HiDPI sizing defect. The visual difference is the native Windows checkbox state rendering. Keep the platform/default style; do not add forced Fusion, a theme dependency or a custom global checkbox indicator override for v1.5.
 
 The diagnostic checkbox branch/PR was deliberately closed unmerged after collecting evidence; it does not alter production UI or CI configuration.
+
+## v1.5 Store performance evidence
+
+The real Windows/device performance investigation has established the Store path as the dominant audit cost. ADB metadata and UI finalization are not material bottlenecks on the measured 333-package workload.
+
+The main low-risk optimizations now on `main` are:
+
+- negative multi-country fallback checks run in small ordered batches while a shared semaphore keeps total in-flight Store locale requests within the configured worker ceiling;
+- configured fallback-country priority and final classifications remain unchanged;
+- propagated `google_play_scraper.exceptions.NotFoundError` is treated as terminal for the app's outer scraper retry loop, because upstream `google-play-scraper` already performs its own countryless fallback before propagating that exception;
+- transient network failures still use the existing retry/backoff policy;
+- Store scraper, HTML, fallback, ADB and total-audit aggregate diagnostics remain available without logging package names;
+- `google-play-scraper` now receives a 25-second default timeout at its internal urllib transport boundary, matching the existing HTML fallback timeout. Timeout/network failures remain transient or inconclusive evidence and are not converted to Store not-found results.
+
+Measured full-refresh checkpoints, all with 333 live packages and the same final classification of 324 available plus 9 not found in checked countries unless noted otherwise:
+
+| Workers | Total time | Notes |
+| ---: | ---: | --- |
+| 12 | 185.850 s | clean run, zero retries |
+| 14 | 200.877 s | immediate back-to-back run after 12; primary latency was anomalously high, so repeat after cooldown before using this result for a final decision |
+| 16 | 168.854 s | best validated result so far after terminal NotFound retry optimization |
+| 20 | 170.657 s | slightly slower than 16 despite zero primary retries |
+| 24 | 171.166 s | higher request concurrency but materially higher per-request latency; not a default candidate |
+
+Earlier evidence before the terminal NotFound retry fix showed 81 negative fallback locales generating 243 scraper attempts and 243 seconds of aggregate deterministic retry sleep. After the fix, the same negative fallback workload dropped to 81 scraper attempts, zero NotFound retries and zero deterministic retry sleep. The measured total audit improved from 182.676 seconds to 168.854 seconds even though primary network latency was slower on the latter run, which supports keeping the exception-specific policy.
+
+Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
+
+The concurrency benchmark is intentionally not considered fully closed yet. Repeat 14 and 16 after a meaningful cooldown and under comparable network conditions. If the repeated 14 result does not clearly compete with 16, retain 16 as the release default. Do not chase a one- or two-second single-run win at the cost of higher request pressure or lower stability.
 
 ## Remaining backlog
 
 There is no unfinished v1.4 release work.
 
-Future work should start from current `main` and the durable project documents rather than recreating v1.4 release state. Remaining items are intentionally future-facing:
+Before the v1.5 release freeze:
 
-- v1.5 product backlog: evidence-driven audit performance investigation/optimization and experimental opt-in app icons;
-- measure before changing audit concurrency or retry behaviour; do not increase the existing worker count without evidence;
-- use timing output from the next real Windows x64 package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
+- complete the cooldown repeat comparison for 14 and 16 Store workers, then lock the recommended/default value;
+- once concurrency evidence is final, remove or simplify temporary benchmark-only diagnostic instrumentation where it no longer earns its maintenance cost, while preserving useful aggregate diagnostics;
+- consider moving the bounded fallback scheduler out of `performance_diagnostics.py` into a canonical Store/audit service so production behaviour does not depend on a diagnostics installer; do this only if the refactor remains low-risk and semantically identical;
+- consider consolidating the terminal NotFound retry policy into the canonical Store service so the base and device-enriched paths cannot drift;
+- implement or explicitly defer the experimental opt-in app-icon feature after inspecting the existing Store metadata path; it must remain off by default and must not introduce broad persistent image caching;
+- update this status document again after the final performance/default decision;
 - complete v1.5 version/changelog hardening only after the remaining product work is merged, then freeze one exact `main` SHA and build Windows x64 only;
-- keep v1.5 as an unsigned Windows x64-only ETB with exactly three public assets and no signing spend;
+- keep v1.5 as an unsigned Windows x64-only ETB with exactly three public assets and no signing spend.
+
+Future-facing items:
+
+- use timing output from the next real Windows x64 package build before deciding whether cross-run caching of verified immutable source archives is worthwhile;
 - move publicly trusted Windows signing, macOS Developer ID/notarization validation and the full Windows/Linux/macOS x64/ARM64 production profile to v1.6;
 - keep ETB naming and generational Actions retention unchanged unless a dedicated engineering decision replaces them;
 - continue ordinary dependency/API maintenance only with targeted evidence and without weakening release/legal gates.
