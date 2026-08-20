@@ -3,10 +3,13 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+
+FALLBACK_BATCH_SIZE = 3
 
 _STORE_LOCK = threading.Lock()
 _INSTALLED = False
@@ -79,19 +82,282 @@ def _locale_role(country: str, language: str, config: Any) -> str:
     )
 
 
-def install_performance_diagnostics() -> None:
-    """Install low-overhead, aggregate-only audit timing diagnostics.
+def _fetch_locale_with_slot(
+    package_name: str,
+    language: str,
+    country: str,
+    config: Any,
+    request_slots: threading.Semaphore,
+    pause_event: threading.Event | None,
+    cancel_event: threading.Event | None,
+) -> dict[str, Any] | None:
+    """Run one Store locale request without exceeding the normal worker ceiling."""
+    while True:
+        if not device_metadata._wait_until_running(pause_event, cancel_event):
+            return None
+        if not request_slots.acquire(timeout=0.10):
+            continue
+        if cancel_event is not None and cancel_event.is_set():
+            request_slots.release()
+            return None
+        if pause_event is not None and not pause_event.is_set():
+            request_slots.release()
+            continue
+        break
 
-    The wrappers preserve Store and ADB behaviour and record only aggregate
-    timings/counts in the existing local activity log. Package names are never
-    included in these diagnostic lines.
+    try:
+        return device_metadata.core._fetch_locale(package_name, language, country, config)
+    finally:
+        request_slots.release()
+
+
+def _fetch_app_bounded(
+    app_name: str,
+    package_name: str,
+    config: Any,
+    request_slots: threading.Semaphore,
+    fallback_executor: ThreadPoolExecutor,
+    pause_event: threading.Event | None = None,
+    cancel_event: threading.Event | None = None,
+) -> dict[str, Any] | None:
+    """Fetch one app while parallelising only negative multi-country verification.
+
+    Alternative markets are evaluated in small ordered batches. The batch calls
+    may run concurrently, but the first available market is still chosen by the
+    configured market order. A shared semaphore keeps total in-flight Store
+    locale requests at or below the existing audit worker ceiling.
     """
+    if not device_metadata._wait_until_running(pause_event, cancel_event):
+        return None
+
+    selected = str(getattr(config, "country", "") or "").lower()
+    primary = _fetch_locale_with_slot(
+        package_name,
+        str(getattr(config, "language", "") or ""),
+        selected,
+        config,
+        request_slots,
+        pause_event,
+        cancel_event,
+    )
+    if primary is None or (cancel_event is not None and cancel_event.is_set()):
+        return None
+
+    result: dict[str, Any] = {
+        "app_name": app_name,
+        "package_name": package_name,
+        "play_status": primary.get("status", "check_failed"),
+        "play_http_status": primary.get("http_status", ""),
+        "play_title": primary.get("title", ""),
+        "play_last_update": primary.get("updated", ""),
+        "play_version": primary.get("version", ""),
+        "updated_source": primary.get("source", ""),
+        "store_url": primary.get(
+            "url", f"{device_metadata.core.PLAY_URL}?id={package_name}"
+        ),
+        "notes": primary.get("notes", ""),
+    }
+
+    primary_status = str(primary.get("status") or "")
+    markets = device_metadata.get_fallback_countries(selected)
+
+    # Healthy listings keep the proven sequential metadata-completion path.
+    # The measured slow tail is the negative multi-country verification path.
+    if primary_status == "available":
+        if result["play_last_update"] and result["play_version"]:
+            return result
+        for country in markets:
+            alternative = _fetch_locale_with_slot(
+                package_name,
+                "en",
+                country,
+                config,
+                request_slots,
+                pause_event,
+                cancel_event,
+            )
+            if alternative is None:
+                return None
+            if str(alternative.get("status") or "") != "available":
+                continue
+            if not result["play_last_update"] and alternative.get("updated"):
+                result["play_last_update"] = alternative.get("updated", "")
+                result["updated_source"] = (
+                    f"{alternative.get('source', '')}_fallback_locale".strip("_")
+                )
+            if not result["play_version"] and alternative.get("version"):
+                result["play_version"] = alternative.get("version", "")
+            if not result["play_title"] and alternative.get("title"):
+                result["play_title"] = alternative.get("title", "")
+            result["notes"] = device_metadata._append_note(
+                result["notes"], "missing_metadata_completed_from_fallback_market"
+            )
+            break
+        return result
+
+    checked: list[str] = []
+    failed: list[str] = []
+    batch_size = max(1, min(FALLBACK_BATCH_SIZE, len(markets) or 1))
+
+    for start in range(0, len(markets), batch_size):
+        if not device_metadata._wait_until_running(pause_event, cancel_event):
+            return None
+        batch = markets[start : start + batch_size]
+        futures = [
+            (
+                country,
+                fallback_executor.submit(
+                    _fetch_locale_with_slot,
+                    package_name,
+                    "en",
+                    country,
+                    config,
+                    request_slots,
+                    pause_event,
+                    cancel_event,
+                ),
+            )
+            for country in batch
+        ]
+
+        for index, (country, future) in enumerate(futures):
+            alternative = future.result()
+            if alternative is None:
+                for _later_country, later_future in futures[index + 1 :]:
+                    later_future.cancel()
+                return None
+
+            checked.append(country)
+            alt_status = str(alternative.get("status") or "")
+            if alt_status == "available":
+                for _later_country, later_future in futures[index + 1 :]:
+                    later_future.cancel()
+                if primary_status == "not_found_or_unavailable":
+                    result["play_status"] = "available_in_other_country"
+                    note = (
+                        f"selected_country_unavailable:{selected}; available_in:{country}; "
+                        f"multi_country_checked:{','.join(checked)}"
+                    )
+                else:
+                    result["play_status"] = "available"
+                    note = (
+                        f"primary_country_check_failed:{selected}; fallback_available:{country}; "
+                        f"multi_country_checked:{','.join(checked)}"
+                    )
+                result["play_http_status"] = alternative.get("http_status", "")
+                result["play_title"] = alternative.get("title", "") or result["play_title"]
+                result["play_last_update"] = (
+                    alternative.get("updated", "") or result["play_last_update"]
+                )
+                result["play_version"] = alternative.get("version", "") or result["play_version"]
+                source = str(alternative.get("source") or "")
+                result["updated_source"] = (
+                    f"{source}_multi_country" if source else result["updated_source"]
+                )
+                result["store_url"] = alternative.get("url", "") or result["store_url"]
+                result["notes"] = device_metadata._append_note(result["notes"], note)
+                return result
+            if alt_status != "not_found_or_unavailable":
+                failed.append(f"{country}:{alt_status or 'unknown'}")
+
+    checked_text = ",".join(checked)
+    if not checked:
+        result["play_status"] = "multi_country_check_inconclusive"
+        result["notes"] = device_metadata._append_note(
+            result["notes"], "no_fallback_countries_configured"
+        )
+    elif primary_status == "not_found_or_unavailable" and not failed:
+        result["play_status"] = "not_found_in_checked_countries"
+        result["notes"] = device_metadata._append_note(
+            result["notes"],
+            f"selected_country_unavailable:{selected}; also_not_found_in:{checked_text}; "
+            "likely_removed_or_region_restricted",
+        )
+    else:
+        result["play_status"] = "multi_country_check_inconclusive"
+        result["notes"] = device_metadata._append_note(
+            result["notes"],
+            f"primary_country_status:{primary_status or 'unknown'}; "
+            f"multi_country_checked:{checked_text}; check_errors:{','.join(failed)}",
+        )
+    return result
+
+
+def _audit_apps_bounded(
+    apps: list[dict[str, str]],
+    config: Any,
+    progress_callback: Callable[[int, int, str], None] | None = None,
+    pause_event: threading.Event | None = None,
+    cancel_event: threading.Event | None = None,
+) -> list[dict[str, Any]]:
+    """Run the normal audit with bounded parallel fallback-country batches."""
+    device_metadata.install_core_version_support()
+    worker_limit = max(1, int(getattr(config, "max_workers", 1)))
+    request_slots = threading.Semaphore(worker_limit)
+    results: list[dict[str, Any] | None] = [None] * len(apps)
+
+    with ThreadPoolExecutor(
+        max_workers=worker_limit, thread_name_prefix="playstore-fallback"
+    ) as fallback_executor:
+
+        def run_one(app: dict[str, str]) -> dict[str, Any] | None:
+            if not device_metadata._wait_until_running(pause_event, cancel_event):
+                return None
+            return _fetch_app_bounded(
+                app["app_name"],
+                app["package_name"],
+                config,
+                request_slots,
+                fallback_executor,
+                pause_event=pause_event,
+                cancel_event=cancel_event,
+            )
+
+        with ThreadPoolExecutor(
+            max_workers=worker_limit, thread_name_prefix="playstore-app"
+        ) as executor:
+            futures = {executor.submit(run_one, app): index for index, app in enumerate(apps)}
+            completed = 0
+            for future in as_completed(futures):
+                index = futures[future]
+                app = apps[index]
+                if cancel_event is not None and cancel_event.is_set():
+                    for pending in futures:
+                        pending.cancel()
+                try:
+                    row = future.result()
+                    if row is None:
+                        continue
+                    results[index] = row
+                except Exception as exc:
+                    if cancel_event is not None and cancel_event.is_set():
+                        continue
+                    results[index] = {
+                        "app_name": app["app_name"],
+                        "package_name": app["package_name"],
+                        "play_status": "unexpected_error",
+                        "play_http_status": "",
+                        "play_title": "",
+                        "play_last_update": "",
+                        "play_version": "",
+                        "updated_source": "",
+                        "store_url": f"{device_metadata.core.PLAY_URL}?id={app['package_name']}",
+                        "notes": str(exc)[:500],
+                    }
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, len(apps), app["package_name"])
+
+    return [row for row in results if row is not None]
+
+
+def install_performance_diagnostics() -> None:
+    """Install aggregate timings plus the bounded negative-fallback scheduler."""
     global _INSTALLED
     if _INSTALLED:
         return
 
     original_fetch_locale = device_metadata.core._fetch_locale
-    original_audit_apps = device_metadata.audit_apps_v8
     original_collect_metadata = device_insights.collect_device_metadata_v9
 
     def measured_fetch_locale(
@@ -121,7 +387,7 @@ def install_performance_diagnostics() -> None:
         started = time.perf_counter()
         result = "success"
         try:
-            return original_audit_apps(
+            return _audit_apps_bounded(
                 apps,
                 config,
                 progress_callback,
