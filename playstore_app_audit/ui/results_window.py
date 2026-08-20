@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
-import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.services.state as state
+import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
