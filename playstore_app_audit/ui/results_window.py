@@ -25,6 +25,7 @@ import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.table_window as table_ui
 from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.ui.file_menu import add_result_actions
 
 
 def _find_layout_containing(layout, target_widget):
@@ -248,18 +249,14 @@ class ResultsWindow(menu_ui.MenuWindow):
             "Export current phone package list as CSV…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
-        self.file_menu.addAction("Run Play Store audit", self._start_audit)
-        self.file_menu.addAction("Clear current results", self._clear_results)
-        self.file_menu.addSeparator()
-        self.file_export_results_menu = self.file_menu.addMenu("Export results")
-        self.file_export_results_menu.addAction("Export all results as CSV…", self._export_results)
-        self.file_export_results_menu.addAction(
-            "Export visible results as CSV…", self._export_visible_results
-        )
-        self.file_export_results_menu.addSeparator()
-        self.file_export_results_menu.addAction("Export all results as HTML…", self._export_html_report)
-        self.file_export_results_menu.addAction(
-            "Export visible results as HTML…", self._export_visible_html_report
+        self.file_export_results_menu = add_result_actions(
+            self.file_menu,
+            run_audit=self._start_audit,
+            export_all_csv=self._export_results,
+            export_visible_csv=self._export_visible_results,
+            clear_results=self._clear_results,
+            export_all_html=self._export_html_report,
+            export_visible_html=self._export_visible_html_report,
         )
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
