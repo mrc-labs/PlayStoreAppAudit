@@ -7,11 +7,11 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+import playstore_app_audit.ui.compact_window as compact_window
 from playstore_app_audit import __version__
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.services.performance_diagnostics import install_performance_diagnostics
 from playstore_app_audit.services.store_path_diagnostics import install_store_path_diagnostics
-import playstore_app_audit.ui.compact_window as compact_window
 from playstore_app_audit.ui.main_window import MainWindow
 
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
