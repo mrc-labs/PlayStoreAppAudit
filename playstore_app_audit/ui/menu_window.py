@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtGui import QAction, QActionGroup, QIcon
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtGui import QAction, QActionGroup, QFont, QFontMetrics, QIcon
+from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QStyle
 
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
@@ -116,6 +116,28 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
 
+    @staticmethod
+    def _fit_status_chip_to_selected_text(button: QPushButton) -> None:
+        selected_font = QFont(button.font())
+        selected_font.setBold(True)
+        metrics = QFontMetrics(selected_font)
+        margins = button.contentsMargins()
+        style = button.style()
+        button_margin = max(
+            0, style.pixelMetric(QStyle.PixelMetric.PM_ButtonMargin, None, button)
+        )
+        frame_width = max(
+            0, style.pixelMetric(QStyle.PixelMetric.PM_DefaultFrameWidth, None, button)
+        )
+        required_width = (
+            metrics.horizontalAdvance(button.text())
+            + margins.left()
+            + margins.right()
+            + 2 * button_margin
+            + 2 * frame_width
+        )
+        button.setMinimumWidth(required_width)
+
     def _update_summary(self) -> None:
         if not hasattr(self, "summary_label"):
             return
@@ -128,6 +150,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if hasattr(self, "criticality_buttons"):
             for key, button in self.criticality_buttons.items():
                 button.setText(f"{criticality[key]['button']} {counts[key]}")
+                self._fit_status_chip_to_selected_text(button)
         visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
         self.summary_label.setText(presentation.concise_summary(list(self.current_rows), visible))
 

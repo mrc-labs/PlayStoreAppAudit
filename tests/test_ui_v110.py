@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import pytest
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
 import playstore_app_audit.services.device_insights as device_insights
@@ -159,6 +160,25 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     assert clear_calls == [created, created]
     created.close()
     app.processEvents()
+
+
+def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> None:
+    rows = [
+        {"package_name": f"com.example.removed{index}", "criticality_key": "red"}
+        for index in range(125)
+    ]
+    window.current_rows = rows
+    window.model.set_rows(rows)
+    window._update_summary()
+
+    button = window.criticality_buttons["red"]
+    button.setChecked(True)
+    selected_font = QFont(button.font())
+    selected_font.setBold(True)
+    text_width = QFontMetrics(selected_font).horizontalAdvance(button.text())
+
+    assert button.text().endswith("125")
+    assert button.minimumWidth() > text_width
 
 
 def test_main_export_button_and_clear_controls_remain_available(window: MainWindow) -> None:
