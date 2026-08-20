@@ -52,6 +52,20 @@ def _clear_layout_keep_widgets(layout, keep: set[object]) -> None:
             widget.deleteLater()
 
 
+def _device_source_identity(summary: dict[str, Any]) -> str:
+    manufacturer = str(summary.get("manufacturer") or "").strip()
+    model = str(summary.get("model") or "").strip()
+    name = " ".join(part for part in (manufacturer, model) if part)
+
+    android_version = str(summary.get("android_version") or "").strip()
+    android_api = str(summary.get("android_api") or "").strip()
+    android = f"Android {android_version}" if android_version else ""
+    if android_api:
+        android = f"{android} (API {android_api})" if android else f"Android API {android_api}"
+
+    return " • ".join(part for part in (name, android) if part)
+
+
 class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
     NUMERIC_SORT_COLUMNS = frozenset(
         {
@@ -190,7 +204,31 @@ class ResultsWindow(menu_ui.MenuWindow):
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
         super()._on_adb_scan_done(apps, system_packages)
+        self._enrich_device_source_label()
         self._sync_phone_package_export_actions()
+
+    def _enrich_device_source_label(self) -> None:
+        summary = getattr(self, "_device_summary", {})
+        if not isinstance(summary, dict):
+            return
+        identity = _device_source_identity(summary)
+        if not identity:
+            return
+
+        current = self.source_label.text().strip()
+        details = current.removeprefix("Phone scan:").strip()
+        self.source_label.setText(
+            f"Phone scan: {identity} • {details}" if details else f"Phone scan: {identity}"
+        )
+
+        tooltip = [f"Device: {identity}"]
+        patch = str(summary.get("security_patch") or "").strip()
+        if patch:
+            tooltip.append(f"Security patch: {patch}")
+        serial = str(summary.get("serial_masked") or "").strip()
+        if serial:
+            tooltip.append(f"Serial: {serial}")
+        self.source_label.setToolTip("\n".join(tooltip))
 
     def _sync_phone_package_export_actions(self) -> None:
         available = bool(self.device_apps_all)
