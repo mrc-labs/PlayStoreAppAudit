@@ -298,7 +298,7 @@ class PreferencesWindow(table_ui.TableWindow):
         form.addRow("Store language", language)
         form.addRow("Fallback Store countries", fallback)
         fallback_note = QLabel(
-            "Comma/space separated country codes. Used only if the selected Store country is unavailable or inconclusive."
+            "Comma/space separated country codes. Used only if the selected Store country is unavailable or inconclusive. Adding many fallback countries can significantly increase audit time for apps that require regional verification."
         )
         fallback_note.setWordWrap(True)
         form.addRow("", fallback_note)
