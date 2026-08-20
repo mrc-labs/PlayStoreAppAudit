@@ -85,7 +85,10 @@ class AuditWindow(BaseWindow):
         source_layout.addLayout(source_line)
 
         self.exclude_system_source_check = QCheckBox("Exclude system apps when loading / scanning")
-        self.exclude_system_source_check.setChecked(False)
+        source_settings = getattr(self, "user_settings", {})
+        self.exclude_system_source_check.setChecked(
+            bool(source_settings.get("exclude_system_source", True))
+        )
         self.exclude_system_source_check.setToolTip(
             "ADB: load third-party packages only. CSV: remove packages classified as system while loading. "
             "Leave disabled to load everything and use 'Hide system apps' only as a table filter."
