@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,6 +21,8 @@ import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.menu_window as menu_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
+import playstore_app_audit.ui.table_window as table_ui
 from playstore_app_audit.resources import ensure_runtime_icon
 
 
@@ -48,12 +50,61 @@ def _clear_layout_keep_widgets(layout, keep: set[object]) -> None:
             widget.deleteLater()
 
 
+class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
+    NUMERIC_SORT_COLUMNS = frozenset(
+        {
+            "age_days",
+            "target_sdk",
+            "min_sdk",
+            "sensitive_permissions_count",
+            "health_score",
+        }
+    )
+
+    @staticmethod
+    def _numeric_sort_value(value: object) -> float:
+        if value is None:
+            return -1.0
+        text = str(value).strip()
+        if not text:
+            return -1.0
+        try:
+            return float(text)
+        except (TypeError, ValueError):
+            return -1.0
+
+    def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
+        model = self.sourceModel()
+        if isinstance(model, table_ui.AuditTableModel) and 0 <= left.column() < len(model.columns):
+            column = model.columns[left.column()]
+            if column in self.NUMERIC_SORT_COLUMNS:
+                left_row = model.row_dict(left.row())
+                right_row = model.row_dict(right.row())
+                return self._numeric_sort_value(left_row.get(column)) < self._numeric_sort_value(
+                    right_row.get(column)
+                )
+        return super().lessThan(left, right)
+
+
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         super().__init__()
+        self._install_numeric_sort_proxy()
         self._setup_export_button_menu()
         self._rebuild_file_menu()
         self._update_summary()
+
+    def _install_numeric_sort_proxy(self) -> None:
+        old_proxy = self.proxy
+        proxy = NumericAuditFilterProxy()
+        proxy.setSourceModel(self.model)
+        proxy.set_query(self.search_edit.text())
+        proxy.set_hide_system(self.hide_system_check.isChecked())
+        proxy.set_status_filters(self._status_filters)
+        self.proxy = proxy
+        self.table.setModel(proxy)
+        old_proxy.deleteLater()
+        self._apply_column_visibility(reset_order=False)
 
     # ---------- Source UX ----------
     def _choice_row(self, text: str, button) -> QHBoxLayout:
