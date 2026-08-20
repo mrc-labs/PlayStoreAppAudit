@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
@@ -44,6 +45,8 @@ class MainWindow(results_ui.ResultsWindow):
     def __init__(self) -> None:
         self._audit_cached_count = 0
         self._audit_live_count = 0
+        self._audit_started_at: float | None = None
+        self._audit_pre_finalize_seconds: float | None = None
         self._finalizing_session: int | None = None
         super().__init__()
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
@@ -263,10 +266,13 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _start_audit(self) -> None:
         was_active = self._audit_active
+        started_at = time.perf_counter() if not was_active else None
         super()._start_audit()
         if was_active or not self._audit_active:
             return
 
+        self._audit_started_at = started_at
+        self._audit_pre_finalize_seconds = None
         self._audit_cached_count = max(0, self.progress.value())
         total = max(0, self.progress.maximum())
         self._audit_live_count = max(0, total - self._audit_cached_count)
@@ -299,7 +305,17 @@ class MainWindow(results_ui.ResultsWindow):
         session, _rows, error, cached_count, live_count = payload  # type: ignore[misc]
         if session != self._audit_session:
             return
+        if self._audit_started_at is not None:
+            self._audit_pre_finalize_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
         if error:
+            if self._audit_pre_finalize_seconds is not None:
+                device_insights.log_event(
+                    "audit_performance "
+                    f"result=error pre_finalize_s={self._audit_pre_finalize_seconds:.3f} "
+                    f"cached={cached_count} live={live_count} source={self.source_mode or 'unknown'}"
+                )
+            self._audit_started_at = None
+            self._audit_pre_finalize_seconds = None
             super()._on_controlled_done(payload)
             return
 
@@ -317,12 +333,35 @@ class MainWindow(results_ui.ResultsWindow):
         QTimer.singleShot(0, lambda: self._complete_controlled_done(payload))
 
     def _complete_controlled_done(self, payload: object) -> None:
-        session = payload[0]  # type: ignore[index]
+        session, _rows, _error, cached_count, live_count = payload  # type: ignore[misc]
         if session != self._audit_session or self._finalizing_session != session:
             return
         self._finalizing_session = None
+        finalize_started = time.perf_counter()
         super()._on_controlled_done(payload)
+        finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
         self._restore_device_source_identity()
+
+        if self._audit_started_at is not None:
+            total_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
+            pre_finalize_seconds = self._audit_pre_finalize_seconds or 0.0
+            status_counts: dict[str, int] = {}
+            for row in self.current_rows:
+                status = str(row.get("play_status") or "unknown")
+                status_counts[status] = status_counts.get(status, 0) + 1
+            statuses = ",".join(
+                f"{status}:{count}" for status, count in sorted(status_counts.items())
+            ) or "none"
+            device_insights.log_event(
+                "audit_performance "
+                f"result=success total_s={total_seconds:.3f} "
+                f"pre_finalize_s={pre_finalize_seconds:.3f} "
+                f"finalize_s={finalize_seconds:.3f} packages={len(self.current_rows)} "
+                f"cached={cached_count} live={live_count} workers={self.workers_spin.value()} "
+                f"source={self.source_mode or 'unknown'} statuses={statuses}"
+            )
+        self._audit_started_at = None
+        self._audit_pre_finalize_seconds = None
 
     # ---------- Cross-platform ADB ----------
     def _find_adb(self) -> str | None:
