@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import playstore_app_audit.services.performance_diagnostics as diagnostics
+import playstore_app_audit.services.play_store as play_store
 
 
 def _locale_result(status: str, country: str) -> dict[str, object]:
@@ -20,6 +20,8 @@ def _locale_result(status: str, country: str) -> dict[str, object]:
         "source": "test" if status == "available" else "",
         "url": f"https://example.invalid/{country}",
         "notes": "",
+        "language": "en",
+        "country": country,
     }
 
 
@@ -27,9 +29,7 @@ def test_negative_fallback_batches_preserve_configured_market_priority(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = SimpleNamespace(country="ch", language="de", max_workers=4)
-    monkeypatch.setattr(
-        diagnostics.device_metadata, "get_fallback_countries", lambda _selected: ("us", "gb", "de")
-    )
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb", "de"))
     de_started = threading.Event()
 
     def fake_fetch(_package: str, _language: str, country: str, _config: object):
@@ -45,10 +45,10 @@ def test_negative_fallback_batches_preserve_configured_market_priority(
             return _locale_result("available", country)
         raise AssertionError(country)
 
-    monkeypatch.setattr(diagnostics.device_metadata.core, "_fetch_locale", fake_fetch)
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
 
     with ThreadPoolExecutor(max_workers=4) as fallback_executor:
-        row = diagnostics._fetch_app_bounded(
+        row = play_store._fetch_app_bounded(
             "Example",
             "com.example.app",
             config,
@@ -67,9 +67,7 @@ def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = SimpleNamespace(country="ch", language="de", max_workers=4)
-    monkeypatch.setattr(
-        diagnostics.device_metadata, "get_fallback_countries", lambda _selected: ("us", "gb", "de")
-    )
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb", "de"))
 
     lock = threading.Lock()
     active = 0
@@ -95,13 +93,13 @@ def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
                 fallback_active -= 1
         return _locale_result("not_found_or_unavailable", country)
 
-    monkeypatch.setattr(diagnostics.device_metadata.core, "_fetch_locale", fake_fetch)
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
 
     apps = [
         {"app_name": f"App {index}", "package_name": f"com.example.app{index}"}
         for index in range(4)
     ]
-    rows = diagnostics._audit_apps_bounded(apps, config)
+    rows = play_store.audit_apps(apps, config)
 
     assert [row["package_name"] for row in rows] == [app["package_name"] for app in apps]
     assert all(row["play_status"] == "not_found_in_checked_countries" for row in rows)
@@ -115,17 +113,15 @@ def test_regional_verification_emits_live_progress_without_regressing_app_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = SimpleNamespace(country="ch", language="de", max_workers=2)
-    monkeypatch.setattr(
-        diagnostics.device_metadata, "get_fallback_countries", lambda _selected: ("us", "gb")
-    )
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb"))
 
     def fake_fetch(_package: str, _language: str, country: str, _config: object):
         return _locale_result("not_found_or_unavailable", country)
 
-    monkeypatch.setattr(diagnostics.device_metadata.core, "_fetch_locale", fake_fetch)
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
     progress: list[tuple[int, int, str]] = []
 
-    rows = diagnostics._audit_apps_bounded(
+    rows = play_store.audit_apps(
         [{"app_name": "Example", "package_name": "com.example.app"}],
         config,
         lambda done, total, text: progress.append((done, total, text)),
@@ -151,9 +147,9 @@ def test_healthy_complete_listing_does_not_schedule_fallbacks(
         calls.append(country)
         return _locale_result("available", country)
 
-    monkeypatch.setattr(diagnostics.device_metadata.core, "_fetch_locale", fake_fetch)
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
 
-    rows = diagnostics._audit_apps_bounded(
+    rows = play_store.audit_apps(
         [{"app_name": "Example", "package_name": "com.example.app"}], config
     )
 
