@@ -4,46 +4,53 @@ Last updated: 2026-08-21
 
 ## Published release
 
-- Latest published version: `v1.4.0`
-- Immutable release commit: `6830e0c4a03e355f442070f00dd5008322f5dbc4`
+- Latest published version: `v1.5.0`
+- Immutable release commit: `6f00bea0789874bc6339286a2ffc3eb9cb2891bb`
 - Release class: Engineering Test Build (ETB), Windows x64 only
-- Public assets: exactly 3
+- Public assets: exactly 3 project-defined release assets
 - Signing: intentionally unsigned
+- GitHub Release title: `Play Store App Audit v1.5.0 (ETB Win x64)`
 
-Published v1.4.0 must never be rebuilt, retagged, rewritten or have its assets replaced. Previous v1.3.0 is also published and immutable at `fb2193dfc13d0f0e6b7be660c1342bbf87d26081`.
+Published v1.5.0 is immutable. Do not rebuild, retag, rewrite or replace its published commit, tag or assets. Earlier published releases remain immutable as well.
 
-## Current v1.5 baseline
+## v1.5 release evidence
 
-- Canonical application version on the release-hardening candidate: `1.5.0`
+The v1.5.0 release was built, assembled and published from one exact frozen `main` SHA: `6f00bea0789874bc6339286a2ffc3eb9cb2891bb`.
+
+Release gates and evidence:
+
+- post-merge Quality push run: `32438975177`, successful on the frozen SHA with Python 3.13 and 3.14;
+- Windows x64 build run: `32443253472`, successful on the same frozen SHA;
+- engineering release assembly run: `32446825765`, successful on the same frozen SHA;
+- final public release asset set: exactly three project-defined files;
+- published release verified as non-draft, non-prerelease and latest at publication time;
+- published `v1.5.0` tag resolves to the frozen SHA;
+- published assets were downloaded again after release and independently SHA-256 verified against `SHA256SUMS.txt`.
+
+Published project-defined assets:
+
+- `PlayStoreAppAudit-v1.5.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+Final SHA-256 values:
+
+- Windows x64 ZIP: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`
+- third-party source archive: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`
+
+## v1.5 baseline
+
+- Canonical application version: `1.5.0`
 - Packaging Python: 3.13
 - Quality Python: 3.13 + 3.14
 - `PySide6-Essentials`: 6.11.1
 - Nuitka: 4.1.3
 - UI: Qt Widgets using the platform/default QStyle
 - Managed ADB behaviour: read-only with respect to installed Android apps
-- Default/recommended concurrent Store workers for v1.5: **16**
+- Default/recommended concurrent Store workers: **16**
 - Advanced worker range: 4 to 32
 - HTML Store timeout: 25 seconds
 - `google-play-scraper` transport timeout: 25 seconds
-
-## v1.5 release profile
-
-`v1.5.0` is an unsigned Windows x64-only Engineering Test Build.
-
-- one exact frozen `main` SHA
-- Windows x64 only
-- no Windows ARM64, Linux or macOS v1.5 release candidates
-- no signing spend
-- build workflow: `.github/workflows/build-windows-exe.yml` with `target=x64`
-- assembler: `.github/workflows/assemble-windows-engineering-release.yml`
-- release title suffix: `(ETB Win x64)`
-- release body heading: `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`
-- exactly three public assets:
-  - `PlayStoreAppAudit-v1.5.0-windows-x64.zip`
-  - `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`
-  - `SHA256SUMS.txt`
-
-The broader Windows/Linux/macOS x64/ARM64 production profile and production signing remain v1.6 work.
 
 ## v1.5 product work completed
 
@@ -94,33 +101,24 @@ Measured full-refresh checkpoints with 333 live packages and the same final clas
 | 20 | 170.657 s | slightly slower than 16 |
 | 24 | 171.166 s | slower with materially higher request latency |
 
-The separate 14-vs-16 cooldown repeat is deliberately deferred to the next release. Users can already test alternative values through Advanced settings, so v1.5 does not need further benchmark-only rebuilds.
+The deferred 14-vs-16 cooldown repeat is not required to close v1.5. The v1.5 default remains 16 unless a later development cycle deliberately reopens the benchmark question.
 
 Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
 
 ## Deferred architecture cleanup
 
-Two deeper refactors are intentionally deferred rather than introduced immediately before the v1.5 freeze:
+Two deeper refactors were intentionally deferred from v1.5 and remain valid next-cycle work:
 
-- moving the bounded fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service;
-- consolidating the terminal NotFound retry implementation so the base and device-enriched Store paths cannot drift.
+- move the bounded fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service;
+- consolidate terminal NotFound retry handling so the base and device-enriched Store paths cannot drift.
 
-Both touch validated production Store behaviour. Perform them in the next development cycle with focused semantic regression tests and fresh device benchmarks.
+Both touch validated Store behaviour. Perform them with focused semantic regression tests and fresh device validation.
 
-## Remaining v1.5 release steps
+## Post-v1.5 planning handoff
 
-No additional product feature is planned before v1.5. The final icon-retention correction is the last pre-freeze product fix.
+v1.5 is complete. Future release scope, feature priorities and explicit out-of-scope items should be maintained in this status document and the durable project-decision documents rather than reconstructed from chat history.
 
-After this correction merges:
-
-1. require post-merge Quality validation;
-2. freeze one exact `main` SHA;
-3. prepare strict legal/source material from that SHA;
-4. build Windows x64 from that same SHA;
-5. assemble and validate the exact three-file ETB release set;
-6. publish without modifying the frozen SHA, tag or assets afterward.
-
-Heavy package builds start only after the correction is merged and the candidate SHA is frozen.
+The detailed next-release backlog will be normalized in a separate post-release planning change. This v1.5 closure does not itself redefine the future release profile.
 
 ## Durable release invariants
 
@@ -133,4 +131,4 @@ Heavy package builds start only after the correction is merged and the candidate
 - If source or release tooling changes after a release SHA is frozen, discard and rebuild all candidates required by that release profile from the new SHA.
 - GitHub Release assets are permanent and outside automated Actions artifact cleanup.
 
-See `PROJECT_DECISIONS.md`, `BUILDING.md` and `CI_MAINTENANCE.md` for durable policy and procedures.
+See `PROJECT_DECISIONS.md`, `BUILDING.md`, `RELEASE_NOTES.md` and `CI_MAINTENANCE.md` for durable policy and procedures.
