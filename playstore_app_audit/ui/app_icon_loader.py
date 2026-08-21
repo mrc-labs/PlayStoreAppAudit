@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict, deque
 from dataclasses import dataclass
 
-from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QUrl, Signal
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
@@ -37,11 +37,51 @@ class _IconRequest:
         return (self.package_name, self.url, self.play_last_update)
 
 
+class _DiskSignals(QObject):
+    loaded = Signal(object, object)
+
+
+class _DiskLoadTask(QRunnable):
+    def __init__(self, item: _IconRequest, signals: _DiskSignals) -> None:
+        super().__init__()
+        self._item = item
+        self._signals = signals
+
+    def run(self) -> None:
+        data = load_cached_icon_bytes(
+            self._item.package_name,
+            self._item.url,
+            self._item.play_last_update,
+        )
+        self._signals.loaded.emit(self._item, data)
+
+
+class _DiskStoreTask(QRunnable):
+    def __init__(self, item: _IconRequest, data: bytes) -> None:
+        super().__init__()
+        self._item = item
+        self._data = data
+
+    def run(self) -> None:
+        try:
+            store_cached_icon_bytes(
+                self._item.package_name,
+                self._item.url,
+                self._item.play_last_update,
+                self._data,
+            )
+        except OSError:
+            # Disk persistence is only an optimization. Rendering can continue
+            # from the bounded in-memory cache if local storage is unavailable.
+            pass
+
+
 class AppIconLoader(QObject):
     """Lazy icon loader with bounded RAM plus long-lived disk reuse.
 
-    Decoded QIcon objects remain bounded to the current session. Raw image bytes
-    are persisted separately and reused until a later Store fetch reports a
+    The table never waits for icon I/O. Decoded QIcon objects remain bounded to
+    the current session, while raw image bytes are loaded/stored on a dedicated
+    single-thread disk queue and reused until a later Store fetch reports a
     different play_last_update value. If no update marker exists, URL equality
     is used as the conservative fallback invalidation rule.
     """
@@ -65,6 +105,13 @@ class AppIconLoader(QObject):
         self._failed: set[tuple[str, str, str]] = set()
         self._cache: OrderedDict[tuple[str, str, str], QIcon] = OrderedDict()
 
+        # A single worker keeps index.json reads/writes serialized while making
+        # all persistent-cache file I/O independent from Qt table painting.
+        self._disk_pool = QThreadPool(self)
+        self._disk_pool.setMaxThreadCount(1)
+        self._disk_signals = _DiskSignals(self)
+        self._disk_signals.loaded.connect(self._on_disk_loaded)
+
     def icon_for_row(
         self,
         package_name: object,
@@ -83,20 +130,31 @@ class AppIconLoader(QObject):
             self._cache.move_to_end(item.key)
             return icon
 
-        persisted = load_cached_icon_bytes(package, url, update)
-        if persisted:
-            pixmap = QPixmap()
-            if pixmap.loadFromData(persisted) and not pixmap.isNull():
-                icon = QIcon(pixmap)
-                self._remember_in_memory(item.key, icon)
-                return icon
-
         if item.key in self._failed or item.key in self._pending:
             return None
+
+        # Return immediately so the table can paint and remain interactive.
+        # Disk lookup happens asynchronously; only a cache miss reaches network.
         self._pending.add(item.key)
+        self._disk_pool.start(_DiskLoadTask(item, self._disk_signals))
+        return None
+
+    def _on_disk_loaded(self, item: _IconRequest, data: bytes | None) -> None:
+        if item.key not in self._pending:
+            return
+
+        if data:
+            pixmap = QPixmap()
+            if pixmap.loadFromData(data) and not pixmap.isNull():
+                self._remember_in_memory(item.key, QIcon(pixmap))
+                self._pending.discard(item.key)
+                self.icon_ready.emit(item.url)
+                return
+
+        # Cache miss or unreadable image. Keep the request marked pending and
+        # continue asynchronously through the bounded network queue.
         self._queued.append(item)
         self._pump()
-        return None
 
     def _remember_in_memory(self, key: tuple[str, str, str], icon: QIcon) -> None:
         self._cache[key] = icon
@@ -121,19 +179,8 @@ class AppIconLoader(QObject):
                 if data and len(data) <= MAX_ICON_BYTES:
                     pixmap = QPixmap()
                     if pixmap.loadFromData(data) and not pixmap.isNull():
-                        icon = QIcon(pixmap)
-                        self._remember_in_memory(item.key, icon)
-                        try:
-                            store_cached_icon_bytes(
-                                item.package_name,
-                                item.url,
-                                item.play_last_update,
-                                data,
-                            )
-                        except OSError:
-                            # Disk persistence is an optimization. A valid icon
-                            # should still render even if local storage fails.
-                            pass
+                        self._remember_in_memory(item.key, QIcon(pixmap))
+                        self._disk_pool.start(_DiskStoreTask(item, data))
                         self.icon_ready.emit(item.url)
                         return
             self._failed.add(item.key)
