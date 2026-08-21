@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -44,6 +45,27 @@ class StoreLocale:
     source: str
 
 
+_RUNTIME_LOCK = threading.Lock()
+_ACTIVE_DEVICE_LOCALE: StoreLocale | None = None
+
+
+def set_active_device_store_locale(locale: StoreLocale | None) -> None:
+    """Set the locale context for the currently loaded ADB phone source.
+
+    The desktop app has one active source at a time. This process-local context
+    lets cache and background audit threads resolve `auto` consistently without
+    persisting device-specific values as a user preference.
+    """
+    global _ACTIVE_DEVICE_LOCALE
+    with _RUNTIME_LOCK:
+        _ACTIVE_DEVICE_LOCALE = locale
+
+
+def active_device_store_locale() -> StoreLocale | None:
+    with _RUNTIME_LOCK:
+        return _ACTIVE_DEVICE_LOCALE
+
+
 def primary_language_for_country(country: object) -> str:
     code = str(country or "").strip().lower()
     return PRIMARY_LANGUAGE_BY_COUNTRY.get(code, "en")
@@ -51,9 +73,13 @@ def primary_language_for_country(country: object) -> str:
 
 def resolve_store_language(language: object, country: object) -> str:
     value = str(language or "").strip().lower().replace("_", "-")
-    if not value or value == "auto":
-        return primary_language_for_country(country)
-    return value.split("-", 1)[0] or primary_language_for_country(country)
+    if value and value != "auto":
+        return value.split("-", 1)[0] or primary_language_for_country(country)
+
+    device_locale = active_device_store_locale()
+    if device_locale is not None and device_locale.language:
+        return device_locale.language
+    return primary_language_for_country(country)
 
 
 def _normalise_android_locale(value: object) -> tuple[str, str, str] | None:
