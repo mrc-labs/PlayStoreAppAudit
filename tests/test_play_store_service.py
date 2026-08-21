@@ -3,8 +3,8 @@ from __future__ import annotations
 import google_play_scraper
 from google_play_scraper.exceptions import NotFoundError
 
-from playstore_app_audit.services.audit_engine import AuditConfig
 import playstore_app_audit.services.play_store as play_store
+from playstore_app_audit.services.audit_engine import AuditConfig
 
 
 def _result(
