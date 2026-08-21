@@ -38,7 +38,7 @@ Final SHA-256 values:
 - Windows x64 ZIP: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`
 - third-party source archive: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`
 
-## v1.5 baseline
+## Current development baseline
 
 - Canonical application version: `1.5.0`
 - Packaging Python: 3.13
@@ -101,24 +101,43 @@ Measured full-refresh checkpoints with 333 live packages and the same final clas
 | 20 | 170.657 s | slightly slower than 16 |
 | 24 | 171.166 s | slower with materially higher request latency |
 
-The deferred 14-vs-16 cooldown repeat is not required to close v1.5. The v1.5 default remains 16 unless a later development cycle deliberately reopens the benchmark question.
+The 14-vs-16 cooldown repeat is no longer required for the planned v1.6 work. Keep 16 as the default unless a later performance concern deliberately reopens benchmarking. If reopened, a long unattended real-device run is acceptable as long as it remains isolated from product changes and preserves final-classification checks.
 
 Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
 
-## Deferred architecture cleanup
+## Active next-cycle work
 
-Two deeper refactors were intentionally deferred from v1.5 and remain valid next-cycle work:
+The next development cycle starts from the v1.5 baseline. The committed near-term engineering items are:
 
 - move the bounded fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service;
-- consolidate terminal NotFound retry handling so the base and device-enriched Store paths cannot drift.
+- consolidate terminal `NotFoundError` retry/classification handling so base and device-enriched Store paths cannot drift;
+- harden persistent icon-cache disk failure handling;
+- add a configurable app-details panel that can dock right or below the results table;
+- improve previous-audit change visibility;
+- expose country-level availability evidence in the details UX;
+- review whether Store icons should sit beside the Play Store title rather than beside the package name;
+- continue observing experimental icon behaviour before removing the experimental label.
 
-Both touch validated Store behaviour. Perform them with focused semantic regression tests and fresh device validation.
+The current v1.6 release-profile direction is another unsigned Windows x64 ETB, but that profile is not frozen yet.
 
-## Post-v1.5 planning handoff
+## Forward roadmap
 
-v1.5 is complete. Future release scope, feature priorities and explicit out-of-scope items should be maintained in this status document and the durable project-decision documents rather than reconstructed from chat history.
+`ROADMAP.md` is the canonical forward-looking plan. It separates:
 
-The detailed next-release backlog will be normalized in a separate post-release planning change. This v1.5 closure does not itself redefine the future release profile.
+- v1.6 planned direction;
+- v1.7 candidates;
+- v2.0+ production/signing and larger product concepts;
+- open product questions;
+- explicitly rejected ideas.
+
+Important current direction:
+
+- production Windows signing is not planned before v2.0;
+- macOS production signing/notarization is not planned before v2.0;
+- the full six-platform production release is not planned before v2.0;
+- CLI/headless mode is not planned before v2.0;
+- saved profiles, incremental audit, JSON export, SDK/source/signature metadata improvements and richer anomaly diagnostics are v1.7 candidates;
+- LocalAPK-style local APK auditing is a v2.0+ product/architecture exploration, with integration versus companion-app scope still open.
 
 ## Durable release invariants
 
@@ -131,4 +150,4 @@ The detailed next-release backlog will be normalized in a separate post-release 
 - If source or release tooling changes after a release SHA is frozen, discard and rebuild all candidates required by that release profile from the new SHA.
 - GitHub Release assets are permanent and outside automated Actions artifact cleanup.
 
-See `PROJECT_DECISIONS.md`, `BUILDING.md`, `RELEASE_NOTES.md` and `CI_MAINTENANCE.md` for durable policy and procedures.
+See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md` and `CI_MAINTENANCE.md` for durable policy, planning and procedures.
