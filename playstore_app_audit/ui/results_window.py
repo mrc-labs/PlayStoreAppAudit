@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
+import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.menu_window as menu_ui
@@ -104,6 +105,7 @@ class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
 
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
+        self._device_store_locale: store_locale.StoreLocale | None = None
         super().__init__()
         self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
@@ -181,7 +183,9 @@ class ResultsWindow(menu_ui.MenuWindow):
         options.setContentsMargins(0, 2, 0, 0)
         options.setSpacing(8)
         country_label = QLabel("Store country")
-        country_label.setToolTip("Google Play market, detected from Windows Region.")
+        country_label.setToolTip(
+            "Google Play market. A phone scan prefers the Android locale region; file sources keep the selected or desktop-detected market."
+        )
         options.addWidget(country_label)
         self.country_edit.setFixedWidth(58)
         options.addWidget(self.country_edit)
@@ -193,6 +197,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         source_layout.insertLayout(max(0, source_layout.count() - 1), options)
 
     def _load_input_file(self, path: str) -> None:
+        self._device_store_locale = None
+        store_locale.set_active_device_store_locale(None)
         super()._load_input_file(path)
         if self.source_mode == "file":
             text = self.source_label.text()
@@ -200,10 +206,32 @@ class ResultsWindow(menu_ui.MenuWindow):
                 text = text[len("File selected: ") :]
             self.source_label.setText(f"{Path(path).name}  •  {text}")
             self.source_label.setToolTip(path)
+            self.country_edit.setToolTip(
+                "Google Play market for this file audit. Auto language uses the primary language configured for this country."
+            )
         self._sync_phone_package_export_actions()
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
         super()._on_adb_scan_done(apps, system_packages)
+        detected: store_locale.StoreLocale | None = None
+        adb = self._find_adb()
+        if adb:
+            detected = store_locale.detect_android_store_locale(adb)
+        self._device_store_locale = detected
+        store_locale.set_active_device_store_locale(detected)
+        if detected is not None and detected.country:
+            self.country_edit.setText(detected.country)
+            self.country_edit.setToolTip(
+                f"Google Play market inferred from Android system locale {detected.locale}. You can override it manually."
+            )
+        elif detected is not None:
+            self.country_edit.setToolTip(
+                f"Android system language detected as {detected.language}; no region was available, so the existing Store country is kept."
+            )
+        else:
+            self.country_edit.setToolTip(
+                "Android locale could not be read; the existing Store country remains in use."
+            )
         self._enrich_device_source_label()
         self._sync_phone_package_export_actions()
 
@@ -228,6 +256,13 @@ class ResultsWindow(menu_ui.MenuWindow):
         serial = str(summary.get("serial_masked") or "").strip()
         if serial:
             tooltip.append(f"Serial: {serial}")
+        locale = self._device_store_locale
+        if locale is not None:
+            tooltip.append(f"Android system locale: {locale.locale}")
+            tooltip.append(
+                f"Auto Store language: {locale.language}"
+                + (f" • inferred country: {locale.country.upper()}" if locale.country else "")
+            )
         self.source_label.setToolTip("\n".join(tooltip))
 
     def _sync_phone_package_export_actions(self) -> None:
