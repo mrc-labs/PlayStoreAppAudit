@@ -69,9 +69,15 @@ def _format_store_event(result: str, wall_s: float, stats: dict[str, dict[str, A
     )
 
 
-def _locale_role(country: str, config: Any) -> str:
+def _locale_role(country: str, language: str, config: Any) -> str:
     selected_country = str(getattr(config, "country", "") or "").lower()
-    return "primary" if str(country or "").lower() == selected_country else "fallback"
+    selected_language = str(getattr(config, "language", "") or "").lower()
+    return (
+        "primary"
+        if str(country or "").lower() == selected_country
+        and str(language or "").lower() == selected_language
+        else "fallback"
+    )
 
 
 def install_performance_diagnostics() -> None:
@@ -90,7 +96,7 @@ def install_performance_diagnostics() -> None:
         country: str,
         config: Any,
     ) -> dict[str, Any]:
-        role = _locale_role(country, config)
+        role = _locale_role(country, language, config)
         started = time.perf_counter()
         status = "exception"
         try:
