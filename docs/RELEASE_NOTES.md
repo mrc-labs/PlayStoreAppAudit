@@ -302,9 +302,9 @@ The originally published body contained an internal heading that incorrectly sai
 - SHA-256 sidecars are provided for all six packages.
 ```
 
-## v1.5.0 candidate template
+## Published v1.5.0 release body
 
-The final v1.5.0 GitHub Release body must be generated from the actual frozen release SHA and successful build/assembly evidence, then follow this structure:
+The body below records the final v1.5.0 release wording and the successful evidence used for publication. The published tag, source commit and assets are immutable.
 
 ```markdown
 ## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)
@@ -333,21 +333,25 @@ The final v1.5.0 GitHub Release body must be generated from the actual frozen re
 - Engineering Test Build (ETB), Windows x64 only.
 - Windows package intentionally unsigned.
 - Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.5.0.
-- Production signing and the full Windows/Linux/macOS x64/ARM64 release profile remain planned for v1.6.
 - Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
+- Because this package is unsigned, Windows may display a SmartScreen or publisher warning when opening it.
 
 ## Release assets
+This release intentionally contains exactly three project-defined assets:
 - `PlayStoreAppAudit-v1.5.0-windows-x64.zip`
 - `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`
 - `SHA256SUMS.txt`
 
-## Verification
-- Frozen source SHA: `<exact 40-character main SHA>`.
-- Quality CI: Python 3.13 and 3.14.
-- Windows x64 package architecture, version and startup validation passed.
-- Strict legal/source-material validation passed.
-- Engineering release assembler verified source workflow identity, repository, exact SHA, x64-only input, provenance and the exact three-file public asset set.
-- `SHA256SUMS.txt` covers the final public release assets.
-```
+The third-party source archive contains the corresponding source material required for the distributed runtime dependencies.
 
-Replace verification placeholders only with evidence from the final successful release run. Do not publish the candidate wording unchanged before those gates pass.
+## Verification
+- Frozen source SHA: `6f00bea0789874bc6339286a2ffc3eb9cb2891bb`.
+- Quality CI push run `32438975177` passed on the frozen SHA with Python 3.13 and Python 3.14.
+- Windows x64 build run `32443253472` completed successfully from the same frozen SHA.
+- Native Python/PySide6 architecture, project version, static/regression tests, Qt source smoke tests, managed ADB path and Windows standalone package validation passed.
+- Strict release legal/source-material preflight and packaged legal validation passed.
+- Engineering release assembly run `32446825765` verified the source workflow identity, repository, exact SHA, x64-only input and exact three-file public asset set.
+- `PlayStoreAppAudit-v1.5.0-windows-x64.zip` SHA-256: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`.
+- `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz` SHA-256: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`.
+- Independent post-publication SHA-256 calculation matched the published `SHA256SUMS.txt` for both payload assets.
+```
