@@ -116,7 +116,11 @@ class AuditTableModel(base_ui.AppTableModel):
                 return None
             if str(row.get("play_status") or "") not in ICON_STATUSES:
                 return None
-            return self._icon_loader.icon_for_url(row.get("play_icon_url"))
+            return self._icon_loader.icon_for_row(
+                row.get("package_name"),
+                row.get("play_icon_url"),
+                row.get("play_last_update"),
+            )
 
         if role == Qt.ItemDataRole.BackgroundRole:
             return QColor(info["background"])
