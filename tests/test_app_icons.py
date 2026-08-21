@@ -11,8 +11,9 @@ from PySide6.QtWidgets import QApplication
 import playstore_app_audit.services.app_icon_disk_cache as disk_cache
 import playstore_app_audit.services.app_icon_metadata as metadata
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.app_icon_loader as icon_loader_ui
 import playstore_app_audit.ui.table_window as table_ui
-from playstore_app_audit.ui.app_icon_loader import _normalise_icon_url
+from playstore_app_audit.ui.app_icon_loader import AppIconLoader, _normalise_icon_url
 
 
 @pytest.fixture(scope="module")
@@ -98,6 +99,30 @@ def test_loader_url_normalisation_rejects_non_https() -> None:
     assert _normalise_icon_url("https://example.invalid/icon.png")
     assert _normalise_icon_url("http://example.invalid/icon.png") == ""
     assert _normalise_icon_url("") == ""
+
+
+def test_icon_lookup_schedules_disk_io_without_blocking_ui(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loader = AppIconLoader()
+    scheduled: list[object] = []
+
+    def fail_if_called_synchronously(*_args: object) -> bytes | None:
+        raise AssertionError("persistent icon cache read ran synchronously on the UI path")
+
+    monkeypatch.setattr(icon_loader_ui, "load_cached_icon_bytes", fail_if_called_synchronously)
+    loader._disk_pool = SimpleNamespace(start=lambda task: scheduled.append(task))  # type: ignore[assignment]
+
+    result = loader.icon_for_row(
+        "com.example.lazy",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+    )
+
+    assert result is None
+    assert len(scheduled) == 1
+    loader.deleteLater()
+    app.processEvents()
 
 
 def test_persisted_icon_is_reused_while_app_update_is_unchanged(
