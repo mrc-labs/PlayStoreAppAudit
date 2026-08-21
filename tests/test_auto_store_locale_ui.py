@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
@@ -88,5 +88,33 @@ def test_loading_file_clears_phone_language_context(
         assert store_locale.resolve_store_language("auto", "ch") == "de"
     finally:
         store_locale.set_active_device_store_locale(None)
+        window.close()
+        app.processEvents()
+
+
+def test_advanced_settings_explain_and_default_to_auto_language(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window = _window(app, monkeypatch)
+    captured: dict[str, str] = {}
+
+    def inspect_dialog(dialog: QDialog) -> int:
+        language = dialog.findChild(QLineEdit, "StoreLanguageEdit")
+        assert language is not None
+        captured["text"] = language.text()
+        captured["placeholder"] = language.placeholderText()
+        captured["tooltip"] = language.toolTip()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_dialog)
+    try:
+        window._show_advanced_settings()
+        assert captured["text"] == "auto"
+        assert captured["placeholder"].startswith("auto")
+        assert "Android system language" in captured["tooltip"]
+        assert "file audits" in captured["tooltip"]
+        assert "override Auto" in captured["tooltip"]
+    finally:
         window.close()
         app.processEvents()
