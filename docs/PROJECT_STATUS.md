@@ -64,8 +64,10 @@ The v1.5 product and UI workstream is complete.
 - Icon URLs are captured from normal scraper results without adding Store metadata requests.
 - Only HTTPS icon URLs are accepted.
 - Icon image downloads occur only when the feature is enabled, use at most 4 concurrent requests, a 10-second timeout and a 1 MB response ceiling.
-- At most 96 decoded icon images are retained in memory for the current session. Image bytes are not persisted.
-- The normal healthy-result audit cache may retain the icon URL only, allowing cached audits after restart to show icons without repeating Store metadata requests.
+- At most 96 decoded icon images are retained in memory for the current session.
+- Downloaded icon bytes are persisted under the active app-data directory and reused across restarts while the app's `play_last_update` marker remains unchanged. If no reliable update marker exists, unchanged icon URL is required instead.
+- Persistent icon-cache reads and writes run outside the UI thread. The results table is shown immediately and remains usable while cached or downloaded icons populate progressively.
+- The normal healthy-result audit cache retains the icon URL metadata needed to reuse or refresh icons without adding Store metadata requests.
 
 ## Store performance and reliability evidence
 
@@ -107,9 +109,9 @@ Both touch validated production Store behaviour. Perform them in the next develo
 
 ## Remaining v1.5 release steps
 
-No additional product feature is planned before v1.5. Version, changelog and public release text are now being hardened for `1.5.0`.
+No additional product feature is planned before v1.5. The final icon-retention correction is the last pre-freeze product fix.
 
-After this release-hardening PR merges:
+After this correction merges:
 
 1. require post-merge Quality validation;
 2. freeze one exact `main` SHA;
@@ -118,7 +120,7 @@ After this release-hardening PR merges:
 5. assemble and validate the exact three-file ETB release set;
 6. publish without modifying the frozen SHA, tag or assets afterward.
 
-Heavy package builds start only after the release-hardening PR is merged and the candidate SHA is frozen.
+Heavy package builds start only after the correction is merged and the candidate SHA is frozen.
 
 ## Durable release invariants
 

@@ -8,10 +8,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+import playstore_app_audit.services.app_icon_disk_cache as disk_cache
 import playstore_app_audit.services.app_icon_metadata as metadata
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.app_icon_loader as icon_loader_ui
 import playstore_app_audit.ui.table_window as table_ui
-from playstore_app_audit.ui.app_icon_loader import _normalise_icon_url
+from playstore_app_audit.ui.app_icon_loader import AppIconLoader, _normalise_icon_url
 
 
 @pytest.fixture(scope="module")
@@ -99,6 +101,79 @@ def test_loader_url_normalisation_rejects_non_https() -> None:
     assert _normalise_icon_url("") == ""
 
 
+def test_icon_lookup_schedules_disk_io_without_blocking_ui(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loader = AppIconLoader()
+    scheduled: list[object] = []
+
+    def fail_if_called_synchronously(*_args: object) -> bytes | None:
+        raise AssertionError("persistent icon cache read ran synchronously on the UI path")
+
+    monkeypatch.setattr(icon_loader_ui, "load_cached_icon_bytes", fail_if_called_synchronously)
+    loader._disk_pool = SimpleNamespace(start=lambda task: scheduled.append(task))  # type: ignore[assignment]
+
+    result = loader.icon_for_row(
+        "com.example.lazy",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+    )
+
+    assert result is None
+    assert len(scheduled) == 1
+    loader.deleteLater()
+    app.processEvents()
+
+
+def test_persisted_icon_is_reused_while_app_update_is_unchanged(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    package = "com.example.persisted"
+    first_url = "https://example.invalid/icon-v1.png"
+    changed_cdn_url = "https://cdn.example.invalid/icon-v1.png"
+    update = "2026-08-01"
+    image_bytes = b"fake-image-bytes"
+
+    disk_cache.store_cached_icon_bytes(package, first_url, update, image_bytes)
+
+    assert disk_cache.load_cached_icon_bytes(package, first_url, update) == image_bytes
+    assert disk_cache.load_cached_icon_bytes(package, changed_cdn_url, update) == image_bytes
+    record = disk_cache.cached_icon_metadata(package)
+    assert record["play_last_update"] == update
+
+
+def test_persisted_icon_is_invalidated_when_app_update_changes(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    package = "com.example.updated"
+    url = "https://example.invalid/icon.png"
+    disk_cache.store_cached_icon_bytes(package, url, "2026-08-01", b"old-icon")
+
+    assert disk_cache.load_cached_icon_bytes(package, url, "2026-08-20") is None
+    assert disk_cache.cached_icon_metadata(package) == {}
+
+
+def test_persisted_icon_without_update_marker_requires_same_url(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    package = "com.example.unknown-update"
+    url = "https://example.invalid/icon.png"
+    disk_cache.store_cached_icon_bytes(package, url, "", b"icon")
+
+    assert disk_cache.load_cached_icon_bytes(package, url, "") == b"icon"
+    assert (
+        disk_cache.load_cached_icon_bytes(
+            package,
+            "https://example.invalid/different.png",
+            "",
+        )
+        is None
+    )
+
+
 def test_table_icons_are_opt_in_and_use_captured_metadata(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -113,6 +188,7 @@ def test_table_icons_are_opt_in_and_use_captured_metadata(
     row = {
         "package_name": "com.example.app",
         "play_status": "available",
+        "play_last_update": "2026-08-01",
         "criticality_key": "green",
     }
     model.set_rows([row])
@@ -123,7 +199,9 @@ def test_table_icons_are_opt_in_and_use_captured_metadata(
     assert model.data(index, Qt.ItemDataRole.DecorationRole) is None
 
     expected = QIcon()
-    model._icon_loader = SimpleNamespace(icon_for_url=lambda _url: expected)  # type: ignore[assignment]
+    model._icon_loader = SimpleNamespace(  # type: ignore[assignment]
+        icon_for_row=lambda _package, _url, _update: expected
+    )
     model.set_app_icons_enabled(True)
     assert model.data(index, Qt.ItemDataRole.DecorationRole) is expected
 
