@@ -86,6 +86,8 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - Do not delete files under `.github/scripts/` merely because there are several. Verify workflow references, imports and tests before removal.
 - GitHub Actions retention follows the generational policy in `docs/CI_MAINTENANCE.md`; failed/cancelled runs never replace successful generations.
 - Every public GitHub Release body follows `docs/RELEASE_NOTES.md`: the four mandatory sections are `What's New / Highlights`, `Compatibility and distribution`, `Release assets`, and `Verification`, in that exact order. `Added`, `Changed`, and `Fixed` are the standard optional subheadings inside `What's New / Highlights` and empty subheadings are omitted.
+- When normalizing an already published release, the body actually published on GitHub is the primary historical source. Changelog/docs may supplement only clearly supported missing details and must not silently replace or strengthen the historical claims.
+- Obvious editorial mistakes in historical prose may be corrected during normalization only when the release/tag identity is unambiguous and the substantive meaning is unchanged.
 - Release-note prose may be normalized after publication, but this never authorizes changing an immutable published tag, source commit, binary/source asset, or checksum file.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
