@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict, deque
+from contextlib import suppress
 from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QUrl, Signal
@@ -63,17 +64,13 @@ class _DiskStoreTask(QRunnable):
         self._data = data
 
     def run(self) -> None:
-        try:
+        with suppress(OSError):
             store_cached_icon_bytes(
                 self._item.package_name,
                 self._item.url,
                 self._item.play_last_update,
                 self._data,
             )
-        except OSError:
-            # Disk persistence is only an optimization. Rendering can continue
-            # from the bounded in-memory cache if local storage is unavailable.
-            pass
 
 
 class AppIconLoader(QObject):
