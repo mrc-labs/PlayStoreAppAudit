@@ -6,7 +6,7 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
 
 ## Architecture
 
@@ -85,6 +85,8 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - Do not weaken legal/source validation to make a build pass.
 - Do not delete files under `.github/scripts/` merely because there are several. Verify workflow references, imports and tests before removal.
 - GitHub Actions retention follows the generational policy in `docs/CI_MAINTENANCE.md`; failed/cancelled runs never replace successful generations.
+- Every public GitHub Release body follows `docs/RELEASE_NOTES.md`: the four mandatory sections are `What's New / Highlights`, `Compatibility and distribution`, `Release assets`, and `Verification`, in that exact order. `Added`, `Changed`, and `Fixed` are the standard optional subheadings inside `What's New / Highlights` and empty subheadings are omitted.
+- Release-note prose may be normalized after publication, but this never authorizes changing an immutable published tag, source commit, binary/source asset, or checksum file.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
