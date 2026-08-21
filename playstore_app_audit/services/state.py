@@ -7,14 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from playstore_app_audit.platform.runtime import app_data_dir
+from playstore_app_audit.services.store_locale import resolve_store_language
 
 CACHE_SCHEMA_VERSION = 2
 DEFAULT_STORE_WORKERS = 16
 MIN_STORE_WORKERS = 4
 MAX_STORE_WORKERS = 32
+STORE_LANGUAGE_AUTO_MIGRATION_KEY = "store_language_auto_migrated"
 
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "store_language": "en",
+    "store_language": "auto",
+    STORE_LANGUAGE_AUTO_MIGRATION_KEY: True,
     "store_workers": DEFAULT_STORE_WORKERS,
     "cache_enabled": True,
     "cache_ttl_hours": 72,
@@ -76,8 +79,18 @@ def load_settings() -> dict[str, Any]:
     settings = deepcopy(DEFAULT_SETTINGS)
     if isinstance(data, dict):
         settings.update(data)
-    language = str(settings.get("store_language") or "en").strip().lower()
-    settings["store_language"] = language or "en"
+
+    # v1.5 stored `en` as an unconditional default. On the first v1.6 read,
+    # migrate that legacy default to Auto so upgraded users receive device/
+    # country-aware language selection. A later explicit manual `en` is kept
+    # because saves persist the migration marker.
+    migrated = bool(isinstance(data, dict) and data.get(STORE_LANGUAGE_AUTO_MIGRATION_KEY))
+    raw_language = str(settings.get("store_language") or "auto").strip().lower()
+    if not migrated and raw_language == "en":
+        raw_language = "auto"
+    settings["store_language"] = raw_language or "auto"
+    settings[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
+
     settings["store_workers"] = normalise_store_workers(settings.get("store_workers"))
     try:
         settings["cache_ttl_hours"] = max(0, min(24 * 30, int(settings.get("cache_ttl_hours", 72))))
@@ -98,6 +111,9 @@ def load_settings() -> dict[str, Any]:
 def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged = load_settings()
     merged.update(settings)
+    language = str(merged.get("store_language") or "auto").strip().lower()
+    merged["store_language"] = language or "auto"
+    merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
     _write_json(settings_path(), merged)
     return merged
@@ -114,9 +130,13 @@ def clear_cache() -> None:
 
 
 def _cache_key(country: str, language: str, package_name: str) -> str:
+    # Cache the effective Store language, never the symbolic `auto` preference.
+    # This prevents e.g. CH/it device results from being reused by CH/de file
+    # audits while still preserving old CH/en cache hits when English resolves.
+    effective_language = resolve_store_language(language, country)
     # Versioning the key deliberately invalidates results cached by builds that
     # could still derive an update date from datePublished.
-    return f"v{CACHE_SCHEMA_VERSION}|{country.lower()}|{language.lower()}|{package_name}"
+    return f"v{CACHE_SCHEMA_VERSION}|{country.lower()}|{effective_language.lower()}|{package_name}"
 
 
 def load_fresh_cache(
