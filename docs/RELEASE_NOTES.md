@@ -333,6 +333,7 @@ The body below records the final v1.5.0 release wording and the successful evide
 - Engineering Test Build (ETB), Windows x64 only.
 - Windows package intentionally unsigned.
 - Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.5.0.
+- Production signing and the full Windows/Linux/macOS x64/ARM64 release profile remain planned for v1.6.
 - Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
 - Because this package is unsigned, Windows may display a SmartScreen or publisher warning when opening it.
 
