@@ -89,7 +89,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     try {
         $releaseJson = (& gh release view --json tagName,name,isDraft,isPrerelease,publishedAt,url 2>&1 | Out-String).Trim()
         if ($LASTEXITCODE -eq 0 -and $releaseJson) {
-            $ghSection += "## GitHub latest release via gh"
+            $ghSection += '## GitHub latest release via gh'
             $ghSection += ''
             $ghSection += '```json'
             $ghSection += $releaseJson
@@ -104,7 +104,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     try {
         $prsJson = (& gh pr list --state merged --limit 15 --json number,title,mergedAt,mergeCommit,url 2>&1 | Out-String).Trim()
         if ($LASTEXITCODE -eq 0 -and $prsJson) {
-            $ghSection += "## Recent merged PRs via gh"
+            $ghSection += '## Recent merged PRs via gh'
             $ghSection += ''
             $ghSection += '```json'
             $ghSection += $prsJson
@@ -129,13 +129,13 @@ $snapshot = @(
     '',
     '## Repository identity',
     '',
-    "- Root: `$repoRoot`",
-    "- Origin: `$remote`",
-    "- Branch: `$branch`",
-    "- HEAD: `$head`",
+    "- Root: $repoRoot",
+    "- Origin: $remote",
+    "- Branch: $branch",
+    "- HEAD: $head",
     '- Working tree: clean',
-    "- Python: `$pythonVersion`",
-    "- Python 3.13 launcher: `$py313Version`",
+    "- Python: $pythonVersion",
+    "- Python 3.13 launcher: $py313Version",
     '',
     '## Recent commits',
     '',
