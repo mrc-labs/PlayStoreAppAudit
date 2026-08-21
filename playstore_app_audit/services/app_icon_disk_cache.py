@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -133,10 +134,8 @@ def remove_cached_icon(package_name: object) -> None:
     if entry:
         filename = str(entry.get("file") or "").strip()
         if filename:
-            try:
+            with suppress(OSError):
                 (icon_cache_dir() / filename).unlink(missing_ok=True)
-            except OSError:
-                pass
         _save_index(index)
 
 
