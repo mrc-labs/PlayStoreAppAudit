@@ -32,6 +32,10 @@ class _IconRequest:
     url: str
     play_last_update: str
 
+    @property
+    def key(self) -> tuple[str, str, str]:
+        return (self.package_name, self.url, self.play_last_update)
+
 
 class AppIconLoader(QObject):
     """Lazy icon loader with bounded RAM plus long-lived disk reuse.
@@ -59,7 +63,7 @@ class AppIconLoader(QObject):
         self._queued: deque[_IconRequest] = deque()
         self._pending: set[tuple[str, str, str]] = set()
         self._failed: set[tuple[str, str, str]] = set()
-        self._cache: OrderedDict[str, QIcon] = OrderedDict()
+        self._cache: OrderedDict[tuple[str, str, str], QIcon] = OrderedDict()
 
     def icon_for_row(
         self,
@@ -73,9 +77,10 @@ class AppIconLoader(QObject):
         if not package or not url:
             return None
 
-        icon = self._cache.get(url)
+        item = _IconRequest(package, url, update)
+        icon = self._cache.get(item.key)
         if icon is not None:
-            self._cache.move_to_end(url)
+            self._cache.move_to_end(item.key)
             return icon
 
         persisted = load_cached_icon_bytes(package, url, update)
@@ -83,20 +88,19 @@ class AppIconLoader(QObject):
             pixmap = QPixmap()
             if pixmap.loadFromData(persisted) and not pixmap.isNull():
                 icon = QIcon(pixmap)
-                self._remember_in_memory(url, icon)
+                self._remember_in_memory(item.key, icon)
                 return icon
 
-        key = (package, url, update)
-        if key in self._failed or key in self._pending:
+        if item.key in self._failed or item.key in self._pending:
             return None
-        self._pending.add(key)
-        self._queued.append(_IconRequest(package, url, update))
+        self._pending.add(item.key)
+        self._queued.append(item)
         self._pump()
         return None
 
-    def _remember_in_memory(self, url: str, icon: QIcon) -> None:
-        self._cache[url] = icon
-        self._cache.move_to_end(url)
+    def _remember_in_memory(self, key: tuple[str, str, str], icon: QIcon) -> None:
+        self._cache[key] = icon
+        self._cache.move_to_end(key)
         while len(self._cache) > self._max_cache:
             self._cache.popitem(last=False)
 
@@ -111,7 +115,6 @@ class AppIconLoader(QObject):
             reply.finished.connect(lambda r=reply, i=item: self._finish(i, r))
 
     def _finish(self, item: _IconRequest, reply: QNetworkReply) -> None:
-        key = (item.package_name, item.url, item.play_last_update)
         try:
             if reply.error() == QNetworkReply.NetworkError.NoError:
                 data = bytes(reply.readAll())
@@ -119,7 +122,7 @@ class AppIconLoader(QObject):
                     pixmap = QPixmap()
                     if pixmap.loadFromData(data) and not pixmap.isNull():
                         icon = QIcon(pixmap)
-                        self._remember_in_memory(item.url, icon)
+                        self._remember_in_memory(item.key, icon)
                         try:
                             store_cached_icon_bytes(
                                 item.package_name,
@@ -133,9 +136,9 @@ class AppIconLoader(QObject):
                             pass
                         self.icon_ready.emit(item.url)
                         return
-            self._failed.add(key)
+            self._failed.add(item.key)
         finally:
-            self._pending.discard(key)
+            self._pending.discard(item.key)
             self._active = max(0, self._active - 1)
             reply.deleteLater()
             self._pump()
