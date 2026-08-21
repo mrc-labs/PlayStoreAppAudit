@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 # Deterministic primary Store language used when no device language or explicit
 # user override is available. Multilingual countries intentionally have one
