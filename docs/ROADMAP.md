@@ -134,4 +134,16 @@ Do not reintroduce them without a new product decision.
 
 ## Handoff requirement
 
-Before starting a new major-version development chat, create a handoff package that includes the relevant durable/status/roadmap files and enough repository state to continue without reconstructing prior decisions. The handoff procedure should also provide a local command that extracts the current branch/SHA, recent PR/release state, key project files and any other evidence required by the next chat.
+Before starting a new major-version development chat, create a handoff package so the next chat can continue from repository evidence instead of reconstructing decisions from conversation history.
+
+For v1.6, the canonical human-readable handoff is `HANDOFF_V1.6.md`. The reusable exporter is `../scripts/export_chat_handoff.ps1`.
+
+From the repository root in PowerShell, run:
+
+```powershell
+.\scripts\export_chat_handoff.ps1
+```
+
+The exporter fails closed when the working tree is dirty, creates a timestamped temporary folder and ZIP, copies the durable/status/roadmap/release/development files, and generates `REPOSITORY_SNAPSHOT.md` with the live branch/SHA/status, recent commits/tags, tracked implementation/test/workflow inventory, Python version and optional GitHub CLI release/PR metadata.
+
+Attach the generated ZIP to the new chat. The static handoff file explains the current version-specific intent; the generated snapshot supplies live repository state. Future major-version chats should update or add the corresponding `HANDOFF_Vx.y.md` before export rather than silently reusing stale version-specific assumptions.
