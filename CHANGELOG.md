@@ -8,7 +8,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 - Configurable concurrent Google Play workers in **Advanced settings**, with 16 retained as the default/recommended value.
 - Live regional-verification progress while fallback Store countries are being checked.
-- Optional experimental Play Store app icons in the results table. The feature is off by default, downloads only when enabled, and keeps image bytes in a bounded session-only memory cache.
+- Optional experimental Play Store app icons in the results table. The feature is off by default, populates progressively without blocking the table, and persists downloaded image bytes until the app's Store update marker changes.
 - Connected-device source summaries with manufacturer/model and Android version/API using metadata already collected during the phone scan.
 
 ### Changed
