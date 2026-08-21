@@ -30,9 +30,11 @@ The current v1.5.0 release is a Windows x64 Engineering Test Build (ETB) and pro
 
 Download the Windows x64 ZIP, extract it to a normal folder, then start the application from the extracted package.
 
-The Windows v1.5.0 package is intentionally unsigned. Production signing and the full six-platform release are deferred to v1.6. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+The Windows v1.5.0 package is intentionally unsigned. Production signing and the full six-platform release are not planned before v2.0. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the application. That warning reflects signing and reputation status, not a finding that the application is unsafe.
 
 Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.5.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
+
+The current direction for v1.6 is likely another unsigned Windows x64 ETB while product, UX and Store-service architecture mature; the exact v1.6 release profile is not frozen yet. See the [Product roadmap](docs/ROADMAP.md) for current planning.
 
 The v1.5.0 release also includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` for integrity verification.
 
@@ -128,11 +130,12 @@ Developer references:
 - [Building and release workflow](docs/BUILDING.md)
 - [CI and release maintenance](docs/CI_MAINTENANCE.md)
 - [Durable project decisions](docs/PROJECT_DECISIONS.md)
-- [Current project status and backlog](docs/PROJECT_STATUS.md)
+- [Current project status](docs/PROJECT_STATUS.md)
+- [Product roadmap](docs/ROADMAP.md)
 - [Project guidance for coding agents](AGENTS.md)
 
 ## Building from source
 
 Release packages use Python 3.13 and Nuitka standalone packaging. v1.5.0 freezes one exact `main` SHA, builds only the Windows x64 ETB candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 ETB asset set, then tags and publishes the already validated artifacts without rebuilding.
 
-The full signed Windows/Linux/macOS x64/ARM64 production release path remains planned for v1.6. Platform-specific prerequisites, architecture validation, legal/source handling and the release profiles are documented in [Building Play Store App Audit](docs/BUILDING.md).
+The full signed Windows/Linux/macOS x64/ARM64 production release path remains implemented for a future v2.0-or-later milestone rather than the current v1.6 plan. Platform-specific prerequisites, architecture validation, legal/source handling and the release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).

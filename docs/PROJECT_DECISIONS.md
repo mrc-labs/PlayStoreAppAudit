@@ -88,18 +88,28 @@ v1.5.0 intentionally keeps the unsigned Windows x64 Engineering Test Build profi
 
 Rationale: v1.5 focuses on product/UI work and another validated Windows x64 engineering checkpoint without incurring production-signing or multi-platform release cost.
 
-### v1.6 full production release
+### v1.6 release direction
 
-The full six-platform production release architecture remains implemented and is deferred to v1.6.
+The v1.6 public release profile is intentionally **not frozen yet**. Current planning direction is another unsigned Windows x64 Engineering Test Build, broadly reusing the validated v1.5 release profile while v1.6 focuses on product, UX and Store-service architecture work.
+
+- Do not assume Windows ARM64, Linux or macOS public candidates are required for v1.6 unless the profile is deliberately changed before the release SHA is frozen.
+- Do not incur production-signing/notarization spend as normal v1.6 work.
+- If v1.6 remains Windows x64 ETB, reuse the exact-SHA build and engineering-assembly model already proven by v1.5, with version-aware validation.
+
+Rationale: production trust/distribution work is no longer a v1.6 milestone. Keeping the profile light allows the next releases to focus on product maturity without paying the multi-platform/signing cost prematurely.
+
+### v2.0-or-later production release milestone
+
+The full six-platform production release architecture remains implemented in source but execution is deferred until **v2.0 or later**.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates all derive from one exact frozen SHA.
-- Windows final candidates must use a validated publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing remains an implemented option, but provider selection is deferred to the v1.6 signing milestone after publisher eligibility and cost review.
+- Windows final candidates must use a validated publicly trusted code-signing provider with native post-sign verification.
 - macOS final candidates pass through Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - Linux remains Nuitka standalone with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six candidates validate.
 - The full production asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
 
-Rationale: signing implementation can remain merged and testable while the cost and account/credential work are deferred until the project is ready for the production-trust milestone.
+Rationale: the production architecture can remain maintained and testable without forcing signing credentials, publisher eligibility, notarization setup or six-target release cost into v1.6/v1.7.
 
 ## Packaging and legal model
 
@@ -112,7 +122,7 @@ Rationale: signing implementation can remain merged and testable while the cost 
 
 Linux remains standalone because the bundled LGPL-covered Qt/PySide/Shiboken libraries must remain practically replaceable.
 
-The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: the v1.4 and v1.5 ETB profiles use the exact source evidence from their Windows x64 candidate; the v1.6 production profile merges all six platform candidates.
+The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: Windows x64 ETB profiles use the exact source evidence from their Windows x64 candidate; the future full production profile merges all six platform candidates.
 
 ## Runtime policy
 
@@ -134,15 +144,15 @@ Package workflows are platform-isolated and exact-SHA guarded:
 
 Trust/assembly workflows are purpose-specific:
 
-- `.github/workflows/sign-windows.yml`: Windows production signing stage, deferred to v1.6 execution
-- `.github/workflows/assemble-windows-engineering-release.yml`: v1.4/v1.5 unsigned Windows x64 engineering asset assembly
-- `.github/workflows/assemble-release.yml`: v1.6 six-platform production asset assembly
+- `.github/workflows/sign-windows.yml`: future Windows production-signing stage, not planned for normal execution before v2.0;
+- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5 and any later release that explicitly selects the same profile;
+- `.github/workflows/assemble-release.yml`: future six-platform production asset assembly, not planned for normal execution before v2.0.
 
-The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits exactly three files for the v1.4 and v1.5 ETB profiles.
+The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
 
-The v1.6 full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies their workflow identity/status/repository/exact SHA, validates all six candidates, and emits exactly eight files.
+The full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies workflow identity/status/repository/exact SHA, validates all six candidates and emits exactly eight files when the future full-production profile is selected.
 
-Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while avoiding unnecessary platform builds for the v1.4/v1.5 engineering releases.
+Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while allowing lightweight ETB releases without unnecessary platform/signing work.
 
 ## GitHub Actions generational retention
 
@@ -201,9 +211,9 @@ Rationale: the action author, not this Python application, owns the bundled Java
 
 ## Signing policy
 
-Production signing is implemented in source but deliberately deferred from the v1.4 and v1.5 public ETB profiles to the v1.6 trust milestone.
+Production signing is implemented in source but deliberately deferred from normal v1.6/v1.7 release work. Reconsider production signing and full production distribution no earlier than the v2.0 milestone.
 
-### macOS, v1.6 production target
+### macOS production target, v2.0 or later
 
 Production macOS release candidates use Developer ID Application signing followed by Apple notarization.
 
@@ -217,7 +227,7 @@ Production macOS release candidates use Developer ID Application signing followe
 - Engineering mode remains available with ad-hoc signing and non-canonical artifact names.
 - Developer ID certificate material and App Store Connect notary API credentials live in GitHub Secrets and are materialized only in temporary runner files/keychains.
 
-Required production secrets:
+Required production secrets when this milestone is activated:
 
 - `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`
 - `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`
@@ -226,9 +236,9 @@ Required production secrets:
 - `MACOS_NOTARY_KEY_ID`
 - `MACOS_NOTARY_ISSUER_ID`
 
-### Windows, v1.6 production target
+### Windows production target, v2.0 or later
 
-Production Windows release candidates require a publicly trusted code-signing provider suitable for publicly distributed Win32 applications. The repository currently implements Microsoft Artifact Signing Public Trust as one option, but the final v1.6 provider remains TBD until publisher eligibility and cost are revalidated.
+Production Windows release candidates require a publicly trusted code-signing provider suitable for publicly distributed Win32 applications. The repository currently implements Microsoft Artifact Signing Public Trust as one option, but provider choice is deferred until the production milestone.
 
 - Native x64 and ARM64 packages are compiled first by `build-windows-exe.yml` from the exact frozen SHA.
 - `.github/workflows/sign-windows.yml` accepts only a successful exact-SHA Windows build from the same repository.
@@ -239,12 +249,12 @@ Production Windows release candidates require a publicly trusted code-signing pr
 - Non-target package files are hash-guarded; legal evidence and strict package validation are refreshed after signing.
 - Self-signed certificates and Private Trust/test profiles are not valid for public release distribution.
 
-If Microsoft Artifact Signing is selected, required production configuration outside source control:
+If Microsoft Artifact Signing is selected later, required production configuration outside source control is:
 
 - GitHub Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - GitHub repository variables: `WINDOWS_ARTIFACT_SIGNING_ENDPOINT`, `WINDOWS_ARTIFACT_SIGNING_ACCOUNT_NAME`, `WINDOWS_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
 
-Rationale: production trust remains a separate milestone from v1.4 engineering publication. The current Microsoft implementation stays ready as one option without locking v1.6 to a provider before eligibility and cost are known.
+Rationale: the current signing implementation stays ready as one option without forcing cost, eligibility or credential setup into near-term releases.
 
 ## UI style policy
 

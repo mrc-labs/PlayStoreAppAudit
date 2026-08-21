@@ -6,7 +6,9 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current release state and the active backlog live in `docs/PROJECT_STATUS.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current shipped/development state lives in `docs/PROJECT_STATUS.md`. Forward-looking release/feature planning lives in `docs/ROADMAP.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
+
+When old version-specific scheduling language in an operational document conflicts with the current roadmap, preserve the operational procedure but follow `PROJECT_DECISIONS.md` and `ROADMAP.md` for the current milestone assignment. Historical release wording in `CHANGELOG.md` and `RELEASE_NOTES.md` is not rewritten to match later roadmap changes.
 
 ## Architecture
 
@@ -92,7 +94,7 @@ These are hard constraints unless deliberately changed through a dedicated engin
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
-v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB). v1.5 keeps the same unsigned Windows x64 ETB release profile, while production signing and the broader six-platform matrix are deferred to v1.6.
+v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB).
 
 - Build Windows x64 only from the frozen SHA.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
@@ -116,13 +118,22 @@ v1.5.0 remains an unsigned Windows x64 Engineering Test Build (ETB).
 - Use GitHub Release title suffix `(ETB Win x64)` and release-body heading `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`.
 - Keep the package clearly described as unsigned. Do not spend money on signing for v1.5.
 
-### v1.6 production profile
+### v1.6 planning direction
 
-The full six-platform production path remains implemented for v1.6, while the final Windows public-trust signing provider is deliberately not locked yet.
+The v1.6 profile is not frozen. Current roadmap direction is another unsigned Windows x64 ETB while product, UX and Store-service architecture mature.
+
+- Do not assume a six-platform v1.6 build.
+- Do not invoke production Windows signing or macOS production signing/notarization as normal v1.6 work.
+- If the v1.6 profile is finalized as Windows x64 ETB, reuse the exact-SHA engineering build/assembly profile proven by v1.5.
+- Follow `docs/ROADMAP.md` for v1.6 feature scope.
+
+### v2.0-or-later production profile
+
+Production signing and the full six-platform release are not planned before v2.0. The implementation remains preserved for that later milestone.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
-- Windows final candidates must use a publicly trusted code-signing provider with native post-sign verification. Microsoft Artifact Signing is retained as an implemented option, but the final v1.6 provider remains TBD pending publisher eligibility and cost review.
-- macOS final candidates use Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
+- Windows final candidates require a publicly trusted code-signing provider with native post-sign verification.
+- macOS final candidates require Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
 - The full production public asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
