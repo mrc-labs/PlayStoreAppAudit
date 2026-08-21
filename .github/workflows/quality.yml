@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "**/*.py"
+      - "scripts/*.ps1"
       - "pyproject.toml"
       - "requirements*.txt"
       - "AGENTS.md"
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "**/*.py"
+      - "scripts/*.ps1"
       - "pyproject.toml"
       - "requirements*.txt"
       - "AGENTS.md"
@@ -62,6 +64,21 @@ jobs:
           EXPECTED_PYTHON: ${{ matrix.python-version }}
         run: |
           python -c "import os, sys, PySide6; expected=tuple(map(int, os.environ['EXPECTED_PYTHON'].split('.'))); print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == expected; assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6,11)"
+
+      - name: Validate PowerShell helper syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/export_chat_handoff.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | Format-List | Out-String | Write-Error
+            throw 'PowerShell helper syntax validation failed.'
+          }
 
       - name: Compile, test and lint
         shell: pwsh
