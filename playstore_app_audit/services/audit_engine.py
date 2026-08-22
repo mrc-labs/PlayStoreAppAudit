@@ -105,7 +105,9 @@ def load_apps(input_path: str | Path) -> list[dict[str, str]]:
         max_columns = max(len(row) for row in data_rows)
         scores: list[tuple[int, int]] = []
         for index in range(max_columns):
-            score = sum(1 for row in data_rows[:100] if index < len(row) and _looks_like_package(row[index]))
+            score = sum(
+                1 for row in data_rows[:100] if index < len(row) and _looks_like_package(row[index])
+            )
             scores.append((score, index))
         best_score, package_index = max(scores)
         if best_score == 0:
@@ -213,7 +215,12 @@ def _parse_updated_from_html(html: str) -> str:
     return ""
 
 
-def _scraper_request(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
+def _scraper_request(
+    package_name: str,
+    language: str,
+    country: str,
+    config: AuditConfig,
+) -> dict[str, Any]:
     try:
         from google_play_scraper import app as play_app
     except ImportError as exc:
@@ -246,11 +253,18 @@ def _scraper_request(package_name: str, language: str, country: str, config: Aud
     }
 
 
-def _html_request(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
+def _html_request(
+    package_name: str,
+    language: str,
+    country: str,
+    config: AuditConfig,
+) -> dict[str, Any]:
     params = {"id": package_name, "hl": language, "gl": country}
     session = _get_session(language)
     last_error = ""
+    attempts = 0
     for attempt in range(config.max_retries + 1):
+        attempts = attempt + 1
         try:
             response = session.get(PLAY_URL, params=params, timeout=config.timeout_seconds)
             if response.status_code in {429, 500, 502, 503, 504} and attempt < config.max_retries:
@@ -270,6 +284,8 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
                     "updated": "",
                     "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
                     "error": last_error,
+                    "attempts": attempts,
+                    "retry_count": max(0, attempts - 1),
                 }
     else:
         return {
@@ -280,6 +296,8 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             "updated": "",
             "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
             "error": last_error or "Request not completed",
+            "attempts": attempts,
+            "retry_count": max(0, attempts - 1),
         }
 
     html = response.text
@@ -293,6 +311,8 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             "updated": "",
             "url": store_url,
             "error": "404",
+            "attempts": attempts,
+            "retry_count": max(0, attempts - 1),
         }
     if response.status_code != 200:
         return {
@@ -303,6 +323,8 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             "updated": "",
             "url": store_url,
             "error": f"HTTP {response.status_code}",
+            "attempts": attempts,
+            "retry_count": max(0, attempts - 1),
         }
 
     unavailable_signals = (
@@ -320,6 +342,8 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
             "updated": "",
             "url": store_url,
             "error": "The page indicates that the listing is unavailable.",
+            "attempts": attempts,
+            "retry_count": max(0, attempts - 1),
         }
 
     soup = BeautifulSoup(html, "html.parser")
@@ -335,10 +359,17 @@ def _html_request(package_name: str, language: str, country: str, config: AuditC
         "updated": _parse_updated_from_html(html),
         "url": store_url,
         "error": "",
+        "attempts": attempts,
+        "retry_count": max(0, attempts - 1),
     }
 
 
-def _fetch_locale(package_name: str, language: str, country: str, config: AuditConfig) -> dict[str, Any]:
+def _fetch_locale(
+    package_name: str,
+    language: str,
+    country: str,
+    config: AuditConfig,
+) -> dict[str, Any]:
     scraper = _scraper_request(package_name, language, country, config)
     if scraper["ok"] and scraper["updated"]:
         return {
@@ -360,8 +391,11 @@ def _fetch_locale(package_name: str, language: str, country: str, config: AuditC
             "http_status": html.get("http_status", 200),
             "title": title,
             "updated": updated,
-            "source": "google_play_scraper" if scraper["updated"] else ("html_fallback" if updated else ""),
-            "url": html.get("url") or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+            "source": "google_play_scraper"
+            if scraper["updated"]
+            else ("html_fallback" if updated else ""),
+            "url": html.get("url")
+            or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
             "notes": "" if updated else "update_date_not_found",
         }
 
@@ -371,7 +405,8 @@ def _fetch_locale(package_name: str, language: str, country: str, config: AuditC
         "title": html.get("title", ""),
         "updated": html.get("updated", ""),
         "source": "html_fallback" if html.get("updated") else "",
-        "url": html.get("url") or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+        "url": html.get("url")
+        or f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
         "notes": " | ".join(
             value
             for value in [
@@ -393,14 +428,21 @@ def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str
     }
     fallback: dict[str, Any] | None = None
     if needs_fallback:
-        fallback = _fetch_locale(package_name, config.fallback_language, config.fallback_country, config)
+        fallback = _fetch_locale(
+            package_name,
+            config.fallback_language,
+            config.fallback_country,
+            config,
+        )
 
     final = dict(primary)
     if fallback:
         if not final["updated"] and fallback["updated"]:
             final["updated"] = fallback["updated"]
             final["source"] = f"{fallback['source']}_fallback_locale"
-            final["notes"] = " | ".join(filter(None, [final["notes"], "data_used_from_fallback_locale"]))
+            final["notes"] = " | ".join(
+                filter(None, [final["notes"], "data_used_from_fallback_locale"])
+            )
         if not final["title"] and fallback["title"]:
             final["title"] = fallback["title"]
         if final["status"] == "not_found_or_unavailable" and fallback["status"] == "available":
@@ -417,7 +459,9 @@ def fetch_app(app_name: str, package_name: str, config: AuditConfig) -> dict[str
             final["status"] = "available"
             final["http_status"] = fallback["http_status"]
             final["url"] = fallback["url"]
-            final["notes"] = " | ".join(filter(None, [final["notes"], "fallback_locale_check_succeeded"]))
+            final["notes"] = " | ".join(
+                filter(None, [final["notes"], "fallback_locale_check_succeeded"])
+            )
 
     return {
         "app_name": app_name,
