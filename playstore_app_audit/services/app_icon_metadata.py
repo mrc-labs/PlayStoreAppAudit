@@ -62,7 +62,7 @@ def developer_for_package(package_name: object) -> str:
         return _DEVELOPERS.get(key, "")
 
 
-def _enrich_rows_with_icon_urls(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def enrich_rows_with_store_metadata(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Attach Store metadata captured from normal scraper calls before cache persistence."""
     for row in rows:
         if str(row.get("play_status") or "") not in ICON_ELIGIBLE_STATUSES:
@@ -77,6 +77,11 @@ def _enrich_rows_with_icon_urls(rows: list[dict[str, Any]]) -> list[dict[str, An
             if developer:
                 row["developer"] = developer
     return rows
+
+
+def _enrich_rows_with_icon_urls(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Backward-compatible helper retained for existing callers/tests."""
+    return enrich_rows_with_store_metadata(rows)
 
 
 def clear_icon_metadata() -> None:
@@ -115,7 +120,7 @@ def install_app_icon_metadata_capture() -> bool:
 
     def audit_apps_with_icon_metadata(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
         rows = original_audit_apps(*args, **kwargs)
-        return _enrich_rows_with_icon_urls(rows)
+        return enrich_rows_with_store_metadata(rows)
 
     google_play_scraper.app = app_with_icon_capture
     device_metadata.audit_apps_v8 = audit_apps_with_icon_metadata
