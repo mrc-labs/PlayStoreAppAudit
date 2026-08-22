@@ -2,6 +2,41 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [Unreleased]
+
+### Added
+
+- Automatic Store-language selection that uses the connected Android device's active system language when available, while file/list audits fall back to the primary language of the selected Store country. Explicit manual language overrides remain supported.
+- A selected-row details panel that can be docked on the right or below the results table and remembers the chosen position.
+- Structured country/language evidence in the details panel, including the Store country/language actually queried and fallback evidence.
+- Developer metadata in app details, captured from the same normal Google Play scraper response already used by the audit, without extra Store requests.
+- A grouped audit-change overview covering newly installed/removed device apps, newly available/unavailable Store results, reappeared listings, Store version/update changes, maintenance-state transitions and installer/source changes.
+
+### Changed
+
+- Moved bounded multi-country fallback scheduling into the canonical Store service so Store retry/fallback semantics no longer depend on performance-diagnostics wrappers.
+- Consolidated Store access paths around one service while preserving terminal propagated `NotFoundError`, transient retry/backoff and uncertainty semantics.
+- Moved experimental Play Store icons from the package-name column to the Play Store title, matching their Store-metadata origin.
+- Reused captured icon/developer Store metadata through the normal healthy-result cache path so cached audits retain the details needed by the UI.
+- Previous-audit comparison now records structured change events instead of relying only on a single display string.
+- The first connected-device inventory is treated as a baseline and is not presented as hundreds of newly installed apps.
+
+### Fixed
+
+- Hardened persistent icon-cache filesystem failure handling so local disk errors degrade to a cache miss/network fallback and cannot leave an icon permanently pending.
+- Prevented conclusive same-country Store not-found results from being retried only to change language; same-country English fallback is reserved for inconclusive or metadata-incomplete cases.
+- Kept file/list audits from inheriting a previously connected phone's active language context.
+- Added regression coverage for details-panel layout insertion, empty-state presentation, structured evidence/change rendering and grouped change-overview behavior.
+
+### Compatibility
+
+- The v1.6 release profile is not frozen yet. Current direction remains another unsigned Windows x64 Engineering Test Build, but version metadata remains `1.5.0` until the release-profile freeze.
+- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
+- `PySide6-Essentials` remains 6.11.1.
+- ADB behavior remains read-only with respect to installed Android apps.
+- Default/recommended concurrent Store workers remain 16.
+- The optional dashboard/summary candidate is not included in the current v1.6 scope.
+
 ## [1.5.0] - 2026-08-21
 
 ### Added
