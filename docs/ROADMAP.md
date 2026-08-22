@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-08-21
+Last updated: 2026-08-22
 
 ## Purpose
 
@@ -15,7 +15,9 @@ This file is the canonical forward-looking product roadmap for Play Store App Au
 - Preserve the exact-SHA release model, read-only ADB policy and correctness semantics from `PROJECT_DECISIONS.md` unless a deliberate policy change is made there.
 - Do not silently move rejected/deferred ideas into an active release.
 
-## v1.6 planned direction
+## v1.6 stabilization / release direction
+
+The committed v1.6 product scope is implemented on `main`. v1.6 is now in stabilization before the release profile is frozen.
 
 ### Release profile
 
@@ -23,47 +25,65 @@ Current direction: **likely another unsigned Windows x64-only Engineering Test B
 
 Production code signing, notarization and the full Windows/Linux/macOS x64/ARM64 production release are **not planned before v2.0**. The already implemented multi-platform/signing workflows remain preserved for that later milestone.
 
-### Architecture and reliability
+Version metadata remains `1.5.0` during stabilization. Only after the v1.6 release profile is deliberately frozen should canonical version metadata move to `1.6.0` and the changelog `Unreleased` section become the dated v1.6.0 entry.
 
-- Move the bounded multi-country fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service.
-- Consolidate terminal `NotFoundError` handling so base and device-enriched Store paths use one retry/classification implementation and cannot drift.
-- Preserve the current semantics: propagated scraper `NotFoundError` is terminal; timeout/network failures remain transient or inconclusive.
-- Harden the persistent app-icon cache against disk/cache `OSError` failures so a failed local cache operation cannot leave an icon permanently pending and can degrade cleanly to cache miss/network fallback.
-- Keep 16 concurrent Store workers as the default/recommended value. The previously proposed 14-vs-16 cooldown benchmark is no longer required for v1.6 unless a later performance concern deliberately reopens it. If it is reopened, it may be run as an unattended real-device benchmark with the phone connected and no product changes coupled to the test.
+### Implemented architecture and reliability
 
-### Results-table and details UX
+- Bounded multi-country fallback scheduling now lives in the canonical Store service rather than `performance_diagnostics.py`.
+- Terminal propagated `NotFoundError` handling is consolidated in the Store path; generic transient failures still retain retry/backoff.
+- Timeout/network failures remain transient or inconclusive and are not converted into false Store not-found evidence.
+- Persistent app-icon cache disk/cache `OSError` failures degrade cleanly to cache miss/network fallback and cannot leave icons permanently pending.
+- 16 concurrent Store workers remain the default/recommended value.
+- Store language can use the connected Android system language in `auto` mode; file/list audits use the principal language of the selected Store country.
+- Android locale region can initialize the Store country for a phone scan while remaining clearly labelled as inferred from Android locale, not the Google Play account country.
+- Explicit manual country/language overrides remain available.
+- Same-country English fallback is limited to inconclusive or metadata-incomplete cases and does not repeat conclusive terminal not-found results merely to change language.
 
-- Add an app-details panel for the selected result row.
-- Allow the user to choose whether the details panel is docked on the **right** or **below** the results table.
-- Prefer detailed information in the panel rather than continually adding columns to the primary table.
-- Candidate details include Play Store title, package ID, developer, Store URL, Store version/update information, country evidence, installed/device metadata and previous-audit changes where available.
-- Re-evaluate the experimental app-icon placement. Current candidate: show the Store icon beside the **Play Store title** rather than beside the package name, because the icon represents Store metadata rather than package identity. Confirm the final table/panel treatment during the v1.6 UX pass.
+### Implemented results/details UX
 
-### Audit-change visibility
+- The selected result row has a dedicated app-details panel.
+- The panel can be positioned on the right or below the results table and persists the user's choice.
+- Detailed information is concentrated in the panel instead of expanding the primary table indefinitely.
+- The panel includes Store title, package ID, developer, Store URL, Store version/update information, country/language evidence, installed/device metadata and previous-audit changes where available.
+- Experimental Store icons are shown beside the Play Store title rather than beside the package ID.
+- Developer metadata is reused from the same normal Store response, without an additional metadata request.
 
-Add a clearer change-oriented view for comparison with a previous audit, building on the existing previous-audit capability. Candidate change groups:
+### Implemented audit-change visibility
 
-- newly installed;
-- removed from device;
-- newly available on Play;
-- newly unavailable in checked countries;
-- reappeared on Play;
-- Store version changed;
-- Store latest-update value changed;
-- maintenance status transition such as Current -> Aging -> Stale;
-- installer/source changed where device metadata supports it.
+A grouped change-oriented overview now covers:
 
-### Geographic evidence UX
+- newly installed apps when a real previous device inventory exists;
+- apps removed from the device;
+- newly available Store results;
+- newly unavailable results in checked countries;
+- reappeared Store listings;
+- Store version changes;
+- Store latest-update value changes;
+- maintenance-state transitions such as Current -> Aging -> Stale;
+- installer/source changes where supported by available metadata.
 
-Expose the country-level evidence behind availability classifications without changing the established semantics. A details view should be able to show, for example, primary-country absence followed by fallback-country availability, making clear why the final result is regional rather than global removal.
+The first device inventory is treated as a baseline rather than as hundreds of newly installed events. Duplicate installer/source events from Store-history and device-inventory paths are collapsed in the overview.
+
+### Implemented geographic evidence UX
+
+Country/language request evidence is structured and exposed in the details panel. The UI can therefore show why a result is regional rather than implying global removal, for example a primary-country absence followed by fallback-country availability.
 
 ### Experimental icons maturity
 
-Continue real-world observation of the opt-in icon feature before removing the `experimental` label. Review cache growth, CDN failures, stale-icon behaviour, large-table responsiveness and offline/cache reuse. Do not make the feature blocking.
+The icon feature remains experimental for v1.6. Continue real-world observation of cache growth, CDN failures, stale-icon behaviour, large-table responsiveness and offline/cache reuse before considering removal of the experimental label. The feature must remain opt-in and non-blocking.
 
 ### Dashboard / summary candidate
 
-Candidate for v1.6, not yet committed: a compact audit summary showing counts such as available, primary-country unavailable, fallback-only, removed/inconclusive and Current/Aging/Stale. Preferred first UX exploration is a **compact summary area above the results table**, optionally collapsible, rather than another permanent side panel. Final placement remains open until the details-panel layout is designed.
+The compact dashboard/summary candidate is **not included in the current v1.6 scope**. The existing concise summary remains sufficient for this release cycle. Reconsider a richer compact summary in a later cycle only if it adds clear value after the details panel and change overview have seen real-world use.
+
+### Remaining v1.6 work
+
+- Stabilization only; avoid adding new product scope unless a deliberate release decision reopens it.
+- Freeze the actual v1.6 distribution profile.
+- Bump canonical version metadata to `1.6.0` only after that freeze.
+- Convert `CHANGELOG.md` `Unreleased` into the dated v1.6.0 entry.
+- Run release-profile-specific Quality/build/legal/assembly checks from one exact frozen SHA.
+- Publish only artifacts derived from that frozen SHA.
 
 ## v1.7 planned candidates
 
