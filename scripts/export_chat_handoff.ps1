@@ -21,8 +21,36 @@ if ($status) {
     throw "Working tree is dirty. Stop and review it before exporting a chat handoff:`n$status"
 }
 
+$handoffCandidates = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -Filter 'HANDOFF_V*.md' -File |
+    ForEach-Object {
+        if ($_.Name -notmatch '^HANDOFF_V(?<major>\d+)\.(?<minor>\d+)(?:\.(?<patch>\d+))?\.md$') {
+            return
+        }
+
+        $patch = if ($Matches.patch) { [int]$Matches.patch } else { 0 }
+        [PSCustomObject]@{
+            File = $_
+            Version = [version]::new(
+                [int]$Matches.major,
+                [int]$Matches.minor,
+                $patch
+            )
+            DisplayVersion = if ($Matches.patch) {
+                "$($Matches.major).$($Matches.minor).$($Matches.patch)"
+            } else {
+                "$($Matches.major).$($Matches.minor)"
+            }
+        }
+    } |
+    Sort-Object Version
+
+$currentHandoff = $handoffCandidates | Select-Object -Last 1
+if (-not $currentHandoff) {
+    throw 'No version-specific docs/HANDOFF_V*.md file was found.'
+}
+
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$handoffName = "PlayStoreAppAudit-v1.7-chat-handoff-$timestamp"
+$handoffName = "PlayStoreAppAudit-v$($currentHandoff.DisplayVersion)-chat-handoff-$timestamp"
 $outputDir = Join-Path ([System.IO.Path]::GetTempPath()) $handoffName
 $zipPath = "$outputDir.zip"
 
@@ -34,20 +62,24 @@ if (Test-Path -LiteralPath $zipPath) {
 }
 New-Item -ItemType Directory -Path $outputDir | Out-Null
 
-$files = @(
-    'docs/HANDOFF_V1.7.md',
-    'docs/ROADMAP.md',
-    'docs/PROJECT_STATUS.md',
-    'docs/PROJECT_DECISIONS.md',
+$rootContextFiles = @(
     'AGENTS.md',
-    'docs/BUILDING.md',
-    'docs/RELEASE_NOTES.md',
     'CHANGELOG.md',
-    'README.md',
+    'README.md'
+)
+
+$docsContextFiles = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -Filter '*.md' -File |
+    Sort-Object Name |
+    ForEach-Object { "docs/$($_.Name)" }
+
+$nonMarkdownContextFiles = @(
     'pyproject.toml',
     'requirements.txt',
     'requirements-dev.txt'
 )
+
+$files = @($rootContextFiles + $docsContextFiles + $nonMarkdownContextFiles) |
+    Select-Object -Unique
 
 foreach ($relativePath in $files) {
     $source = Join-Path $repoRoot $relativePath
@@ -134,6 +166,8 @@ $snapshot = @(
     "- Branch: $branch",
     "- HEAD: $head",
     '- Working tree: clean',
+    "- Current handoff: docs/$($currentHandoff.File.Name)",
+    "- Handoff version: $($currentHandoff.DisplayVersion)",
     "- Python: $pythonVersion",
     "- Python 3.13 launcher: $py313Version",
     '',
@@ -166,7 +200,8 @@ Compress-Archive -Path (Join-Path $outputDir '*') -DestinationPath $zipPath -Com
 
 Write-Host ''
 Write-Host 'Chat handoff export completed successfully.'
+Write-Host "Current handoff: docs/$($currentHandoff.File.Name)"
 Write-Host "Folder: $outputDir"
 Write-Host "ZIP:    $zipPath"
 Write-Host ''
-Write-Host 'Attach the ZIP to the new development chat.'
+Write-Host 'Attach the ZIP to the next development chat or use it as synchronized context for the next VS Code/Codex cycle.'
