@@ -193,7 +193,15 @@ def test_panel_shows_selected_row_details_and_review_action(app: QApplication) -
     panel.set_row(row)
     panel.review_changes_button.click()
 
-    assert all(not widget.isHidden() for widget in panel._section_widgets)
+    visible_sections = {
+        panel.store_section,
+        panel.device_section,
+        panel.evidence_section,
+        panel.changes_section,
+        panel.notes_section,
+    }
+    assert all(not widget.isHidden() for widget in visible_sections)
+    assert panel.diagnostics_section.isHidden()
     assert panel.title_label.text() == "Example App"
     assert panel.developer_label.text() == "Example Developer"
     assert "Package: com.example.app" in panel.store_label.text()
