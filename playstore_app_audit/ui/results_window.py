@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
     QMessageBox,
+    QSplitter,
     QVBoxLayout,
 )
 
@@ -22,6 +23,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.table_window as table_ui
@@ -109,6 +111,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         super().__init__()
         self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
+        self._setup_details_panel()
         self._setup_export_button_menu()
         self._rebuild_file_menu()
         self._update_summary()
@@ -128,6 +131,93 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.table.setModel(proxy)
         old_proxy.deleteLater()
         self._apply_column_visibility(reset_order=False)
+
+    # ---------- Selected-row details ----------
+    def _setup_details_panel(self) -> None:
+        central = self.centralWidget()
+        root = central.layout() if central is not None else None
+        if root is None:
+            return
+        table_layout = _find_layout_containing(root, self.table)
+        if table_layout is None:
+            return
+        table_index = table_layout.indexOf(self.table)
+        if table_index < 0:
+            return
+
+        settings = state.load_settings()
+        position = details_ui.normalise_details_panel_position(
+            settings.get("details_panel_position", "right")
+        )
+        self.details_panel = details_ui.AppDetailsPanel(position, self)
+        self.details_splitter = QSplitter(self)
+        self.details_splitter.setChildrenCollapsible(False)
+        table_layout.removeWidget(self.table)
+        self.details_splitter.addWidget(self.table)
+        self.details_splitter.addWidget(self.details_panel)
+        table_layout.insertWidget(table_index, self.details_splitter, 1)
+        self.details_splitter.setStretchFactor(0, 4)
+        self.details_splitter.setStretchFactor(1, 1)
+        self._set_details_panel_position(position, persist=False)
+
+        self.details_panel.position_changed.connect(self._set_details_panel_position)
+        selection_model = self.table.selectionModel()
+        if selection_model is not None:
+            selection_model.currentRowChanged.connect(self._on_details_current_row_changed)
+        self.model.dataChanged.connect(self._on_details_model_data_changed)
+        self.model.modelReset.connect(self._on_details_model_reset)
+
+    def _set_details_panel_position(self, position: str, persist: bool = True) -> None:
+        position = details_ui.normalise_details_panel_position(position)
+        if not hasattr(self, "details_splitter"):
+            return
+        if position == "below":
+            self.details_splitter.setOrientation(Qt.Orientation.Vertical)
+            self.details_splitter.setSizes([560, 260])
+        else:
+            self.details_splitter.setOrientation(Qt.Orientation.Horizontal)
+            self.details_splitter.setSizes([1080, 360])
+        if persist:
+            settings = state.load_settings()
+            settings["details_panel_position"] = position
+            self.user_settings = state.save_settings(settings)
+
+    def _details_row_from_index(self, index: QModelIndex) -> dict[str, Any] | None:
+        if not index.isValid():
+            return None
+        row = index.data(Qt.ItemDataRole.UserRole)
+        return dict(row) if isinstance(row, dict) else None
+
+    def _details_icon_for_row(self, row: dict[str, Any]) -> QIcon | None:
+        if isinstance(self.model, table_ui.AuditTableModel):
+            return self.model.icon_for_row(row)
+        return None
+
+    def _on_details_current_row_changed(
+        self, current: QModelIndex, _previous: QModelIndex
+    ) -> None:
+        if not hasattr(self, "details_panel"):
+            return
+        row = self._details_row_from_index(current)
+        if row is None:
+            self.details_panel.clear()
+            return
+        self.details_panel.set_row(row, self._details_icon_for_row(row))
+
+    def _on_details_model_data_changed(self, *_args) -> None:
+        if not hasattr(self, "details_panel"):
+            return
+        index = self.table.currentIndex()
+        row = self._details_row_from_index(index)
+        if row is not None:
+            self.details_panel.set_row(row, self._details_icon_for_row(row))
+
+    def _on_details_model_reset(self) -> None:
+        if not hasattr(self, "details_panel"):
+            return
+        self.details_panel.clear()
+        if self.proxy.rowCount() > 0:
+            self.table.selectRow(0)
 
     # ---------- Source UX ----------
     def _choice_row(self, text: str, button) -> QHBoxLayout:
@@ -339,6 +429,8 @@ class ResultsWindow(menu_ui.MenuWindow):
 
     def _clear_results(self) -> None:
         super()._clear_results()
+        if hasattr(self, "details_panel"):
+            self.details_panel.clear()
         self._sync_phone_package_export_actions()
 
     # ---------- Concise summary ----------
