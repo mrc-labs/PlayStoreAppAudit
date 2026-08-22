@@ -33,7 +33,9 @@ Release evidence and exact checksums remain recorded in `PROJECT_STATUS.md` and 
 
 ## v1.7 implementation status
 
-The main planned v1.7 product work is now substantially implemented on `main`. No v1.7 release SHA or package has been frozen yet.
+The planned v1.7 product work is implemented on `main`. No v1.7 release SHA or package has been frozen yet.
+
+The v1.7 distribution target is Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.7 release candidates.
 
 ### Completed: responsive Details Panel
 
@@ -91,14 +93,6 @@ Implemented through PR #88.
 - AND composition with other built-in filters.
 - SDK values remain maintenance/compatibility metadata, not a malware/security/trust score.
 
-### Open: installed signing-certificate fingerprint/change detection
-
-Do not implement this by relabelling `dumpsys package` signature/hash output as a cryptographic fingerprint. The commonly exposed signature hash is not a SHA-256 certificate digest.
-
-A future implementation requires a trustworthy, scalable, read-only source of signing-certificate identity. Avoid a design that silently turns a large audit into hundreds of APK transfers or adds a heavyweight external dependency without a clear benefit.
-
-This item remains open rather than shipping misleading data.
-
 ### Completed: saved audit profiles
 
 Implemented through PR #90.
@@ -127,39 +121,51 @@ Implemented through PR #89, with smart-policy context added in PR #91.
 
 The `play-store-app-audit/results` versioned envelope preserves structured result/evidence/change data for downstream automation and supports both all-results and visible-results export.
 
+### Removed from product scope: installed signing-certificate fingerprint/change detection
+
+Do not implement installed signing-certificate fingerprint capture or change detection as a planned Play Store App Audit feature.
+
+The previously investigated `dumpsys package` signature/hash representation is not a SHA-256 certificate fingerprint, and a correct implementation would require disproportionate APK/certificate extraction complexity for the current product. This item is removed rather than deferred.
+
 ## v1.7 remaining release-readiness work
 
-Before freezing v1.7, prioritize validation and polish rather than broad feature expansion:
+Before freezing v1.7, prioritize validation and polish rather than feature expansion:
 
 - real-device validation of country/language resolution, including host/phone region disagreement and phone-to-file transitions;
-- continued observation of experimental icon cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse;
-- decide whether the signing-certificate fingerprint item has a technically sound implementation path or should be deferred beyond v1.7;
+- observe the current experimental icon path for cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse so the evidence is available for the v1.8 graduation decision;
 - review final help/status wording after real-device testing;
 - run normal Quality/UI gates on the final candidate before recording any release SHA;
-- do not run expensive release packaging until a v1.7 release profile is deliberately frozen.
+- do not run expensive release packaging until a v1.7 release profile is deliberately frozen;
+- build/package only Windows x64 for the v1.7 release profile.
 
-## Saved filters / smart queries: open clarification
+## v1.8 planned scope
 
-This idea remains uncommitted until the UX is agreed. It means saving a result-filter expression rather than an audit configuration.
+v1.8 is the next feature/polish cycle after v1.7 and is also Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates.
 
-Examples include:
+### Graduate Play Store icons from experimental
+
+The intended v1.8 outcome is to make Store icons a normal supported feature rather than experimental, assuming the v1.7 observation period does not reveal a blocking reliability or performance issue.
+
+The v1.8 work should include any final cache/CDN/offline/large-table hardening needed to remove the experimental label and opt-in framing cleanly.
+
+### Saved filters / smart queries
+
+Move the previously uncommitted saved-filter/smart-query concept into v1.8 scope.
+
+This means saving reusable result-filter expressions rather than audit configurations. Examples include:
 
 - `Removed from Play AND still installed`
 - `Stale AND sideloaded`
 - `Target SDK below threshold`
 - `Installed/Store version differs`
 
-A saved query would reapply to any compatible result set and act like a named dynamic view. This is distinct from a saved audit profile, which controls how an audit is run.
+Saved queries should reapply to any compatible result set and remain distinct from saved audit profiles, which control how an audit is run. Define the UX deliberately before implementation rather than reviving the older CRUD UI implicitly.
 
-Do not revive the older saved-filter CRUD UI implicitly while working on audit profiles or built-in filters.
+### Dashboard / compact summary
 
-## Experimental icons maturity
+Move the richer compact dashboard/summary candidate into v1.8 scope.
 
-Continue real-world observation of cache growth, CDN failures, stale-icon behaviour, large-table responsiveness and offline/cache reuse. The feature remains opt-in and non-blocking until there is enough evidence to remove the experimental label.
-
-## Dashboard / summary candidate
-
-The richer compact dashboard/summary remains deferred. Reconsider it only after the details panel and change overview have matured enough to show whether a separate summary adds real value rather than duplicating information.
+It should be designed against the mature details panel, change overview, filters and smart queries so that it adds useful at-a-glance information rather than duplicating existing UI.
 
 ## v2.0 and later
 
@@ -174,7 +180,7 @@ No earlier than v2.0, reconsider the full production release profile:
 - Developer ID signing/notarization/stapling/Gatekeeper verification on macOS;
 - full multi-platform exact-SHA assembly and release validation.
 
-The source workflows already implementing much of this architecture should remain maintained but do not need to be exercised as a normal v1.7 release cost.
+The source workflows already implementing much of this architecture should remain maintained but do not need to be exercised as a normal v1.7 or v1.8 release cost.
 
 ### CLI/headless mode
 
@@ -194,6 +200,7 @@ Active operations such as uninstall, disable, permission changes, clear data, fo
 
 Unless a deliberate product decision reopens them, the following remain rejected:
 
+- installed signing-certificate fingerprint capture/change detection;
 - automatically associating unavailable Play apps with GitHub/F-Droid/developer-site alternative sources;
 - audit watchlists/background monitoring;
 - predefined country-set presets such as DACH/EU/worldwide.
