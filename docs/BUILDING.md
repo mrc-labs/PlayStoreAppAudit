@@ -56,7 +56,7 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-For the v1.4/v1.5 Windows x64 ETB profiles and the planned v1.6 production release:
+For the v1.4/v1.5 Windows x64 ETB profiles, the current v1.6 Windows x64 ETB direction, and the preserved future production profile:
 
 - Packaging Python: 3.13
 - Quality CI: Python 3.13 and 3.14
@@ -69,11 +69,11 @@ Do not change these as incidental cleanup. Toolchain migration requires a dedica
 
 ## Release profiles
 
-The project intentionally has two release profiles while production signing is being introduced.
+The project has a lightweight unsigned Windows x64 Engineering Test Build profile for near-term releases and a preserved six-platform signed production profile for a later production milestone.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB)
 
-v1.4 is the public Engineering Test Build (ETB). It publishes only the Windows x64 standalone package and deliberately does not build Windows ARM64, Linux or macOS or invoke production signing.
+v1.4 is a public Engineering Test Build. It publishes only the Windows x64 standalone package and deliberately does not build Windows ARM64, Linux or macOS or invoke production signing.
 
 The three public assets are exactly:
 
@@ -83,7 +83,7 @@ The three public assets are exactly:
 
 The Windows x64 package must come from the exact frozen `main` SHA and remains unsigned. The normal package legal/source gate remains mandatory and the release-wide source archive is assembled from the exact source evidence emitted by that x64 candidate.
 
-The v1.4 engineering assembler accepts only a successful manual `Build Windows - Qt6` run from the same repository and exact SHA, requires the x64 artifact, and rejects a source run that also emitted the canonical Windows ARM64 artifact. It does not accept a signing run and does not build any other platform or architecture.
+The engineering assembler accepts only a successful manual `Build Windows - Qt6` run from the same repository and exact SHA, requires the x64 artifact, and rejects a source run that also emitted the canonical Windows ARM64 artifact. It does not accept a signing run and does not build any other platform or architecture.
 
 ### v1.5 Windows x64 Engineering Test Build (ETB)
 
@@ -96,30 +96,41 @@ v1.5.0 remains an unsigned Windows x64-only Engineering Test Build. It follows t
 - publish exactly `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`;
 - use release title suffix `(ETB Win x64)` and body heading `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`.
 
-### v1.6 full production release
+### v1.6 Windows x64 Engineering Test Build direction
 
-v1.6 is the target for production trust validation and the full six-platform release path. The existing production workflows remain intact for that purpose:
+The current v1.6 release direction is another unsigned Windows x64-only Engineering Test Build, reusing the exact-SHA profile proven by v1.5.
 
-- Windows x64/ARM64 native package build followed by publicly trusted signing and native post-sign verification
-- Linux x64/ARM64 standalone packages
-- macOS x64/ARM64 Developer ID signing, hardened runtime, notarization and stapling
-- the existing six-candidate assembler with exactly eight final public assets
+Until the release profile is deliberately frozen, version metadata remains `1.5.0`. When the profile is frozen as Windows x64 ETB:
 
-Production signing is considered implemented but not credential-validated until deliberate real signing runs succeed.
+- bump canonical version metadata to `1.6.0` through a normal PR;
+- build Windows x64 only with `.github/workflows/build-windows-exe.yml` using `target=x64`;
+- do not build Windows ARM64, Linux or macOS release candidates;
+- do not invoke production Windows signing or macOS signing/notarization;
+- assemble with `.github/workflows/assemble-windows-engineering-release.yml`;
+- publish exactly `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`;
+- use release title suffix `(ETB Win x64)` and body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`;
+- clearly state that the Windows package is unsigned.
+
+### v2.0-or-later full production release
+
+Production trust validation and the full six-platform release are not planned before v2.0. The production workflows remain intact so the architecture can be activated later without being part of normal v1.6/v1.7 release cost.
+
+The future production profile consists of:
+
+- Windows x64/ARM64 native package build followed by publicly trusted signing and native post-sign verification;
+- Linux x64/ARM64 standalone packages;
+- macOS x64/ARM64 Developer ID signing, hardened runtime, notarization and stapling;
+- the six-candidate assembler with exactly eight final public assets.
+
+Production signing is implemented in source but is not considered credential-validated until deliberate real signing runs succeed.
 
 ## GitHub Actions retention
 
-Artifact-producing workflows use repository-default retention as their
-hard safety ceiling. `.github/workflows/actions-retention.yml` applies
-the generational cleanup policy documented in `CI_MAINTENANCE.md`.
+Artifact-producing workflows use repository-default retention as their hard safety ceiling. `.github/workflows/actions-retention.yml` applies the generational cleanup policy documented in `CI_MAINTENANCE.md`.
 
-The newest successful equivalent generation remains current. The
-previous generation receives a 7-day grace period after its successor
-completes. Older successful generations are removed, and failed/cancelled
-runs are removed after the 7-day threshold.
+The newest successful equivalent generation remains current. The previous generation receives a 7-day grace period after its successor completes. Older successful generations are removed, and failed/cancelled runs are removed after the 7-day threshold.
 
-This housekeeping never alters GitHub Release assets, tags or source
-commits.
+This housekeeping never alters GitHub Release assets, tags or source commits.
 
 ## Local Windows x64 package
 
@@ -153,14 +164,14 @@ Available package workflows are:
 - `.github/workflows/build-linux.yml`
 - `.github/workflows/build-macos.yml`
 
-Production Windows trust uses:
+Future production Windows trust uses:
 
 - `.github/workflows/sign-windows.yml`
 
 Assembly is profile-specific:
 
-- `.github/workflows/assemble-windows-engineering-release.yml` for the v1.4 and v1.5 Windows x64 ETBs
-- `.github/workflows/assemble-release.yml` for the v1.6 full production release
+- `.github/workflows/assemble-windows-engineering-release.yml` for Windows x64 ETB releases including v1.4, v1.5 and the current v1.6 direction;
+- `.github/workflows/assemble-release.yml` for the future v2.0-or-later six-platform production release.
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
 
@@ -173,15 +184,15 @@ After release dependencies are installed, every package job runs the determinist
 - `target`: `x64`, `arm64` or `both`
 - `expected_sha`: the exact 40-character commit SHA intended for the build
 
-For v1.4 or v1.5 engineering, use `target=x64`. The x64 job runs on `windows-2025`. Do not select `arm64` or `both` for either ETB release.
+For v1.4, v1.5 and a v1.6 Windows x64 ETB, use `target=x64`. The x64 job runs on `windows-2025`. Do not select `arm64` or `both` for those ETB releases.
 
-For v1.6 production, use `target=both`; ARM64 runs on `windows-11-arm`.
+For the future six-platform production profile, use `target=both`; ARM64 runs on `windows-11-arm`.
 
 Each selected job validates native Python/PySide6 inputs, PE architecture, Windows version metadata, managed ADB behaviour, source checks, packaged startup, legal material and release provenance.
 
-For v1.4 and v1.5, the successful unsigned x64 run is the direct source of `.github/workflows/assemble-windows-engineering-release.yml`. For v1.6 production, the x64+ARM64 native build is only an intermediate and must pass through `.github/workflows/sign-windows.yml` before the full production assembler can accept it.
+For Windows x64 ETB releases, the successful unsigned x64 run is the direct source of `.github/workflows/assemble-windows-engineering-release.yml`. For the future production profile, the x64+ARM64 native build is only an intermediate and must pass through `.github/workflows/sign-windows.yml` before the full production assembler can accept it.
 
-### Windows production signing, planned for v1.6
+### Windows production signing, v2.0 or later
 
 `.github/workflows/sign-windows.yml` accepts:
 
@@ -205,7 +216,7 @@ Production signing uses:
 - SHA-256 file digest
 - RFC3161 timestamping with SHA-256
 
-Required GitHub Secrets:
+Required GitHub Secrets when this production profile is activated:
 
 - `AZURE_CLIENT_ID`
 - `AZURE_TENANT_ID`
@@ -232,7 +243,7 @@ Its only release input is the required exact `expected_sha`.
 
 Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the complete standalone tree so Qt/PySide/Shiboken shared libraries remain individually replaceable. Linux x64 can use the managed Google Platform-Tools archive; Linux ARM64 requires a native compatible ADB.
 
-Linux is not built for the v1.4 or v1.5 Windows engineering releases. It remains part of the planned v1.6 production profile.
+Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or the current v1.6 direction. It remains part of the future v2.0-or-later production profile.
 
 ### macOS
 
@@ -250,7 +261,7 @@ It accepts:
 
 `production` fails before dependency installation if the required Apple signing/notary secrets are missing. After the app and public legal material are complete, the workflow signs nested Mach-O code and nested bundles inside-out, signs the top-level app with a Developer ID Application identity, enables hardened runtime and secure timestamping, submits a temporary ZIP to Apple's notary service, requires `Accepted`, staples and validates the ticket, verifies the signature and runs a Gatekeeper assessment. The final release ZIP is created only after those checks and the final strict legal validation have passed.
 
-Required GitHub Secrets for production mode:
+Required GitHub Secrets when production macOS signing is activated:
 
 - `MACOS_DEVELOPER_ID_APPLICATION_P12_BASE64`
 - `MACOS_DEVELOPER_ID_APPLICATION_P12_PASSWORD`
@@ -261,7 +272,7 @@ Required GitHub Secrets for production mode:
 
 The P12 and App Store Connect API key are materialized only in temporary runner paths. The certificate is imported into a temporary keychain, and the workflow removes the temporary signing/notary material in an `always()` cleanup step.
 
-macOS is deliberately not built for v1.4 or v1.5 because those public engineering releases are Windows x64 only. Production macOS signing/notarization is deferred to the v1.6 trust milestone.
+macOS is not built for the current Windows x64 ETB release profile. Production macOS signing/notarization is deferred to the v2.0-or-later production milestone.
 
 ## Architecture validation
 
@@ -300,22 +311,22 @@ The preflight resolves metadata and small legal text only. It does not download 
 
 Passing the preflight is not release compliance evidence by itself. After packaging, `prepare_release_legal_bundle.py` still detects the actual runtime, downloads the exact required source archives, injects public legal material and creates validation evidence. `validate_release_legal_bundle.py` then performs the strict public package/source validation. The preflight complements these gates and never replaces or weakens them.
 
-For the unsigned v1.4 and v1.5 Windows x64 engineering releases, the native x64 package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
+For unsigned Windows x64 engineering releases such as v1.4, v1.5 and the current v1.6 direction, the native x64 package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
 
 For macOS production builds, legal/public files are injected before the production signature. After signing/notarization/stapling, runtime evidence is refreshed against that final app state and the strict public legal validator runs before the release ZIP is created. Do not add or modify app-bundle files after the production signature except through the deliberate notarization/stapling process.
 
 For Windows production builds, Authenticode changes the owned executable bytes and the signing workflow deliberately updates `BUILD-INFO.txt`, so runtime evidence is refreshed and the strict public legal validator runs again before the final signed ZIP is created.
 
-## Frozen-SHA v1.4 Windows x64 Engineering Test Build procedure
+## Frozen-SHA Windows x64 Engineering Test Build procedure
 
-The v1.4 engineering release uses one exact immutable source revision for one Windows x64 package.
+This procedure applies to v1.4, v1.5 and any later release that deliberately selects the same Windows x64 ETB profile, including the current v1.6 direction.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release change to `main` with a normal merge commit.
 3. Require the cheap post-merge Quality run to pass.
-4. Record the exact full `main` SHA. This becomes the frozen v1.4 release SHA.
+4. Record the exact full `main` SHA. This becomes the frozen release SHA.
 5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=x64` and `expected_sha=<frozen SHA>`.
-6. Require the native Windows x64 job to succeed from that exact SHA. Do not dispatch Windows ARM64, Windows signing, Linux or macOS for v1.4.
+6. Require the native Windows x64 job to succeed from that exact SHA. Do not dispatch Windows ARM64, Windows signing, Linux or macOS for this ETB profile.
 7. Record the successful `Build Windows - Qt6` run ID.
 8. Dispatch `.github/workflows/assemble-windows-engineering-release.yml` from the same frozen `main` SHA with:
    - `expected_sha=<frozen SHA>`
@@ -325,7 +336,7 @@ The v1.4 engineering release uses one exact immutable source revision for one Wi
     - `PlayStoreAppAudit-vVERSION-windows-x64.zip`
     - `PlayStoreAppAudit-vVERSION-third-party-sources.tar.xz`
     - `SHA256SUMS.txt`
-11. Verify the final checksums and manually smoke-check the exact Windows x64 package if desired.
+11. Verify the final checksums and deliberate manual smoke checks against those exact artifacts.
 12. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
 13. Create the GitHub Release and upload the already validated three assets. Use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; clearly state that the package is unsigned.
 14. Do not rebuild because the tag was pushed.
@@ -333,30 +344,20 @@ The v1.4 engineering release uses one exact immutable source revision for one Wi
 
 If source code or release tooling changes after step 4, discard the candidate, freeze the new exact `main` SHA and rebuild the Windows x64 candidate. Never mix artifacts from different SHAs.
 
-## Frozen-SHA v1.5 Windows x64 Engineering Test Build procedure
+### v1.6 ETB filename/title specialization
 
-The v1.5.0 engineering release uses one exact immutable source revision for one unsigned Windows x64 package.
+If v1.6 is frozen on the current Windows x64 ETB direction, the generic procedure above specializes to:
 
-1. Finish source, version and changelog changes through normal PRs.
-2. Merge the final release change to `main` with a normal merge commit.
-3. Require the cheap post-merge Quality run to pass.
-4. Record the exact full `main` SHA. This becomes the frozen v1.5 release SHA.
-5. Dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=x64` and `expected_sha=<frozen SHA>`.
-6. Require the native Windows x64 job to succeed from that exact SHA. Do not dispatch Windows ARM64, Windows signing, Linux or macOS for v1.5.
-7. Record the successful `Build Windows - Qt6` run ID and use its legal-preparation timing output as evidence before considering any cross-run source-archive cache.
-8. Dispatch `.github/workflows/assemble-windows-engineering-release.yml` from the same frozen `main` SHA with `expected_sha=<frozen SHA>` and `windows_run_id=<successful x64-only Build Windows - Qt6 run>`.
-9. Require exactly three final files and no extra directories: `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
-10. Verify checksums and deliberate manual smoke checks against those exact artifacts.
-11. Create the annotated `v1.5.0` tag on the same frozen SHA only after artifact validation.
-12. Create the GitHub Release and upload the already validated three assets. Use title suffix `(ETB Win x64)` and body heading `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`; clearly state that the package is unsigned.
-13. Do not rebuild because the tag was pushed.
-14. Once published, treat the tag, release history and binary assets as immutable.
+- version: `1.6.0`;
+- tag: `v1.6.0`;
+- package: `PlayStoreAppAudit-v1.6.0-windows-x64.zip`;
+- source archive: `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`;
+- release title: `Play Store App Audit v1.6.0 (ETB Win x64)`;
+- body heading: `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
 
-If source code or release tooling changes after the SHA is frozen, discard the candidate, freeze the new exact `main` SHA and rebuild the Windows x64 candidate. Never mix artifacts from different SHAs.
+## Frozen-SHA future full production procedure
 
-## Frozen-SHA v1.6 full production release procedure
-
-The planned v1.6 production profile uses one exact immutable source revision for all six platform packages.
+The future v2.0-or-later production profile uses one exact immutable source revision for all six platform packages.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release PR to `main` with a normal merge commit.
@@ -381,7 +382,9 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 ## Version handling
 
-The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.4.0` maps to Windows version `1.4.0.0`.
+The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.6.0` maps to Windows version `1.6.0.0`.
+
+Do not bump a development tree to the next public version before the release profile is deliberately frozen. For v1.6 stabilization, keep `1.5.0` until the profile freeze PR is ready.
 
 ## Packaged smoke tests
 
@@ -393,9 +396,9 @@ A package is not valid merely because the compiler returned success. Verify stan
 
 At the immutable v1.3.0 baseline, Windows and Linux packages are unsigned and macOS bundles have only an ad-hoc CI signature.
 
-v1.4 and v1.5 deliberately remain unsigned Windows x64 engineering releases. Production trust validation is deferred to v1.6.
+v1.4 and v1.5 deliberately remain unsigned Windows x64 engineering releases. The current v1.6 direction does the same. Production trust validation is deferred until v2.0 or later.
 
-### macOS v1.6 production path
+### macOS production path, v2.0 or later
 
 `.github/scripts/sign_macos_app.py` is the canonical app-bundle signing helper. It discovers Mach-O files and nested code bundles, signs them inside-out, signs the top-level app last and then performs strict recursive verification. Production mode adds hardened runtime and secure timestamping. It deliberately does not use `codesign --deep` as the signing strategy.
 
@@ -403,7 +406,7 @@ The production workflow then notarizes with `xcrun notarytool`, requires an acce
 
 Do not treat the implementation as credential-validated until a deliberate `signing_mode=production` workflow run succeeds on both macOS architectures with real Developer ID and App Store Connect notary credentials.
 
-### Windows v1.6 production path
+### Windows production path, v2.0 or later
 
 `.github/workflows/sign-windows.yml` is the production Authenticode trust stage. It uses Microsoft Artifact Signing with a configured production Public Trust profile and GitHub OIDC, signs only `PlayStoreAppAudit.exe`, requires SHA-256 plus RFC3161 timestamping, refreshes strict legal evidence after signing, and repeats final package/signature validation after ZIP roundtrip.
 
