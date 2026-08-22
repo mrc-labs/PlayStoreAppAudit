@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -125,6 +126,36 @@ def test_icon_lookup_schedules_disk_io_without_blocking_ui(
     app.processEvents()
 
 
+def test_disk_backend_error_falls_through_to_network_queue(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loader = AppIconLoader()
+    pumped: list[bool] = []
+
+    def fail_disk_read(*_args: object) -> bytes | None:
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(icon_loader_ui, "load_cached_icon_bytes", fail_disk_read)
+    monkeypatch.setattr(loader, "_pump", lambda: pumped.append(True))
+    loader._disk_pool = SimpleNamespace(start=lambda task: task.run())  # type: ignore[assignment]
+
+    try:
+        result = loader.icon_for_row(
+            "com.example.disk-failure",
+            "https://example.invalid/icon.png",
+            "2026-08-20",
+        )
+
+        assert result is None
+        assert pumped == [True]
+        assert len(loader._queued) == 1
+        queued = loader._queued[0]
+        assert queued.key in loader._pending
+    finally:
+        loader.deleteLater()
+        app.processEvents()
+
+
 def test_persisted_icon_is_reused_while_app_update_is_unchanged(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -172,6 +203,54 @@ def test_persisted_icon_without_update_marker_requires_same_url(
         )
         is None
     )
+
+
+def test_disk_cache_directory_failure_degrades_to_miss(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("blocked", encoding="utf-8")
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: blocker)
+
+    disk_cache.store_cached_icon_bytes(
+        "com.example.blocked",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+        b"icon",
+    )
+
+    assert (
+        disk_cache.load_cached_icon_bytes(
+            "com.example.blocked",
+            "https://example.invalid/icon.png",
+            "2026-08-20",
+        )
+        is None
+    )
+    assert disk_cache.cached_icon_metadata("com.example.blocked") == {}
+
+
+def test_index_write_failure_does_not_leave_orphan_icon(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    original_write_text = Path.write_text
+
+    def fail_index_write(path: Path, *args: object, **kwargs: object) -> int:
+        if path.name == "index.json.tmp":
+            raise OSError("index is not writable")
+        return original_write_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", fail_index_write)
+    disk_cache.store_cached_icon_bytes(
+        "com.example.index-failure",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+        b"icon",
+    )
+
+    assert disk_cache.cached_icon_metadata("com.example.index-failure") == {}
+    assert not list((tmp_path / disk_cache.ICON_CACHE_DIRNAME).glob("*.img"))
 
 
 def test_table_icons_are_opt_in_and_use_captured_metadata(

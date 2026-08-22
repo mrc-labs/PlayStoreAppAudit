@@ -13,8 +13,15 @@ ICON_INDEX_FILENAME = "index.json"
 
 
 def icon_cache_dir() -> Path:
-    path = app_data_dir() / ICON_CACHE_DIRNAME
-    path.mkdir(parents=True, exist_ok=True)
+    return app_data_dir() / ICON_CACHE_DIRNAME
+
+
+def _ensure_icon_cache_dir() -> Path | None:
+    path = icon_cache_dir()
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
     return path
 
 
@@ -24,11 +31,11 @@ def icon_index_path() -> Path:
 
 def _load_index() -> dict[str, dict[str, str]]:
     path = icon_index_path()
-    if not path.is_file():
-        return {}
     try:
+        if not path.is_file():
+            return {}
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return {}
     if not isinstance(raw, dict):
         return {}
@@ -44,11 +51,20 @@ def _load_index() -> dict[str, dict[str, str]]:
     return result
 
 
-def _save_index(index: dict[str, dict[str, str]]) -> None:
-    path = icon_index_path()
+def _save_index(index: dict[str, dict[str, str]]) -> bool:
+    cache_dir = _ensure_icon_cache_dir()
+    if cache_dir is None:
+        return False
+    path = cache_dir / ICON_INDEX_FILENAME
     temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8")
-    temp.replace(path)
+    try:
+        temp.write_text(json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8")
+        temp.replace(path)
+    except OSError:
+        with suppress(OSError):
+            temp.unlink(missing_ok=True)
+        return False
+    return True
 
 
 def _filename_for_package(package_name: str) -> str:
@@ -66,7 +82,8 @@ def load_cached_icon_bytes(
     If a Store update date is available, it is the cache invalidation key. This
     intentionally allows long-lived icon retention across sessions and across
     CDN URL changes. When no update marker is available, URL equality is used as
-    the conservative fallback invalidation rule.
+    the conservative fallback invalidation rule. Filesystem failures degrade to
+    a cache miss so callers can continue through the normal network path.
     """
     package = str(package_name or "").strip()
     url = str(icon_url or "").strip()
@@ -109,12 +126,19 @@ def store_cached_icon_bytes(
     if not package or not url or not data:
         return
 
-    cache_dir = icon_cache_dir()
+    cache_dir = _ensure_icon_cache_dir()
+    if cache_dir is None:
+        return
     filename = _filename_for_package(package)
     destination = cache_dir / filename
     temp = destination.with_suffix(destination.suffix + ".tmp")
-    temp.write_bytes(data)
-    temp.replace(destination)
+    try:
+        temp.write_bytes(data)
+        temp.replace(destination)
+    except OSError:
+        with suppress(OSError):
+            temp.unlink(missing_ok=True)
+        return
 
     index = _load_index()
     index[package] = {
@@ -122,7 +146,11 @@ def store_cached_icon_bytes(
         "icon_url": url,
         "play_last_update": update,
     }
-    _save_index(index)
+    if not _save_index(index):
+        # An icon without an index entry cannot be reused and would otherwise
+        # accumulate as an orphan if persistent storage keeps failing.
+        with suppress(OSError):
+            destination.unlink(missing_ok=True)
 
 
 def remove_cached_icon(package_name: object) -> None:
@@ -131,12 +159,14 @@ def remove_cached_icon(package_name: object) -> None:
         return
     index = _load_index()
     entry = index.pop(package, None)
-    if entry:
-        filename = str(entry.get("file") or "").strip()
-        if filename:
-            with suppress(OSError):
-                (icon_cache_dir() / filename).unlink(missing_ok=True)
-        _save_index(index)
+    if not entry:
+        return
+
+    filename = str(entry.get("file") or "").strip()
+    if filename:
+        with suppress(OSError):
+            (icon_cache_dir() / filename).unlink(missing_ok=True)
+    _save_index(index)
 
 
 def cached_icon_metadata(package_name: object) -> dict[str, Any]:
