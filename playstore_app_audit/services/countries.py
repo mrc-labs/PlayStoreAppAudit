@@ -4,6 +4,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from playstore_app_audit.services.app_icon_metadata import enrich_rows_with_store_metadata
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.play_store import PlayStoreService
 
@@ -25,6 +26,7 @@ def fetch_app_multicountry(
         pause_event=pause_event,
         cancel_event=cancel_event,
     )
+    enrich_rows_with_store_metadata(rows)
     return rows[0] if rows else None
 
 
@@ -35,10 +37,11 @@ def audit_apps_multicountry(
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
 ) -> list[dict[str, Any]]:
-    return _SERVICE.audit(
+    rows = _SERVICE.audit(
         apps,
         config,
         progress_callback,
         pause_event=pause_event,
         cancel_event=cancel_event,
     )
+    return enrich_rows_with_store_metadata(rows)
