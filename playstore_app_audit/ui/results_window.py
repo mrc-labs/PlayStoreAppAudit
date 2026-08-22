@@ -17,12 +17,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.change_overview as change_ui
 import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
@@ -113,6 +115,7 @@ class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         self._device_store_locale: store_locale.StoreLocale | None = None
+        self._change_overview_dialog: change_ui.ChangeOverviewDialog | None = None
         super().__init__()
         self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
@@ -137,7 +140,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         old_proxy.deleteLater()
         self._apply_column_visibility(reset_order=False)
 
-    # ---------- Selected-row details ----------
+    # ---------- Selected-row details / changes ----------
     def _setup_details_panel(self) -> None:
         central = self.centralWidget()
         root = central.layout() if central is not None else None
@@ -166,6 +169,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._set_details_panel_position(position, persist=False)
 
         self.details_panel.position_changed.connect(self._set_details_panel_position)
+        self.details_panel.review_changes_requested.connect(self._show_change_overview)
         selection_model = self.table.selectionModel()
         if selection_model is not None:
             selection_model.currentRowChanged.connect(self._on_details_current_row_changed)
@@ -223,6 +227,54 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_panel.clear()
         if self.proxy.rowCount() > 0:
             self.table.selectRow(0)
+
+    def _current_change_groups(self) -> list[dict[str, Any]]:
+        return change_service.build_change_groups(
+            list(self.current_rows), getattr(self, "_last_inventory_changes", None)
+        )
+
+    def _show_change_overview(self) -> None:
+        if self._change_overview_dialog is None:
+            dialog = change_ui.ChangeOverviewDialog(self)
+            dialog.package_selected.connect(self._select_package_from_change_overview)
+            self._change_overview_dialog = dialog
+        self._change_overview_dialog.set_groups(self._current_change_groups())
+        self._change_overview_dialog.show()
+        self._change_overview_dialog.raise_()
+        self._change_overview_dialog.activateWindow()
+
+    def _select_package_from_change_overview(self, package_name: str) -> None:
+        package_name = str(package_name or "").strip()
+        if not package_name:
+            return
+        for proxy_row in range(self.proxy.rowCount()):
+            index = self.proxy.index(proxy_row, 0)
+            row = index.data(Qt.ItemDataRole.UserRole)
+            if isinstance(row, dict) and str(row.get("package_name") or "") == package_name:
+                self.table.selectRow(proxy_row)
+                self.table.scrollTo(index)
+                return
+        if any(str(row.get("package_name") or "") == package_name for row in self.current_rows):
+            self.status_label.setText(
+                f"{package_name} is hidden by the current table filters. Clear filters to focus it."
+            )
+        else:
+            self.status_label.setText(
+                f"{package_name} is no longer present in the current device/results inventory."
+            )
+
+    def _on_controlled_done(self, payload: object) -> None:
+        super()._on_controlled_done(payload)
+        had_previous_inventory = bool(
+            self.source_mode == "device"
+            and isinstance(getattr(self, "_last_inventory_changes", None), dict)
+            and self._last_inventory_changes.get("had_previous")
+        )
+        for row in self.current_rows:
+            row[change_service.DEVICE_HISTORY_FLAG] = had_previous_inventory
+        self._on_details_model_data_changed()
+        if self._change_overview_dialog is not None:
+            self._change_overview_dialog.set_groups(self._current_change_groups())
 
     # ---------- Source UX ----------
     def _choice_row(self, text: str, button) -> QHBoxLayout:
@@ -436,6 +488,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         super()._clear_results()
         if hasattr(self, "details_panel"):
             self.details_panel.clear()
+        if self._change_overview_dialog is not None:
+            self._change_overview_dialog.set_groups([])
         self._sync_phone_package_export_actions()
 
     # ---------- Concise summary ----------

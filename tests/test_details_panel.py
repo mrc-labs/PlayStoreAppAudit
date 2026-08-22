@@ -6,6 +6,7 @@ import pytest
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 import playstore_app_audit.services.app_icon_metadata as store_metadata
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.results_window as results_ui
 
@@ -73,7 +74,7 @@ def test_country_evidence_is_rendered_without_parsing_notes() -> None:
     ]
 
 
-def test_change_events_and_device_inventory_are_rendered() -> None:
+def test_change_events_and_device_inventory_are_rendered_only_with_baseline() -> None:
     row = {
         details_ui.AUDIT_CHANGES_FIELD: [
             {
@@ -87,13 +88,20 @@ def test_change_events_and_device_inventory_are_rendered() -> None:
                 "current": "Aging",
             },
         ],
-        "device_change": "Newly installed",
+        "device_change": "New on device",
+        change_service.DEVICE_HISTORY_FLAG: True,
     }
 
     assert details_ui.change_lines(row) == [
         "Play Store version changed: 1.0 → 2.0",
         "Maintenance state changed: Current → Aging",
-        "Device inventory: Newly installed",
+        "Device inventory: New on device",
+    ]
+
+    row[change_service.DEVICE_HISTORY_FLAG] = False
+    assert details_ui.change_lines(row) == [
+        "Play Store version changed: 1.0 → 2.0",
+        "Maintenance state changed: Current → Aging",
     ]
 
 
@@ -117,7 +125,7 @@ def test_normal_store_response_capture_reuses_developer_without_extra_request() 
     assert row["play_icon_url"] == "https://example.invalid/icon.png"
 
 
-def test_panel_shows_selected_row_details(app: QApplication) -> None:
+def test_panel_shows_selected_row_details_and_review_action(app: QApplication) -> None:
     panel = details_ui.AppDetailsPanel("right")
     assert all(widget.isHidden() for widget in panel._section_widgets)
     row = {
@@ -133,8 +141,11 @@ def test_panel_shows_selected_row_details(app: QApplication) -> None:
         "installed_version": "1.9",
         "installer_source": "Google Play (com.android.vending)",
     }
+    review_requests: list[bool] = []
+    panel.review_changes_requested.connect(lambda: review_requests.append(True))
 
     panel.set_row(row)
+    panel.review_changes_button.click()
 
     assert all(not widget.isHidden() for widget in panel._section_widgets)
     assert panel.title_label.text() == "Example App"
@@ -143,6 +154,7 @@ def test_panel_shows_selected_row_details(app: QApplication) -> None:
     assert "Store market: ch" in panel.store_label.text()
     assert "Installed version: 1.9" in panel.device_label.text()
     assert panel.open_store_button.isEnabled()
+    assert review_requests == [True]
 
     panel.deleteLater()
     app.processEvents()
