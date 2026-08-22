@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 import playstore_app_audit.services.app_icon_metadata as store_metadata
 import playstore_app_audit.ui.details_panel as details_ui
+import playstore_app_audit.ui.results_window as results_ui
 
 
 @pytest.fixture(scope="module")
@@ -22,6 +23,21 @@ def test_details_panel_position_normalises_unknown_values() -> None:
     assert details_ui.normalise_details_panel_position("Below") == "below"
     assert details_ui.normalise_details_panel_position("right") == "right"
     assert details_ui.normalise_details_panel_position("unexpected") == "right"
+
+
+def test_results_layout_lookup_descends_through_card_widget(app: QApplication) -> None:
+    root_widget = QWidget()
+    root = QVBoxLayout(root_widget)
+    card = QWidget()
+    card_layout = QVBoxLayout(card)
+    target = QWidget()
+    card_layout.addWidget(target)
+    root.addWidget(card)
+
+    assert results_ui._find_layout_containing(root, target) is card_layout
+
+    root_widget.deleteLater()
+    app.processEvents()
 
 
 def test_country_evidence_is_rendered_without_parsing_notes() -> None:
