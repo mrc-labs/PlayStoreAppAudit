@@ -38,9 +38,38 @@ _CHANGE_LABELS = {
     "installer_source_changed": "Installer/source changed",
 }
 
+_DIAGNOSTIC_STATUS_LABELS = {
+    "not_found_in_checked_countries": "Terminal not-found across all checked Store markets",
+    "multi_country_check_inconclusive": "Transient/inconclusive Store verification",
+    "available_in_other_country": "Available in a checked fallback market",
+}
+
 
 def _text(value: object) -> str:
     return str(value or "").strip()
+
+
+def _int_value(value: object) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _unique_text(items: list[dict[str, Any]], key: str, upper: bool = False) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        value = _text(item.get(key))
+        if not value:
+            continue
+        display = value.upper() if upper else value.lower()
+        marker = display.casefold()
+        if marker in seen:
+            continue
+        seen.add(marker)
+        values.append(display)
+    return values
 
 
 def normalise_details_panel_position(value: object) -> str:
@@ -89,6 +118,9 @@ def evidence_lines(row: Mapping[str, Any]) -> list[str]:
         status = _text(item.get("status")).replace("_", " ") or "unknown"
         source = _text(item.get("source"))
         http_status = _text(item.get("http_status"))
+        request_path = _text(item.get("request_path"))
+        retries = _int_value(item.get("retry_count"))
+        outcome = _text(item.get("outcome"))
         suffix = []
         if language_role == "english_fallback":
             suffix.append("English fallback")
@@ -96,10 +128,77 @@ def evidence_lines(row: Mapping[str, Any]) -> list[str]:
             suffix.append(f"HTTP {http_status}")
         if source:
             suffix.append(source)
+        if request_path:
+            suffix.append(request_path)
+        if retries:
+            suffix.append(f"{retries} {'retry' if retries == 1 else 'retries'}")
+        if outcome in {"terminal_not_found", "transient_inconclusive"}:
+            suffix.append(outcome.replace("_", " "))
         detail = f"{role}: {country}/{language} • {status}"
         if suffix:
             detail += " • " + " • ".join(suffix)
         lines.append(detail)
+    return lines
+
+
+def store_diagnostic_lines(row: Mapping[str, Any]) -> list[str]:
+    """Summarise only structured Store evidence; never interpret display notes."""
+    raw = row.get(STORE_EVIDENCE_FIELD)
+    if not isinstance(raw, list):
+        return []
+    entries = [dict(item) for item in raw if isinstance(item, dict)]
+    if not entries:
+        return []
+
+    status = _text(row.get("play_status"))
+    retry_count = sum(_int_value(item.get("retry_count")) for item in entries)
+    html_count = sum(
+        1 for item in entries if "html" in _text(item.get("request_path")).casefold()
+    )
+    failure_reasons = _unique_text(entries, "failure_reason")
+    outcomes = {_text(item.get("outcome")) for item in entries}
+    interesting = (
+        status in _DIAGNOSTIC_STATUS_LABELS
+        or len(entries) > 1
+        or retry_count > 0
+        or html_count > 0
+        or bool(failure_reasons)
+        or bool(outcomes & {"terminal_not_found", "transient_inconclusive"})
+    )
+    if not interesting:
+        return []
+
+    lines: list[str] = []
+    if status in _DIAGNOSTIC_STATUS_LABELS:
+        lines.append(f"Result: {_DIAGNOSTIC_STATUS_LABELS[status]}")
+    elif "transient_inconclusive" in outcomes:
+        lines.append("Result: at least one Store request was transient/inconclusive")
+    elif "terminal_not_found" in outcomes:
+        lines.append("Result: at least one Store request returned terminal not-found evidence")
+
+    countries = _unique_text(entries, "country", upper=True)
+    languages = _unique_text(entries, "language")
+    if countries:
+        lines.append("Countries tried: " + " → ".join(countries))
+    if languages:
+        lines.append("Languages tried: " + ", ".join(languages))
+
+    requests_text = f"Locale requests: {len(entries)}"
+    if retry_count:
+        requests_text += f" • total retries: {retry_count}"
+    lines.append(requests_text)
+
+    if html_count:
+        scraper_only = max(0, len(entries) - html_count)
+        path_parts = [f"HTML confirmation/fallback: {html_count}"]
+        if scraper_only:
+            path_parts.append(f"scraper-only: {scraper_only}")
+        lines.append("Store path: " + " • ".join(path_parts))
+
+    if failure_reasons:
+        lines.append("Failure reason: " + " | ".join(failure_reasons[:3]))
+        if len(failure_reasons) > 3:
+            lines.append(f"Additional distinct failures: {len(failure_reasons) - 3}")
     return lines
 
 
@@ -288,6 +387,7 @@ class AppDetailsPanel(QFrame):
         self.store_section, self.store_label = self._section("Store")
         self.device_section, self.device_label = self._section("Installed / device")
         self.evidence_section, self.evidence_label = self._section("Country and language evidence")
+        self.diagnostics_section, self.diagnostics_label = self._section("Store diagnostics")
         self.changes_section, self.changes_label = self._section("Changes since previous audit")
         self.notes_section, self.notes_label = self._section("Notes")
         self.content_layout.addStretch(1)
@@ -346,6 +446,7 @@ class AppDetailsPanel(QFrame):
             left.setSpacing(12)
             left.addWidget(self.store_section)
             left.addWidget(self.evidence_section)
+            left.addWidget(self.diagnostics_section)
             left.addStretch(1)
             right = QVBoxLayout()
             right.setContentsMargins(0, 0, 0, 0)
@@ -369,6 +470,7 @@ class AppDetailsPanel(QFrame):
                 self.store_section,
                 self.device_section,
                 self.evidence_section,
+                self.diagnostics_section,
                 self.changes_section,
                 self.notes_section,
             ):
@@ -399,6 +501,7 @@ class AppDetailsPanel(QFrame):
             self.store_label,
             self.device_label,
             self.evidence_label,
+            self.diagnostics_label,
             self.changes_label,
             self.notes_label,
         ):
@@ -441,6 +544,10 @@ class AppDetailsPanel(QFrame):
 
         evidence = evidence_lines(row)
         self.evidence_label.setText("\n".join(evidence) if evidence else "No structured Store evidence recorded.")
+
+        diagnostics = store_diagnostic_lines(row)
+        self.diagnostics_label.setText("\n".join(diagnostics))
+        self.diagnostics_section.setVisible(bool(diagnostics))
 
         changes = change_lines(row)
         self.changes_label.setText("\n".join(changes) if changes else "No recorded change for this row.")
