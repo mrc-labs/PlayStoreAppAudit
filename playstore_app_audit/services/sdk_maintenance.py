@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import Any
+
+import playstore_app_audit.services.device_insights as device_insights
 
 COMPATIBILITY_VALUES = ("", "Modern", "Aging target", "Legacy target", "Unknown")
 
@@ -24,6 +27,11 @@ class SdkMaintenanceFilter:
             or self.min_sdk_max is not None
             or self.compatibility in COMPATIBILITY_VALUES[1:]
         )
+
+
+_FILTER_LOCK = threading.Lock()
+_ACTIVE_FILTER = SdkMaintenanceFilter()
+_INSTALLED = False
 
 
 def _sdk_number(value: object) -> int | None:
@@ -50,6 +58,19 @@ def normalise_sdk_filter(value: SdkMaintenanceFilter | None) -> SdkMaintenanceFi
     if compatibility not in COMPATIBILITY_VALUES:
         compatibility = ""
     return SdkMaintenanceFilter(target, minimum, compatibility)
+
+
+def set_active_sdk_filter(value: SdkMaintenanceFilter | None) -> SdkMaintenanceFilter:
+    global _ACTIVE_FILTER
+    current = normalise_sdk_filter(value)
+    with _FILTER_LOCK:
+        _ACTIVE_FILTER = current
+    return current
+
+
+def active_sdk_filter() -> SdkMaintenanceFilter:
+    with _FILTER_LOCK:
+        return _ACTIVE_FILTER
 
 
 def row_matches_sdk_filter(
@@ -90,3 +111,24 @@ def describe_sdk_filter(value: SdkMaintenanceFilter | None) -> str:
     if current.compatibility:
         parts.append(current.compatibility)
     return "SDK filter: " + " · ".join(parts)
+
+
+def install_sdk_maintenance_filter() -> None:
+    """Combine the session SDK filter with every existing built-in filter.
+
+    The existing preset remains authoritative for its own semantics. The SDK
+    filter is an additional AND condition, so installer/source filters, status
+    filters and SDK thresholds can be combined without inventing smart-query
+    syntax or persisting an unfinished saved-filter UX.
+    """
+    global _INSTALLED
+    if _INSTALLED:
+        return
+
+    original = device_insights.row_matches_filter
+
+    def combined(row: dict[str, Any], preset: str) -> bool:
+        return original(row, preset) and row_matches_sdk_filter(row, active_sdk_filter())
+
+    device_insights.row_matches_filter = combined
+    _INSTALLED = True
