@@ -119,6 +119,7 @@ def test_normal_store_response_capture_reuses_developer_without_extra_request() 
 
 def test_panel_shows_selected_row_details(app: QApplication) -> None:
     panel = details_ui.AppDetailsPanel("right")
+    assert all(widget.isHidden() for widget in panel._section_widgets)
     row = {
         "package_name": "com.example.app",
         "play_title": "Example App",
@@ -135,6 +136,7 @@ def test_panel_shows_selected_row_details(app: QApplication) -> None:
 
     panel.set_row(row)
 
+    assert all(not widget.isHidden() for widget in panel._section_widgets)
     assert panel.title_label.text() == "Example App"
     assert panel.developer_label.text() == "Example Developer"
     assert "Package: com.example.app" in panel.store_label.text()
