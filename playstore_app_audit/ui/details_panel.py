@@ -101,6 +101,7 @@ def _joined_fields(row: Mapping[str, Any], fields: list[tuple[str, str]]) -> str
 
 class AppDetailsPanel(QFrame):
     position_changed = Signal(str)
+    review_changes_requested = Signal()
 
     def __init__(self, position: str = "right", parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -173,10 +174,15 @@ class AppDetailsPanel(QFrame):
         self.notes_label = self._section("Notes")
         self.content_layout.addStretch(1)
 
+        button_row = QHBoxLayout()
+        self.review_changes_button = QPushButton("Review audit changes")
+        self.review_changes_button.clicked.connect(self.review_changes_requested.emit)
+        button_row.addWidget(self.review_changes_button)
         self.open_store_button = QPushButton("Open in Google Play")
         self.open_store_button.setEnabled(False)
         self.open_store_button.clicked.connect(self._open_store)
-        root.addWidget(self.open_store_button)
+        button_row.addWidget(self.open_store_button)
+        root.addLayout(button_row)
         self.clear()
 
     def _section(self, title: str) -> QLabel:
