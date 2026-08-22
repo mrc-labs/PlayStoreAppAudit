@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from playstore_app_audit.services.store_locale import (
+    StoreLocale,
     locale_from_android_properties,
     primary_language_for_country,
     resolve_store_language,
+    set_active_device_store_locale,
 )
 
 
@@ -15,9 +17,21 @@ def test_country_defaults_use_stable_primary_languages() -> None:
 
 
 def test_auto_language_uses_selected_country_default() -> None:
+    set_active_device_store_locale(None)
     assert resolve_store_language("auto", "it") == "it"
     assert resolve_store_language("", "ch") == "de"
     assert resolve_store_language("fr-CH", "ch") == "fr"
+
+
+def test_auto_language_prefers_active_android_system_language() -> None:
+    set_active_device_store_locale(StoreLocale("it", "ch", "it-CH", "test"))
+    try:
+        assert resolve_store_language("auto", "ch") == "it"
+        assert resolve_store_language("", "ch") == "it"
+        # A manual setting always wins over the device context.
+        assert resolve_store_language("en", "ch") == "en"
+    finally:
+        set_active_device_store_locale(None)
 
 
 def test_android_primary_locale_keeps_device_language_and_region() -> None:

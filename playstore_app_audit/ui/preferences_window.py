@@ -280,7 +280,14 @@ class PreferencesWindow(table_ui.TableWindow):
         store = QGroupBox("Store, dates and cache")
         form = QFormLayout(store)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        language = QLineEdit(str(self.user_settings.get("store_language") or "en"))
+        language = QLineEdit(str(self.user_settings.get("store_language") or "auto"))
+        language.setObjectName("StoreLanguageEdit")
+        language.setPlaceholderText("auto, en, it, de, …")
+        language.setToolTip(
+            "Use 'auto' to follow the connected Android system language during phone audits. "
+            "For file audits, Auto uses the primary language of the selected Store country. "
+            "Enter a language code such as en, it, de or fr to override Auto."
+        )
         fallback = QLineEdit(
             str(self.user_settings.get("fallback_countries") or device_metadata.DEFAULT_FALLBACK_COUNTRIES)
         )
@@ -399,7 +406,7 @@ class PreferencesWindow(table_ui.TableWindow):
         old_portable = device_insights.portable_mode_active()
 
         def reset_controls() -> None:
-            language.setText("en")
+            language.setText(str(state.DEFAULT_SETTINGS["store_language"]))
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             workers.setValue(state.DEFAULT_STORE_WORKERS)
             show_icons.setChecked(False)
@@ -429,7 +436,9 @@ class PreferencesWindow(table_ui.TableWindow):
         ]
         self.user_settings.update(
             {
-                "store_language": (language.text().strip() or "en").lower(),
+                "store_language": (
+                    language.text().strip() or str(state.DEFAULT_SETTINGS["store_language"])
+                ).lower(),
                 "fallback_countries": fallback_text,
                 "store_workers": workers.value(),
                 "show_app_icons": show_icons.isChecked(),

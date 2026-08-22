@@ -8,6 +8,7 @@ from typing import Any
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.play_store as play_store
+from playstore_app_audit.services.store_locale import resolve_store_language
 
 _STORE_LOCK = threading.Lock()
 _INSTALLED = False
@@ -71,7 +72,10 @@ def _format_store_event(result: str, wall_s: float, stats: dict[str, dict[str, A
 
 def _locale_role(country: str, language: str, config: Any) -> str:
     selected_country = str(getattr(config, "country", "") or "").lower()
-    selected_language = str(getattr(config, "language", "") or "").lower()
+    selected_language = resolve_store_language(
+        getattr(config, "language", ""),
+        selected_country,
+    )
     return (
         "primary"
         if str(country or "").lower() == selected_country
