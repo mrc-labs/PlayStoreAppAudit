@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.change_overview as change_service
+
 AUDIT_CHANGES_FIELD = "_audit_changes"
 STORE_EVIDENCE_FIELD = "_store_evidence"
 
@@ -70,22 +72,25 @@ def evidence_lines(row: Mapping[str, Any]) -> list[str]:
 
 def change_lines(row: Mapping[str, Any]) -> list[str]:
     raw = row.get(AUDIT_CHANGES_FIELD)
-    if not isinstance(raw, list):
-        return []
     lines: list[str] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        event_type = _text(item.get("type"))
-        label = _CHANGE_LABELS.get(event_type, event_type.replace("_", " ").title())
-        previous = _text(item.get("previous"))
-        current = _text(item.get("current"))
-        if previous and current:
-            lines.append(f"{label}: {previous} → {current}")
-        else:
-            lines.append(label)
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            event_type = _text(item.get("type"))
+            label = _CHANGE_LABELS.get(event_type, event_type.replace("_", " ").title())
+            previous = _text(item.get("previous"))
+            current = _text(item.get("current"))
+            if previous and current:
+                lines.append(f"{label}: {previous} → {current}")
+            else:
+                lines.append(label)
     device_change = _text(row.get("device_change"))
-    if device_change and device_change.casefold() not in {"same", "unchanged", "none"}:
+    if (
+        bool(row.get(change_service.DEVICE_HISTORY_FLAG))
+        and device_change
+        and device_change.casefold() not in {"same", "unchanged", "none"}
+    ):
         lines.append(f"Device inventory: {device_change}")
     return lines
 
