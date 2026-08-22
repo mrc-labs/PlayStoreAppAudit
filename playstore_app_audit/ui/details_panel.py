@@ -103,102 +103,147 @@ def details_content_layout_mode(available_width: int, current_mode: object = "")
     return "wide" if available_width >= DETAILS_WIDE_ENTER_WIDTH else "narrow"
 
 
-def evidence_lines(row: Mapping[str, Any]) -> list[str]:
+def _evidence_entries(row: Mapping[str, Any]) -> list[dict[str, Any]]:
     raw = row.get(STORE_EVIDENCE_FIELD)
     if not isinstance(raw, list):
         return []
-    lines: list[str] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        role = _text(item.get("role")).replace("_", " ").title() or "Store check"
-        language_role = _text(item.get("language_role"))
-        country = _text(item.get("country")).upper() or "?"
-        language = _text(item.get("language")).lower() or "?"
-        status = _text(item.get("status")).replace("_", " ") or "unknown"
-        source = _text(item.get("source"))
-        http_status = _text(item.get("http_status"))
-        request_path = _text(item.get("request_path"))
-        retries = _int_value(item.get("retry_count"))
-        outcome = _text(item.get("outcome"))
-        suffix = []
-        if language_role == "english_fallback":
-            suffix.append("English fallback")
-        if http_status:
-            suffix.append(f"HTTP {http_status}")
-        if source:
-            suffix.append(source)
-        if request_path:
-            suffix.append(request_path)
-        if retries:
-            suffix.append(f"{retries} {'retry' if retries == 1 else 'retries'}")
-        if outcome in {"terminal_not_found", "transient_inconclusive"}:
-            suffix.append(outcome.replace("_", " "))
-        detail = f"{role}: {country}/{language} • {status}"
-        if suffix:
-            detail += " • " + " • ".join(suffix)
-        lines.append(detail)
+    return [dict(item) for item in raw if isinstance(item, dict)]
+
+
+def _entry_locale(item: Mapping[str, Any]) -> str:
+    country = _text(item.get("country")).upper() or "?"
+    language = _text(item.get("language")).lower() or "?"
+    return f"{country}/{language}"
+
+
+def _entry_status(item: Mapping[str, Any]) -> str:
+    status = _text(item.get("status"))
+    labels = {
+        "available": "available",
+        "not_found_or_unavailable": "not found",
+        "request_error": "request failed",
+        "http_error": "HTTP error",
+        "check_failed": "check failed",
+        "unexpected_error": "unexpected error",
+    }
+    return labels.get(status, status.replace("_", " ") or "unknown")
+
+
+def evidence_lines(row: Mapping[str, Any]) -> list[str]:
+    entries = _evidence_entries(row)
+    if not entries:
+        return []
+
+    primary = next(
+        (item for item in entries if _text(item.get("role")) == "primary"),
+        entries[0],
+    )
+    lines = [f"Primary market: {_entry_locale(primary)} • {_entry_status(primary)}"]
+
+    fallback = [
+        item
+        for item in entries
+        if _text(item.get("role")) in {"regional_fallback", "metadata_completion"}
+    ]
+    fallback_countries = _unique_text(fallback, "country", upper=True)
+    status = _text(row.get("play_status"))
+
+    if status == "available_in_other_country":
+        found = next(
+            (item for item in fallback if _text(item.get("status")) == "available"),
+            None,
+        )
+        if found is not None:
+            lines.append(f"Found in fallback market: {_entry_locale(found)}")
+        checked = _unique_text(entries, "country", upper=True)
+        if checked:
+            lines.append("Markets checked: " + ", ".join(checked))
+        lines.append("Outcome: availability is region-specific.")
+        return lines
+
+    if status == "not_found_in_checked_countries":
+        if fallback_countries:
+            lines.append("Fallback markets checked: " + ", ".join(fallback_countries))
+        lines.append("Outcome: no listing was found in any checked market.")
+        return lines
+
+    if status == "multi_country_check_inconclusive":
+        if fallback_countries:
+            lines.append("Fallback markets checked: " + ", ".join(fallback_countries))
+        lines.append("Outcome: Store verification was inconclusive.")
+        return lines
+
+    metadata_found = next(
+        (
+            item
+            for item in fallback
+            if _text(item.get("role")) == "metadata_completion"
+            and _text(item.get("status")) == "available"
+        ),
+        None,
+    )
+    if metadata_found is not None:
+        lines.append(f"Metadata completed from: {_entry_locale(metadata_found)}")
+    elif fallback_countries:
+        lines.append("Additional markets checked: " + ", ".join(fallback_countries))
     return lines
 
 
 def store_diagnostic_lines(row: Mapping[str, Any]) -> list[str]:
-    """Summarise only structured Store evidence; never interpret display notes."""
-    raw = row.get(STORE_EVIDENCE_FIELD)
-    if not isinstance(raw, list):
-        return []
-    entries = [dict(item) for item in raw if isinstance(item, dict)]
+    """Summarise structured transport evidence without repeating per-market noise."""
+    entries = _evidence_entries(row)
     if not entries:
         return []
 
     status = _text(row.get("play_status"))
     retry_count = sum(_int_value(item.get("retry_count")) for item in entries)
-    html_count = sum(
-        1 for item in entries if "html" in _text(item.get("request_path")).casefold()
-    )
-    failure_reasons = _unique_text(entries, "failure_reason")
     outcomes = {_text(item.get("outcome")) for item in entries}
+    paths = {_text(item.get("request_path")) for item in entries}
+    http_values = [
+        _text(item.get("http_status"))
+        for item in entries
+        if _text(item.get("http_status"))
+    ]
     interesting = (
         status in _DIAGNOSTIC_STATUS_LABELS
         or len(entries) > 1
         or retry_count > 0
-        or html_count > 0
-        or bool(failure_reasons)
+        or any("html" in value.casefold() for value in paths)
         or bool(outcomes & {"terminal_not_found", "transient_inconclusive"})
     )
     if not interesting:
         return []
 
-    lines: list[str] = []
-    if status in _DIAGNOSTIC_STATUS_LABELS:
-        lines.append(f"Result: {_DIAGNOSTIC_STATUS_LABELS[status]}")
-    elif "transient_inconclusive" in outcomes:
-        lines.append("Result: at least one Store request was transient/inconclusive")
-    elif "terminal_not_found" in outcomes:
-        lines.append("Result: at least one Store request returned terminal not-found evidence")
+    lines: list[str] = [f"Requests: {len(entries)} locale checks"]
+    if any("html" in value.casefold() for value in paths):
+        lines.append("Transport: scraper + HTML confirmation/fallback")
+    else:
+        lines.append("Transport: scraper")
 
-    countries = _unique_text(entries, "country", upper=True)
-    languages = _unique_text(entries, "language")
-    if countries:
-        lines.append("Countries tried: " + " → ".join(countries))
-    if languages:
-        lines.append("Languages tried: " + ", ".join(languages))
-
-    requests_text = f"Locale requests: {len(entries)}"
+    unique_http = list(dict.fromkeys(http_values))
+    if len(unique_http) == 1 and http_values:
+        suffix = f" on all {len(http_values)} checks" if len(http_values) > 1 else ""
+        lines.append(f"HTTP: {unique_http[0]}{suffix}")
+    elif unique_http:
+        lines.append("HTTP statuses: " + ", ".join(unique_http))
     if retry_count:
-        requests_text += f" • total retries: {retry_count}"
-    lines.append(requests_text)
+        lines.append(f"Retries: {retry_count}")
 
-    if html_count:
-        scraper_only = max(0, len(entries) - html_count)
-        path_parts = [f"HTML confirmation/fallback: {html_count}"]
-        if scraper_only:
-            path_parts.append(f"scraper-only: {scraper_only}")
-        lines.append("Store path: " + " • ".join(path_parts))
-
-    if failure_reasons:
-        lines.append("Failure reason: " + " | ".join(failure_reasons[:3]))
-        if len(failure_reasons) > 3:
-            lines.append(f"Additional distinct failures: {len(failure_reasons) - 3}")
+    transient_count = sum(
+        1 for item in entries if _text(item.get("outcome")) == "transient_inconclusive"
+    )
+    if transient_count:
+        lines.append(f"Inconclusive requests: {transient_count}")
+        failure_reasons = _unique_text(entries, "failure_reason")
+        useful = [
+            reason
+            for reason in failure_reasons
+            if "not found(404)" not in reason.casefold()
+            and reason.casefold()
+            not in {"html: 404", "scraper: app not found(404). | html: 404"}
+        ]
+        if useful:
+            lines.append("Reason: " + " | ".join(useful[:2]))
     return lines
 
 
@@ -210,21 +255,87 @@ def change_lines(row: Mapping[str, Any]) -> list[str]:
             if not isinstance(item, dict):
                 continue
             event_type = _text(item.get("type"))
-            label = _CHANGE_LABELS.get(event_type, event_type.replace("_", " ").title())
+            label = _CHANGE_LABELS.get(
+                event_type,
+                event_type.replace("_", " ").title(),
+            )
             previous = _text(item.get("previous"))
             current = _text(item.get("current"))
             if previous and current:
                 lines.append(f"{label}: {previous} → {current}")
             else:
                 lines.append(label)
-    device_change = _text(row.get("device_change"))
-    if (
-        bool(row.get(change_service.DEVICE_HISTORY_FLAG))
-        and device_change
-        and device_change.casefold() not in {"same", "unchanged", "none"}
-    ):
-        lines.append(f"Device inventory: {device_change}")
+    if not lines and _text(row.get("change")).casefold() == "new":
+        lines.append(
+            "First audit baseline for this app. Future audits can show Store changes."
+        )
     return lines
+
+
+def device_inventory_line(row: Mapping[str, Any]) -> str:
+    device_change = _text(row.get("device_change"))
+    if not device_change:
+        return ""
+    if not bool(row.get(change_service.DEVICE_HISTORY_FLAG)):
+        return "Inventory history: First phone-scan baseline"
+    labels = {
+        "new on device": "Newly installed",
+        "version changed": "Installed version changed",
+        "installer changed": "Installer/source changed",
+        "state changed": "Enabled state changed",
+        "same": "No inventory change",
+        "unchanged": "No inventory change",
+        "none": "No inventory change",
+    }
+    display = labels.get(device_change.casefold(), device_change)
+    return f"Since previous phone scan: {display}"
+
+
+def display_notes(row: Mapping[str, Any]) -> str:
+    entries = _evidence_entries(row)
+    status = _text(row.get("play_status"))
+    checked = _unique_text(entries, "country", upper=True)
+
+    if status == "not_found_in_checked_countries":
+        markets = ", ".join(checked)
+        checked_text = f" in the checked markets ({markets})" if markets else ""
+        return (
+            "No Google Play listing was found"
+            f"{checked_text}. The app may be removed from Google Play or unavailable "
+            "in all of those regions."
+        )
+
+    if status == "available_in_other_country":
+        selected = _text(row.get("store_country")).upper()
+        found = next(
+            (
+                item
+                for item in entries
+                if _text(item.get("role")) == "regional_fallback"
+                and _text(item.get("status")) == "available"
+            ),
+            None,
+        )
+        found_country = _text(found.get("country")).upper() if found else "another market"
+        selected_text = selected or "the selected market"
+        return (
+            f"Not available in {selected_text}, but found in {found_country}. "
+            "Google Play availability is region-specific."
+        )
+
+    if status == "multi_country_check_inconclusive":
+        return (
+            "Store verification was inconclusive because one or more checks could not "
+            "be completed reliably. Recheck later or use Force full refresh."
+        )
+
+    if any(_text(item.get("role")) == "metadata_completion" for item in entries):
+        return (
+            "The listing is available; missing Store metadata was completed from "
+            "another checked market."
+        )
+
+    return "No additional notes."
 
 
 def _joined_fields(row: Mapping[str, Any], fields: list[tuple[str, str]]) -> str:
@@ -246,7 +357,7 @@ def _clear_layout(layout) -> None:
 
 
 def _position_icon(kind: str, widget: QWidget) -> QIcon:
-    pixmap = QPixmap(28, 22)
+    pixmap = QPixmap(36, 28)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -255,23 +366,24 @@ def _position_icon(kind: str, widget: QWidget) -> QIcon:
     pen.setWidth(2)
     painter.setPen(pen)
 
-    if kind == "auto":
-        painter.drawLine(5, 11, 23, 11)
-        painter.drawLine(5, 11, 9, 7)
-        painter.drawLine(5, 11, 9, 15)
-        painter.drawLine(23, 11, 19, 7)
-        painter.drawLine(23, 11, 19, 15)
-    else:
-        outer_x, outer_y, outer_w, outer_h = 3, 3, 22, 16
-        painter.drawRect(outer_x, outer_y, outer_w, outer_h)
-        if kind == "right":
-            split_x = 17
-            painter.drawLine(split_x, outer_y, split_x, outer_y + outer_h)
-            painter.fillRect(split_x + 2, outer_y + 2, 5, outer_h - 3, color)
+    def draw_preview(x: int, y: int, width: int, height: int, placement: str) -> None:
+        painter.drawRoundedRect(x, y, width, height, 2, 2)
+        if placement == "right":
+            panel_width = max(5, width // 3)
+            split_x = x + width - panel_width
+            painter.drawLine(split_x, y, split_x, y + height)
+            painter.fillRect(split_x + 2, y + 2, panel_width - 3, height - 3, color)
         else:
-            split_y = 13
-            painter.drawLine(outer_x, split_y, outer_x + outer_w, split_y)
-            painter.fillRect(outer_x + 2, split_y + 2, outer_w - 3, 4, color)
+            panel_height = max(5, height // 3)
+            split_y = y + height - panel_height
+            painter.drawLine(x, split_y, x + width, split_y)
+            painter.fillRect(x + 2, split_y + 2, width - 3, panel_height - 3, color)
+
+    if kind == "auto":
+        draw_preview(2, 5, 14, 18, "right")
+        draw_preview(20, 5, 14, 18, "below")
+    else:
+        draw_preview(4, 3, 28, 22, kind)
     painter.end()
     return QIcon(pixmap)
 
@@ -349,11 +461,11 @@ class AppDetailsPanel(QFrame):
         }
         for kind in ("auto", "right", "below"):
             button = QToolButton(self)
-            button.setAutoRaise(True)
+            button.setAutoRaise(False)
             button.setCheckable(True)
             button.setIcon(_position_icon(kind, button))
-            button.setIconSize(QSize(24, 19))
-            button.setFixedSize(32, 30)
+            button.setIconSize(QSize(32, 25))
+            button.setFixedSize(40, 36)
             button.setToolTip(tooltips[kind])
             button.setAccessibleName(tooltips[kind].split(".", 1)[0])
             button.clicked.connect(lambda _checked=False, selected=kind: self._select_position(selected))
@@ -386,7 +498,7 @@ class AppDetailsPanel(QFrame):
 
         self.store_section, self.store_label = self._section("Store")
         self.device_section, self.device_label = self._section("Installed / device")
-        self.evidence_section, self.evidence_label = self._section("Country and language evidence")
+        self.evidence_section, self.evidence_label = self._section("Store market evidence")
         self.diagnostics_section, self.diagnostics_label = self._section("Store diagnostics")
         self.changes_section, self.changes_label = self._section("Changes since previous audit")
         self.notes_section, self.notes_label = self._section("Notes")
@@ -540,7 +652,15 @@ class AppDetailsPanel(QFrame):
             ("Min SDK", "min_sdk"),
             ("Android compatibility", "compatibility_status"),
         ]
-        self.device_label.setText(_joined_fields(row, device_fields) or "No connected-device metadata for this row.")
+        device_text = _joined_fields(row, device_fields)
+        health_score = _text(row.get("health_score"))
+        if health_score:
+            health_line = f"Health score: {health_score}/100"
+            device_text = f"{device_text}\n{health_line}" if device_text else health_line
+        inventory_line = device_inventory_line(row)
+        if inventory_line:
+            device_text = f"{device_text}\n{inventory_line}" if device_text else inventory_line
+        self.device_label.setText(device_text or "No connected-device metadata for this row.")
 
         evidence = evidence_lines(row)
         self.evidence_label.setText("\n".join(evidence) if evidence else "No structured Store evidence recorded.")
@@ -550,9 +670,17 @@ class AppDetailsPanel(QFrame):
         self.diagnostics_section.setVisible(bool(diagnostics))
 
         changes = change_lines(row)
-        self.changes_label.setText("\n".join(changes) if changes else "No recorded change for this row.")
+        if changes:
+            change_text = "\n".join(changes)
+        elif _text(row.get("change")).casefold() == "same":
+            change_text = "No Store changes since the previous audit."
+        elif _text(row.get("change")):
+            change_text = "No additional structured Store change recorded for this row."
+        else:
+            change_text = "Previous-audit comparison was not enabled for this run."
+        self.changes_label.setText(change_text)
 
-        self.notes_label.setText(_text(row.get("notes")) or "No notes.")
+        self.notes_label.setText(display_notes(row))
         self.open_store_button.setEnabled(bool(_text(row.get("store_url"))))
 
     def _open_store(self) -> None:

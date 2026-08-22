@@ -180,6 +180,6 @@ treated as unknown and does not add either target-SDK penalty.</p>
       maintenance signals in a separate number.</li>
 </ul>
 
-<div class="note"><b>Optional feature:</b> Health score is experimental and disabled by default.
-Enable it in <b>Tools → Advanced settings</b> when you want the extra column.</div>
+<div class="note"><b>Optional feature:</b> Health score is disabled by default.
+Enable it in <b>Tools → Advanced settings</b> when you want the extra maintenance indicator.</div>
 """

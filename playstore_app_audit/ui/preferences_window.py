@@ -341,7 +341,7 @@ class PreferencesWindow(table_ui.TableWindow):
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
         inventory = QCheckBox("Keep per-device inventory history")
         inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
-        health = QCheckBox("Enable experimental Health score")
+        health = QCheckBox("Enable Health score")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
         d_layout.addWidget(collect)
         d_layout.addWidget(permissions)
