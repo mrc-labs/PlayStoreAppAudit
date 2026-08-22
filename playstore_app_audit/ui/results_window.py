@@ -238,18 +238,19 @@ class ResultsWindow(menu_ui.MenuWindow):
     def _enrich_device_source_label(self) -> None:
         summary = getattr(self, "_device_summary", {})
         if not isinstance(summary, dict):
-            return
+            summary = {}
         identity = _device_source_identity(summary)
-        if not identity:
-            return
 
-        current = self.source_label.text().strip()
-        details = current.removeprefix("Phone scan:").strip()
-        self.source_label.setText(
-            f"Phone scan: {identity} • {details}" if details else f"Phone scan: {identity}"
-        )
+        if identity:
+            current = self.source_label.text().strip()
+            details = current.removeprefix("Phone scan:").strip()
+            self.source_label.setText(
+                f"Phone scan: {identity} • {details}" if details else f"Phone scan: {identity}"
+            )
 
-        tooltip = [f"Device: {identity}"]
+        tooltip: list[str] = []
+        if identity:
+            tooltip.append(f"Device: {identity}")
         patch = str(summary.get("security_patch") or "").strip()
         if patch:
             tooltip.append(f"Security patch: {patch}")
@@ -263,7 +264,8 @@ class ResultsWindow(menu_ui.MenuWindow):
                 f"Auto Store language: {locale.language}"
                 + (f" • inferred country: {locale.country.upper()}" if locale.country else "")
             )
-        self.source_label.setToolTip("\n".join(tooltip))
+        if tooltip:
+            self.source_label.setToolTip("\n".join(tooltip))
 
     def _sync_phone_package_export_actions(self) -> None:
         available = bool(self.device_apps_all)
