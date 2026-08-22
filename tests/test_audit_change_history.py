@@ -11,7 +11,7 @@ import playstore_app_audit.services.state as state
 def _history_entry(**overrides: object) -> dict[str, object]:
     entry: dict[str, object] = {
         "criticality_key": "green",
-        "criticality_rank": 0,
+        "criticality_rank": 5,
         "criticality": "Current",
         "play_status": "available",
         "play_version": "1.0",
@@ -29,7 +29,7 @@ def _row(**overrides: object) -> dict[str, object]:
     row: dict[str, object] = {
         "package_name": "com.example.app",
         "criticality_key": "green",
-        "criticality_rank": 0,
+        "criticality_rank": 5,
         "criticality": "Current",
         "play_status": "available",
         "play_version": "1.0",
@@ -51,7 +51,7 @@ def test_sparse_legacy_history_does_not_invent_unavailable_or_version_events() -
     history = {
         "com.example.app": {
             "criticality_key": "green",
-            "criticality_rank": 0,
+            "criticality_rank": 5,
             "criticality": "Current",
             "play_last_update": "2026-07-01",
         }
@@ -96,7 +96,7 @@ def test_available_to_checked_unavailable_records_country_evidence() -> None:
     row = _row(
         play_status="not_found_in_checked_countries",
         criticality_key="red",
-        criticality_rank=3,
+        criticality_rank=0,
         criticality="Removed",
         **{state.STORE_EVIDENCE_FIELD: current_evidence},
     )
@@ -117,7 +117,7 @@ def test_checked_unavailable_to_available_is_reappeared() -> None:
         "com.example.app": _history_entry(
             play_status="not_found_in_checked_countries",
             criticality_key="red",
-            criticality_rank=3,
+            criticality_rank=0,
             criticality="Removed",
         )
     }
@@ -130,7 +130,7 @@ def test_inconclusive_to_available_is_newly_available() -> None:
         "com.example.app": _history_entry(
             play_status="multi_country_check_inconclusive",
             criticality_key="purple",
-            criticality_rank=5,
+            criticality_rank=4,
             criticality="Other",
         )
     }
@@ -144,7 +144,7 @@ def test_store_metadata_maintenance_and_installer_changes_are_structured() -> No
         play_version="2.0",
         play_last_update="2026-08-20",
         criticality_key="yellow",
-        criticality_rank=1,
+        criticality_rank=2,
         criticality="Aging",
         installer_source="Galaxy Store (com.sec.android.app.samsungapps)",
     )
@@ -185,7 +185,7 @@ def test_compare_with_history_keeps_existing_compact_label_and_attaches_events()
     history = {"com.example.app": _history_entry()}
     row = _row(
         criticality_key="yellow",
-        criticality_rank=1,
+        criticality_rank=2,
         criticality="Aging",
     )
 
