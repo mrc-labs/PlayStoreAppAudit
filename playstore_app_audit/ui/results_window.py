@@ -116,6 +116,8 @@ class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         self._device_store_locale: store_locale.StoreLocale | None = None
         self._change_overview_dialog: change_ui.ChangeOverviewDialog | None = None
+        self._details_panel_position = "right"
+        self._details_panel_resolved_position: str | None = None
         super().__init__()
         self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
@@ -176,20 +178,43 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.model.dataChanged.connect(self._on_details_model_data_changed)
         self.model.modelReset.connect(self._on_details_model_reset)
 
+    def _details_available_width(self) -> int:
+        central = self.centralWidget()
+        if central is not None and central.width() > 0:
+            return central.width()
+        return self.width()
+
     def _set_details_panel_position(self, position: str, persist: bool = True) -> None:
         position = details_ui.normalise_details_panel_position(position)
         if not hasattr(self, "details_splitter"):
             return
-        if position == "below":
-            self.details_splitter.setOrientation(Qt.Orientation.Vertical)
-            self.details_splitter.setSizes([560, 260])
-        else:
-            self.details_splitter.setOrientation(Qt.Orientation.Horizontal)
-            self.details_splitter.setSizes([1080, 360])
+
+        resolved = details_ui.resolve_details_panel_position(
+            position,
+            self._details_available_width(),
+            self._details_panel_resolved_position or "",
+        )
+        previous_resolved = self._details_panel_resolved_position
+        self._details_panel_position = position
+        self._details_panel_resolved_position = resolved
+
+        orientation = (
+            Qt.Orientation.Vertical if resolved == "below" else Qt.Orientation.Horizontal
+        )
+        if self.details_splitter.orientation() != orientation:
+            self.details_splitter.setOrientation(orientation)
+        if previous_resolved != resolved or previous_resolved is None:
+            self.details_splitter.setSizes([560, 260] if resolved == "below" else [1080, 360])
+
         if persist:
             settings = state.load_settings()
             settings["details_panel_position"] = position
             self.user_settings = state.save_settings(settings)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._details_panel_position == "auto" and hasattr(self, "details_splitter"):
+            self._set_details_panel_position("auto", persist=False)
 
     def _details_row_from_index(self, index: QModelIndex) -> dict[str, Any] | None:
         if not index.isValid():
