@@ -34,8 +34,13 @@ from playstore_app_audit.ui.file_menu import add_result_actions
 def _find_layout_containing(layout, target_widget):
     for index in range(layout.count()):
         item = layout.itemAt(index)
-        if item.widget() is target_widget:
+        widget = item.widget()
+        if widget is target_widget:
             return layout
+        if widget is not None and widget.layout() is not None:
+            found = _find_layout_containing(widget.layout(), target_widget)
+            if found is not None:
+                return found
         child = item.layout()
         if child is not None:
             found = _find_layout_containing(child, target_widget)
