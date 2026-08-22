@@ -14,6 +14,33 @@ DEFAULT_STORE_WORKERS = 16
 MIN_STORE_WORKERS = 4
 MAX_STORE_WORKERS = 32
 STORE_LANGUAGE_AUTO_MIGRATION_KEY = "store_language_auto_migrated"
+AUDIT_CHANGES_FIELD = "_audit_changes"
+STORE_EVIDENCE_FIELD = "_store_evidence"
+
+_AVAILABLE_PLAY_STATUSES = frozenset(
+    {
+        "available",
+        "available_in_other_country",
+        "available_in_fallback_locale_only",
+    }
+)
+_CHECKED_UNAVAILABLE_PLAY_STATUSES = frozenset({"not_found_in_checked_countries"})
+_MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
+_MAINTENANCE_LABELS = {
+    "green": "Current",
+    "yellow": "Aging",
+    "orange": "Stale",
+}
+_UNKNOWN_HISTORY_VALUES = frozenset(
+    {
+        "",
+        "unknown",
+        "unknown / preinstalled",
+        "none",
+        "null",
+        "n/a",
+    }
+)
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "store_language": "auto",
@@ -200,6 +227,7 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
                 "age_days",
                 "change",
                 "cache_hit",
+                AUDIT_CHANGES_FIELD,
             }
         }
         data[_cache_key(country, language, package_name)] = {"fetched_at": now, "row": stored}
@@ -221,7 +249,130 @@ def load_history() -> dict[str, dict[str, Any]]:
     return data if isinstance(data, dict) else {}
 
 
+def _history_evidence(value: object) -> list[dict[str, Any]]:
+    return [dict(item) for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def _meaningful_history_value(value: object) -> str:
+    text = str(value or "").strip()
+    return "" if text.casefold() in _UNKNOWN_HISTORY_VALUES else text
+
+
+def _availability_event(
+    event_type: str,
+    previous: dict[str, Any],
+    row: dict[str, Any],
+    previous_status: str,
+    current_status: str,
+) -> dict[str, Any]:
+    return {
+        "type": event_type,
+        "previous": previous_status,
+        "current": current_status,
+        "previous_store_country": str(previous.get("store_country") or "").strip().lower(),
+        "current_store_country": str(row.get("store_country") or "").strip().lower(),
+        "previous_evidence": _history_evidence(previous.get(STORE_EVIDENCE_FIELD)),
+        "current_evidence": _history_evidence(row.get(STORE_EVIDENCE_FIELD)),
+    }
+
+
+def changes_with_history(
+    row: dict[str, Any], history: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Return structured changes against the previous saved Play Store audit.
+
+    Sparse pre-v1.6 history remains valid: events are emitted only when both
+    sides contain enough evidence to support the comparison.
+    """
+    package_name = str(row.get("package_name") or "")
+    previous = history.get(package_name)
+    if not isinstance(previous, dict):
+        return []
+
+    changes: list[dict[str, Any]] = []
+    previous_status = str(previous.get("play_status") or "").strip()
+    current_status = str(row.get("play_status") or "").strip()
+    previous_available = previous_status in _AVAILABLE_PLAY_STATUSES
+    current_available = current_status in _AVAILABLE_PLAY_STATUSES
+    previous_checked_unavailable = previous_status in _CHECKED_UNAVAILABLE_PLAY_STATUSES
+    current_checked_unavailable = current_status in _CHECKED_UNAVAILABLE_PLAY_STATUSES
+
+    if previous_checked_unavailable and current_available:
+        changes.append(
+            _availability_event("reappeared", previous, row, previous_status, current_status)
+        )
+    elif previous_available and current_checked_unavailable:
+        changes.append(
+            _availability_event(
+                "newly_unavailable_in_checked_countries",
+                previous,
+                row,
+                previous_status,
+                current_status,
+            )
+        )
+    elif previous_status and not previous_available and not previous_checked_unavailable and current_available:
+        changes.append(
+            _availability_event("newly_available", previous, row, previous_status, current_status)
+        )
+
+    previous_version = _meaningful_history_value(previous.get("play_version"))
+    current_version = _meaningful_history_value(row.get("play_version"))
+    if previous_version and current_version and previous_version != current_version:
+        changes.append(
+            {
+                "type": "store_version_changed",
+                "previous": previous_version,
+                "current": current_version,
+            }
+        )
+
+    previous_update = _meaningful_history_value(previous.get("play_last_update"))
+    current_update = _meaningful_history_value(row.get("play_last_update"))
+    if previous_update and current_update and previous_update != current_update:
+        changes.append(
+            {
+                "type": "store_latest_update_changed",
+                "previous": previous_update,
+                "current": current_update,
+            }
+        )
+
+    previous_key = str(previous.get("criticality_key") or "").strip()
+    current_key = str(row.get("criticality_key") or "").strip()
+    if (
+        previous_key in _MAINTENANCE_KEYS
+        and current_key in _MAINTENANCE_KEYS
+        and previous_key != current_key
+    ):
+        changes.append(
+            {
+                "type": "maintenance_state_changed",
+                "previous": str(previous.get("criticality") or _MAINTENANCE_LABELS[previous_key]),
+                "current": str(row.get("criticality") or _MAINTENANCE_LABELS[current_key]),
+                "previous_key": previous_key,
+                "current_key": current_key,
+            }
+        )
+
+    previous_installer = _meaningful_history_value(previous.get("installer_source"))
+    current_installer = _meaningful_history_value(row.get("installer_source"))
+    if previous_installer and current_installer and previous_installer != current_installer:
+        changes.append(
+            {
+                "type": "installer_source_changed",
+                "previous": previous_installer,
+                "current": current_installer,
+            }
+        )
+
+    return changes
+
+
 def compare_with_history(row: dict[str, Any], history: dict[str, dict[str, Any]]) -> str:
+    # Keep the compact legacy label stable while attaching richer v1.6 data for
+    # the details panel and change-oriented views.
+    row[AUDIT_CHANGES_FIELD] = changes_with_history(row, history)
     package_name = str(row.get("package_name") or "")
     previous = history.get(package_name)
     if not isinstance(previous, dict):
@@ -242,6 +393,22 @@ def compare_with_history(row: dict[str, Any], history: dict[str, dict[str, Any]]
     return "Changed"
 
 
+def _history_snapshot(row: dict[str, Any], saved_at: str) -> dict[str, Any]:
+    return {
+        "criticality_key": row.get("criticality_key", ""),
+        "criticality_rank": row.get("criticality_rank", 99),
+        "criticality": row.get("criticality", ""),
+        "play_status": row.get("play_status", ""),
+        "play_version": row.get("play_version", ""),
+        "play_last_update": row.get("play_last_update", ""),
+        "installer_source": row.get("installer_source", ""),
+        "store_country": row.get("store_country", ""),
+        "store_language": row.get("store_language", ""),
+        STORE_EVIDENCE_FIELD: _history_evidence(row.get(STORE_EVIDENCE_FIELD)),
+        "saved_at": saved_at,
+    }
+
+
 def save_history(rows: list[dict[str, Any]]) -> None:
     now = datetime.now(UTC).isoformat()
     data: dict[str, dict[str, Any]] = {}
@@ -249,11 +416,17 @@ def save_history(rows: list[dict[str, Any]]) -> None:
         package_name = str(row.get("package_name") or "").strip()
         if not package_name:
             continue
-        data[package_name] = {
-            "criticality_key": row.get("criticality_key", ""),
-            "criticality_rank": row.get("criticality_rank", 99),
-            "criticality": row.get("criticality", ""),
-            "play_last_update": row.get("play_last_update", ""),
-            "saved_at": now,
-        }
+        data[package_name] = _history_snapshot(row, now)
+    _write_json(history_path(), data)
+
+
+def save_history_merged(rows: list[dict[str, Any]]) -> None:
+    """Update history rows without deleting packages omitted by a targeted recheck."""
+    data = load_history()
+    now = datetime.now(UTC).isoformat()
+    for row in rows:
+        package_name = str(row.get("package_name") or "").strip()
+        if not package_name:
+            continue
+        data[package_name] = _history_snapshot(row, now)
     _write_json(history_path(), data)
