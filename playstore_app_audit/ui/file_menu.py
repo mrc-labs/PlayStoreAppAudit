@@ -28,5 +28,19 @@ def add_result_actions(
         if export_visible_html is not None:
             export_menu.addAction("Export visible results as HTML…", export_visible_html)
 
+    owner = getattr(run_audit, "__self__", None)
+    if owner is not None:
+        from playstore_app_audit.ui.json_export import export_window_results_json
+
+        export_menu.addSeparator()
+        export_menu.addAction(
+            "Export all results as versioned JSON…",
+            lambda: export_window_results_json(owner, visible=False),
+        )
+        export_menu.addAction(
+            "Export visible results as versioned JSON…",
+            lambda: export_window_results_json(owner, visible=True),
+        )
+
     file_menu.addAction("Clear Results", clear_results)
     return export_menu
