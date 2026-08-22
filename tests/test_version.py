@@ -18,8 +18,8 @@ def test_package_version_matches_project_metadata() -> None:
     assert __version__ == project["project"]["version"]
 
 
-def test_v160_release_version() -> None:
-    assert __version__ == "1.6.0"
+def test_v170_release_version() -> None:
+    assert __version__ == "1.7.0"
 
 
 def test_release_qt_baseline_is_pinned() -> None:
