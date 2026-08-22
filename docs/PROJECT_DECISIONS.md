@@ -88,15 +88,23 @@ v1.5.0 intentionally keeps the unsigned Windows x64 Engineering Test Build profi
 
 Rationale: v1.5 focuses on product/UI work and another validated Windows x64 engineering checkpoint without incurring production-signing or multi-platform release cost.
 
-### v1.6 release direction
+### v1.6 Windows x64 Engineering Test Build (ETB)
 
-The v1.6 public release profile is intentionally **not frozen yet**. Current planning direction is another unsigned Windows x64 Engineering Test Build, broadly reusing the validated v1.5 release profile while v1.6 focuses on product, UX and Store-service architecture work.
+The v1.6.0 public release profile is frozen as an unsigned Windows x64 Engineering Test Build.
 
-- Do not assume Windows ARM64, Linux or macOS public candidates are required for v1.6 unless the profile is deliberately changed before the release SHA is frozen.
-- Do not incur production-signing/notarization spend as normal v1.6 work.
-- If v1.6 remains Windows x64 ETB, reuse the exact-SHA build and engineering-assembly model already proven by v1.5, with version-aware validation.
+- Canonical application version is `1.6.0`.
+- The Windows x64 package must come from one exact frozen `main` SHA after the post-merge Quality gate passes.
+- Build with `.github/workflows/build-windows-exe.yml` using `target=x64`.
+- Do not invoke Windows production signing for v1.6.
+- Do not build Windows ARM64, Linux or macOS release candidates for v1.6.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- The public v1.6.0 asset set is exactly three files: `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
+- The GitHub Release title is `Play Store App Audit v1.6.0 (ETB Win x64)` and the release-body heading is `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
+- The Windows package is intentionally unsigned.
+- The optional richer dashboard/summary candidate is not part of v1.6.0.
+- Any source or release-tooling change after the exact release SHA is recorded invalidates the candidate and requires a new exact SHA and rebuild of the ETB artifacts.
 
-Rationale: production trust/distribution work is no longer a v1.6 milestone. Keeping the profile light allows the next releases to focus on product maturity without paying the multi-platform/signing cost prematurely.
+Rationale: v1.6 focuses on Store-service maturity, locale correctness, details/change UX and reliability while preserving a low-cost, already validated public distribution profile. Production signing and multi-platform release cost remain deferred.
 
 ### v2.0-or-later production release milestone
 
@@ -145,7 +153,7 @@ Package workflows are platform-isolated and exact-SHA guarded:
 Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: future Windows production-signing stage, not planned for normal execution before v2.0;
-- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5 and any later release that explicitly selects the same profile;
+- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6;
 - `.github/workflows/assemble-release.yml`: future six-platform production asset assembly, not planned for normal execution before v2.0.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
@@ -156,25 +164,18 @@ Rationale: separate assembly profiles preserve exact-SHA and legal guarantees wh
 
 ## GitHub Actions generational retention
 
-GitHub Actions artifacts and artifact-producing run history use a
-generational cleanup policy. Published GitHub Release assets remain
-outside this cleanup.
+GitHub Actions artifacts and artifact-producing run history use a generational cleanup policy. Published GitHub Release assets remain outside this cleanup.
 
 - The newest successful equivalent generation is the current valid build.
 - A superseded previous successful generation receives a 7-day grace period.
 - A third successful equivalent generation deletes the oldest immediately.
-- Failed/cancelled runs do not replace successful generations and are
-  retained for at most 7 days.
-- Equivalence includes workflow identity and normalized
-  artifact/platform/architecture identity.
-- Artifact uploads use repository-default retention as the hard safety
-  ceiling.
+- Failed/cancelled runs do not replace successful generations and are retained for at most 7 days.
+- Equivalence includes workflow identity and normalized artifact/platform/architecture identity.
+- Artifact uploads use repository-default retention as the hard safety ceiling.
 
 Implementation and operational details live in `CI_MAINTENANCE.md`.
 
-Rationale: preserve the latest valid build during inactive periods while
-preventing redundant generations from recreating multi-gigabyte Actions
-storage growth.
+Rationale: preserve the latest valid build during inactive periods while preventing redundant generations from recreating multi-gigabyte Actions storage growth.
 
 ## Legal-material preflight
 
@@ -281,10 +282,10 @@ Do not delete `.github/scripts` files based on file count or size alone.
 
 Before removing or consolidating a release script, verify:
 
-- direct workflow references
-- imports from other release helpers
-- unit/regression tests
-- behaviour covered by the script
-- legal/release evidence boundaries
+- direct workflow references;
+- imports from other release helpers;
+- unit/regression tests;
+- behaviour covered by the script;
+- legal/release evidence boundaries.
 
 Large legal scripts may be modularized later, but only with stable behaviour and test coverage.
