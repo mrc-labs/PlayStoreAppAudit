@@ -24,6 +24,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import help_texts
@@ -107,6 +108,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.tools_menu = QMenu("Tools", bar)
         bar.addMenu(self.tools_menu)
         self.tools_menu.addAction("Advanced settings…", self._show_advanced_settings)
+        self.audit_profiles_menu = QMenu("Audit profiles", self.tools_menu)
+        self.tools_menu.addMenu(self.audit_profiles_menu)
+        audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
         self.tools_menu.addAction("Force full refresh (ignore cache)", self._force_full_refresh)
         self.tools_menu.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
