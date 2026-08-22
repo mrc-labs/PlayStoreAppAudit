@@ -117,7 +117,7 @@ v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB).
 - Do not build Windows ARM64, Linux or macOS release candidates for v1.4.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - The engineering assembler must accept only the successful unsigned Windows x64 `Build Windows - Qt6` run from the same repository and exact SHA and must reject ARM64 input.
-- The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party sources tar.xz, SHA256SUMS.txt.
+- The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
 - Engineering GitHub Releases use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; the package must be clearly described as unsigned.
 
 ### v1.5 Windows x64 Engineering Test Build (ETB) profile
