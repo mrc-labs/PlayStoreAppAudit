@@ -4,6 +4,7 @@ from playstore_app_audit.services.store_locale import (
     StoreLocale,
     locale_from_android_properties,
     primary_language_for_country,
+    resolve_store_country,
     resolve_store_language,
     set_active_device_store_locale,
 )
@@ -14,6 +15,36 @@ def test_country_defaults_use_stable_primary_languages() -> None:
     assert primary_language_for_country("CH") == "de"
     assert primary_language_for_country("de") == "de"
     assert primary_language_for_country("unknown") == "en"
+
+
+def test_store_country_resolution_keeps_country_independent_from_android_language() -> None:
+    android = StoreLocale("it", "ch", "it-CH", "test")
+
+    resolved = resolve_store_country(host_country="de", android_locale=android)
+
+    assert resolved.country == "de"
+    assert resolved.source == "host_region"
+
+
+def test_store_country_resolution_uses_android_region_only_as_late_fallback() -> None:
+    android = StoreLocale("it", "ch", "it-CH", "test")
+
+    resolved = resolve_store_country(host_country=None, android_locale=android)
+
+    assert resolved.country == "ch"
+    assert resolved.source == "android_locale_fallback"
+
+
+def test_store_country_resolution_preserves_manual_override_and_final_us_fallback() -> None:
+    android = StoreLocale("it", "ch", "it-CH", "test")
+
+    manual = resolve_store_country("fr", "de", android)
+    fallback = resolve_store_country(None, None, StoreLocale("it", "", "it", "test"))
+
+    assert manual.country == "fr"
+    assert manual.source == "manual_override"
+    assert fallback.country == "us"
+    assert fallback.source == "safe_fallback"
 
 
 def test_auto_language_uses_selected_country_default() -> None:

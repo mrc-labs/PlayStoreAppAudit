@@ -29,6 +29,7 @@ import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.table_window as table_ui
+from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui.file_menu import add_result_actions
 
@@ -115,10 +116,14 @@ class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
 class ResultsWindow(menu_ui.MenuWindow):
     def __init__(self) -> None:
         self._device_store_locale: store_locale.StoreLocale | None = None
+        self._store_country_manual_override = False
         self._change_overview_dialog: change_ui.ChangeOverviewDialog | None = None
         self._details_panel_position = "right"
         self._details_panel_resolved_position: str | None = None
         super().__init__()
+        self.country_edit.textEdited.connect(self._on_store_country_edited)
+        self.country_edit.editingFinished.connect(self._on_store_country_editing_finished)
+        self._apply_store_country_resolution(None)
         self.exclude_system_source_check.toggled.connect(self._persist_exclude_system_source)
         self._install_numeric_sort_proxy()
         self._setup_details_panel()
@@ -316,6 +321,55 @@ class ResultsWindow(menu_ui.MenuWindow):
         row.addWidget(button)
         return row
 
+    def _store_country_resolution(
+        self, android_locale: store_locale.StoreLocale | None
+    ) -> store_locale.StoreCountryResolution:
+        manual = self.country_edit.text() if self._store_country_manual_override else None
+        return store_locale.resolve_store_country(
+            manual_country=manual,
+            host_country=runtime.detect_host_store_country(),
+            android_locale=android_locale,
+        )
+
+    def _apply_store_country_resolution(
+        self, android_locale: store_locale.StoreLocale | None
+    ) -> store_locale.StoreCountryResolution:
+        resolved = self._store_country_resolution(android_locale)
+        self.country_edit.setText(resolved.country)
+
+        if resolved.source == "manual_override":
+            tooltip = (
+                f"Manual Store country override: {resolved.country.upper()}. "
+                "It is preserved across file and phone sources."
+            )
+        elif resolved.source == "host_region":
+            tooltip = f"Store country from this computer's region: {resolved.country.upper()}."
+        elif resolved.source == "android_locale_fallback":
+            locale_text = android_locale.locale if android_locale is not None else resolved.country.upper()
+            tooltip = (
+                f"Computer region unavailable; Store country falls back to Android locale region "
+                f"{resolved.country.upper()} from {locale_text}. This is not the Google Play account country."
+            )
+        else:
+            tooltip = "Computer and Android regions unavailable; Store country falls back to US."
+
+        if android_locale is not None and android_locale.language:
+            tooltip += f" Auto Store language uses Android system language {android_locale.language}."
+        self.country_edit.setToolTip(tooltip)
+        return resolved
+
+    def _on_store_country_edited(self, text: str) -> None:
+        value = str(text or "").strip()
+        self._store_country_manual_override = len(value) == 2 and value.isalpha()
+        if self._store_country_manual_override:
+            self.country_edit.setToolTip(
+                f"Manual Store country override: {value.upper()}. It will be preserved across sources."
+            )
+
+    def _on_store_country_editing_finished(self) -> None:
+        android_locale = self._device_store_locale if self.source_mode == "device" else None
+        self._apply_store_country_resolution(android_locale)
+
     def _rebuild_source_area(self) -> None:
         source_card = self.path_edit.parentWidget()
         source_layout = source_card.layout() if source_card is not None else None
@@ -356,7 +410,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         options.setSpacing(8)
         country_label = QLabel("Store country")
         country_label.setToolTip(
-            "Google Play market. A phone scan prefers the Android locale region; file sources keep the selected or desktop-detected market."
+            "Google Play market: manual override first, otherwise computer region; "
+            "Android locale region is only a late phone-scan fallback."
         )
         options.addWidget(country_label)
         self.country_edit.setFixedWidth(58)
@@ -372,15 +427,13 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._device_store_locale = None
         store_locale.set_active_device_store_locale(None)
         super()._load_input_file(path)
+        self._apply_store_country_resolution(None)
         if self.source_mode == "file":
             text = self.source_label.text()
             if text.startswith("File selected: "):
                 text = text[len("File selected: ") :]
             self.source_label.setText(f"{Path(path).name}  •  {text}")
             self.source_label.setToolTip(path)
-            self.country_edit.setToolTip(
-                "Google Play market for this file audit. Auto language uses the primary language configured for this country."
-            )
         self._sync_phone_package_export_actions()
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
@@ -391,19 +444,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             detected = store_locale.detect_android_store_locale(adb)
         self._device_store_locale = detected
         store_locale.set_active_device_store_locale(detected)
-        if detected is not None and detected.country:
-            self.country_edit.setText(detected.country)
-            self.country_edit.setToolTip(
-                f"Google Play market inferred from Android system locale {detected.locale}. You can override it manually."
-            )
-        elif detected is not None:
-            self.country_edit.setToolTip(
-                f"Android system language detected as {detected.language}; no region was available, so the existing Store country is kept."
-            )
-        else:
-            self.country_edit.setToolTip(
-                "Android locale could not be read; the existing Store country remains in use."
-            )
+        self._apply_store_country_resolution(detected)
         self._enrich_device_source_label()
         self._sync_phone_package_export_actions()
 
@@ -432,10 +473,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         locale = self._device_store_locale
         if locale is not None:
             tooltip.append(f"Android system locale: {locale.locale}")
-            tooltip.append(
-                f"Auto Store language: {locale.language}"
-                + (f" • inferred country: {locale.country.upper()}" if locale.country else "")
-            )
+            tooltip.append(f"Auto Store language: {locale.language}")
+            if locale.country:
+                tooltip.append(
+                    f"Android locale region: {locale.country.upper()} "
+                    "(Store-country fallback only if the computer region is unavailable)"
+                )
         if tooltip:
             self.source_label.setToolTip("\n".join(tooltip))
 

@@ -10,6 +10,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
+from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.store_locale import StoreLocale
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -36,14 +37,16 @@ def _window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
     monkeypatch.setattr(device_insights, "add_recent_source", lambda _path: None)
     monkeypatch.setattr(device_insights, "log_event", lambda _message: None)
+    monkeypatch.setattr(runtime, "detect_host_store_country", lambda: "ch")
     return MainWindow()
 
 
-def test_phone_scan_applies_android_locale_to_auto_store_context(
+def test_phone_scan_keeps_host_country_and_uses_android_language(
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     window = _window(app, monkeypatch)
+    monkeypatch.setattr(runtime, "detect_host_store_country", lambda: "de")
     monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
     monkeypatch.setattr(window, "_find_adb", lambda: "adb")
     monkeypatch.setattr(
@@ -59,17 +62,115 @@ def test_phone_scan_applies_android_locale_to_auto_store_context(
         )
 
         assert window.source_mode == "device"
-        assert window.country_edit.text() == "ch"
-        assert store_locale.resolve_store_language("auto", "ch") == "it"
-        assert "it-CH" in window.country_edit.toolTip()
+        assert window.country_edit.text() == "de"
+        assert store_locale.resolve_store_language("auto", "de") == "it"
+        assert "computer's region: DE" in window.country_edit.toolTip()
         assert "Android system locale: it-CH" in window.source_label.toolTip()
+        assert "Auto Store language: it" in window.source_label.toolTip()
     finally:
         store_locale.set_active_device_store_locale(None)
         window.close()
         app.processEvents()
 
 
-def test_loading_file_clears_phone_language_context(
+def test_phone_scan_uses_android_region_only_when_host_region_is_unavailable(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window = _window(app, monkeypatch)
+    monkeypatch.setattr(runtime, "detect_host_store_country", lambda: None)
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
+    monkeypatch.setattr(window, "_find_adb", lambda: "adb")
+    monkeypatch.setattr(
+        store_locale,
+        "detect_android_store_locale",
+        lambda _adb: StoreLocale("it", "ch", "it-CH", "test"),
+    )
+
+    try:
+        window._on_adb_scan_done(
+            [{"app_name": "Example", "package_name": "com.example.app"}],
+            set(),
+        )
+
+        assert window.country_edit.text() == "ch"
+        assert store_locale.resolve_store_language("auto", "ch") == "it"
+        assert "falls back to Android locale region CH" in window.country_edit.toolTip()
+        assert "not the Google Play account country" in window.country_edit.toolTip()
+    finally:
+        store_locale.set_active_device_store_locale(None)
+        window.close()
+        app.processEvents()
+
+
+def test_manual_country_override_survives_phone_scan(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window = _window(app, monkeypatch)
+    monkeypatch.setattr(runtime, "detect_host_store_country", lambda: "de")
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
+    monkeypatch.setattr(window, "_find_adb", lambda: "adb")
+    monkeypatch.setattr(
+        store_locale,
+        "detect_android_store_locale",
+        lambda _adb: StoreLocale("it", "ch", "it-CH", "test"),
+    )
+
+    try:
+        window.country_edit.setText("fr")
+        window.country_edit.textEdited.emit("fr")
+        window._on_adb_scan_done(
+            [{"app_name": "Example", "package_name": "com.example.app"}],
+            set(),
+        )
+
+        assert window.country_edit.text() == "fr"
+        assert "Manual Store country override: FR" in window.country_edit.toolTip()
+        assert store_locale.resolve_store_language("auto", "fr") == "it"
+    finally:
+        store_locale.set_active_device_store_locale(None)
+        window.close()
+        app.processEvents()
+
+
+def test_loading_file_clears_phone_language_and_country_fallback_context(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    window = _window(app, monkeypatch)
+    monkeypatch.setattr(runtime, "detect_host_store_country", lambda: None)
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: None)
+    monkeypatch.setattr(window, "_find_adb", lambda: "adb")
+    monkeypatch.setattr(
+        store_locale,
+        "detect_android_store_locale",
+        lambda _adb: StoreLocale("it", "ch", "it-CH", "test"),
+    )
+    source = tmp_path / "apps.csv"
+    source.write_text("package_name\ncom.example.app\n", encoding="utf-8")
+
+    try:
+        window._on_adb_scan_done(
+            [{"app_name": "Example", "package_name": "com.example.app"}],
+            set(),
+        )
+        assert window.country_edit.text() == "ch"
+
+        window._load_input_file(str(source))
+
+        assert window.source_mode == "file"
+        assert store_locale.active_device_store_locale() is None
+        assert window.country_edit.text() == "us"
+        assert store_locale.resolve_store_language("auto", "us") == "en"
+    finally:
+        store_locale.set_active_device_store_locale(None)
+        window.close()
+        app.processEvents()
+
+
+def test_loading_file_with_host_region_uses_country_default_language(
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -80,11 +181,11 @@ def test_loading_file_clears_phone_language_context(
     source.write_text("package_name\ncom.example.app\n", encoding="utf-8")
 
     try:
-        window.country_edit.setText("ch")
         window._load_input_file(str(source))
 
         assert window.source_mode == "file"
         assert store_locale.active_device_store_locale() is None
+        assert window.country_edit.text() == "ch"
         assert store_locale.resolve_store_language("auto", "ch") == "de"
     finally:
         store_locale.set_active_device_store_locale(None)
