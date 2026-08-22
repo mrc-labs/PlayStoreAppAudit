@@ -15,11 +15,43 @@ from playstore_app_audit.services.store_locale import (
 
 ProgressCallback = Callable[[int, int, str], None]
 FALLBACK_BATCH_SIZE = 3
+STORE_EVIDENCE_FIELD = "_store_evidence"
+_COUNTRY_LOCALE_EVIDENCE_FIELD = "_country_locale_evidence"
 
 
 def _append_note(existing: object, note: str) -> str:
     parts = [str(existing or "").strip(), str(note or "").strip()]
     return " | ".join(part for part in parts if part)
+
+
+def _locale_evidence(result: dict[str, Any], language_role: str) -> dict[str, Any]:
+    """Return one JSON-serializable record for an actual Store locale request."""
+    return {
+        "language_role": language_role,
+        "country": str(result.get("country") or "").strip().lower(),
+        "language": str(result.get("language") or "").strip().lower(),
+        "status": str(result.get("status") or "unknown"),
+        "http_status": result.get("http_status", ""),
+        "source": str(result.get("source") or ""),
+    }
+
+
+def _with_country_locale_evidence(
+    result: dict[str, Any], evidence: list[dict[str, Any]]
+) -> dict[str, Any]:
+    enriched = dict(result)
+    enriched[_COUNTRY_LOCALE_EVIDENCE_FIELD] = [dict(item) for item in evidence]
+    return enriched
+
+
+def _store_evidence_for_country(result: dict[str, Any], role: str) -> list[dict[str, Any]]:
+    raw = result.get(_COUNTRY_LOCALE_EVIDENCE_FIELD)
+    locale_entries = (
+        [dict(item) for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+    )
+    if not locale_entries:
+        locale_entries = [_locale_evidence(result, "preferred")]
+    return [{"role": role, **entry} for entry in locale_entries]
 
 
 def _wait_until_running(
@@ -218,31 +250,34 @@ def _fetch_country(
 ) -> dict[str, Any]:
     language = resolve_store_language(preferred_language, country)
     preferred = fetch_one(package_name, language, country, config)
+    evidence = [_locale_evidence(preferred, "preferred")]
     if not _needs_english_fallback(preferred, language):
-        return preferred
+        return _with_country_locale_evidence(preferred, evidence)
 
     english = fetch_one(package_name, "en", country, config)
+    evidence.append(_locale_evidence(english, "english_fallback"))
     if str(preferred.get("status") or "") == "available":
         if str(english.get("status") or "") == "available":
-            return _merge_available_metadata(preferred, english)
+            merged = _merge_available_metadata(preferred, english)
+            return _with_country_locale_evidence(merged, evidence)
         preferred["notes"] = _append_note(
             preferred.get("notes"),
             f"english_language_fallback:{english.get('status', 'unknown')}",
         )
-        return preferred
+        return _with_country_locale_evidence(preferred, evidence)
 
     if str(english.get("status") or "") in {"available", "not_found_or_unavailable"}:
         english["notes"] = _append_note(
             english.get("notes"),
             f"preferred_language_failed:{language}:{preferred.get('status', 'unknown')}",
         )
-        return english
+        return _with_country_locale_evidence(english, evidence)
 
     preferred["notes"] = _append_note(
         preferred.get("notes"),
         f"english_language_fallback:{english.get('status', 'unknown')}",
     )
-    return preferred
+    return _with_country_locale_evidence(preferred, evidence)
 
 
 def _fetch_locale_with_slot(
@@ -345,6 +380,7 @@ def _fetch_app_bounded(
         "store_country": selected,
         "store_language": primary.get("language", selected_language),
         "notes": primary.get("notes", ""),
+        STORE_EVIDENCE_FIELD: _store_evidence_for_country(primary, "primary"),
     }
 
     primary_status = str(primary.get("status") or "")
@@ -367,6 +403,9 @@ def _fetch_app_bounded(
             )
             if alternative is None:
                 return None
+            result[STORE_EVIDENCE_FIELD].extend(
+                _store_evidence_for_country(alternative, "metadata_completion")
+            )
             if str(alternative.get("status") or "") != "available":
                 continue
             if not result["play_last_update"] and alternative.get("updated"):
@@ -422,6 +461,9 @@ def _fetch_app_bounded(
                     return None
 
                 checked.append(country)
+                result[STORE_EVIDENCE_FIELD].extend(
+                    _store_evidence_for_country(alternative, "regional_fallback")
+                )
                 if fallback_progress_callback is not None:
                     fallback_progress_callback("check")
                 alt_status = str(alternative.get("status") or "")
@@ -579,6 +621,7 @@ def audit_apps(
                         "store_country": str(config.country or "").lower(),
                         "store_language": resolve_store_language(config.language, config.country),
                         "notes": str(exc)[:500],
+                        STORE_EVIDENCE_FIELD: [],
                     }
                 app_completed(app["package_name"])
 

@@ -10,7 +10,7 @@ import pytest
 import playstore_app_audit.services.play_store as play_store
 
 
-def _locale_result(status: str, country: str) -> dict[str, object]:
+def _locale_result(status: str, country: str, language: str = "en") -> dict[str, object]:
     return {
         "status": status,
         "http_status": 200 if status == "available" else 404,
@@ -20,7 +20,7 @@ def _locale_result(status: str, country: str) -> dict[str, object]:
         "source": "test" if status == "available" else "",
         "url": f"https://example.invalid/{country}",
         "notes": "",
-        "language": "en",
+        "language": language,
         "country": country,
     }
 
@@ -32,17 +32,17 @@ def test_negative_fallback_batches_preserve_configured_market_priority(
     monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb", "de"))
     de_started = threading.Event()
 
-    def fake_fetch(_package: str, _language: str, country: str, _config: object):
+    def fake_fetch(_package: str, language: str, country: str, _config: object):
         if country == "ch":
-            return _locale_result("not_found_or_unavailable", country)
+            return _locale_result("not_found_or_unavailable", country, language)
         if country == "us":
-            return _locale_result("not_found_or_unavailable", country)
+            return _locale_result("not_found_or_unavailable", country, language)
         if country == "de":
             de_started.set()
-            return _locale_result("available", country)
+            return _locale_result("available", country, language)
         if country == "gb":
             assert de_started.wait(1.0)
-            return _locale_result("available", country)
+            return _locale_result("available", country, language)
         raise AssertionError(country)
 
     monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
@@ -61,6 +61,14 @@ def test_negative_fallback_batches_preserve_configured_market_priority(
     assert row["play_title"] == "Title gb"
     assert "available_in:gb" in str(row["notes"])
     assert "multi_country_checked:us,gb" in str(row["notes"])
+    assert [
+        (entry["role"], entry["country"], entry["language"], entry["status"])
+        for entry in row[play_store.STORE_EVIDENCE_FIELD]
+    ] == [
+        ("primary", "ch", "de", "not_found_or_unavailable"),
+        ("regional_fallback", "us", "en", "not_found_or_unavailable"),
+        ("regional_fallback", "gb", "en", "available"),
+    ]
 
 
 def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
@@ -76,7 +84,7 @@ def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
     max_fallback_active = 0
     calls: list[tuple[str, str]] = []
 
-    def fake_fetch(package: str, _language: str, country: str, _config: object):
+    def fake_fetch(package: str, language: str, country: str, _config: object):
         nonlocal active, max_active, fallback_active, max_fallback_active
         is_fallback = country != "ch"
         with lock:
@@ -91,7 +99,7 @@ def test_negative_fallback_parallelism_stays_within_existing_worker_ceiling(
             active -= 1
             if is_fallback:
                 fallback_active -= 1
-        return _locale_result("not_found_or_unavailable", country)
+        return _locale_result("not_found_or_unavailable", country, language)
 
     monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
 
@@ -115,8 +123,8 @@ def test_regional_verification_emits_live_progress_without_regressing_app_count(
     config = SimpleNamespace(country="ch", language="de", max_workers=2)
     monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb"))
 
-    def fake_fetch(_package: str, _language: str, country: str, _config: object):
-        return _locale_result("not_found_or_unavailable", country)
+    def fake_fetch(_package: str, language: str, country: str, _config: object):
+        return _locale_result("not_found_or_unavailable", country, language)
 
     monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
     progress: list[tuple[int, int, str]] = []
@@ -143,9 +151,9 @@ def test_healthy_complete_listing_does_not_schedule_fallbacks(
     config = SimpleNamespace(country="ch", language="de", max_workers=4)
     calls: list[str] = []
 
-    def fake_fetch(_package: str, _language: str, country: str, _config: object):
+    def fake_fetch(_package: str, language: str, country: str, _config: object):
         calls.append(country)
-        return _locale_result("available", country)
+        return _locale_result("available", country, language)
 
     monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
 
@@ -155,3 +163,86 @@ def test_healthy_complete_listing_does_not_schedule_fallbacks(
 
     assert rows[0]["play_status"] == "available"
     assert calls == ["ch"]
+    assert rows[0][play_store.STORE_EVIDENCE_FIELD] == [
+        {
+            "role": "primary",
+            "language_role": "preferred",
+            "country": "ch",
+            "language": "de",
+            "status": "available",
+            "http_status": 200,
+            "source": "test",
+        }
+    ]
+
+
+def test_same_country_english_fallback_is_structured_without_replacing_localized_title(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SimpleNamespace(country="ch", language="de", max_workers=2)
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ())
+    calls: list[tuple[str, str]] = []
+
+    def fake_fetch(_package: str, language: str, country: str, _config: object):
+        calls.append((country, language))
+        result = _locale_result("available", country, language)
+        if language == "de":
+            result["title"] = "Lokalisierter Titel"
+            result["version"] = ""
+        else:
+            result["title"] = "English title"
+            result["version"] = "2.0"
+        return result
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+
+    rows = play_store.audit_apps(
+        [{"app_name": "Example", "package_name": "com.example.app"}], config
+    )
+
+    row = rows[0]
+    assert calls == [("ch", "de"), ("ch", "en")]
+    assert row["play_status"] == "available"
+    assert row["play_title"] == "Lokalisierter Titel"
+    assert row["play_version"] == "2.0"
+    assert [
+        (entry["role"], entry["language_role"], entry["country"], entry["language"])
+        for entry in row[play_store.STORE_EVIDENCE_FIELD]
+    ] == [
+        ("primary", "preferred", "ch", "de"),
+        ("primary", "english_fallback", "ch", "en"),
+    ]
+
+
+def test_metadata_completion_markets_are_structured_in_checked_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # English is explicit here so a missing version cannot trigger the same-country
+    # language fallback; this test isolates geographic metadata completion.
+    config = SimpleNamespace(country="ch", language="en", max_workers=2)
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb"))
+
+    def fake_fetch(_package: str, language: str, country: str, _config: object):
+        if country == "ch":
+            result = _locale_result("available", country, language)
+            result["version"] = ""
+            return result
+        if country == "us":
+            return _locale_result("not_found_or_unavailable", country, language)
+        return _locale_result("available", country, language)
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+
+    row = play_store.audit_apps(
+        [{"app_name": "Example", "package_name": "com.example.app"}], config
+    )[0]
+
+    assert row["play_version"] == "1.0"
+    assert [
+        (entry["role"], entry["country"], entry["status"])
+        for entry in row[play_store.STORE_EVIDENCE_FIELD]
+    ] == [
+        ("primary", "ch", "available"),
+        ("metadata_completion", "us", "not_found_or_unavailable"),
+        ("metadata_completion", "gb", "available"),
+    ]
