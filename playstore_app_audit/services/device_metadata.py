@@ -6,7 +6,6 @@ import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import UTC, datetime
 from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
@@ -81,29 +80,8 @@ def clear_history() -> None:
 
 
 def save_history_merged(rows: list[dict[str, Any]]) -> None:
-    """Update the local baseline without deleting packages omitted by a subset recheck."""
-    data = state.load_history()
-    if not isinstance(data, dict):
-        data = {}
-    now = datetime.now(UTC).isoformat()
-    for row in rows:
-        package_name = str(row.get("package_name") or "").strip()
-        if not package_name:
-            continue
-        data[package_name] = {
-            "criticality_key": row.get("criticality_key", ""),
-            "criticality_rank": row.get("criticality_rank", 99),
-            "criticality": row.get("criticality", ""),
-            "play_last_update": row.get("play_last_update", ""),
-            "saved_at": now,
-        }
-    path = state.history_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    import json
-
-    temp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    temp.replace(path)
+    """Compatibility adapter for targeted rechecks using the canonical history schema."""
+    state.save_history_merged(rows)
 
 
 def _normalise_version(value: object) -> str:
@@ -397,7 +375,9 @@ def fetch_app_v8(
                 result["play_version"] = alternative.get("version", "")
             if not result["play_title"] and alternative.get("title"):
                 result["play_title"] = alternative.get("title", "")
-            result["notes"] = _append_note(result["notes"], "missing_metadata_completed_from_fallback_market")
+            result["notes"] = _append_note(
+                result["notes"], "missing_metadata_completed_from_fallback_market"
+            )
             break
         return result
 
@@ -414,10 +394,16 @@ def fetch_app_v8(
         if alt_status == "available":
             if primary_status == "not_found_or_unavailable":
                 result["play_status"] = "available_in_other_country"
-                note = f"selected_country_unavailable:{selected}; available_in:{country}; multi_country_checked:{','.join(checked)}"
+                note = (
+                    f"selected_country_unavailable:{selected}; available_in:{country}; "
+                    f"multi_country_checked:{','.join(checked)}"
+                )
             else:
                 result["play_status"] = "available"
-                note = f"primary_country_check_failed:{selected}; fallback_available:{country}; multi_country_checked:{','.join(checked)}"
+                note = (
+                    f"primary_country_check_failed:{selected}; fallback_available:{country}; "
+                    f"multi_country_checked:{','.join(checked)}"
+                )
             result["play_http_status"] = alternative.get("http_status", "")
             result["play_title"] = alternative.get("title", "") or result["play_title"]
             result["play_last_update"] = alternative.get("updated", "") or result["play_last_update"]
