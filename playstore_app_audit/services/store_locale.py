@@ -45,6 +45,12 @@ class StoreLocale:
     source: str
 
 
+@dataclass(frozen=True, slots=True)
+class StoreCountryResolution:
+    country: str
+    source: str
+
+
 _RUNTIME_LOCK = threading.Lock()
 _ACTIVE_DEVICE_LOCALE: StoreLocale | None = None
 
@@ -64,6 +70,37 @@ def set_active_device_store_locale(locale: StoreLocale | None) -> None:
 def active_device_store_locale() -> StoreLocale | None:
     with _RUNTIME_LOCK:
         return _ACTIVE_DEVICE_LOCALE
+
+
+def _country_code(value: object) -> str:
+    code = str(value or "").strip().lower()
+    return code if len(code) == 2 and code.isalpha() else ""
+
+
+def resolve_store_country(
+    manual_country: object = None,
+    host_country: object = None,
+    android_locale: StoreLocale | None = None,
+) -> StoreCountryResolution:
+    """Resolve Store country without conflating Android language and market.
+
+    Precedence is explicit manual override, desktop/host region, Android locale
+    region only as a late fallback, then the stable US fallback.
+    """
+    manual = _country_code(manual_country)
+    if manual:
+        return StoreCountryResolution(manual, "manual_override")
+
+    host = _country_code(host_country)
+    if host:
+        return StoreCountryResolution(host, "host_region")
+
+    if android_locale is not None:
+        android_country = _country_code(android_locale.country)
+        if android_country:
+            return StoreCountryResolution(android_country, "android_locale_fallback")
+
+    return StoreCountryResolution("us", "safe_fallback")
 
 
 def primary_language_for_country(country: object) -> str:
