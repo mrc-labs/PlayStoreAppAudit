@@ -19,30 +19,24 @@ The v1.6.0 release was built, assembled and published from one exact frozen `mai
 
 Release gates and evidence:
 
-- post-merge Quality push run: `32543925562`, successful on the frozen SHA with Python 3.13 and 3.14;
+- post-merge Quality push run: `32543925562`, successful on Python 3.13 and 3.14;
 - Windows x64 build run: `32545213663`, successful on the same frozen SHA;
 - engineering release assembly run: `32547942460`, successful on the same frozen SHA;
 - final public release asset set: exactly three project-defined files;
-- published release verified as non-draft and non-prerelease;
 - annotated `v1.6.0` tag peels to the frozen SHA;
 - published assets were downloaded again after release and independently SHA-256 verified against `SHA256SUMS.txt`.
 
-Published project-defined assets:
+Published project-defined assets and SHA-256 values:
 
-- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
-
-Final SHA-256 values:
-
-- Windows x64 ZIP: `66e8c94bed69e53d16cf7784ab028089437078b8bc809c4385474ff83c0b55be`
-- third-party source archive: `0f068f20ef14e0e53bd4869c66ae6542725a5c34e390cebf804279a8b28b1165`
+- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`: `66e8c94bed69e53d16cf7784ab028089437078b8bc809c4385474ff83c0b55be`
+- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`: `0f068f20ef14e0e53bd4869c66ae6542725a5c34e390cebf804279a8b28b1165`
 - `SHA256SUMS.txt`: `0e7c7f6f1f290778139c47d929bb3ea0758022eb1199b9911c54893dd6dff8c5`
 
 ## Current development baseline
 
 - Canonical application version remains `1.6.0` until a later release-profile/version freeze deliberately changes it.
-- Active planning cycle: `v1.7`.
+- Active planning/development cycle: `v1.7`.
+- Current v1.7 development baseline on `main`: `da24f10a7c77670f73c1b5d8a18343f328a660ba` before this documentation-only housekeeping branch.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
@@ -53,83 +47,119 @@ Final SHA-256 values:
 - Store transport timeout remains 25 seconds.
 - Experimental Play Store icons remain opt-in and non-blocking.
 
-## Shipped v1.6 product baseline
+No v1.7 binary release has been frozen or built by the work recorded below.
 
-### Store architecture and reliability
+## v1.7 implemented on main
 
-- Bounded multi-country fallback scheduling lives in the canonical Store service.
-- Propagated `google_play_scraper.exceptions.NotFoundError` remains terminal for the outer retry loop after the scraper's own fallback.
-- Generic transient failures retain retry/backoff.
-- Timeout/network failures remain transient or inconclusive and are never converted into false Store not-found evidence.
-- Store country/language request evidence is structured and exposed in the details UX.
-- Same-country English fallback is limited to inconclusive or metadata-incomplete cases and is not used to repeat conclusive terminal not-found results.
+### Responsive details panel
 
-### Locale behaviour shipped in v1.6
+- Replaced the prominent Right/Below selector with a compact icon-based `Auto / Right / Below` control.
+- Preserved Right as the existing/default behavior; Auto is opt-in.
+- Added placement hysteresis so Auto does not oscillate around one resize threshold.
+- Made the details content independently responsive: narrow layouts flow vertically, while wide layouts use balanced logical columns and full-width notes.
+- Made details action buttons adapt between stacked and horizontal layouts.
 
-- In `auto` mode, a connected Android phone can provide its active system language for Store metadata.
-- v1.6 also allows Android locale region to initialize Store country for phone scans.
-- The UI labels that country as inferred from Android locale rather than claiming it is the Google Play account country.
-- File/list audits use the principal language of the selected Store country and clear any previously active phone-language context.
-- Explicit manual Store country and language overrides remain available.
+Implemented through PR #84.
 
-This country behaviour is now under deliberate v1.7 review. The planned correction is documented in `ROADMAP.md` and `HANDOFF_V1.7.md`; do not treat the v1.6 phone-region behaviour as the desired long-term semantic.
+### Store country and language semantics
 
-### Details and change UX
+- Store country and Store language are now resolved independently.
+- Automatic country precedence is manual override, host/computer region, Android locale region only as a late fallback, then `US`.
+- Android locale region is explicitly not presented as Google Play account country.
+- Connected-phone Auto language follows the active Android system language when available.
+- File/list audits do not inherit stale phone locale context.
+- Manual Store country and Store language overrides remain authoritative.
 
-- A selected-row details panel is attached to the results table.
-- v1.6 supports persisted Right or Below placement.
-- The panel exposes Store metadata, installed/device metadata, structured country/language evidence and previous-audit changes.
-- A grouped Audit changes overview covers device inventory, Store availability, reappeared listings, Store version/update changes, maintenance-state transitions and installer/source changes.
-- The first device inventory is treated as a baseline rather than as hundreds of newly installed events.
+Implemented through PR #85.
 
-### Store metadata and icons
+### Per-app Store diagnostics
 
-- Experimental Store icons are displayed beside the Play Store title.
-- Developer metadata is captured from the same normal Store response, without an extra request.
-- Persistent icon-cache filesystem failures degrade to cache miss/network fallback and cannot leave icons permanently pending.
+- Store evidence now carries structured request path, scraper/HTML attempts, retry count, outcome and failure reason.
+- Terminal not-found is distinguished from transient/inconclusive failure.
+- The Details Panel shows a Store diagnostics section only when the row benefits from it.
+- Diagnostics are generated from structured evidence rather than parsing notes text.
 
-## v1.7 immediate priorities
+Implemented through PR #86.
 
-The first v1.7 work should focus on two issues discovered during real-world use of v1.6.0.
+### Installer/source classification and filtering
 
-### 1. Details panel UX and responsive layout
+- Device metadata preserves the raw installer package separately from its display label.
+- Stable installer categories distinguish Google Play, alternative stores, sideloaded/package-installer installs, unknown/preinstalled and other installers.
+- Legacy data compatibility recognizes only exact previously emitted formats rather than arbitrary substrings.
+- Built-in installer filters are reachable from the final MainWindow filter menu.
 
-- Replace the current conspicuous Right/Below selector with a compact layout control, preferably icon-based.
-- Evaluate `Auto / Right / Below` rather than committing to it before visual testing.
-- Treat panel placement and internal information layout as separate concerns.
-- When the panel is wide, especially below the table, arrange sections side by side rather than preserving one long vertical column.
-- Candidate grouping includes Store next to Installed device, and Country/language evidence next to Changes since previous audit.
-- Reflow dynamically according to actual available width. Do not hardcode a rigid one-column-vs-two-column rule if a more adaptive layout is practical.
+Implemented through PR #87 and the filter-menu restoration in PR #88.
 
-### 2. Store country and language semantics
+### SDK maintenance filters
 
-The planned v1.7 direction separates country from language more strictly:
+- Added session-level `targetSdk <= N` and `minSdk <= N` filters.
+- Added Modern, Aging target, Legacy target and Unknown compatibility-state filtering.
+- SDK filters combine with the other built-in filters using AND semantics.
+- SDK metadata is explicitly presented as compatibility/maintenance context, not a malware, security or trust score.
+- The older saved-filter/smart-query UX remains hidden pending a separate UX decision.
 
-- Store language for a connected phone: use the active Android system language when available.
-- Store country automatic detection: prefer the host/computer region using the pre-v1.6 platform logic.
-- On Windows, the host-region path should prefer `GetUserDefaultGeoName()` as before.
-- On other hosts, retain the existing locale/environment based region detection where available.
-- Only if host-region detection cannot produce a usable country may the Android locale region be used as a late fallback, for example `it-CH` -> `CH`.
-- If neither source yields a usable region, retain the final safe fallback (`US` unless a later deliberate decision changes it).
-- Manual Store-country and Store-language overrides remain available.
-- Do not claim that any of these signals represent the real Google Play account country unless a reliable supported signal is found.
+Implemented through PR #88.
 
-The country/language model requires real-device validation before it is considered settled for v1.7.
+### Versioned JSON export
 
-## Other v1.7 candidates
+- Added machine-readable `play-store-app-audit/results` schema version 1.
+- JSON exports include application version, UTC generation timestamp, scope, context and full structured result rows.
+- Structured Store evidence and structured audit-change records are preserved rather than flattened to display text.
+- Both all-results and visible-results JSON export are available under File > Export Results.
+- Local source file paths are deliberately omitted from the export context.
 
-- richer per-app diagnostics for inconclusive/anomalous results;
-- installer/source classification and filtering;
-- target/min SDK maintenance filters;
-- saved audit profiles;
-- incremental/smart re-audit with explicit full refresh;
-- versioned JSON export;
-- installed signing-certificate fingerprint capture/change detection;
-- saved filters/smart queries, pending UX clarification;
-- continued real-world observation of experimental icon behaviour;
-- reconsideration of a compact dashboard/summary only if it adds clear value after the details/change UX matures.
+Implemented through PR #89.
 
-See `ROADMAP.md` for prioritization and later-version items.
+### Saved audit profiles
+
+- Added versioned saved audit profiles under Tools > Audit profiles.
+- Profiles preserve Store country/language, fallback countries, workers/cache settings, device-metadata options, history comparison, system-app exclusion, source expectation and view preset.
+- A saved country becomes an explicit country override when the profile is applied, making the profile reproducible across hosts.
+- Source expectation is advisory: applying a phone profile does not automatically start ADB, and applying a file profile does not open a file automatically.
+- Search text, result-filter presets, SDK filters and custom-column state are intentionally not part of audit profiles.
+
+Implemented through PR #90.
+
+### Conservative smart re-audit policy
+
+- Normal Run remains the smart/incremental path rather than introducing a second audit engine.
+- Only fresh exact-`available` results with a populated Store update date are eligible for cache reuse.
+- Regional-only, fallback-only, removed, anomalous, incomplete and failed/inconclusive checks remain live.
+- TTL remains a separate freshness gate.
+- Tools > Force full refresh explicitly bypasses cache for the run.
+- Existing targeted problematic-result rechecks remain available.
+- Versioned JSON export now describes the active smart re-audit/cache policy in machine-readable context.
+
+Implemented through PR #91.
+
+## v1.7 open items and validation
+
+### Signing-certificate fingerprint
+
+Installed signing-certificate fingerprint capture/change detection remains open.
+
+Do not label the normal `dumpsys package` `Signature`/signature-hash representation as a cryptographic certificate fingerprint. The commonly exposed value is not a SHA-256 certificate digest. A correct implementation needs a reliable, scalable, read-only way to obtain signing-certificate material or an equivalent trustworthy digest without turning a large device audit into hundreds of APK transfers or adding an unjustified external dependency.
+
+Until such a path is established, leave this feature unimplemented rather than presenting misleading data.
+
+### Real-device validation
+
+The v1.7 country/language model should still receive deliberate real-device validation before release freeze, especially:
+
+- host CH with Android `it-CH`, `de-CH`, `fr-CH` and `en-CH`;
+- host and Android region disagreement;
+- Android language with no usable region;
+- phone audit followed by file audit, verifying no phone-context leakage;
+- manual country and language overrides;
+- Store localization and multi-country fallback behavior.
+
+### Experimental icons
+
+Continue observing cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse. Icons remain opt-in and non-blocking.
+
+### Saved filters / smart queries
+
+Still uncommitted pending UX clarification. Saved result queries are distinct from saved audit profiles and must not be silently reintroduced through the profile implementation.
 
 ## Durable release and repository invariants
 
