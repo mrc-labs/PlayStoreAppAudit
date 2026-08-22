@@ -6,7 +6,7 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current shipped/development state lives in `docs/PROJECT_STATUS.md`. Forward-looking release/feature planning lives in `docs/ROADMAP.md`. The detailed release procedures live in `docs/BUILDING.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current shipped/development state lives in `docs/PROJECT_STATUS.md`. Forward-looking release/feature planning lives in `docs/ROADMAP.md`. The detailed release procedures live in `docs/BUILDING.md`. Permanent release-closure and local VS Code synchronization requirements live in `docs/RELEASE_CLOSURE.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
 
 When old version-specific scheduling language in an operational document conflicts with the current roadmap, preserve the operational procedure but follow `PROJECT_DECISIONS.md` and `ROADMAP.md` for the current milestone assignment. Historical release wording in `CHANGELOG.md` and `RELEASE_NOTES.md` is not rewritten to match later roadmap changes.
 
@@ -91,6 +91,21 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - When normalizing an already published release, the body actually published on GitHub is the primary historical source. Changelog/docs may supplement only clearly supported missing details and must not silently replace or strengthen the historical claims.
 - Obvious editorial mistakes in historical prose may be corrected during normalization only when the release/tag identity is unambiguous and the substantive meaning is unchanged.
 - Release-note prose may be normalized after publication, but this never authorizes changing an immutable published tag, source commit, binary/source asset, or checksum file.
+- Every release must finish the permanent closure procedure in `docs/RELEASE_CLOSURE.md`. Publishing alone is not release completion: post-release context Markdown must be reviewed/updated, the local VS Code checkout must be synchronized safely to canonical `main`, the local tree/SHA must be verified, and any new handoff must be generated only from that clean synchronized state.
+
+### Permanent release closure and VS Code sync
+
+For every current and future release:
+
+- review and update all maintained project-context Markdown whose facts changed, including the current version-specific handoff;
+- keep release history and the newer post-release `main` context clearly distinguished;
+- before any local pull run `git status --short`; if dirty, stop and never reset/stash/discard automatically;
+- on a clean local VS Code checkout use `git fetch --prune origin`, switch to `main`, and use `git pull --ff-only origin main`;
+- verify the clean local `HEAD` equals the expected canonical post-release/documentation SHA;
+- generate `REPOSITORY_SNAPSHOT.md` and chat/continuation handoffs only after that synchronization;
+- do not call the release cycle closed until remote repository state, local VS Code state and context documentation agree.
+
+The full checklist and rationale are canonical in `docs/RELEASE_CLOSURE.md` and apply to v1.7, v1.8, v2.0 and every later release line.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
@@ -102,7 +117,7 @@ v1.4 is intentionally a public Windows x64 Engineering Test Build (ETB).
 - Do not build Windows ARM64, Linux or macOS release candidates for v1.4.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - The engineering assembler must accept only the successful unsigned Windows x64 `Build Windows - Qt6` run from the same repository and exact SHA and must reject ARM64 input.
-- The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+- The public asset set is exactly three files: Windows x64 ZIP, one consolidated third-party sources tar.xz, SHA256SUMS.txt.
 - Engineering GitHub Releases use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; the package must be clearly described as unsigned.
 
 ### v1.5 Windows x64 Engineering Test Build (ETB) profile
