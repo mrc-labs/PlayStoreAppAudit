@@ -110,6 +110,7 @@ class AppDetailsPanel(QFrame):
         self.setMinimumWidth(300)
         self.setMinimumHeight(210)
         self._row: dict[str, Any] | None = None
+        self._section_widgets: list[QWidget] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 10, 12, 10)
@@ -188,6 +189,7 @@ class AppDetailsPanel(QFrame):
         body.setWordWrap(True)
         body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.content_layout.addWidget(body)
+        self._section_widgets.extend((heading, body))
         return body
 
     def _emit_position(self) -> None:
@@ -208,6 +210,8 @@ class AppDetailsPanel(QFrame):
         self.title_label.setText("App details")
         self.developer_label.clear()
         self.placeholder.show()
+        for widget in self._section_widgets:
+            widget.hide()
         for label in (
             self.store_label,
             self.device_label,
@@ -221,6 +225,8 @@ class AppDetailsPanel(QFrame):
     def set_row(self, row: Mapping[str, Any], icon: QIcon | None = None) -> None:
         self._row = dict(row)
         self.placeholder.hide()
+        for widget in self._section_widgets:
+            widget.show()
         self.title_label.setText(_text(row.get("play_title")) or _text(row.get("package_name")) or "App")
         self.developer_label.setText(_text(row.get("developer")))
         self.set_icon(icon)
