@@ -8,6 +8,12 @@ import playstore_app_audit.services.audit_profiles as audit_profiles
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 
+_SOURCE_LABELS = {
+    "any": "Any source",
+    "file": "File",
+    "device": "Android phone",
+}
+
 
 def _current_country(window: object) -> str:
     edit = getattr(window, "country_edit", None)
@@ -17,11 +23,25 @@ def _current_country(window: object) -> str:
 
 
 def capture_window_profile(window: object) -> dict[str, Any]:
-    return audit_profiles.capture_profile(state.load_settings(), _current_country(window))
+    settings = state.load_settings()
+    return audit_profiles.capture_profile(
+        settings,
+        _current_country(window),
+        source_mode=str(getattr(window, "source_mode", "") or "any"),
+        view_preset=str(settings.get("view_preset") or "Basic"),
+    )
+
+
+def _sync_view_actions(window: object, view_preset: str) -> None:
+    for action in getattr(window, "view_preset_actions", []) or []:
+        if hasattr(action, "text") and hasattr(action, "setChecked"):
+            action.setChecked(action.text() == view_preset)
 
 
 def apply_window_profile(window: object, profile: dict[str, Any]) -> None:
-    country, settings = audit_profiles.apply_profile_to_settings(profile, state.load_settings())
+    country, expected_source, view_preset, settings = audit_profiles.apply_profile_to_settings(
+        profile, state.load_settings()
+    )
     saved = state.save_settings(settings)
     setattr(window, "user_settings", saved)
 
@@ -32,7 +52,9 @@ def apply_window_profile(window: object, profile: dict[str, Any]) -> None:
         apply_country = getattr(window, "_apply_store_country_resolution", None)
         if callable(apply_country):
             source_mode = str(getattr(window, "source_mode", "") or "")
-            android_locale = getattr(window, "_device_store_locale", None) if source_mode == "device" else None
+            android_locale = (
+                getattr(window, "_device_store_locale", None) if source_mode == "device" else None
+            )
             apply_country(android_locale)
 
     workers = getattr(window, "workers_spin", None)
@@ -43,14 +65,25 @@ def apply_window_profile(window: object, profile: dict[str, Any]) -> None:
     if exclude_system is not None and hasattr(exclude_system, "setChecked"):
         exclude_system.setChecked(bool(saved.get("exclude_system_source", True)))
 
+    set_view = getattr(window, "_set_view_preset", None)
+    if callable(set_view):
+        set_view(view_preset)
+        _sync_view_actions(window, view_preset)
+
     device_metadata.set_fallback_countries(
         saved.get("fallback_countries", device_metadata.DEFAULT_FALLBACK_COUNTRIES),
         country,
     )
 
+    current_source = str(getattr(window, "source_mode", "") or "")
+    source_mismatch = expected_source != "any" and current_source != expected_source
     status = getattr(window, "status_label", None)
     if status is not None and hasattr(status, "setText"):
-        status.setText("Audit profile applied; settings will be used by the next audit")
+        message = "Audit profile applied; settings will be used by the next audit"
+        if source_mismatch:
+            expected_label = _SOURCE_LABELS.get(expected_source, expected_source)
+            message += f"; profile expects source: {expected_label}"
+        status.setText(message)
 
 
 def _save_current(window: object, menu: QMenu) -> None:
@@ -101,6 +134,14 @@ def _delete_named(window: object, menu: QMenu, name: str) -> None:
     populate_audit_profiles_menu(window, menu)
 
 
+def _profile_tooltip(profile: dict[str, Any]) -> str:
+    source = _SOURCE_LABELS.get(str(profile.get("source_mode") or "any"), "Any source")
+    country = str(profile.get("store_country") or "us").upper()
+    view = str(profile.get("view_preset") or "Basic")
+    language = str((profile.get("settings") or {}).get("store_language") or "auto")
+    return f"Source: {source} | Store: {country}/{language} | View: {view}"
+
+
 def populate_audit_profiles_menu(window: object, menu: QMenu) -> None:
     menu.clear()
     menu.addAction("Save current audit settings as profile…", lambda: _save_current(window, menu))
@@ -113,8 +154,9 @@ def populate_audit_profiles_menu(window: object, menu: QMenu) -> None:
         return
 
     menu.addSeparator()
-    for name in profiles:
-        menu.addAction(name, lambda _checked=False, n=name: _apply_named(window, menu, n))
+    for name, profile in profiles.items():
+        action = menu.addAction(name, lambda _checked=False, n=name: _apply_named(window, menu, n))
+        action.setToolTip(_profile_tooltip(profile))
 
     delete_menu = menu.addMenu("Delete profile")
     for name in profiles:
