@@ -36,7 +36,7 @@ Published project-defined assets and SHA-256 values:
 
 - Canonical application version remains `1.6.0` until a later release-profile/version freeze deliberately changes it.
 - Active planning/development cycle: `v1.7`.
-- Current v1.7 development baseline on `main`: `da24f10a7c77670f73c1b5d8a18343f328a660ba` before this documentation-only housekeeping branch.
+- Baseline entering the v1.7/v1.8 scope-policy update: `fefd2c766b2fa6cf034813e7c0adbc67779e4bcf`.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
@@ -45,7 +45,9 @@ Published project-defined assets and SHA-256 values:
 - Managed ADB behaviour remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers remain 16.
 - Store transport timeout remains 25 seconds.
-- Experimental Play Store icons remain opt-in and non-blocking.
+- Play Store icons remain experimental, opt-in and non-blocking throughout v1.7.
+- v1.7 release target: Windows x64 only.
+- v1.8 release target: Windows x64 only.
 
 No v1.7 binary release has been frozen or built by the work recorded below.
 
@@ -96,7 +98,6 @@ Implemented through PR #87 and the filter-menu restoration in PR #88.
 - Added Modern, Aging target, Legacy target and Unknown compatibility-state filtering.
 - SDK filters combine with the other built-in filters using AND semantics.
 - SDK metadata is explicitly presented as compatibility/maintenance context, not a malware, security or trust score.
-- The older saved-filter/smart-query UX remains hidden pending a separate UX decision.
 
 Implemented through PR #88.
 
@@ -132,19 +133,13 @@ Implemented through PR #90.
 
 Implemented through PR #91.
 
-## v1.7 open items and validation
+## v1.7 remaining release validation
 
-### Signing-certificate fingerprint
-
-Installed signing-certificate fingerprint capture/change detection remains open.
-
-Do not label the normal `dumpsys package` `Signature`/signature-hash representation as a cryptographic certificate fingerprint. The commonly exposed value is not a SHA-256 certificate digest. A correct implementation needs a reliable, scalable, read-only way to obtain signing-certificate material or an equivalent trustworthy digest without turning a large device audit into hundreds of APK transfers or adding an unjustified external dependency.
-
-Until such a path is established, leave this feature unimplemented rather than presenting misleading data.
+The v1.7 feature scope is closed. Remaining work is validation and release polish, not feature expansion.
 
 ### Real-device validation
 
-The v1.7 country/language model should still receive deliberate real-device validation before release freeze, especially:
+The v1.7 country/language model should receive deliberate real-device validation before release freeze, especially:
 
 - host CH with Android `it-CH`, `de-CH`, `fr-CH` and `en-CH`;
 - host and Android region disagreement;
@@ -153,13 +148,27 @@ The v1.7 country/language model should still receive deliberate real-device vali
 - manual country and language overrides;
 - Store localization and multi-country fallback behavior.
 
-### Experimental icons
+### Experimental icons during v1.7
 
-Continue observing cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse. Icons remain opt-in and non-blocking.
+Continue observing cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse during v1.7 validation. Icons remain opt-in and non-blocking for v1.7.
 
-### Saved filters / smart queries
+The planned v1.8 direction is to graduate icons from experimental to a normal supported feature, with any final hardening required by v1.7 observations.
 
-Still uncommitted pending UX clarification. Saved result queries are distinct from saved audit profiles and must not be silently reintroduced through the profile implementation.
+## Removed feature
+
+Installed signing-certificate fingerprint capture/change detection is no longer planned for Play Store App Audit.
+
+The investigated `dumpsys package` signature/hash representation is not a SHA-256 certificate fingerprint, while a correct implementation would add disproportionate APK/certificate extraction complexity. Do not carry this item forward into v1.8 or later roadmaps unless a new product decision explicitly reopens it.
+
+## v1.8 planned carry-forward
+
+Items previously left pending are now assigned to v1.8 rather than remaining indefinite:
+
+- graduate Play Store icons from experimental to normal supported behavior;
+- saved filters / smart queries, with UX defined separately from saved audit profiles;
+- richer compact dashboard / summary, designed to complement rather than duplicate details, changes and filters.
+
+v1.8 remains Windows x64 only.
 
 ## Durable release and repository invariants
 
@@ -174,6 +183,7 @@ Still uncommitted pending UX clarification. Saved result queries are distinct fr
 - Tag pushes do not rebuild binaries.
 - Strict legal/source validation remains fail-closed.
 - ADB remains read-only with respect to installed Android apps.
+- v1.7 and v1.8 are Windows x64 only.
 - Production signing and the full six-platform production release are not planned before v2.0 unless the roadmap is deliberately changed.
 
 See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md` and `HANDOFF_V1.7.md` for durable policy, planning and handoff context.
