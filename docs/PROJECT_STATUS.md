@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-21
+Last updated: 2026-08-22
 
 ## Published release
 
@@ -40,7 +40,8 @@ Final SHA-256 values:
 
 ## Current development baseline
 
-- Canonical application version: `1.5.0`
+- Latest development `main` after the v1.6 product slices: `b5efb1785a018268692b01d2b621e18baf646c54`
+- Canonical application version remains `1.5.0` until the v1.6 release profile is frozen.
 - Packaging Python: 3.13
 - Quality Python: 3.13 + 3.14
 - `PySide6-Essentials`: 6.11.1
@@ -52,35 +53,73 @@ Final SHA-256 values:
 - HTML Store timeout: 25 seconds
 - `google-play-scraper` transport timeout: 25 seconds
 
-## v1.5 product work completed
+## v1.6 product work completed
 
-The v1.5 product and UI workstream is complete.
+The committed v1.6 product/engineering scope is implemented on `main` and is in stabilization before release-profile freeze.
 
-- File-menu result actions are consolidated into one canonical Run / Export / Clear section.
-- Connected-phone source summaries show manufacturer/model and Android version/API without extra ADB calls.
-- `Exclude system apps from source` defaults to enabled and persists explicit choices.
-- Status-chip sizing follows native font/style metrics.
-- Numeric result fields use typed numeric sorting.
-- Audit progress distinguishes cached/live work and exposes a real finalization state.
-- Regional fallback verification exposes live progress instead of appearing idle.
-- Advanced settings warn that many fallback countries can increase audit time.
-- Concurrent Store workers are configurable from 4 to 32 and persisted between runs.
-- The concise worker warning states that higher values can increase throttling, connection errors and latency, and that more workers are not always faster.
-- The Windows HiDPI checkbox investigation found no state-dependent sizing defect, so no custom checkbox styling workaround is used.
-- Experimental Play Store app icons are implemented as an opt-in feature and remain off by default.
-- Icon URLs are captured from normal scraper results without adding Store metadata requests.
-- Only HTTPS icon URLs are accepted.
-- Icon image downloads occur only when the feature is enabled, use at most 4 concurrent requests, a 10-second timeout and a 1 MB response ceiling.
-- At most 96 decoded icon images are retained in memory for the current session.
-- Downloaded icon bytes are persisted under the active app-data directory and reused across restarts while the app's `play_last_update` marker remains unchanged. If no reliable update marker exists, unchanged icon URL is required instead.
-- Persistent icon-cache reads and writes run outside the UI thread. The results table is shown immediately and remains usable while cached or downloaded icons populate progressively.
-- The normal healthy-result audit cache retains the icon URL metadata needed to reuse or refresh icons without adding Store metadata requests.
+### Store architecture, locale and reliability
+
+- Bounded multi-country fallback scheduling now lives in the canonical Store service rather than `performance_diagnostics.py`.
+- Terminal propagated `google_play_scraper.exceptions.NotFoundError` handling is centralized in the Store path; transient failures still retain retry/backoff and uncertainty semantics.
+- Store language can run in `auto` mode. A connected Android phone supplies its actual active system language where available; file/list audits use the principal language of the selected Store country.
+- Android locale region may provide the initial Store country for a phone scan, but the UI explicitly treats this as inferred from Android locale rather than claiming it is the Google Play account country.
+- Explicit manual Store-language and Store-country overrides remain available.
+- Same-country English fallback is limited to inconclusive or metadata-incomplete cases; a conclusive terminal not-found is not retried merely to change language.
+- File/list audits clear any previously active phone-locale context.
+- Store country/language request evidence is structured and exposed to the details UX.
+- Default/recommended Store worker count remains 16.
+
+### Persistent icon cache and Store metadata
+
+- Persistent icon-cache path/read/write/replace `OSError` handling degrades cleanly to cache miss/network fallback instead of leaving icons permanently pending.
+- Experimental Play Store icons remain opt-in and non-blocking.
+- Icons now sit beside the Play Store title rather than beside the package ID.
+- Developer metadata is captured from the same normal scraper response already used by the audit, with no additional Store metadata request.
+- Captured icon/developer metadata is retained through the normal healthy-result cache path.
+
+### Selected-row details UX
+
+- A reusable app-details panel is attached to the results table.
+- The panel can be positioned on the right or below the table and persists the user's choice.
+- It exposes Play Store title/package/developer/URL/version/update information, device metadata, structured country/language evidence and previous-audit changes.
+- Selecting a row updates the details panel, and the first result row is selected after model reset when results exist.
+- The empty panel state is intentionally minimal rather than showing empty section headings.
+
+### Previous-audit change visibility
+
+- Previous-audit comparison records structured change events instead of relying only on the legacy display string.
+- A grouped Audit changes overview covers:
+  - newly installed apps on a previously known device inventory;
+  - apps removed from the device;
+  - newly available Store results;
+  - newly unavailable results in checked Store countries;
+  - Store listings that reappeared;
+  - Store version changes;
+  - Store latest-update changes;
+  - maintenance-state transitions such as Current -> Aging -> Stale;
+  - installer/source changes where available.
+- The first inventory of a device is treated as a baseline, not as hundreds of newly installed events.
+- Installer/source changes reported through both Store-history and device-inventory paths are deduplicated in the grouped overview.
+- Selecting an app in the change overview focuses the current result row when present; removed-device packages remain visible even though no current row exists.
+
+### Validation checkpoints
+
+The completed v1.6 product slices have been exercised by the normal Quality and UI-style gates. The final change-overview slice passed:
+
+- 262 pytest tests;
+- Ruff;
+- Qt offscreen smoke on Python 3.13 and 3.14;
+- Windows native vs Fusion UI audit;
+- macOS native vs Fusion UI audit;
+- Linux native vs Fusion UI audit.
+
+These are development/stabilization gates, not yet v1.6 release evidence. Release verification must still run from the exact frozen v1.6 SHA after the release profile is frozen.
 
 ## Store performance and reliability evidence
 
 The real Windows/device investigation established the Store path as the dominant audit cost. ADB metadata and UI finalization are not material bottlenecks on the measured 333-package workload.
 
-Low-risk changes retained for v1.5:
+Low-risk changes retained from v1.5 and preserved through v1.6:
 
 - negative multi-country checks run in small ordered batches while a shared semaphore caps total in-flight Store locale requests at the configured worker limit;
 - fallback-country priority and classifications remain unchanged;
@@ -96,35 +135,33 @@ Measured full-refresh checkpoints with 333 live packages and the same final clas
 | Workers | Total time | Decision |
 | ---: | ---: | --- |
 | 12 | 185.850 s | slower |
-| 14 | 200.877 s | anomalous back-to-back run; not used for v1.5 default selection |
-| 16 | 168.854 s | v1.5 default/recommended value |
+| 14 | 200.877 s | anomalous back-to-back run; not used for default selection |
+| 16 | 168.854 s | default/recommended value |
 | 20 | 170.657 s | slightly slower than 16 |
 | 24 | 171.166 s | slower with materially higher request latency |
 
-The 14-vs-16 cooldown repeat is no longer required for the planned v1.6 work. Keep 16 as the default unless a later performance concern deliberately reopens benchmarking. If reopened, a long unattended real-device run is acceptable as long as it remains isolated from product changes and preserves final-classification checks.
+The 14-vs-16 cooldown repeat remains unnecessary. Keep 16 as the default unless a later performance concern deliberately reopens benchmarking. If reopened, an unattended real-device run is acceptable as long as it remains isolated from product changes and preserves final-classification checks.
 
 Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
 
-## Active next-cycle work
+## v1.6 stabilization and release-profile freeze
 
-The next development cycle starts from the v1.5 baseline. The committed near-term engineering items are:
+Remaining v1.6 work is release stabilization rather than new product scope:
 
-- move the bounded fallback scheduler out of `performance_diagnostics.py` into a dedicated canonical Store service;
-- consolidate terminal `NotFoundError` retry/classification handling so base and device-enriched Store paths cannot drift;
-- harden persistent icon-cache disk failure handling;
-- add a configurable app-details panel that can dock right or below the results table;
-- improve previous-audit change visibility;
-- expose country-level availability evidence in the details UX;
-- review whether Store icons should sit beside the Play Store title rather than beside the package name;
-- continue observing experimental icon behaviour before removing the experimental label.
+- keep the optional dashboard/summary candidate out of the current release unless a deliberate new decision adds it;
+- keep the experimental icon label for v1.6; real-world maturity observation continues beyond this release;
+- finalize the actual v1.6 distribution profile;
+- only after that profile is frozen, bump canonical version metadata from `1.5.0` to `1.6.0` and convert the changelog `Unreleased` section into the dated v1.6.0 entry;
+- run release-profile-specific Quality/build/legal/assembly verification from one exact frozen SHA;
+- publish only artifacts derived from that frozen SHA.
 
-The current v1.6 release-profile direction is another unsigned Windows x64 ETB, but that profile is not frozen yet.
+Current release-profile direction remains another unsigned Windows x64 Engineering Test Build, broadly following v1.5, but it is not frozen by this documentation update.
 
 ## Forward roadmap
 
 `ROADMAP.md` is the canonical forward-looking plan. It separates:
 
-- v1.6 planned direction;
+- v1.6 stabilization/release direction;
 - v1.7 candidates;
 - v2.0+ production/signing and larger product concepts;
 - open product questions;
