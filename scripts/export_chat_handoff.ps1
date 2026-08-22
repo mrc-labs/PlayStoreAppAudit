@@ -22,7 +22,7 @@ if ($status) {
 }
 
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$handoffName = "PlayStoreAppAudit-v1.6-chat-handoff-$timestamp"
+$handoffName = "PlayStoreAppAudit-v1.7-chat-handoff-$timestamp"
 $outputDir = Join-Path ([System.IO.Path]::GetTempPath()) $handoffName
 $zipPath = "$outputDir.zip"
 
@@ -35,7 +35,7 @@ if (Test-Path -LiteralPath $zipPath) {
 New-Item -ItemType Directory -Path $outputDir | Out-Null
 
 $files = @(
-    'docs/HANDOFF_V1.6.md',
+    'docs/HANDOFF_V1.7.md',
     'docs/ROADMAP.md',
     'docs/PROJECT_STATUS.md',
     'docs/PROJECT_DECISIONS.md',
