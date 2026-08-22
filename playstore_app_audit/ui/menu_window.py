@@ -259,7 +259,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         buttons_row.addWidget(buttons)
         root.addLayout(buttons_row)
 
-        clear.clicked.connect(lambda: (self._clear_sdk_filter(), dialog.accept()))
+        clear.clicked.connect(lambda: (self._clear_sdk_filter(), dialog.reject()))
         buttons.rejected.connect(dialog.reject)
         buttons.accepted.connect(dialog.accept)
         if dialog.exec() != QDialog.DialogCode.Accepted:
