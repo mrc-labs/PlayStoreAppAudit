@@ -22,6 +22,7 @@ from playstore_app_audit.ui.app_icon_loader import AppIconLoader
 
 TABLE_SCHEMA_VERSION = "v12-schema-1"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
+ICON_COLUMN = "play_title"
 
 
 class AuditTableModel(base_ui.AppTableModel):
@@ -52,14 +53,25 @@ class AuditTableModel(base_ui.AppTableModel):
                 row["play_icon_url"] = icon_url
         super().set_rows(rows)
 
+    def icon_for_row(self, row: dict[str, object]) -> QIcon | None:
+        if not self._icons_enabled:
+            return None
+        if str(row.get("play_status") or "") not in ICON_STATUSES:
+            return None
+        return self._icon_loader.icon_for_row(
+            row.get("package_name"),
+            row.get("play_icon_url"),
+            row.get("play_last_update"),
+        )
+
     def set_app_icons_enabled(self, enabled: bool) -> None:
         enabled = bool(enabled)
         if enabled == self._icons_enabled:
             return
         self._icons_enabled = enabled
-        if not self.rows or "package_name" not in self.columns:
+        if not self.rows or ICON_COLUMN not in self.columns:
             return
-        column = self.columns.index("package_name")
+        column = self.columns.index(ICON_COLUMN)
         top_left = self.index(0, column)
         bottom_right = self.index(len(self.rows) - 1, column)
         self.dataChanged.emit(
@@ -69,9 +81,9 @@ class AuditTableModel(base_ui.AppTableModel):
         )
 
     def _on_icon_ready(self, icon_url: str) -> None:
-        if not self._icons_enabled or "package_name" not in self.columns:
+        if not self._icons_enabled or ICON_COLUMN not in self.columns:
             return
-        column = self.columns.index("package_name")
+        column = self.columns.index(ICON_COLUMN)
         for row_index, row in enumerate(self.rows):
             if str(row.get("play_icon_url") or "") != icon_url:
                 continue
@@ -111,16 +123,8 @@ class AuditTableModel(base_ui.AppTableModel):
                 return "Yes" if value else "No"
             return "" if value is None else str(value)
 
-        if role == Qt.ItemDataRole.DecorationRole and column == "package_name":
-            if not self._icons_enabled:
-                return None
-            if str(row.get("play_status") or "") not in ICON_STATUSES:
-                return None
-            return self._icon_loader.icon_for_row(
-                row.get("package_name"),
-                row.get("play_icon_url"),
-                row.get("play_last_update"),
-            )
+        if role == Qt.ItemDataRole.DecorationRole and column == ICON_COLUMN:
+            return self.icon_for_row(row)
 
         if role == Qt.ItemDataRole.BackgroundRole:
             return QColor(info["background"])

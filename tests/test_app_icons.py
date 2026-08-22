@@ -266,6 +266,7 @@ def test_table_icons_are_opt_in_and_use_captured_metadata(
     model = table_ui.AuditTableModel()
     row = {
         "package_name": "com.example.app",
+        "play_title": "Example App",
         "play_status": "available",
         "play_last_update": "2026-08-01",
         "criticality_key": "green",
@@ -273,16 +274,18 @@ def test_table_icons_are_opt_in_and_use_captured_metadata(
     model.set_rows([row])
     assert model.rows[0]["play_icon_url"] == "https://example.invalid/icon.png"
 
-    package_column = model.columns.index("package_name")
-    index = model.index(0, package_column)
-    assert model.data(index, Qt.ItemDataRole.DecorationRole) is None
+    package_index = model.index(0, model.columns.index("package_name"))
+    title_index = model.index(0, model.columns.index("play_title"))
+    assert model.data(package_index, Qt.ItemDataRole.DecorationRole) is None
+    assert model.data(title_index, Qt.ItemDataRole.DecorationRole) is None
 
     expected = QIcon()
     model._icon_loader = SimpleNamespace(  # type: ignore[assignment]
         icon_for_row=lambda _package, _url, _update: expected
     )
     model.set_app_icons_enabled(True)
-    assert model.data(index, Qt.ItemDataRole.DecorationRole) is expected
+    assert model.data(package_index, Qt.ItemDataRole.DecorationRole) is None
+    assert model.data(title_index, Qt.ItemDataRole.DecorationRole) is expected
 
     model.deleteLater()
     app.processEvents()
@@ -303,15 +306,15 @@ def test_unavailable_rows_do_not_show_stale_icons(
         [
             {
                 "package_name": "com.example.removed",
+                "play_title": "Removed App",
                 "play_status": "not_found_in_checked_countries",
                 "criticality_key": "red",
             }
         ]
     )
-    package_column = model.columns.index("package_name")
-    index = model.index(0, package_column)
+    title_index = model.index(0, model.columns.index("play_title"))
     assert "play_icon_url" not in model.rows[0]
-    assert model.data(index, Qt.ItemDataRole.DecorationRole) is None
+    assert model.data(title_index, Qt.ItemDataRole.DecorationRole) is None
 
     model.deleteLater()
     app.processEvents()
