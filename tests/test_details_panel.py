@@ -20,10 +20,30 @@ def app() -> QApplication:
 
 
 def test_details_panel_position_normalises_unknown_values() -> None:
+    assert details_ui.normalise_details_panel_position("auto") == "auto"
+    assert details_ui.normalise_details_panel_position("Auto") == "auto"
     assert details_ui.normalise_details_panel_position("below") == "below"
     assert details_ui.normalise_details_panel_position("Below") == "below"
     assert details_ui.normalise_details_panel_position("right") == "right"
     assert details_ui.normalise_details_panel_position("unexpected") == "right"
+
+
+def test_auto_position_uses_width_hysteresis() -> None:
+    assert details_ui.resolve_details_panel_position("right", 800, "below") == "right"
+    assert details_ui.resolve_details_panel_position("below", 1800, "right") == "below"
+    assert details_ui.resolve_details_panel_position("auto", 1500) == "right"
+    assert details_ui.resolve_details_panel_position("auto", 1200) == "below"
+    assert details_ui.resolve_details_panel_position("auto", 1300, "right") == "right"
+    assert details_ui.resolve_details_panel_position("auto", 1300, "below") == "below"
+
+
+def test_details_content_layout_uses_width_hysteresis() -> None:
+    assert details_ui.details_content_layout_mode(900) == "wide"
+    assert details_ui.details_content_layout_mode(500) == "narrow"
+    assert details_ui.details_content_layout_mode(700, "wide") == "wide"
+    assert details_ui.details_content_layout_mode(700, "narrow") == "narrow"
+    assert details_ui.details_content_layout_mode(650, "wide") == "narrow"
+    assert details_ui.details_content_layout_mode(800, "narrow") == "wide"
 
 
 def test_results_layout_lookup_descends_through_card_widget(app: QApplication) -> None:
@@ -123,6 +143,32 @@ def test_normal_store_response_capture_reuses_developer_without_extra_request() 
 
     assert row["developer"] == "Example Developer"
     assert row["play_icon_url"] == "https://example.invalid/icon.png"
+
+
+def test_panel_position_control_is_compact_icon_based(app: QApplication) -> None:
+    panel = details_ui.AppDetailsPanel("right")
+    changes: list[str] = []
+    panel.position_changed.connect(changes.append)
+
+    assert panel.position() == "right"
+    assert set(panel.position_buttons) == {"auto", "right", "below"}
+    assert all(button.icon().isNull() is False for button in panel.position_buttons.values())
+    assert all(button.text() == "" for button in panel.position_buttons.values())
+
+    panel.position_buttons["auto"].click()
+    assert panel.position() == "auto"
+    assert panel.position_buttons["auto"].isChecked()
+    assert changes == ["auto"]
+
+    panel._update_adaptive_layout(900)
+    assert panel.content_layout_mode() == "wide"
+    panel._update_adaptive_layout(700)
+    assert panel.content_layout_mode() == "wide"
+    panel._update_adaptive_layout(650)
+    assert panel.content_layout_mode() == "narrow"
+
+    panel.deleteLater()
+    app.processEvents()
 
 
 def test_panel_shows_selected_row_details_and_review_action(app: QApplication) -> None:
