@@ -67,7 +67,7 @@ def _discover_windows_candidate(
         ]
         if unexpected_matches:
             raise RuntimeError(
-                "v1.4 Windows engineering input must contain x64 only; "
+                "Windows engineering release input must contain x64 only; "
                 f"found {len(unexpected_matches)} {unexpected_name} artifact(s)"
             )
 
