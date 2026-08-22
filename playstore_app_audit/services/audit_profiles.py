@@ -32,6 +32,14 @@ _BOOLEAN_FIELDS = frozenset(
         "exclude_system_source",
     }
 )
+_TRUE_DEFAULT_FIELDS = frozenset(
+    {
+        "cache_enabled",
+        "collect_device_metadata",
+        "inventory_history_enabled",
+        "exclude_system_source",
+    }
+)
 
 
 def _country(value: object) -> str:
@@ -77,13 +85,7 @@ def normalise_profile(profile: object) -> dict[str, Any] | None:
         "cache_ttl_hours": ttl,
     }
     for key in _BOOLEAN_FIELDS:
-        default = True if key in {
-            "cache_enabled",
-            "collect_device_metadata",
-            "inventory_history_enabled",
-            "exclude_system_source",
-        } else False
-        clean[key] = bool(settings.get(key, default))
+        clean[key] = bool(settings.get(key, key in _TRUE_DEFAULT_FIELDS))
 
     return {
         "schema_version": PROFILE_SCHEMA_VERSION,
