@@ -106,6 +106,25 @@ The v1.6.0 public release profile is frozen as an unsigned Windows x64 Engineeri
 
 Rationale: v1.6 focuses on Store-service maturity, locale correctness, details/change UX and reliability while preserving a low-cost, already validated public distribution profile. Production signing and multi-platform release cost remain deferred.
 
+### v1.7 and v1.8 Windows x64 Engineering Test Builds (ETB)
+
+v1.7 and v1.8 deliberately continue the unsigned Windows x64-only Engineering Test Build profile.
+
+For both release lines:
+
+- the Windows x64 package must come from one exact frozen `main` SHA after the required Quality/UI gates pass;
+- build with `.github/workflows/build-windows-exe.yml` using `target=x64`;
+- do not invoke Windows production signing;
+- do not build or publish Windows ARM64, Linux or macOS release candidates;
+- assemble with `.github/workflows/assemble-windows-engineering-release.yml`;
+- publish exactly three project-defined assets: the Windows x64 ZIP, one consolidated third-party source `tar.xz`, and one release-wide `SHA256SUMS.txt`;
+- use the `(ETB Win x64)` GitHub Release naming convention and clearly describe the package as unsigned;
+- any source or release-tooling change after an exact release SHA is recorded invalidates that candidate and requires a new exact SHA and rebuild of the ETB artifacts.
+
+The v1.8 product-scope expansion does not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside both v1.7 and v1.8.
+
+Rationale: v1.7 and v1.8 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the production-distribution milestone.
+
 ### v2.0-or-later production release milestone
 
 The full six-platform production release architecture remains implemented in source but execution is deferred until **v2.0 or later**.
@@ -117,7 +136,7 @@ The full six-platform production release architecture remains implemented in sou
 - Assemble with `.github/workflows/assemble-release.yml` only after all six candidates validate.
 - The full production asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
 
-Rationale: the production architecture can remain maintained and testable without forcing signing credentials, publisher eligibility, notarization setup or six-target release cost into v1.6/v1.7.
+Rationale: the production architecture can remain maintained and testable without forcing signing credentials, publisher eligibility, notarization setup or six-target release cost into v1.6, v1.7 or v1.8.
 
 ## Packaging and legal model
 
@@ -153,7 +172,7 @@ Package workflows are platform-isolated and exact-SHA guarded:
 Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: future Windows production-signing stage, not planned for normal execution before v2.0;
-- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6;
+- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8;
 - `.github/workflows/assemble-release.yml`: future six-platform production asset assembly, not planned for normal execution before v2.0.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
@@ -212,7 +231,7 @@ Rationale: the action author, not this Python application, owns the bundled Java
 
 ## Signing policy
 
-Production signing is implemented in source but deliberately deferred from normal v1.6/v1.7 release work. Reconsider production signing and full production distribution no earlier than the v2.0 milestone.
+Production signing is implemented in source but deliberately deferred from normal v1.6/v1.7/v1.8 release work. Reconsider production signing and full production distribution no earlier than the v2.0 milestone.
 
 ### macOS production target, v2.0 or later
 
