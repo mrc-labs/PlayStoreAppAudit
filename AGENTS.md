@@ -118,14 +118,21 @@ v1.5.0 remains an unsigned Windows x64 Engineering Test Build (ETB).
 - Use GitHub Release title suffix `(ETB Win x64)` and release-body heading `## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)`.
 - Keep the package clearly described as unsigned. Do not spend money on signing for v1.5.
 
-### v1.6 planning direction
+### v1.6 Windows x64 Engineering Test Build (ETB) profile
 
-The v1.6 profile is not frozen. Current roadmap direction is another unsigned Windows x64 ETB while product, UX and Store-service architecture mature.
+The v1.6.0 release profile is frozen as an unsigned Windows x64 ETB. Product scope is closed for the release candidate.
 
-- Do not assume a six-platform v1.6 build.
-- Do not invoke production Windows signing or macOS production signing/notarization as normal v1.6 work.
-- If the v1.6 profile is finalized as Windows x64 ETB, reuse the exact-SHA engineering build/assembly profile proven by v1.5.
-- Follow `docs/ROADMAP.md` for v1.6 feature scope.
+- Canonical application version is `1.6.0`.
+- Build Windows x64 only from the exact frozen `main` SHA after the post-merge Quality gate passes.
+- Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
+- Do not invoke production Windows signing or macOS production signing/notarization for v1.6.
+- Do not build Windows ARM64, Linux or macOS release candidates for v1.6.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- The public asset set is exactly `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
+- Use release title `Play Store App Audit v1.6.0 (ETB Win x64)` and body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
+- Keep the package clearly described as unsigned.
+- Do not add the optional richer dashboard/summary to v1.6.0.
+- If source or release tooling changes after the exact release SHA is recorded, discard that candidate SHA and rebuild the required ETB artifacts from the new exact SHA.
 
 ### v2.0-or-later production profile
 
