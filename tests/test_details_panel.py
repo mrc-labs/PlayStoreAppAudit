@@ -5,6 +5,7 @@ import os
 import pytest
 from PySide6.QtWidgets import QApplication
 
+import playstore_app_audit.services.app_icon_metadata as store_metadata
 import playstore_app_audit.ui.details_panel as details_ui
 
 
@@ -78,6 +79,26 @@ def test_change_events_and_device_inventory_are_rendered() -> None:
         "Maintenance state changed: Current → Aging",
         "Device inventory: Newly installed",
     ]
+
+
+def test_normal_store_response_capture_reuses_developer_without_extra_request() -> None:
+    store_metadata.clear_icon_metadata()
+    row = {
+        "package_name": "com.example.app",
+        "play_status": "available",
+    }
+    store_metadata._remember_result_metadata(
+        {
+            "appId": "com.example.app",
+            "developer": "Example Developer",
+            "icon": "https://example.invalid/icon.png",
+        }
+    )
+
+    store_metadata._enrich_rows_with_icon_urls([row])
+
+    assert row["developer"] == "Example Developer"
+    assert row["play_icon_url"] == "https://example.invalid/icon.png"
 
 
 def test_panel_shows_selected_row_details(app: QApplication) -> None:
