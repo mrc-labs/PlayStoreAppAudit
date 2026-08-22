@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtGui import QDesktopServices, QFont, QIcon, QPainter, QPalette, QPen, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -147,29 +147,32 @@ def _clear_layout(layout) -> None:
 
 
 def _position_icon(kind: str, widget: QWidget) -> QIcon:
-    pixmap = QPixmap(26, 20)
+    pixmap = QPixmap(28, 22)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-    color = widget.palette().color(widget.foregroundRole())
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    color = widget.palette().color(QPalette.ColorRole.ButtonText)
     pen = QPen(color)
-    pen.setWidth(1)
+    pen.setWidth(2)
     painter.setPen(pen)
 
-    outer_x, outer_y, outer_w, outer_h = 2, 2, 22, 16
-    painter.drawRect(outer_x, outer_y, outer_w, outer_h)
-    if kind == "right":
-        split_x = 16
-        painter.drawLine(split_x, outer_y, split_x, outer_y + outer_h)
-        painter.fillRect(split_x + 1, outer_y + 1, outer_x + outer_w - split_x, outer_h - 1, color)
-    elif kind == "below":
-        split_y = 12
-        painter.drawLine(outer_x, split_y, outer_x + outer_w, split_y)
-        painter.fillRect(outer_x + 1, split_y + 1, outer_w - 1, outer_y + outer_h - split_y, color)
+    if kind == "auto":
+        painter.drawLine(5, 11, 23, 11)
+        painter.drawLine(5, 11, 9, 7)
+        painter.drawLine(5, 11, 9, 15)
+        painter.drawLine(23, 11, 19, 7)
+        painter.drawLine(23, 11, 19, 15)
     else:
-        painter.drawLine(16, outer_y, 16, 10)
-        painter.drawLine(outer_x, 11, outer_x + outer_w, 11)
-        painter.drawLine(11, 11, 11, outer_y + outer_h)
+        outer_x, outer_y, outer_w, outer_h = 3, 3, 22, 16
+        painter.drawRect(outer_x, outer_y, outer_w, outer_h)
+        if kind == "right":
+            split_x = 17
+            painter.drawLine(split_x, outer_y, split_x, outer_y + outer_h)
+            painter.fillRect(split_x + 2, outer_y + 2, 5, outer_h - 3, color)
+        else:
+            split_y = 13
+            painter.drawLine(outer_x, split_y, outer_x + outer_w, split_y)
+            painter.fillRect(outer_x + 2, split_y + 2, outer_w - 3, 4, color)
     painter.end()
     return QIcon(pixmap)
 
@@ -249,9 +252,9 @@ class AppDetailsPanel(QFrame):
             button = QToolButton(self)
             button.setAutoRaise(True)
             button.setCheckable(True)
-            button.setIcon(_position_icon(kind, self))
-            button.setIconSize(QSize(22, 18))
-            button.setFixedSize(30, 28)
+            button.setIcon(_position_icon(kind, button))
+            button.setIconSize(QSize(24, 19))
+            button.setFixedSize(32, 30)
             button.setToolTip(tooltips[kind])
             button.setAccessibleName(tooltips[kind].split(".", 1)[0])
             button.clicked.connect(lambda _checked=False, selected=kind: self._select_position(selected))
@@ -288,17 +291,23 @@ class AppDetailsPanel(QFrame):
         self.changes_section, self.changes_label = self._section("Changes since previous audit")
         self.notes_section, self.notes_label = self._section("Notes")
         self.content_layout.addStretch(1)
-        self._update_adaptive_layout(self.minimumWidth())
 
-        button_row = QHBoxLayout()
+        self.actions_host = QWidget()
+        self.actions_layout = QVBoxLayout(self.actions_host)
+        self.actions_layout.setContentsMargins(0, 0, 0, 0)
+        self.actions_layout.setSpacing(7)
         self.review_changes_button = QPushButton("Review audit changes")
+        self.review_changes_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         self.review_changes_button.clicked.connect(self.review_changes_requested.emit)
-        button_row.addWidget(self.review_changes_button)
         self.open_store_button = QPushButton("Open in Google Play")
+        self.open_store_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.open_store_button.setEnabled(False)
         self.open_store_button.clicked.connect(self._open_store)
-        button_row.addWidget(self.open_store_button)
-        root.addLayout(button_row)
+        root.addWidget(self.actions_host)
+
+        self._update_adaptive_layout(self.minimumWidth())
         self.clear()
 
     def _section(self, title: str) -> tuple[_DetailSection, QLabel]:
@@ -326,6 +335,7 @@ class AppDetailsPanel(QFrame):
             return
         self._content_mode = mode
         _clear_layout(self.sections_layout)
+        _clear_layout(self.actions_layout)
 
         if mode == "wide":
             columns = QHBoxLayout()
@@ -347,6 +357,13 @@ class AppDetailsPanel(QFrame):
             columns.addLayout(right, 1)
             self.sections_layout.addLayout(columns)
             self.sections_layout.addWidget(self.notes_section)
+
+            actions = QHBoxLayout()
+            actions.setContentsMargins(0, 0, 0, 0)
+            actions.setSpacing(7)
+            actions.addWidget(self.review_changes_button, 1)
+            actions.addWidget(self.open_store_button, 1)
+            self.actions_layout.addLayout(actions)
         else:
             for section in (
                 self.store_section,
@@ -356,6 +373,8 @@ class AppDetailsPanel(QFrame):
                 self.notes_section,
             ):
                 self.sections_layout.addWidget(section)
+            self.actions_layout.addWidget(self.review_changes_button)
+            self.actions_layout.addWidget(self.open_store_button)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
