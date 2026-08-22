@@ -18,15 +18,89 @@ FALLBACK_BATCH_SIZE = 3
 STORE_EVIDENCE_FIELD = "_store_evidence"
 _COUNTRY_LOCALE_EVIDENCE_FIELD = "_country_locale_evidence"
 
+_DIAGNOSTIC_FIELDS = (
+    "request_path",
+    "retry_count",
+    "scraper_attempts",
+    "html_attempts",
+    "scraper_result",
+    "html_result",
+    "outcome",
+    "failure_reason",
+)
+
 
 def _append_note(existing: object, note: str) -> str:
     parts = [str(existing or "").strip(), str(note or "").strip()]
     return " | ".join(part for part in parts if part)
 
 
+def _as_non_negative_int(value: object) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _request_outcome(status: object, updated: object, version: object) -> str:
+    value = str(status or "").strip()
+    if value == "not_found_or_unavailable":
+        return "terminal_not_found"
+    if value in {"request_error", "http_error", "check_failed", "unexpected_error"}:
+        return "transient_inconclusive"
+    if value == "available" and (not updated or not version):
+        return "available_metadata_partial"
+    if value == "available":
+        return "available"
+    return "inconclusive"
+
+
+def _request_diagnostics(
+    scraper: dict[str, Any],
+    html: dict[str, Any] | None,
+    status: object,
+    updated: object,
+    version: object,
+) -> dict[str, Any]:
+    scraper_attempts = _as_non_negative_int(scraper.get("attempts"))
+    scraper_retries = _as_non_negative_int(scraper.get("retry_count"))
+    html_attempts = _as_non_negative_int(html.get("attempts")) if html is not None else 0
+    html_retries = _as_non_negative_int(html.get("retry_count")) if html is not None else 0
+
+    if scraper.get("ok"):
+        scraper_result = "available"
+    elif scraper.get("not_found"):
+        scraper_result = "not_found"
+    else:
+        scraper_result = "failed"
+
+    html_result = "not_used"
+    if html is not None:
+        html_result = str(html.get("status") or ("available" if html.get("ok") else "unknown"))
+
+    failures: list[str] = []
+    scraper_error = str(scraper.get("error") or "").strip()
+    html_error = str(html.get("error") or "").strip() if html is not None else ""
+    if scraper_error and not scraper.get("ok"):
+        failures.append(f"scraper: {scraper_error}")
+    if html_error and html_result != "available":
+        failures.append(f"html: {html_error}")
+
+    return {
+        "request_path": "google_play_scraper -> html" if html is not None else "google_play_scraper",
+        "retry_count": scraper_retries + html_retries,
+        "scraper_attempts": scraper_attempts,
+        "html_attempts": html_attempts,
+        "scraper_result": scraper_result,
+        "html_result": html_result,
+        "outcome": _request_outcome(status, updated, version),
+        "failure_reason": " | ".join(failures),
+    }
+
+
 def _locale_evidence(result: dict[str, Any], language_role: str) -> dict[str, Any]:
     """Return one JSON-serializable record for an actual Store locale request."""
-    return {
+    evidence = {
         "language_role": language_role,
         "country": str(result.get("country") or "").strip().lower(),
         "language": str(result.get("language") or "").strip().lower(),
@@ -34,6 +108,11 @@ def _locale_evidence(result: dict[str, Any], language_role: str) -> dict[str, An
         "http_status": result.get("http_status", ""),
         "source": str(result.get("source") or ""),
     }
+    for field in _DIAGNOSTIC_FIELDS:
+        value = result.get(field)
+        if value not in (None, ""):
+            evidence[field] = value
+    return evidence
 
 
 def _with_country_locale_evidence(
@@ -101,10 +180,13 @@ def scraper_request(
             "updated": "",
             "version": "",
             "error": f"google_play_scraper not installed: {exc}",
+            "attempts": 0,
+            "retry_count": 0,
         }
 
     last_error = ""
     for attempt in range(config.max_retries + 1):
+        attempts = attempt + 1
         try:
             data = play_app(package_name, lang=language, country=country)
             return {
@@ -114,6 +196,8 @@ def scraper_request(
                 "updated": core.normalise_updated(data.get("updated")),
                 "version": _normalise_version(data.get("version")),
                 "error": "",
+                "attempts": attempts,
+                "retry_count": max(0, attempts - 1),
             }
         except NotFoundError as exc:
             # Validated invariant: scraper NotFound is terminal. It must not be
@@ -125,12 +209,15 @@ def scraper_request(
                 "updated": "",
                 "version": "",
                 "error": str(exc)[:300] or "Not found",
+                "attempts": attempts,
+                "retry_count": max(0, attempts - 1),
             }
         except Exception as exc:
             last_error = str(exc)[:300]
             if attempt < config.max_retries:
                 time.sleep(config.retry_sleep_base * (attempt + 1))
 
+    attempts = config.max_retries + 1
     return {
         "ok": False,
         "not_found": False,
@@ -138,6 +225,8 @@ def scraper_request(
         "updated": "",
         "version": "",
         "error": last_error or "Unknown Google Play scraper error",
+        "attempts": attempts,
+        "retry_count": max(0, attempts - 1),
     }
 
 
@@ -153,7 +242,7 @@ def fetch_locale(
     scraper = scraper_request(package_name, language, country, config)
 
     if scraper["ok"] and scraper["updated"]:
-        return {
+        result = {
             "status": "available",
             "http_status": 200,
             "title": scraper["title"],
@@ -165,6 +254,16 @@ def fetch_locale(
             "language": language,
             "country": country,
         }
+        result.update(
+            _request_diagnostics(
+                scraper,
+                None,
+                result["status"],
+                result["updated"],
+                result["version"],
+            )
+        )
+        return result
 
     # HTML is still the confirmation/fallback path. A scraper NotFound never
     # becomes a removed classification on its own; the Store response remains
@@ -173,7 +272,7 @@ def fetch_locale(
     if scraper["ok"]:
         title = scraper["title"] or html.get("title", "")
         updated = scraper["updated"] or html.get("updated", "")
-        return {
+        result = {
             "status": "available",
             "http_status": html.get("http_status", 200),
             "title": title,
@@ -188,8 +287,18 @@ def fetch_locale(
             "language": language,
             "country": country,
         }
+        result.update(
+            _request_diagnostics(
+                scraper,
+                html,
+                result["status"],
+                result["updated"],
+                result["version"],
+            )
+        )
+        return result
 
-    return {
+    result = {
         "status": html.get("status", "check_failed"),
         "http_status": html.get("http_status", ""),
         "title": html.get("title", ""),
@@ -209,6 +318,16 @@ def fetch_locale(
         "language": language,
         "country": country,
     }
+    result.update(
+        _request_diagnostics(
+            scraper,
+            html,
+            result["status"],
+            result["updated"],
+            result["version"],
+        )
+    )
+    return result
 
 
 def _needs_english_fallback(result: dict[str, Any], language: str) -> bool:
