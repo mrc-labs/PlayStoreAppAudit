@@ -19,6 +19,8 @@ PROFILE_FIELDS = (
     "compare_previous",
     "exclude_system_source",
 )
+VIEW_PRESETS = frozenset({"Basic", "Device", "Technical", "Custom"})
+SOURCE_MODES = frozenset({"any", "file", "device"})
 
 _BOOLEAN_FIELDS = frozenset(
     {
@@ -39,6 +41,16 @@ def _country(value: object) -> str:
 
 def _profile_name(value: object) -> str:
     return " ".join(str(value or "").strip().split())[:80]
+
+
+def _source_mode(value: object) -> str:
+    mode = str(value or "").strip().lower()
+    return mode if mode in SOURCE_MODES else "any"
+
+
+def _view_preset(value: object) -> str:
+    preset = str(value or "").strip()
+    return preset if preset in VIEW_PRESETS else "Basic"
 
 
 def normalise_profile(profile: object) -> dict[str, Any] | None:
@@ -65,21 +77,36 @@ def normalise_profile(profile: object) -> dict[str, Any] | None:
         "cache_ttl_hours": ttl,
     }
     for key in _BOOLEAN_FIELDS:
-        default = True if key in {"cache_enabled", "collect_device_metadata", "inventory_history_enabled", "exclude_system_source"} else False
+        default = True if key in {
+            "cache_enabled",
+            "collect_device_metadata",
+            "inventory_history_enabled",
+            "exclude_system_source",
+        } else False
         clean[key] = bool(settings.get(key, default))
 
     return {
         "schema_version": PROFILE_SCHEMA_VERSION,
+        "source_mode": _source_mode(profile.get("source_mode")),
+        "view_preset": _view_preset(profile.get("view_preset")),
         "store_country": _country(profile.get("store_country")),
         "settings": clean,
     }
 
 
-def capture_profile(settings: dict[str, Any], store_country: object) -> dict[str, Any]:
+def capture_profile(
+    settings: dict[str, Any],
+    store_country: object,
+    *,
+    source_mode: object = "any",
+    view_preset: object = "Basic",
+) -> dict[str, Any]:
     raw_settings = {key: settings.get(key) for key in PROFILE_FIELDS}
     profile = normalise_profile(
         {
             "schema_version": PROFILE_SCHEMA_VERSION,
+            "source_mode": source_mode,
+            "view_preset": view_preset,
             "store_country": store_country,
             "settings": raw_settings,
         }
@@ -134,10 +161,16 @@ def delete_profile(name: object) -> bool:
 def apply_profile_to_settings(
     profile: dict[str, Any],
     current_settings: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any]]:
+) -> tuple[str, str, str, dict[str, Any]]:
     clean = normalise_profile(profile)
     if clean is None:
         raise ValueError("Invalid audit profile.")
     merged = dict(current_settings or state.load_settings())
     merged.update(clean["settings"])
-    return str(clean["store_country"]), merged
+    merged["view_preset"] = clean["view_preset"]
+    return (
+        str(clean["store_country"]),
+        str(clean["source_mode"]),
+        str(clean["view_preset"]),
+        merged,
+    )
