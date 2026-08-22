@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
@@ -124,15 +124,32 @@ def installer_fields(value: object) -> dict[str, str]:
     }
 
 
+def _legacy_display_category(value: object) -> str:
+    """Recognise only exact display formats emitted by pre-v1.7 builds."""
+    source = str(value or "").strip()
+    if source == "Unknown / preinstalled":
+        return CATEGORY_UNKNOWN_PREINSTALLED
+    if source == "Sideload / package installer" or source.startswith(
+        "Sideload / package installer ("
+    ):
+        return CATEGORY_SIDELOADED
+    if source == "Google Play" or source.startswith("Google Play ("):
+        return CATEGORY_GOOGLE_PLAY
+    for label in _ALTERNATIVE_STORE_INSTALLERS.values():
+        if source == label or source.startswith(f"{label} ("):
+            return CATEGORY_ALTERNATIVE_STORE
+    return ""
+
+
 def installer_category(row: dict[str, Any]) -> str:
-    """Return the structured installer category for a current result row."""
+    """Return the structured category, with exact-format legacy compatibility."""
     category = str(row.get("installer_category") or "").strip()
     if category in INSTALLER_CATEGORIES:
         return category
     package = _normalise_package(row.get("installer_package"))
     if package:
         return classify_installer_package(package).category
-    return ""
+    return _legacy_display_category(row.get("installer_source"))
 
 
 def _remember_installer_map(mapping: dict[str, str]) -> None:
@@ -232,6 +249,16 @@ def _install_collectors() -> None:
     device_insights.collect_device_metadata_v9 = collect_v9
 
 
+def _copy_structured_installer_fields(
+    rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
+) -> None:
+    for row in rows:
+        package = str(row.get("package_name") or "")
+        info = metadata.get(package, {})
+        for key in ("installer_source", "installer_package", "installer_category"):
+            row[key] = info.get(key, "")
+
+
 def _install_row_enrichment() -> None:
     original_legacy = device_metadata.enrich_rows_with_device_metadata
     original_v9 = device_insights.enrich_rows_with_device_metadata_v9
@@ -250,16 +277,6 @@ def _install_row_enrichment() -> None:
 
     device_metadata.enrich_rows_with_device_metadata = enrich_legacy
     device_insights.enrich_rows_with_device_metadata_v9 = enrich_v9
-
-
-def _copy_structured_installer_fields(
-    rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
-) -> None:
-    for row in rows:
-        package = str(row.get("package_name") or "")
-        info = metadata.get(package, {})
-        for key in ("installer_source", "installer_package", "installer_category"):
-            row[key] = info.get(key, "")
 
 
 def _install_snapshot_fidelity() -> None:
