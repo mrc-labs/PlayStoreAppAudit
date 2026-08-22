@@ -2,7 +2,7 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
-## [Unreleased]
+## [1.6.0] - 2026-08-22
 
 ### Added
 
@@ -30,12 +30,15 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- The v1.6 release profile is not frozen yet. Current direction remains another unsigned Windows x64 Engineering Test Build, but version metadata remains `1.5.0` until the release-profile freeze.
+- v1.6.0 is frozen as an unsigned Windows x64 Engineering Test Build (ETB).
+- The public release profile contains exactly one Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- Windows ARM64, Linux and macOS remain supported by the shared source tree but are not rebuilt for v1.6.0.
+- Production signing, notarization and the full Windows/Linux/macOS x64/ARM64 release profile are deferred until v2.0 or later.
 - Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
 - `PySide6-Essentials` remains 6.11.1.
 - ADB behavior remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers remain 16.
-- The optional dashboard/summary candidate is not included in the current v1.6 scope.
+- The optional dashboard/summary candidate is not included in v1.6.0.
 
 ## [1.5.0] - 2026-08-21
 
@@ -141,7 +144,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 ### Changed
 
 - Made the source area more compact while retaining the two file/phone input choices and source status.
-- Improved application-icon presentation without changing the visible artwork.
+- Improved application-icon presentation without changing its artwork.
 - Simplified the About dialog by removing the LinkedIn link.
 
 ### Compatibility

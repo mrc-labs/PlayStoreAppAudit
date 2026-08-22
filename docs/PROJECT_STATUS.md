@@ -38,10 +38,11 @@ Final SHA-256 values:
 - Windows x64 ZIP: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`
 - third-party source archive: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`
 
-## Current development baseline
+## Current v1.6 release state
 
-- Latest development `main` after the v1.6 product slices: `b5efb1785a018268692b01d2b621e18baf646c54`
-- Canonical application version remains `1.5.0` until the v1.6 release profile is frozen.
+- Canonical application version: `1.6.0`
+- v1.6 release profile: **frozen as an unsigned Windows x64 Engineering Test Build**
+- Planned public asset count: exactly 3 project-defined assets
 - Packaging Python: 3.13
 - Quality Python: 3.13 + 3.14
 - `PySide6-Essentials`: 6.11.1
@@ -53,9 +54,35 @@ Final SHA-256 values:
 - HTML Store timeout: 25 seconds
 - `google-play-scraper` transport timeout: 25 seconds
 
+The exact v1.6 release SHA is not recorded until the profile/version freeze PR is merged to `main` and the post-merge Quality run passes. That exact merge commit then becomes the source candidate for the Windows x64 build. If any source or release-tooling change is required afterward, the candidate SHA must be replaced and the required release artifacts rebuilt from the new exact SHA.
+
+## Frozen v1.6 distribution profile
+
+v1.6.0 deliberately uses the same lightweight release class proven by v1.5:
+
+- Windows x64 only;
+- standalone ZIP package;
+- intentionally unsigned;
+- no Windows ARM64 release candidate;
+- no Linux release candidate;
+- no macOS release candidate;
+- no production Windows signing;
+- no macOS Developer ID signing/notarization;
+- assembly through `.github/workflows/assemble-windows-engineering-release.yml`;
+- release title `Play Store App Audit v1.6.0 (ETB Win x64)`;
+- release-body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
+
+The required public project-defined assets are exactly:
+
+- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+Production signing, notarization and the full Windows/Linux/macOS x64/ARM64 release profile remain preserved in source but are deferred until v2.0 or later.
+
 ## v1.6 product work completed
 
-The committed v1.6 product/engineering scope is implemented on `main` and is in stabilization before release-profile freeze.
+The committed v1.6 product/engineering scope is implemented and closed for the release candidate. Do not add new product scope while preparing the release unless a deliberate decision reopens the freeze.
 
 ### Store architecture, locale and reliability
 
@@ -102,7 +129,7 @@ The committed v1.6 product/engineering scope is implemented on `main` and is in 
 - Installer/source changes reported through both Store-history and device-inventory paths are deduplicated in the grouped overview.
 - Selecting an app in the change overview focuses the current result row when present; removed-device packages remain visible even though no current row exists.
 
-### Validation checkpoints
+### Validation checkpoints before release freeze
 
 The completed v1.6 product slices have been exercised by the normal Quality and UI-style gates. The final change-overview slice passed:
 
@@ -113,7 +140,9 @@ The completed v1.6 product slices have been exercised by the normal Quality and 
 - macOS native vs Fusion UI audit;
 - Linux native vs Fusion UI audit.
 
-These are development/stabilization gates, not yet v1.6 release evidence. Release verification must still run from the exact frozen v1.6 SHA after the release profile is frozen.
+The release-engineering messaging alignment also passed the normal Quality matrix after its regression test was updated to enforce the v2.0-or-later signing policy.
+
+These are development/pre-freeze gates, not final v1.6 release evidence. Final release evidence must come from the exact frozen `main` SHA after this release-freeze change is merged.
 
 ## Store performance and reliability evidence
 
@@ -140,41 +169,36 @@ Measured full-refresh checkpoints with 333 live packages and the same final clas
 | 20 | 170.657 s | slightly slower than 16 |
 | 24 | 171.166 s | slower with materially higher request latency |
 
-The 14-vs-16 cooldown repeat remains unnecessary. Keep 16 as the default unless a later performance concern deliberately reopens benchmarking. If reopened, an unattended real-device run is acceptable as long as it remains isolated from product changes and preserves final-classification checks.
+The 14-vs-16 cooldown repeat remains unnecessary. Keep 16 as the default unless a later performance concern deliberately reopens benchmarking.
 
 Do not reintroduce retries for propagated `NotFoundError`. Generic transient retries remain required.
 
-## v1.6 stabilization and release-profile freeze
+## Remaining v1.6 release work
 
-Remaining v1.6 work is release stabilization rather than new product scope:
+Product scope is frozen. Remaining work is release execution only:
 
-- keep the optional dashboard/summary candidate out of the current release unless a deliberate new decision adds it;
-- keep the experimental icon label for v1.6; real-world maturity observation continues beyond this release;
-- finalize the actual v1.6 distribution profile;
-- only after that profile is frozen, bump canonical version metadata from `1.5.0` to `1.6.0` and convert the changelog `Unreleased` section into the dated v1.6.0 entry;
-- run release-profile-specific Quality/build/legal/assembly verification from one exact frozen SHA;
-- publish only artifacts derived from that frozen SHA.
+1. merge the profile/version freeze to `main`;
+2. require the post-merge Quality run to pass on that exact SHA;
+3. record that exact full `main` SHA as the v1.6 release candidate SHA;
+4. dispatch `.github/workflows/build-windows-exe.yml` from `main` with `target=x64` and `expected_sha=<frozen SHA>`;
+5. require the Windows x64 build, package validation and legal/source preparation to succeed;
+6. dispatch `.github/workflows/assemble-windows-engineering-release.yml` with the same SHA and successful Windows run ID;
+7. require exactly the three frozen-profile assets and verify `SHA256SUMS.txt`;
+8. only then create the annotated `v1.6.0` tag and GitHub Release using the already validated assets;
+9. do not rebuild on tag push.
 
-Current release-profile direction remains another unsigned Windows x64 Engineering Test Build, broadly following v1.5, but it is not frozen by this documentation update.
+The optional richer dashboard/summary candidate is not part of v1.6.0. The icon feature remains labelled experimental.
 
 ## Forward roadmap
 
-`ROADMAP.md` is the canonical forward-looking plan. It separates:
-
-- v1.6 stabilization/release direction;
-- v1.7 candidates;
-- v2.0+ production/signing and larger product concepts;
-- open product questions;
-- explicitly rejected ideas.
-
-Important current direction:
+`ROADMAP.md` is the canonical forward-looking plan. Important current direction:
 
 - production Windows signing is not planned before v2.0;
 - macOS production signing/notarization is not planned before v2.0;
 - the full six-platform production release is not planned before v2.0;
 - CLI/headless mode is not planned before v2.0;
 - saved profiles, incremental audit, JSON export, SDK/source/signature metadata improvements and richer anomaly diagnostics are v1.7 candidates;
-- LocalAPK-style local APK auditing is a v2.0+ product/architecture exploration, with integration versus companion-app scope still open.
+- LocalAPK-style local APK auditing is a v2.0+ product/architecture exploration.
 
 ## Durable release invariants
 

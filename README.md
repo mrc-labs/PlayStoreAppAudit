@@ -9,11 +9,14 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Import package lists from CSV, TSV or TXT files.
 - Scan a connected Android phone through ADB and export its current package inventory.
 - Check Google Play availability and update information in a selected Store country.
+- Use the connected Android device's active system language automatically for Store metadata, while file/list audits can use the primary language of the selected country.
 - Fall back across configurable countries without treating one regional absence as global removal.
 - Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
 - Show live progress while regional fallback countries are being verified.
 - Classify listings as Current, Aging, Stale, Removed, Store anomaly or Other.
-- Optionally show experimental Play Store app icons in the results table.
+- Inspect the selected result in a dedicated details panel with Store/device metadata, country/language evidence and previous-audit changes.
+- Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
+- Optionally show experimental Play Store app icons beside Store titles.
 - Optionally calculate a transparent Health Score maintenance heuristic.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
 - Filter results, combine status filters and switch between Basic, Device, Technical and Custom views.
@@ -24,7 +27,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The current v1.5.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
+The current published v1.5.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
 
 - Windows x64
 
@@ -34,7 +37,7 @@ The Windows v1.5.0 package is intentionally unsigned. Production signing and the
 
 Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.5.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
 
-The current direction for v1.6 is likely another unsigned Windows x64 ETB while product, UX and Store-service architecture mature; the exact v1.6 release profile is not frozen yet. See the [Product roadmap](docs/ROADMAP.md) for current planning.
+The v1.6.0 release profile is frozen as another unsigned Windows x64 ETB. Its release execution will use one exact post-Quality `main` SHA and will publish exactly a Windows x64 ZIP, one consolidated third-party source archive and `SHA256SUMS.txt`. Windows ARM64, Linux, macOS and production signing are not part of the v1.6.0 public release profile.
 
 The v1.5.0 release also includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` for integrity verification.
 
@@ -45,7 +48,8 @@ The v1.5.0 release also includes one consolidated third-party source archive and
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
 4. Select **Run audit**.
 5. Use the status chips, search box and view presets to inspect the results.
-6. Export the complete or currently visible results from the export menu.
+6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
+7. Export the complete or currently visible results from the export menu.
 
 A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. The included `sample_packages.csv` shows the simplest supported CSV format.
 
@@ -87,16 +91,16 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 ## Platform support
 
-| Platform | Source support | v1.5.0 prebuilt release | Latest older prebuilt |
-| --- | --- | --- | --- |
-| Windows x64 | Supported | ETB ZIP | v1.4.0 ZIP |
-| Windows ARM64 | Supported | Not rebuilt for v1.5.0 | v1.3.0 ZIP |
-| Linux x64 | Supported | Not rebuilt for v1.5.0 | v1.3.0 standalone ZIP |
-| Linux ARM64 | Supported | Not rebuilt for v1.5.0 | v1.3.0 standalone ZIP |
-| macOS Intel / x64 | Supported | Not rebuilt for v1.5.0 | v1.3.0 app bundle ZIP |
-| macOS Apple Silicon / ARM64 | Supported | Not rebuilt for v1.5.0 | v1.3.0 app bundle ZIP |
+| Platform | Source support | Current published v1.5.0 | Frozen v1.6.0 profile | Latest older prebuilt |
+| --- | --- | --- | --- | --- |
+| Windows x64 | Supported | ETB ZIP | ETB ZIP planned from frozen SHA | v1.4.0 ZIP |
+| Windows ARM64 | Supported | Not rebuilt | Not rebuilt | v1.3.0 ZIP |
+| Linux x64 | Supported | Not rebuilt | Not rebuilt | v1.3.0 standalone ZIP |
+| Linux ARM64 | Supported | Not rebuilt | Not rebuilt | v1.3.0 standalone ZIP |
+| macOS Intel / x64 | Supported | Not rebuilt | Not rebuilt | v1.3.0 app bundle ZIP |
+| macOS Apple Silicon / ARM64 | Supported | Not rebuilt | Not rebuilt | v1.3.0 app bundle ZIP |
 
-The v1.5.0 Windows x64 package is produced from the validated release commit. Platform-specific behaviour remains behind the application's platform and device layers.
+The current published v1.5.0 Windows x64 package was produced from its validated release commit. v1.6.0 will follow the same exact-SHA engineering-release discipline after the profile/version freeze merges and the post-merge Quality gate passes.
 
 ## License
 
@@ -104,7 +108,7 @@ Play Store App Audit's own code is licensed under the [GNU General Public Licens
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
-Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The v1.5.0 release-wide corresponding-source archive is published alongside the Windows x64 ZIP.
+Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The current published v1.5.0 release-wide corresponding-source archive is published alongside the Windows x64 ZIP; v1.6.0 uses the same three-asset legal/source model.
 
 ## Contributing
 
@@ -136,6 +140,6 @@ Developer references:
 
 ## Building from source
 
-Release packages use Python 3.13 and Nuitka standalone packaging. v1.5.0 freezes one exact `main` SHA, builds only the Windows x64 ETB candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 ETB asset set, then tags and publishes the already validated artifacts without rebuilding.
+Release packages use Python 3.13 and Nuitka standalone packaging. The frozen v1.6.0 public profile uses one exact `main` SHA, builds only the Windows x64 ETB candidate from that SHA, validates its legal/source evidence, assembles the exact three-file Windows x64 ETB asset set, then tags and publishes the already validated artifacts without rebuilding.
 
-The full signed Windows/Linux/macOS x64/ARM64 production release path remains implemented for a future v2.0-or-later milestone rather than the current v1.6 plan. Platform-specific prerequisites, architecture validation, legal/source handling and the release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
+The full signed Windows/Linux/macOS x64/ARM64 production release path remains implemented for a future v2.0-or-later milestone. Platform-specific prerequisites, architecture validation, legal/source handling and the release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).

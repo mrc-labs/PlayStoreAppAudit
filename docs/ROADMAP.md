@@ -15,17 +15,23 @@ This file is the canonical forward-looking product roadmap for Play Store App Au
 - Preserve the exact-SHA release model, read-only ADB policy and correctness semantics from `PROJECT_DECISIONS.md` unless a deliberate policy change is made there.
 - Do not silently move rejected/deferred ideas into an active release.
 
-## v1.6 stabilization / release direction
+## v1.6 frozen release scope
 
-The committed v1.6 product scope is implemented on `main`. v1.6 is now in stabilization before the release profile is frozen.
-
-### Release profile
-
-Current direction: **likely another unsigned Windows x64-only Engineering Test Build**, broadly following the v1.5 release profile. This is intentionally not frozen yet.
+The committed v1.6 product scope is implemented and closed. The v1.6.0 release profile is frozen as an **unsigned Windows x64-only Engineering Test Build**, following the validated v1.5 engineering profile.
 
 Production code signing, notarization and the full Windows/Linux/macOS x64/ARM64 production release are **not planned before v2.0**. The already implemented multi-platform/signing workflows remain preserved for that later milestone.
 
-Version metadata remains `1.5.0` during stabilization. Only after the v1.6 release profile is deliberately frozen should canonical version metadata move to `1.6.0` and the changelog `Unreleased` section become the dated v1.6.0 entry.
+Canonical version metadata is `1.6.0`. Remaining v1.6 work is release execution from one exact frozen `main` SHA after the profile/version freeze PR passes its post-merge Quality gate.
+
+### Frozen distribution profile
+
+v1.6.0 releases exactly:
+
+- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`;
+- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`;
+- `SHA256SUMS.txt`.
+
+Do not build Windows ARM64, Linux or macOS release candidates for v1.6.0. Do not invoke production Windows signing or macOS signing/notarization. Assemble with `.github/workflows/assemble-windows-engineering-release.yml` and clearly identify the Windows package as unsigned.
 
 ### Implemented architecture and reliability
 
@@ -74,16 +80,15 @@ The icon feature remains experimental for v1.6. Continue real-world observation 
 
 ### Dashboard / summary candidate
 
-The compact dashboard/summary candidate is **not included in the current v1.6 scope**. The existing concise summary remains sufficient for this release cycle. Reconsider a richer compact summary in a later cycle only if it adds clear value after the details panel and change overview have seen real-world use.
+The compact dashboard/summary candidate is **not included in v1.6.0**. The existing concise summary remains sufficient for this release cycle. Reconsider a richer compact summary in a later cycle only if it adds clear value after the details panel and change overview have seen real-world use.
 
 ### Remaining v1.6 work
 
-- Stabilization only; avoid adding new product scope unless a deliberate release decision reopens it.
-- Freeze the actual v1.6 distribution profile.
-- Bump canonical version metadata to `1.6.0` only after that freeze.
-- Convert `CHANGELOG.md` `Unreleased` into the dated v1.6.0 entry.
-- Run release-profile-specific Quality/build/legal/assembly checks from one exact frozen SHA.
-- Publish only artifacts derived from that frozen SHA.
+- Do not add new product scope unless a deliberate decision reopens the release freeze.
+- Merge the profile/version freeze and require post-merge Quality on the exact resulting `main` SHA.
+- Build Windows x64 only from that exact SHA with `target=x64`.
+- Assemble and validate the exact three-file ETB asset set from that same SHA.
+- Tag and publish only after artifact validation; tag pushes must not rebuild binaries.
 
 ## v1.7 planned candidates
 
