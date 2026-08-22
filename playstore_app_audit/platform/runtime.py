@@ -146,8 +146,8 @@ def _country_from_locale_string(value: str) -> str | None:
     return None
 
 
-def detect_store_country() -> str:
-    """Return the best available ISO alpha-2 region for the current desktop OS."""
+def detect_host_store_country() -> str | None:
+    """Return the desktop OS region when one can be detected reliably."""
     if platform_key() == "windows":
         try:
             buffer = ctypes.create_unicode_buffer(16)
@@ -171,7 +171,12 @@ def detect_store_country() -> str:
             return country
     except Exception:
         pass
-    return "us"
+    return None
+
+
+def detect_store_country() -> str:
+    """Return the desktop region, falling back to US when the host exposes none."""
+    return detect_host_store_country() or "us"
 
 
 def hidden_subprocess_kwargs() -> dict[str, Any]:
