@@ -4,16 +4,16 @@ Last updated: 2026-08-22
 
 ## Purpose
 
-This file is the canonical forward-looking product roadmap for Play Store App Audit. It records planned release scope, deferred ideas, explicitly rejected ideas and open product questions so that future work does not need to be reconstructed from chat history.
+This file is the canonical forward-looking product roadmap for Play Store App Audit. It records completed active-cycle scope, remaining work, deferred ideas, explicitly rejected ideas and open product questions so that future work does not need to be reconstructed from chat history.
 
-`PROJECT_STATUS.md` records the current shipped state and active development baseline. `PROJECT_DECISIONS.md` records durable engineering/release policy. This roadmap may contain tentative product direction and release targets, provided tentative items are labelled as such.
+`PROJECT_STATUS.md` records the current shipped state and active development baseline. `PROJECT_DECISIONS.md` records durable engineering/release policy. Release assignments below are planning intent until a release profile is deliberately frozen.
 
 ## Planning rules
 
-- Treat release assignments below as planning intent, not immutable promises, until the corresponding release profile is frozen.
-- Keep implementation details in issues/PRs when work begins; keep this file focused on product scope, dependencies and acceptance intent.
 - Preserve the exact-SHA release model, read-only ADB policy and Store correctness semantics from `PROJECT_DECISIONS.md` unless a deliberate policy change is made there.
-- Do not silently move rejected/deferred ideas into an active release.
+- Keep implementation detail in issues/PRs and current-state evidence in `PROJECT_STATUS.md`.
+- Do not silently move deferred or rejected ideas into active scope.
+- Do not rebuild, retag or replace published release artifacts.
 
 ## v1.6 published baseline
 
@@ -23,159 +23,141 @@ Immutable release source SHA:
 
 `246acb15b8e9b2aa9155dc1c3a7c24dc32d19540`
 
-Release evidence:
-
-- post-merge Quality push run `32543925562`;
-- Windows x64 build run `32545213663`;
-- engineering release assembly run `32547942460`;
-- exactly three public project-defined assets;
-- published asset checksums independently reverified after download.
-
 Published project-defined assets:
 
 - `PlayStoreAppAudit-v1.6.0-windows-x64.zip`;
 - `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`;
 - `SHA256SUMS.txt`.
 
-Do not rebuild, retag or replace any v1.6.0 release artifact.
+Release evidence and exact checksums remain recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.7.md`.
 
-### Shipped v1.6 product baseline
+## v1.7 implementation status
 
-- canonical Store service with bounded multi-country fallback scheduling;
-- terminal propagated `NotFoundError` handling with transient retry/backoff preserved;
-- timeout/network uncertainty preserved;
-- automatic Store language from active Android system language when available;
-- structured Store country/language request evidence;
-- selected-row details panel with Right/Below placement;
-- grouped previous-audit change overview;
-- Store developer metadata reused from the normal metadata response;
-- experimental non-blocking Store icons beside Store titles;
-- hardened persistent icon-cache failure handling;
-- 16 Store workers retained as the default/recommended value.
+The main planned v1.7 product work is now substantially implemented on `main`. No v1.7 release SHA or package has been frozen yet.
 
-The v1.6 country inference for phone scans can use Android locale region. Real-world testing after release identified this as a behaviour to revise in v1.7. Do not treat it as the desired final country semantic.
+### Completed: responsive Details Panel
 
-## v1.7 active priorities
+Implemented through PR #84.
 
-The first v1.7 work should focus on the following two areas before broader feature expansion.
+- Compact icon-based `Auto / Right / Below` placement control.
+- Right remains the existing/default behavior; Auto is opt-in.
+- Placement and content layout are independent.
+- Width-aware content reflow uses narrow/wide layouts with hysteresis.
+- Wide mode avoids a rigid equal-height grid and makes materially better use of horizontal space.
 
-### Priority 1: Details panel redesign and adaptive layout
+### Completed: Store country vs Store language semantics
 
-The v1.6 details panel is functionally useful but its position selector and internal layout need refinement.
+Implemented through PR #85.
 
-Planned direction:
+Automatic Store country resolution is now:
 
-- replace the current prominent Right/Below selector with a compact layout control, preferably icon-based;
-- evaluate an `Auto / Right / Below` choice, but do not commit to Auto as the default before visual/interaction testing;
-- treat panel position and internal content layout as separate concerns;
-- when the panel is narrow, use a primarily vertical information flow;
-- when the panel is wide, especially below the table, place logical sections side by side;
-- candidate pairings include Store next to Installed device, and Country/language evidence next to Changes since previous audit;
-- allow the layout to reflow dynamically according to actual available width rather than hardcoding one layout solely from the selected panel position;
-- avoid large dead areas or a rigid grid when section content lengths differ materially.
+1. explicit manual country override;
+2. host/computer region;
+3. Android locale region only as a late fallback when host region is unavailable;
+4. final safe fallback `US`.
 
-Acceptance direction:
+Automatic Store language remains independent:
 
-- Right placement must remain usable on normal desktop widths;
-- Below placement must make materially better use of horizontal space than v1.6;
-- resizing the main window/splitter should not leave a visibly inappropriate layout for the available width;
-- the position control should feel like a compact view/layout affordance rather than a settings form.
+- connected phone: prefer active Android system language;
+- file/list audit: use the principal language of the Store country when Auto is active;
+- explicit manual language override remains authoritative;
+- unknown language falls back safely to English.
 
-### Priority 2: Rework Store country vs Store language semantics
+Android locale region is not evidence of the real Google Play account country and must not be presented as such.
 
-Country and language must remain conceptually independent.
+Real-device validation remains required before v1.7 release freeze.
 
-Planned automatic Store language behaviour:
+### Completed: per-app Store diagnostics
 
-- for a connected Android phone, prefer the active Android system language obtained through read-only ADB metadata;
-- preserve explicit manual language override;
-- for file/list audits without usable phone-language context, use the principal/default language of the selected Store country unless manually overridden;
-- unknown language falls back to English.
+Implemented through PR #86.
 
-Planned automatic Store country resolution chain:
+Structured evidence now exposes attempted countries/languages, request path, scraper/HTML attempts, retry count, outcome and failure reason. Terminal not-found is distinct from transient/inconclusive failure, and the Details Panel shows diagnostics only when useful.
 
-1. Prefer the host/computer region using the pre-v1.6 platform detection logic.
-   - Windows: prefer `GetUserDefaultGeoName()`.
-   - Linux/macOS/other hosts: use the existing locale/environment region signals where available.
-2. If host-region detection cannot produce a usable ISO alpha-2 country and a connected Android locale includes a region, use that Android locale region only as a late fallback, for example `it-CH` -> `CH`.
-3. If neither host nor Android locale supplies a usable region, use the final safe fallback `US`, unless a later deliberate decision changes it.
-4. Preserve explicit manual Store-country override at all times.
+### Completed: installer/source classification and filtering
 
-Important semantic constraints:
+Implemented through PR #87 and PR #88.
 
-- Android system language must not become a proxy for Store country.
-- Example: a phone using Italian with a Swiss host region should resolve to Store country `CH` and Store language `it`.
-- Android locale region is only a fallback country signal, not evidence of the real Google Play account country.
-- Do not claim to know the Google Play account country unless a reliable supported signal is found.
-- Language fallback must not change a conclusive geographic not-found result into a different geographic conclusion.
-- Same-country English fallback remains appropriate only for inconclusive or metadata-incomplete cases, not after a conclusive terminal not-found.
+- Stable categories for Google Play, alternative stores, sideloaded/package-installer installs, unknown/preinstalled and other installer sources.
+- Raw installer package preserved separately from the display label.
+- Exact legacy compatibility only, avoiding broad substring guesses.
+- Built-in installer filters are reachable from the final MainWindow.
 
-Real-device validation is required before this model is considered settled. Test at least:
+### Completed: target/min SDK maintenance filtering
 
-- host region CH with Android `it-CH`, `de-CH`, `fr-CH`, `en-CH`;
-- host region and Android locale region disagreeing;
-- Android locale with language but no usable region;
-- file/list audit after a phone scan to ensure no phone context leaks;
-- manual country override;
-- manual language override;
-- Store titles/metadata localization under multiple languages for the same country;
-- country fallback behaviour for apps available only in some checked countries.
+Implemented through PR #88.
 
-### Priority 3: Better per-app diagnostics
+- Session-level `targetSdk <= N` and `minSdk <= N` filters.
+- Modern/Aging target/Legacy target/Unknown compatibility filtering.
+- AND composition with other built-in filters.
+- SDK values remain maintenance/compatibility metadata, not a malware/security/trust score.
 
-Extend the details/evidence UX for inconclusive and anomalous results, including where available:
+### Open: installed signing-certificate fingerprint/change detection
 
-- attempted countries;
-- attempted languages;
-- Store path/fallback evidence;
-- retry count;
-- failure reason;
-- distinction between terminal not-found and transient/inconclusive failure.
+Do not implement this by relabelling `dumpsys package` signature/hash output as a cryptographic fingerprint. The commonly exposed signature hash is not a SHA-256 certificate digest.
 
-This should build on the structured Store evidence introduced in v1.6 rather than parsing notes strings.
+A future implementation requires a trustworthy, scalable, read-only source of signing-certificate identity. Avoid a design that silently turns a large audit into hundreds of APK transfers or adds a heavyweight external dependency without a clear benefit.
 
-### Priority 4: Filtering and maintenance metadata
+This item remains open rather than shipping misleading data.
 
-Good v1.7 candidates after the first two priorities:
+### Completed: saved audit profiles
 
-- installer/source classification and filtering for Play Store, alternative stores, sideloaded/unknown and other observable installer sources;
-- target/min SDK maintenance filters and compatibility hygiene without presenting them as a security score;
-- installed signing-certificate fingerprint capture and change detection where available through read-only device metadata.
+Implemented through PR #90.
 
-### Priority 5: Workflow and automation improvements
+Profiles preserve reusable audit execution context including source expectation, Store country/language, fallback countries, workers/cache settings, device metadata options, history comparison, system-app exclusion and view preset.
 
-Candidates:
+Source expectation is advisory and never automatically starts ADB or opens a file. Saved audit profiles deliberately do not absorb search/filter/smart-query state.
 
-- saved audit profiles: reusable combinations of source/settings/countries/view/system-app exclusion and related audit options;
-- incremental/smart re-audit with conservative cache policy and an explicit full-refresh path;
-- versioned JSON export for automation and machine-readable downstream use.
+### Completed: conservative incremental/smart re-audit
 
-### Saved filters / smart queries: open clarification
+Consolidated through PR #91 around behavior already present in the app.
+
+- Normal Run is the smart/incremental path.
+- Only fresh exact-`available` results with a populated Store update date are eligible for cache reuse.
+- Regional-only, fallback-only, removed, anomalous, incomplete and failed/inconclusive results run live.
+- TTL is a separate freshness gate.
+- `Force full refresh (ignore cache)` remains the explicit bypass path.
+- Targeted problematic-result rechecks remain available.
+- The active smart-re-audit policy is included in versioned JSON export context.
+
+No second audit engine, background monitor or watchlist was introduced.
+
+### Completed: versioned JSON export
+
+Implemented through PR #89, with smart-policy context added in PR #91.
+
+The `play-store-app-audit/results` versioned envelope preserves structured result/evidence/change data for downstream automation and supports both all-results and visible-results export.
+
+## v1.7 remaining release-readiness work
+
+Before freezing v1.7, prioritize validation and polish rather than broad feature expansion:
+
+- real-device validation of country/language resolution, including host/phone region disagreement and phone-to-file transitions;
+- continued observation of experimental icon cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse;
+- decide whether the signing-certificate fingerprint item has a technically sound implementation path or should be deferred beyond v1.7;
+- review final help/status wording after real-device testing;
+- run normal Quality/UI gates on the final candidate before recording any release SHA;
+- do not run expensive release packaging until a v1.7 release profile is deliberately frozen.
+
+## Saved filters / smart queries: open clarification
 
 This idea remains uncommitted until the UX is agreed. It means saving a result-filter expression rather than an audit configuration.
 
-Examples:
+Examples include:
 
 - `Removed from Play AND still installed`
 - `Stale AND sideloaded`
 - `Target SDK below threshold`
 - `Installed/Store version differs`
 
-A saved query would reapply to any compatible audit result set and act like a named dynamic view. This is distinct from a saved audit profile, which controls how an audit is run.
+A saved query would reapply to any compatible result set and act like a named dynamic view. This is distinct from a saved audit profile, which controls how an audit is run.
 
-### Experimental icons maturity
+Do not revive the older saved-filter CRUD UI implicitly while working on audit profiles or built-in filters.
 
-Continue real-world observation of:
+## Experimental icons maturity
 
-- cache growth;
-- CDN failures;
-- stale-icon behaviour;
-- large-table responsiveness;
-- offline/cache reuse.
+Continue real-world observation of cache growth, CDN failures, stale-icon behaviour, large-table responsiveness and offline/cache reuse. The feature remains opt-in and non-blocking until there is enough evidence to remove the experimental label.
 
-The feature remains opt-in and non-blocking until there is enough evidence to remove the experimental label.
-
-### Dashboard / summary candidate
+## Dashboard / summary candidate
 
 The richer compact dashboard/summary remains deferred. Reconsider it only after the details panel and change overview have matured enough to show whether a separate summary adds real value rather than duplicating information.
 
@@ -202,18 +184,15 @@ Keep CLI/headless auditing in mind for v2.0 or later, not before. A future CLI c
 
 Explore a LocalAPK-inspired capability: scan APK files stored locally and compare their local version/build information with online/current information to identify which local APK files are up to date.
 
-Before implementation, decide whether this belongs:
-
-1. inside Play Store App Audit as a separate local-APK source/workflow sharing Store comparison services; or
-2. in a separate companion application that reuses common libraries/services.
+Before implementation, decide whether this belongs inside Play Store App Audit as a separate source/workflow or in a companion application that reuses shared services.
 
 ### Advanced app-management concept
 
-Active app-management operations such as uninstall, disable, permission changes, clear data, force stop or APK installation are not planned for the normal near-term product. They conflict with the durable read-only ADB policy and require a deliberate `PROJECT_DECISIONS.md` change before consideration.
+Active operations such as uninstall, disable, permission changes, clear data, force stop or APK installation are not planned for the normal near-term product. They conflict with the durable read-only ADB policy and require a deliberate `PROJECT_DECISIONS.md` change before consideration.
 
 ## Explicitly not planned
 
-The following ideas remain rejected for the foreseeable roadmap unless a new product decision deliberately reopens them:
+Unless a deliberate product decision reopens them, the following remain rejected:
 
 - automatically associating unavailable Play apps with GitHub/F-Droid/developer-site alternative sources;
 - audit watchlists/background monitoring;
@@ -223,12 +202,4 @@ The following ideas remain rejected for the foreseeable roadmap unless a new pro
 
 Before starting a new release-cycle development chat, create a handoff package so the next chat can continue from repository evidence rather than reconstructing decisions from conversation history.
 
-For v1.7, the canonical human-readable handoff is `HANDOFF_V1.7.md`. The reusable exporter is `../scripts/export_chat_handoff.ps1`.
-
-From the repository root in PowerShell:
-
-```powershell
-.\scripts\export_chat_handoff.ps1
-```
-
-The exporter must fail closed when the working tree is dirty and should generate a live repository snapshot alongside the canonical handoff/project documents.
+For v1.7, the canonical human-readable handoff remains `HANDOFF_V1.7.md`. The reusable exporter is `../scripts/export_chat_handoff.ps1`, and it must fail closed when the working tree is dirty.
