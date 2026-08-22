@@ -43,12 +43,12 @@ def apply_window_profile(window: object, profile: dict[str, Any]) -> None:
         profile, state.load_settings()
     )
     saved = state.save_settings(settings)
-    setattr(window, "user_settings", saved)
+    window.user_settings = saved  # type: ignore[attr-defined]
 
     country_edit = getattr(window, "country_edit", None)
     if country_edit is not None and hasattr(country_edit, "setText"):
         country_edit.setText(country)
-        setattr(window, "_store_country_manual_override", True)
+        window._store_country_manual_override = True  # type: ignore[attr-defined]
         apply_country = getattr(window, "_apply_store_country_resolution", None)
         if callable(apply_country):
             source_mode = str(getattr(window, "source_mode", "") or "")
