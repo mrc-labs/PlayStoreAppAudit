@@ -217,7 +217,9 @@ def test_same_country_english_fallback_is_structured_without_replacing_localized
 def test_metadata_completion_markets_are_structured_in_checked_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = SimpleNamespace(country="ch", language="de", max_workers=2)
+    # English is explicit here so a missing version cannot trigger the same-country
+    # language fallback; this test isolates geographic metadata completion.
+    config = SimpleNamespace(country="ch", language="en", max_workers=2)
     monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("us", "gb"))
 
     def fake_fetch(_package: str, language: str, country: str, _config: object):
@@ -240,7 +242,6 @@ def test_metadata_completion_markets_are_structured_in_checked_order(
         (entry["role"], entry["country"], entry["status"])
         for entry in row[play_store.STORE_EVIDENCE_FIELD]
     ] == [
-        ("primary", "ch", "available"),
         ("primary", "ch", "available"),
         ("metadata_completion", "us", "not_found_or_unavailable"),
         ("metadata_completion", "gb", "available"),
