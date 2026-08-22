@@ -123,6 +123,9 @@ def test_file_menu_and_export_results_hierarchy(window: MainWindow) -> None:
         None,
         "Export all results as HTML…",
         "Export visible results as HTML…",
+        None,
+        "Export all results as versioned JSON…",
+        "Export visible results as versioned JSON…",
     ]
     assert "Export current phone package list as CSV…" not in _action_texts(
         window.file_export_results_menu
