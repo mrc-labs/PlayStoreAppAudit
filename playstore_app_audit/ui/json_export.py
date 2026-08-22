@@ -4,8 +4,10 @@ from typing import Any
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
+import playstore_app_audit.services.re_audit as re_audit
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
+import playstore_app_audit.services.state as state
 
 
 def _text_attr(widget: object, name: str) -> str:
@@ -24,10 +26,12 @@ def build_window_export_context(window: object) -> dict[str, Any]:
     rows = list(getattr(window, "current_rows", []) or [])
     first = rows[0] if rows and isinstance(rows[0], dict) else {}
     sdk_filter = sdk_maintenance.active_sdk_filter()
+    settings = state.load_settings()
     context: dict[str, Any] = {
         "source_mode": str(getattr(window, "source_mode", "") or ""),
         "store_country": _text_attr(window, "country_edit") or str(first.get("store_country") or ""),
         "store_language": str(first.get("store_language") or ""),
+        "audit_policy": re_audit.policy_context(settings),
         "filters": {
             "search": _text_attr(window, "search_edit"),
             "hide_system": _checked_attr(window, "hide_system_check"),
