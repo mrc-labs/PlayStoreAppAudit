@@ -190,6 +190,7 @@ def test_main_export_button_and_clear_controls_remain_available(window: MainWind
     assert window.clear_button.text() == "Clear"
     assert _action_structure(window.tools_menu) == [
         "Advanced settings…",
+        "Audit profiles",
         None,
         "Force full refresh (ignore cache)",
         "Recheck Removed / Anomaly / Other",
