@@ -49,11 +49,18 @@ class _DiskLoadTask(QRunnable):
         self._signals = signals
 
     def run(self) -> None:
-        data = load_cached_icon_bytes(
-            self._item.package_name,
-            self._item.url,
-            self._item.play_last_update,
-        )
+        data: bytes | None = None
+        try:
+            data = load_cached_icon_bytes(
+                self._item.package_name,
+                self._item.url,
+                self._item.play_last_update,
+            )
+        except Exception:
+            # Disk cache is an optional acceleration layer. Even an unexpected
+            # backend failure must complete this task so the request can fall
+            # through to the bounded network queue instead of staying pending.
+            data = None
         self._signals.loaded.emit(self._item, data)
 
 
@@ -148,8 +155,8 @@ class AppIconLoader(QObject):
                 self.icon_ready.emit(item.url)
                 return
 
-        # Cache miss or unreadable image. Keep the request marked pending and
-        # continue asynchronously through the bounded network queue.
+        # Cache miss, unreadable image or disk failure. Keep the request marked
+        # pending while it continues asynchronously through the network queue.
         self._queued.append(item)
         self._pump()
 
