@@ -158,7 +158,7 @@ def test_dialog_groups_items_and_emits_selected_package(app: QApplication) -> No
     child = parent.child(0)
     dialog._on_item_selected(child, 0)
 
-    assert "1 change across 1 group" == dialog.summary_label.text()
+    assert dialog.summary_label.text() == "1 change across 1 group"
     assert parent.text(0) == "Play Store version changed (1)"
     assert child.text(0) == "Example App\ncom.example.app"
     assert child.text(1) == "1.0 → 2.0"
