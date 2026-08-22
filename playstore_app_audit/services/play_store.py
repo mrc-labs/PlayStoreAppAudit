@@ -46,10 +46,9 @@ def _with_country_locale_evidence(
 
 def _store_evidence_for_country(result: dict[str, Any], role: str) -> list[dict[str, Any]]:
     raw = result.get(_COUNTRY_LOCALE_EVIDENCE_FIELD)
-    if isinstance(raw, list):
-        locale_entries = [dict(item) for item in raw if isinstance(item, dict)]
-    else:
-        locale_entries = []
+    locale_entries = (
+        [dict(item) for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+    )
     if not locale_entries:
         locale_entries = [_locale_evidence(result, "preferred")]
     return [{"role": role, **entry} for entry in locale_entries]
