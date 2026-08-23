@@ -12,6 +12,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.json_export as json_export_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
@@ -24,6 +25,8 @@ RESULT_EXPORTS = [
     "Export visible results as CSV…",
     "Export all results as HTML…",
     "Export visible results as HTML…",
+    "Export all results as versioned JSON…",
+    "Export visible results as versioned JSON…",
 ]
 
 
@@ -150,6 +153,11 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     monkeypatch.setattr(MainWindow, "_scan_phone", lambda self: scan_calls.append(self))
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
     created = MainWindow()
+    created.source_mode = "file"
+    created.file_apps = [{"app_name": "Example", "package_name": "com.example.app"}]
+    created.current_rows = [{"package_name": "com.example.app", "criticality_key": "green"}]
+    created.model.set_rows(created.current_rows)
+    created._sync_action_availability()
     created.choose_button.click()
     created.scan_button.click()
     created.run_button.click()
@@ -162,6 +170,63 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     assert clear_calls == [created, created]
     created.close()
     app.processEvents()
+
+
+def test_file_and_main_export_surfaces_use_the_same_handlers(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+    settings: dict[str, object] = {"view_preset": "Basic", "recent_sources": []}
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(state, "save_settings", lambda values: dict(values))
+    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(compact_ui, "save_settings", lambda values: dict(values))
+    monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
+
+    def export_handler(marker: str):
+        def handler(_self, *_args) -> None:
+            calls.append(marker)
+
+        return handler
+
+    monkeypatch.setattr(MainWindow, "_export_results", export_handler("all-csv"))
+    monkeypatch.setattr(
+        MainWindow, "_export_visible_results", export_handler("visible-csv")
+    )
+    monkeypatch.setattr(MainWindow, "_export_html_report", export_handler("all-html"))
+    monkeypatch.setattr(
+        MainWindow, "_export_visible_html_report", export_handler("visible-html")
+    )
+    monkeypatch.setattr(
+        json_export_ui,
+        "export_window_results_json",
+        lambda _window, *, visible: calls.append(
+            "visible-json" if visible else "all-json"
+        ),
+    )
+
+    created = MainWindow()
+    created.current_rows = [{"package_name": "com.example.app"}]
+    created.model.set_rows(created.current_rows)
+    created._sync_action_availability()
+    try:
+        for menu in (created.file_export_results_menu, created.export_button.menu()):
+            for action in menu.actions():
+                if not action.isSeparator():
+                    action.trigger()
+    finally:
+        created.close()
+        app.processEvents()
+
+    expected = [
+        "all-csv",
+        "visible-csv",
+        "all-html",
+        "visible-html",
+        "all-json",
+        "visible-json",
+    ]
+    assert calls == expected * 2
 
 
 def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> None:
@@ -183,11 +248,16 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
     assert button.minimumWidth() > text_width
 
 
-def test_main_export_button_and_clear_controls_remain_available(window: MainWindow) -> None:
+def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
+    window: MainWindow,
+) -> None:
     assert window.export_button.text() == "Export results"
     assert window.export_button.menu() is window._export_results_menu
     assert _action_texts(window.export_button.menu()) == RESULT_EXPORTS
     assert window.clear_button.text() == "Clear"
+    assert not window.run_button.isEnabled()
+    assert not window.export_button.isEnabled()
+    assert not window.clear_button.isEnabled()
     assert _action_structure(window.tools_menu) == [
         "Advanced settings…",
         "Audit profiles",
@@ -208,6 +278,115 @@ def test_main_export_button_and_clear_controls_remain_available(window: MainWind
     assert "Force full refresh (ignore cache)" not in _action_texts(
         window.data_maintenance_menu
     )
+
+
+def test_action_availability_tracks_source_results_visibility_device_and_busy_state(
+    window: MainWindow,
+) -> None:
+    run_action = window.file_result_actions.run
+    clear_action = window.file_result_actions.clear
+    all_exports = (
+        window.file_result_actions.exports.all_results
+        + window.button_result_exports.all_results
+    )
+    visible_exports = (
+        window.file_result_actions.exports.visible_results
+        + window.button_result_exports.visible_results
+    )
+
+    assert window.file_choose_source_action.isEnabled()
+    assert window.file_scan_phone_action.isEnabled()
+    assert not run_action.isEnabled()
+    assert not window.force_full_refresh_action.isEnabled()
+    assert not any(action.isEnabled() for action in all_exports + visible_exports)
+
+    window.source_mode = "file"
+    window.file_apps = [{"app_name": "Example", "package_name": "com.example.app"}]
+    window._sync_action_availability()
+    assert window.run_button.isEnabled()
+    assert run_action.isEnabled()
+    assert window.force_full_refresh_action.isEnabled()
+    assert not clear_action.isEnabled()
+
+    window.current_rows = [
+        {
+            "app_name": "Example",
+            "package_name": "com.example.app",
+            "criticality_key": "red",
+        }
+    ]
+    window.model.set_rows(window.current_rows)
+    window._update_summary()
+    assert window.export_button.isEnabled()
+    assert window.clear_button.isEnabled()
+    assert clear_action.isEnabled()
+    assert window.recheck_problematic_action.isEnabled()
+    assert all(action.isEnabled() for action in all_exports + visible_exports)
+
+    window.search_edit.setText("not-present")
+    assert all(action.isEnabled() for action in all_exports)
+    assert not any(action.isEnabled() for action in visible_exports)
+    window.search_edit.clear()
+
+    window.source_mode = "device"
+    window.file_apps = []
+    window.device_apps_all = [
+        {"app_name": "Example", "package_name": "com.example.app"}
+    ]
+    window._device_summary = {"model": "Pixel"}
+    window._last_inventory_changes = {}
+    window._sync_action_availability()
+    assert window.file_phone_package_export_action.isEnabled()
+    assert window.scan_phone_package_export_action.isEnabled()
+    assert window.device_summary_action.isEnabled()
+    assert window.snapshots_menu.menuAction().isEnabled()
+    assert not window.device_inventory_changes_action.isEnabled()
+
+    window._last_inventory_changes = {"had_previous": True}
+    window._sync_action_availability()
+    assert window.device_inventory_changes_action.isEnabled()
+
+    window._source_operation_active = True
+    window._sync_action_availability()
+    assert not window.file_choose_source_action.isEnabled()
+    assert not window.file_scan_phone_action.isEnabled()
+    assert not run_action.isEnabled()
+    assert not window.export_button.isEnabled()
+    assert not window.clear_button.isEnabled()
+    assert not window.data_maintenance_menu.menuAction().isEnabled()
+    assert not any(action.isEnabled() for action in all_exports + visible_exports)
+
+    window._source_operation_active = False
+    window._sync_action_availability()
+
+
+def test_row_context_actions_require_their_fields_and_idle_state(window: MainWindow) -> None:
+    window.source_mode = "file"
+    row = {
+        "package_name": "com.example.app",
+        "play_title": "",
+        "store_url": "",
+        "criticality_key": "green",
+    }
+    availability = window._row_action_availability(row)
+
+    assert availability.details
+    assert availability.recheck
+    assert availability.package
+    assert availability.visible_row
+    assert not availability.store
+    assert not availability.app_info
+    assert not availability.title
+    assert not availability.url
+
+    window.source_mode = "device"
+    assert window._row_action_availability(row).app_info
+
+    window._audit_active = True
+    running_availability = window._row_action_availability(row)
+    assert not running_availability.recheck
+    assert not running_availability.app_info
+    window._audit_active = False
 
 
 def test_clear_current_results_preserves_phone_inventory_and_persistent_data(

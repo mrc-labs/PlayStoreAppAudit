@@ -805,22 +805,32 @@ class InsightsWindow(device_ui.DeviceWindow):
         recheck = menu.addAction("Force recheck this app")
         open_store = menu.addAction("Open in Google Play")
         open_info = menu.addAction("Open App Info on phone")
-        open_info.setEnabled(self.source_mode == "device")
         menu.addSeparator()
         copy_package = menu.addAction("Copy package name")
         copy_title = menu.addAction("Copy Play Store title")
         copy_url = menu.addAction("Copy Store URL")
         copy_row = menu.addAction("Copy visible row")
+
+        package_name = str(row.get("package_name") or "").strip()
+        availability = self._row_action_availability(row)
+        details.setEnabled(availability.details)
+        recheck.setEnabled(availability.recheck)
+        open_store.setEnabled(availability.store)
+        open_info.setEnabled(availability.app_info)
+        copy_package.setEnabled(availability.package)
+        copy_title.setEnabled(availability.title)
+        copy_url.setEnabled(availability.url)
+        copy_row.setEnabled(availability.visible_row)
         chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
         if chosen is details:
             self._show_details(row)
         elif chosen is recheck:
-            self._start_subset_refresh([str(row.get("package_name") or "")], "App recheck")
+            self._start_subset_refresh([package_name], "App recheck")
         elif chosen is open_store:
             if row.get("store_url"):
                 QDesktopServices.openUrl(QUrl(str(row.get("store_url"))))
         elif chosen is open_info:
-            self._open_app_info(str(row.get("package_name") or ""))
+            self._open_app_info(package_name)
         elif chosen is copy_package:
             QApplication.clipboard().setText(str(row.get("package_name") or ""))
         elif chosen is copy_title:

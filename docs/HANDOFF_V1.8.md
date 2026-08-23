@@ -114,6 +114,10 @@ Evaluate a complementary `QStatusBar`, a separate docking/`QDockWidget` prototyp
 
 PR1 was merged normally as GitHub PR `#105` at merge commit `d821e01dc320ed24e086164163ad855753f519fd`. It synchronized the approved scope and product identity; the GitHub repository description now uses the official tagline.
 
+PR2 was merged normally as GitHub PR `#106` at merge commit `74ca06caca927ef21f43702dc8b35115ba101d33`. It completed the evidence-based v1.7 Actions cleanup without changing retention policy or immutable release material.
+
+The action-availability/export implementation centralizes the final UI capability checks for loaded source, device inventory, all/visible results, row fields and running operations. The File menu and compact Export control now use the same explicit CSV/HTML/versioned-JSON action definition and handlers; row context actions are disabled when their required field or idle state is unavailable.
+
 ## v1.9 and v2.0 distribution roadmap
 
 - v1.9: Windows x64 only; detailed product scope not frozen yet.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import Qt, QUrl
@@ -34,6 +35,18 @@ from playstore_app_audit.ui import schema
 # Stable device-layer schema aliases. The canonical definitions live in ui.schema.
 V8_EXTRA_COLUMNS = schema.DEVICE_EXTRA_COLUMNS
 V8_MODEL_COLUMNS = schema.DEVICE_MODEL_COLUMNS
+
+
+@dataclass(frozen=True, slots=True)
+class RowActionAvailability:
+    details: bool
+    recheck: bool
+    store: bool
+    app_info: bool
+    package: bool
+    title: bool
+    url: bool
+    visible_row: bool
 
 
 class DeviceWindow(compact_ui.CompactWindow):
@@ -352,11 +365,21 @@ class DeviceWindow(compact_ui.CompactWindow):
         copy_title = menu.addAction("Copy Play Store title")
         copy_url = menu.addAction("Copy Store URL")
         copy_row = menu.addAction("Copy visible row")
+
+        package_name = str(row.get("package_name") or "").strip()
+        availability = self._row_action_availability(row)
+        details.setEnabled(availability.details)
+        force_recheck.setEnabled(availability.recheck)
+        open_store.setEnabled(availability.store)
+        copy_package.setEnabled(availability.package)
+        copy_title.setEnabled(availability.title)
+        copy_url.setEnabled(availability.url)
+        copy_row.setEnabled(availability.visible_row)
         chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
         if chosen is details:
             self._show_details(row)
         elif chosen is force_recheck:
-            self._start_subset_refresh([str(row.get("package_name") or "")], "App recheck")
+            self._start_subset_refresh([package_name], "App recheck")
         elif chosen is open_store:
             url = str(row.get("store_url") or "")
             if url:
@@ -378,6 +401,29 @@ class DeviceWindow(compact_ui.CompactWindow):
             QApplication.clipboard().setText(
                 "\t".join(str(row.get(column, "") or "") for _, column in visible_columns)
             )
+
+    def _row_action_availability(self, row: dict[str, Any]) -> RowActionAvailability:
+        package_available = bool(str(row.get("package_name") or "").strip())
+        store_available = bool(str(row.get("store_url") or "").strip())
+        title_available = bool(str(row.get("play_title") or "").strip())
+        operation_check = getattr(self, "_operation_running", None)
+        operation_running = (
+            bool(operation_check())
+            if callable(operation_check)
+            else bool(getattr(self, "_audit_active", False))
+        )
+        return RowActionAvailability(
+            details=bool(row),
+            recheck=package_available and not operation_running,
+            store=store_available,
+            app_info=(
+                self.source_mode == "device" and package_available and not operation_running
+            ),
+            package=package_available,
+            title=title_available,
+            url=store_available,
+            visible_row=bool(row),
+        )
 
     # ---------- Recheck / force refresh ----------
     def _force_full_refresh(self) -> None:

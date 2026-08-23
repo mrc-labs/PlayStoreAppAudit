@@ -92,6 +92,12 @@ The richer dashboard/status overview, complementary `QStatusBar`, docking experi
 
 Routine PR validation is limited to compileall, pytest, Ruff, lightweight Qt smoke and targeted static checks. Manual native Windows resolution checks are reserved for high-impact UI work. Do not dispatch full Windows/Nuitka builds for documentation, identity, naming, icon polish or housekeeping; Nuitka is reserved for the deliberately frozen release candidate unless an explicit exception is justified.
 
+### v1.8 implementation progress
+
+- Product identity and scope lock merged in PR `#105`; the repository description, README and About presentation use the approved informational tagline.
+- Actions housekeeping merged in PR `#106`; redundant v1.7 artifact copies were removed after lineage verification, while retention policy and published release material remained unchanged.
+- Action availability now derives from centralized local capability checks for source, inventory, all results, visible results, row fields and running operations. File and main-button result exports share one explicit CSV/HTML/versioned-JSON action definition, including identical all/visible variants.
+
 ## v1.9 distribution constraint
 
 v1.9 is also Windows x64 only. Product scope is intentionally not frozen yet, but do not introduce Windows ARM64/Linux/macOS release packaging for v1.9 unless a new explicit product decision changes the roadmap.
