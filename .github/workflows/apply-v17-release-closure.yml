@@ -29,7 +29,7 @@ jobs:
           test -f docs/HANDOFF_V1.8.md
           grep -Fq 'Latest published version: `v1.7.0`' docs/PROJECT_STATUS.md
           grep -Fq 'v1.8 and v1.9 releases are Windows x64 only' docs/HANDOFF_V1.8.md
-          grep -Fq 'Play Store App Audit v1.7.0 (Win x64 Only)' README.md
+          grep -Fq 'current published v1.7.0 release' README.md
           grep -Fq '## [1.7.0] - 2026-08-23' CHANGELOG.md
 
       - name: Remove temporary closure helpers and push docs branch
