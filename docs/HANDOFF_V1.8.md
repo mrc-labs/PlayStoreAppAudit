@@ -118,7 +118,7 @@ PR2 was merged normally as GitHub PR `#106` at merge commit `74ca06caca927ef21f4
 
 The action-availability/export implementation centralizes the final UI capability checks for loaded source, device inventory, all/visible results, row fields and running operations. The File menu and compact Export control now use the same explicit CSV/HTML/versioned-JSON action definition and handlers; row context actions are disabled when their required field or idle state is unavailable.
 
-The naming/density/icon implementation applies consistent Title Case to operational commands, buttons and table headings while keeping explanatory tooltips in sentence case. It removes the permanent classification legend and table tip in favor of contextual help on classification chips, the table header and the table itself. The misleading computer icon was removed from Scan Phone; familiar native Open, Save and Play icons remain.
+The naming/density/icon implementation applies consistent Title Case to operational commands, buttons and table headings while keeping explanatory tooltips in sentence case. It removes the permanent classification legend and table tip in favor of contextual help on classification chips, the table header and the table itself. The misleading computer icon was removed from Scan Phone; familiar native Open, Save and Play icons remain. A local Windows-native 1200x760 capture verified the resulting density and alignment without dispatching an Actions UI/build workflow.
 
 ## v1.9 and v2.0 distribution roadmap
 
