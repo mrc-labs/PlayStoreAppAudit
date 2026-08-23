@@ -1,20 +1,13 @@
 name: UI style audit
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "playstore_app_audit/app.py"
-      - "playstore_app_audit/ui/**"
-      - ".github/scripts/capture_ui_style.py"
-      - ".github/workflows/ui-style-audit.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
