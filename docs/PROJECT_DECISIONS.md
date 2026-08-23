@@ -99,7 +99,7 @@ The v1.6.0 public release profile is frozen as an unsigned Windows x64 Engineeri
 - Do not build Windows ARM64, Linux or macOS release candidates for v1.6.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - The public v1.6.0 asset set is exactly three files: `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
-- The GitHub Release title is `Play Store App Audit v1.6.0 (ETB Win x64)` and the release-body heading is `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
+- The current GitHub Release title is `Play Store App Audit v1.6.0 (Win x64 Only)` and the release-body heading is `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
 - The Windows package is intentionally unsigned.
 - The optional richer dashboard/summary candidate is not part of v1.6.0.
 - Any source or release-tooling change after the exact release SHA is recorded invalidates the candidate and requires a new exact SHA and rebuild of the ETB artifacts.

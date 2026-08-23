@@ -106,7 +106,7 @@ v1.6.0 is frozen as an unsigned Windows x64-only Engineering Test Build, reusing
 - do not invoke production Windows signing or macOS signing/notarization;
 - assemble with `.github/workflows/assemble-windows-engineering-release.yml`;
 - publish exactly `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`;
-- use release title `Play Store App Audit v1.6.0 (ETB Win x64)` and body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`;
+- use the current release title `Play Store App Audit v1.6.0 (Win x64 Only)` and body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`;
 - clearly state that the Windows package is unsigned.
 
 The exact v1.6 release SHA is the `main` merge commit produced by the profile/version freeze once its post-merge Quality gate passes. If source or release tooling changes afterward, discard the candidate SHA and rebuild the required ETB artifacts from the new exact SHA.
@@ -125,7 +125,7 @@ v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 
 
 ### v2.0-or-later full production release
 
-Production trust validation and the full six-platform release are not planned before v2.0. The production workflows remain intact so the architecture can be activated later without being part of normal v1.6/v1.7 release cost.
+Production trust validation and the full six-platform release are not planned before v2.0. The production workflows remain intact so the architecture can be activated later without being part of the Windows x64-only v1.6-v1.9 release cost.
 
 The future production profile consists of:
 
@@ -350,7 +350,7 @@ This procedure applies to the Windows x64 ETB release line through v1.9.
     - `SHA256SUMS.txt`
 11. Verify the final checksums and deliberate manual smoke checks against those exact artifacts.
 12. Create the annotated `vMAJOR.MINOR.PATCH` tag on the same frozen SHA only after artifact validation.
-13. Create the GitHub Release and upload the already validated three assets. Use title suffix `(ETB Win x64)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; clearly state that the package is unsigned.
+13. Create the GitHub Release and upload the already validated three assets. Current and future ETBs use title suffix `(Win x64 Only)`; the release-body heading identifies `Engineering Test Build - Windows x64 Only`; clearly state that the package is unsigned. Preserve older published release titles unchanged.
 14. Do not rebuild because the tag was pushed.
 15. Once published, treat the tag, release history and binary assets as immutable.
 
@@ -364,7 +364,7 @@ For the frozen v1.6.0 Windows x64 ETB profile, the generic procedure above speci
 - tag: `v1.6.0`;
 - package: `PlayStoreAppAudit-v1.6.0-windows-x64.zip`;
 - source archive: `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`;
-- release title: `Play Store App Audit v1.6.0 (ETB Win x64)`;
+- current release title: `Play Store App Audit v1.6.0 (Win x64 Only)`;
 - body heading: `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
 
 ## Frozen-SHA future full production procedure
