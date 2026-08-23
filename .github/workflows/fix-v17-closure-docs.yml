@@ -1,0 +1,39 @@
+name: Fix v1.7 closure docs typo
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/fix-v17-closure-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: docs/v1.7-release-closure
+          fetch-depth: 0
+      - name: Fix and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PROJECT_DECISIONS.md')
+          text = p.read_text(encoding='utf-8')
+          old = 'v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.9'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one duplicated release-list token, got {text.count(old)}')
+          p.write_text(text.replace(old, 'v1.4/v1.5/v1.6/v1.7/v1.8/v1.9'), encoding='utf-8', newline='\n')
+          PY
+          git diff --check
+          git rm .github/workflows/fix-v17-closure-docs.yml
+          git config user.name "mrc-labs"
+          git config user.email "164878571+mrc-labs@users.noreply.github.com"
+          git add docs/PROJECT_DECISIONS.md
+          git diff --cached --check
+          git commit -m "docs: fix v1.7 closure release list"
+          git push origin HEAD:docs/v1.7-release-closure
