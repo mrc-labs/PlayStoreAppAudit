@@ -31,6 +31,15 @@ Published project-defined assets and SHA-256 values:
 - `PlayStoreAppAudit-v1.7.0-third-party-sources.tar.xz`: `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458`
 - `SHA256SUMS.txt`: `984d81cc77f60e10b1033199ba71b4737adb0b272c416d268a8e5025226e2ae9`
 
+### Post-release Actions housekeeping
+
+The v1.8 startup review revalidated the v1.7.0 release lineage on 2026-08-24. The canonical final build run remains `32609148943` and the canonical assembler run remains `32610281618`. Redundant Actions artifact copies from later runs `32610281923` and `32610918196` were deleted only after confirming the immutable tag and three GitHub Release assets were unchanged.
+
+- Active Actions artifact storage fell from 10 artifacts / 546.82 MiB to 8 artifacts / 274.01 MiB.
+- The canonical final Windows build artifact and canonical assembler artifact remain available for audit.
+- The six small UI-style artifacts remain subject to the existing generational policy.
+- Repository retention and the generational cleanup algorithm were not changed.
+
 ## Current development baseline
 
 - Canonical application version: `1.7.0` until a deliberate v1.8 version freeze changes it.
