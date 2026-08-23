@@ -287,7 +287,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         position = details_ui.normalise_details_panel_position(
             settings.get("details_panel_position", "right")
         )
-        self.details_panel = details_ui.AppDetailsPanel(position, self)
+        self.details_control = details_ui.DetailsPanelControl(position, self)
+        toolbar = _find_layout_containing(root, self.search_edit)
+        if toolbar is not None:
+            toolbar.addWidget(self.details_control)
+
+        self.details_panel = details_ui.AppDetailsPanel(self)
         self.details_splitter = QSplitter(self)
         self.details_splitter.setChildrenCollapsible(False)
         table_layout.removeWidget(self.table)
@@ -298,8 +303,18 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_splitter.setStretchFactor(1, 1)
         self._set_details_panel_position(position, persist=False)
 
-        self.details_panel.position_changed.connect(self._set_details_panel_position)
+        self.details_control.position_changed.connect(self._set_details_panel_position)
         self.details_panel.review_changes_requested.connect(self._show_change_overview)
+        self.details_panel_menu = self.details_control.mode_menu
+        if hasattr(self, "view_menu"):
+            first_separator = next(
+                (action for action in self.view_menu.actions() if action.isSeparator()),
+                None,
+            )
+            if first_separator is None:
+                self.view_menu.addMenu(self.details_panel_menu)
+            else:
+                self.view_menu.insertMenu(first_separator, self.details_panel_menu)
         selection_model = self.table.selectionModel()
         if selection_model is not None:
             selection_model.currentRowChanged.connect(self._on_details_current_row_changed)
@@ -317,13 +332,28 @@ class ResultsWindow(menu_ui.MenuWindow):
         if not hasattr(self, "details_splitter"):
             return
 
+        self._details_panel_position = position
+        if hasattr(self, "details_control"):
+            self.details_control.set_position(position, emit=False)
+
+        if position == "hidden":
+            self._details_panel_resolved_position = "hidden"
+            self.details_panel.hide()
+            self.details_splitter.setSizes([1, 0])
+            if persist:
+                settings = state.load_settings()
+                settings["details_panel_position"] = position
+                self.user_settings = state.save_settings(settings)
+            return
+
+        self.details_panel.show()
+
         resolved = details_ui.resolve_details_panel_position(
             position,
             self._details_available_width(),
             self._details_panel_resolved_position or "",
         )
         previous_resolved = self._details_panel_resolved_position
-        self._details_panel_position = position
         self._details_panel_resolved_position = resolved
 
         orientation = (
