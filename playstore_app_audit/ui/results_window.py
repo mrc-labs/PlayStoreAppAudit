@@ -8,30 +8,32 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QApplication,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QMenu,
-    QMessageBox,
     QSplitter,
     QVBoxLayout,
 )
 
 import playstore_app_audit.services.change_overview as change_service
-import playstore_app_audit.services.device_insights as device_insights
-import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.change_overview as change_ui
 import playstore_app_audit.ui.details_panel as details_ui
+import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.table_window as table_ui
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
-from playstore_app_audit.ui.file_menu import add_result_actions
+from playstore_app_audit.ui.file_menu import (
+    ResultExportActions,
+    add_result_actions,
+    populate_result_export_menu,
+)
 
 
 def _find_layout_containing(layout, target_widget):
@@ -120,6 +122,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._change_overview_dialog: change_ui.ChangeOverviewDialog | None = None
         self._details_panel_position = "right"
         self._details_panel_resolved_position: str | None = None
+        self._source_operation_active = False
         super().__init__()
         self.country_edit.textEdited.connect(self._on_store_country_edited)
         self.country_edit.editingFinished.connect(self._on_store_country_editing_finished)
@@ -130,6 +133,126 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._setup_export_button_menu()
         self._rebuild_file_menu()
         self._update_summary()
+
+    # ---------- Action availability ----------
+    def _has_loaded_source(self) -> bool:
+        if self.source_mode == "file":
+            return bool(self.file_apps)
+        if self.source_mode == "device":
+            return bool(self.device_apps_all)
+        return False
+
+    def _operation_running(self) -> bool:
+        return bool(
+            self._source_operation_active
+            or getattr(self, "_audit_active", False)
+            or getattr(self, "_finalizing_session", None) is not None
+        )
+
+    @staticmethod
+    def _set_export_actions_enabled(
+        actions: ResultExportActions, *, all_results: bool, visible_results: bool
+    ) -> None:
+        for action in actions.all_results:
+            action.setEnabled(all_results)
+        for action in actions.visible_results:
+            action.setEnabled(visible_results)
+        actions.menu.menuAction().setEnabled(all_results or visible_results)
+
+    def _sync_action_availability(self) -> None:
+        if not hasattr(self, "run_button"):
+            return
+
+        running = self._operation_running()
+        idle = not running
+        source_available = self._has_loaded_source()
+        inventory_available = self.source_mode == "device" and bool(self.device_apps_all)
+        results_available = bool(self.current_rows)
+        visible_results_available = results_available and self.proxy.rowCount() > 0
+        device_results_available = self.source_mode == "device" and results_available
+        device_summary_available = inventory_available and bool(
+            getattr(self, "_device_summary", None)
+        )
+        inventory_changes_available = device_results_available and bool(
+            getattr(self, "_last_inventory_changes", None)
+        )
+        problematic_available = any(
+            device_metadata.is_problematic(row) for row in self.current_rows
+        )
+
+        if not getattr(self, "_audit_active", False):
+            self.run_button.setEnabled(idle and source_available)
+        self.export_button.setEnabled(idle and results_available)
+        self.clear_button.setEnabled(idle and results_available)
+
+        for name in ("file_choose_source_action", "file_scan_phone_action"):
+            action = getattr(self, name, None)
+            if action is not None:
+                action.setEnabled(idle)
+        if hasattr(self, "recent_menu"):
+            self.recent_menu.menuAction().setEnabled(idle)
+        recent_button = getattr(self, "recent_sources_button", None)
+        if recent_button is not None:
+            recent_button.setEnabled(idle)
+
+        file_result_actions = getattr(self, "file_result_actions", None)
+        if file_result_actions is not None:
+            file_result_actions.run.setEnabled(idle and source_available)
+            file_result_actions.clear.setEnabled(idle and results_available)
+            self._set_export_actions_enabled(
+                file_result_actions.exports,
+                all_results=idle and results_available,
+                visible_results=idle and visible_results_available,
+            )
+        button_exports = getattr(self, "button_result_exports", None)
+        if button_exports is not None:
+            self._set_export_actions_enabled(
+                button_exports,
+                all_results=idle and results_available,
+                visible_results=idle and visible_results_available,
+            )
+
+        for name in ("file_phone_package_export_action", "scan_phone_package_export_action"):
+            action = getattr(self, name, None)
+            if action is not None:
+                action.setEnabled(idle and inventory_available)
+        scan_options_button = getattr(self, "scan_phone_options_button", None)
+        if scan_options_button is not None:
+            scan_options_button.setEnabled(idle and inventory_available)
+
+        action_states = {
+            "force_full_refresh_action": idle and source_available,
+            "recheck_problematic_action": idle and problematic_available,
+            "device_summary_action": idle and device_summary_available,
+            "save_device_snapshot_action": idle and device_results_available,
+            "compare_device_snapshot_action": idle and device_results_available,
+            "device_inventory_changes_action": idle and inventory_changes_available,
+            "clear_audit_cache_action": idle,
+            "clear_audit_history_action": idle,
+        }
+        for name, enabled in action_states.items():
+            action = getattr(self, name, None)
+            if action is not None:
+                action.setEnabled(enabled)
+        if hasattr(self, "snapshots_menu"):
+            self.snapshots_menu.menuAction().setEnabled(idle and device_results_available)
+        if hasattr(self, "data_maintenance_menu"):
+            self.data_maintenance_menu.menuAction().setEnabled(idle)
+        if hasattr(self, "details_panel"):
+            self.details_panel.review_changes_button.setEnabled(idle and results_available)
+
+    def _set_busy(self, busy: bool) -> None:
+        self._source_operation_active = busy
+        super()._set_busy(busy)
+        self._sync_action_availability()
+
+    def _set_audit_source_controls_enabled(self, enabled: bool) -> None:
+        super()._set_audit_source_controls_enabled(enabled)
+        self._sync_action_availability()
+
+    def _start_audit(self) -> None:
+        super()._start_audit()
+        self._sync_action_availability()
 
     def _persist_exclude_system_source(self, checked: bool) -> None:
         self.user_settings["exclude_system_source"] = bool(checked)
@@ -257,6 +380,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_panel.clear()
         if self.proxy.rowCount() > 0:
             self.table.selectRow(0)
+        self._sync_action_availability()
 
     def _current_change_groups(self) -> list[dict[str, Any]]:
         return change_service.build_change_groups(
@@ -305,6 +429,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._on_details_model_data_changed()
         if self._change_overview_dialog is not None:
             self._change_overview_dialog.set_groups(self._current_change_groups())
+        self._sync_action_availability()
 
     # ---------- Source UX ----------
     def _choice_row(self, text: str, button) -> QHBoxLayout:
@@ -434,7 +559,7 @@ class ResultsWindow(menu_ui.MenuWindow):
                 text = text[len("File selected: ") :]
             self.source_label.setText(f"{Path(path).name}  •  {text}")
             self.source_label.setToolTip(path)
-        self._sync_phone_package_export_actions()
+        self._sync_action_availability()
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
         super()._on_adb_scan_done(apps, system_packages)
@@ -446,7 +571,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         store_locale.set_active_device_store_locale(detected)
         self._apply_store_country_resolution(detected)
         self._enrich_device_source_label()
-        self._sync_phone_package_export_actions()
+        self._sync_action_availability()
 
     def _enrich_device_source_label(self) -> None:
         summary = getattr(self, "_device_summary", {})
@@ -483,11 +608,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             self.source_label.setToolTip("\n".join(tooltip))
 
     def _sync_phone_package_export_actions(self) -> None:
-        available = bool(self.device_apps_all)
-        for name in ("file_phone_package_export_action", "scan_phone_package_export_action"):
-            action = getattr(self, name, None)
-            if action is not None:
-                action.setEnabled(available)
+        self._sync_action_availability()
 
     # ---------- Export UX ----------
     def _setup_export_button_menu(self) -> None:
@@ -496,50 +617,41 @@ class ResultsWindow(menu_ui.MenuWindow):
         except (TypeError, RuntimeError):
             pass
         menu = QMenu(self.export_button)
-        menu.addAction("Export all results as CSV…", self._export_results)
-        menu.addAction("Export visible results as CSV…", self._export_visible_results)
-        menu.addSeparator()
-        menu.addAction("Export all results as HTML…", self._export_html_report)
-        menu.addAction("Export visible results as HTML…", self._export_visible_html_report)
+        self.button_result_exports = populate_result_export_menu(
+            menu,
+            export_all_csv=self._export_results,
+            export_visible_csv=self._export_visible_results,
+            export_all_html=self._export_html_report,
+            export_visible_html=self._export_visible_html_report,
+            export_all_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=False
+            ),
+            export_visible_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=True
+            ),
+        )
         self.export_button.setText("Export results")
         self.export_button.setMenu(menu)
         self._export_results_menu = menu
-
-    def _export_visible_html_report(self) -> None:
-        self._export_html_rows(
-            self._visible_rows(), "playstore_audit_visible_report.html", "Export visible results as HTML"
-        )
-
-    def _export_html_rows(self, rows: list[dict[str, Any]], default_name: str, title: str) -> None:
-        if not rows:
-            QMessageBox.information(self, "Nothing to export", "There are no results to export.")
-            return
-        selected, _ = QFileDialog.getSaveFileName(self, title, default_name, "HTML (*.html)")
-        if not selected:
-            return
-        if not selected.lower().endswith(".html"):
-            selected += ".html"
-        try:
-            formatted = presentation.rows_for_output([dict(row) for row in rows])
-            device_insights.write_html_report(selected, formatted, self._device_summary)
-            QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
-        except Exception as exc:
-            QMessageBox.critical(self, "Export failed", str(exc))
 
     def _rebuild_file_menu(self) -> None:
         if not hasattr(self, "file_menu"):
             return
         self.file_menu.clear()
-        self.file_menu.addAction("Choose app list…", self._choose_input)
+        self.file_choose_source_action = self.file_menu.addAction(
+            "Choose app list…", self._choose_input
+        )
         self.recent_menu = self.file_menu.addMenu("Recent sources")
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
-        self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
+        self.file_scan_phone_action = self.file_menu.addAction(
+            "Scan phone with ADB", self._scan_phone
+        )
         self.file_phone_package_export_action = self.file_menu.addAction(
             "Export current phone package list as CSV…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
-        self.file_export_results_menu = add_result_actions(
+        self.file_result_actions = add_result_actions(
             self.file_menu,
             run_audit=self._start_audit,
             export_all_csv=self._export_results,
@@ -547,10 +659,17 @@ class ResultsWindow(menu_ui.MenuWindow):
             clear_results=self._clear_results,
             export_all_html=self._export_html_report,
             export_visible_html=self._export_visible_html_report,
+            export_all_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=False
+            ),
+            export_visible_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=True
+            ),
         )
+        self.file_export_results_menu = self.file_result_actions.exports.menu
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
-        self._sync_phone_package_export_actions()
+        self._sync_action_availability()
 
     def _clear_results(self) -> None:
         super()._clear_results()
@@ -558,7 +677,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             self.details_panel.clear()
         if self._change_overview_dialog is not None:
             self._change_overview_dialog.set_groups([])
-        self._sync_phone_package_export_actions()
+        self._sync_action_availability()
 
     # ---------- Concise summary ----------
     def _update_summary(self) -> None:
@@ -571,6 +690,7 @@ class ResultsWindow(menu_ui.MenuWindow):
                 list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None)
             )
         )
+        self._sync_action_availability()
 
 
 def main() -> int:

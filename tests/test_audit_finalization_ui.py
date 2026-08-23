@@ -59,6 +59,8 @@ def test_success_is_visibly_finalizing_before_rows_are_installed(
     window._audit_active = True
     window._audit_paused = False
     window._audit_pause_event.set()
+    window.source_mode = "file"
+    window.file_apps = [{"package_name": "com.example.current", "app_name": "Example"}]
     window.current_system_packages = set()
     window.current_rows = []
     window.model.set_rows([])

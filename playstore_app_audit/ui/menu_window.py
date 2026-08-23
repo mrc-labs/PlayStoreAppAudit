@@ -26,6 +26,7 @@ import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
@@ -54,22 +55,36 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         # convenience overload when an inheritance chain rebuilt the menu bar.
         self.file_menu = QMenu("File", bar)
         bar.addMenu(self.file_menu)
-        self.file_menu.addAction("Choose app list…", self._choose_input)
+        self.file_choose_source_action = self.file_menu.addAction(
+            "Choose app list…", self._choose_input
+        )
         self.recent_menu = QMenu("Recent sources", self.file_menu)
         self.file_menu.addMenu(self.recent_menu)
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
-        self.file_menu.addAction("Scan phone with ADB", self._scan_phone)
-        self.file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
+        self.file_scan_phone_action = self.file_menu.addAction(
+            "Scan phone with ADB", self._scan_phone
+        )
+        self.file_phone_package_export_action = self.file_menu.addAction(
+            "Export current phone package list as CSV…", self._export_phone_packages_csv
+        )
         self.file_menu.addSeparator()
-        self.file_export_results_menu = add_result_actions(
+        self.file_result_actions = add_result_actions(
             self.file_menu,
             run_audit=self._start_audit,
             export_all_csv=self._export_results,
             export_visible_csv=self._export_visible_results,
             clear_results=self._clear_results,
             export_all_html=self._export_html_report,
+            export_visible_html=self._export_visible_html_report,
+            export_all_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=False
+            ),
+            export_visible_json=lambda: json_export_ui.export_window_results_json(
+                self, visible=True
+            ),
         )
+        self.file_export_results_menu = self.file_result_actions.exports.menu
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
 
@@ -107,25 +122,41 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
         self.tools_menu = QMenu("Tools", bar)
         bar.addMenu(self.tools_menu)
-        self.tools_menu.addAction("Advanced settings…", self._show_advanced_settings)
+        self.advanced_settings_action = self.tools_menu.addAction(
+            "Advanced settings…", self._show_advanced_settings
+        )
         self.audit_profiles_menu = QMenu("Audit profiles", self.tools_menu)
         self.tools_menu.addMenu(self.audit_profiles_menu)
         audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
-        self.tools_menu.addAction("Force full refresh (ignore cache)", self._force_full_refresh)
-        self.tools_menu.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
+        self.force_full_refresh_action = self.tools_menu.addAction(
+            "Force full refresh (ignore cache)", self._force_full_refresh
+        )
+        self.recheck_problematic_action = self.tools_menu.addAction(
+            "Recheck Removed / Anomaly / Other", self._recheck_problematic
+        )
         self.tools_menu.addSeparator()
-        self.tools_menu.addAction("Device summary…", self._show_device_summary)
+        self.device_summary_action = self.tools_menu.addAction(
+            "Device summary…", self._show_device_summary
+        )
         self.snapshots_menu = QMenu("Device snapshots", self.tools_menu)
         self.tools_menu.addMenu(self.snapshots_menu)
-        self.snapshots_menu.addAction("Save current device snapshot…", self._save_device_snapshot)
-        self.snapshots_menu.addAction("Compare current device with snapshot…", self._compare_device_snapshot)
-        self.tools_menu.addAction("Device inventory changes…", self._show_inventory_changes)
+        self.save_device_snapshot_action = self.snapshots_menu.addAction(
+            "Save current device snapshot…", self._save_device_snapshot
+        )
+        self.compare_device_snapshot_action = self.snapshots_menu.addAction(
+            "Compare current device with snapshot…", self._compare_device_snapshot
+        )
+        self.device_inventory_changes_action = self.tools_menu.addAction(
+            "Device inventory changes…", self._show_inventory_changes
+        )
         self.tools_menu.addSeparator()
         self.data_maintenance_menu = QMenu("Data maintenance", self.tools_menu)
         self.tools_menu.addMenu(self.data_maintenance_menu)
-        self.data_maintenance_menu.addAction("Clear audit cache", self._clear_audit_cache)
-        self.data_maintenance_menu.addAction(
+        self.clear_audit_cache_action = self.data_maintenance_menu.addAction(
+            "Clear audit cache", self._clear_audit_cache
+        )
+        self.clear_audit_history_action = self.data_maintenance_menu.addAction(
             "Clear previous-audit history", self._clear_audit_history
         )
 

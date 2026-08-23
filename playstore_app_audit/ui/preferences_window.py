@@ -481,11 +481,25 @@ class PreferencesWindow(table_ui.TableWindow):
         super()._export_rows(presentation.rows_for_output([dict(r) for r in rows]), default_name)
 
     def _export_html_report(self) -> None:
-        if not self.current_rows:
+        self._export_html_rows(
+            list(self.current_rows), "playstore_audit_report.html", "Export HTML report"
+        )
+
+    def _export_visible_html_report(self) -> None:
+        self._export_html_rows(
+            self._visible_rows(),
+            "playstore_audit_visible_report.html",
+            "Export visible results as HTML",
+        )
+
+    def _export_html_rows(
+        self, rows: list[dict[str, Any]], default_name: str, title: str
+    ) -> None:
+        if not rows:
             QMessageBox.information(self, "Nothing to export", "There are no results to export.")
             return
         selected, _ = QFileDialog.getSaveFileName(
-            self, "Export HTML report", "playstore_audit_report.html", "HTML (*.html)"
+            self, title, default_name, "HTML (*.html)"
         )
         if not selected:
             return
@@ -493,7 +507,7 @@ class PreferencesWindow(table_ui.TableWindow):
             selected += ".html"
         try:
             device_insights.write_html_report(
-                selected, presentation.rows_for_output(list(self.current_rows)), self._device_summary
+                selected, presentation.rows_for_output(rows), self._device_summary
             )
             QMessageBox.information(self, "Export complete", f"HTML report saved to:\n{selected}")
         except Exception as exc:
