@@ -21,6 +21,7 @@ if ($status) {
     throw "Working tree is dirty. Stop and review it before exporting a chat handoff:`n$status"
 }
 
+# Always discover the newest versioned handoff; never hard-code the active release cycle here.
 $handoffCandidates = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -Filter 'HANDOFF_V*.md' -File |
     ForEach-Object {
         if ($_.Name -notmatch '^HANDOFF_V(?<major>\d+)\.(?<minor>\d+)(?:\.(?<patch>\d+))?\.md$') {

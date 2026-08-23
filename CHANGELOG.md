@@ -2,6 +2,44 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [1.7.0] - 2026-08-23
+
+### Added
+
+- Responsive Details Panel placement with Auto, Right and Below modes plus adaptive content reflow.
+- Structured Store diagnostics with concise market evidence, fallback outcomes and machine-readable raw evidence retained for export.
+- Installer/source classification and filters, plus target/min SDK maintenance filters and compatibility-state filtering.
+- Versioned JSON export for all or visible results.
+- Reusable audit profiles for audit execution settings.
+- Conservative smart/incremental re-audit behavior with targeted rechecks and explicit Force full refresh.
+
+### Changed
+
+- Store country and Store language resolution are independent; automatic phone language follows the active Android system language while country prefers explicit override, host region, Android region only as a late fallback, then US.
+- User-facing Store evidence and Notes are substantially less verbose while technical evidence remains structured underneath.
+- Play Store audit history and connected-device inventory history are presented separately, including first-baseline wording.
+- Health Score is now presented as an optional supported maintenance heuristic, remains disabled by default and is explicitly not a security/malware rating.
+- Details Panel position controls are larger and easier to understand.
+
+### Fixed
+
+- File/list audits do not inherit stale phone-language context.
+- First-audit rows no longer misleadingly show phone inventory changes as Store-audit changes.
+- Removed or region-restricted rows no longer expose raw internal machine-note tokens in the Details Panel.
+- Definitive Store not-found evidence remains separate from transient/inconclusive request failures.
+
+### Compatibility
+
+- v1.7.0 is an unsigned Windows x64 Engineering Test Build (ETB).
+- Public GitHub Release title: `Play Store App Audit v1.7.0 (Win x64 Only)`.
+- The public asset set contains exactly one Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- Frozen source SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
+- Windows x64 ZIP SHA-256: `142b15e40fba3d7ed8b29e1e37b366551dde3cf65e18608434869f4528d50c1b`.
+- Third-party source archive SHA-256: `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458`.
+- `SHA256SUMS.txt` SHA-256: `984d81cc77f60e10b1033199ba71b4737adb0b272c416d268a8e5025226e2ae9`.
+- Windows ARM64, Linux and macOS remain source-supported but were not rebuilt for v1.7.0.
+- v1.8 and v1.9 remain Windows x64-only ETB release lines. v2.0 is the first planned return to multi-platform distribution; production signing is a target, not yet a guarantee.
+
 ## [1.6.0] - 2026-08-22
 
 ### Added

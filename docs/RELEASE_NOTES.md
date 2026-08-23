@@ -88,7 +88,7 @@ Published tags, source commits, binary assets and checksums remain immutable. No
 
 ## Release title and heading
 
-Release-profile-specific title suffixes remain separate from the four-section body standard. For example, the v1.4/v1.5 Windows x64 Engineering Test Build profile uses the title suffix `(ETB Win x64)` and must clearly identify the package as unsigned.
+Release-profile-specific title suffixes remain separate from the four-section body standard. Current and future Windows x64 Engineering Test Build releases use the GitHub Release title suffix `(Win x64 Only)` and must clearly identify the package as unsigned. Historical titles may retain older wording where that reflects the published record.
 
 A short release heading may precede the four mandatory sections when a profile requires it, for example:
 
@@ -355,4 +355,60 @@ The third-party source archive contains the corresponding source material requir
 - `PlayStoreAppAudit-v1.5.0-windows-x64.zip` SHA-256: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`.
 - `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz` SHA-256: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`.
 - Independent post-publication SHA-256 calculation matched the published `SHA256SUMS.txt` for both payload assets.
+```
+
+
+## Published v1.7.0 release body
+
+The body below records the final v1.7.0 release wording and successful evidence. The published tag, source commit and three assets are immutable.
+
+```markdown
+## Play Store App Audit v1.7.0 (Engineering Test Build - Windows x64 Only)
+
+## What's New / Highlights
+
+### Added
+- Responsive selected-row Details Panel controls with Auto, Right and Below placement modes and adaptive content layout.
+- Structured Store request evidence and compact diagnostics for country/language checks, fallback markets and inconclusive results.
+- Installer/source classification and built-in installer filters.
+- SDK maintenance filters and compatibility-state filtering.
+- Versioned JSON export for all or visible results.
+- Reusable audit profiles.
+- Conservative smart/incremental re-audit behavior with targeted rechecks and Force full refresh.
+
+### Changed
+- Store country and Store language are resolved independently with explicit override/host/device fallback semantics.
+- Store market evidence and Notes prioritize concise human-readable outcomes while raw evidence remains structured.
+- Store audit history and phone inventory history are presented separately, including first-baseline wording.
+- Health Score is an optional supported 0-100 maintenance heuristic, disabled by default and not a malware/security score.
+- Details Panel position controls are larger and clearer while retaining hover tooltips.
+
+### Fixed
+- File/list audits no longer inherit stale connected-phone language context.
+- First-audit rows no longer present phone inventory changes as previous Store-audit changes.
+- Removed/region-restricted apps no longer expose raw machine-note tokens in the user-facing Details Panel.
+- Definitive Store not-found evidence remains distinct from transient/inconclusive failures.
+
+## Compatibility and distribution
+- Engineering Test Build (ETB), Windows x64 only.
+- The Windows package is intentionally unsigned; Windows may display a SmartScreen/publisher warning.
+- Windows ARM64, Linux and macOS remain source-supported but were not rebuilt for v1.7.0.
+- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Managed ADB remains read-only with respect to installed Android apps.
+
+## Release assets
+- `PlayStoreAppAudit-v1.7.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.7.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- Frozen source SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
+- Quality push run `32609018096` passed on Python 3.13 and 3.14.
+- Windows x64 build run `32609148943` succeeded on the same frozen SHA.
+- Engineering assembly run `32610281618` validated the exact x64-only three-file set.
+- Publish/post-publication verification run `32610914851` re-downloaded all three public assets, verified their checksums and confirmed annotated tag `v1.7.0` peels to the frozen SHA.
+- Windows x64 ZIP SHA-256: `142b15e40fba3d7ed8b29e1e37b366551dde3cf65e18608434869f4528d50c1b`.
+- Third-party source archive SHA-256: `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458`.
+- `SHA256SUMS.txt` SHA-256: `984d81cc77f60e10b1033199ba71b4737adb0b272c416d268a8e5025226e2ae9`.
 ```

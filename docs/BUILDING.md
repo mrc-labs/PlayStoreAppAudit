@@ -56,7 +56,7 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-For the v1.4/v1.5 Windows x64 ETB profiles, the frozen v1.6 Windows x64 ETB profile, and the preserved future production profile:
+For the Windows x64 ETB profiles through v1.9 and the preserved future production profile:
 
 - Packaging Python: 3.13
 - Quality CI: Python 3.13 and 3.14
@@ -110,6 +110,18 @@ v1.6.0 is frozen as an unsigned Windows x64-only Engineering Test Build, reusing
 - clearly state that the Windows package is unsigned.
 
 The exact v1.6 release SHA is the `main` merge commit produced by the profile/version freeze once its post-merge Quality gate passes. If source or release tooling changes afterward, discard the candidate SHA and rebuild the required ETB artifacts from the new exact SHA.
+
+### v1.7-v1.9 Windows x64 Engineering Test Builds (ETB)
+
+v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 deliberately reuse the same exact-SHA x64-only release profile.
+
+- Build with `.github/workflows/build-windows-exe.yml` using `target=x64` only.
+- Do not invoke production Windows signing or build Windows ARM64/Linux/macOS release candidates.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- Publish exactly the Windows x64 ZIP, consolidated third-party source archive and `SHA256SUMS.txt`.
+- Current/future ETB GitHub Release titles use `(Win x64 Only)`; the body heading continues to say `Engineering Test Build - Windows x64 Only`.
+- v1.7.0 frozen release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
+- v1.8 and v1.9 must freeze their own exact `main` SHA after Quality passes.
 
 ### v2.0-or-later full production release
 
@@ -170,7 +182,7 @@ Future production Windows trust uses:
 
 Assembly is profile-specific:
 
-- `.github/workflows/assemble-windows-engineering-release.yml` for Windows x64 ETB releases including v1.4, v1.5 and the frozen v1.6.0 profile;
+- `.github/workflows/assemble-windows-engineering-release.yml` for Windows x64 ETB releases including the Windows x64 ETB profiles through v1.9;
 - `.github/workflows/assemble-release.yml` for the future v2.0-or-later six-platform production release.
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
@@ -184,7 +196,7 @@ After release dependencies are installed, every package job runs the determinist
 - `target`: `x64`, `arm64` or `both`
 - `expected_sha`: the exact 40-character commit SHA intended for the build
 
-For v1.4, v1.5 and v1.6.0 ETB releases, use `target=x64`. The x64 job runs on `windows-2025`. Do not select `arm64` or `both` for those ETB releases.
+For Windows x64 ETB releases through v1.9, use `target=x64`. The x64 job runs on `windows-2025`. Do not select `arm64` or `both` for those ETB releases.
 
 For the future six-platform production profile, use `target=both`; ARM64 runs on `windows-11-arm`.
 
@@ -311,7 +323,7 @@ The preflight resolves metadata and small legal text only. It does not download 
 
 Passing the preflight is not release compliance evidence by itself. After packaging, `prepare_release_legal_bundle.py` still detects the actual runtime, downloads the exact required source archives, injects public legal material and creates validation evidence. `validate_release_legal_bundle.py` then performs the strict public package/source validation. The preflight complements these gates and never replaces or weakens them.
 
-For unsigned Windows x64 engineering releases such as v1.4, v1.5 and v1.6.0, the native x64 package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
+For unsigned Windows x64 engineering releases through v1.9, the native x64 package is the final binary state, so the strict legal evidence produced by the Windows package workflow is the evidence consumed by the engineering assembler.
 
 For macOS production builds, legal/public files are injected before the production signature. After signing/notarization/stapling, runtime evidence is refreshed against that final app state and the strict public legal validator runs before the release ZIP is created. Do not add or modify app-bundle files after the production signature except through the deliberate notarization/stapling process.
 
@@ -319,7 +331,7 @@ For Windows production builds, Authenticode changes the owned executable bytes a
 
 ## Frozen-SHA Windows x64 Engineering Test Build procedure
 
-This procedure applies to v1.4, v1.5 and v1.6.0.
+This procedure applies to the Windows x64 ETB release line through v1.9.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release change to `main` with a normal merge commit.
@@ -382,9 +394,9 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 ## Version handling
 
-The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.6.0` maps to Windows version `1.6.0.0`.
+The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.7.0` maps to Windows version `1.7.0.0`.
 
-v1.6.0 version metadata is part of the frozen release profile. Do not change it during release execution.
+v1.7.0 version metadata is part of its immutable published release profile. Future v1.8/v1.9 version changes belong to their own deliberate release freeze.
 
 ## Packaged smoke tests
 
@@ -396,7 +408,7 @@ A package is not valid merely because the compiler returned success. Verify stan
 
 At the immutable v1.3.0 baseline, Windows and Linux packages are unsigned and macOS bundles have only an ad-hoc CI signature.
 
-v1.4, v1.5 and the frozen v1.6.0 profile deliberately remain unsigned Windows x64 engineering releases. Production trust validation is deferred until v2.0 or later.
+The Windows x64 ETB release line through v1.9 deliberately remains unsigned. Production trust validation is deferred until v2.0 or later.
 
 ### macOS production path, v2.0 or later
 

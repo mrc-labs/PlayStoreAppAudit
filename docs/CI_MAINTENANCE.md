@@ -52,7 +52,7 @@ Use **Engineering Test Build** as the canonical public label for an engineering 
 
 For a Windows x64-only ETB:
 
-- GitHub Release title suffix: `(ETB Win x64)`
+- GitHub Release title suffix: `(Win x64 Only)`
 - release-body heading: `## Play Store App Audit vX.Y.Z (Engineering Test Build - Windows x64 Only)`
 
 Use "build" rather than "release" in the label because the GitHub object is already a Release and ETB describes the validation/trust level of the published binary build. Production releases do not use the ETB suffix.

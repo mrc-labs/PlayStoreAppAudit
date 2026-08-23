@@ -105,7 +105,7 @@ For every current and future release:
 - generate `REPOSITORY_SNAPSHOT.md` and chat/continuation handoffs only after that synchronization;
 - do not call the release cycle closed until remote repository state, local VS Code state and context documentation agree.
 
-The full checklist and rationale are canonical in `docs/RELEASE_CLOSURE.md` and apply to v1.7, v1.8, v2.0 and every later release line.
+The full checklist and rationale are canonical in `docs/RELEASE_CLOSURE.md` and apply to v1.7, v1.8, v1.9, v2.0 and every later release line.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
@@ -144,14 +144,27 @@ The v1.6.0 release profile is frozen as an unsigned Windows x64 ETB. Product sco
 - Do not build Windows ARM64, Linux or macOS release candidates for v1.6.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - The public asset set is exactly `PlayStoreAppAudit-v1.6.0-windows-x64.zip`, `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
-- Use release title `Play Store App Audit v1.6.0 (ETB Win x64)` and body heading `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
+- The current GitHub Release title is `Play Store App Audit v1.6.0 (Win x64 Only)`; the body heading remains `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
 - Keep the package clearly described as unsigned.
 - Do not add the optional richer dashboard/summary to v1.6.0.
 - If source or release tooling changes after the exact release SHA is recorded, discard that candidate SHA and rebuild the required ETB artifacts from the new exact SHA.
 
+### v1.7-v1.9 Windows x64 Engineering Test Build (ETB) profile
+
+v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 deliberately continue the same Windows x64-only distribution profile.
+
+- Build Windows x64 only from one exact frozen `main` SHA after the required Quality gates pass.
+- Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
+- Do not invoke production Windows signing or build Windows ARM64, Linux or macOS release candidates for v1.8 or v1.9.
+- Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
+- Publish exactly three project-defined assets: the Windows x64 ZIP, one consolidated third-party source `tar.xz`, and `SHA256SUMS.txt`.
+- Current/future Windows x64 ETB GitHub Release titles use suffix `(Win x64 Only)`; the release-body heading still identifies `Engineering Test Build - Windows x64 Only` and the package remains clearly described as unsigned.
+- v1.7.0 is frozen at `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. Do not rebuild, retag or replace it.
+- Any source or release-tooling change after a future v1.8/v1.9 SHA freeze invalidates that candidate and requires a rebuild from the new exact SHA.
+
 ### v2.0-or-later production profile
 
-Production signing and the full six-platform release are not planned before v2.0. The implementation remains preserved for that later milestone.
+v2.0 is the first planned return to a full multi-platform release. Production signing remains the preferred target, but it must not be promised until provider eligibility, credentials, cost and end-to-end signing/notarization validation are confirmed.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
 - Windows final candidates require a publicly trusted code-signing provider with native post-sign verification.
