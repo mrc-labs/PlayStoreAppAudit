@@ -193,6 +193,7 @@ class TableWindow(insights_ui.InsightsWindow):
         layout = QVBoxLayout(dialog)
 
         title = QLabel("Play Store App Audit")
+        title.setObjectName("AboutTitle")
         font = QFont(title.font())
         font.setPointSizeF(16)
         font.setBold(True)
@@ -202,6 +203,11 @@ class TableWindow(insights_ui.InsightsWindow):
         version = QLabel(f"Version {__version__}")
         version.setObjectName("AboutVersion")
         layout.addWidget(version)
+
+        tagline = QLabel("Android App Inventory, Store Analysis & Maintenance Toolkit")
+        tagline.setObjectName("AboutTagline")
+        tagline.setWordWrap(True)
+        layout.addWidget(tagline)
 
         info = QLabel(
             "<b>Created by MRC</b><br><br>"

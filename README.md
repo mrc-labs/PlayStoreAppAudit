@@ -1,5 +1,7 @@
 # Play Store App Audit
 
+*Android App Inventory, Store Analysis & Maintenance Toolkit*
+
 Play Store App Audit is a desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for an imported app list or the packages installed on an Android phone.
 
 The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google.

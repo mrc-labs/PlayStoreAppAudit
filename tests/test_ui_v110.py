@@ -327,11 +327,14 @@ def test_about_dialog_displays_the_canonical_version(
     captured: dict[str, object] = {}
 
     def inspect_dialog(dialog: QDialog) -> int:
+        labels = dialog.findChildren(QLabel)
         captured["title"] = dialog.windowTitle()
-        captured["labels"] = {
-            label.objectName(): label.text() for label in dialog.findChildren(QLabel)
-        }
-        captured["text"] = " ".join(label.text() for label in dialog.findChildren(QLabel))
+        captured["labels"] = {label.objectName(): label.text() for label in labels}
+        captured["label_order"] = [label.objectName() for label in labels]
+        captured["tagline_bold"] = next(
+            label.font().bold() for label in labels if label.objectName() == "AboutTagline"
+        )
+        captured["text"] = " ".join(label.text() for label in labels)
         return 0
 
     monkeypatch.setattr(QDialog, "exec", inspect_dialog)
@@ -339,6 +342,15 @@ def test_about_dialog_displays_the_canonical_version(
 
     assert captured["title"] == "About Play Store App Audit"
     assert captured["labels"]["AboutVersion"] == f"Version {__version__}"  # type: ignore[index]
+    assert captured["labels"]["AboutTagline"] == (  # type: ignore[index]
+        "Android App Inventory, Store Analysis & Maintenance Toolkit"
+    )
+    assert captured["label_order"][:3] == [  # type: ignore[index]
+        "AboutTitle",
+        "AboutVersion",
+        "AboutTagline",
+    ]
+    assert captured["tagline_bold"] is False
     assert "Created by MRC" in str(captured["text"])
     assert "Not affiliated with or endorsed by Google" in str(captured["text"])
     assert f'"{__version__}"' not in inspect.getsource(window._show_about)
