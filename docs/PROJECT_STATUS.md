@@ -1,189 +1,110 @@
 # Project Status
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 ## Published release
 
-- Latest published version: `v1.6.0`
-- Immutable release commit: `246acb15b8e9b2aa9155dc1c3a7c24dc32d19540`
+- Latest published version: `v1.7.0`
+- Immutable release commit: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`
 - Release class: Engineering Test Build (ETB), Windows x64 only
 - Signing: intentionally unsigned
-- GitHub Release title: `Play Store App Audit v1.6.0 (ETB Win x64)`
+- GitHub Release title: `Play Store App Audit v1.7.0 (Win x64 Only)`
+- Release-body heading: `Play Store App Audit v1.7.0 (Engineering Test Build - Windows x64 Only)`
 - Public project-defined assets: exactly 3
 
-Published v1.6.0 is immutable. Do not rebuild, retag, rewrite or replace its published commit, tag or assets. Earlier published releases remain immutable as well.
+Published v1.7.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, tag or assets. Earlier published releases remain immutable as well.
 
-## v1.6.0 release evidence
+## v1.7.0 release evidence
 
-The v1.6.0 release was built, assembled and published from one exact frozen `main` SHA: `246acb15b8e9b2aa9155dc1c3a7c24dc32d19540`.
+The release was built, assembled, tagged, published and re-downloaded from one exact frozen `main` SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
 
-Release gates and evidence:
-
-- post-merge Quality push run: `32543925562`, successful on Python 3.13 and 3.14;
-- Windows x64 build run: `32545213663`, successful on the same frozen SHA;
-- engineering release assembly run: `32547942460`, successful on the same frozen SHA;
-- final public release asset set: exactly three project-defined files;
-- annotated `v1.6.0` tag peels to the frozen SHA;
-- published assets were downloaded again after release and independently SHA-256 verified against `SHA256SUMS.txt`.
+- Final Quality push run: `32609018096`, successful on Python 3.13 and 3.14.
+- Final Windows x64 build run: `32609148943`, successful on the same frozen SHA.
+- Engineering release assembly run: `32610281618`, successful with the exact three-file ETB asset set.
+- Publish/post-publication verification run: `32610914851`, successful.
+- Annotated tag `v1.7.0` peels to the frozen SHA.
+- Published assets were re-downloaded and independently checksum-verified after publication.
 
 Published project-defined assets and SHA-256 values:
 
-- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`: `66e8c94bed69e53d16cf7784ab028089437078b8bc809c4385474ff83c0b55be`
-- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`: `0f068f20ef14e0e53bd4869c66ae6542725a5c34e390cebf804279a8b28b1165`
-- `SHA256SUMS.txt`: `0e7c7f6f1f290778139c47d929bb3ea0758022eb1199b9911c54893dd6dff8c5`
+- `PlayStoreAppAudit-v1.7.0-windows-x64.zip`: `142b15e40fba3d7ed8b29e1e37b366551dde3cf65e18608434869f4528d50c1b`
+- `PlayStoreAppAudit-v1.7.0-third-party-sources.tar.xz`: `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458`
+- `SHA256SUMS.txt`: `984d81cc77f60e10b1033199ba71b4737adb0b272c416d268a8e5025226e2ae9`
 
 ## Current development baseline
 
-- Canonical application version remains `1.6.0` until a later release-profile/version freeze deliberately changes it.
-- Active planning/development cycle: `v1.7`.
-- Baseline entering the v1.7/v1.8 scope-policy update: `fefd2c766b2fa6cf034813e7c0adbc67779e4bcf`.
+- Canonical application version: `1.7.0` until a deliberate v1.8 version freeze changes it.
+- Active planning/development cycle: `v1.8`.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
 - Nuitka: 4.1.3.
 - UI: Qt Widgets using the platform/default QStyle.
-- Managed ADB behaviour remains read-only with respect to installed Android apps.
-- Default/recommended concurrent Store workers remain 16.
-- Store transport timeout remains 25 seconds.
-- Play Store icons remain experimental, opt-in and non-blocking throughout v1.7.
-- v1.7 release target: Windows x64 only.
+- Managed ADB remains read-only with respect to installed Android apps.
+- Default/recommended concurrent Store workers: 16.
+- Store transport timeout: 25 seconds.
 - v1.8 release target: Windows x64 only.
+- v1.9 release target: Windows x64 only.
+- v2.0 is the first planned return to multi-platform distribution. Production signing is the preferred target but is not guaranteed until provider/credential and end-to-end validation succeed.
 
-No v1.7 binary release has been frozen or built by the work recorded below.
+Always verify the live `main` SHA from GitHub or a freshly generated repository snapshot rather than treating this static document as a branch pointer.
 
-## v1.7 implemented on main
+## Shipped in v1.7.0
 
-### Responsive details panel
+- Responsive Details Panel with Auto/Right/Below placement and adaptive content layout.
+- Independent Store country and Store language resolution with host/device fallback semantics.
+- Structured per-app Store evidence and compact diagnostics with human-readable Notes.
+- Installer/source classification and filtering.
+- target/min SDK maintenance filters and compatibility-state filtering.
+- Versioned JSON export for all/visible results.
+- Saved audit profiles separated from result-filter state.
+- Conservative smart/incremental re-audit behavior plus targeted rechecks and Force full refresh.
+- Clear separation of Store audit history from phone inventory history and first-baseline wording.
+- Health Score promoted from experimental presentation to optional supported maintenance heuristic, still disabled by default.
 
-- Replaced the prominent Right/Below selector with a compact icon-based `Auto / Right / Below` control.
-- Preserved Right as the existing/default behavior; Auto is opt-in.
-- Added placement hysteresis so Auto does not oscillate around one resize threshold.
-- Made the details content independently responsive: narrow layouts flow vertically, while wide layouts use balanced logical columns and full-width notes.
-- Made details action buttons adapt between stacked and horizontal layouts.
+Play Store app icons remain experimental in v1.7.0 and are carried into v1.8 for graduation/hardening.
 
-Implemented through PR #84.
+## v1.8 planned scope
 
-### Store country and language semantics
+v1.8 is a Windows x64-only UX/productivity cycle.
 
-- Store country and Store language are now resolved independently.
-- Automatic country precedence is manual override, host/computer region, Android locale region only as a late fallback, then `US`.
-- Android locale region is explicitly not presented as Google Play account country.
-- Connected-phone Auto language follows the active Android system language when available.
-- File/list audits do not inherit stale phone locale context.
-- Manual Store country and Store language overrides remain authoritative.
+- Graduate Play Store icons from experimental to normal supported behavior, with any cache/CDN/offline/large-table hardening indicated by v1.7 observations.
+- Add saved filters / smart queries as reusable result-filter expressions, deliberately separate from audit profiles.
+- Add a richer compact dashboard / summary that complements rather than duplicates details, changes and filters.
+- Details Pane UX v2: allow hide/show and test replacing the three position buttons with one compact control/menu offering Auto, Right, Below and Hide.
+- Treat an Excel-like bottom `QStatusBar` as an alternative UX experiment if the primary Details Pane control concept is not attractive; possible uses include connected device/source identity, transient status and compact secondary view controls.
+- Review tooltip/statusTip consistency across icon-only and non-obvious controls; do not add redundant tooltips to already self-explanatory text buttons.
+- Redesign Advanced Settings because the current stacked `QGroupBox`/form presentation looks dated; favor clearer category navigation and less visual chrome while retaining native Qt widgets.
+- Perform a full menu/button/iconography/clarity audit and produce a report before implementing broad visual changes.
+- Review export-menu consistency and context-menu enable/disable behavior as part of the UX audit.
 
-Implemented through PR #85.
+## v1.9 distribution constraint
 
-### Per-app Store diagnostics
+v1.9 is also Windows x64 only. Product scope is intentionally not frozen yet, but do not introduce Windows ARM64/Linux/macOS release packaging for v1.9 unless a new explicit product decision changes the roadmap.
 
-- Store evidence now carries structured request path, scraper/HTML attempts, retry count, outcome and failure reason.
-- Terminal not-found is distinguished from transient/inconclusive failure.
-- The Details Panel shows a Store diagnostics section only when the row benefits from it.
-- Diagnostics are generated from structured evidence rather than parsing notes text.
+## v2.0 direction
 
-Implemented through PR #86.
+v2.0 is the first planned return to Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 release distribution. Ideally Windows and macOS packages will use production-trust signing/notarization, but this remains contingent on real credential/provider eligibility, cost and successful end-to-end validation. CLI/headless work remains v2.0-or-later scope.
 
-### Installer/source classification and filtering
+## Explicitly removed / not planned
 
-- Device metadata preserves the raw installer package separately from its display label.
-- Stable installer categories distinguish Google Play, alternative stores, sideloaded/package-installer installs, unknown/preinstalled and other installers.
-- Legacy data compatibility recognizes only exact previously emitted formats rather than arbitrary substrings.
-- Built-in installer filters are reachable from the final MainWindow filter menu.
+Do not reintroduce without a new explicit product decision:
 
-Implemented through PR #87 and the filter-menu restoration in PR #88.
-
-### SDK maintenance filters
-
-- Added session-level `targetSdk <= N` and `minSdk <= N` filters.
-- Added Modern, Aging target, Legacy target and Unknown compatibility-state filtering.
-- SDK filters combine with the other built-in filters using AND semantics.
-- SDK metadata is explicitly presented as compatibility/maintenance context, not a malware, security or trust score.
-
-Implemented through PR #88.
-
-### Versioned JSON export
-
-- Added machine-readable `play-store-app-audit/results` schema version 1.
-- JSON exports include application version, UTC generation timestamp, scope, context and full structured result rows.
-- Structured Store evidence and structured audit-change records are preserved rather than flattened to display text.
-- Both all-results and visible-results JSON export are available under File > Export Results.
-- Local source file paths are deliberately omitted from the export context.
-
-Implemented through PR #89.
-
-### Saved audit profiles
-
-- Added versioned saved audit profiles under Tools > Audit profiles.
-- Profiles preserve Store country/language, fallback countries, workers/cache settings, device-metadata options, history comparison, system-app exclusion, source expectation and view preset.
-- A saved country becomes an explicit country override when the profile is applied, making the profile reproducible across hosts.
-- Source expectation is advisory: applying a phone profile does not automatically start ADB, and applying a file profile does not open a file automatically.
-- Search text, result-filter presets, SDK filters and custom-column state are intentionally not part of audit profiles.
-
-Implemented through PR #90.
-
-### Conservative smart re-audit policy
-
-- Normal Run remains the smart/incremental path rather than introducing a second audit engine.
-- Only fresh exact-`available` results with a populated Store update date are eligible for cache reuse.
-- Regional-only, fallback-only, removed, anomalous, incomplete and failed/inconclusive checks remain live.
-- TTL remains a separate freshness gate.
-- Tools > Force full refresh explicitly bypasses cache for the run.
-- Existing targeted problematic-result rechecks remain available.
-- Versioned JSON export now describes the active smart re-audit/cache policy in machine-readable context.
-
-Implemented through PR #91.
-
-## v1.7 remaining release validation
-
-The v1.7 feature scope is closed. Remaining work is validation and release polish, not feature expansion.
-
-### Real-device validation
-
-The v1.7 country/language model should receive deliberate real-device validation before release freeze, especially:
-
-- host CH with Android `it-CH`, `de-CH`, `fr-CH` and `en-CH`;
-- host and Android region disagreement;
-- Android language with no usable region;
-- phone audit followed by file audit, verifying no phone-context leakage;
-- manual country and language overrides;
-- Store localization and multi-country fallback behavior.
-
-### Experimental icons during v1.7
-
-Continue observing cache growth, CDN failures, stale behavior, large-table responsiveness and offline/cache reuse during v1.7 validation. Icons remain opt-in and non-blocking for v1.7.
-
-The planned v1.8 direction is to graduate icons from experimental to a normal supported feature, with any final hardening required by v1.7 observations.
-
-## Removed feature
-
-Installed signing-certificate fingerprint capture/change detection is no longer planned for Play Store App Audit.
-
-The investigated `dumpsys package` signature/hash representation is not a SHA-256 certificate fingerprint, while a correct implementation would add disproportionate APK/certificate extraction complexity. Do not carry this item forward into v1.8 or later roadmaps unless a new product decision explicitly reopens it.
-
-## v1.8 planned carry-forward
-
-Items previously left pending are now assigned to v1.8 rather than remaining indefinite:
-
-- graduate Play Store icons from experimental to normal supported behavior;
-- saved filters / smart queries, with UX defined separately from saved audit profiles;
-- richer compact dashboard / summary, designed to complement rather than duplicate details, changes and filters.
-
-v1.8 remains Windows x64 only.
+- installed signing-certificate fingerprint/change detection;
+- automatic alternative-source association for unavailable Play apps;
+- audit watchlists/background monitoring;
+- predefined DACH/EU/worldwide country-set presets.
 
 ## Durable release and repository invariants
 
 - `main` is the only permanent branch.
-- Use short-lived branches and normal PR merge commits only.
-- Do not squash or rebase project PR history.
+- Use short-lived branches and normal PR merge commits only; no squash/rebase project history.
 - Before any local pull, run `git status --short`; if dirty, stop rather than resetting, stashing or discarding automatically.
 - Published releases are immutable.
 - Every release profile derives all artifacts from one exact frozen SHA.
-- Quality validation comes before recording a release SHA.
-- Tag only after candidate artifacts validate.
-- Tag pushes do not rebuild binaries.
+- Quality validation comes before freezing a release SHA; tag only after artifact validation; tag pushes do not rebuild binaries.
 - Strict legal/source validation remains fail-closed.
 - ADB remains read-only with respect to installed Android apps.
-- v1.7 and v1.8 are Windows x64 only.
-- Production signing and the full six-platform production release are not planned before v2.0 unless the roadmap is deliberately changed.
+- Every release finishes the permanent closure procedure in `RELEASE_CLOSURE.md`, including post-release context updates and safe local VS Code synchronization.
 
-See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md` and `HANDOFF_V1.7.md` for durable policy, planning and handoff context.
+See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md` and `HANDOFF_V1.8.md` for durable policy, planning and continuation context.

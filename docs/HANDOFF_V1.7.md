@@ -1,5 +1,7 @@
 # Play Store App Audit v1.7 Chat Handoff
 
+Status: v1.7.0 published and immutable. Active continuation moved to `docs/HANDOFF_V1.8.md`.
+
 Last updated: 2026-08-22
 
 ## Purpose
