@@ -79,7 +79,7 @@ class MainWindow(results_ui.ResultsWindow):
     def _populate_recent_source_menu(self, menu: QMenu, paths: list[str]) -> None:
         menu.clear()
         if not paths:
-            menu.addAction("No recent files").setEnabled(False)
+            menu.addAction("No Recent Files").setEnabled(False)
             return
         for path in paths:
             menu.addAction(Path(path).name, lambda _checked=False, p=path: self._load_input_file(p))
@@ -107,10 +107,10 @@ class MainWindow(results_ui.ResultsWindow):
         self.recent_sources_button = QToolButton()
         self.recent_sources_button.setObjectName("RecentSourcesButton")
         self.recent_sources_button.setToolTip("Recent sources")
-        self.recent_sources_button.setAccessibleName("Recent sources")
+        self.recent_sources_button.setAccessibleName("Recent Sources")
         self.recent_sources_button.setArrowType(Qt.ArrowType.DownArrow)
         self.recent_sources_button.setFixedWidth(30)
-        self.recent_sources_button_menu = QMenu("Recent sources", self.recent_sources_button)
+        self.recent_sources_button_menu = QMenu("Recent Sources", self.recent_sources_button)
         self.recent_sources_button.clicked.connect(self._show_recent_sources_menu)
         layout.addWidget(self.recent_sources_button)
 
@@ -135,12 +135,14 @@ class MainWindow(results_ui.ResultsWindow):
         self.scan_phone_options_button = QToolButton()
         self.scan_phone_options_button.setObjectName("ScanPhoneOptionsButton")
         self.scan_phone_options_button.setToolTip("Phone package list options")
-        self.scan_phone_options_button.setAccessibleName("Phone package list options")
+        self.scan_phone_options_button.setAccessibleName("Phone Package List Options")
         self.scan_phone_options_button.setArrowType(Qt.ArrowType.DownArrow)
         self.scan_phone_options_button.setFixedWidth(30)
-        self.scan_phone_options_menu = QMenu("Phone package list options", self.scan_phone_options_button)
+        self.scan_phone_options_menu = QMenu(
+            "Phone Package List Options", self.scan_phone_options_button
+        )
         self.scan_phone_package_export_action = self.scan_phone_options_menu.addAction(
-            "Export current phone package list as CSV…", self._export_phone_packages_csv
+            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
         )
         self.scan_phone_options_button.clicked.connect(self._show_scan_phone_options_menu)
         layout.addWidget(self.scan_phone_options_button)
@@ -181,7 +183,11 @@ class MainWindow(results_ui.ResultsWindow):
             return
 
         source_title = next(
-            (child for child in source_card.findChildren(QLabel) if child.text().strip() == "App source"),
+            (
+                child
+                for child in source_card.findChildren(QLabel)
+                if child.text().strip().casefold() == "app source"
+            ),
             None,
         )
         keep = {
@@ -201,27 +207,28 @@ class MainWindow(results_ui.ResultsWindow):
         source_layout.setSpacing(7)
 
         if source_title is None:
-            source_title = QLabel("App source")
+            source_title = QLabel("App Source")
             source_title.setObjectName("SectionTitle")
+        else:
+            source_title.setText("App Source")
         source_layout.addWidget(source_title)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(8)
 
-        self.choose_button.setText("Choose file")
+        self.choose_button.setText("Choose File")
         self.choose_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
-        self.scan_button.setText("Scan phone")
-        self.scan_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
+        self.scan_button.setText("Scan Phone")
 
-        row.addWidget(self._source_option("CSV / TSV / TXT file", self._file_source_controls()), 1)
+        row.addWidget(self._source_option("CSV / TSV / TXT File", self._file_source_controls()), 1)
         or_label = QLabel("or")
         or_label.setObjectName("Muted")
         row.addWidget(or_label)
-        row.addWidget(self._source_option("Android phone (ADB)", self._phone_source_controls()), 1)
+        row.addWidget(self._source_option("Android Phone (ADB)", self._phone_source_controls()), 1)
         row.addSpacing(10)
 
-        country_label = QLabel("Store country")
+        country_label = QLabel("Store Country")
         country_label.setToolTip("Google Play market detected from the desktop operating-system region.")
         row.addWidget(country_label)
         self.country_edit.setFixedWidth(54)

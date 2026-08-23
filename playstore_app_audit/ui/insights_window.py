@@ -163,25 +163,25 @@ class InsightsWindow(device_ui.DeviceWindow):
         bar.clear()
 
         file_menu = bar.addMenu("File")
-        choose = QAction("Choose app list…", self)
+        choose = QAction("Choose App List…", self)
         choose.triggered.connect(self._choose_input)
         file_menu.addAction(choose)
-        self._recent_menu = file_menu.addMenu("Recent sources")
+        self._recent_menu = file_menu.addMenu("Recent Sources")
         self._populate_recent_menu()
-        scan = QAction("Scan phone with ADB", self)
+        scan = QAction("Scan Phone with ADB", self)
         scan.triggered.connect(self._scan_phone)
         file_menu.addAction(scan)
-        export_phone = QAction("Export current phone package list as CSV…", self)
+        export_phone = QAction("Export Current Phone Package List as CSV…", self)
         export_phone.triggered.connect(self._export_phone_packages_csv)
         file_menu.addAction(export_phone)
         file_menu.addSeparator()
-        export_all = QAction("Export all results as CSV…", self)
+        export_all = QAction("Export All Results as CSV…", self)
         export_all.triggered.connect(self._export_results)
         file_menu.addAction(export_all)
-        export_visible = QAction("Export visible results as CSV…", self)
+        export_visible = QAction("Export Visible Results as CSV…", self)
         export_visible.triggered.connect(self._export_visible_results)
         file_menu.addAction(export_visible)
-        export_html = QAction("Export HTML report…", self)
+        export_html = QAction("Export HTML Report…", self)
         export_html.triggered.connect(self._export_html_report)
         file_menu.addAction(export_html)
         file_menu.addSeparator()
@@ -190,7 +190,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         file_menu.addAction(exit_action)
 
         view_menu = bar.addMenu("View")
-        view_presets = view_menu.addMenu("View preset")
+        view_presets = view_menu.addMenu("View Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
@@ -202,44 +202,44 @@ class InsightsWindow(device_ui.DeviceWindow):
             view_presets.addAction(action)
         self._view_action_group = group
 
-        self._filter_menu = view_menu.addMenu("Filter preset")
+        self._filter_menu = view_menu.addMenu("Filter Preset")
         self._populate_filter_menu()
-        view_menu.addAction("Save current filter as preset…", self._save_current_filter)
-        view_menu.addAction("Manage saved filter presets…", self._manage_saved_filters)
+        view_menu.addAction("Save Current Filter as Preset…", self._save_current_filter)
+        view_menu.addAction("Manage Saved Filter Presets…", self._manage_saved_filters)
         view_menu.addSeparator()
-        view_menu.addAction("Reset table layout", self._reset_table_layout)
+        view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
         tools = bar.addMenu("Tools")
-        tools.addAction("Advanced settings…", self._show_advanced_settings)
+        tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
-        tools.addAction("Force full refresh (ignore cache)", self._force_full_refresh)
+        tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device summary…", self._show_device_summary)
-        snapshots = tools.addMenu("Device snapshots")
-        snapshots.addAction("Save current device snapshot…", self._save_device_snapshot)
-        snapshots.addAction("Compare current device with snapshot…", self._compare_device_snapshot)
-        tools.addAction("Device inventory changes…", self._show_inventory_changes)
+        tools.addAction("Device Summary…", self._show_device_summary)
+        snapshots = tools.addMenu("Device Snapshots")
+        snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
+        snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)
+        tools.addAction("Device Inventory Changes…", self._show_inventory_changes)
         tools.addSeparator()
-        tools.addAction("Clear audit cache", self._clear_audit_cache)
-        tools.addAction("Clear previous-audit history", self._clear_audit_history)
+        tools.addAction("Clear Audit Cache", self._clear_audit_cache)
+        tools.addAction("Clear Previous-Audit History", self._clear_audit_history)
 
         help_menu = bar.addMenu("Help")
         help_menu.addAction(
-            "ADB setup guide…",
-            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
+            "ADB Setup Guide…",
+            lambda: self._show_text_help("ADB Setup Guide", device_insights.ADB_SETUP_GUIDE),
         )
         help_menu.addAction(
-            "How to export package CSV…",
-            lambda: self._show_text_help("Export package CSV", presentation.CSV_EXPORT_GUIDE),
+            "How to Export Package CSV…",
+            lambda: self._show_text_help("Export Package CSV", presentation.CSV_EXPORT_GUIDE),
         )
         help_menu.addAction(
-            "Health score methodology…",
-            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
+            "Health Score Methodology…",
+            lambda: self._show_text_help("Health Score Methodology", device_insights.HEALTH_SCORE_GUIDE),
         )
         help_menu.addSeparator()
-        help_menu.addAction("Check for updates…", self._check_for_updates)
-        help_menu.addAction("Create diagnostic bundle…", self._create_diagnostic_bundle)
+        help_menu.addAction("Check for Updates…", self._check_for_updates)
+        help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
         help_menu.addAction("About Play Store App Audit", self._show_about)
 
@@ -247,7 +247,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         self._recent_menu.clear()
         paths = device_insights.get_recent_sources()
         if not paths:
-            action = self._recent_menu.addAction("No recent files")
+            action = self._recent_menu.addAction("No Recent Files")
             action.setEnabled(False)
             return
         for path in paths:
@@ -297,7 +297,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
             self,
-            "Choose app list",
+            "Choose App List",
             "",
             "App lists (*.csv *.tsv *.txt);;CSV (*.csv);;Text (*.txt);;All files (*.*)",
         )
@@ -377,7 +377,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             f"Security patch: {d.get('security_patch', '?')}\n"
             f"Packages: {d.get('total_packages', 0)} total · {d.get('third_party_packages', 0)} third-party · {d.get('system_packages', 0)} system"
         )
-        QMessageBox.information(self, "Device summary", text)
+        QMessageBox.information(self, "Device Summary", text)
 
     def _save_device_snapshot(self) -> None:
         if not self.current_rows or self.source_mode != "device":
@@ -462,7 +462,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         removed = data.get("removed", [])
         if removed:
             lines += ["", "Removed packages:"] + [f"  {x}" for x in removed[:150]]
-        self._show_text_help("Device inventory changes", "\n".join(lines))
+        self._show_text_help("Device Inventory Changes", "\n".join(lines))
 
     # ---------- Filters ----------
     def _apply_filter_preset(self, name: str) -> None:
@@ -537,7 +537,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
-        dialog.setWindowTitle("Advanced settings")
+        dialog.setWindowTitle("Advanced Settings")
         dialog.resize(720, 760)
         root = QVBoxLayout(dialog)
         warning = QLabel(
@@ -731,7 +731,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     # ---------- Details/context ----------
     def _show_details(self, row: dict[str, Any]) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("App details")
+        dialog.setWindowTitle("App Details")
         dialog.resize(760, 720)
         root = QVBoxLayout(dialog)
         title = QLabel(
@@ -782,7 +782,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         open_store = QPushButton("Open in Google Play")
         open_store.setEnabled(bool(row.get("store_url")))
         open_store.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(str(row.get("store_url") or ""))))
-        open_info = QPushButton("Open App Info on phone")
+        open_info = QPushButton("Open App Info on Phone")
         open_info.setEnabled(self.source_mode == "device")
         open_info.clicked.connect(lambda: self._open_app_info(str(row.get("package_name") or "")))
         row_buttons.addWidget(open_store)
@@ -801,15 +801,15 @@ class InsightsWindow(device_ui.DeviceWindow):
             return
         self.table.selectRow(index.row())
         menu = QMenu(self)
-        details = menu.addAction("App details…")
-        recheck = menu.addAction("Force recheck this app")
+        details = menu.addAction("App Details…")
+        recheck = menu.addAction("Force Recheck This App")
         open_store = menu.addAction("Open in Google Play")
-        open_info = menu.addAction("Open App Info on phone")
+        open_info = menu.addAction("Open App Info on Phone")
         menu.addSeparator()
-        copy_package = menu.addAction("Copy package name")
-        copy_title = menu.addAction("Copy Play Store title")
+        copy_package = menu.addAction("Copy Package Name")
+        copy_title = menu.addAction("Copy Play Store Title")
         copy_url = menu.addAction("Copy Store URL")
-        copy_row = menu.addAction("Copy visible row")
+        copy_row = menu.addAction("Copy Visible Row")
 
         package_name = str(row.get("package_name") or "").strip()
         availability = self._row_action_availability(row)
@@ -915,7 +915,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     def _create_diagnostic_bundle(self) -> None:
         selected, _ = QFileDialog.getSaveFileName(
-            self, "Create diagnostic bundle", "PlayStoreAppAudit-diagnostics.zip", "ZIP (*.zip)"
+            self, "Create Diagnostic Bundle", "PlayStoreAppAudit-diagnostics.zip", "ZIP (*.zip)"
         )
         if not selected:
             return

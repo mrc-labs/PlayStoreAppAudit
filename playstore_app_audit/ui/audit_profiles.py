@@ -144,12 +144,12 @@ def _profile_tooltip(profile: dict[str, Any]) -> str:
 
 def populate_audit_profiles_menu(window: object, menu: QMenu) -> None:
     menu.clear()
-    menu.addAction("Save current audit settings as profile…", lambda: _save_current(window, menu))
+    menu.addAction("Save Current Audit Settings as Profile…", lambda: _save_current(window, menu))
 
     profiles = audit_profiles.load_profiles()
     if not profiles:
         menu.addSeparator()
-        empty = menu.addAction("No saved audit profiles")
+        empty = menu.addAction("No Saved Audit Profiles")
         empty.setEnabled(False)
         return
 
@@ -158,6 +158,6 @@ def populate_audit_profiles_menu(window: object, menu: QMenu) -> None:
         action = menu.addAction(name, lambda _checked=False, n=name: _apply_named(window, menu, n))
         action.setToolTip(_profile_tooltip(profile))
 
-    delete_menu = menu.addMenu("Delete profile")
+    delete_menu = menu.addMenu("Delete Profile")
     for name in profiles:
         delete_menu.addAction(name, lambda _checked=False, n=name: _delete_named(window, menu, n))

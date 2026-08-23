@@ -65,7 +65,7 @@ class AuditWindow(BaseWindow):
 
         source_card, source_layout = self._card()
         top_row.addWidget(source_card, 3)
-        source_title = QLabel("App source")
+        source_title = QLabel("App Source")
         source_title.setObjectName("SectionTitle")
         source_layout.addWidget(source_title)
 
@@ -73,25 +73,24 @@ class AuditWindow(BaseWindow):
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Choose a CSV / TSV / TXT file, or scan your Android phone")
         self.path_edit.setReadOnly(True)
-        self.choose_button = QPushButton("Choose file")
+        self.choose_button = QPushButton("Choose File")
         self.choose_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
         self.choose_button.clicked.connect(self._choose_input)
-        self.scan_button = QPushButton("Scan phone with ADB")
-        self.scan_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
+        self.scan_button = QPushButton("Scan Phone with ADB")
         self.scan_button.clicked.connect(self._scan_phone)
         source_line.addWidget(self.path_edit, 1)
         source_line.addWidget(self.choose_button)
         source_line.addWidget(self.scan_button)
         source_layout.addLayout(source_line)
 
-        self.exclude_system_source_check = QCheckBox("Exclude system apps when loading / scanning")
+        self.exclude_system_source_check = QCheckBox("Exclude System Apps When Loading / Scanning")
         source_settings = getattr(self, "user_settings", {})
         self.exclude_system_source_check.setChecked(
             bool(source_settings.get("exclude_system_source", True))
         )
         self.exclude_system_source_check.setToolTip(
             "ADB: load third-party packages only. CSV: remove packages classified as system while loading. "
-            "Leave disabled to load everything and use 'Hide system apps' only as a table filter."
+            "Leave disabled to load everything and use 'Hide System Apps' only as a table filter."
         )
         source_layout.addWidget(self.exclude_system_source_check)
 
@@ -113,7 +112,7 @@ class AuditWindow(BaseWindow):
         self.country_edit = QLineEdit(detect_windows_country())
         self.country_edit.setMaxLength(2)
         self.country_edit.setFixedWidth(70)
-        self.country_edit.setToolTip("Google Play market, detected from Windows Region.")
+        self.country_edit.setToolTip("Google Play market detected from the Windows region.")
         settings_grid.addWidget(self.country_edit, 0, 1)
 
         settings_grid.addWidget(QLabel("Parallel threads"), 0, 2)
@@ -132,13 +131,13 @@ class AuditWindow(BaseWindow):
         action_row = QHBoxLayout()
         action_row.setSpacing(8)
         root.addLayout(action_row)
-        self.run_button = QPushButton("Run Play Store audit")
+        self.run_button = QPushButton("Run Play Store Audit")
         self.run_button.setObjectName("Primary")
         self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         self.run_button.clicked.connect(self._start_audit)
         action_row.addWidget(self.run_button, 1)
 
-        self.export_button = QPushButton("Export results")
+        self.export_button = QPushButton("Export Results")
         self.export_button.setEnabled(False)
         self.export_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
         self.export_button.clicked.connect(self._export_results)
@@ -163,12 +162,12 @@ class AuditWindow(BaseWindow):
         root.addWidget(results_card, 1)
 
         toolbar = QHBoxLayout()
-        self.summary_label = QLabel("No results yet")
+        self.summary_label = QLabel("No Results Yet")
         self.summary_label.setObjectName("SectionTitle")
         toolbar.addWidget(self.summary_label)
         toolbar.addStretch(1)
 
-        self.hide_system_check = QCheckBox("Hide system apps")
+        self.hide_system_check = QCheckBox("Hide System Apps")
         self.hide_system_check.setChecked(True)
         self.hide_system_check.toggled.connect(self._on_hide_system_changed)
         toolbar.addWidget(self.hide_system_check)
@@ -187,6 +186,7 @@ class AuditWindow(BaseWindow):
         self.all_chip.setObjectName("CriticalityButton")
         self.all_chip.setCheckable(True)
         self.all_chip.setChecked(True)
+        self.all_chip.setToolTip("Show all result classifications.")
         self.all_chip.clicked.connect(lambda _checked=False: self._set_criticality_filter(None))
         chip_row.addWidget(self.all_chip)
 
@@ -196,6 +196,7 @@ class AuditWindow(BaseWindow):
             button = QPushButton(f"{info['button']} 0")
             button.setObjectName("CriticalityButton")
             button.setCheckable(True)
+            button.setToolTip(str(info["tooltip"]))
             button.setStyleSheet(
                 f"QPushButton {{background:{info['background']}; color:{info['foreground']}; "
                 f"border:1px solid {info['background']};}}"
@@ -207,13 +208,6 @@ class AuditWindow(BaseWindow):
             chip_row.addWidget(button)
         chip_row.addStretch(1)
         results_layout.addLayout(chip_row)
-
-        legend = QLabel(
-            "Removed = no Store listing  •  Stale = >730d  •  Aging = >365–730d  •  "
-            "Anomaly = unusual Store availability  •  Other = unknown/error  •  Current = ≤365d"
-        )
-        legend.setObjectName("Muted")
-        results_layout.addWidget(legend)
 
         self.table = QTableView()
         self.table.setModel(self.proxy)
@@ -227,6 +221,10 @@ class AuditWindow(BaseWindow):
         self.table.horizontalHeader().setSectionsMovable(True)
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table.horizontalHeader().setToolTip(
+            "Click a column header to sort, or drag it to reorder columns."
+        )
+        self.table.setToolTip("Double-click a result row to open its Google Play page.")
         self.table.doubleClicked.connect(self._open_selected_store_url)
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         results_layout.addWidget(self.table, 1)
@@ -235,12 +233,6 @@ class AuditWindow(BaseWindow):
         for column, width in enumerate(widths):
             self.table.setColumnWidth(column, width)
 
-        tip = QLabel(
-            "Tip: click headers to sort, drag headers to reorder columns, double-click a row to open Google Play."
-        )
-        tip.setObjectName("Muted")
-        results_layout.addWidget(tip)
-
     def _set_busy(self, busy: bool) -> None:
         super()._set_busy(busy)
         self.exclude_system_source_check.setEnabled(not busy)
@@ -248,7 +240,7 @@ class AuditWindow(BaseWindow):
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
             self,
-            "Choose app list",
+            "Choose App List",
             "",
             "App lists (*.csv *.tsv *.txt);;CSV (*.csv);;Text (*.txt);;All files (*.*)",
         )

@@ -21,12 +21,12 @@ SUBTITLE = (
     "Check Android packages against Google Play, classify update risk and inspect everything in one table."
 )
 RESULT_EXPORTS = [
-    "Export all results as CSV…",
-    "Export visible results as CSV…",
-    "Export all results as HTML…",
-    "Export visible results as HTML…",
-    "Export all results as versioned JSON…",
-    "Export visible results as versioned JSON…",
+    "Export All Results as CSV…",
+    "Export Visible Results as CSV…",
+    "Export All Results as HTML…",
+    "Export Visible Results as HTML…",
+    "Export All Results as Versioned JSON…",
+    "Export Visible Results as Versioned JSON…",
 ]
 
 
@@ -77,7 +77,7 @@ def test_recent_sources_split_control_and_file_menu_stay_synchronised(
     controls = window.recent_sources_button.parentWidget().layout()
     assert controls.itemAt(0).widget() is window.choose_button
     assert controls.itemAt(1).widget() is window.recent_sources_button
-    assert window.choose_button.text() == "Choose file"
+    assert window.choose_button.text() == "Choose File"
     assert window.recent_sources_button.toolTip() == "Recent sources"
     assert _action_texts(window.recent_menu) == ["recent.csv"]
     assert _action_texts(window.recent_sources_button_menu) == ["recent.csv"]
@@ -91,7 +91,7 @@ def test_empty_recent_source_menus_have_disabled_placeholder(
     for menu in (window.recent_menu, window.recent_sources_button_menu):
         actions = menu.actions()
         assert len(actions) == 1
-        assert actions[0].text() == "No recent files"
+        assert actions[0].text() == "No Recent Files"
         assert not actions[0].isEnabled()
 
 
@@ -109,28 +109,28 @@ def test_missing_recent_files_are_still_filtered(monkeypatch: pytest.MonkeyPatch
 
 def test_file_menu_and_export_results_hierarchy(window: MainWindow) -> None:
     assert _action_structure(window.file_menu) == [
-        "Choose app list…",
-        "Recent sources",
-        "Scan phone with ADB",
-        "Export current phone package list as CSV…",
+        "Choose App List…",
+        "Recent Sources",
+        "Scan Phone with ADB",
+        "Export Current Phone Package List as CSV…",
         None,
-        "Run Play Store audit",
+        "Run Play Store Audit",
         "Export Results",
         "Clear Results",
         None,
         "Exit",
     ]
     assert _action_structure(window.file_export_results_menu) == [
-        "Export all results as CSV…",
-        "Export visible results as CSV…",
+        "Export All Results as CSV…",
+        "Export Visible Results as CSV…",
         None,
-        "Export all results as HTML…",
-        "Export visible results as HTML…",
+        "Export All Results as HTML…",
+        "Export Visible Results as HTML…",
         None,
-        "Export all results as versioned JSON…",
-        "Export visible results as versioned JSON…",
+        "Export All Results as Versioned JSON…",
+        "Export Visible Results as Versioned JSON…",
     ]
-    assert "Export current phone package list as CSV…" not in _action_texts(
+    assert "Export Current Phone Package List as CSV…" not in _action_texts(
         window.file_export_results_menu
     )
 
@@ -162,7 +162,11 @@ def test_file_and_main_run_actions_use_same_canonical_handler(
     created.scan_button.click()
     created.run_button.click()
     created.clear_button.click()
-    next(action for action in created.file_menu.actions() if action.text() == "Run Play Store audit").trigger()
+    next(
+        action
+        for action in created.file_menu.actions()
+        if action.text() == "Run Play Store Audit"
+    ).trigger()
     next(action for action in created.file_menu.actions() if action.text() == "Clear Results").trigger()
     assert choose_calls == [created]
     assert scan_calls == [created]
@@ -248,10 +252,41 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
     assert button.minimumWidth() > text_width
 
 
+def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
+    assert _action_structure(window.view_menu) == [
+        "View Preset",
+        None,
+        "Filter Preset",
+        "SDK Maintenance Filter…",
+        "Clear SDK Filter",
+        None,
+        "Reset Table Layout",
+    ]
+    assert "Old Apps" in _action_texts(window._filter_menu)
+    assert "Alternative Stores" in _action_texts(window._filter_menu)
+
+    visible_labels = [
+        label.text()
+        for label in window.centralWidget().findChildren(QLabel)
+        if label.isVisibleTo(window.centralWidget())
+    ]
+    assert not any(text.startswith("Removed =") for text in visible_labels)
+    assert not any(text.startswith("Tip: click headers") for text in visible_labels)
+
+    assert not window.choose_button.icon().isNull()
+    assert window.scan_button.icon().isNull()
+    assert window.all_chip.toolTip() == "Show all result classifications."
+    assert window.criticality_buttons["red"].toolTip().startswith("Show apps")
+    assert "sort" in window.table.horizontalHeader().toolTip()
+    assert "Double-click" in window.table.toolTip()
+    assert window.recent_sources_button.toolTip() == "Recent sources"
+    assert window.scan_phone_options_button.toolTip() == "Phone package list options"
+
+
 def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     window: MainWindow,
 ) -> None:
-    assert window.export_button.text() == "Export results"
+    assert window.export_button.text() == "Export Results"
     assert window.export_button.menu() is window._export_results_menu
     assert _action_texts(window.export_button.menu()) == RESULT_EXPORTS
     assert window.clear_button.text() == "Clear"
@@ -259,23 +294,23 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert not window.export_button.isEnabled()
     assert not window.clear_button.isEnabled()
     assert _action_structure(window.tools_menu) == [
-        "Advanced settings…",
-        "Audit profiles",
+        "Advanced Settings…",
+        "Audit Profiles",
         None,
-        "Force full refresh (ignore cache)",
+        "Force Full Refresh (Ignore Cache)",
         "Recheck Removed / Anomaly / Other",
         None,
-        "Device summary…",
-        "Device snapshots",
-        "Device inventory changes…",
+        "Device Summary…",
+        "Device Snapshots",
+        "Device Inventory Changes…",
         None,
-        "Data maintenance",
+        "Data Maintenance",
     ]
     assert _action_texts(window.data_maintenance_menu) == [
-        "Clear audit cache",
-        "Clear previous-audit history",
+        "Clear Audit Cache",
+        "Clear Previous-Audit History",
     ]
-    assert "Force full refresh (ignore cache)" not in _action_texts(
+    assert "Force Full Refresh (Ignore Cache)" not in _action_texts(
         window.data_maintenance_menu
     )
 
@@ -423,9 +458,9 @@ def test_scan_phone_split_control_tracks_current_phone_inventory(
     controls = window.scan_phone_options_button.parentWidget().layout()
     assert controls.itemAt(0).widget() is window.scan_button
     assert controls.itemAt(1).widget() is window.scan_phone_options_button
-    assert window.scan_button.text() == "Scan phone"
+    assert window.scan_button.text() == "Scan Phone"
     assert _action_texts(window.scan_phone_options_menu) == [
-        "Export current phone package list as CSV…"
+        "Export Current Phone Package List as CSV…"
     ]
     assert not window.scan_phone_package_export_action.isEnabled()
     assert not window.file_phone_package_export_action.isEnabled()
@@ -471,25 +506,25 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         lambda *_args: pytest.fail("Static guides must use the rich-help dialog"),
     )
     assert _action_structure(window.help_menu) == [
-        "ADB setup guide…",
-        "How to import an app list…",
+        "ADB Setup Guide…",
+        "How to Import an App List…",
         None,
-        "Health score methodology…",
+        "Health Score Methodology…",
         None,
-        "Check for updates…",
-        "Create diagnostic bundle…",
+        "Check for Updates…",
+        "Create Diagnostic Bundle…",
         None,
         "About Play Store App Audit",
     ]
     actions = {action.text(): action for action in window.help_menu.actions()}
-    actions["ADB setup guide…"].trigger()
-    actions["How to import an app list…"].trigger()
-    actions["Health score methodology…"].trigger()
+    actions["ADB Setup Guide…"].trigger()
+    actions["How to Import an App List…"].trigger()
+    actions["Health Score Methodology…"].trigger()
 
     assert [title for title, _text in opened] == [
-        "ADB setup guide",
-        "How to import an app list",
-        "Health score methodology",
+        "ADB Setup Guide",
+        "How to Import an App List",
+        "Health Score Methodology",
     ]
     assert "USB debugging" in opened[0][1]
     assert "Read-only use" in opened[0][1]

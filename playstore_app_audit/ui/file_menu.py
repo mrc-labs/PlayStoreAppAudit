@@ -32,21 +32,21 @@ def populate_result_export_menu(
     export_visible_json: Callable[[], None],
 ) -> ResultExportActions:
     """Populate the canonical all/visible result export structure."""
-    all_csv = export_menu.addAction("Export all results as CSV…", export_all_csv)
+    all_csv = export_menu.addAction("Export All Results as CSV…", export_all_csv)
     visible_csv = export_menu.addAction(
-        "Export visible results as CSV…", export_visible_csv
+        "Export Visible Results as CSV…", export_visible_csv
     )
     export_menu.addSeparator()
-    all_html = export_menu.addAction("Export all results as HTML…", export_all_html)
+    all_html = export_menu.addAction("Export All Results as HTML…", export_all_html)
     visible_html = export_menu.addAction(
-        "Export visible results as HTML…", export_visible_html
+        "Export Visible Results as HTML…", export_visible_html
     )
     export_menu.addSeparator()
     all_json = export_menu.addAction(
-        "Export all results as versioned JSON…", export_all_json
+        "Export All Results as Versioned JSON…", export_all_json
     )
     visible_json = export_menu.addAction(
-        "Export visible results as versioned JSON…", export_visible_json
+        "Export Visible Results as Versioned JSON…", export_visible_json
     )
     return ResultExportActions(
         menu=export_menu,
@@ -68,7 +68,7 @@ def add_result_actions(
     export_visible_json: Callable[[], None],
 ) -> ResultActions:
     """Add the canonical contiguous Run / Export / Clear result section."""
-    run_action = file_menu.addAction("Run Play Store audit", run_audit)
+    run_action = file_menu.addAction("Run Play Store Audit", run_audit)
     export_menu = file_menu.addMenu("Export Results")
     exports = populate_result_export_menu(
         export_menu,

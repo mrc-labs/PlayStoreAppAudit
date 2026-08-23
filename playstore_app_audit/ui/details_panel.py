@@ -438,7 +438,7 @@ class AppDetailsPanel(QFrame):
 
         title_box = QVBoxLayout()
         title_box.setSpacing(1)
-        self.title_label = QLabel("App details")
+        self.title_label = QLabel("App Details")
         title_font = QFont(self.title_label.font())
         title_font.setBold(True)
         title_font.setPointSizeF(title_font.pointSizeF() + 1)
@@ -508,7 +508,7 @@ class AppDetailsPanel(QFrame):
         self.actions_layout = QVBoxLayout(self.actions_host)
         self.actions_layout.setContentsMargins(0, 0, 0, 0)
         self.actions_layout.setSpacing(7)
-        self.review_changes_button = QPushButton("Review audit changes")
+        self.review_changes_button = QPushButton("Review Audit Changes")
         self.review_changes_button.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
@@ -604,7 +604,7 @@ class AppDetailsPanel(QFrame):
     def clear(self) -> None:
         self._row = None
         self.icon_label.clear()
-        self.title_label.setText("App details")
+        self.title_label.setText("App Details")
         self.developer_label.clear()
         self.placeholder.show()
         for widget in self._section_widgets:

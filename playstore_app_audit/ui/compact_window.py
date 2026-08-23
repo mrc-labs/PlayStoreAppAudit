@@ -112,7 +112,7 @@ class CompactWindow(AuditWindow):
         self.setMinimumHeight(620)
         self.workers_spin.setValue(normalise_store_workers(self.user_settings.get("store_workers")))
 
-        self.exclude_system_source_check.setText("Exclude system apps from source")
+        self.exclude_system_source_check.setText("Exclude System Apps from Source")
         self.exclude_system_source_check.setToolTip(
             "Applied while loading a CSV/TSV/TXT file or scanning a phone with ADB. "
             "Turn it off if you want system apps included in the source list."
@@ -127,8 +127,8 @@ class CompactWindow(AuditWindow):
         self.exclude_system_source_check.setParent(source_card)
         if source_line is not None:
             source_line.addSpacing(10)
-            country_label = QLabel("Store country")
-            country_label.setToolTip("Google Play market, detected from Windows Region.")
+            country_label = QLabel("Store Country")
+            country_label.setToolTip("Google Play market detected from the Windows region.")
             source_line.addWidget(country_label)
             self.country_edit.setFixedWidth(58)
             source_line.addWidget(self.country_edit)
@@ -212,13 +212,6 @@ class CompactWindow(AuditWindow):
         self.all_chip.setFixedHeight(28)
         for button in self.criticality_buttons.values():
             button.setFixedHeight(28)
-        for index in range(results_layout.count()):
-            widget = results_layout.itemAt(index).widget()
-            if isinstance(widget, QLabel) and widget.text().startswith("Removed ="):
-                legend_font = QFont(widget.font())
-                legend_font.setPointSizeF(8.8)
-                widget.setFont(legend_font)
-                break
 
     def _visible_column_order(self) -> list[str]:
         columns = ["criticality"]
@@ -276,17 +269,17 @@ class CompactWindow(AuditWindow):
     def _build_menu(self) -> None:
         menu = self.menuBar()
         file_menu = menu.addMenu("File")
-        choose = QAction("Choose app list…", self)
+        choose = QAction("Choose App List…", self)
         choose.triggered.connect(self._choose_input)
         file_menu.addAction(choose)
-        scan = QAction("Scan phone with ADB", self)
+        scan = QAction("Scan Phone with ADB", self)
         scan.triggered.connect(self._scan_phone)
         file_menu.addAction(scan)
         file_menu.addSeparator()
-        export_all = QAction("Export all results…", self)
+        export_all = QAction("Export All Results…", self)
         export_all.triggered.connect(self._export_results)
         file_menu.addAction(export_all)
-        export_visible = QAction("Export visible results…", self)
+        export_visible = QAction("Export Visible Results…", self)
         export_visible.triggered.connect(self._export_visible_results)
         file_menu.addAction(export_visible)
         file_menu.addSeparator()
@@ -295,13 +288,13 @@ class CompactWindow(AuditWindow):
         file_menu.addAction(exit_action)
 
         tools = menu.addMenu("Tools")
-        advanced = QAction("Advanced settings…", self)
+        advanced = QAction("Advanced Settings…", self)
         advanced.triggered.connect(self._show_advanced_settings)
         tools.addAction(advanced)
-        clear_cache_action = QAction("Clear audit cache", self)
+        clear_cache_action = QAction("Clear Audit Cache", self)
         clear_cache_action.triggered.connect(self._clear_audit_cache)
         tools.addAction(clear_cache_action)
-        reset_layout = QAction("Reset table layout", self)
+        reset_layout = QAction("Reset Table Layout", self)
         reset_layout.triggered.connect(self._reset_table_layout)
         tools.addAction(reset_layout)
 
@@ -312,7 +305,7 @@ class CompactWindow(AuditWindow):
 
     def _show_advanced_settings(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("Advanced settings")
+        dialog.setWindowTitle("Advanced Settings")
         dialog.setMinimumWidth(560)
         root = QVBoxLayout(dialog)
 
@@ -471,10 +464,10 @@ class CompactWindow(AuditWindow):
         menu = QMenu(self)
         open_store = menu.addAction("Open in Google Play")
         menu.addSeparator()
-        copy_package = menu.addAction("Copy package name")
-        copy_title = menu.addAction("Copy Play Store title")
+        copy_package = menu.addAction("Copy Package Name")
+        copy_title = menu.addAction("Copy Play Store Title")
         copy_url = menu.addAction("Copy Store URL")
-        copy_row = menu.addAction("Copy visible row")
+        copy_row = menu.addAction("Copy Visible Row")
         chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
         if chosen is open_store:
             url = str(row.get("store_url") or "")
@@ -539,7 +532,7 @@ class CompactWindow(AuditWindow):
             self.run_button.setText("Resume")
             self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         else:
-            self.run_button.setText("Run Play Store audit")
+            self.run_button.setText("Run Play Store Audit")
             self.run_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
         self.run_button.setEnabled(True)
 
