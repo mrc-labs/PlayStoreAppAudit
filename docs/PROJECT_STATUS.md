@@ -97,6 +97,7 @@ Routine PR validation is limited to compileall, pytest, Ruff, lightweight Qt smo
 - Product identity and scope lock merged in PR `#105`; the repository description, README and About presentation use the approved informational tagline.
 - Actions housekeeping merged in PR `#106`; redundant v1.7 artifact copies were removed after lineage verification, while retention policy and published release material remained unchanged.
 - Action availability now derives from centralized local capability checks for source, inventory, all results, visible results, row fields and running operations. File and main-button result exports share one explicit CSV/HTML/versioned-JSON action definition, including identical all/visible variants.
+- Operational commands, buttons and table headings now use consistent Title Case while explanatory tooltips remain sentence case. The permanent classification legend and table tip were replaced by contextual chip/header/table help, and the misleading computer icon was removed from the clearly labelled Scan Phone action.
 
 ## v1.9 distribution constraint
 
