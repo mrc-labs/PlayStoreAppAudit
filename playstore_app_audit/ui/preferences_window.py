@@ -189,20 +189,22 @@ class PreferencesWindow(table_ui.TableWindow):
         bar.clear()
 
         file_menu = bar.addMenu("File")
-        file_menu.addAction("Choose app list…", self._choose_input)
-        self._recent_menu = file_menu.addMenu("Recent sources")
+        file_menu.addAction("Choose App List…", self._choose_input)
+        self._recent_menu = file_menu.addMenu("Recent Sources")
         self._populate_recent_menu()
-        file_menu.addAction("Scan phone with ADB", self._scan_phone)
-        file_menu.addAction("Export current phone package list as CSV…", self._export_phone_packages_csv)
+        file_menu.addAction("Scan Phone with ADB", self._scan_phone)
+        file_menu.addAction(
+            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
+        )
         file_menu.addSeparator()
-        file_menu.addAction("Export all results as CSV…", self._export_results)
-        file_menu.addAction("Export visible results as CSV…", self._export_visible_results)
-        file_menu.addAction("Export HTML report…", self._export_html_report)
+        file_menu.addAction("Export All Results as CSV…", self._export_results)
+        file_menu.addAction("Export Visible Results as CSV…", self._export_visible_results)
+        file_menu.addAction("Export HTML Report…", self._export_html_report)
         file_menu.addSeparator()
         file_menu.addAction("Exit", self.close)
 
         view_menu = bar.addMenu("View")
-        presets = view_menu.addMenu("View preset")
+        presets = view_menu.addMenu("View Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
@@ -214,39 +216,39 @@ class PreferencesWindow(table_ui.TableWindow):
             presets.addAction(action)
         self._view_action_group = group
         view_menu.addSeparator()
-        view_menu.addAction("Reset table layout", self._reset_table_layout)
+        view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
         tools = bar.addMenu("Tools")
-        tools.addAction("Advanced settings…", self._show_advanced_settings)
+        tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
-        tools.addAction("Force full refresh (ignore cache)", self._force_full_refresh)
+        tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device summary…", self._show_device_summary)
-        snapshots = tools.addMenu("Device snapshots")
-        snapshots.addAction("Save current device snapshot…", self._save_device_snapshot)
-        snapshots.addAction("Compare current device with snapshot…", self._compare_device_snapshot)
-        tools.addAction("Device inventory changes…", self._show_inventory_changes)
+        tools.addAction("Device Summary…", self._show_device_summary)
+        snapshots = tools.addMenu("Device Snapshots")
+        snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
+        snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)
+        tools.addAction("Device Inventory Changes…", self._show_inventory_changes)
         tools.addSeparator()
-        tools.addAction("Clear audit cache", self._clear_audit_cache)
-        tools.addAction("Clear previous-audit history", self._clear_audit_history)
+        tools.addAction("Clear Audit Cache", self._clear_audit_cache)
+        tools.addAction("Clear Previous-Audit History", self._clear_audit_history)
 
         help_menu = bar.addMenu("Help")
         help_menu.addAction(
-            "ADB setup guide…",
-            lambda: self._show_text_help("ADB setup guide", device_insights.ADB_SETUP_GUIDE),
+            "ADB Setup Guide…",
+            lambda: self._show_text_help("ADB Setup Guide", device_insights.ADB_SETUP_GUIDE),
         )
         help_menu.addAction(
-            "How to export package CSV…",
-            lambda: self._show_text_help("Export package CSV", presentation.CSV_EXPORT_GUIDE),
+            "How to Export Package CSV…",
+            lambda: self._show_text_help("Export Package CSV", presentation.CSV_EXPORT_GUIDE),
         )
         help_menu.addAction(
-            "Health score methodology…",
-            lambda: self._show_text_help("Health score methodology", device_insights.HEALTH_SCORE_GUIDE),
+            "Health Score Methodology…",
+            lambda: self._show_text_help("Health Score Methodology", device_insights.HEALTH_SCORE_GUIDE),
         )
         help_menu.addSeparator()
-        help_menu.addAction("Check for updates…", self._check_for_updates)
-        help_menu.addAction("Create diagnostic bundle…", self._create_diagnostic_bundle)
+        help_menu.addAction("Check for Updates…", self._check_for_updates)
+        help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
         help_menu.addAction("About Play Store App Audit", self._show_about)
 
@@ -254,7 +256,7 @@ class PreferencesWindow(table_ui.TableWindow):
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
-        dialog.setWindowTitle("Advanced settings")
+        dialog.setWindowTitle("Advanced Settings")
         dialog.resize(780, 800)
         dialog.setMinimumWidth(680)
         root = QVBoxLayout(dialog)

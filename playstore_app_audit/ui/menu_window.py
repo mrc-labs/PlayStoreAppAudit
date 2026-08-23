@@ -56,17 +56,17 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.file_menu = QMenu("File", bar)
         bar.addMenu(self.file_menu)
         self.file_choose_source_action = self.file_menu.addAction(
-            "Choose app list…", self._choose_input
+            "Choose App List…", self._choose_input
         )
-        self.recent_menu = QMenu("Recent sources", self.file_menu)
+        self.recent_menu = QMenu("Recent Sources", self.file_menu)
         self.file_menu.addMenu(self.recent_menu)
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan phone with ADB", self._scan_phone
+            "Scan Phone with ADB", self._scan_phone
         )
         self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export current phone package list as CSV…", self._export_phone_packages_csv
+            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
         self.file_result_actions = add_result_actions(
@@ -90,7 +90,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
         self.view_menu = QMenu("View", bar)
         bar.addMenu(self.view_menu)
-        self.view_presets_menu = QMenu("View preset", self.view_menu)
+        self.view_presets_menu = QMenu("View Preset", self.view_menu)
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
@@ -106,84 +106,86 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._view_action_group = self.view_action_group
 
         self.view_menu.addSeparator()
-        self._filter_menu = QMenu("Filter preset", self.view_menu)
+        self._filter_menu = QMenu("Filter Preset", self.view_menu)
         self.view_menu.addMenu(self._filter_menu)
         self._populate_filter_menu()
         self.sdk_filter_action = self.view_menu.addAction(
-            "SDK maintenance filter…", self._show_sdk_filter_dialog
+            "SDK Maintenance Filter…", self._show_sdk_filter_dialog
         )
         self.clear_sdk_filter_action = self.view_menu.addAction(
-            "Clear SDK filter", self._clear_sdk_filter
+            "Clear SDK Filter", self._clear_sdk_filter
         )
         self.clear_sdk_filter_action.setEnabled(sdk_maintenance.active_sdk_filter().active())
 
         self.view_menu.addSeparator()
-        self.reset_layout_action = self.view_menu.addAction("Reset table layout", self._reset_table_layout)
+        self.reset_layout_action = self.view_menu.addAction(
+            "Reset Table Layout", self._reset_table_layout
+        )
 
         self.tools_menu = QMenu("Tools", bar)
         bar.addMenu(self.tools_menu)
         self.advanced_settings_action = self.tools_menu.addAction(
-            "Advanced settings…", self._show_advanced_settings
+            "Advanced Settings…", self._show_advanced_settings
         )
-        self.audit_profiles_menu = QMenu("Audit profiles", self.tools_menu)
+        self.audit_profiles_menu = QMenu("Audit Profiles", self.tools_menu)
         self.tools_menu.addMenu(self.audit_profiles_menu)
         audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
         self.force_full_refresh_action = self.tools_menu.addAction(
-            "Force full refresh (ignore cache)", self._force_full_refresh
+            "Force Full Refresh (Ignore Cache)", self._force_full_refresh
         )
         self.recheck_problematic_action = self.tools_menu.addAction(
             "Recheck Removed / Anomaly / Other", self._recheck_problematic
         )
         self.tools_menu.addSeparator()
         self.device_summary_action = self.tools_menu.addAction(
-            "Device summary…", self._show_device_summary
+            "Device Summary…", self._show_device_summary
         )
-        self.snapshots_menu = QMenu("Device snapshots", self.tools_menu)
+        self.snapshots_menu = QMenu("Device Snapshots", self.tools_menu)
         self.tools_menu.addMenu(self.snapshots_menu)
         self.save_device_snapshot_action = self.snapshots_menu.addAction(
-            "Save current device snapshot…", self._save_device_snapshot
+            "Save Current Device Snapshot…", self._save_device_snapshot
         )
         self.compare_device_snapshot_action = self.snapshots_menu.addAction(
-            "Compare current device with snapshot…", self._compare_device_snapshot
+            "Compare Current Device with Snapshot…", self._compare_device_snapshot
         )
         self.device_inventory_changes_action = self.tools_menu.addAction(
-            "Device inventory changes…", self._show_inventory_changes
+            "Device Inventory Changes…", self._show_inventory_changes
         )
         self.tools_menu.addSeparator()
-        self.data_maintenance_menu = QMenu("Data maintenance", self.tools_menu)
+        self.data_maintenance_menu = QMenu("Data Maintenance", self.tools_menu)
         self.tools_menu.addMenu(self.data_maintenance_menu)
         self.clear_audit_cache_action = self.data_maintenance_menu.addAction(
-            "Clear audit cache", self._clear_audit_cache
+            "Clear Audit Cache", self._clear_audit_cache
         )
         self.clear_audit_history_action = self.data_maintenance_menu.addAction(
-            "Clear previous-audit history", self._clear_audit_history
+            "Clear Previous-Audit History", self._clear_audit_history
         )
 
         self.help_menu = QMenu("Help", bar)
         bar.addMenu(self.help_menu)
         self.help_menu.addAction(
-            "ADB setup guide…",
+            "ADB Setup Guide…",
             lambda: rich_help.show_rich_help(
-                self, "ADB setup guide", help_texts.ADB_SETUP_GUIDE_HTML
+                self, "ADB Setup Guide", help_texts.ADB_SETUP_GUIDE_HTML
             ),
         )
         self.help_menu.addAction(
-            "How to import an app list…",
+            "How to Import an App List…",
             lambda: rich_help.show_rich_help(
-                self, "How to import an app list", help_texts.IMPORT_APP_LIST_GUIDE_HTML
+                self, "How to Import an App List", help_texts.IMPORT_APP_LIST_GUIDE_HTML
             ),
         )
         self.help_menu.addSeparator()
         self.help_menu.addAction(
-            "Health score methodology…",
+            "Health Score Methodology…",
             lambda: rich_help.show_rich_help(
-                self, "Health score methodology", help_texts.HEALTH_SCORE_GUIDE_HTML
+                self, "Health Score Methodology", help_texts.HEALTH_SCORE_GUIDE_HTML
             ),
         )
         self.help_menu.addSeparator()
-        self.help_menu.addAction("Check for updates…", self._check_for_updates)
-        self.help_menu.addAction("Create diagnostic bundle…", self._create_diagnostic_bundle)
+        self.help_menu.addAction("Check for Updates…", self._check_for_updates)
+        self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
 
@@ -194,7 +196,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.filter_action_group = QActionGroup(self)
         self.filter_action_group.setExclusive(True)
         for name in device_insights.BUILTIN_FILTERS:
-            action = QAction(name, self, checkable=True)
+            action = QAction(name.title(), self, checkable=True)
             action.setChecked(name == self._active_filter_preset)
             action.triggered.connect(lambda _checked=False, n=name: self._apply_filter_preset(n))
             self.filter_action_group.addAction(action)
@@ -243,7 +245,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
     def _show_sdk_filter_dialog(self) -> None:
         current = sdk_maintenance.active_sdk_filter()
         dialog = QDialog(self)
-        dialog.setWindowTitle("SDK maintenance filter")
+        dialog.setWindowTitle("SDK Maintenance Filter")
         dialog.setMinimumWidth(500)
         root = QVBoxLayout(dialog)
 
@@ -285,7 +287,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         root.addLayout(form)
 
         buttons_row = QHBoxLayout()
-        clear = QPushButton("Clear filter")
+        clear = QPushButton("Clear Filter")
         buttons_row.addWidget(clear)
         buttons_row.addStretch(1)
         buttons = QDialogButtonBox(

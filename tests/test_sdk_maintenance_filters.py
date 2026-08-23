@@ -97,12 +97,12 @@ def test_main_window_exposes_builtin_installer_and_sdk_filters(
     try:
         actions = [action.text() for action in window._filter_menu.actions()]
         assert "Google Play" in actions
-        assert "Alternative stores" in actions
+        assert "Alternative Stores" in actions
         assert "Sideloaded" in actions
-        assert "Unknown / preinstalled" in actions
-        assert "Other installers" in actions
-        assert window.sdk_filter_action.text() == "SDK maintenance filter…"
-        assert window.clear_sdk_filter_action.text() == "Clear SDK filter"
+        assert "Unknown / Preinstalled" in actions
+        assert "Other Installers" in actions
+        assert window.sdk_filter_action.text() == "SDK Maintenance Filter…"
+        assert window.clear_sdk_filter_action.text() == "Clear SDK Filter"
     finally:
         window.close()
         app.processEvents()

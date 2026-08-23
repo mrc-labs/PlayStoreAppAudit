@@ -146,7 +146,7 @@ def rows_for_output(rows: list[dict[str, Any]], style: str | None = None) -> lis
 def concise_summary(rows: list[dict[str, Any]], visible_count: int | None = None) -> str:
     total = len(rows)
     if not total:
-        return "No results yet"
+        return "No Results Yet"
     visible = total if visible_count is None else max(0, int(visible_count))
     parts = [f"{visible}/{total} shown"]
     differences = sum(1 for row in rows if str(row.get("version_comparison") or "") == "Different")

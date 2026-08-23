@@ -512,7 +512,7 @@ def is_problematic(row: dict[str, Any]) -> bool:
 def dashboard_summary(rows: list[dict[str, Any]], visible_count: int | None = None) -> str:
     total = len(rows)
     if not total:
-        return "No results yet"
+        return "No Results Yet"
     counts = {
         key: sum(1 for row in rows if str(row.get("criticality_key") or "") == key)
         for key in ("green", "yellow", "orange", "red", "blue", "purple")

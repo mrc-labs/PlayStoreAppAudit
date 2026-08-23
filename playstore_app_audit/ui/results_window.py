@@ -514,8 +514,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         _clear_layout_keep_widgets(source_line, keep)
         self.path_edit.hide()
 
-        self.choose_button.setText("Choose file")
-        self.scan_button.setText("Scan phone")
+        self.choose_button.setText("Choose File")
+        self.scan_button.setText("Scan Phone")
 
         choices = QVBoxLayout()
         choices.setContentsMargins(0, 0, 0, 0)
@@ -533,7 +533,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         options = QHBoxLayout()
         options.setContentsMargins(0, 2, 0, 0)
         options.setSpacing(8)
-        country_label = QLabel("Store country")
+        country_label = QLabel("Store Country")
         country_label.setToolTip(
             "Google Play market: manual override first, otherwise computer region; "
             "Android locale region is only a late phone-scan fallback."
@@ -630,7 +630,7 @@ class ResultsWindow(menu_ui.MenuWindow):
                 self, visible=True
             ),
         )
-        self.export_button.setText("Export results")
+        self.export_button.setText("Export Results")
         self.export_button.setMenu(menu)
         self._export_results_menu = menu
 
@@ -639,16 +639,16 @@ class ResultsWindow(menu_ui.MenuWindow):
             return
         self.file_menu.clear()
         self.file_choose_source_action = self.file_menu.addAction(
-            "Choose app list…", self._choose_input
+            "Choose App List…", self._choose_input
         )
-        self.recent_menu = self.file_menu.addMenu("Recent sources")
+        self.recent_menu = self.file_menu.addMenu("Recent Sources")
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan phone with ADB", self._scan_phone
+            "Scan Phone with ADB", self._scan_phone
         )
         self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export current phone package list as CSV…", self._export_phone_packages_csv
+            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
         self.file_result_actions = add_result_actions(
