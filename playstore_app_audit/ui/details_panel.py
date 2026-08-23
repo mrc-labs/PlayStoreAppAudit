@@ -4,12 +4,22 @@ from collections.abc import Mapping
 from typing import Any
 
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFont, QIcon, QPainter, QPalette, QPen, QPixmap
+from PySide6.QtGui import (
+    QAction,
+    QActionGroup,
+    QDesktopServices,
+    QFont,
+    QIcon,
+    QPainter,
+    QPalette,
+    QPen,
+    QPixmap,
+)
 from PySide6.QtWidgets import (
-    QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -74,7 +84,7 @@ def _unique_text(items: list[dict[str, Any]], key: str, upper: bool = False) -> 
 
 def normalise_details_panel_position(value: object) -> str:
     position = _text(value).casefold()
-    if position in {"auto", "below"}:
+    if position in {"auto", "right", "below", "hidden"}:
         return position
     return "right"
 
@@ -85,7 +95,7 @@ def resolve_details_panel_position(
     current_resolved: object = "",
 ) -> str:
     position = normalise_details_panel_position(value)
-    if position != "auto":
+    if position in {"right", "below", "hidden"}:
         return position
 
     current = _text(current_resolved).casefold()
@@ -382,6 +392,9 @@ def _position_icon(kind: str, widget: QWidget) -> QIcon:
     if kind == "auto":
         draw_preview(2, 5, 14, 18, "right")
         draw_preview(20, 5, 14, 18, "below")
+    elif kind == "hidden":
+        draw_preview(4, 3, 28, 22, "right")
+        painter.drawLine(20, 2, 34, 25)
     else:
         draw_preview(4, 3, 28, 22, kind)
     painter.end()
@@ -409,19 +422,80 @@ class _DetailSection(QFrame):
         layout.addWidget(self.body)
 
 
-class AppDetailsPanel(QFrame):
+class DetailsPanelControl(QToolButton):
     position_changed = Signal(str)
-    review_changes_requested = Signal()
+
+    _LABELS = {
+        "auto": "Auto",
+        "right": "Right",
+        "below": "Below",
+        "hidden": "Hidden",
+    }
+    _DESCRIPTIONS = {
+        "auto": "Place the Details Panel automatically based on the available width.",
+        "right": "Place the Details Panel to the right of the results table.",
+        "below": "Place the Details Panel below the results table.",
+        "hidden": "Hide the Details Panel and return the full area to the results table.",
+    }
 
     def __init__(self, position: str = "right", parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("DetailsControl")
+        self.setText("Details")
+        self.setAccessibleName("Details Panel")
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setIconSize(QSize(28, 22))
+        self.setMinimumHeight(32)
+
+        self.mode_menu = QMenu("Details Panel", self)
+        self.mode_menu.setAccessibleName("Details Panel")
+        self.position_group = QActionGroup(self)
+        self.position_group.setExclusive(True)
+        self.position_actions: dict[str, QAction] = {}
+        self._position = ""
+
+        for kind, label in self._LABELS.items():
+            action = QAction(_position_icon(kind, self), label, self, checkable=True)
+            action.setToolTip(self._DESCRIPTIONS[kind])
+            action.setStatusTip(self._DESCRIPTIONS[kind])
+            action.triggered.connect(
+                lambda _checked=False, selected=kind: self.set_position(selected)
+            )
+            self.position_group.addAction(action)
+            self.mode_menu.addAction(action)
+            self.position_actions[kind] = action
+        self.setMenu(self.mode_menu)
+        self.set_position(position, emit=False)
+
+    def position(self) -> str:
+        return self._position
+
+    def set_position(self, position: str, *, emit: bool = True) -> None:
+        selected = normalise_details_panel_position(position)
+        changed = selected != self._position
+        self._position = selected
+        self.position_actions[selected].setChecked(True)
+        self.setIcon(_position_icon(selected, self))
+        description = self._DESCRIPTIONS[selected]
+        self.setToolTip(description)
+        self.setAccessibleDescription(description)
+        if emit and changed:
+            self.position_changed.emit(selected)
+
+
+class AppDetailsPanel(QFrame):
+    review_changes_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
         self.setObjectName("AppDetailsPanel")
+        self.setAccessibleName("App Details")
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.setMinimumWidth(300)
         self.setMinimumHeight(210)
         self._row: dict[str, Any] | None = None
-        self._position = normalise_details_panel_position(position)
         self._content_mode = ""
         self._section_widgets: list[QWidget] = []
 
@@ -451,28 +525,6 @@ class AppDetailsPanel(QFrame):
         title_box.addWidget(self.developer_label)
         header.addLayout(title_box, 1)
 
-        self.position_group = QButtonGroup(self)
-        self.position_group.setExclusive(True)
-        self.position_buttons: dict[str, QToolButton] = {}
-        tooltips = {
-            "auto": "Panel position: Auto. Uses Right on wide windows and Below when space is tighter.",
-            "right": "Panel position: Right",
-            "below": "Panel position: Below",
-        }
-        for kind in ("auto", "right", "below"):
-            button = QToolButton(self)
-            button.setAutoRaise(False)
-            button.setCheckable(True)
-            button.setIcon(_position_icon(kind, button))
-            button.setIconSize(QSize(32, 25))
-            button.setFixedSize(40, 36)
-            button.setToolTip(tooltips[kind])
-            button.setAccessibleName(tooltips[kind].split(".", 1)[0])
-            button.clicked.connect(lambda _checked=False, selected=kind: self._select_position(selected))
-            self.position_group.addButton(button)
-            self.position_buttons[kind] = button
-            header.addWidget(button)
-        self.position_buttons[self._position].setChecked(True)
         root.addLayout(header)
 
         self.scroll = QScrollArea()
@@ -526,17 +578,6 @@ class AppDetailsPanel(QFrame):
         section = _DetailSection(title, self.sections_host)
         self._section_widgets.append(section)
         return section, section.body
-
-    def _select_position(self, position: str) -> None:
-        selected = normalise_details_panel_position(position)
-        if selected == self._position:
-            return
-        self._position = selected
-        self.position_buttons[selected].setChecked(True)
-        self.position_changed.emit(selected)
-
-    def position(self) -> str:
-        return self._position
 
     def content_layout_mode(self) -> str:
         return self._content_mode or "narrow"

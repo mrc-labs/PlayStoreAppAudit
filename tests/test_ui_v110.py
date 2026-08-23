@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
@@ -255,6 +256,7 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
 def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert _action_structure(window.view_menu) == [
         "View Preset",
+        "Details Panel",
         None,
         "Filter Preset",
         "SDK Maintenance Filter…",
@@ -281,6 +283,80 @@ def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert "Double-click" in window.table.toolTip()
     assert window.recent_sources_button.toolTip() == "Recent sources"
     assert window.scan_phone_options_button.toolTip() == "Phone package list options"
+
+
+def test_details_control_and_view_menu_share_modes_and_persistence(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    saved: list[dict[str, object]] = []
+    monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
+    monkeypatch.setattr(
+        state,
+        "save_settings",
+        lambda values: saved.append(dict(values)) or dict(values),
+    )
+
+    assert window.details_control.text() == "Details"
+    assert window.details_control.accessibleName() == "Details Panel"
+    assert window.details_control.menu() is window.details_panel_menu
+    assert window.details_panel_menu.menuAction() in window.view_menu.actions()
+    assert set(window.details_control.position_actions) == {
+        "auto",
+        "right",
+        "below",
+        "hidden",
+    }
+
+    window.details_control.position_actions["hidden"].trigger()
+    app.processEvents()
+    assert window._details_panel_position == "hidden"
+    assert window._details_panel_resolved_position == "hidden"
+    assert window.details_panel.isHidden()
+    assert window.details_control.position_actions["hidden"].isChecked()
+    assert saved[-1]["details_panel_position"] == "hidden"
+
+    window.details_control.position_actions["below"].trigger()
+    app.processEvents()
+    assert window._details_panel_position == "below"
+    assert window.details_splitter.orientation() == Qt.Orientation.Vertical
+    assert not window.details_panel.isHidden()
+    assert window.details_control.position_actions["below"].isChecked()
+    assert saved[-1]["details_panel_position"] == "below"
+
+
+@pytest.mark.parametrize(
+    ("width", "height", "expected"),
+    [
+        (1100, 700, "below"),
+        (1200, 760, "below"),
+        (1500, 900, "right"),
+        (1600, 900, "right"),
+    ],
+)
+def test_details_auto_mode_is_responsive_at_supported_resolutions(
+    window: MainWindow,
+    app: QApplication,
+    width: int,
+    height: int,
+    expected: str,
+) -> None:
+    window.resize(width, height)
+    window.show()
+    app.processEvents()
+    window._set_details_panel_position("auto", persist=False)
+    app.processEvents()
+
+    expected_orientation = (
+        Qt.Orientation.Horizontal if expected == "right" else Qt.Orientation.Vertical
+    )
+    assert window._details_panel_resolved_position == expected
+    assert window.details_splitter.orientation() == expected_orientation
+    assert window.details_control.isVisible()
+    assert window.details_panel.isVisible()
+    assert window.table.isVisible()
+    assert all(size > 0 for size in window.details_splitter.sizes())
 
 
 def test_main_export_button_exposes_canonical_menu_and_starts_disabled(

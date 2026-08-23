@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 import playstore_app_audit.services.app_icon_metadata as store_metadata
 import playstore_app_audit.services.change_overview as change_service
+import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.results_window as results_ui
 
@@ -25,12 +26,28 @@ def test_details_panel_position_normalises_unknown_values() -> None:
     assert details_ui.normalise_details_panel_position("below") == "below"
     assert details_ui.normalise_details_panel_position("Below") == "below"
     assert details_ui.normalise_details_panel_position("right") == "right"
+    assert details_ui.normalise_details_panel_position("hidden") == "hidden"
+    assert details_ui.normalise_details_panel_position("Hidden") == "hidden"
     assert details_ui.normalise_details_panel_position("unexpected") == "right"
+
+
+def test_details_position_setting_supports_hidden_and_repairs_invalid_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stored: dict[str, object] = {"details_panel_position": "Hidden"}
+    monkeypatch.setattr(state, "_read_json", lambda *_args: dict(stored))
+
+    assert state.DEFAULT_SETTINGS["details_panel_position"] == "right"
+    assert state.load_settings()["details_panel_position"] == "hidden"
+
+    stored["details_panel_position"] = "sideways"
+    assert state.load_settings()["details_panel_position"] == "right"
 
 
 def test_auto_position_uses_width_hysteresis() -> None:
     assert details_ui.resolve_details_panel_position("right", 800, "below") == "right"
     assert details_ui.resolve_details_panel_position("below", 1800, "right") == "below"
+    assert details_ui.resolve_details_panel_position("hidden", 1800, "right") == "hidden"
     assert details_ui.resolve_details_panel_position("auto", 1500) == "right"
     assert details_ui.resolve_details_panel_position("auto", 1200) == "below"
     assert details_ui.resolve_details_panel_position("auto", 1300, "right") == "right"
@@ -146,23 +163,31 @@ def test_normal_store_response_capture_reuses_developer_without_extra_request() 
     assert row["play_icon_url"] == "https://example.invalid/icon.png"
 
 
-def test_panel_position_control_is_compact_icon_based(app: QApplication) -> None:
-    panel = details_ui.AppDetailsPanel("right")
+def test_details_control_is_compact_accessible_and_menu_based(app: QApplication) -> None:
+    control = details_ui.DetailsPanelControl("right")
     changes: list[str] = []
-    panel.position_changed.connect(changes.append)
+    control.position_changed.connect(changes.append)
 
-    assert panel.position() == "right"
-    assert set(panel.position_buttons) == {"auto", "right", "below"}
-    assert all(button.icon().isNull() is False for button in panel.position_buttons.values())
-    assert all(button.text() == "" for button in panel.position_buttons.values())
-    assert all(button.width() >= 40 for button in panel.position_buttons.values())
-    assert all(button.iconSize().width() >= 32 for button in panel.position_buttons.values())
+    assert control.text() == "Details"
+    assert control.accessibleName() == "Details Panel"
+    assert control.mode_menu.title() == "Details Panel"
+    assert control.position() == "right"
+    assert set(control.position_actions) == {"auto", "right", "below", "hidden"}
+    assert all(not action.icon().isNull() for action in control.position_actions.values())
+    assert all(action.toolTip().endswith(".") for action in control.position_actions.values())
+    assert control.position_actions["right"].isChecked()
 
-    panel.position_buttons["auto"].click()
-    assert panel.position() == "auto"
-    assert panel.position_buttons["auto"].isChecked()
+    control.position_actions["auto"].trigger()
+    assert control.position() == "auto"
+    assert control.position_actions["auto"].isChecked()
     assert changes == ["auto"]
 
+    control.deleteLater()
+    app.processEvents()
+
+
+def test_panel_content_layout_remains_adaptive(app: QApplication) -> None:
+    panel = details_ui.AppDetailsPanel()
     panel._update_adaptive_layout(900)
     assert panel.content_layout_mode() == "wide"
     panel._update_adaptive_layout(700)
@@ -175,7 +200,7 @@ def test_panel_position_control_is_compact_icon_based(app: QApplication) -> None
 
 
 def test_panel_shows_selected_row_details_and_review_action(app: QApplication) -> None:
-    panel = details_ui.AppDetailsPanel("right")
+    panel = details_ui.AppDetailsPanel()
     assert all(widget.isHidden() for widget in panel._section_widgets)
     row = {
         "package_name": "com.example.app",
