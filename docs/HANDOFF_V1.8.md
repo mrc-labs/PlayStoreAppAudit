@@ -1,6 +1,6 @@
 # Play Store App Audit v1.8 Chat Handoff
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Purpose
 
@@ -36,6 +36,7 @@ The annotated `v1.7.0` tag peels to the frozen SHA and all three public assets w
 - Store workers default/recommended 16; allowed advanced range 4-32; Store timeout 25 seconds.
 - v1.8 and v1.9 releases are Windows x64 only and intentionally unsigned unless a new explicit product decision changes that.
 - v2.0 is the first planned return to multi-platform distribution; production signing is an ideal target but is not guaranteed until real provider/credential and end-to-end validation succeeds.
+- VS Code/Pylance Standard type checking is enabled locally as an additional development check. It does not alter runtime, build or release behavior and does not authorize a mass typing refactor.
 
 ## v1.7 features available as the v1.8 base
 
@@ -52,39 +53,62 @@ The annotated `v1.7.0` tag peels to the frozen SHA and all three public assets w
 
 ## v1.8 active scope
 
+The complete UI audit and final review were approved on 2026-08-24. Implement the reviewed direction through small, verifiable PRs and avoid architectural work motivated only by appearance.
+
+### UX consistency and action availability
+
+- Use shared local predicates for idle, source, device-inventory, result, visible-result, row/field and running-operation capabilities.
+- Synchronize menus, buttons and context menus from those predicates without adding a broad state-machine layer.
+- Use one canonical CSV/HTML/versioned-JSON export structure across the File menu and main Export control.
+- Normalize command naming in Title Case and tooltip explanations in sentence case.
+- Remove permanent chip legends and tips where contextual help preserves discoverability with less occupied space.
+
 ### Play Store icons
 
 Graduate Play Store icons from experimental to normal supported behavior, subject to final cache/CDN/offline/large-table hardening from v1.7 observations.
 
 ### Saved filters / smart queries
 
-Implement reusable result-filter expressions, deliberately separate from saved audit profiles. Define the UX before implementation.
+Implement reusable result-filter expressions, deliberately separate from saved Audit Profiles. Before any code, approve a separate UX/design review covering the model, fields/operators, persistence and application workflow. The design review belongs in `ux/v1.8-play-store-icons-and-smart-query-design` and must not imply that Smart Queries are already implemented.
 
-### Richer compact dashboard / summary
+### Details Panel UX v2
 
-Add useful at-a-glance information without duplicating Details Panel, change overview or filter state.
+Replace the current Auto/Right/Below buttons with one compact control whose visible text is **Details**:
 
-### Details Pane UX v2
-
-The current Auto/Right/Below buttons are readable and already have hover tooltips, but they consume too much header space. Explore:
-
-- ability to hide the Details Panel completely;
-- one compact Details control/menu instead of expanding three buttons to four;
-- candidate states Auto / Right / Below / Hide;
+- support Auto, Right, Below and Hidden;
+- use **Details Panel** in the View menu where the longer label improves clarity;
+- persist the mode and return the full splitter area to the table while Hidden;
 - keep platform-native Qt styling and avoid unnecessary theme dependencies;
-- `QDockWidget` only as an experiment, not a predetermined solution.
+- do not use `QDockWidget` or a new UI framework.
 
-### Status bar alternative
+### Display and Advanced Settings
 
-The user specifically means an Excel-like bottom status bar. Treat a true Qt `QStatusBar` as an alternative if the primary Details-control solution is not visually successful, not as a committed design. Possible uses: connected device/source identity on the left, transient status/progress centrally, compact secondary view controls on the right.
+Move App Icons, Custom Columns and Date Format to Display Settings under View. Improve the remaining Advanced Settings hierarchy with lighter native Qt sections for Store & Cache, Device, Audit & History, and Data & Storage while preserving current services, warnings and persistence. Health Score remains in Audit. Use a simple `QStackedWidget`/category navigation only if it remains natural for a Windows desktop dialog after visual preferences are removed.
 
-### Advanced Settings redesign
+### Targeted iconography and product identity
 
-The current functional layout looks old-style. Explore category navigation plus focused pages, less stacked `QGroupBox` chrome, and moving purely visual settings to View where appropriate.
+Replace only confusing or obsolete icons and do not add an icon framework or perform a global visual redesign. Keep the official product name **Play Store App Audit** and add **Android App Inventory, Store Analysis & Maintenance Toolkit** to the repository description, README and About dialog. In About, keep product name, version, tagline and description in that order, with a non-dominant tagline. Do not place it in the operational main window.
 
-### Full UX audit before broad changes
+### Actions housekeeping and build budget
 
-Produce a report before implementing broad visual changes. Review all menus, buttons, icons, tooltips/statusTips, shortcuts/mnemonics, export consistency, context-menu disabled states, status chips, search/filter discoverability and permanent tips/legends. Do not automatically implement the audit findings until reviewed.
+Identify canonical release runs and remove only redundant Actions artifacts after verification. Do not delete published Release assets, tags or release sources and do not add complex tracking. Retention changes are optional and require concrete evidence of a policy or implementation problem.
+
+Use compileall, pytest, Ruff, lightweight Qt smoke and targeted static checks for normal code PRs. Do not dispatch Windows/Nuitka builds for docs-only, product identity, naming, icon polish or housekeeping work. Run manual Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 only for high-impact UI milestones. Reserve Nuitka for the deliberately frozen release candidate unless an exception is explicitly justified.
+
+## Deferred UX evaluation
+
+Evaluate a complementary `QStatusBar`, a separate docking/`QDockWidget` prototype and a richer dashboard/status overview no earlier than v1.9. A status bar must not replace the Details Panel. A global Fluent-style redesign remains outside approved scope.
+
+## Approved v1.8 PR sequence
+
+1. `docs/v1.8-scope-lock-and-identity`
+2. `chore/v1.8-actions-housekeeping`
+3. `fix/v1.8-action-availability-and-export`
+4. `ux/v1.8-naming-density-icons`
+5. `feature/v1.8-details-control`
+6. `feature/v1.8-display-and-settings`
+7. `ux/v1.8-play-store-icons-and-smart-query-design`
+8. `release/v1.8.0`, only after the approved scope and any separately approved Smart Queries implementation are complete
 
 ## v1.9 and v2.0 distribution roadmap
 
@@ -114,6 +138,6 @@ Do not reintroduce without a new product decision:
 - Windows x64 ETB GitHub Release titles now use `(Win x64 Only)`; body headings continue to identify `Engineering Test Build - Windows x64 Only`.
 - Finish every release through `RELEASE_CLOSURE.md`, including post-release docs and safe local VS Code synchronization.
 
-## Starting the v1.8 development chat
+## Continuation and handoff generation
 
-After this post-release documentation PR is merged, synchronize the local VS Code checkout safely to canonical `main` and verify it is clean. Only then run `scripts/export_chat_handoff.ps1`; it automatically selects the newest `docs/HANDOFF_V*.md`, so the resulting ZIP should be a v1.8 handoff and include a freshly generated `REPOSITORY_SNAPSHOT.md`.
+After each merged phase, synchronize the local VS Code checkout safely to canonical `main` and keep this handoff aligned with current facts. Do not generate a continuation ZIP from a feature branch. At release closure, generate the new handoff only from the clean synchronized `main` checkout using `scripts/export_chat_handoff.ps1`; it selects the newest `docs/HANDOFF_V*.md` and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.

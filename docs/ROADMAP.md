@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Purpose
 
@@ -24,7 +24,37 @@ v1.7.0 is published and immutable as an unsigned Windows x64 Engineering Test Bu
 
 ## v1.8 active scope
 
-v1.8 is the next feature/polish cycle and remains Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates.
+v1.8 is the next feature/polish cycle and remains Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates. The pre-implementation UX audit and final review are complete; the directions below are approved for implementation in small, verifiable PRs.
+
+### UX consistency and action correctness
+
+- Define shared local availability predicates for idle state, source availability, device inventory, complete results, visible results, row/field capabilities and running operations.
+- Synchronize menu, button and context-menu actions from those predicates without introducing an application-wide state-machine rewrite.
+- Use one canonical export structure for the File menu and main Export control, with consistent CSV, HTML and versioned JSON actions.
+- Normalize command naming in Title Case and use sentence case for explanatory tooltips.
+- Replace permanent legends or tips with contextual help where this improves usable space without reducing discoverability.
+
+### Details Panel UX v2
+
+Replace the three permanent Auto/Right/Below controls with one compact control whose visible text is **Details**. Keep the current splitter-based Qt Widgets architecture and:
+
+- support Auto, Right, Below and Hidden modes;
+- use **Details Panel** in the View menu where the longer name improves clarity;
+- persist the selected mode and restore usable table space when the panel is Hidden;
+- keep hover help and accessibility metadata for the compact control;
+- validate the existing responsive behavior at 1100x700, 1200x760, 1500x900 and 1600x900.
+
+Do not use `QDockWidget` or a new UI framework for this work.
+
+### Display and Advanced Settings
+
+Move visual preferences such as App Icons, Custom Columns and Date Format to a focused Display Settings surface under View. Improve the remaining Advanced Settings hierarchy without changing service or persistence semantics. Candidate technical categories are Store & Cache, Device, Audit & History, and Data & Storage; Health Score remains part of the audit area.
+
+Use simple native Windows/Qt navigation. A `QStackedWidget` with a small category list is acceptable only if it remains clearer than a single lightweight dialog after visual preferences are removed.
+
+### Targeted naming, density and iconography polish
+
+Replace obsolete or confusing icons where a suitable existing Qt/application asset exists; otherwise prefer clear text over an inaccurate metaphor. Do not add an icon framework or perform a global visual redesign. Keep tooltips for icon-only or technical controls and avoid redundant help on self-explanatory text buttons.
 
 ### Graduate Play Store icons from experimental
 
@@ -32,49 +62,42 @@ Move Store icons from experimental/opt-in framing to normal supported behavior i
 
 ### Saved filters / smart queries
 
-Add reusable result-filter expressions that remain distinct from saved audit profiles. Example concepts include `Removed from Play AND still installed`, `Stale AND sideloaded`, target-SDK thresholds and installed/Store-version differences. Define the UX deliberately before implementation rather than reviving an older CRUD design automatically.
+Add reusable result-filter expressions that remain distinct from saved audit profiles. The UX/design review must define the model, fields, operators, persistence and application behavior before any Smart Queries code is written. Do not revive an older CRUD design automatically or combine unapproved implementation with the design review.
 
-### Richer compact dashboard / summary
+### Product identity
 
-Design a compact at-a-glance summary against the mature Details Panel, change overview, filters and smart queries. It must add information rather than duplicate existing UI.
+Keep the product name **Play Store App Audit** and use the official tagline **Android App Inventory, Store Analysis & Maintenance Toolkit** in the repository description, README and About dialog. In About, keep the hierarchy product name, version, tagline, then description; the tagline is informational rather than dominant. Do not add it to the operational main window.
 
-### Details Pane UX v2
+### Actions housekeeping
 
-Explore a more space-efficient control model:
+Identify canonical release runs and remove only redundant GitHub Actions artifacts after checking that they are no longer release inputs. Never delete GitHub Release assets, tags or release sources. Improve the post-release checklist without adding a complex tracking system. Change retention behavior only when concrete evidence demonstrates a policy or implementation problem.
 
-- allow the Details Panel to be hidden completely;
-- prefer testing one compact Details control/menu instead of expanding the current three buttons to four;
-- candidate menu states: Auto, Right, Below and Hide;
-- keep hover help for icon-only/non-obvious controls;
-- preserve Right as the current default unless testing justifies a deliberate change;
-- treat `QDockWidget` as an experiment only, not a committed redesign, because it may look too traditional relative to the current card/table UI.
+### CI and build budget
 
-### Status-bar alternative experiment
+Every code PR may run Ruff, pytest, compileall, the lightweight Qt smoke test and targeted static checks. Do not dispatch Windows/Nuitka packaging for documentation, product identity, naming, icon polish or housekeeping changes. Native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 are manual or limited to high-impact UI milestones. Full Windows x64 packaging is reserved for a demonstrated milestone need or the frozen release candidate; Nuitka remains a frozen-candidate tool unless an explicit exception is justified.
 
-If the primary Details-control concept is not visually successful, evaluate a real bottom `QStatusBar` similar to Excel's status bar as an alternative or complementary interaction surface. Possible content includes connected device/source identity on the left, transient status/progress in the middle, and compact secondary view controls on the right. Do not commit to moving Details placement controls there until the prototype is visually convincing and discoverable.
+VS Code/Pylance Standard type checking is useful local evidence for touched code. It is not a repository build setting and does not justify a general typing refactor.
 
-### Advanced Settings redesign
+### Approved implementation sequence
 
-The current stacked `QGroupBox`/`QFormLayout` presentation is functionally correct but visually dated. Explore a more modern native-Qt settings structure such as category navigation on the left and a focused settings page on the right, with less boxed visual chrome. Reconsider whether purely visual settings such as columns/icons belong under View rather than Advanced Settings.
-
-### Full UI/menu/button clarity audit
-
-Before broad implementation, produce a report covering:
-
-- File/View/Tools/Help menu grouping and naming;
-- primary and secondary button hierarchy;
-- icon consistency and use of native/modern desktop metaphors;
-- tooltip policy for icon-only/non-obvious controls and `statusTip` opportunities;
-- keyboard shortcuts/mnemonics where useful;
-- export-menu consistency across the main button and File menu;
-- right-click actions disabled when unavailable rather than silently doing nothing;
-- status chips, search/filter discoverability and redundant permanent tips/legends.
-
-Do not turn this audit into automatic code changes before the report is reviewed.
+1. `docs/v1.8-scope-lock-and-identity`
+2. `chore/v1.8-actions-housekeeping`
+3. `fix/v1.8-action-availability-and-export`
+4. `ux/v1.8-naming-density-icons`
+5. `feature/v1.8-details-control`
+6. `feature/v1.8-display-and-settings`
+7. `ux/v1.8-play-store-icons-and-smart-query-design`
+8. `release/v1.8.0`, only after approved scope and any separately approved Smart Queries implementation are complete
 
 ## v1.9
 
-v1.9 is also Windows x64 only. Its detailed product scope is intentionally left open until v1.8 is evaluated. Do not reintroduce multi-platform release packaging in v1.9 without an explicit roadmap/decision change.
+v1.9 is also Windows x64 only. Its detailed product scope remains open until v1.8 is evaluated. Candidate UX evaluations are:
+
+- a real bottom `QStatusBar` for complementary device/source, progress and operation feedback, not as a Details Panel replacement;
+- a separate `QDockWidget`/docking experiment only if v1.8 reveals a real need;
+- a richer dashboard/status overview only after its distinct user value is demonstrated.
+
+A global Fluent-style visual redesign remains outside approved scope. Do not reintroduce multi-platform release packaging in v1.9 without an explicit roadmap/decision change.
 
 ## v2.0 and later
 

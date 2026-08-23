@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Published release
 
@@ -46,6 +46,7 @@ Published project-defined assets and SHA-256 values:
 - v1.8 release target: Windows x64 only.
 - v1.9 release target: Windows x64 only.
 - v2.0 is the first planned return to multi-platform distribution. Production signing is the preferred target but is not guaranteed until provider/credential and end-to-end validation succeed.
+- VS Code/Pylance Standard type checking is available as a local development check. It does not change runtime, packaging or release configuration and is not a mandate for broad typing refactors.
 
 Always verify the live `main` SHA from GitHub or a freshly generated repository snapshot rather than treating this static document as a branch pointer.
 
@@ -66,17 +67,21 @@ Play Store app icons remain experimental in v1.7.0 and are carried into v1.8 for
 
 ## v1.8 planned scope
 
-v1.8 is a Windows x64-only UX/productivity cycle.
+v1.8 is a Windows x64-only UX/productivity cycle. The complete UI audit and final review are approved; implementation proceeds through small PRs with lightweight validation by default.
 
 - Graduate Play Store icons from experimental to normal supported behavior, with any cache/CDN/offline/large-table hardening indicated by v1.7 observations.
-- Add saved filters / smart queries as reusable result-filter expressions, deliberately separate from audit profiles.
-- Add a richer compact dashboard / summary that complements rather than duplicates details, changes and filters.
-- Details Pane UX v2: allow hide/show and test replacing the three position buttons with one compact control/menu offering Auto, Right, Below and Hide.
-- Treat an Excel-like bottom `QStatusBar` as an alternative UX experiment if the primary Details Pane control concept is not attractive; possible uses include connected device/source identity, transient status and compact secondary view controls.
-- Review tooltip/statusTip consistency across icon-only and non-obvious controls; do not add redundant tooltips to already self-explanatory text buttons.
-- Redesign Advanced Settings because the current stacked `QGroupBox`/form presentation looks dated; favor clearer category navigation and less visual chrome while retaining native Qt widgets.
-- Perform a full menu/button/iconography/clarity audit and produce a report before implementing broad visual changes.
-- Review export-menu consistency and context-menu enable/disable behavior as part of the UX audit.
+- Keep saved filters / Smart Queries in v1.8 scope, deliberately separate from Audit Profiles. Complete and approve a separate model/fields/operators/persistence/application UX review before implementation.
+- Replace the permanent Auto/Right/Below controls with one compact **Details** control and expose **Details Panel** under View, supporting Auto, Right, Below and Hidden without `QDockWidget`.
+- Correct action availability through shared local predicates for source, inventory, result, visible-result, row/field and running-operation state.
+- Use one canonical CSV/HTML/versioned-JSON export structure across File and the main Export control.
+- Apply the approved naming, tooltip, density and targeted iconography consistency pass without a global visual redesign or icon dependency.
+- Move App Icons, Custom Columns and Date Format to Display Settings and improve the remaining Advanced Settings hierarchy while preserving services and stored settings.
+- Add the official product tagline to the repository description, README and About dialog, keeping it informational and outside the operational main window.
+- Perform simple Actions housekeeping around canonical release runs and post-release cleanup. Retention changes remain optional and require concrete evidence.
+
+The richer dashboard/status overview, complementary `QStatusBar`, docking experiment and any global Fluent-style redesign are not v1.8 implementation work. The first three may be evaluated in v1.9; the global redesign remains outside approved scope.
+
+Routine PR validation is limited to compileall, pytest, Ruff, lightweight Qt smoke and targeted static checks. Manual native Windows resolution checks are reserved for high-impact UI work. Do not dispatch full Windows/Nuitka builds for documentation, identity, naming, icon polish or housekeeping; Nuitka is reserved for the deliberately frozen release candidate unless an explicit exception is justified.
 
 ## v1.9 distribution constraint
 
