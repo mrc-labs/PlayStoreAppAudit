@@ -89,8 +89,8 @@ def test_country_evidence_is_rendered_without_parsing_notes() -> None:
     lines = details_ui.evidence_lines(row)
 
     assert lines == [
-        "Primary: CH/it • available • HTTP 200 • google_play_scraper",
-        "Regional Fallback: US/en • not found or unavailable • English fallback • HTTP 404 • html_fallback",
+        "Primary market: CH/it • available",
+        "Additional markets checked: US",
     ]
 
 
@@ -115,14 +115,15 @@ def test_change_events_and_device_inventory_are_rendered_only_with_baseline() ->
     assert details_ui.change_lines(row) == [
         "Play Store version changed: 1.0 → 2.0",
         "Maintenance state changed: Current → Aging",
-        "Device inventory: New on device",
     ]
+    assert details_ui.device_inventory_line(row) == "Since previous phone scan: Newly installed"
 
     row[change_service.DEVICE_HISTORY_FLAG] = False
     assert details_ui.change_lines(row) == [
         "Play Store version changed: 1.0 → 2.0",
         "Maintenance state changed: Current → Aging",
     ]
+    assert details_ui.device_inventory_line(row) == "Inventory history: First phone-scan baseline"
 
 
 def test_normal_store_response_capture_reuses_developer_without_extra_request() -> None:
@@ -154,6 +155,8 @@ def test_panel_position_control_is_compact_icon_based(app: QApplication) -> None
     assert set(panel.position_buttons) == {"auto", "right", "below"}
     assert all(button.icon().isNull() is False for button in panel.position_buttons.values())
     assert all(button.text() == "" for button in panel.position_buttons.values())
+    assert all(button.width() >= 40 for button in panel.position_buttons.values())
+    assert all(button.iconSize().width() >= 32 for button in panel.position_buttons.values())
 
     panel.position_buttons["auto"].click()
     assert panel.position() == "auto"

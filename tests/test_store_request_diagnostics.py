@@ -196,12 +196,13 @@ def test_details_diagnostics_summarise_structured_evidence_only() -> None:
     lines = details_ui.store_diagnostic_lines(row)
     text = "\n".join(lines)
 
-    assert "Transient/inconclusive Store verification" in text
-    assert "Countries tried: CH → DE" in text
-    assert "Languages tried: it, de" in text
-    assert "Locale requests: 2 • total retries: 2" in text
-    assert "HTML confirmation/fallback: 2" in text
-    assert "html: timeout" in text
-    assert "html: 404" in text
+    assert lines == [
+        "Requests: 2 locale checks",
+        "Transport: scraper + HTML confirmation/fallback",
+        "Retries: 2",
+        "Inconclusive requests: 1",
+        "Reason: html: timeout",
+    ]
+    assert "html: 404" not in text
     assert "999" not in text
     assert "ZZ" not in text

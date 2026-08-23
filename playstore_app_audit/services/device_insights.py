@@ -90,7 +90,7 @@ The easiest method is simply to use 'Scan phone with ADB' inside Play Store App 
 The resulting packages.csv can be loaded later with Choose file or dragged into the app.
 """
 
-HEALTH_SCORE_GUIDE = """Health score (experimental)
+HEALTH_SCORE_GUIDE = """Health score
 
 The score is a transparent maintenance heuristic from 0 to 100. It is NOT a malware/security rating and it does not judge whether requested permissions are appropriate.
 
