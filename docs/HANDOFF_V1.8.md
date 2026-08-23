@@ -120,6 +120,8 @@ The action-availability/export implementation centralizes the final UI capabilit
 
 The naming/density/icon implementation applies consistent Title Case to operational commands, buttons and table headings while keeping explanatory tooltips in sentence case. It removes the permanent classification legend and table tip in favor of contextual help on classification chips, the table header and the table itself. The misleading computer icon was removed from Scan Phone; familiar native Open, Save and Play icons remain. A local Windows-native 1200x760 capture verified the resulting density and alignment without dispatching an Actions UI/build workflow.
 
+The Details Panel implementation replaces the three permanent position buttons with one compact **Details** menu that is also exposed as **View > Details Panel**. Its shared Auto, Right, Below and Hidden actions keep menu/control check state synchronized, persist one normalized setting and provide icons, tooltips and accessible text. Hidden only hides the existing splitter child and returns the full result area to the table. Native Windows captures verified Auto/Hidden behavior at 1100x700, 1200x760, 1500x900 and 1600x900; no docking framework or packaging change was introduced.
+
 ## v1.9 and v2.0 distribution roadmap
 
 - v1.9: Windows x64 only; detailed product scope not frozen yet.
