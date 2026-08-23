@@ -49,6 +49,7 @@ Before closing a release, the maintained context must make the following unambig
 - latest published version and immutable release SHA;
 - release class/profile, supported platform/architecture set and signing state;
 - final release workflow/build/assembly evidence when applicable;
+- canonical Actions run IDs, retained audit artifacts and the post-release storage check;
 - public asset names and verification/checksum evidence when applicable;
 - current canonical application version;
 - current `main` development baseline;
@@ -60,6 +61,20 @@ Before closing a release, the maintained context must make the following unambig
 - the correct handoff file and continuation instructions for subsequent VS Code/Codex/chat work.
 
 Do not leave a previous release described as the active development cycle after the next cycle begins.
+
+## Actions storage closure
+
+Complete the post-release Actions procedure in `CI_MAINTENANCE.md` before calling housekeeping finished:
+
+1. verify the published tag, exact source SHA, asset names and checksums;
+2. identify the canonical Quality, final build, assembler and publication runs;
+3. verify which Actions artifacts came from the canonical release lineage;
+4. confirm that no later workflow still consumes the candidate artifacts;
+5. delete only redundant Actions copies and keep the intended final build/assembler audit artifacts;
+6. re-check the published GitHub Release unchanged;
+7. record the remaining Actions artifact count/storage and any retention lesson in current context documentation.
+
+Failed/cancelled-run expiry and ordinary generation cleanup continue to follow `CI_MAINTENANCE.md`. Do not change retention settings without evidence that the existing policy is failing.
 
 ## Local VS Code synchronization procedure
 

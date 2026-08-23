@@ -25,6 +25,8 @@ Published project-defined assets:
 
 The annotated `v1.7.0` tag peels to the frozen SHA and all three public assets were re-downloaded and checksum-verified after publication. Do not rebuild, retag or replace them.
 
+On 2026-08-24 the v1.8 startup housekeeping revalidated that lineage, retained the canonical build artifact from run `32609148943` and assembler artifact from run `32610281618`, and deleted only redundant Actions copies from later runs `32610281923` and `32610918196`. Active artifact storage fell from 10 artifacts / 546.82 MiB to 8 artifacts / 274.01 MiB. The tag and three published Release assets remained unchanged; retention policy was not modified.
+
 ## Current technical baseline
 
 - Canonical app version remains `1.7.0` until a deliberate v1.8 release/version freeze.
@@ -109,6 +111,8 @@ Evaluate a complementary `QStatusBar`, a separate docking/`QDockWidget` prototyp
 6. `feature/v1.8-display-and-settings`
 7. `ux/v1.8-play-store-icons-and-smart-query-design`
 8. `release/v1.8.0`, only after the approved scope and any separately approved Smart Queries implementation are complete
+
+PR1 was merged normally as GitHub PR `#105` at merge commit `d821e01dc320ed24e086164163ad855753f519fd`. It synchronized the approved scope and product identity; the GitHub repository description now uses the official tagline.
 
 ## v1.9 and v2.0 distribution roadmap
 

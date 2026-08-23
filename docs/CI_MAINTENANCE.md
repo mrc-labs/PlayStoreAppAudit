@@ -37,14 +37,21 @@ The generational housekeeping policy is responsible for deleting redundant data 
 
 After every public release:
 
-1. verify the published release tag and permanent asset count;
-2. verify the published checksums and exact release SHA;
-3. delete Actions copies that are redundant after publication when they are no longer required by signing/assembly/publication;
-4. retain the GitHub Release assets unchanged;
-5. update `PROJECT_STATUS.md` with the published version and release-engineering lessons;
-6. review whether any workflow created unexpectedly large or duplicate artifacts/caches.
+1. verify the published release tag, exact release SHA, permanent asset count and checksums;
+2. record the canonical Quality, build, assembly and publication run IDs in `PROJECT_STATUS.md` and the active handoff;
+3. identify the artifact generations produced by the canonical build and assembler runs;
+4. confirm that no signing, assembly or publication job still needs the Actions copies;
+5. retain the latest useful final build and final assembler artifact for audit, unless a later deliberate policy supersedes them;
+6. delete repair, validation or repeated candidate artifacts that are redundant after publication, even when the duplicate run completed later than the canonical release run;
+7. retain the GitHub Release assets, tag and source commit unchanged;
+8. record the remaining Actions artifact count/storage and review unexpectedly large or duplicate artifacts/caches;
+9. update `PROJECT_STATUS.md` with the published version and release-engineering lessons.
 
 Do not delete Actions artifacts while they are still inputs to an assembler, signing stage or publication step.
+
+The generational policy remains the normal automated safety net. A newer successful run is not automatically the canonical release run: after publication, verify the actual release lineage before manual deletion. Do not change repository retention or the generational algorithm merely because a release produced a duplicate. Change them only when concrete evidence shows that the documented policy or implementation is inadequate.
+
+The multi-platform `UI style audit` is a deliberate manual workflow for high-impact UI milestones. Normal About, naming, icon-polish and other narrow UI PRs use lightweight Quality checks and local/manual inspection instead of automatically dispatching the three-platform capture matrix.
 
 ## Engineering Test Build naming
 

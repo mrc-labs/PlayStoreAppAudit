@@ -47,6 +47,15 @@ def test_quality_runs_on_pull_requests_and_relevant_main_pushes() -> None:
     assert "EXPECTED_PYTHON: ${{ matrix.python-version }}" in workflow
 
 
+def test_ui_style_audit_is_a_deliberate_manual_milestone() -> None:
+    workflow = _workflow("ui-style-audit.yml")
+
+    assert "workflow_dispatch:" in workflow
+    assert "\n  pull_request:" not in workflow
+    assert "\n  push:" not in workflow
+    assert "github.event.pull_request" not in workflow
+
+
 def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
     for name in ("build-linux.yml", "build-macos.yml"):
         workflow = _workflow(name)
