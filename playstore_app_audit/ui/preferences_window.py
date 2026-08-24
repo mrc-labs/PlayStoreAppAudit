@@ -290,6 +290,25 @@ class PreferencesWindow(table_ui.TableWindow):
         layout.addWidget(PreferencesWindow._settings_note(description))
         return page, layout
 
+    def _refresh_table_presentation(self) -> None:
+        """Refresh formatted values without claiming that the model layout changed."""
+        rows = self.model.rowCount()
+        columns = self.model.columnCount()
+        if rows <= 0 or columns <= 0:
+            return
+        self.model.dataChanged.emit(
+            self.model.index(0, 0),
+            self.model.index(rows - 1, columns - 1),
+            [Qt.ItemDataRole.DisplayRole],
+        )
+
+    def _sync_view_preset_action(self, name: str) -> None:
+        group = getattr(self, "_view_action_group", None)
+        if not isinstance(group, QActionGroup):
+            return
+        for action in group.actions():
+            action.setChecked(action.text() == name)
+
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
@@ -339,8 +358,8 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addWidget(custom_heading)
         root.addWidget(
             self._settings_note(
-                "Status and Package Name are always included. The selection is used by "
-                "View > View Preset > Custom."
+                "Status and Package Name are always included. Changing this selection "
+                "activates View > View Preset > Custom."
             )
         )
 
@@ -351,9 +370,16 @@ class PreferencesWindow(table_ui.TableWindow):
         columns_host = QWidget()
         grid = QGridLayout(columns_host)
         grid.setContentsMargins(0, 4, 0, 4)
-        configured = set(
-            self.user_settings.get("custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        stored_custom = self.user_settings.get(
+            "custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS
         )
+        if not isinstance(stored_custom, list):
+            stored_custom = list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        current_preset = str(self.user_settings.get("view_preset") or "Basic")
+        initial_columns = (
+            list(stored_custom) if current_preset == "Custom" else self._visible_column_order()
+        )
+        configured = set(initial_columns)
         custom_checks: dict[str, QCheckBox] = {}
         choices = [c for c in insights_ui.V9_MODEL_COLUMNS if c not in {"criticality", "package_name"}]
         for index, key in enumerate(choices):
@@ -393,18 +419,27 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_columns = ["criticality", "package_name"] + [
             key for key, check in custom_checks.items() if check.isChecked()
         ]
-        self.user_settings.update(
-            {
-                "show_app_icons": show_icons.isChecked(),
-                "date_format": date_format.currentText(),
-                "custom_view_columns": list(dict.fromkeys(custom_columns)),
-            }
-        )
+        custom_columns = list(dict.fromkeys(custom_columns))
+        columns_changed = set(custom_columns) != configured
+        updates: dict[str, object] = {
+            "show_app_icons": show_icons.isChecked(),
+            "date_format": date_format.currentText(),
+        }
+        if columns_changed:
+            updates.update(
+                {
+                    "custom_view_columns": custom_columns,
+                    "view_preset": "Custom",
+                }
+            )
+        self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
         if hasattr(self.model, "set_app_icons_enabled"):
             self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
+        if columns_changed:
+            self._sync_view_preset_action("Custom")
         self._apply_column_visibility(reset_order=False)
-        self.model.layoutChanged.emit()
+        self._refresh_table_presentation()
         self._update_summary()
         self._set_presentation_status("Display settings saved")
 
@@ -613,7 +648,6 @@ class PreferencesWindow(table_ui.TableWindow):
             if not ok:
                 QMessageBox.warning(self, "Portable mode", portable_msg)
         self._apply_column_visibility(reset_order=False)
-        self.model.layoutChanged.emit()
         self._update_summary()
         msg = "Advanced settings saved"
         if invalid:

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
@@ -395,6 +396,233 @@ def test_display_settings_save_existing_presentation_keys(
     assert window.status_label.text() == "Display settings saved"
 
 
+def test_display_settings_toggle_columns_with_populated_sorted_table(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fields = {
+        "notes",
+        "health_score",
+        "version_comparison",
+        "compatibility_status",
+        "play_title",
+    }
+    settings = dict(window.user_settings)
+    settings.update(
+        {
+            "view_preset": "Device",
+            "health_score_enabled": True,
+            "show_app_icons": False,
+            "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
+        }
+    )
+
+    def load_settings() -> dict[str, object]:
+        return dict(settings)
+
+    def save_settings(values: dict[str, object]) -> dict[str, object]:
+        settings.update(values)
+        return dict(settings)
+
+    monkeypatch.setattr(state, "load_settings", load_settings)
+    monkeypatch.setattr(state, "save_settings", save_settings)
+    monkeypatch.setattr(compact_ui, "load_settings", load_settings)
+    monkeypatch.setattr(compact_ui, "save_settings", save_settings)
+    window.user_settings = load_settings()
+    window._sync_view_preset_action("Device")
+    window._apply_column_visibility(reset_order=False)
+
+    rows = [
+        {
+            "criticality": "Current",
+            "criticality_key": "green",
+            "package_name": "com.example.alpha",
+            "play_title": "Alpha",
+            "play_status": "available",
+            "compatibility_status": "Aging target",
+            "version_comparison": "Different",
+            "health_score": 72,
+            "notes": "raw-alpha-note",
+        },
+        {
+            "criticality": "Stale",
+            "criticality_key": "orange",
+            "package_name": "com.example.beta",
+            "play_title": "Beta",
+            "play_status": "available",
+            "compatibility_status": "Legacy target",
+            "version_comparison": "Same",
+            "health_score": 41,
+            "notes": "raw-beta-note",
+        },
+    ]
+    window.current_rows = rows
+    window.model.set_rows(rows)
+    window.search_edit.setText("com.example")
+    title_column = window.model.columns.index("play_title")
+    window.table.sortByColumn(title_column, Qt.SortOrder.DescendingOrder)
+    window.table.selectRow(0)
+    app.processEvents()
+
+    selected_package = window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"]
+    for offset, key in enumerate(sorted(fields)):
+        window.table.setColumnWidth(window.model.columns.index(key), 210 + offset)
+    original_widths = {
+        key: window.table.columnWidth(window.model.columns.index(key)) for key in fields
+    }
+    layout_changes: list[None] = []
+    presentation_changes: list[None] = []
+    window.model.layoutChanged.connect(lambda: layout_changes.append(None))
+    window.model.dataChanged.connect(lambda *_args: presentation_changes.append(None))
+
+    desired_fields: set[str] = set()
+    first_dialog = True
+
+    def accept_display(dialog: QDialog) -> int:
+        nonlocal first_dialog
+        for key in fields:
+            check = dialog.findChild(QCheckBox, f"CustomColumnCheck_{key}")
+            assert check is not None
+            if first_dialog:
+                assert check.isChecked()
+            check.setChecked(key in desired_fields)
+        first_dialog = False
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", accept_display)
+
+    window._show_display_settings()
+    app.processEvents()
+
+    assert settings["view_preset"] == "Custom"
+    assert next(action for action in window.view_preset_actions if action.text() == "Custom").isChecked()
+    assert all(window.table.isColumnHidden(window.model.columns.index(key)) for key in fields)
+    assert window.proxy.rowCount() == 2
+    assert window.search_edit.text() == "com.example"
+    assert window.table.horizontalHeader().sortIndicatorSection() == title_column
+    assert window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"] == selected_package
+    assert window.details_panel._row is not None
+    assert window.details_panel._row["package_name"] == selected_package
+
+    desired_fields.update(fields)
+    window._show_display_settings()
+    app.processEvents()
+
+    assert all(not window.table.isColumnHidden(window.model.columns.index(key)) for key in fields)
+    assert fields.issubset(set(settings["custom_view_columns"]))
+    assert window.proxy.rowCount() == 2
+    assert window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"] == selected_package
+    assert window.details_panel._row is not None
+    assert window.details_panel._row["package_name"] == selected_package
+    assert {
+        key: window.table.columnWidth(window.model.columns.index(key)) for key in fields
+    } == original_widths
+    assert layout_changes == []
+    assert presentation_changes
+
+
+def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = dict(window.user_settings)
+    settings.update(
+        {
+            "view_preset": "Device",
+            "health_score_enabled": True,
+            "show_app_icons": False,
+            "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
+        }
+    )
+
+    def load_settings() -> dict[str, object]:
+        return dict(settings)
+
+    def save_settings(values: dict[str, object]) -> dict[str, object]:
+        settings.update(values)
+        return dict(settings)
+
+    monkeypatch.setattr(state, "load_settings", load_settings)
+    monkeypatch.setattr(state, "save_settings", save_settings)
+    monkeypatch.setattr(compact_ui, "load_settings", load_settings)
+    monkeypatch.setattr(compact_ui, "save_settings", save_settings)
+    window.user_settings = load_settings()
+    window._sync_view_preset_action("Device")
+    window._apply_column_visibility(reset_order=False)
+    window.current_rows = [
+        {
+            "criticality": "Current",
+            "criticality_key": "green",
+            "package_name": "com.example.persisted",
+            "play_title": "Persisted",
+            "play_status": "available",
+            "compatibility_status": "Aging target",
+            "version_comparison": "Different",
+            "health_score": 80,
+            "notes": "raw-persisted-note",
+        }
+    ]
+    window.model.set_rows(window.current_rows)
+    app.processEvents()
+
+    unchecked = {"notes", "play_title"}
+
+    def save_display(dialog: QDialog) -> int:
+        for key in unchecked:
+            check = dialog.findChild(QCheckBox, f"CustomColumnCheck_{key}")
+            assert check is not None
+            assert check.isChecked()
+            check.setChecked(False)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", save_display)
+    window._show_display_settings()
+    app.processEvents()
+    window.close()
+    app.processEvents()
+
+    restarted = MainWindow()
+    try:
+        custom_action = next(
+            action for action in restarted.view_preset_actions if action.text() == "Custom"
+        )
+        assert settings["view_preset"] == "Custom"
+        assert custom_action.isChecked()
+        for key in unchecked:
+            logical = restarted.model.columns.index(key)
+            assert restarted.table.isColumnHidden(logical)
+        compatibility = restarted.model.columns.index("compatibility_status")
+        assert not restarted.table.isColumnHidden(compatibility)
+
+        def inspect_display(dialog: QDialog) -> int:
+            for key in unchecked:
+                check = dialog.findChild(QCheckBox, f"CustomColumnCheck_{key}")
+                assert check is not None
+                assert not check.isChecked()
+            compatibility_check = dialog.findChild(
+                QCheckBox, "CustomColumnCheck_compatibility_status"
+            )
+            assert compatibility_check is not None
+            assert compatibility_check.isChecked()
+            return QDialog.DialogCode.Rejected
+
+        monkeypatch.setattr(QDialog, "exec", inspect_display)
+        restarted._show_display_settings()
+
+        restarted.current_rows = list(window.current_rows)
+        restarted.model.set_rows(restarted.current_rows)
+        app.processEvents()
+        for key in unchecked:
+            logical = restarted.model.columns.index(key)
+            assert restarted.table.isColumnHidden(logical)
+        assert not restarted.table.isColumnHidden(compatibility)
+    finally:
+        restarted.close()
+        app.processEvents()
+
+
 def test_advanced_settings_preserve_display_preferences(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
@@ -415,6 +643,16 @@ def test_advanced_settings_preserve_display_preferences(
         "save_settings",
         lambda values: saved.append(dict(values)) or dict(values),
     )
+    window.current_rows = [
+        {
+            "criticality": "Current",
+            "criticality_key": "green",
+            "package_name": "com.example.populated",
+        }
+    ]
+    window.model.set_rows(window.current_rows)
+    layout_changes: list[None] = []
+    window.model.layoutChanged.connect(lambda: layout_changes.append(None))
 
     def accept_advanced(dialog: QDialog) -> int:
         cache = dialog.findChild(QCheckBox, "UseIntelligentCacheCheck")
@@ -433,6 +671,7 @@ def test_advanced_settings_preserve_display_preferences(
     assert saved[-1]["show_app_icons"] is True
     assert saved[-1]["date_format"] == "DD.MM.YYYY"
     assert saved[-1]["custom_view_columns"] == ["criticality", "package_name", "notes"]
+    assert layout_changes == []
 
 
 def test_details_control_and_view_menu_share_modes_and_persistence(
