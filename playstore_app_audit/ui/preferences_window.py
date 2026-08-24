@@ -404,7 +404,7 @@ class PreferencesWindow(table_ui.TableWindow):
         self._apply_column_visibility(reset_order=False)
         self.model.layoutChanged.emit()
         self._update_summary()
-        self.status_label.setText("Display settings saved")
+        self._set_presentation_status("Display settings saved")
 
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()

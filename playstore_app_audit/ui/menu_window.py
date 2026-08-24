@@ -218,7 +218,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.proxy.set_v9_preset(self._active_filter_preset)
         self._populate_filter_menu()
         self._update_summary()
-        self.status_label.setText(f"Quick Filter: {self._active_filter_preset}")
+        self._set_presentation_status(f"Quick Filter: {self._active_filter_preset}")
 
     def _show_new_smart_query(self) -> None:
         smart_queries_ui.show_smart_query_dialog(self, new_query=True)
@@ -367,7 +367,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if hasattr(self, "clear_sdk_filter_action"):
             self.clear_sdk_filter_action.setEnabled(current.active())
         self._update_summary()
-        self.status_label.setText(sdk_maintenance.describe_sdk_filter(current))
+        self._set_presentation_status(sdk_maintenance.describe_sdk_filter(current))
 
     def _clear_sdk_filter(self) -> None:
         self._set_sdk_filter(None)

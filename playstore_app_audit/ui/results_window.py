@@ -222,6 +222,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             scan_options_button.setEnabled(idle and inventory_available)
 
         action_states = {
+            "advanced_settings_action": idle,
             "force_full_refresh_action": idle and source_available,
             "recheck_problematic_action": idle and problematic_available,
             "device_summary_action": idle and device_summary_available,
@@ -239,6 +240,8 @@ class ResultsWindow(menu_ui.MenuWindow):
             self.snapshots_menu.menuAction().setEnabled(idle and device_results_available)
         if hasattr(self, "data_maintenance_menu"):
             self.data_maintenance_menu.menuAction().setEnabled(idle)
+        if hasattr(self, "audit_profiles_menu"):
+            self.audit_profiles_menu.menuAction().setEnabled(idle)
         if hasattr(self, "details_panel"):
             self.details_panel.review_changes_button.setEnabled(idle and results_available)
         smart_queries_ui.sync_smart_query_action_availability(self)

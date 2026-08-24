@@ -504,7 +504,7 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert window.export_button.text() == "Export Results"
     assert window.export_button.menu() is window._export_results_menu
     assert _action_texts(window.export_button.menu()) == RESULT_EXPORTS
-    assert window.clear_button.text() == "Clear"
+    assert window.clear_button.text() == "Clear Results"
     assert not window.run_button.isEnabled()
     assert not window.export_button.isEnabled()
     assert not window.clear_button.isEnabled()
@@ -546,6 +546,8 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
 
     assert window.file_choose_source_action.isEnabled()
     assert window.file_scan_phone_action.isEnabled()
+    assert window.advanced_settings_action.isEnabled()
+    assert window.audit_profiles_menu.menuAction().isEnabled()
     assert not run_action.isEnabled()
     assert not window.force_full_refresh_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
@@ -603,11 +605,57 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert not run_action.isEnabled()
     assert not window.export_button.isEnabled()
     assert not window.clear_button.isEnabled()
+    assert not window.advanced_settings_action.isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isEnabled()
     assert not window.data_maintenance_menu.menuAction().isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
 
     window._source_operation_active = False
     window._sync_action_availability()
+    assert window.advanced_settings_action.isEnabled()
+    assert window.audit_profiles_menu.menuAction().isEnabled()
+
+
+def test_presentation_actions_preserve_running_operation_status(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operation_status = "Auditing 4/10: com.example.app"
+    window._source_operation_active = True
+    window.status_label.setText(operation_status)
+
+    window._apply_filter_preset("Old Apps")
+    assert window.status_label.text() == operation_status
+
+    window._set_sdk_filter(None)
+    assert window.status_label.text() == operation_status
+
+    window._reset_table_layout()
+    assert window.status_label.text() == operation_status
+
+    monkeypatch.setattr(QDialog, "exec", lambda _dialog: QDialog.DialogCode.Accepted)
+    window._show_display_settings()
+    assert window.status_label.text() == operation_status
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("_source_operation_active", True),
+        ("_audit_active", True),
+        ("_finalizing_session", 1),
+    ],
+)
+def test_technical_settings_are_disabled_for_every_running_operation_state(
+    window: MainWindow,
+    attribute: str,
+    value: object,
+) -> None:
+    setattr(window, attribute, value)
+    window._sync_action_availability()
+
+    assert not window.advanced_settings_action.isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isEnabled()
 
 
 def test_row_context_actions_require_their_fields_and_idle_state(window: MainWindow) -> None:
