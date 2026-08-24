@@ -738,7 +738,7 @@ class BaseWindow(QMainWindow):
         self.export_button.clicked.connect(self._export_results)
         action_row.addWidget(self.export_button)
 
-        self.clear_button = QPushButton("Clear")
+        self.clear_button = QPushButton("Clear Results")
         self.clear_button.clicked.connect(self._clear_results)
         action_row.addWidget(self.clear_button)
 

@@ -263,7 +263,16 @@ class CompactWindow(AuditWindow):
         self.user_settings["qt_header_state"] = ""
         self.user_settings = save_settings(self.user_settings)
         self._apply_column_visibility(reset_order=True)
-        self.status_label.setText("Table layout reset to defaults")
+        self._set_presentation_status("Table layout reset to defaults")
+
+    def _set_presentation_status(self, message: str) -> None:
+        operation_running = getattr(self, "_operation_running", None)
+        if callable(operation_running):
+            if operation_running():
+                return
+        elif getattr(self, "_audit_active", False):
+            return
+        self.status_label.setText(message)
 
     # ---------- Menus / settings ----------
     def _build_menu(self) -> None:
