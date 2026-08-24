@@ -40,10 +40,10 @@ The v1.8 startup review revalidated the v1.7.0 release lineage on 2026-08-24. Th
 - The six small UI-style artifacts remain subject to the existing generational policy.
 - Repository retention and the generational cleanup algorithm were not changed.
 
-## Current development baseline
+## Current release-candidate baseline
 
-- Canonical application version: `1.7.0` until a deliberate v1.8 version freeze changes it.
-- Active planning/development cycle: `v1.8`.
+- Canonical application version: `1.8.0` in the dedicated release-preparation change.
+- Active cycle: `v1.8.0` release preparation; product scope is closed.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
@@ -74,9 +74,9 @@ Always verify the live `main` SHA from GitHub or a freshly generated repository 
 
 Play Store app icons remain experimental in v1.7.0 and are carried into v1.8 for graduation/hardening.
 
-## v1.8 planned scope
+## v1.8 release scope
 
-v1.8 is a Windows x64-only UX/productivity cycle. The complete UI audit and final review are approved; implementation proceeds through small PRs with lightweight validation by default.
+v1.8 is a Windows x64-only UX/productivity cycle. The complete UI audit, approved product implementation and final stabilization pass are complete. No new feature work belongs in the release candidate.
 
 - Graduate Play Store icons from experimental to normal supported behavior, with any cache/CDN/offline/large-table hardening indicated by v1.7 observations.
 - Add saved Smart Queries as result-only filters, deliberately separate from Audit Profiles, using the approved one-level All/Any model and curated field/operator list.
@@ -96,12 +96,14 @@ Routine PR validation is limited to compileall, pytest, Ruff, lightweight Qt smo
 
 - Product identity and scope lock merged in PR `#105`; the repository description, README and About presentation use the approved informational tagline.
 - Actions housekeeping merged in PR `#106`; redundant v1.7 artifact copies were removed after lineage verification, while retention policy and published release material remained unchanged.
-- Action availability now derives from centralized local capability checks for source, inventory, all results, visible results, row fields and running operations. File and main-button result exports share one explicit CSV/HTML/versioned-JSON action definition, including identical all/visible variants.
-- Operational commands, buttons and table headings now use consistent Title Case while explanatory tooltips remain sentence case. The permanent classification legend and table tip were replaced by contextual chip/header/table help, and the misleading computer icon was removed from the clearly labelled Scan Phone action. A local Windows-native 1200x760 capture verified the resulting density and alignment without dispatching an Actions UI/build workflow.
-- The Details Panel now uses one compact **Details** menu shared with **View > Details Panel**. Auto, Right, Below and Hidden use the existing splitter architecture, persist as one setting and remain keyboard/accessibility discoverable; Hidden returns the full results area to the table. Native Windows captures verified Auto/Hidden behavior at 1100x700, 1200x760, 1500x900 and 1600x900.
-- **View > Display Settings** now owns App Icons, Date Format and Custom Columns. **Tools > Advanced Settings** retains technical behavior in four lightweight native categories: Store & Cache, Device, Audit & History, and Data & Storage. Existing setting keys, immediate UI updates, cache invalidation and portable-data migration behavior are preserved; Health Score remains under Audit & History. Native Windows checks covered both dialogs and all four categories at 1100x700, 1200x760, 1500x900 and 1600x900 without a packaging build.
-- Play Store icons are now presented as an optional supported display setting, still disabled by default. Networking is created only after a disk-cache miss; pending work, decoded RAM and persistent storage are bounded; unsafe/oversized/corrupt cache entries are rejected or pruned; cached icons remain available offline; and package-indexed row updates avoid full-table scans. Regression coverage includes a 10,000-row model.
-- The seven Smart Queries decisions in `SMART_QUERIES_UX_REVIEW.md` are approved and implemented in the dedicated `feature/v1.8-smart-queries` workstream. **View > Quick Filters** contains the existing built-ins; the sibling **View > Smart Queries** menu provides New, Manage, Clear and saved-query application. A single native builder/manager supports 1-20 one-level All/Any conditions over the curated fields and operators. Saved definitions use versioned `smart_queries` settings, while the active query remains session-only and composes in the existing proxy with search, status chips, system visibility, Quick Filters and SDK filtering. Legacy `saved_filters`, Audit Profiles, audit execution, Store lookup/cache and read-only ADB behavior are unchanged. Pure and Qt coverage includes malformed storage, missing-value semantics, CRUD, action availability, accessibility and a 10,000-row/20-condition regression; Windows-native layout checks cover 1100x700, 1200x760, 1500x900 and 1600x900 without a Nuitka build.
+- PR `#107` centralized action availability and made File/main-control CSV, HTML and versioned-JSON exports use one canonical definition.
+- PR `#108` completed the naming, density and targeted iconography pass, including removal of the permanent classification legend/table tip and a Windows-native 1200x760 check.
+- PR `#109` delivered the compact **Details** / **View > Details Panel** control with Auto, Right, Below and Hidden persistence. Native Windows captures covered 1100x700, 1200x760, 1500x900 and 1600x900.
+- PR `#110` separated **View > Display Settings** from the four-category technical **Advanced Settings** hierarchy while preserving setting keys and side effects. Native Windows checks covered all target resolutions.
+- PR `#111` graduated and hardened optional Play Store icons with bounded pending work, decoded RAM and disk storage, offline reuse, malformed-cache defenses and 10,000-row regression coverage; it also finalized the approved Smart Queries UX design.
+- PR `#112` implemented the bounded Smart Queries model, native builder/manager, versioned persistence and composition with every existing result filter without affecting audit execution, Store behavior or read-only ADB.
+- PR `#113` completed final stabilization: incompatible running operations block Advanced Settings/Audit Profiles, presentation-only commands preserve operational messages and the result-clearing label is consistently **Clear Results**.
+- The dedicated `release/v1.8.0` preparation updates only release metadata, release documentation and release assertions. The exact frozen `main` SHA is recorded only after its normal merge and successful post-merge Quality run.
 
 ## v1.9 distribution constraint
 

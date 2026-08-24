@@ -98,6 +98,56 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
+## v1.8.0 release-candidate draft
+
+The following draft defines the intended final v1.8.0 GitHub Release body. Replace every angle-bracket placeholder only with evidence from successful runs and validated artifacts from the final frozen SHA. Do not publish unverified claims or leave placeholders in the public body.
+
+```markdown
+## Play Store App Audit v1.8.0 (Engineering Test Build - Windows x64 Only)
+
+## What's New / Highlights
+
+### Added
+- Saved Smart Queries with a curated one-level All/Any builder, versioned persistence and session-only active state, kept separate from Quick Filters and Audit Profiles.
+- A Hidden mode for the Details Panel and a focused Display Settings dialog for App Icons, Date Format and Custom Columns.
+
+### Changed
+- Replaced the permanent Details Panel position buttons with one compact **Details** control synchronized with **View > Details Panel**, while preserving Auto, Right and Below placement.
+- Reorganized Advanced Settings into Store & Cache, Device, Audit & History, and Data & Storage categories.
+- Graduated optional Play Store icons from experimental presentation and hardened cache bounds, offline reuse, malformed-data handling and large-table updates.
+- Unified result export actions and action availability across menus, buttons and running-operation states.
+- Standardized command naming, contextual help and the informational product tagline presentation.
+
+### Fixed
+- Prevented incompatible settings/profile commands from opening during active source, audit, finalization or data-maintenance operations.
+- Preserved active operational messages when presentation-only filters or display/layout commands are used.
+- Standardized the result-clearing command as **Clear Results**.
+
+## Compatibility and distribution
+- Engineering Test Build (ETB), Windows x64 only.
+- The Windows package is intentionally unsigned; Windows may display a SmartScreen/publisher warning.
+- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.8.0.
+- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Managed ADB remains read-only with respect to installed Android apps.
+
+## Release assets
+- `PlayStoreAppAudit-v1.8.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- Frozen source SHA: `<FROZEN_MAIN_SHA>`.
+- Quality push run `<QUALITY_RUN_ID>` passed on Python 3.13 and 3.14.
+- Windows x64 build run `<WINDOWS_BUILD_RUN_ID>` succeeded on the same frozen SHA.
+- Package architecture, application/Windows version, standalone contents, startup, legal/source material and release provenance validation: `<VALIDATION_RESULT>`.
+- Clean-install, v1.7-upgrade and distributed-application smoke checks: `<MANUAL_TEST_EVIDENCE>`.
+- Engineering assembly run `<ASSEMBLER_RUN_ID>` validated the exact x64-only three-file set from the same frozen SHA.
+- Windows x64 ZIP SHA-256: `<WINDOWS_ZIP_SHA256>`.
+- Third-party source archive SHA-256: `<THIRD_PARTY_SOURCES_SHA256>`.
+- `SHA256SUMS.txt` SHA-256: `<SHA256SUMS_SHA256>`.
+```
+
 ## Historical normalized release notes
 
 The following bodies are normalized from the release notes that were actually published on GitHub. Content is reorganized into the canonical structure without retroactively claiming verification steps or distribution properties that the historical body did not support.

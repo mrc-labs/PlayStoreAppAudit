@@ -4,7 +4,7 @@ Last updated: 2026-08-24
 
 ## Purpose
 
-This is the canonical human-readable handoff for the v1.8 development cycle after successful publication of v1.7.0. Read it with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md` and `RELEASE_CLOSURE.md`.
+This is the canonical human-readable handoff for the completed v1.8 product cycle and v1.8.0 release preparation after successful publication of v1.7.0. Read it with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md` and `RELEASE_CLOSURE.md`.
 
 ## Immutable v1.7.0 baseline
 
@@ -29,7 +29,7 @@ On 2026-08-24 the v1.8 startup housekeeping revalidated that lineage, retained t
 
 ## Current technical baseline
 
-- Canonical app version remains `1.7.0` until a deliberate v1.8 release/version freeze.
+- Canonical app version is `1.8.0` in the dedicated release-preparation change.
 - Python packaging baseline: 3.13; Quality CI: 3.13 and 3.14.
 - `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
 - Qt 6 / PySide6 Qt Widgets using platform/default QStyle.
@@ -53,9 +53,9 @@ On 2026-08-24 the v1.8 startup housekeeping revalidated that lineage, retained t
 - separate Store-audit and phone-inventory history semantics;
 - optional supported Health Score maintenance heuristic, disabled by default.
 
-## v1.8 active scope
+## v1.8 completed release scope
 
-The complete UI audit and final review were approved on 2026-08-24. Implement the reviewed direction through small, verifiable PRs and avoid architectural work motivated only by appearance.
+The complete UI audit, approved implementation and final stabilization review were completed on 2026-08-24 through small, verifiable PRs without a broad architectural or visual rewrite. No new feature work belongs in the v1.8.0 release candidate.
 
 ### UX consistency and action availability
 
@@ -130,6 +130,59 @@ The settings hierarchy implementation adds **View > Display Settings** for App I
 Play Store icons have completed the v1.8 graduation/hardening pass while remaining optional and disabled by default. The loader creates networking only after a disk miss, caps pending requests and decoded RAM, and stops oversized transfers. The persistent cache rejects unsafe paths and oversized files, prunes corrupt/orphaned entries, and is bounded to 512 entries / 64 MiB while retaining update-marker/CDN reuse and offline hits. Package-indexed notifications avoid scanning the full result model per icon; tests cover 10,000 rows.
 
 The Smart Queries UX/design review in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md) is approved and its bounded model is implemented in the dedicated `feature/v1.8-smart-queries` workstream. **View > Quick Filters** contains the built-ins; **View > Smart Queries** exposes New, Manage, Clear and saved definitions without a permanent toolbar control. The native builder/manager supports 1-20 one-level All/Any conditions, Save without Apply, draft Apply without Save, case-insensitive replacement confirmation and deletion confirmation. Saved definitions use versioned `smart_queries` settings, active state stays in memory for the current session, and deleting an active saved definition clears it. Evaluation is pure inside the existing proxy and composes with search, status chips, system visibility, Quick Filters and the SDK Maintenance Filter. Audit Profiles, legacy `saved_filters`, audit execution, Store lookup/cache and ADB behavior remain separate and unchanged. Tests cover normalization, every operator family, missing/invalid values, persistence/CRUD, action availability, accessibility, composition and 10,000 rows with 20 conditions. Windows-native dialog checks cover 1100x700, 1200x760, 1500x900 and 1600x900; no Actions packaging or Nuitka build was dispatched.
+
+PR `#113` completed the final stabilization pass at merge commit `35a2572a997d36af01cb018a45e49a1112a1172c`. Advanced Settings and Audit Profiles are blocked only during incompatible running operations; presentation-only Quick Filters, SDK filtering, Display Settings and table-layout reset preserve operational messages; and the result-clearing action is consistently named **Clear Results**. The post-merge Quality run and local compileall, Ruff, pytest and Qt smoke checks passed without a Nuitka build.
+
+## v1.8.0 release preparation state
+
+- Product and stabilization scope is closed through PRs `#105`-`#113`.
+- The dedicated `release/v1.8.0` change updates canonical version metadata to `1.8.0`, release assertions and only the required current release documents.
+- About, Qt application metadata and Windows package metadata derive from the canonical version; the Windows file/product version must therefore be `1.8.0.0`.
+- README remains a correct description of the latest published release (`v1.7.0`) until v1.8.0 is actually published.
+- No Nuitka, packaging, assembler, tag or publication action is part of release preparation.
+- After the normal release-preparation merge and successful post-merge Quality run, record that exact full `main` SHA as the frozen candidate. Any later source or release-tooling change invalidates it and requires a new freeze and rebuild.
+
+## v1.8.0 release execution checklist
+
+### Candidate freeze
+
+- [ ] Merge the release-preparation PR into `main` with a normal merge commit; do not squash or rebase.
+- [ ] Before pulling locally, verify `git status --short` is empty; then fetch/prune, switch to `main` and pull with `--ff-only`.
+- [ ] Confirm local `HEAD` equals `origin/main`, no PR remains open and annotated tag `v1.7.0` still peels to `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
+- [ ] Require the post-merge Quality workflow to pass on Python 3.13 and 3.14.
+- [ ] Record the exact 40-character `main` SHA and Quality run ID; treat that SHA as frozen before any expensive work.
+
+### Windows x64 build and Nuitka
+
+- [ ] After explicit approval, dispatch `.github/workflows/build-windows-exe.yml` from the frozen `main` SHA with `target=x64` and `expected_sha=<frozen SHA>`.
+- [ ] Do not dispatch Windows ARM64, signing, Linux or macOS workflows for v1.8.0.
+- [ ] Require the workflow to use Python 3.13, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3` and to reject any dispatch/checkout SHA mismatch before build work.
+- [ ] Require the native x64 job, source checks, legal preflight, standalone validation and packaged smoke test to pass from that exact SHA.
+- [ ] Record the successful `Build Windows - Qt6` run ID and retain its canonical x64 artifact for assembly/audit.
+
+### Package verification
+
+- [ ] Verify the archive is named `PlayStoreAppAudit-v1.8.0-windows-x64.zip`, has the expected standalone layout and contains an x64 `PlayStoreAppAudit.exe` rather than ARM64 or a one-file build.
+- [ ] Verify application version `1.8.0`, Windows file/product version `1.8.0.0`, startup behavior, required Qt/Python runtime content and exclusion rules.
+- [ ] Verify strict packaged legal notices, corresponding-source manifest/assets, `BUILD-INFO.txt`, repository/workflow/run provenance and exact frozen SHA.
+- [ ] Re-extract the ZIP independently and verify the package checksum before using it as an assembler input.
+
+### Clean use, upgrade and distributed smoke
+
+- [ ] On a clean Windows x64 user profile or disposable VM, extract the standalone ZIP to a new directory, launch it and verify first-run behavior without relying on a development checkout.
+- [ ] In a disposable copy of a real v1.7 data profile, launch v1.8.0 and verify existing display/technical settings, cache/history and Audit Profiles remain usable; confirm no automatic `saved_filters` to Smart Queries migration occurs.
+- [ ] Confirm managed ADB discovery remains read-only and no test performs application mutation on a connected device.
+- [ ] Run the distributed executable with `PLAYSTORE_APP_AUDIT_SMOKE_TEST=1` and require deterministic success, then perform a normal manual launch and close.
+- [ ] Check the packaged UI at 1100x700, 1200x760, 1500x900 and 1600x900 for Details modes, dialogs, Smart Queries, clipping and resize regressions.
+
+### Assembler, assets and publication
+
+- [ ] Dispatch `.github/workflows/assemble-windows-engineering-release.yml` from the same frozen SHA with `expected_sha=<frozen SHA>` and `windows_run_id=<successful x64 build run>`.
+- [ ] Require the assembler to validate source workflow identity, repository, manual-dispatch status, success and exact head SHA, accept only the canonical x64 artifact and reject ARM64 input.
+- [ ] Require exactly `PlayStoreAppAudit-v1.8.0-windows-x64.zip`, `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`; verify every checksum independently.
+- [ ] Replace all v1.8.0 release-note placeholders only with observed successful evidence.
+- [ ] Only after artifact validation and explicit publication approval, create annotated tag `v1.8.0` on the frozen SHA and publish the already validated assets without rebuilding.
+- [ ] Complete post-release Actions housekeeping without deleting Release assets, tags or source history, then complete `RELEASE_CLOSURE.md` and generate the next handoff only from clean synchronized `main`.
 
 ## v1.9 and v2.0 distribution roadmap
 
