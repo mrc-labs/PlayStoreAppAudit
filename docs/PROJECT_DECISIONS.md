@@ -108,7 +108,7 @@ Rationale: v1.6 focuses on Store-service maturity, locale correctness, details/c
 
 ### v1.7, v1.8 and v1.9 Windows x64 Engineering Test Builds (ETB)
 
-v1.7, v1.8 and v1.9 deliberately continue the unsigned Windows x64-only Engineering Test Build profile. v1.7.0 is published and immutable; v1.8 and v1.9 continue the same distribution constraint.
+v1.7, v1.8 and v1.9 deliberately continue the unsigned Windows x64-only Engineering Test Build profile. v1.7.0 and v1.8.0 are published and immutable; v1.9 continues the same distribution constraint.
 
 For all three release lines:
 
@@ -121,7 +121,9 @@ For all three release lines:
 - use GitHub Release title suffix `(Win x64 Only)` while the body heading continues to identify `Engineering Test Build - Windows x64 Only`; clearly describe the package as unsigned;
 - any source or release-tooling change after an exact release SHA is recorded invalidates that candidate and requires a new exact SHA and rebuild of the ETB artifacts.
 
-The v1.8 product-scope expansion and the v1.9 release line do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8 and v1.9.
+The immutable v1.7.0 release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. The immutable v1.8.0 release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`. v1.9 must freeze its own exact `main` SHA after the required Quality gates pass.
+
+The completed v1.8 product-scope expansion and the v1.9 release line do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8 and v1.9.
 
 Rationale: v1.7, v1.8 and v1.9 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the v2.0 distribution milestone.
 

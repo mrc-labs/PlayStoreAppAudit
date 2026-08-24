@@ -32,17 +32,17 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The current published v1.7.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
+The current published v1.8.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
 
 - Windows x64
 
 Download the Windows x64 ZIP, extract it to a normal folder, then start the application from the extracted package.
 
-The Windows v1.7.0 package is intentionally unsigned. v1.8 and v1.9 will also remain Windows x64-only ETBs. v2.0 is the first planned return to multi-platform distribution; production signing is the preferred target but remains contingent on successful credential/provider validation. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the current package. That warning reflects signing and reputation status, not a finding that the application is unsafe.
+The Windows v1.8.0 package is intentionally unsigned. v1.9 will also remain a Windows x64-only ETB. v2.0 is the first planned return to multi-platform distribution; production signing is the preferred target but remains contingent on successful credential/provider validation. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the current package. That warning reflects signing and reputation status, not an application error or a finding that the application is unsafe.
 
-Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.7.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
+Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.8.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
 
-The v1.7.0 release includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` alongside the Windows x64 ZIP. All three project-defined assets were validated from frozen source SHA `e2d09098bc42c6f16d202d010deda3eb24d99aa3` before publication and reverified after download from the published release.
+The v1.8.0 release includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` alongside the Windows x64 ZIP. All three project-defined assets were validated from frozen source SHA `ac328f0dffddb6b70fa7600f1291377376bc05d4` before publication and reverified after download from the [published release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0).
 
 ## Quick start
 
@@ -94,16 +94,16 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 ## Platform support
 
-| Platform | Source support | Current published v1.7.0 | Latest older prebuilt |
+| Platform | Source support | Current published v1.8.0 | Latest older prebuilt |
 | --- | --- | --- | --- |
-| Windows x64 | Supported | ETB ZIP | v1.6.0 ZIP |
+| Windows x64 | Supported | ETB ZIP | v1.7.0 ZIP |
 | Windows ARM64 | Supported | Not rebuilt | v1.3.0 ZIP |
 | Linux x64 | Supported | Not rebuilt | v1.3.0 standalone ZIP |
 | Linux ARM64 | Supported | Not rebuilt | v1.3.0 standalone ZIP |
 | macOS Intel / x64 | Supported | Not rebuilt | v1.3.0 app bundle ZIP |
 | macOS Apple Silicon / ARM64 | Supported | Not rebuilt | v1.3.0 app bundle ZIP |
 
-The published v1.7.0 Windows x64 package was produced from exact commit `e2d09098bc42c6f16d202d010deda3eb24d99aa3` after post-merge Quality validation, then assembled and checksum-verified before and after publication.
+The published v1.8.0 Windows x64 package was produced from exact commit `ac328f0dffddb6b70fa7600f1291377376bc05d4` after post-merge Quality validation, then assembled and checksum-verified before and after publication.
 
 ## License
 
@@ -111,7 +111,7 @@ Play Store App Audit's own code is licensed under the [GNU General Public Licens
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
-Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The v1.7.0 release-wide corresponding-source archive is published alongside the Windows x64 ZIP.
+Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The v1.8.0 release-wide corresponding-source archive is published alongside the Windows x64 ZIP.
 
 ## Contributing
 
@@ -139,11 +139,11 @@ Developer references:
 - [Durable project decisions](docs/PROJECT_DECISIONS.md)
 - [Current project status](docs/PROJECT_STATUS.md)
 - [Product roadmap](docs/ROADMAP.md)
-- [v1.8 chat handoff](docs/HANDOFF_V1.8.md)
+- [v1.9 chat handoff](docs/HANDOFF_V1.9.md)
 - [Project guidance for coding agents](AGENTS.md)
 
 ## Building from source
 
-Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.7.0 public profile used one exact `main` SHA, built only the Windows x64 ETB candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 ETB asset set, then tagged and published the already validated artifacts without rebuilding.
+Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.8.0 public profile used one exact `main` SHA, built only the Windows x64 ETB candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 ETB asset set, then tagged and published the already validated artifacts without rebuilding.
 
 The full signed Windows/Linux/macOS x64/ARM64 production release path remains implemented for a future v2.0-or-later milestone. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).

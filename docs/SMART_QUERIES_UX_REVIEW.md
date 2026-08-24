@@ -228,4 +228,4 @@ The recommended v1.8 implementation baseline is:
 6. No automatic migration of hidden legacy `saved_filters`.
 7. Smart Queries compose with all current filters and never affect audit execution.
 
-These decisions were explicitly approved on 2026-08-24. The dedicated implementation must continue to enforce the scope boundaries in this document: Smart Queries remain result-only filters, stay separate from Audit Profiles and do not expand into nested groups, scripting, regular expressions, import/export or automation.
+These decisions were explicitly approved and implemented on 2026-08-24. The implementation must continue to enforce the scope boundaries in this document: Smart Queries remain result-only filters, stay separate from Audit Profiles and do not expand into nested groups, scripting, regular expressions, import/export or automation.
