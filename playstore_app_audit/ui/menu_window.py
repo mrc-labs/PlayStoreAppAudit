@@ -105,6 +105,10 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self.view_preset_actions.append(action)
         self._view_action_group = self.view_action_group
 
+        self.display_settings_action = self.view_menu.addAction(
+            "Display Settings…", self._show_display_settings
+        )
+
         self.view_menu.addSeparator()
         self._filter_menu = QMenu("Filter Preset", self.view_menu)
         self.view_menu.addMenu(self._filter_menu)

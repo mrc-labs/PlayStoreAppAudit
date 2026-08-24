@@ -307,14 +307,16 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_panel.review_changes_requested.connect(self._show_change_overview)
         self.details_panel_menu = self.details_control.mode_menu
         if hasattr(self, "view_menu"):
-            first_separator = next(
-                (action for action in self.view_menu.actions() if action.isSeparator()),
-                None,
-            )
-            if first_separator is None:
+            before_action = getattr(self, "display_settings_action", None)
+            if before_action is None:
+                before_action = next(
+                    (action for action in self.view_menu.actions() if action.isSeparator()),
+                    None,
+                )
+            if before_action is None:
                 self.view_menu.addMenu(self.details_panel_menu)
             else:
-                self.view_menu.insertMenu(first_separator, self.details_panel_menu)
+                self.view_menu.insertMenu(before_action, self.details_panel_menu)
         selection_model = self.table.selectionModel()
         if selection_model is not None:
             selection_model.currentRowChanged.connect(self._on_details_current_row_changed)

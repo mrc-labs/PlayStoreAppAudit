@@ -7,7 +7,17 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QFontMetrics
-from PySide6.QtWidgets import QApplication, QDialog, QLabel
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QGroupBox,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QStackedWidget,
+)
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
@@ -257,6 +267,7 @@ def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert _action_structure(window.view_menu) == [
         "View Preset",
         "Details Panel",
+        "Display Settings…",
         None,
         "Filter Preset",
         "SDK Maintenance Filter…",
@@ -283,6 +294,133 @@ def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert "Double-click" in window.table.toolTip()
     assert window.recent_sources_button.toolTip() == "Recent sources"
     assert window.scan_phone_options_button.toolTip() == "Phone package list options"
+
+
+def test_display_and_advanced_settings_have_distinct_hierarchies(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def inspect_display(dialog: QDialog) -> int:
+        assert dialog.objectName() == "DisplaySettingsDialog"
+        assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is not None
+        assert dialog.findChild(QComboBox, "DateFormatCombo") is not None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
+        assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is None
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_display)
+    window._show_display_settings()
+
+    def inspect_advanced(dialog: QDialog) -> int:
+        assert dialog.objectName() == "AdvancedSettingsDialog"
+        navigation = dialog.findChild(QListWidget, "AdvancedSettingsCategories")
+        pages = dialog.findChild(QStackedWidget, "AdvancedSettingsPages")
+        assert navigation is not None
+        assert pages is not None
+        assert [navigation.item(index).text() for index in range(navigation.count())] == [
+            "Store & Cache",
+            "Device",
+            "Audit & History",
+            "Data & Storage",
+        ]
+        assert [pages.widget(index).objectName() for index in range(pages.count())] == [
+            "StoreCacheSettingsPage",
+            "DeviceSettingsPage",
+            "AuditHistorySettingsPage",
+            "DataStorageSettingsPage",
+        ]
+        health = dialog.findChild(QCheckBox, "HealthScoreCheck")
+        assert health is not None
+        assert health.parentWidget().objectName() == "AuditHistorySettingsPage"
+        assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is not None
+        assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is None
+        assert dialog.findChild(QComboBox, "DateFormatCombo") is None
+        assert not dialog.findChildren(QGroupBox)
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_advanced)
+    window._show_advanced_settings()
+
+
+def test_display_settings_save_existing_presentation_keys(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    saved: list[dict[str, object]] = []
+    monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
+    monkeypatch.setattr(
+        state,
+        "save_settings",
+        lambda values: saved.append(dict(values)) or dict(values),
+    )
+
+    def accept_display(dialog: QDialog) -> int:
+        icons = dialog.findChild(QCheckBox, "ShowAppIconsCheck")
+        date_format = dialog.findChild(QComboBox, "DateFormatCombo")
+        title_column = dialog.findChild(QCheckBox, "CustomColumnCheck_play_title")
+        assert icons is not None
+        assert date_format is not None
+        assert title_column is not None
+        for check in dialog.findChildren(QCheckBox):
+            if check.objectName().startswith("CustomColumnCheck_"):
+                check.setChecked(False)
+        icons.setChecked(True)
+        date_format.setCurrentText("DD/MM/YYYY")
+        title_column.setChecked(True)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", accept_display)
+    window._show_display_settings()
+
+    assert saved[-1]["show_app_icons"] is True
+    assert saved[-1]["date_format"] == "DD/MM/YYYY"
+    assert saved[-1]["custom_view_columns"] == [
+        "criticality",
+        "package_name",
+        "play_title",
+    ]
+    assert window.model._icons_enabled is True
+    assert window.status_label.text() == "Display settings saved"
+
+
+def test_advanced_settings_preserve_display_preferences(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = dict(window.user_settings)
+    settings.update(
+        {
+            "fallback_countries": device_metadata.DEFAULT_FALLBACK_COUNTRIES,
+            "show_app_icons": True,
+            "date_format": "DD.MM.YYYY",
+            "custom_view_columns": ["criticality", "package_name", "notes"],
+        }
+    )
+    saved: list[dict[str, object]] = []
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(
+        state,
+        "save_settings",
+        lambda values: saved.append(dict(values)) or dict(values),
+    )
+
+    def accept_advanced(dialog: QDialog) -> int:
+        cache = dialog.findChild(QCheckBox, "UseIntelligentCacheCheck")
+        health = dialog.findChild(QCheckBox, "HealthScoreCheck")
+        assert cache is not None
+        assert health is not None
+        cache.setChecked(False)
+        health.setChecked(True)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", accept_advanced)
+    window._show_advanced_settings()
+
+    assert saved[-1]["cache_enabled"] is False
+    assert saved[-1]["health_score_enabled"] is True
+    assert saved[-1]["show_app_icons"] is True
+    assert saved[-1]["date_format"] == "DD.MM.YYYY"
+    assert saved[-1]["custom_view_columns"] == ["criticality", "package_name", "notes"]
 
 
 def test_details_control_and_view_menu_share_modes_and_persistence(

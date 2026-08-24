@@ -17,15 +17,17 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -215,6 +217,7 @@ class PreferencesWindow(table_ui.TableWindow):
             group.addAction(action)
             presets.addAction(action)
         self._view_action_group = group
+        view_menu.addAction("Display Settings…", self._show_display_settings)
         view_menu.addSeparator()
         view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
@@ -252,13 +255,157 @@ class PreferencesWindow(table_ui.TableWindow):
         help_menu.addSeparator()
         help_menu.addAction("About Play Store App Audit", self._show_about)
 
-    # ---------- Advanced settings ----------
+    # ---------- Settings ----------
+    @staticmethod
+    def _settings_note(text: str) -> QLabel:
+        note = QLabel(text)
+        note.setWordWrap(True)
+        note.setObjectName("SettingsNote")
+        return note
+
+    @staticmethod
+    def _settings_page(
+        object_name: str, title: str, description: str
+    ) -> tuple[QWidget, QVBoxLayout]:
+        page = QWidget()
+        page.setObjectName(object_name)
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(18, 8, 8, 8)
+        layout.setSpacing(10)
+        heading = QLabel(title)
+        heading.setObjectName("SettingsPageTitle")
+        heading_font = heading.font()
+        heading_font.setBold(True)
+        heading.setFont(heading_font)
+        layout.addWidget(heading)
+        layout.addWidget(PreferencesWindow._settings_note(description))
+        return page, layout
+
+    def _show_display_settings(self) -> None:
+        self.user_settings = state.load_settings()
+        dialog = QDialog(self)
+        dialog.setObjectName("DisplaySettingsDialog")
+        dialog.setWindowTitle("Display Settings")
+        dialog.resize(740, 640)
+        dialog.setMinimumSize(620, 500)
+        root = QVBoxLayout(dialog)
+
+        heading = QLabel("Results Display")
+        heading.setObjectName("SettingsPageTitle")
+        heading_font = heading.font()
+        heading_font.setBold(True)
+        heading.setFont(heading_font)
+        root.addWidget(heading)
+        root.addWidget(
+            self._settings_note(
+                "Choose how Play Store results are presented without changing audit behaviour."
+            )
+        )
+
+        display_form = QFormLayout()
+        display_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        show_icons = QCheckBox("Show Play Store App Icons (Experimental)")
+        show_icons.setObjectName("ShowAppIconsCheck")
+        show_icons.setToolTip(
+            "Load Play Store icons on demand. Icons are kept in memory for this session."
+        )
+        show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
+        date_format = QComboBox()
+        date_format.setObjectName("DateFormatCombo")
+        date_format.setMaximumWidth(260)
+        date_format.setToolTip("Choose how dates are shown in the table, details and exports.")
+        date_format.addItems(list(presentation.DATE_FORMATS))
+        date_format.setCurrentText(
+            str(self.user_settings.get("date_format") or presentation.DEFAULT_DATE_FORMAT)
+        )
+        display_form.addRow("Date Format", date_format)
+        display_form.addRow("", show_icons)
+        root.addLayout(display_form)
+
+        custom_heading = QLabel("Custom Columns")
+        custom_heading.setObjectName("SettingsSectionTitle")
+        custom_font = custom_heading.font()
+        custom_font.setBold(True)
+        custom_heading.setFont(custom_font)
+        root.addWidget(custom_heading)
+        root.addWidget(
+            self._settings_note(
+                "Status and Package Name are always included. The selection is used by "
+                "View > View Preset > Custom."
+            )
+        )
+
+        scroll = QScrollArea()
+        scroll.setObjectName("CustomColumnsScrollArea")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        columns_host = QWidget()
+        grid = QGridLayout(columns_host)
+        grid.setContentsMargins(0, 4, 0, 4)
+        configured = set(
+            self.user_settings.get("custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        )
+        custom_checks: dict[str, QCheckBox] = {}
+        choices = [c for c in insights_ui.V9_MODEL_COLUMNS if c not in {"criticality", "package_name"}]
+        for index, key in enumerate(choices):
+            label = base_ui.COLUMN_LABELS.get(key, key)
+            check = QCheckBox(label)
+            check.setObjectName(f"CustomColumnCheck_{key}")
+            check.setChecked(key in configured)
+            custom_checks[key] = check
+            grid.addWidget(check, index // 2, index % 2)
+        grid.setRowStretch((len(choices) + 1) // 2, 1)
+        scroll.setWidget(columns_host)
+        root.addWidget(scroll, 1)
+
+        bottom = QHBoxLayout()
+        reset = QPushButton("Reset to Defaults")
+        bottom.addWidget(reset)
+        bottom.addStretch(1)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        bottom.addWidget(buttons)
+        root.addLayout(bottom)
+
+        def reset_controls() -> None:
+            show_icons.setChecked(False)
+            date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
+            defaults = set(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+            for key, check in custom_checks.items():
+                check.setChecked(key in defaults)
+
+        reset.clicked.connect(reset_controls)
+        buttons.rejected.connect(dialog.reject)
+        buttons.accepted.connect(dialog.accept)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        custom_columns = ["criticality", "package_name"] + [
+            key for key, check in custom_checks.items() if check.isChecked()
+        ]
+        self.user_settings.update(
+            {
+                "show_app_icons": show_icons.isChecked(),
+                "date_format": date_format.currentText(),
+                "custom_view_columns": list(dict.fromkeys(custom_columns)),
+            }
+        )
+        self.user_settings = state.save_settings(self.user_settings)
+        if hasattr(self.model, "set_app_icons_enabled"):
+            self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
+        self._apply_column_visibility(reset_order=False)
+        self.model.layoutChanged.emit()
+        self._update_summary()
+        self.status_label.setText("Display settings saved")
+
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
+        dialog.setObjectName("AdvancedSettingsDialog")
         dialog.setWindowTitle("Advanced Settings")
-        dialog.resize(780, 800)
-        dialog.setMinimumWidth(680)
+        dialog.resize(820, 620)
+        dialog.setMinimumSize(720, 520)
         root = QVBoxLayout(dialog)
 
         warning = QLabel(
@@ -270,20 +417,37 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         root.addWidget(warning)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        inner = QWidget()
-        content = QVBoxLayout(inner)
-        content.setContentsMargins(8, 8, 8, 8)
-        scroll.setWidget(inner)
-        root.addWidget(scroll, 1)
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        navigation = QListWidget()
+        navigation.setObjectName("AdvancedSettingsCategories")
+        navigation.setAccessibleName("Advanced Settings Categories")
+        navigation.setMinimumWidth(170)
+        navigation.setMaximumWidth(190)
+        stack = QStackedWidget()
+        stack.setObjectName("AdvancedSettingsPages")
+        body.addWidget(navigation)
+        body.addWidget(stack, 1)
+        root.addLayout(body, 1)
 
-        store = QGroupBox("Store, dates and cache")
-        form = QFormLayout(store)
+        def add_page(
+            object_name: str, title: str, description: str
+        ) -> tuple[QWidget, QVBoxLayout]:
+            page, layout = self._settings_page(object_name, title, description)
+            navigation.addItem(title)
+            stack.addWidget(page)
+            return page, layout
+
+        _store_page, store_layout = add_page(
+            "StoreCacheSettingsPage",
+            "Store & Cache",
+            "Configure Play Store locale resolution, request concurrency and cached results.",
+        )
+        form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         language = QLineEdit(str(self.user_settings.get("store_language") or "auto"))
         language.setObjectName("StoreLanguageEdit")
+        language.setMaximumWidth(300)
         language.setPlaceholderText("auto, en, it, de, …")
         language.setToolTip(
             "Use 'auto' to follow the connected Android system language during phone audits. "
@@ -293,111 +457,96 @@ class PreferencesWindow(table_ui.TableWindow):
         fallback = QLineEdit(
             str(self.user_settings.get("fallback_countries") or device_metadata.DEFAULT_FALLBACK_COUNTRIES)
         )
+        fallback.setMaximumWidth(460)
         workers = QSpinBox()
+        workers.setMaximumWidth(180)
         workers.setRange(state.MIN_STORE_WORKERS, state.MAX_STORE_WORKERS)
         workers.setValue(
             state.normalise_store_workers(self.user_settings.get("store_workers"))
         )
-        show_icons = QCheckBox("Show Play Store app icons (experimental)")
-        show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
-        date_format = QComboBox()
-        date_format.addItems(list(presentation.DATE_FORMATS))
-        date_format.setCurrentText(
-            str(self.user_settings.get("date_format") or presentation.DEFAULT_DATE_FORMAT)
-        )
         cache = QCheckBox("Use intelligent cache")
+        cache.setObjectName("UseIntelligentCacheCheck")
         cache.setChecked(bool(self.user_settings.get("cache_enabled", True)))
         ttl = QSpinBox()
+        ttl.setMaximumWidth(180)
         ttl.setRange(1, 720)
         ttl.setSuffix(" hours")
         ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
-        form.addRow("Store language", language)
-        form.addRow("Fallback Store countries", fallback)
+        form.addRow("Store Language", language)
+        form.addRow("Fallback Store Countries", fallback)
         fallback_note = QLabel(
             "Comma/space separated country codes. Used only if the selected Store country is unavailable or inconclusive. Adding many fallback countries can significantly increase audit time for apps that require regional verification."
         )
         fallback_note.setWordWrap(True)
         form.addRow("", fallback_note)
-        form.addRow("Concurrent Store workers", workers)
-        workers_note = QLabel(
+        form.addRow("Concurrent Store Workers", workers)
+        workers_note = self._settings_note(
             "16 is recommended. Higher values can increase Play Store throttling, connection errors and latency; more workers are not always faster."
         )
-        workers_note.setWordWrap(True)
         form.addRow("", workers_note)
-        form.addRow("", show_icons)
-        icons_note = QLabel(
-            "Off by default. Icons load on demand and are kept in memory only for this session."
-        )
-        icons_note.setWordWrap(True)
-        form.addRow("", icons_note)
-        form.addRow("Date display format", date_format)
         form.addRow("", cache)
-        form.addRow("Healthy-result cache TTL", ttl)
-        content.addWidget(store)
+        form.addRow("Healthy Result Cache TTL", ttl)
+        store_layout.addLayout(form)
+        store_layout.addStretch(1)
 
-        device = QGroupBox("Connected Android device")
-        d_layout = QVBoxLayout(device)
+        _device_page, device_layout = add_page(
+            "DeviceSettingsPage",
+            "Device",
+            "Control optional metadata collection from a connected Android device. ADB remains read-only.",
+        )
         collect = QCheckBox("Collect connected-device metadata")
+        collect.setObjectName("CollectDeviceMetadataCheck")
         collect.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
+        device_layout.addWidget(collect)
+        device_layout.addStretch(1)
+
+        _audit_page, audit_layout = add_page(
+            "AuditHistorySettingsPage",
+            "Audit & History",
+            "Configure optional audit enrichment and comparisons with previously collected data.",
+        )
         permissions = QCheckBox("Audit sensitive requested permissions (advanced)")
+        permissions.setObjectName("PermissionsAuditCheck")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
         inventory = QCheckBox("Keep per-device inventory history")
+        inventory.setObjectName("InventoryHistoryCheck")
         inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
-        health = QCheckBox("Enable Health score")
+        health = QCheckBox("Enable Health Score")
+        health.setObjectName("HealthScoreCheck")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
-        d_layout.addWidget(collect)
-        d_layout.addWidget(permissions)
-        p_note = QLabel(
+        compare = QCheckBox("Compare with previous Play Store audit")
+        compare.setObjectName("ComparePreviousAuditCheck")
+        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
+        audit_layout.addWidget(permissions)
+        p_note = self._settings_note(
             "Permission audit checks a curated list of sensitive permissions declared/requested by each package (camera, microphone, location, contacts, SMS, phone, media, all-files access, overlays, etc.). It does not decide whether a permission is granted, justified or malicious. The same package dump is already collected for device metadata, so enabling this mainly adds parsing rather than extra per-app ADB calls."
         )
-        p_note.setWordWrap(True)
-        d_layout.addWidget(p_note)
-        d_layout.addWidget(inventory)
-        d_layout.addWidget(health)
-        content.addWidget(device)
+        audit_layout.addWidget(p_note)
+        audit_layout.addWidget(inventory)
+        audit_layout.addWidget(health)
+        audit_layout.addWidget(compare)
+        audit_layout.addStretch(1)
 
-        history = QGroupBox("Audit history")
-        h_layout = QVBoxLayout(history)
-        compare = QCheckBox("Compare with previous Play Store audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        h_layout.addWidget(compare)
-        content.addWidget(history)
-
-        storage = QGroupBox("Storage")
-        s_layout = QVBoxLayout(storage)
+        _storage_page, storage_layout = add_page(
+            "DataStorageSettingsPage",
+            "Data & Storage",
+            "Choose where application data is stored. Changing this setting requires a restart.",
+        )
         portable = QCheckBox("Portable mode: keep app data next to the EXE")
+        portable.setObjectName("PortableModeCheck")
         portable.setChecked(device_insights.portable_mode_active())
-        portable_note = QLabel(
+        portable_note = self._settings_note(
             "Changing portable mode migrates local app data and requires a restart. The EXE folder must be writable."
         )
-        portable_note.setWordWrap(True)
-        s_layout.addWidget(portable)
-        s_layout.addWidget(portable_note)
-        content.addWidget(storage)
+        storage_layout.addWidget(portable)
+        storage_layout.addWidget(portable_note)
+        storage_layout.addStretch(1)
 
-        custom = QGroupBox("Custom view columns")
-        grid = QGridLayout(custom)
-        configured = set(
-            self.user_settings.get("custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-        )
-        custom_checks: dict[str, QCheckBox] = {}
-        choices = [c for c in insights_ui.V9_MODEL_COLUMNS if c not in {"criticality", "package_name"}]
-        for i, key in enumerate(choices):
-            label = base_ui.COLUMN_LABELS.get(key, key)
-            check = QCheckBox(label)
-            check.setChecked(key in configured)
-            custom_checks[key] = check
-            grid.addWidget(check, i // 2, i % 2)
-        note = QLabel(
-            "Status and Package Name are always included. Choose View → View preset → Custom to use this selection."
-        )
-        note.setWordWrap(True)
-        grid.addWidget(note, (len(choices) + 1) // 2, 0, 1, 2)
-        content.addWidget(custom)
-        content.addStretch(1)
+        navigation.currentRowChanged.connect(stack.setCurrentIndex)
+        navigation.setCurrentRow(0)
 
         bottom = QHBoxLayout()
-        reset = QPushButton("Reset to defaults")
+        reset = QPushButton("Reset All to Defaults")
         bottom.addWidget(reset)
         bottom.addStretch(1)
         buttons = QDialogButtonBox(
@@ -411,8 +560,6 @@ class PreferencesWindow(table_ui.TableWindow):
             language.setText(str(state.DEFAULT_SETTINGS["store_language"]))
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             workers.setValue(state.DEFAULT_STORE_WORKERS)
-            show_icons.setChecked(False)
-            date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             cache.setChecked(True)
             ttl.setValue(72)
             collect.setChecked(True)
@@ -421,9 +568,6 @@ class PreferencesWindow(table_ui.TableWindow):
             health.setChecked(False)
             compare.setChecked(False)
             portable.setChecked(False)
-            defaults = set(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-            for key, check in custom_checks.items():
-                check.setChecked(key in defaults)
 
         reset.clicked.connect(reset_controls)
         buttons.rejected.connect(dialog.reject)
@@ -433,9 +577,6 @@ class PreferencesWindow(table_ui.TableWindow):
 
         fallback_text, invalid = device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
-        custom_columns = ["criticality", "package_name"] + [
-            k for k, check in custom_checks.items() if check.isChecked()
-        ]
         self.user_settings.update(
             {
                 "store_language": (
@@ -443,8 +584,6 @@ class PreferencesWindow(table_ui.TableWindow):
                 ).lower(),
                 "fallback_countries": fallback_text,
                 "store_workers": workers.value(),
-                "show_app_icons": show_icons.isChecked(),
-                "date_format": date_format.currentText(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect.isChecked(),
@@ -452,15 +591,12 @@ class PreferencesWindow(table_ui.TableWindow):
                 "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
                 "compare_previous": compare.isChecked(),
-                "custom_view_columns": list(dict.fromkeys(custom_columns)),
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
         self.workers_spin.setValue(
             state.normalise_store_workers(self.user_settings.get("store_workers"))
         )
-        if hasattr(self.model, "set_app_icons_enabled"):
-            self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
             state.clear_cache()
         if portable.isChecked() != old_portable:
