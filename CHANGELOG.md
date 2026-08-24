@@ -2,6 +2,38 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [1.8.0] - 2026-08-24
+
+### Added
+
+- Saved Smart Queries for reusable result filtering, with a curated one-level All/Any builder, session-only active state and clear separation from Quick Filters and Audit Profiles.
+- A Hidden mode for the Details Panel, available from both the compact **Details** control and **View > Details Panel**.
+- A focused **Display Settings** dialog for App Icons, Date Format and Custom Columns.
+
+### Changed
+
+- Replaced the three permanent Details Panel position buttons with one compact, synchronized menu while preserving Auto, Right and Below placement and responsive layouts.
+- Reorganized Advanced Settings into Store & Cache, Device, Audit & History, and Data & Storage categories without changing existing technical-setting persistence.
+- Graduated optional Play Store icons from experimental presentation and hardened their bounded disk/RAM caches, offline reuse, malformed-data handling and large-table updates.
+- Unified CSV, HTML and versioned-JSON result exports across the File menu and main Export control, with centralized action-availability checks.
+- Standardized command naming, tooltips and contextual help while removing permanent table guidance that occupied operational space.
+- Added the informational product tagline to repository/README identity and About presentation without placing it in the main operational UI.
+
+### Fixed
+
+- Prevented Advanced Settings and Audit Profiles from opening during incompatible running operations.
+- Preserved active operational status messages when presentation-only filters or display/layout commands are used.
+- Standardized the result-clearing command as **Clear Results**.
+
+### Compatibility
+
+- v1.8.0 is prepared as an unsigned Windows x64 Engineering Test Build (ETB).
+- The planned project-defined asset set is exactly `PlayStoreAppAudit-v1.8.0-windows-x64.zip`, `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`.
+- Windows ARM64, Linux and macOS remain source-supported but are not v1.8.0 release-candidate targets.
+- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Managed ADB remains read-only with respect to installed Android apps.
+
 ## [1.7.0] - 2026-08-23
 
 ### Added

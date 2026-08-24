@@ -22,9 +22,9 @@ v1.7.0 is published and immutable as an unsigned Windows x64 Engineering Test Bu
 - Public project-defined assets: Windows x64 ZIP, consolidated third-party source archive and `SHA256SUMS.txt`.
 - Release evidence and checksums are recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.8.md`.
 
-## v1.8 active scope
+## v1.8 release-candidate scope
 
-v1.8 is the next feature/polish cycle and remains Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates. The pre-implementation UX audit and final review are complete; the directions below are approved for implementation in small, verifiable PRs.
+v1.8 product scope is closed and remains Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates. The pre-implementation UX audit, approved implementation and final stabilization review are complete; the remaining work is exact-SHA release preparation, validation, packaging and publication.
 
 ### UX consistency and action correctness
 
@@ -64,7 +64,7 @@ Move Store icons from experimental/opt-in framing to normal supported behavior i
 
 Add reusable result-filter expressions that remain distinct from saved Audit Profiles. The separate UX/design review is approved: built-in filters are named **Quick Filters**, while saved Smart Queries use one-level All/Any conditions over a curated field/operator set, a single native builder/manager and versioned `smart_queries` settings storage. The active query is session-only and composes with every existing result-filter surface.
 
-The approved decisions and permanent guardrails are documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Implementation belongs in the separate `feature/v1.8-smart-queries` PR. Do not add nested groups, scripting, regular expressions, import/export, automation, audit execution behavior or shared commands with Audit Profiles.
+The approved decisions and permanent guardrails are documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Implementation was completed in the separate `feature/v1.8-smart-queries` PR. Do not add nested groups, scripting, regular expressions, import/export, automation, audit execution behavior or shared commands with Audit Profiles.
 
 ### Product identity
 
@@ -91,6 +91,8 @@ VS Code/Pylance Standard type checking is useful local evidence for touched code
 7. `ux/v1.8-play-store-icons-and-smart-query-design`
 8. `feature/v1.8-smart-queries`, after explicit approval of the separate UX review
 9. `release/v1.8.0`, only after the approved scope is complete
+
+Steps 1-8 and the final stabilization work were merged normally through PRs `#105`-`#113`. Step 9 is limited to canonical version metadata, release documentation, cheap Quality evidence and exact-SHA release execution; it must not reopen product scope.
 
 ## v1.9
 
