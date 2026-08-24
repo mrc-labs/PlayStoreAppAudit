@@ -98,9 +98,9 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
-## v1.8.0 release-candidate draft
+## Published v1.8.0 release body
 
-The following draft defines the intended final v1.8.0 GitHub Release body. Replace every angle-bracket placeholder only with evidence from successful runs and validated artifacts from the final frozen SHA. Do not publish unverified claims or leave placeholders in the public body.
+The body below records the final v1.8.0 release wording and successful evidence [published on 2026-08-24](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0). The annotated tag, frozen source commit and three assets are immutable; post-publication re-download evidence is recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.8.md`.
 
 ```markdown
 ## Play Store App Audit v1.8.0 (Engineering Test Build - Windows x64 Only)
@@ -125,27 +125,30 @@ The following draft defines the intended final v1.8.0 GitHub Release body. Repla
 
 ## Compatibility and distribution
 - Engineering Test Build (ETB), Windows x64 only.
-- The Windows package is intentionally unsigned; Windows may display a SmartScreen/publisher warning.
+- Application version: `1.8.0`; Windows File Version and Product Version: `1.8.0.0`.
+- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
+- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
 - Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.8.0.
 - Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
 - `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
 - Managed ADB remains read-only with respect to installed Android apps.
 
 ## Release assets
-- `PlayStoreAppAudit-v1.8.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
+- `PlayStoreAppAudit-v1.8.0-windows-x64.zip` - 33,450,079 bytes.
+- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` - 73,128,136 bytes.
+- `SHA256SUMS.txt` - 225 bytes.
 
 ## Verification
-- Frozen source SHA: `<FROZEN_MAIN_SHA>`.
-- Quality push run `<QUALITY_RUN_ID>` passed on Python 3.13 and 3.14.
-- Windows x64 build run `<WINDOWS_BUILD_RUN_ID>` succeeded on the same frozen SHA.
-- Package architecture, application/Windows version, standalone contents, startup, legal/source material and release provenance validation: `<VALIDATION_RESULT>`.
-- Clean-install, v1.7-upgrade and distributed-application smoke checks: `<MANUAL_TEST_EVIDENCE>`.
-- Engineering assembly run `<ASSEMBLER_RUN_ID>` validated the exact x64-only three-file set from the same frozen SHA.
-- Windows x64 ZIP SHA-256: `<WINDOWS_ZIP_SHA256>`.
-- Third-party source archive SHA-256: `<THIRD_PARTY_SOURCES_SHA256>`.
-- `SHA256SUMS.txt` SHA-256: `<SHA256SUMS_SHA256>`.
+- Frozen source SHA: `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
+- Quality push run `32682693020` passed on Python 3.13 and 3.14.
+- Windows x64 build run `32683271942` succeeded on the same frozen SHA.
+- The package was validated as PE AMD64/x64, application version `1.8.0`, Windows File/Product version `1.8.0.0`, standalone and unsigned; package contents, startup, legal/source material and release provenance checks passed.
+- Clean extraction, distributed-application smoke and normal startup checks passed. A v1.7.0 settings profile opened under v1.8.0 with expected preferences and audit data preserved; Smart Queries initialized independently without migrating legacy saved filters.
+- Native Windows UI checks passed at logical client sizes 1100x700, 1200x760, 1500x900 and 1600x900 with DPI awareness enabled.
+- Engineering assembly run `32684933669` validated the exact x64-only three-file set from the same frozen SHA.
+- Windows x64 ZIP SHA-256: `b056be21804d2c22483ebee14c2f2bcbee5611a36ad6c7fea51c3dd91043991d`.
+- Third-party source archive SHA-256: `10ea03905fec3b9e9cf03e30a54e98f2c3ceb9d2aea423df4732a10f1551977e`.
+- `SHA256SUMS.txt` SHA-256: `09717c84a7096351dcc8ba91609146a877ffb2eee1184b34ccfea40c39bebb6b`.
 ```
 
 ## Historical normalized release notes

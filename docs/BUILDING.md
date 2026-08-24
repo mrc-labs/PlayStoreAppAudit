@@ -113,7 +113,7 @@ The exact v1.6 release SHA is the `main` merge commit produced by the profile/ve
 
 ### v1.7-v1.9 Windows x64 Engineering Test Builds (ETB)
 
-v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 deliberately reuse the same exact-SHA x64-only release profile.
+v1.7.0 and v1.8.0 are published and immutable as unsigned Windows x64 ETBs. v1.9 deliberately reuses the same exact-SHA x64-only release profile.
 
 - Build with `.github/workflows/build-windows-exe.yml` using `target=x64` only.
 - Do not invoke production Windows signing or build Windows ARM64/Linux/macOS release candidates.
@@ -121,7 +121,8 @@ v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 
 - Publish exactly the Windows x64 ZIP, consolidated third-party source archive and `SHA256SUMS.txt`.
 - Current/future ETB GitHub Release titles use `(Win x64 Only)`; the body heading continues to say `Engineering Test Build - Windows x64 Only`.
 - v1.7.0 frozen release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
-- v1.8 and v1.9 must freeze their own exact `main` SHA after Quality passes.
+- v1.8.0 frozen release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
+- v1.9 must freeze its own exact `main` SHA after Quality passes.
 
 ### v2.0-or-later full production release
 
@@ -394,9 +395,9 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 ## Version handling
 
-The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.7.0` maps to Windows version `1.7.0.0`.
+The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.8.0` maps to Windows version `1.8.0.0`.
 
-v1.7.0 version metadata is part of its immutable published release profile. Future v1.8/v1.9 version changes belong to their own deliberate release freeze.
+v1.7.0 and v1.8.0 version metadata are part of their immutable published release profiles. Future v1.9 version changes belong to its own deliberate release freeze.
 
 ## Packaged smoke tests
 

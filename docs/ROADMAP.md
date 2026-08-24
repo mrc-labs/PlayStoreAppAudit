@@ -12,97 +12,54 @@ This file is the canonical forward-looking product roadmap for Play Store App Au
 - Do not silently move deferred or rejected ideas into active scope.
 - Published releases, tags and assets are immutable.
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
+- Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
 
-## v1.7 published baseline
+## v1.8 published baseline
 
-v1.7.0 is published and immutable as an unsigned Windows x64 Engineering Test Build.
+v1.8.0 was published on 2026-08-24 as an unsigned Windows x64 Engineering Test Build and is immutable.
 
-- Frozen release source SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
-- GitHub Release title: `Play Store App Audit v1.7.0 (Win x64 Only)`.
+- Frozen release source SHA: `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0
+- GitHub Release title: `Play Store App Audit v1.8.0 (Win x64 Only)`.
 - Public project-defined assets: Windows x64 ZIP, consolidated third-party source archive and `SHA256SUMS.txt`.
-- Release evidence and checksums are recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.8.md`.
+- Canonical Quality/build/assembler runs: `32682693020`, `32683271942`, `32684933669`.
+- Release assets were re-downloaded and independently verified after publication; exact sizes and hashes are recorded in `PROJECT_STATUS.md`, `RELEASE_NOTES.md` and `HANDOFF_V1.8.md`.
+- Post-release Actions housekeeping run `32727364125` completed under the unchanged generational retention policy.
 
-## v1.8 release-candidate scope
+The v1.8 product and stabilization scope shipped through PRs `#105`-`#113`; release preparation shipped through PR `#114`. The release includes:
 
-v1.8 product scope is closed and remains Windows x64 only. Do not build or publish Windows ARM64, Linux or macOS v1.8 release candidates. The pre-implementation UX audit, approved implementation and final stabilization review are complete; the remaining work is exact-SHA release preparation, validation, packaging and publication.
+- action availability and canonical export consistency across menus and controls;
+- naming, tooltip, density and targeted iconography polish;
+- the compact **Details** control and **View > Details Panel** menu with Auto, Right, Below and Hidden modes;
+- separate Display Settings and a clearer four-category Advanced Settings hierarchy;
+- Play Store icon cache/CDN/offline/large-table hardening;
+- saved one-level All/Any Smart Queries that remain result-only and separate from Quick Filters and Audit Profiles;
+- the informational product tagline in repository description, README and About;
+- final running-operation and status-message consistency fixes.
 
-### UX consistency and action correctness
-
-- Define shared local availability predicates for idle state, source availability, device inventory, complete results, visible results, row/field capabilities and running operations.
-- Synchronize menu, button and context-menu actions from those predicates without introducing an application-wide state-machine rewrite.
-- Use one canonical export structure for the File menu and main Export control, with consistent CSV, HTML and versioned JSON actions.
-- Normalize command naming in Title Case and use sentence case for explanatory tooltips.
-- Replace permanent legends or tips with contextual help where this improves usable space without reducing discoverability.
-
-### Details Panel UX v2
-
-Replace the three permanent Auto/Right/Below controls with one compact control whose visible text is **Details**. Keep the current splitter-based Qt Widgets architecture and:
-
-- support Auto, Right, Below and Hidden modes;
-- use **Details Panel** in the View menu where the longer name improves clarity;
-- persist the selected mode and restore usable table space when the panel is Hidden;
-- keep hover help and accessibility metadata for the compact control;
-- validate the existing responsive behavior at 1100x700, 1200x760, 1500x900 and 1600x900.
-
-Do not use `QDockWidget` or a new UI framework for this work.
-
-### Display and Advanced Settings
-
-Move visual preferences such as App Icons, Custom Columns and Date Format to a focused Display Settings surface under View. Improve the remaining Advanced Settings hierarchy without changing service or persistence semantics. Candidate technical categories are Store & Cache, Device, Audit & History, and Data & Storage; Health Score remains part of the audit area.
-
-Use simple native Windows/Qt navigation. A `QStackedWidget` with a small category list is acceptable only if it remains clearer than a single lightweight dialog after visual preferences are removed.
-
-### Targeted naming, density and iconography polish
-
-Replace obsolete or confusing icons where a suitable existing Qt/application asset exists; otherwise prefer clear text over an inaccurate metaphor. Do not add an icon framework or perform a global visual redesign. Keep tooltips for icon-only or technical controls and avoid redundant help on self-explanatory text buttons.
-
-### Graduate Play Store icons from experimental
-
-Move Store icons from experimental/opt-in framing to normal supported behavior if v1.7 observations do not reveal a blocking issue. Finish any required cache growth, CDN failure, stale-data, offline reuse or large-table responsiveness hardening.
-
-### Smart Queries
-
-Add reusable result-filter expressions that remain distinct from saved Audit Profiles. The separate UX/design review is approved: built-in filters are named **Quick Filters**, while saved Smart Queries use one-level All/Any conditions over a curated field/operator set, a single native builder/manager and versioned `smart_queries` settings storage. The active query is session-only and composes with every existing result-filter surface.
-
-The approved decisions and permanent guardrails are documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Implementation was completed in the separate `feature/v1.8-smart-queries` PR. Do not add nested groups, scripting, regular expressions, import/export, automation, audit execution behavior or shared commands with Audit Profiles.
-
-### Product identity
-
-Keep the product name **Play Store App Audit** and use the official tagline **Android App Inventory, Store Analysis & Maintenance Toolkit** in the repository description, README and About dialog. In About, keep the hierarchy product name, version, tagline, then description; the tagline is informational rather than dominant. Do not add it to the operational main window.
-
-### Actions housekeeping
-
-Identify canonical release runs and remove only redundant GitHub Actions artifacts after checking that they are no longer release inputs. Never delete GitHub Release assets, tags or release sources. Improve the post-release checklist without adding a complex tracking system. Change retention behavior only when concrete evidence demonstrates a policy or implementation problem.
-
-### CI and build budget
-
-Every code PR may run Ruff, pytest, compileall, the lightweight Qt smoke test and targeted static checks. Do not dispatch Windows/Nuitka packaging for documentation, product identity, naming, icon polish or housekeeping changes. Native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 are manual or limited to high-impact UI milestones. Full Windows x64 packaging is reserved for a demonstrated milestone need or the frozen release candidate; Nuitka remains a frozen-candidate tool unless an explicit exception is justified.
-
-VS Code/Pylance Standard type checking is useful local evidence for touched code. It is not a repository build setting and does not justify a general typing refactor.
-
-### Approved implementation sequence
-
-1. `docs/v1.8-scope-lock-and-identity`
-2. `chore/v1.8-actions-housekeeping`
-3. `fix/v1.8-action-availability-and-export`
-4. `ux/v1.8-naming-density-icons`
-5. `feature/v1.8-details-control`
-6. `feature/v1.8-display-and-settings`
-7. `ux/v1.8-play-store-icons-and-smart-query-design`
-8. `feature/v1.8-smart-queries`, after explicit approval of the separate UX review
-9. `release/v1.8.0`, only after the approved scope is complete
-
-Steps 1-8 and the final stabilization work were merged normally through PRs `#105`-`#113`. Step 9 is limited to canonical version metadata, release documentation, cheap Quality evidence and exact-SHA release execution; it must not reopen product scope.
+The approved Smart Queries contract remains documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Nested groups, scripting, regular expressions, import/export, automation and audit-setting behavior were not introduced.
 
 ## v1.9
 
-v1.9 is also Windows x64 only. Its detailed product scope remains open until v1.8 is evaluated. Candidate UX evaluations are:
+v1.9 is the active next planning cycle and remains Windows x64 only. No v1.9 feature implementation began during v1.8 release closure, and detailed product scope is not yet frozen.
+
+Candidate UX evaluations carried forward from v1.8 are:
 
 - a real bottom `QStatusBar` for complementary device/source, progress and operation feedback, not as a Details Panel replacement;
-- a separate `QDockWidget`/docking experiment only if v1.8 reveals a real need;
+- a separate `QDockWidget`/docking experiment only if v1.8 usage demonstrates a real need;
 - a richer dashboard/status overview only after its distinct user value is demonstrated.
 
-A global Fluent-style visual redesign remains outside approved scope. Do not reintroduce multi-platform release packaging in v1.9 without an explicit roadmap/decision change.
+A global Fluent-style visual redesign remains outside approved scope. Continue using Qt Widgets with platform/default Windows styling unless a later evidence-based decision changes that direction.
+
+Before implementing any candidate, review actual v1.8 usage and define the user problem, interaction model, persistence impact, regression surface and acceptance evidence. Do not reopen completed v1.8 scope merely to expand the next release.
+
+### v1.9 CI and build budget
+
+- Normal code PRs may run Ruff, pytest, compileall, the lightweight Qt smoke test and targeted static checks.
+- Do not dispatch Windows/Nuitka packaging for documentation, product identity, naming, icon polish or housekeeping changes.
+- Native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 are manual or limited to high-impact UI milestones.
+- Full Windows x64 packaging is reserved for a demonstrated milestone need or the frozen release candidate.
+- VS Code/Pylance Standard type checking is useful local evidence for touched code, not a repository build setting or authorization for a broad typing refactor.
 
 ## v2.0 and later
 
@@ -114,29 +71,36 @@ v2.0 is the first planned release after v1.3 to return to the full six prebuilt 
 - Linux x64 and ARM64;
 - macOS x64 and ARM64.
 
-Production-trust signing is the ideal target for Windows and macOS, including notarization/stapling/Gatekeeper verification on macOS, but it is not yet guaranteed. Before promising signed v2.0 packages, validate provider eligibility, credentials, cost, GitHub configuration and real end-to-end signing/notarization runs.
+Production-trust signing is the ideal target for Windows and macOS, including notarization/stapling on macOS, but it must not be promised until eligibility, credentials, provider cost and complete end-to-end validation are proven. If signing is not feasible, make a new explicit release decision rather than silently weakening verification.
 
-### CLI/headless mode
+The v2.0 production profile continues to require one frozen SHA, signed/native post-sign validation where applicable, strict legal/source evidence and the eight-file multi-platform asset set documented in `BUILDING.md`.
 
-Keep CLI/headless auditing in v2.0-or-later scope. A future CLI should reuse the service layer rather than turning the desktop app into a background daemon.
+### CLI/headless work
 
-### Local APK audit concept
+CLI/headless support remains v2.0-or-later scope. It must reuse service/domain boundaries rather than driving the Qt UI or duplicating Store/ADB logic.
 
-Explore a LocalAPK-inspired workflow for locally stored APK files and version comparison. Decide first whether it belongs inside Play Store App Audit or a companion utility.
+## Explicitly removed / not planned
 
-### Advanced app management
+Do not reintroduce without a new product decision:
 
-Uninstall/disable/permission/clear-data/force-stop/install actions remain outside the near-term product because they conflict with the durable read-only ADB policy. Any such work requires an explicit policy change first.
-
-## Explicitly not planned
-
-Unless a new product decision reopens them:
-
-- installed signing-certificate fingerprint capture/change detection;
+- installed signing-certificate fingerprint/change detection;
 - automatic alternative-source association for unavailable Play apps;
 - audit watchlists/background monitoring;
-- predefined DACH/EU/worldwide country presets.
+- predefined country presets such as DACH/EU/worldwide.
 
-## Handoff requirement
+## Release and Git rules
 
-The active human-readable handoff for the v1.8 cycle is `HANDOFF_V1.8.md`. Generate a new handoff ZIP only from a clean, synchronized local `main` checkout after post-release documentation is merged, using `../scripts/export_chat_handoff.ps1`.
+- `main` is the only permanent branch.
+- Use short-lived branches and normal merge commits; no squash/rebase project history.
+- Published releases are immutable.
+- Before every local pull, run `git status --short`; if dirty, stop. Never auto-stash/reset/discard/clean user work.
+- Every release uses one exact frozen SHA and tags only after artifact validation.
+- Tag pushes do not rebuild binaries.
+- Keep strict legal/source validation fail-closed.
+- v1.9 remains a Windows x64 ETB; do not add Windows ARM64/Linux/macOS release packaging without an explicit roadmap/decision change.
+- Windows x64 ETB GitHub Release titles use `(Win x64 Only)`; body headings identify `Engineering Test Build - Windows x64 Only`.
+- Finish every release through `RELEASE_CLOSURE.md`, including post-release documentation and safe local VS Code synchronization.
+
+## Continuation and handoff generation
+
+The active human-readable handoff for the next cycle is `HANDOFF_V1.9.md`. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.

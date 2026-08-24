@@ -151,7 +151,7 @@ The v1.6.0 release profile is frozen as an unsigned Windows x64 ETB. Product sco
 
 ### v1.7-v1.9 Windows x64 Engineering Test Build (ETB) profile
 
-v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 deliberately continue the same Windows x64-only distribution profile.
+v1.7.0 and v1.8.0 are published and immutable as unsigned Windows x64 ETBs. v1.9 deliberately continues the same Windows x64-only distribution profile.
 
 - Build Windows x64 only from one exact frozen `main` SHA after the required Quality gates pass.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
@@ -160,7 +160,8 @@ v1.7.0 is published and immutable as an unsigned Windows x64 ETB. v1.8 and v1.9 
 - Publish exactly three project-defined assets: the Windows x64 ZIP, one consolidated third-party source `tar.xz`, and `SHA256SUMS.txt`.
 - Current/future Windows x64 ETB GitHub Release titles use suffix `(Win x64 Only)`; the release-body heading still identifies `Engineering Test Build - Windows x64 Only` and the package remains clearly described as unsigned.
 - v1.7.0 is frozen at `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. Do not rebuild, retag or replace it.
-- Any source or release-tooling change after a future v1.8/v1.9 SHA freeze invalidates that candidate and requires a rebuild from the new exact SHA.
+- v1.8.0 is frozen at `ac328f0dffddb6b70fa7600f1291377376bc05d4`. Do not rebuild, retag or replace it.
+- Any source or release-tooling change after a future v1.9 SHA freeze invalidates that candidate and requires a rebuild from the new exact SHA.
 
 ### v2.0-or-later production profile
 

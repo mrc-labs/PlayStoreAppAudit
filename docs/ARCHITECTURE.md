@@ -114,7 +114,7 @@ v1.5.0 keeps the same reduced public profile as v1.4: one unsigned Windows x64 p
 
 ### v1.6-v1.9 Windows x64 Engineering Test Build profiles
 
-v1.6.0 and v1.7.0 were published as unsigned Windows x64-only Engineering Test Builds. v1.8 and v1.9 retain the same distribution profile:
+v1.6.0, v1.7.0 and v1.8.0 were published as unsigned Windows x64-only Engineering Test Builds. v1.9 retains the same distribution profile:
 
 - one Windows x64 candidate is built from the frozen SHA with `.github/workflows/build-windows-exe.yml`;
 - Windows signing, Windows ARM64, Linux and macOS release candidates are not invoked;

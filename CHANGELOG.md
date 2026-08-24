@@ -27,9 +27,10 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- v1.8.0 is prepared as an unsigned Windows x64 Engineering Test Build (ETB).
-- The planned project-defined asset set is exactly `PlayStoreAppAudit-v1.8.0-windows-x64.zip`, `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`.
-- Windows ARM64, Linux and macOS remain source-supported but are not v1.8.0 release-candidate targets.
+- v1.8.0 is published as an unsigned Windows x64 Engineering Test Build (ETB) from frozen source SHA `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
+- Public GitHub Release title: `Play Store App Audit v1.8.0 (Win x64 Only)`.
+- The project-defined asset set is exactly `PlayStoreAppAudit-v1.8.0-windows-x64.zip`, `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`; the published SHA-256 values are recorded in `docs/PROJECT_STATUS.md` and `docs/RELEASE_NOTES.md`.
+- Windows ARM64, Linux and macOS remain source-supported but were not rebuilt for v1.8.0.
 - Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
 - `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
 - Managed ADB remains read-only with respect to installed Android apps.
