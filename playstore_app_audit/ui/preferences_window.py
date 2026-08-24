@@ -304,10 +304,10 @@ class PreferencesWindow(table_ui.TableWindow):
 
         display_form = QFormLayout()
         display_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        show_icons = QCheckBox("Show Play Store App Icons (Experimental)")
+        show_icons = QCheckBox("Show Play Store App Icons")
         show_icons.setObjectName("ShowAppIconsCheck")
         show_icons.setToolTip(
-            "Load Play Store icons on demand. Icons are kept in memory for this session."
+            "Load icons on demand and reuse them from a bounded local cache when available."
         )
         show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
         date_format = QComboBox()

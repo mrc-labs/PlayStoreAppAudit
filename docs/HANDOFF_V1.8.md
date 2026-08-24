@@ -124,6 +124,10 @@ The Details Panel implementation replaces the three permanent position buttons w
 
 The settings hierarchy implementation adds **View > Display Settings** for App Icons, Date Format and Custom Columns. **Tools > Advanced Settings** now uses a small native category list with Store & Cache, Device, Audit & History, and Data & Storage pages instead of the previous long GroupBox stack. Health Score remains in Audit & History, the expert warning remains visible, and existing setting keys and side effects are unchanged. Tests enforce the presentation/technical boundary and preservation of stored display values; native Windows checks covered both dialogs and all categories at 1100x700, 1200x760, 1500x900 and 1600x900 without dispatching a Nuitka build.
 
+Play Store icons have completed the v1.8 graduation/hardening pass while remaining optional and disabled by default. The loader creates networking only after a disk miss, caps pending requests and decoded RAM, and stops oversized transfers. The persistent cache rejects unsafe paths and oversized files, prunes corrupt/orphaned entries, and is bounded to 512 entries / 64 MiB while retaining update-marker/CDN reuse and offline hits. Package-indexed notifications avoid scanning the full result model per icon; tests cover 10,000 rows.
+
+The Smart Queries UX/design proposal is now in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). It recommends typed one-level All/Any conditions, a curated field/operator set, View-menu application, a combined native builder/manager and versioned `smart_queries` settings storage with no automatic legacy `saved_filters` migration. These decisions remain unapproved. No Smart Queries production code has been implemented, and implementation must wait for explicit review.
+
 ## v1.9 and v2.0 distribution roadmap
 
 - v1.9: Windows x64 only; detailed product scope not frozen yet.

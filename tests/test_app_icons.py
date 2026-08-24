@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt
+from PySide6.QtGui import QColor, QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.app_icon_disk_cache as disk_cache
@@ -14,7 +15,11 @@ import playstore_app_audit.services.app_icon_metadata as metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.app_icon_loader as icon_loader_ui
 import playstore_app_audit.ui.table_window as table_ui
-from playstore_app_audit.ui.app_icon_loader import AppIconLoader, _normalise_icon_url
+from playstore_app_audit.ui.app_icon_loader import (
+    AppIconLoader,
+    _IconRequest,
+    _normalise_icon_url,
+)
 
 
 @pytest.fixture(scope="module")
@@ -100,6 +105,86 @@ def test_loader_url_normalisation_rejects_non_https() -> None:
     assert _normalise_icon_url("https://example.invalid/icon.png")
     assert _normalise_icon_url("http://example.invalid/icon.png") == ""
     assert _normalise_icon_url("") == ""
+
+
+def test_loader_defers_network_manager_until_a_disk_cache_miss(app: QApplication) -> None:
+    loader = AppIconLoader()
+    try:
+        assert loader._manager is None
+    finally:
+        loader.deleteLater()
+        app.processEvents()
+
+
+def test_cached_icon_remains_available_without_creating_networking(app: QApplication) -> None:
+    loader = AppIconLoader()
+    item = _IconRequest(
+        "com.example.offline",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+    )
+    image = QPixmap(2, 2)
+    image.fill(QColor("red"))
+    encoded = QByteArray()
+    buffer = QBuffer(encoded)
+    assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    assert image.save(buffer, "PNG")
+    buffer.close()
+    ready: list[str] = []
+    loader.icon_ready.connect(ready.append)
+    loader._pending.add(item.key)
+
+    try:
+        loader._on_disk_loaded(item, bytes(encoded))
+
+        assert loader._manager is None
+        assert loader._cache[item.key].isNull() is False
+        assert ready == ["com.example.offline"]
+    finally:
+        loader.deleteLater()
+        app.processEvents()
+
+
+def test_loader_bounds_pending_requests_for_large_tables(
+    app: QApplication,
+) -> None:
+    loader = AppIconLoader(max_pending=3)
+    scheduled: list[object] = []
+    loader._disk_pool = SimpleNamespace(start=lambda task: scheduled.append(task))  # type: ignore[assignment]
+
+    try:
+        for index in range(10):
+            loader.icon_for_row(
+                f"com.example.{index}",
+                f"https://example.invalid/{index}.png",
+                "2026-08-20",
+            )
+
+        assert len(loader._pending) == 3
+        assert len(scheduled) == 3
+    finally:
+        loader.deleteLater()
+        app.processEvents()
+
+
+def test_decoded_icon_memory_cache_is_lru_bounded(app: QApplication) -> None:
+    loader = AppIconLoader(max_cache=3)
+    try:
+        for index in range(10):
+            loader._remember_in_memory(
+                (f"com.example.{index}", f"https://example.invalid/{index}.png", ""),
+                QIcon(),
+            )
+
+        assert len(loader._cache) == 3
+        assert [key[0] for key in loader._cache] == [
+            "com.example.7",
+            "com.example.8",
+            "com.example.9",
+        ]
+    finally:
+        loader.deleteLater()
+        app.processEvents()
 
 
 def test_icon_lookup_schedules_disk_io_without_blocking_ui(
@@ -253,6 +338,91 @@ def test_index_write_failure_does_not_leave_orphan_icon(
     assert not list((tmp_path / disk_cache.ICON_CACHE_DIRNAME).glob("*.img"))
 
 
+def test_disk_cache_evicts_oldest_entries_to_stay_within_limits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(disk_cache, "MAX_ICON_CACHE_ENTRIES", 10)
+    monkeypatch.setattr(disk_cache, "MAX_ICON_CACHE_BYTES", 8)
+
+    for index in range(3):
+        disk_cache.store_cached_icon_bytes(
+            f"com.example.{index}",
+            f"https://example.invalid/{index}.png",
+            "2026-08-20",
+            b"icon",
+        )
+
+    assert disk_cache.cached_icon_metadata("com.example.0") == {}
+    assert disk_cache.cached_icon_metadata("com.example.1")["size_bytes"] == 4
+    assert disk_cache.cached_icon_metadata("com.example.2")["size_bytes"] == 4
+    assert len(list((tmp_path / disk_cache.ICON_CACHE_DIRNAME).glob("*.img"))) == 2
+
+
+def test_disk_cache_rejects_oversized_images(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(disk_cache, "MAX_CACHED_ICON_BYTES", 4)
+
+    disk_cache.store_cached_icon_bytes(
+        "com.example.oversized",
+        "https://example.invalid/icon.png",
+        "2026-08-20",
+        b"12345",
+    )
+
+    assert disk_cache.cached_icon_metadata("com.example.oversized") == {}
+    assert not list((tmp_path / disk_cache.ICON_CACHE_DIRNAME).glob("*.img"))
+
+
+def test_disk_cache_never_reads_paths_outside_its_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    cache_dir = tmp_path / disk_cache.ICON_CACHE_DIRNAME
+    cache_dir.mkdir()
+    outside = tmp_path / "outside.img"
+    outside.write_bytes(b"not-an-icon")
+    (cache_dir / disk_cache.ICON_INDEX_FILENAME).write_text(
+        json.dumps(
+            {
+                "com.example.unsafe": {
+                    "file": "../outside.img",
+                    "icon_url": "https://example.invalid/icon.png",
+                    "play_last_update": "2026-08-20",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        disk_cache.load_cached_icon_bytes(
+            "com.example.unsafe",
+            "https://example.invalid/icon.png",
+            "2026-08-20",
+        )
+        is None
+    )
+    assert outside.read_bytes() == b"not-an-icon"
+
+
+def test_cache_prune_removes_orphans_after_index_corruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    cache_dir = tmp_path / disk_cache.ICON_CACHE_DIRNAME
+    cache_dir.mkdir()
+    orphan = cache_dir / "orphan.img"
+    orphan.write_bytes(b"orphan")
+    (cache_dir / disk_cache.ICON_INDEX_FILENAME).write_text("{broken", encoding="utf-8")
+
+    assert disk_cache.prune_icon_cache() == 1
+    assert not orphan.exists()
+    assert json.loads((cache_dir / disk_cache.ICON_INDEX_FILENAME).read_text(encoding="utf-8")) == {}
+
+
 def test_table_icons_are_opt_in_and_use_captured_metadata(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -316,5 +486,39 @@ def test_unavailable_rows_do_not_show_stale_icons(
     assert "play_icon_url" not in model.rows[0]
     assert model.data(title_index, Qt.ItemDataRole.DecorationRole) is None
 
+    model.deleteLater()
+    app.processEvents()
+
+
+def test_icon_ready_updates_only_rows_indexed_for_the_package(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
+    model = table_ui.AuditTableModel()
+
+    class TrackingRows(list[dict[str, object]]):
+        iterations = 0
+
+        def __iter__(self):
+            self.iterations += 1
+            return super().__iter__()
+
+    rows = TrackingRows(
+        {
+            "package_name": f"com.example.{index}",
+            "play_status": "available",
+            "play_icon_url": f"https://example.invalid/{index}.png",
+        }
+        for index in range(10_000)
+    )
+    model.set_rows(rows)
+    rows.iterations = 0
+    changed_rows: list[int] = []
+    model.dataChanged.connect(lambda top, _bottom, _roles: changed_rows.append(top.row()))
+
+    model._on_icon_ready("com.example.7777")
+
+    assert rows.iterations == 0
+    assert changed_rows == [7777]
     model.deleteLater()
     app.processEvents()

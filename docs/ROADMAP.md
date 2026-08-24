@@ -64,6 +64,8 @@ Move Store icons from experimental/opt-in framing to normal supported behavior i
 
 Add reusable result-filter expressions that remain distinct from saved audit profiles. The UX/design review must define the model, fields, operators, persistence and application behavior before any Smart Queries code is written. Do not revive an older CRUD design automatically or combine unapproved implementation with the design review.
 
+The current proposal is documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Its recommendations remain unapproved and no production Smart Queries code may be added until the listed decisions are reviewed explicitly.
+
 ### Product identity
 
 Keep the product name **Play Store App Audit** and use the official tagline **Android App Inventory, Store Analysis & Maintenance Toolkit** in the repository description, README and About dialog. In About, keep the hierarchy product name, version, tagline, then description; the tagline is informational rather than dominant. Do not add it to the operational main window.
