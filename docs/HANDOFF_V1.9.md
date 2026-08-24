@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-24
 
-Status: **v1.8.0 published and immutable; v1.9 is the active planning cycle. No v1.9 feature implementation has begun.**
+Status: **v1.8.0 published and immutable; v1.9 is the active development cycle following the completed architectural/UX review.**
 
 ## Start here
 
@@ -75,15 +75,19 @@ Detailed implementation and validation evidence is in `HANDOFF_V1.8.md` and `PRO
 
 ## v1.9 planning boundary
 
-Detailed v1.9 feature scope is not frozen. Start with evaluation and evidence, not implementation, for the candidates carried from v1.8:
+The first approved v1.9 implementation is one grouped presentation-consistency PR:
 
-- a complementary bottom `QStatusBar` for device/source, progress and operation feedback;
-- a separate `QDockWidget`/docking prototype only if actual v1.8 use demonstrates a need;
-- a richer dashboard/status overview only if its user value is distinct and measurable.
+- share one friendly Notes presentation across the table, Details Panel and HTML report, add the complete Notes tooltip and preserve raw Notes/Smart Query compatibility;
+- use **Maintenance Score** everywhere user-facing while retaining `health_score` and the current algorithm;
+- add foreground-only semantic warning colours to version differences and aging/legacy target values;
+- refine the About title/tagline/version hierarchy;
+- use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results.
 
-The status bar must not replace the Details Panel. A global Fluent-style redesign remains outside approved scope. Maintain Qt Widgets and natural Windows desktop behavior.
+An extra-wide responsive three-column Details Panel and a complementary `QStatusBar` are prototype/review candidates for separate later v1.9 PRs. Do not implement them in the presentation-consistency PR. The status bar must not replace the Details Panel or overwrite useful operational/progress feedback.
 
-For any proposed v1.9 work, first define the user problem, UX model, state/persistence impact, action availability, regression surface, test plan and PR boundary. Keep PRs small and avoid architecture refactors justified only by aesthetics.
+`QDockWidget` and richer dashboard/status overview experiments are deferred to v1.99 and require a demonstrated distinct benefit. v1.99 is the likely final Windows x64-only release before v2.0 and should close meaningful pre-v2.0 work rather than become an uncontrolled feature release.
+
+A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later.
 
 ## Smart Queries guardrails
 

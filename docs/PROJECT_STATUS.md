@@ -55,7 +55,7 @@ Manual housekeeping run `32727364125` completed successfully from the frozen rel
 ## Current post-release baseline
 
 - Canonical application version: `1.8.0`.
-- Current development cycle: v1.9 planning; no v1.9 implementation has begun as part of v1.8 closure.
+- Current development cycle: v1.9 implementation after the completed architectural/UX review.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
@@ -88,13 +88,17 @@ The implementation and stabilization work merged normally through PRs `#105`-`#1
 
 ## v1.9 direction
 
-v1.9 remains Windows x64 only and starts as a planning/evaluation cycle. Detailed product scope is not frozen. Candidate UX evaluations carried forward are:
+v1.9 remains Windows x64 only. Its first approved implementation scope is one grouped presentation-consistency PR covering:
 
-- a complementary bottom `QStatusBar` for device/source, progress and operation feedback, not as a Details Panel replacement;
-- a separate `QDockWidget`/docking prototype only if v1.8 usage demonstrates a real need;
-- a richer dashboard/status overview only after distinct user value is demonstrated.
+- one friendly Notes presentation shared by the table, Details Panel and HTML report, with a complete Notes tooltip and unchanged raw-data/Smart Query semantics;
+- **Maintenance Score** user-facing terminology while compatibility-sensitive `health_score` identifiers and the algorithm remain unchanged;
+- warning-palette foreground highlights for version differences and aging/legacy Android targets;
+- improved About hierarchy;
+- coordinated project-owned QPainter icons for Choose File, Scan Phone and Export Results.
 
-A global Fluent-style redesign remains outside approved scope. Do not introduce Windows ARM64/Linux/macOS release packaging for v1.9 without a new explicit decision.
+Separate later v1.9 PRs may prototype/review an extra-wide responsive three-column Details Panel and a complementary `QStatusBar`; neither belongs in the first implementation PR. `QDockWidget` and richer dashboard experiments are deferred to v1.99 and require a demonstrated benefit. A global Fluent redesign, an unnecessary icon library, broad architecture/type refactors and an internal `health_score` migration remain outside v1.9 scope.
+
+v1.99 is the likely final Windows x64-only pre-v2.0 release. It is intended to close meaningful outstanding work rather than expand without control.
 
 ## v2.0 direction
 

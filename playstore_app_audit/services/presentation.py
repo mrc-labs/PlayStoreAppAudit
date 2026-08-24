@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -28,6 +29,69 @@ DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "age_days",
     "notes",
 ]
+
+
+def _text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _store_evidence(row: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    raw = row.get(state.STORE_EVIDENCE_FIELD)
+    if not isinstance(raw, list):
+        return []
+    return [entry for entry in raw if isinstance(entry, Mapping)]
+
+
+def friendly_notes(row: Mapping[str, Any]) -> str:
+    """Return the complete user-facing Notes presentation without mutating raw data."""
+    entries = _store_evidence(row)
+    status = _text(row.get("play_status"))
+    checked: list[str] = []
+    for entry in entries:
+        country = _text(entry.get("country")).upper()
+        if country and country not in checked:
+            checked.append(country)
+
+    if status == "not_found_in_checked_countries":
+        markets = ", ".join(checked)
+        checked_text = f" in the checked markets ({markets})" if markets else ""
+        return (
+            "No Google Play listing was found"
+            f"{checked_text}. The app may be removed from Google Play or unavailable "
+            "in all of those regions."
+        )
+
+    if status == "available_in_other_country":
+        selected = _text(row.get("store_country")).upper()
+        found = next(
+            (
+                entry
+                for entry in entries
+                if _text(entry.get("role")) == "regional_fallback"
+                and _text(entry.get("status")) == "available"
+            ),
+            None,
+        )
+        found_country = _text(found.get("country")).upper() if found else "another market"
+        selected_text = selected or "the selected market"
+        return (
+            f"Not available in {selected_text}, but found in {found_country}. "
+            "Google Play availability is region-specific."
+        )
+
+    if status == "multi_country_check_inconclusive":
+        return (
+            "Store verification was inconclusive because one or more checks could not "
+            "be completed reliably. Recheck later or use Force full refresh."
+        )
+
+    if any(_text(entry.get("role")) == "metadata_completion" for entry in entries):
+        return (
+            "The listing is available; missing Store metadata was completed from "
+            "another checked market."
+        )
+
+    return "No additional notes."
 
 CSV_EXPORT_GUIDE = """Export a package list for Play Store App Audit
 

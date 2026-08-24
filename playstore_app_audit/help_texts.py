@@ -140,12 +140,12 @@ authorised shell-level method is available.</div>
 """
 
 HEALTH_SCORE_GUIDE_HTML = r"""
-<h1>Health score methodology</h1>
-<p class="lead">Health score is an optional, transparent maintenance heuristic from
+<h1>Maintenance Score methodology</h1>
+<p class="lead">Maintenance Score is an optional, transparent maintenance heuristic from
 <b>0 to 100</b>. It highlights signals that may deserve review; it does not decide whether an app
 is safe, trustworthy or suitable for you.</p>
 
-<div class="warning"><b>Not a security rating:</b> Health score is not a malware or security score.
+<div class="warning"><b>Not a security rating:</b> Maintenance Score is not a malware or security score.
 It does not inspect application code, decide whether permissions are justified, or prove that an app
 is harmful. A low or high score should never replace your own security assessment.</div>
 
@@ -180,6 +180,6 @@ treated as unknown and does not add either target-SDK penalty.</p>
       maintenance signals in a separate number.</li>
 </ul>
 
-<div class="note"><b>Optional feature:</b> Health score is disabled by default.
+<div class="note"><b>Optional feature:</b> Maintenance Score is disabled by default.
 Enable it in <b>Tools → Advanced settings</b> when you want the extra maintenance indicator.</div>
 """

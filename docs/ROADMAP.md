@@ -41,17 +41,20 @@ The approved Smart Queries contract remains documented in [`SMART_QUERIES_UX_REV
 
 ## v1.9
 
-v1.9 is the active next planning cycle and remains Windows x64 only. No v1.9 feature implementation began during v1.8 release closure, and detailed product scope is not yet frozen.
+v1.9 is the active development cycle and remains Windows x64 only. The architectural/UX review approved a first grouped presentation-consistency PR so the related low-risk polish can share one Quality run:
 
-Candidate UX evaluations carried forward from v1.8 are:
+- one friendly Notes presentation shared by the table, Details Panel and user-facing HTML report, plus a complete Notes tooltip, while raw Notes remain unchanged in CSV, versioned JSON, diagnostics and Smart Queries;
+- **Maintenance Score** as the user-facing name, with `health_score`, persisted Smart Query field IDs and serialized compatibility keys unchanged and no scoring-algorithm change;
+- foreground-only table highlights for Installed-vs-Store **Different**, Android Compatibility **Aging target** and **Legacy target**, reusing the existing warning palette;
+- About hierarchy of product title, tagline subtitle and secondary version;
+- one project-owned, palette-aware QPainter icon family for Choose File, Scan Phone and Export Results, with no icon-library or theme dependency.
 
-- a real bottom `QStatusBar` for complementary device/source, progress and operation feedback, not as a Details Panel replacement;
-- a separate `QDockWidget`/docking experiment only if v1.8 usage demonstrates a real need;
-- a richer dashboard/status overview only after its distinct user value is demonstrated.
+Two ideas remain prototype/review candidates for separate later v1.9 PRs and are not part of the presentation-consistency implementation:
 
-A global Fluent-style visual redesign remains outside approved scope. Continue using Qt Widgets with platform/default Windows styling unless a later evidence-based decision changes that direction.
+- an extra-wide responsive three-column Details Panel layout;
+- a complementary bottom `QStatusBar` for device/source, progress and operation feedback, not as a Details Panel replacement.
 
-Before implementing any candidate, review actual v1.8 usage and define the user problem, interaction model, persistence impact, regression surface and acceptance evidence. Do not reopen completed v1.8 scope merely to expand the next release.
+A `QDockWidget` experiment and richer dashboard/status overview are deferred to v1.99 under the evidence requirements below. A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Continue using Qt Widgets with platform/default Windows styling.
 
 ### v1.9 CI and build budget
 
@@ -60,6 +63,18 @@ Before implementing any candidate, review actual v1.8 usage and define the user 
 - Native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 are manual or limited to high-impact UI milestones.
 - Full Windows x64 packaging is reserved for a demonstrated milestone need or the frozen release candidate.
 - VS Code/Pylance Standard type checking is useful local evidence for touched code, not a repository build setting or authorization for a broad typing refactor.
+
+## v1.99 pre-v2.0 closure
+
+v1.99 is the likely final Windows x64-only release before v2.0. Its purpose is to review and close meaningful outstanding pre-v2.0 items, not to become an uncontrolled feature release.
+
+Deferred candidates are deliberately conditional:
+
+- prototype `QDockWidget` only if it provides a real workflow or usability benefit over the current Details Panel;
+- add a richer dashboard/status overview only if it answers a distinct workflow not already covered by the result summary, filters and Details Panel;
+- reconsider an internal `health_score` rename only as a deliberate compatibility migration with explicit persistence/serialization evidence.
+
+Items that do not meet those evidence thresholds stay deferred or rejected. v1.99 remains on the Windows x64 ETB distribution profile unless a later explicit release decision changes it.
 
 ## v2.0 and later
 

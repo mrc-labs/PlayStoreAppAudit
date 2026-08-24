@@ -253,8 +253,10 @@ class PreferencesWindow(table_ui.TableWindow):
             lambda: self._show_text_help("Export Package CSV", presentation.CSV_EXPORT_GUIDE),
         )
         help_menu.addAction(
-            "Health Score Methodology…",
-            lambda: self._show_text_help("Health Score Methodology", device_insights.HEALTH_SCORE_GUIDE),
+            "Maintenance Score Methodology…",
+            lambda: self._show_text_help(
+                "Maintenance Score Methodology", device_insights.HEALTH_SCORE_GUIDE
+            ),
         )
         help_menu.addSeparator()
         help_menu.addAction("Check for Updates…", self._check_for_updates)
@@ -518,7 +520,7 @@ class PreferencesWindow(table_ui.TableWindow):
         inventory = QCheckBox("Keep per-device inventory history")
         inventory.setObjectName("InventoryHistoryCheck")
         inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
-        health = QCheckBox("Enable Health Score")
+        health = QCheckBox("Enable Maintenance Score")
         health.setObjectName("HealthScoreCheck")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
         compare = QCheckBox("Compare with previous Play Store audit")

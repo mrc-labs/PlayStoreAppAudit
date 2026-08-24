@@ -234,8 +234,10 @@ class InsightsWindow(device_ui.DeviceWindow):
             lambda: self._show_text_help("Export Package CSV", presentation.CSV_EXPORT_GUIDE),
         )
         help_menu.addAction(
-            "Health Score Methodology…",
-            lambda: self._show_text_help("Health Score Methodology", device_insights.HEALTH_SCORE_GUIDE),
+            "Maintenance Score Methodology…",
+            lambda: self._show_text_help(
+                "Maintenance Score Methodology", device_insights.HEALTH_SCORE_GUIDE
+            ),
         )
         help_menu.addSeparator()
         help_menu.addAction("Check for Updates…", self._check_for_updates)
@@ -593,14 +595,14 @@ class InsightsWindow(device_ui.DeviceWindow):
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
         inventory = QCheckBox("Keep per-device inventory history")
         inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
-        health = QCheckBox("Enable Health score")
+        health = QCheckBox("Enable Maintenance Score")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
         d_layout.addWidget(collect_device)
         d_layout.addWidget(permissions)
         d_layout.addWidget(inventory)
         d_layout.addWidget(health)
         note = QLabel(
-            "Permission audit is OFF by default. Health score is a maintenance heuristic, not a security rating. See Help for methodology."
+            "Permission audit is OFF by default. Maintenance Score is a maintenance heuristic, not a security rating. See Help for methodology."
         )
         note.setWordWrap(True)
         d_layout.addWidget(note)
@@ -744,7 +746,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         form = QFormLayout(inner)
         fields = [
             ("Status", "criticality"),
-            ("Health score", "health_score"),
+            ("Maintenance Score", "health_score"),
             ("Change", "change"),
             ("Package Name", "package_name"),
             ("Play Store Title", "play_title"),
@@ -769,7 +771,11 @@ class InsightsWindow(device_ui.DeviceWindow):
             ("Notes", "notes"),
         ]
         for label_text, key in fields:
-            value = str(row.get(key, "") or "")
+            value = (
+                presentation.friendly_notes(row)
+                if key == "notes"
+                else str(row.get(key, "") or "")
+            )
             if not value and key not in {"notes", "change"}:
                 continue
             label = QLabel(html.escape(value))

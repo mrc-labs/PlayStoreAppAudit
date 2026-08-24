@@ -287,8 +287,19 @@ def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert not any(text.startswith("Removed =") for text in visible_labels)
     assert not any(text.startswith("Tip: click headers") for text in visible_labels)
 
-    assert not window.choose_button.icon().isNull()
-    assert window.scan_button.icon().isNull()
+    main_action_icons = [
+        window.choose_button.icon(),
+        window.scan_button.icon(),
+        window.export_button.icon(),
+    ]
+    assert all(not icon.isNull() for icon in main_action_icons)
+    icon_sizes = [
+        [(size.width(), size.height()) for size in icon.availableSizes()]
+        for icon in main_action_icons
+    ]
+    assert icon_sizes[0] == icon_sizes[1] == icon_sizes[2]
+    assert (32, 32) in icon_sizes[0]
+    assert not window.table.wordWrap()
     assert window.all_chip.toolTip() == "Show all result classifications."
     assert window.criticality_buttons["red"].toolTip().startswith("Show apps")
     assert "sort" in window.table.horizontalHeader().toolTip()
@@ -772,7 +783,7 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         "ADB Setup Guide…",
         "How to Import an App List…",
         None,
-        "Health Score Methodology…",
+        "Maintenance Score Methodology…",
         None,
         "Check for Updates…",
         "Create Diagnostic Bundle…",
@@ -782,12 +793,12 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
     actions = {action.text(): action for action in window.help_menu.actions()}
     actions["ADB Setup Guide…"].trigger()
     actions["How to Import an App List…"].trigger()
-    actions["Health Score Methodology…"].trigger()
+    actions["Maintenance Score Methodology…"].trigger()
 
     assert [title for title, _text in opened] == [
         "ADB Setup Guide",
         "How to Import an App List",
-        "Health Score Methodology",
+        "Maintenance Score Methodology",
     ]
     assert "USB debugging" in opened[0][1]
     assert "Read-only use" in opened[0][1]
@@ -811,6 +822,9 @@ def test_about_dialog_displays_the_canonical_version(
         captured["tagline_bold"] = next(
             label.font().bold() for label in labels if label.objectName() == "AboutTagline"
         )
+        captured["font_sizes"] = {
+            label.objectName(): label.font().pointSizeF() for label in labels
+        }
         captured["text"] = " ".join(label.text() for label in labels)
         return 0
 
@@ -824,10 +838,12 @@ def test_about_dialog_displays_the_canonical_version(
     )
     assert captured["label_order"][:3] == [  # type: ignore[index]
         "AboutTitle",
-        "AboutVersion",
         "AboutTagline",
+        "AboutVersion",
     ]
     assert captured["tagline_bold"] is False
+    font_sizes = captured["font_sizes"]
+    assert font_sizes["AboutTitle"] > font_sizes["AboutTagline"] > font_sizes["AboutVersion"]  # type: ignore[index]
     assert "Created by MRC" in str(captured["text"])
     assert "Not affiliated with or endorsed by Google" in str(captured["text"])
     assert f'"{__version__}"' not in inspect.getsource(window._show_about)

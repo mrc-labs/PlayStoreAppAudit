@@ -188,9 +188,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         )
         self.help_menu.addSeparator()
         self.help_menu.addAction(
-            "Health Score Methodology…",
+            "Maintenance Score Methodology…",
             lambda: rich_help.show_rich_help(
-                self, "Health Score Methodology", help_texts.HEALTH_SCORE_GUIDE_HTML
+                self, "Maintenance Score Methodology", help_texts.HEALTH_SCORE_GUIDE_HTML
             ),
         )
         self.help_menu.addSeparator()

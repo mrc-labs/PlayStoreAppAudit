@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
+from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.base_window import (
     APP_NAME,
     CRITICALITY,
@@ -74,9 +75,10 @@ class AuditWindow(BaseWindow):
         self.path_edit.setPlaceholderText("Choose a CSV / TSV / TXT file, or scan your Android phone")
         self.path_edit.setReadOnly(True)
         self.choose_button = QPushButton("Choose File")
-        self.choose_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
+        self.choose_button.setIcon(main_action_icon("choose_file", self.palette()))
         self.choose_button.clicked.connect(self._choose_input)
         self.scan_button = QPushButton("Scan Phone with ADB")
+        self.scan_button.setIcon(main_action_icon("scan_phone", self.palette()))
         self.scan_button.clicked.connect(self._scan_phone)
         source_line.addWidget(self.path_edit, 1)
         source_line.addWidget(self.choose_button)
@@ -139,7 +141,7 @@ class AuditWindow(BaseWindow):
 
         self.export_button = QPushButton("Export Results")
         self.export_button.setEnabled(False)
-        self.export_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
+        self.export_button.setIcon(main_action_icon("export_results", self.palette()))
         self.export_button.clicked.connect(self._export_results)
         action_row.addWidget(self.export_button)
 

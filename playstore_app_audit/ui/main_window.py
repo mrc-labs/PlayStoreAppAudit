@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QSizePolicy,
-    QStyle,
     QToolButton,
     QWidget,
 )
@@ -22,6 +21,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.ui.action_icons import main_action_icon
 
 
 def _detach_layout(layout, keep: set[object]) -> None:
@@ -218,8 +218,10 @@ class MainWindow(results_ui.ResultsWindow):
         row.setSpacing(8)
 
         self.choose_button.setText("Choose File")
-        self.choose_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
+        self.choose_button.setIcon(main_action_icon("choose_file", self.palette()))
         self.scan_button.setText("Scan Phone")
+        self.scan_button.setIcon(main_action_icon("scan_phone", self.palette()))
+        self.export_button.setIcon(main_action_icon("export_results", self.palette()))
 
         row.addWidget(self._source_option("CSV / TSV / TXT File", self._file_source_controls()), 1)
         or_label = QLabel("or")

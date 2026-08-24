@@ -19,7 +19,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Inspect the selected result in a dedicated details panel with Store/device metadata, country/language evidence and previous-audit changes.
 - Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
 - Optionally show Play Store app icons beside Store titles.
-- Optionally calculate a transparent Health Score maintenance heuristic.
+- Optionally calculate a transparent Maintenance Score heuristic.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
 - Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries that compose with installer and SDK maintenance filters.
 - Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
@@ -65,7 +65,7 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 - **Store anomaly:** Store responses were inconsistent or otherwise unusual.
 - **Other:** the check was incomplete, failed or could not be classified confidently.
 
-The optional Health Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Health score methodology**.
+The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Maintenance Score Methodology**.
 
 An installed version that differs from the Store version is reported as a difference, not automatically as outdated. Device-specific variants, staged rollouts and regional releases can legitimately differ.
 
