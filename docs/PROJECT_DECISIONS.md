@@ -308,7 +308,9 @@ The v1.9 architectural/UX review approved one grouped presentation-consistency i
 - About keeps the product title dominant, uses the tagline as the subtitle and places the version beneath it as secondary information;
 - Choose File, Scan Phone and Export Results use one small project-owned, palette-aware QPainter icon family. No third-party icon library or global theme is introduced.
 
-Separate v1.9 prototype/review PRs may evaluate an extra-wide responsive three-column Details Panel and a complementary `QStatusBar`. Neither is part of the presentation-consistency implementation, and a status bar must not overwrite or replace meaningful operational/progress feedback.
+The separate evidence-gated Details Panel prototype was accepted. Its automatic internal layout has three states based only on the actual usable scroll-viewport width: the established narrow/wide enter/exit thresholds remain 760/680 px, while extra-wide enters at 1180 px and exits at 1080 px. Extra-wide groups Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns, with actions horizontal below. It introduces no preference or persistence migration, does not change Auto/Right/Below/Hidden placement, and must preserve complete scrollable content at compact panel heights.
+
+A complementary `QStatusBar` remains eligible for a separate v1.9 prototype/review PR. It is not part of the Details Panel implementation and must not overwrite or replace meaningful operational/progress feedback.
 
 The following remain rejected for v1.9: a global Fluent redesign, an icon library without demonstrated need, broad architecture/type refactors and a full internal `health_score` rename. They remain recorded for possible evidence-based future reconsideration rather than being erased from project history.
 

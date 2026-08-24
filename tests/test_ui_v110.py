@@ -715,6 +715,80 @@ def test_details_control_and_view_menu_share_modes_and_persistence(
     assert saved[-1]["details_panel_position"] == "below"
 
 
+def test_details_internal_reflow_preserves_results_and_outer_layout_state(
+    window: MainWindow,
+    app: QApplication,
+) -> None:
+    rows = [
+        {
+            "criticality": "Stale",
+            "criticality_key": "orange",
+            "package_name": "com.example.alpha",
+            "play_title": "Alpha",
+            "play_status": "available",
+            "installed_version": "1.0",
+            "play_version": "2.0",
+            "notes": "raw alpha note",
+        },
+        {
+            "criticality": "Current",
+            "criticality_key": "green",
+            "package_name": "com.example.beta",
+            "play_title": "Beta",
+            "play_status": "available",
+            "installed_version": "2.0",
+            "play_version": "2.0",
+            "notes": "raw beta note",
+        },
+    ]
+    window.current_rows = rows
+    window.model.set_rows(rows)
+    window.search_edit.setText("com.example")
+    title_column = window.model.columns.index("play_title")
+    window.table.sortByColumn(title_column, Qt.SortOrder.DescendingOrder)
+    window.table.selectRow(0)
+    window._set_details_panel_position("below", persist=False)
+    app.processEvents()
+
+    selected_package = window.table.currentIndex().data(Qt.ItemDataRole.UserRole)[
+        "package_name"
+    ]
+    expected_order = [
+        window.proxy.index(row, title_column).data()
+        for row in range(window.proxy.rowCount())
+    ]
+    splitter_sizes = window.details_splitter.sizes()
+
+    for width, expected_mode in (
+        (500, "narrow"),
+        (800, "wide"),
+        (1180, "extra-wide"),
+        (1080, "extra-wide"),
+        (1079, "wide"),
+    ):
+        window.details_panel._update_adaptive_layout(width)
+        app.processEvents()
+        assert window.details_panel.content_layout_mode() == expected_mode
+        assert window.current_rows == rows
+        assert window.proxy.rowCount() == 2
+        assert window.search_edit.text() == "com.example"
+        assert [
+            window.proxy.index(row, title_column).data()
+            for row in range(window.proxy.rowCount())
+        ] == expected_order
+        assert window.table.horizontalHeader().sortIndicatorSection() == title_column
+        assert (
+            window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"]
+            == selected_package
+        )
+        assert window.details_panel._row is not None
+        assert window.details_panel._row["package_name"] == selected_package
+        assert window._details_panel_position == "below"
+        assert window._details_panel_resolved_position == "below"
+        assert window.details_splitter.orientation() == Qt.Orientation.Vertical
+        assert window.details_splitter.sizes() == splitter_sizes
+
+
 @pytest.mark.parametrize(
     ("width", "height", "expected"),
     [
