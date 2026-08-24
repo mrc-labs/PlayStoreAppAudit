@@ -23,11 +23,13 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
+import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
+import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
@@ -39,6 +41,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
     def __init__(self) -> None:
         self._defer_v92_menu_build = True
+        self._active_smart_query: smart_queries.SmartQuery | None = None
         super().__init__()
         self._defer_v92_menu_build = False
         self._build_menu_v9()
@@ -110,9 +113,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         )
 
         self.view_menu.addSeparator()
-        self._filter_menu = QMenu("Filter Preset", self.view_menu)
+        self._filter_menu = QMenu("Quick Filters", self.view_menu)
         self.view_menu.addMenu(self._filter_menu)
         self._populate_filter_menu()
+        self.smart_queries_menu = QMenu("Smart Queries", self.view_menu)
+        self.view_menu.addMenu(self.smart_queries_menu)
+        smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
         self.sdk_filter_action = self.view_menu.addAction(
             "SDK Maintenance Filter…", self._show_sdk_filter_dialog
         )
@@ -207,14 +213,51 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self._filter_menu.addAction(action)
 
     def _apply_filter_preset(self, name: str) -> None:
-        # Built-in filters are intentionally session-level here. The older saved
-        # filter/smart-query UX remains hidden until its v1.7 interaction model
-        # is explicitly settled.
+        # Built-in Quick Filters remain independent from saved Smart Queries.
         self._active_filter_preset = name if name in device_insights.BUILTIN_FILTERS else "All"
         self.proxy.set_v9_preset(self._active_filter_preset)
         self._populate_filter_menu()
         self._update_summary()
-        self.status_label.setText(f"Filter preset: {self._active_filter_preset}")
+        self.status_label.setText(f"Quick Filter: {self._active_filter_preset}")
+
+    def _show_new_smart_query(self) -> None:
+        smart_queries_ui.show_smart_query_dialog(self, new_query=True)
+
+    def _show_manage_smart_queries(self) -> None:
+        active_id = self._active_smart_query.query_id if self._active_smart_query else None
+        smart_queries_ui.show_smart_query_dialog(
+            self, new_query=False, selected_query_id=active_id
+        )
+
+    def _apply_smart_query(self, query: smart_queries.SmartQuery) -> None:
+        self._active_smart_query = query
+        if isinstance(self.proxy, preferences_ui.AuditFilterProxy):
+            self.proxy.set_smart_query(query)
+        smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
+        self._update_summary()
+
+    def _clear_smart_query(self) -> None:
+        self._active_smart_query = None
+        if isinstance(self.proxy, preferences_ui.AuditFilterProxy):
+            self.proxy.set_smart_query(None)
+        smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
+        self._update_summary()
+
+    def _on_smart_query_deleted(self, query_id: str) -> None:
+        if self._active_smart_query and self._active_smart_query.query_id == query_id:
+            self._clear_smart_query()
+
+    def _summary_with_smart_query(self, summary: str) -> str:
+        active = self._active_smart_query
+        if active is None:
+            if hasattr(self, "summary_label"):
+                self.summary_label.setToolTip("")
+            return summary
+        name = active.name or "Custom Query"
+        compact_name = name if len(name) <= 40 else name[:37] + "..."
+        if hasattr(self, "summary_label"):
+            self.summary_label.setToolTip(f"Active Smart Query: {name}")
+        return f"{summary} | Smart Query: {compact_name}"
 
     @staticmethod
     def _observed_sdk_default(rows: list[dict[str, object]], key: str, fallback: int) -> int:
@@ -365,7 +408,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 button.setText(f"{criticality[key]['button']} {counts[key]}")
                 self._fit_status_chip_to_selected_text(button)
         visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
-        self.summary_label.setText(presentation.concise_summary(list(self.current_rows), visible))
+        summary = presentation.concise_summary(list(self.current_rows), visible)
+        self.summary_label.setText(self._summary_with_smart_query(summary))
 
     def _clear_results(self) -> None:
         self._status_filters.clear()

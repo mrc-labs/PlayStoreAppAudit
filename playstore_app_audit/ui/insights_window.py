@@ -202,7 +202,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             view_presets.addAction(action)
         self._view_action_group = group
 
-        self._filter_menu = view_menu.addMenu("Filter Preset")
+        self._filter_menu = view_menu.addMenu("Quick Filters")
         self._populate_filter_menu()
         view_menu.addAction("Save Current Filter as Preset…", self._save_current_filter)
         view_menu.addAction("Manage Saved Filter Presets…", self._manage_saved_filters)
@@ -473,7 +473,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         state.save_settings(settings)
         self._populate_filter_menu()
         self._update_summary()
-        self.status_label.setText(f"Filter preset: {self._active_filter_preset}")
+        self.status_label.setText(f"Quick Filter: {self._active_filter_preset}")
 
     def _save_current_filter(self) -> None:
         name, ok = QInputDialog.getText(self, "Save filter preset", "Preset name")

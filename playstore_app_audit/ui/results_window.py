@@ -26,6 +26,7 @@ import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
+import playstore_app_audit.ui.smart_queries as smart_queries_ui
 import playstore_app_audit.ui.table_window as table_ui
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
@@ -240,6 +241,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             self.data_maintenance_menu.menuAction().setEnabled(idle)
         if hasattr(self, "details_panel"):
             self.details_panel.review_changes_button.setEnabled(idle and results_available)
+        smart_queries_ui.sync_smart_query_action_availability(self)
 
     def _set_busy(self, busy: bool) -> None:
         self._source_operation_active = busy
@@ -265,6 +267,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
         proxy.set_status_filters(self._status_filters)
+        proxy.set_smart_query(self._active_smart_query)
         self.proxy = proxy
         self.table.setModel(proxy)
         old_proxy.deleteLater()
@@ -717,11 +720,10 @@ class ResultsWindow(menu_ui.MenuWindow):
         if not hasattr(self, "summary_label"):
             return
         visible = self.proxy.rowCount() if hasattr(self, "proxy") else len(self.current_rows)
-        self.summary_label.setText(
-            summary_service.concise_summary(
-                list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None)
-            )
+        summary = summary_service.concise_summary(
+            list(self.current_rows), visible, getattr(self, "_last_inventory_changes", None)
         )
+        self.summary_label.setText(self._summary_with_smart_query(summary))
         self._sync_action_availability()
 
 
