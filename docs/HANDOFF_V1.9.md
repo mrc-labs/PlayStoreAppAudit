@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-24
 
-Status: **v1.8.0 published and immutable; v1.9 PR1 is merged and the accepted extra-wide Details Panel implementation is under review.**
+Status: **v1.8.0 published and immutable; v1.9 PR1 and PR2 are merged, and the accepted complementary QStatusBar implementation is under review.**
 
 ## Start here
 
@@ -83,9 +83,9 @@ The first approved v1.9 implementation merged through PR `#116` as one grouped p
 - refine the About title/tagline/version hierarchy;
 - use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results.
 
-The separate native Windows prototype accepted an automatic extra-wide Details Panel state for usable scroll-viewport widths at or above 1180 px, with exit hysteresis at 1080 px. It keeps Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns with the existing horizontal action row below. At a 1200 px viewport, representative rows reduced required scroll-content height by approximately 29-156 px compared with the existing two-column layout; the 1080 px exit edge still provides approximately 346 px per column without content clipping. Width-aware section minimums ensure compact-height panels scroll instead of truncating wrapped text.
+The separate native Windows prototype merged through PR `#117` and added an automatic extra-wide Details Panel state for usable scroll-viewport widths at or above 1180 px, with exit hysteresis at 1080 px. It keeps Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns with the existing horizontal action row below. At a 1200 px viewport, representative rows reduced required scroll-content height by approximately 29-156 px compared with the existing two-column layout; the 1080 px exit edge still provides approximately 346 px per column without content clipping. Width-aware section minimums ensure compact-height panels scroll instead of truncating wrapped text.
 
-The complementary `QStatusBar` remains a separate later v1.9 prototype/review candidate. Do not start it as part of the Details Panel PR. A status bar must not replace the Details Panel or overwrite useful operational/progress feedback.
+The complementary native `QStatusBar` prototype was accepted after native Windows comparison. It reparents the same canonical `status_label` and progress bar instead of creating or synchronising duplicate status widgets. The label expands on the left; the compact 200 px progress bar appears on the right only while the existing operation flags report active source, audit or finalization work. The action row consequently contains actions only. Source/device identity stays in its existing UI because duplicating it did not add value; the native size grip remains enabled. The status bar neither replaces the Details Panel nor adds a preference or persistence state, and `_set_presentation_status()` continues to protect operational feedback.
 
 `QDockWidget` and richer dashboard/status overview experiments are deferred to v1.99 and require a demonstrated distinct benefit. v1.99 is the likely final Windows x64-only release before v2.0 and should close meaningful pre-v2.0 work rather than become an uncontrolled feature release.
 
