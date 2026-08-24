@@ -98,6 +98,54 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
+## Draft v1.9.0 release body
+
+Planned GitHub Release title: `Play Store App Audit v1.9.0 (Win x64 Only)`.
+
+The body below is the canonical pre-evidence v1.9.0 draft. Its Verification section deliberately does not contain a frozen SHA, run IDs, checksums, asset sizes or final pass claims. Add those facts only after the freeze PR is merged and the exact-SHA Quality, Windows x64 build, engineering assembly and publication checks actually succeed.
+
+```markdown
+## Play Store App Audit v1.9.0 (Engineering Test Build - Windows x64 Only)
+
+## What's New / Highlights
+
+### Added
+- A third, automatic extra-wide Details Panel layout for genuinely wide panel viewports, with three related content columns and hysteresis for stable resizing.
+- A native operational status bar that reuses the existing status label and progress widget, keeps the native size grip and shows progress only during active work.
+
+### Changed
+- Friendly Notes now appear consistently in the table, complete table tooltip, Details Panel and HTML report while raw Notes remain unchanged in machine-readable data and exports.
+- **Maintenance Score** replaces **Health Score** in user-facing labels, help and reports; the scoring algorithm and compatibility-sensitive `health_score` identifier are unchanged.
+- Installed-vs-Store **Different**, Android Compatibility **Aging target** and **Legacy target** values now use readable foreground warning colours from the existing status palette.
+- The About dialog now presents the product title, tagline and version in a clearer hierarchy.
+- Choose File, Scan Phone and Export Results now use one coordinated, palette-aware icon family.
+- The main action row contains only Run, Export Results and Clear Results; operational status and active progress use the status bar without duplicating source/device identity.
+
+### Fixed
+- Fixed a crash when changing Display Settings with populated, sorted or filtered results.
+- Kept Custom preset selection, field checkboxes, visible columns, selection, Details content and saved column widths consistent through repeated changes and application restart.
+
+## Compatibility and distribution
+- Engineering Test Build (ETB), Windows x64 only.
+- Application version: `1.9.0`; Windows File Version and Product Version: `1.9.0.0`.
+- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
+- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
+- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.9.0.
+- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Existing v1.8 settings and Smart Queries remain compatible; raw Notes and the internal `health_score` field ID are unchanged.
+- Managed ADB remains read-only with respect to installed Android apps.
+
+## Release assets
+- `PlayStoreAppAudit-v1.9.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- The exact frozen source SHA and successful Quality, Windows x64 build and engineering assembly run IDs will be recorded after those release gates pass.
+- Package architecture/version/startup, legal/source material, exact-SHA provenance, final asset-set and checksum evidence will be recorded only after validation of the actual release artifacts.
+```
+
 ## Published v1.8.0 release body
 
 The body below records the final v1.8.0 release wording and successful evidence [published on 2026-08-24](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0). The annotated tag, frozen source commit and three assets are immutable; post-publication re-download evidence is recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.8.md`.

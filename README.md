@@ -16,10 +16,11 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
 - Show live progress while regional fallback countries are being verified.
 - Classify listings as Current, Aging, Stale, Removed, Store anomaly or Other.
-- Inspect the selected result in a dedicated details panel with Store/device metadata, country/language evidence and previous-audit changes.
+- Inspect the selected result in a dedicated Details Panel with Store/device metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
 - Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
 - Optionally show Play Store app icons beside Store titles.
 - Optionally calculate a transparent Maintenance Score heuristic.
+- Read friendly Notes consistently in the table, tooltip, Details Panel and HTML report while raw machine-readable Notes remain available in data exports.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
 - Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries that compose with installer and SDK maintenance filters.
 - Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
@@ -27,6 +28,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and maintain device inventory history and snapshots.
 - Export all or visible results as CSV, HTML or versioned JSON.
+- Follow operational status in the native status bar, with progress shown only while source, audit or finalization work is active.
 
 ## Download and installation
 
@@ -47,9 +49,9 @@ The v1.8.0 release includes one consolidated third-party source archive and a re
 ## Quick start
 
 1. Start the application.
-2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan phone**.
+2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan Phone**.
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
-4. Select **Run audit**.
+4. Select **Run Play Store Audit**.
 5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
 6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
 7. Export the complete or currently visible results from the export menu.
@@ -118,6 +120,8 @@ Third-party components remain under their own licenses. Binary release packages 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Material contributions require acceptance of the project's [Contributor License Agreement](CLA.md).
 
 ## Development
+
+The current source and v1.9 release-candidate metadata identify application version `1.9.0`; the latest published release remains immutable v1.8.0 until the v1.9 exact-SHA release process is complete.
 
 The release-packaging baseline is Python 3.13. Quality CI also exercises Python 3.14 source compatibility.
 

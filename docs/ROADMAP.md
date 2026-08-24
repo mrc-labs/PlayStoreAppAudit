@@ -41,17 +41,20 @@ The approved Smart Queries contract remains documented in [`SMART_QUERIES_UX_REV
 
 ## v1.9
 
-v1.9 is the active development cycle and remains Windows x64 only. The architectural/UX review's first grouped presentation-consistency scope merged through PR `#116`:
+v1.9 is in release readiness with its approved product/UX feature scope closed, and remains Windows x64 only. The architectural/UX review's first grouped presentation-consistency scope merged through PR `#116`:
 
 - one friendly Notes presentation shared by the table, Details Panel and user-facing HTML report, plus a complete Notes tooltip, while raw Notes remain unchanged in CSV, versioned JSON, diagnostics and Smart Queries;
 - **Maintenance Score** as the user-facing name, with `health_score`, persisted Smart Query field IDs and serialized compatibility keys unchanged and no scoring-algorithm change;
 - foreground-only table highlights for Installed-vs-Store **Different**, Android Compatibility **Aging target** and **Legacy target**, reusing the existing warning palette;
 - About hierarchy of product title, tagline subtitle and secondary version;
-- one project-owned, palette-aware QPainter icon family for Choose File, Scan Phone and Export Results, with no icon-library or theme dependency.
+- one project-owned, palette-aware QPainter icon family for Choose File, Scan Phone and Export Results, with no icon-library or theme dependency;
+- a fix for Display Settings changes with populated results, including safe presentation refresh, Custom preset/check-state synchronization and preserved column widths, selection and Details state across restart.
 
 The evidence-gated Details Panel prototype merged through PR `#117`. It adds an automatic extra-wide state at 1180 px of usable scroll-viewport width and exits that state below 1080 px, while retaining the established 760/680 px narrow/wide hysteresis. Extra-wide uses three related content groups—Store/Notes, Installed/Changes and Store evidence/diagnostics—with the horizontal action row below. It requires no new preference and does not change outer Details placement.
 
-The final evidence-gated v1.9 UX prototype accepted a complementary bottom `QStatusBar`. It relocates the same canonical operational label and progress widget rather than adding a second status model: status expands on the left and the 200 px progress bar appears on the right only during active work. The main row remains action-only. Existing source/device context is intentionally not duplicated, the native size grip remains enabled, and the status bar adds no preference or persistence state and does not replace the Details Panel.
+The final evidence-gated v1.9 UX implementation merged through PR `#118`: a complementary bottom `QStatusBar` that relocates the same canonical operational label and progress widget rather than adding a second status model. Status expands on the left and the 200 px progress bar appears on the right only during active work. The main row contains Run, Export Results and Clear Results only. Existing source/device context is intentionally not duplicated, the native size grip remains enabled, and the status bar adds no preference or persistence state and does not replace the Details Panel.
+
+PRs `#116`, `#117` and `#118` are merged and accepted. The remaining v1.9 work is release freeze and evidence only; do not add features or reopen the accepted UX scope without a genuine release blocker.
 
 A `QDockWidget` experiment and richer dashboard/status overview are deferred to v1.99 under the evidence requirements below. A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Continue using Qt Widgets with platform/default Windows styling.
 

@@ -52,10 +52,11 @@ Manual housekeeping run `32727364125` completed successfully from the frozen rel
 - GitHub Release assets, tags, source commits and previous releases were not modified.
 - Repository retention and the generational cleanup algorithm were not changed because no concrete policy failure was found.
 
-## Current post-release baseline
+## Current v1.9 release-candidate baseline
 
-- Canonical application version: `1.8.0`.
-- Current development cycle: v1.9 implementation after the completed architectural/UX review.
+- Canonical current-source application version: `1.9.0`; derived Windows File/Product version: `1.9.0.0`.
+- Latest published version remains immutable v1.8.0 until all v1.9.0 exact-SHA release gates pass.
+- Current development cycle: v1.9.0 release readiness; the approved product/UX feature scope is closed.
 - Python packaging baseline: 3.13.
 - Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1.
@@ -94,11 +95,14 @@ v1.9 remains Windows x64 only. Its first approved implementation scope merged th
 - **Maintenance Score** user-facing terminology while compatibility-sensitive `health_score` identifiers and the algorithm remain unchanged;
 - warning-palette foreground highlights for version differences and aging/legacy Android targets;
 - improved About hierarchy;
-- coordinated project-owned QPainter icons for Choose File, Scan Phone and Export Results.
+- coordinated project-owned QPainter icons for Choose File, Scan Phone and Export Results;
+- the Display Settings populated-table crash fix, safe presentation refresh, Custom preset synchronization and preservation of selection, Details content and column widths across changes and restart.
 
 The subsequent native Windows prototype merged through PR `#117` and added a third automatic Details Panel state at wide Below-mode viewport widths. The internal layout now enters extra-wide at 1180 px and exits at 1080 px, preserving the existing 760/680 px narrow/wide hysteresis. Its three columns group Store/Notes, Installed/Changes and Store evidence/diagnostics; decisions continue to use the actual scroll viewport, require no preference or persistence migration, and preserve the outer Auto/Right/Below/Hidden behavior. Width-aware minimum heights make compact panels scroll instead of clipping wrapped content.
 
-The complementary native `QStatusBar` prototype was also accepted. It hosts the same existing operational `status_label` as an expanding left item and the same existing progress bar as a compact 200 px right item, so there is still one status channel and one progress widget. Progress is visible only during active source, audit or finalization work; idle, completion and failure states keep the status message without a stale bar. The main action row now contains actions only. Existing source/device identity remains outside the status bar, the native size grip is retained, and there is no new preference, persistence state or Details Panel role.
+The complementary native `QStatusBar` implementation merged through PR `#118`. It hosts the same existing operational `status_label` as an expanding left item and the same existing progress bar as a compact 200 px right item, so there is still one status channel and one progress widget. Progress is visible only during active source, audit or finalization work; idle, completion and failure states keep the status message without a stale bar. The main action row now contains Run, Export Results and Clear Results only. Existing source/device identity remains outside the status bar, the native size grip is retained, and there is no new preference, persistence state or Details Panel role.
+
+PRs `#116`, `#117` and `#118` are merged and accepted. No further v1.9 product features are planned; current work is limited to version freeze, release documentation, validation and genuine release blockers.
 
 `QDockWidget` and richer dashboard experiments are deferred to v1.99 and require a demonstrated benefit. A global Fluent redesign, an unnecessary icon library, broad architecture/type refactors and an internal `health_score` migration remain outside v1.9 scope.
 
