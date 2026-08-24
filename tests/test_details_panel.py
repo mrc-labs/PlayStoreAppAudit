@@ -57,10 +57,34 @@ def test_auto_position_uses_width_hysteresis() -> None:
 def test_details_content_layout_uses_width_hysteresis() -> None:
     assert details_ui.details_content_layout_mode(900) == "wide"
     assert details_ui.details_content_layout_mode(500) == "narrow"
+    assert details_ui.details_content_layout_mode(1180) == "extra-wide"
     assert details_ui.details_content_layout_mode(700, "wide") == "wide"
     assert details_ui.details_content_layout_mode(700, "narrow") == "narrow"
     assert details_ui.details_content_layout_mode(650, "wide") == "narrow"
     assert details_ui.details_content_layout_mode(800, "narrow") == "wide"
+
+
+def test_details_content_layout_preserves_transition_order_and_both_hysteresis_bands() -> None:
+    mode = details_ui.details_content_layout_mode(500)
+    assert mode == "narrow"
+    mode = details_ui.details_content_layout_mode(800, mode)
+    assert mode == "wide"
+    mode = details_ui.details_content_layout_mode(1179, mode)
+    assert mode == "wide"
+    mode = details_ui.details_content_layout_mode(1180, mode)
+    assert mode == "extra-wide"
+    mode = details_ui.details_content_layout_mode(1080, mode)
+    assert mode == "extra-wide"
+    mode = details_ui.details_content_layout_mode(1079, mode)
+    assert mode == "wide"
+    mode = details_ui.details_content_layout_mode(680, mode)
+    assert mode == "wide"
+    mode = details_ui.details_content_layout_mode(679, mode)
+    assert mode == "narrow"
+
+    assert details_ui.details_content_layout_mode(1180, "narrow") == "extra-wide"
+    assert details_ui.details_content_layout_mode(1079, "extra-wide") == "wide"
+    assert details_ui.details_content_layout_mode(679, "extra-wide") == "narrow"
 
 
 def test_results_layout_lookup_descends_through_card_widget(app: QApplication) -> None:
@@ -190,10 +214,257 @@ def test_panel_content_layout_remains_adaptive(app: QApplication) -> None:
     panel = details_ui.AppDetailsPanel()
     panel._update_adaptive_layout(900)
     assert panel.content_layout_mode() == "wide"
+    panel._update_adaptive_layout(1180)
+    assert panel.content_layout_mode() == "extra-wide"
+    panel._update_adaptive_layout(1080)
+    assert panel.content_layout_mode() == "extra-wide"
+    panel._update_adaptive_layout(1079)
+    assert panel.content_layout_mode() == "wide"
     panel._update_adaptive_layout(700)
     assert panel.content_layout_mode() == "wide"
     panel._update_adaptive_layout(650)
     assert panel.content_layout_mode() == "narrow"
+
+    panel.deleteLater()
+    app.processEvents()
+
+
+def test_extra_wide_layout_groups_existing_sections_in_three_columns(
+    app: QApplication,
+) -> None:
+    panel = details_ui.AppDetailsPanel()
+    panel._update_adaptive_layout(1180)
+
+    columns = panel.sections_layout.itemAt(0).layout()
+    assert columns is not None
+    assert columns.count() == 3
+
+    expected = [
+        [panel.store_section, panel.notes_section],
+        [panel.device_section, panel.changes_section],
+        [panel.evidence_section, panel.diagnostics_section],
+    ]
+    for index, expected_widgets in enumerate(expected):
+        column = columns.itemAt(index).layout()
+        assert column is not None
+        widgets = [
+            column.itemAt(item).widget()
+            for item in range(column.count())
+            if column.itemAt(item).widget() is not None
+        ]
+        assert widgets == expected_widgets
+
+    actions = panel.actions_layout.itemAt(0).layout()
+    assert actions is not None
+    assert [actions.itemAt(index).widget() for index in range(actions.count())] == [
+        panel.review_changes_button,
+        panel.open_store_button,
+    ]
+
+    panel.deleteLater()
+    app.processEvents()
+
+
+def test_panel_resize_uses_scroll_viewport_width_for_extra_wide_mode(
+    app: QApplication,
+) -> None:
+    panel = details_ui.AppDetailsPanel()
+    panel.resize(details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH, 520)
+    panel.show()
+    app.processEvents()
+    panel.resize(details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH + 1, 520)
+    app.processEvents()
+
+    assert panel.width() > details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH
+    assert panel.scroll.viewport().width() < details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH
+    assert panel.content_layout_mode() == "wide"
+
+    width_delta = (
+        details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH + 1 - panel.scroll.viewport().width()
+    )
+    panel.resize(panel.width() + width_delta, 520)
+    app.processEvents()
+
+    assert panel.scroll.viewport().width() >= details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH
+    assert panel.content_layout_mode() == "extra-wide"
+
+    panel.deleteLater()
+    app.processEvents()
+
+
+def test_responsive_layout_changes_preserve_all_rendered_content(
+    app: QApplication,
+) -> None:
+    panel = details_ui.AppDetailsPanel()
+    row = {
+        "package_name": "com.example.complete",
+        "play_title": "Complete Details Example",
+        "developer": "Example Developer",
+        "play_status": "not_found_in_checked_countries",
+        "play_version": "4.2",
+        "play_last_update": "2025-01-20",
+        "store_country": "it",
+        "store_language": "en",
+        "updated_source": "multi-country verification",
+        "store_url": "https://play.google.com/store/apps/details?id=com.example.complete",
+        "installed_version": "4.1",
+        "installed_version_code": "410",
+        "version_comparison": "Different",
+        "installer_source": "Google Play (com.android.vending)",
+        "app_enabled": "Enabled",
+        "target_sdk": "29",
+        "min_sdk": "23",
+        "compatibility_status": "Legacy target",
+        "health_score": "35",
+        "change": "Changed",
+        "notes": "raw technical notes remain in the selected row",
+        details_ui.AUDIT_CHANGES_FIELD: [
+            {"type": "store_version_changed", "previous": "4.1", "current": "4.2"}
+        ],
+        details_ui.STORE_EVIDENCE_FIELD: [
+            {
+                "role": "primary",
+                "country": "it",
+                "language": "en",
+                "status": "not_found_or_unavailable",
+                "http_status": 404,
+                "request_path": "scraper+html",
+                "outcome": "terminal_not_found",
+                "retry_count": 1,
+            },
+            {
+                "role": "regional_fallback",
+                "country": "us",
+                "language": "en",
+                "status": "not_found_or_unavailable",
+                "http_status": 404,
+                "request_path": "scraper+html",
+                "outcome": "terminal_not_found",
+            },
+        ],
+    }
+    panel.set_row(row)
+    expected_text = {
+        "store": panel.store_label.text(),
+        "device": panel.device_label.text(),
+        "evidence": panel.evidence_label.text(),
+        "diagnostics": panel.diagnostics_label.text(),
+        "changes": panel.changes_label.text(),
+        "notes": panel.notes_label.text(),
+    }
+
+    transitions = [500, 800, 1180, 1100, 1079, 700, 679, 800, 1180]
+    expected_modes = [
+        "narrow",
+        "wide",
+        "extra-wide",
+        "extra-wide",
+        "wide",
+        "wide",
+        "narrow",
+        "wide",
+        "extra-wide",
+    ]
+    for width, expected_mode in zip(transitions, expected_modes, strict=True):
+        panel._update_adaptive_layout(width)
+        assert panel.content_layout_mode() == expected_mode
+        assert panel._row == row
+        assert panel.store_label.text() == expected_text["store"]
+        assert panel.device_label.text() == expected_text["device"]
+        assert panel.evidence_label.text() == expected_text["evidence"]
+        assert panel.diagnostics_label.text() == expected_text["diagnostics"]
+        assert panel.changes_label.text() == expected_text["changes"]
+        assert panel.notes_label.text() == expected_text["notes"]
+        assert panel.open_store_button.isEnabled()
+        assert panel.review_changes_button.isEnabled()
+
+    panel.deleteLater()
+    app.processEvents()
+
+
+def test_extra_wide_content_scrolls_instead_of_clipping_at_compact_height(
+    app: QApplication,
+) -> None:
+    panel = details_ui.AppDetailsPanel()
+    panel.resize(details_ui.DETAILS_EXTRA_WIDE_ENTER_WIDTH + 1, 260)
+    panel.show()
+    app.processEvents()
+    panel.resize(panel.width() + 1200 - panel.scroll.viewport().width(), 260)
+    app.processEvents()
+    panel.set_row(
+        {
+            "package_name": "com.example.evidence.heavy",
+            "play_title": "Evidence-heavy Example",
+            "developer": "Example Developer",
+            "play_status": "available",
+            "play_version": "8.4.2",
+            "play_last_update": "2026-07-15",
+            "store_country": "it",
+            "store_language": "en",
+            "store_url": (
+                "https://play.google.com/store/apps/details?"
+                "id=com.example.evidence.heavy"
+            ),
+            "installed_version": "8.1.0",
+            "installed_version_code": "810",
+            "version_comparison": "Different",
+            "installer_source": "Google Play (com.android.vending)",
+            "app_enabled": "Enabled",
+            "target_sdk": "28",
+            "min_sdk": "23",
+            "compatibility_status": "Legacy target",
+            "health_score": "38",
+            "notes": "fallback token: market mismatch after all checked countries",
+            details_ui.AUDIT_CHANGES_FIELD: [
+                {
+                    "type": "store_version_changed",
+                    "previous": "8.1.0",
+                    "current": "8.4.2",
+                },
+                {
+                    "type": "maintenance_state_changed",
+                    "previous": "Aging",
+                    "current": "Legacy",
+                },
+            ],
+            details_ui.STORE_EVIDENCE_FIELD: [
+                {
+                    "role": "primary",
+                    "country": "it",
+                    "language": "en",
+                    "status": "not_found_or_unavailable",
+                    "http_status": 404,
+                    "request_path": "scraper+html",
+                    "outcome": "terminal_not_found",
+                    "retry_count": 1,
+                },
+                {
+                    "role": "regional_fallback",
+                    "country": "us",
+                    "language": "en",
+                    "status": "available",
+                    "http_status": 200,
+                    "request_path": "scraper",
+                    "outcome": "success",
+                },
+            ],
+        }
+    )
+    app.processEvents()
+
+    assert panel.content_layout_mode() == "extra-wide"
+    assert panel.scroll.verticalScrollBar().maximum() > 0
+    for label in (
+        panel.store_label,
+        panel.device_label,
+        panel.evidence_label,
+        panel.diagnostics_label,
+        panel.changes_label,
+        panel.notes_label,
+    ):
+        assert label.height() >= label.heightForWidth(label.width())
+    assert "Maintenance state changed: Aging → Legacy" in panel.changes_label.text()
+    assert "Additional markets checked: US" in panel.evidence_label.text()
 
     panel.deleteLater()
     app.processEvents()

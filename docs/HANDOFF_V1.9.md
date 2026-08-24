@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-24
 
-Status: **v1.8.0 published and immutable; v1.9 is the active development cycle following the completed architectural/UX review.**
+Status: **v1.8.0 published and immutable; v1.9 PR1 is merged and the accepted extra-wide Details Panel implementation is under review.**
 
 ## Start here
 
@@ -75,7 +75,7 @@ Detailed implementation and validation evidence is in `HANDOFF_V1.8.md` and `PRO
 
 ## v1.9 planning boundary
 
-The first approved v1.9 implementation is one grouped presentation-consistency PR:
+The first approved v1.9 implementation merged through PR `#116` as one grouped presentation-consistency PR:
 
 - share one friendly Notes presentation across the table, Details Panel and HTML report, add the complete Notes tooltip and preserve raw Notes/Smart Query compatibility;
 - use **Maintenance Score** everywhere user-facing while retaining `health_score` and the current algorithm;
@@ -83,7 +83,9 @@ The first approved v1.9 implementation is one grouped presentation-consistency P
 - refine the About title/tagline/version hierarchy;
 - use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results.
 
-An extra-wide responsive three-column Details Panel and a complementary `QStatusBar` are prototype/review candidates for separate later v1.9 PRs. Do not implement them in the presentation-consistency PR. The status bar must not replace the Details Panel or overwrite useful operational/progress feedback.
+The separate native Windows prototype accepted an automatic extra-wide Details Panel state for usable scroll-viewport widths at or above 1180 px, with exit hysteresis at 1080 px. It keeps Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns with the existing horizontal action row below. At a 1200 px viewport, representative rows reduced required scroll-content height by approximately 29-156 px compared with the existing two-column layout; the 1080 px exit edge still provides approximately 346 px per column without content clipping. Width-aware section minimums ensure compact-height panels scroll instead of truncating wrapped text.
+
+The complementary `QStatusBar` remains a separate later v1.9 prototype/review candidate. Do not start it as part of the Details Panel PR. A status bar must not replace the Details Panel or overwrite useful operational/progress feedback.
 
 `QDockWidget` and richer dashboard/status overview experiments are deferred to v1.99 and require a demonstrated distinct benefit. v1.99 is the likely final Windows x64-only release before v2.0 and should close meaningful pre-v2.0 work rather than become an uncontrolled feature release.
 

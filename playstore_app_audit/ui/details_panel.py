@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from PySide6.QtCore import QSize, Qt, QUrl, Signal
 from PySide6.QtGui import (
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMenu,
     QPushButton,
     QScrollArea,
@@ -37,8 +38,13 @@ display_notes = presentation.friendly_notes
 
 DETAILS_WIDE_ENTER_WIDTH = 760
 DETAILS_WIDE_EXIT_WIDTH = 680
+DETAILS_EXTRA_WIDE_ENTER_WIDTH = 1180
+DETAILS_EXTRA_WIDE_EXIT_WIDTH = 1080
+DETAILS_COLUMN_SPACING = 18
 AUTO_RIGHT_ENTER_WIDTH = 1380
 AUTO_RIGHT_EXIT_WIDTH = 1280
+
+DetailsContentMode = Literal["narrow", "wide", "extra-wide"]
 
 _CHANGE_LABELS = {
     "reappeared": "Reappeared in checked Store markets",
@@ -108,10 +114,20 @@ def resolve_details_panel_position(
     return "right" if available_width >= AUTO_RIGHT_ENTER_WIDTH else "below"
 
 
-def details_content_layout_mode(available_width: int, current_mode: object = "") -> str:
+def details_content_layout_mode(
+    available_width: int, current_mode: object = ""
+) -> DetailsContentMode:
     current = _text(current_mode).casefold()
+    if current == "extra-wide":
+        if available_width >= DETAILS_EXTRA_WIDE_EXIT_WIDTH:
+            return "extra-wide"
+        current = "wide"
     if current == "wide":
+        if available_width >= DETAILS_EXTRA_WIDE_ENTER_WIDTH:
+            return "extra-wide"
         return "wide" if available_width >= DETAILS_WIDE_EXIT_WIDTH else "narrow"
+    if available_width >= DETAILS_EXTRA_WIDE_ENTER_WIDTH:
+        return "extra-wide"
     return "wide" if available_width >= DETAILS_WIDE_ENTER_WIDTH else "narrow"
 
 
@@ -451,7 +467,7 @@ class AppDetailsPanel(QFrame):
         self.setMinimumWidth(300)
         self.setMinimumHeight(210)
         self._row: dict[str, Any] | None = None
-        self._content_mode = ""
+        self._content_mode: DetailsContentMode | Literal[""] = ""
         self._section_widgets: list[QWidget] = []
 
         root = QVBoxLayout(self)
@@ -534,21 +550,91 @@ class AppDetailsPanel(QFrame):
         self._section_widgets.append(section)
         return section, section.body
 
-    def content_layout_mode(self) -> str:
+    def content_layout_mode(self) -> DetailsContentMode:
         return self._content_mode or "narrow"
+
+    def _sync_extra_wide_section_heights(self, available_width: int) -> None:
+        had_minimum_heights = any(
+            section.minimumHeight() > 0 for section in self._section_widgets
+        )
+        for section in self._section_widgets:
+            section.setMinimumHeight(0)
+        if self._content_mode != "extra-wide" and not had_minimum_heights:
+            return
+        if self._content_mode == "extra-wide":
+            content_margins = self.content_layout.contentsMargins()
+            column_width = max(
+                1,
+                (
+                    available_width
+                    - content_margins.left()
+                    - content_margins.right()
+                    - (2 * DETAILS_COLUMN_SPACING)
+                )
+                // 3,
+            )
+            for section in self._section_widgets:
+                section.setMinimumHeight(max(0, section.heightForWidth(column_width)))
+        self.sections_layout.invalidate()
+        self.content_layout.invalidate()
+        self.sections_host.updateGeometry()
+        self.content.updateGeometry()
+        self.sections_layout.activate()
+        self.content_layout.activate()
 
     def _update_adaptive_layout(self, available_width: int) -> None:
         mode = details_content_layout_mode(available_width, self._content_mode)
         if mode == self._content_mode:
+            self._sync_extra_wide_section_heights(available_width)
             return
         self._content_mode = mode
         _clear_layout(self.sections_layout)
         _clear_layout(self.actions_layout)
+        size_constraint = (
+            QLayout.SizeConstraint.SetMinimumSize
+            if mode == "extra-wide"
+            else QLayout.SizeConstraint.SetDefaultConstraint
+        )
+        self.content_layout.setSizeConstraint(size_constraint)
+        self.sections_layout.setSizeConstraint(size_constraint)
 
-        if mode == "wide":
+        if mode == "extra-wide":
             columns = QHBoxLayout()
             columns.setContentsMargins(0, 0, 0, 0)
-            columns.setSpacing(18)
+            columns.setSpacing(DETAILS_COLUMN_SPACING)
+            store_column = QVBoxLayout()
+            store_column.setContentsMargins(0, 0, 0, 0)
+            store_column.setSpacing(12)
+            store_column.addWidget(self.store_section)
+            store_column.addWidget(self.notes_section)
+            store_column.addStretch(1)
+            device_column = QVBoxLayout()
+            device_column.setContentsMargins(0, 0, 0, 0)
+            device_column.setSpacing(12)
+            device_column.addWidget(self.device_section)
+            device_column.addWidget(self.changes_section)
+            device_column.addStretch(1)
+            evidence_column = QVBoxLayout()
+            evidence_column.setContentsMargins(0, 0, 0, 0)
+            evidence_column.setSpacing(12)
+            evidence_column.addWidget(self.evidence_section)
+            evidence_column.addWidget(self.diagnostics_section)
+            evidence_column.addStretch(1)
+            columns.addLayout(store_column, 1)
+            columns.addLayout(device_column, 1)
+            columns.addLayout(evidence_column, 1)
+            self.sections_layout.addLayout(columns)
+
+            actions = QHBoxLayout()
+            actions.setContentsMargins(0, 0, 0, 0)
+            actions.setSpacing(7)
+            actions.addWidget(self.review_changes_button, 1)
+            actions.addWidget(self.open_store_button, 1)
+            self.actions_layout.addLayout(actions)
+        elif mode == "wide":
+            columns = QHBoxLayout()
+            columns.setContentsMargins(0, 0, 0, 0)
+            columns.setSpacing(DETAILS_COLUMN_SPACING)
             left = QVBoxLayout()
             left.setContentsMargins(0, 0, 0, 0)
             left.setSpacing(12)
@@ -585,10 +671,13 @@ class AppDetailsPanel(QFrame):
                 self.sections_layout.addWidget(section)
             self.actions_layout.addWidget(self.review_changes_button)
             self.actions_layout.addWidget(self.open_store_button)
+        self._sync_extra_wide_section_heights(available_width)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        viewport_width = self.scroll.viewport().width() if hasattr(self, "scroll") else event.size().width()
+        viewport_width = (
+            self.scroll.viewport().width() if hasattr(self, "scroll") else event.size().width()
+        )
         self._update_adaptive_layout(viewport_width)
 
     def set_icon(self, icon: QIcon | None) -> None:
@@ -615,6 +704,7 @@ class AppDetailsPanel(QFrame):
         ):
             label.clear()
         self.open_store_button.setEnabled(False)
+        self._sync_extra_wide_section_heights(self.scroll.viewport().width())
 
     def set_row(self, row: Mapping[str, Any], icon: QIcon | None = None) -> None:
         self._row = dict(row)
@@ -678,6 +768,7 @@ class AppDetailsPanel(QFrame):
 
         self.notes_label.setText(presentation.friendly_notes(row))
         self.open_store_button.setEnabled(bool(_text(row.get("store_url"))))
+        self._sync_extra_wide_section_heights(self.scroll.viewport().width())
 
     def _open_store(self) -> None:
         if self._row is None:
