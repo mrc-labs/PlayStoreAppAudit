@@ -122,6 +122,8 @@ The naming/density/icon implementation applies consistent Title Case to operatio
 
 The Details Panel implementation replaces the three permanent position buttons with one compact **Details** menu that is also exposed as **View > Details Panel**. Its shared Auto, Right, Below and Hidden actions keep menu/control check state synchronized, persist one normalized setting and provide icons, tooltips and accessible text. Hidden only hides the existing splitter child and returns the full result area to the table. Native Windows captures verified Auto/Hidden behavior at 1100x700, 1200x760, 1500x900 and 1600x900; no docking framework or packaging change was introduced.
 
+The settings hierarchy implementation adds **View > Display Settings** for App Icons, Date Format and Custom Columns. **Tools > Advanced Settings** now uses a small native category list with Store & Cache, Device, Audit & History, and Data & Storage pages instead of the previous long GroupBox stack. Health Score remains in Audit & History, the expert warning remains visible, and existing setting keys and side effects are unchanged. Tests enforce the presentation/technical boundary and preservation of stored display values; native Windows checks covered both dialogs and all categories at 1100x700, 1200x760, 1500x900 and 1600x900 without dispatching a Nuitka build.
+
 ## v1.9 and v2.0 distribution roadmap
 
 - v1.9: Windows x64 only; detailed product scope not frozen yet.
