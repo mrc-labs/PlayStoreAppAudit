@@ -175,19 +175,32 @@ class CompactWindow(AuditWindow):
         progress_layout.removeWidget(self.status_label)
         self.run_button.setMinimumWidth(215)
         self.run_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        inline_progress = QVBoxLayout()
-        inline_progress.setContentsMargins(0, 0, 0, 0)
-        inline_progress.setSpacing(2)
-        inline_progress.addWidget(self.progress)
-        inline_progress.addWidget(self.status_label)
-        action_layout.insertLayout(1, inline_progress, 1)
+        action_layout.insertStretch(1, 1)
         action_layout.addWidget(self.export_button)
         action_layout.addWidget(self.clear_button)
         action_layout.setStretch(0, 0)
         action_layout.setStretch(1, 1)
+
+        self.status_bar = self.statusBar()
+        self.status_bar.setObjectName("OperationalStatusBar")
+        self.status_bar.setAccessibleName("Operational Status Bar")
+        self.status_label.setAccessibleName("Operational Status")
+        self.progress.setAccessibleName("Operation Progress")
+        self.progress.setFixedWidth(200)
+        self.status_bar.addWidget(self.status_label, 1)
+        self.status_bar.addPermanentWidget(self.progress)
+        self._sync_progress_visibility()
+
         root.removeWidget(progress_card)
         progress_card.hide()
         progress_card.deleteLater()
+
+    def _sync_progress_visibility(self) -> None:
+        operation_running = getattr(self, "_operation_running", None)
+        if callable(operation_running):
+            self.progress.setVisible(bool(operation_running()))
+        else:
+            self.progress.setVisible(bool(self._audit_active))
 
     def _compact_results_area(self) -> None:
         results_card = self.table.parentWidget()
@@ -551,6 +564,11 @@ class CompactWindow(AuditWindow):
         self.scan_button.setEnabled(enabled)
         self.country_edit.setEnabled(enabled)
         self.exclude_system_source_check.setEnabled(enabled)
+        self._sync_progress_visibility()
+
+    def _set_busy(self, busy: bool) -> None:
+        super()._set_busy(busy)
+        self._sync_progress_visibility()
 
     def _toggle_pause(self) -> None:
         if not self._audit_active:

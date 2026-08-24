@@ -49,11 +49,9 @@ v1.9 is the active development cycle and remains Windows x64 only. The architect
 - About hierarchy of product title, tagline subtitle and secondary version;
 - one project-owned, palette-aware QPainter icon family for Choose File, Scan Phone and Export Results, with no icon-library or theme dependency.
 
-The evidence-gated Details Panel prototype was accepted as a separate implementation. It adds an automatic extra-wide state at 1180 px of usable scroll-viewport width and exits that state below 1080 px, while retaining the established 760/680 px narrow/wide hysteresis. Extra-wide uses three related content groups—Store/Notes, Installed/Changes and Store evidence/diagnostics—with the horizontal action row below. It requires no new preference and does not change outer Details placement.
+The evidence-gated Details Panel prototype merged through PR `#117`. It adds an automatic extra-wide state at 1180 px of usable scroll-viewport width and exits that state below 1080 px, while retaining the established 760/680 px narrow/wide hysteresis. Extra-wide uses three related content groups—Store/Notes, Installed/Changes and Store evidence/diagnostics—with the horizontal action row below. It requires no new preference and does not change outer Details placement.
 
-One idea remains a prototype/review candidate for a separate later v1.9 PR and is not part of the Details Panel implementation:
-
-- a complementary bottom `QStatusBar` for device/source, progress and operation feedback, not as a Details Panel replacement.
+The final evidence-gated v1.9 UX prototype accepted a complementary bottom `QStatusBar`. It relocates the same canonical operational label and progress widget rather than adding a second status model: status expands on the left and the 200 px progress bar appears on the right only during active work. The main row remains action-only. Existing source/device context is intentionally not duplicated, the native size grip remains enabled, and the status bar adds no preference or persistence state and does not replace the Details Panel.
 
 A `QDockWidget` experiment and richer dashboard/status overview are deferred to v1.99 under the evidence requirements below. A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Continue using Qt Widgets with platform/default Windows styling.
 
