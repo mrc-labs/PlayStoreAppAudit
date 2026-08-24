@@ -225,8 +225,9 @@ class CompactWindow(AuditWindow):
     def _apply_column_visibility(self, reset_order: bool = False) -> None:
         visible = set(self._visible_column_order())
         for logical, column in enumerate(MODEL_COLUMNS):
-            self.table.setColumnHidden(logical, column not in visible)
-            if reset_order or self.table.columnWidth(logical) <= 0:
+            hidden = column not in visible
+            self.table.setColumnHidden(logical, hidden)
+            if reset_order or (not hidden and self.table.columnWidth(logical) <= 0):
                 self.table.setColumnWidth(logical, DEFAULT_WIDTHS.get(column, 140))
         if reset_order:
             header = self.table.horizontalHeader()

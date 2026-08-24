@@ -80,7 +80,7 @@ The initial list should be curated rather than exposing every internal row key.
 | --- | --- | --- |
 | Text | Package Name, Play Store Title, Notes | `package_name`, `play_title`, `notes` |
 | Choice | Status, Play Status, Installed vs Store, Installer Category, Android Compatibility, Enabled State, Device Inventory Change | `criticality_key`, `play_status`, `version_comparison`, `installer_category`, `compatibility_status`, `app_enabled`, `device_change` |
-| Number | Age (Days), Target SDK, Min SDK, Sensitive Permissions Count, Health Score | `age_days`, `target_sdk`, `min_sdk`, `sensitive_permissions_count`, `health_score` |
+| Number | Age (Days), Target SDK, Min SDK, Sensitive Permissions Count, Maintenance Score | `age_days`, `target_sdk`, `min_sdk`, `sensitive_permissions_count`, `health_score` |
 | Date | Last Update, First Installed, Last Local Update | `play_last_update`, `first_install_time`, `last_local_update` |
 | Boolean | System App | `is_system` |
 

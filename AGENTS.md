@@ -45,7 +45,7 @@ Avoid adding libraries for functionality available cleanly in the Python standar
 
 - Never use Google Play `datePublished` as the latest update date. Only update-specific fields such as `dateModified`, explicit `updated`, or visible `Updated on` text are valid.
 - A package unavailable in one Store country is not automatically globally removed. Preserve multi-country fallback logic and uncertainty states.
-- The Health Score is a maintenance heuristic, not a malware/security score.
+- Maintenance Score is the user-facing name for the maintenance heuristic; the compatibility-sensitive internal identifier remains `health_score`. It is not a malware/security score.
 - A different installed/store version is not automatically outdated; device-specific or staged rollouts are possible.
 - ADB operations remain read-only with respect to installed Android applications unless a future change is explicitly approved.
 

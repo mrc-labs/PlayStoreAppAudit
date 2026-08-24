@@ -50,6 +50,7 @@ from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 from playstore_app_audit.ui import schema
+from playstore_app_audit.ui.action_icons import main_action_icon
 
 APP_NAME = "PlayStoreAppAudit"
 PLATFORM_TOOLS_URL = runtime.platform_tools_url()
@@ -226,6 +227,16 @@ CRITICALITY = {
         "tooltip": "Show apps updated within the last 365 days.",
     },
 }
+
+SEMANTIC_FOREGROUND_COLOURS = {
+    ("version_comparison", "Different"): CRITICALITY["yellow"]["foreground"],
+    ("compatibility_status", "Aging target"): CRITICALITY["yellow"]["foreground"],
+    ("compatibility_status", "Legacy target"): CRITICALITY["orange"]["foreground"],
+}
+
+
+def semantic_foreground_colour(column: str, value: object) -> str | None:
+    return SEMANTIC_FOREGROUND_COLOURS.get((column, str(value or "")))
 
 COLUMNS = schema.MODEL_COLUMNS
 COLUMN_LABELS = dict(schema.COLUMN_LABELS)
@@ -651,9 +662,10 @@ class BaseWindow(QMainWindow):
         self.path_edit.setPlaceholderText("Choose a CSV / TSV / TXT file, or scan your Android phone")
         self.path_edit.setReadOnly(True)
         self.choose_button = QPushButton("Choose File")
-        self.choose_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
+        self.choose_button.setIcon(main_action_icon("choose_file", self.palette()))
         self.choose_button.clicked.connect(self._choose_input)
         self.scan_button = QPushButton("Scan Phone with ADB")
+        self.scan_button.setIcon(main_action_icon("scan_phone", self.palette()))
         self.scan_button.clicked.connect(self._scan_phone)
         source_line.addWidget(self.path_edit, 1)
         source_line.addWidget(self.choose_button)
@@ -734,7 +746,7 @@ class BaseWindow(QMainWindow):
 
         self.export_button = QPushButton("Export Results")
         self.export_button.setEnabled(False)
-        self.export_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
+        self.export_button.setIcon(main_action_icon("export_results", self.palette()))
         self.export_button.clicked.connect(self._export_results)
         action_row.addWidget(self.export_button)
 

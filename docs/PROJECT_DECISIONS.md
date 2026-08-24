@@ -32,7 +32,7 @@ Rationale: the current boundaries keep platform and data-side effects testable w
 
 - Never use Google Play `datePublished` as latest-update data.
 - One-country absence is not proof of global removal.
-- Health Score is a maintenance heuristic, not a security score.
+- Maintenance Score is the user-facing name for the maintenance heuristic, not a security score. The compatibility-sensitive internal and persisted identifier remains `health_score` until a separate migration is deliberately approved.
 - Installed/store version differences are not automatically stale/outdated.
 
 These are product semantics, not presentation choices.
@@ -296,6 +296,25 @@ Policy:
 - Preserve semantic app-specific colours and branded primary actions.
 - Let Qt/platform style own generic font and scrollbar presentation unless new evidence justifies an override.
 - Re-run the cross-platform UI style audit for changes to `app.py`, shared UI QSS or the audit harness.
+
+## v1.9 UX review decisions
+
+The v1.9 architectural/UX review approved one grouped presentation-consistency implementation:
+
+- friendly Notes text comes from one pure presentation-service function used by the table, Details Panel and user-facing HTML report, while raw `notes` data remains unchanged for CSV, versioned JSON, diagnostics and persisted Smart Query compatibility;
+- the table keeps compact single-line rows and exposes the complete friendly Notes text through a tooltip;
+- **Maintenance Score** replaces **Health Score** in user-facing labels, help and reports without renaming `health_score` or changing the algorithm;
+- Installed-vs-Store **Different**, Android Compatibility **Aging target** and **Legacy target** use foreground-only warning colours from the existing status palette;
+- About keeps the product title dominant, uses the tagline as the subtitle and places the version beneath it as secondary information;
+- Choose File, Scan Phone and Export Results use one small project-owned, palette-aware QPainter icon family. No third-party icon library or global theme is introduced.
+
+Separate v1.9 prototype/review PRs may evaluate an extra-wide responsive three-column Details Panel and a complementary `QStatusBar`. Neither is part of the presentation-consistency implementation, and a status bar must not overwrite or replace meaningful operational/progress feedback.
+
+The following remain rejected for v1.9: a global Fluent redesign, an icon library without demonstrated need, broad architecture/type refactors and a full internal `health_score` rename. They remain recorded for possible evidence-based future reconsideration rather than being erased from project history.
+
+v1.99 is the likely final Windows x64-only release before v2.0. It is a controlled pre-v2.0 review/closure milestone, not an open-ended feature release. A `QDockWidget` prototype belongs there only if it provides a real benefit over the current Details Panel; a richer dashboard/status overview belongs there only if it answers a distinct workflow. A deliberate internal `health_score` compatibility migration may also be reconsidered there, but is not pre-approved.
+
+Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later work.
 
 ## Release-script maintenance
 

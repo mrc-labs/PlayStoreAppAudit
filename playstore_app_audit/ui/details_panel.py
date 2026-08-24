@@ -29,9 +29,11 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.change_overview as change_service
+import playstore_app_audit.services.presentation as presentation
 
 AUDIT_CHANGES_FIELD = "_audit_changes"
 STORE_EVIDENCE_FIELD = "_store_evidence"
+display_notes = presentation.friendly_notes
 
 DETAILS_WIDE_ENTER_WIDTH = 760
 DETAILS_WIDE_EXIT_WIDTH = 680
@@ -299,53 +301,6 @@ def device_inventory_line(row: Mapping[str, Any]) -> str:
     }
     display = labels.get(device_change.casefold(), device_change)
     return f"Since previous phone scan: {display}"
-
-
-def display_notes(row: Mapping[str, Any]) -> str:
-    entries = _evidence_entries(row)
-    status = _text(row.get("play_status"))
-    checked = _unique_text(entries, "country", upper=True)
-
-    if status == "not_found_in_checked_countries":
-        markets = ", ".join(checked)
-        checked_text = f" in the checked markets ({markets})" if markets else ""
-        return (
-            "No Google Play listing was found"
-            f"{checked_text}. The app may be removed from Google Play or unavailable "
-            "in all of those regions."
-        )
-
-    if status == "available_in_other_country":
-        selected = _text(row.get("store_country")).upper()
-        found = next(
-            (
-                item
-                for item in entries
-                if _text(item.get("role")) == "regional_fallback"
-                and _text(item.get("status")) == "available"
-            ),
-            None,
-        )
-        found_country = _text(found.get("country")).upper() if found else "another market"
-        selected_text = selected or "the selected market"
-        return (
-            f"Not available in {selected_text}, but found in {found_country}. "
-            "Google Play availability is region-specific."
-        )
-
-    if status == "multi_country_check_inconclusive":
-        return (
-            "Store verification was inconclusive because one or more checks could not "
-            "be completed reliably. Recheck later or use Force full refresh."
-        )
-
-    if any(_text(item.get("role")) == "metadata_completion" for item in entries):
-        return (
-            "The listing is available; missing Store metadata was completed from "
-            "another checked market."
-        )
-
-    return "No additional notes."
 
 
 def _joined_fields(row: Mapping[str, Any], fields: list[tuple[str, str]]) -> str:
@@ -696,7 +651,7 @@ class AppDetailsPanel(QFrame):
         device_text = _joined_fields(row, device_fields)
         health_score = _text(row.get("health_score"))
         if health_score:
-            health_line = f"Health score: {health_score}/100"
+            health_line = f"Maintenance Score: {health_score}/100"
             device_text = f"{device_text}\n{health_line}" if device_text else health_line
         inventory_line = device_inventory_line(row)
         if inventory_line:
@@ -721,7 +676,7 @@ class AppDetailsPanel(QFrame):
             change_text = "Previous-audit comparison was not enabled for this run."
         self.changes_label.setText(change_text)
 
-        self.notes_label.setText(display_notes(row))
+        self.notes_label.setText(presentation.friendly_notes(row))
         self.open_store_button.setEnabled(bool(_text(row.get("store_url"))))
 
     def _open_store(self) -> None:

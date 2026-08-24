@@ -17,6 +17,7 @@ from typing import Any
 import requests
 
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
@@ -64,7 +65,7 @@ V9_TECHNICAL_COLUMNS = {
     "sensitive_permissions_count": "Sensitive permissions count",
     "sensitive_permissions": "Sensitive permissions",
     "device_change": "Device inventory change",
-    "health_score": "Health score",
+    "health_score": "Maintenance Score",
 }
 
 VIEW_PRESETS = ("Basic", "Device", "Technical")
@@ -90,7 +91,7 @@ The easiest method is simply to use 'Scan phone with ADB' inside Play Store App 
 The resulting packages.csv can be loaded later with Choose file or dragged into the app.
 """
 
-HEALTH_SCORE_GUIDE = """Health score
+HEALTH_SCORE_GUIDE = """Maintenance Score
 
 The score is a transparent maintenance heuristic from 0 to 100. It is NOT a malware/security rating and it does not judge whether requested permissions are appropriate.
 
@@ -670,14 +671,14 @@ def write_html_report(
             f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
             f"<td>{html.escape(str(row.get('compatibility_status') or ''))}</td>"
             f"<td>{html.escape(str(row.get('health_score') or ''))}</td>"
-            f"<td>{html.escape(str(row.get('notes') or ''))}</td>"
+            f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
             "</tr>"
         )
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
 body{{font-family:Segoe UI,Arial,sans-serif;margin:28px;background:#f5f7fa;color:#20252b}}.wrap{{max-width:1500px;margin:auto}}h1{{margin-bottom:4px}}.muted{{color:#6f7c87}}.cards{{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}}.card{{background:white;border:1px solid #dde3e8;border-radius:10px;padding:10px 15px;min-width:100px;display:flex;justify-content:space-between;gap:18px}}.card span{{font-size:20px;font-weight:700}}table{{width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden}}th,td{{padding:8px 10px;border-bottom:1px solid #e6ebef;text-align:left;vertical-align:top}}th{{background:#eef2f5;position:sticky;top:0}}tr.green{{background:#f2f9f3}}tr.yellow{{background:#fffcef}}tr.orange{{background:#fff7ee}}tr.red{{background:#fdf3f3}}tr.blue{{background:#f0f7fc}}tr.purple{{background:#f8f2fa}}code{{font-family:Consolas,monospace}}
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Android compatibility</th><th>Health</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table></div></body></html>"""
+</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Android compatibility</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table></div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 

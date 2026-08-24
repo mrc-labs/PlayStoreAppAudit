@@ -82,7 +82,7 @@ COLUMN_LABELS = {
     "sensitive_permissions_count": "Sensitive Permissions Count",
     "sensitive_permissions": "Sensitive Permissions",
     "device_change": "Device Inventory Change",
-    "health_score": "Health Score",
+    "health_score": "Maintenance Score",
 }
 
 DEFAULT_WIDTHS = {

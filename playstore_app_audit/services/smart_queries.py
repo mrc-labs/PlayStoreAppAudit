@@ -242,7 +242,7 @@ FIELD_DEFINITIONS = (
     FieldDefinition(
         "sensitive_permissions_count", "Sensitive Permissions Count", FieldType.NUMBER
     ),
-    FieldDefinition("health_score", "Health Score", FieldType.NUMBER),
+    FieldDefinition("health_score", "Maintenance Score", FieldType.NUMBER),
     FieldDefinition("play_last_update", "Last Update", FieldType.DATE),
     FieldDefinition("first_install_time", "First Installed", FieldType.DATE),
     FieldDefinition("last_local_update", "Last Local Update", FieldType.DATE),

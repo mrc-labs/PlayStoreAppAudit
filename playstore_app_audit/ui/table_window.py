@@ -8,10 +8,11 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 install_hidden_subprocess_windows()
 
 from PySide6.QtCore import QModelIndex, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QIcon
+from PySide6.QtGui import QColor, QFont, QIcon, QPalette
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
@@ -125,6 +126,8 @@ class AuditTableModel(base_ui.AppTableModel):
         info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
 
         if role == Qt.ItemDataRole.DisplayRole:
+            if column == "notes":
+                return presentation.friendly_notes(row)
             value = row.get(column, "")
             if isinstance(value, bool):
                 return "Yes" if value else "No"
@@ -139,7 +142,13 @@ class AuditTableModel(base_ui.AppTableModel):
         if role == Qt.ItemDataRole.ForegroundRole:
             if column == "criticality":
                 return QColor(info["accent"])
+            semantic_colour = base_ui.semantic_foreground_colour(column, row.get(column))
+            if semantic_colour:
+                return QColor(semantic_colour)
             return QColor("#263238")
+
+        if role == Qt.ItemDataRole.ToolTipRole and column == "notes":
+            return presentation.friendly_notes(row)
 
         if role == Qt.ItemDataRole.FontRole and column == "criticality":
             font = QFont()
@@ -207,14 +216,18 @@ class TableWindow(insights_ui.InsightsWindow):
         title.setFont(font)
         layout.addWidget(title)
 
-        version = QLabel(f"Version {__version__}")
-        version.setObjectName("AboutVersion")
-        layout.addWidget(version)
-
         tagline = QLabel("Android App Inventory, Store Analysis & Maintenance Toolkit")
         tagline.setObjectName("AboutTagline")
         tagline.setWordWrap(True)
+        tagline_font = QFont(tagline.font())
+        tagline_font.setPointSizeF(tagline_font.pointSizeF() + 1)
+        tagline.setFont(tagline_font)
         layout.addWidget(tagline)
+
+        version = QLabel(f"Version {__version__}")
+        version.setObjectName("AboutVersion")
+        version.setForegroundRole(QPalette.ColorRole.PlaceholderText)
+        layout.addWidget(version)
 
         info = QLabel(
             "<b>Created by MRC</b><br><br>"
