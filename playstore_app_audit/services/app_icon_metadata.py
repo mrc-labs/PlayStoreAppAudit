@@ -93,10 +93,10 @@ def clear_icon_metadata() -> None:
 def install_app_icon_metadata_capture() -> bool:
     """Capture reusable metadata from normal scraper calls without extra Store requests.
 
-    The experimental icon UI remains opt-in. Icon URL and developer are captured
-    from Store responses already needed by the audit. Eligible live rows receive
-    the metadata before the normal healthy-result cache write, so cached audits
-    can reuse it after restart. Image bytes remain UI-managed and session-only.
+    The optional icon UI remains disabled by default. Icon URL and developer are
+    captured from Store responses already needed by the audit. Eligible live rows
+    receive the metadata before the normal healthy-result cache write, so cached
+    audits can reuse it after restart.
     """
     global _INSTALLED
     if _INSTALLED:

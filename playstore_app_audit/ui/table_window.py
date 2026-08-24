@@ -39,18 +39,25 @@ class AuditTableModel(base_ui.AppTableModel):
         super().__init__()
         self.columns = schema.MODEL_COLUMNS
         self._icons_enabled = bool(state.load_settings().get("show_app_icons", False))
+        self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
 
     def set_rows(self, rows: list[dict[str, object]]) -> None:
-        for row in rows:
+        icon_rows_by_package: dict[str, list[int]] = {}
+        for row_index, row in enumerate(rows):
             if str(row.get("play_status") or "") not in ICON_STATUSES:
                 continue
             if row.get("play_icon_url"):
-                continue
-            icon_url = app_icon_metadata.icon_url_for_package(row.get("package_name"))
-            if icon_url:
-                row["play_icon_url"] = icon_url
+                icon_url = str(row.get("play_icon_url") or "").strip()
+            else:
+                icon_url = app_icon_metadata.icon_url_for_package(row.get("package_name"))
+                if icon_url:
+                    row["play_icon_url"] = icon_url
+            package_name = str(row.get("package_name") or "").strip()
+            if package_name and icon_url:
+                icon_rows_by_package.setdefault(package_name, []).append(row_index)
+        self._icon_rows_by_package = icon_rows_by_package
         super().set_rows(rows)
 
     def icon_for_row(self, row: dict[str, object]) -> QIcon | None:
@@ -80,12 +87,12 @@ class AuditTableModel(base_ui.AppTableModel):
             [Qt.ItemDataRole.DecorationRole],
         )
 
-    def _on_icon_ready(self, icon_url: str) -> None:
+    def _on_icon_ready(self, package_name: str) -> None:
         if not self._icons_enabled or ICON_COLUMN not in self.columns:
             return
         column = self.columns.index(ICON_COLUMN)
-        for row_index, row in enumerate(self.rows):
-            if str(row.get("play_icon_url") or "") != icon_url:
+        for row_index in self._icon_rows_by_package.get(package_name, []):
+            if not 0 <= row_index < len(self.rows):
                 continue
             index = self.index(row_index, column)
             self.dataChanged.emit(index, index, [Qt.ItemDataRole.DecorationRole])

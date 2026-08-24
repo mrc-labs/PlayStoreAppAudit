@@ -9,13 +9,15 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
 from playstore_app_audit.services.app_icon_disk_cache import (
+    MAX_CACHED_ICON_BYTES,
     load_cached_icon_bytes,
     store_cached_icon_bytes,
 )
 
-MAX_ICON_BYTES = 1_000_000
+MAX_ICON_BYTES = MAX_CACHED_ICON_BYTES
 DEFAULT_ICON_CACHE_SIZE = 96
 DEFAULT_ICON_CONCURRENCY = 4
+DEFAULT_MAX_PENDING = 256
 ICON_TIMEOUT_MS = 10_000
 
 
@@ -81,7 +83,7 @@ class _DiskStoreTask(QRunnable):
 
 
 class AppIconLoader(QObject):
-    """Lazy icon loader with bounded RAM plus long-lived disk reuse.
+    """Lazy icon loader with bounded RAM, work queues and disk reuse.
 
     The table never waits for icon I/O. Decoded QIcon objects remain bounded to
     the current session, while raw image bytes are loaded/stored on a dedicated
@@ -98,11 +100,13 @@ class AppIconLoader(QObject):
         *,
         max_active: int = DEFAULT_ICON_CONCURRENCY,
         max_cache: int = DEFAULT_ICON_CACHE_SIZE,
+        max_pending: int = DEFAULT_MAX_PENDING,
     ) -> None:
         super().__init__(parent)
-        self._manager = QNetworkAccessManager(self)
+        self._manager: QNetworkAccessManager | None = None
         self._max_active = max(1, int(max_active))
         self._max_cache = max(1, int(max_cache))
+        self._max_pending = max(1, int(max_pending))
         self._active = 0
         self._queued: deque[_IconRequest] = deque()
         self._pending: set[tuple[str, str, str]] = set()
@@ -136,6 +140,8 @@ class AppIconLoader(QObject):
 
         if item.key in self._failed or item.key in self._pending:
             return None
+        if len(self._pending) >= self._max_pending:
+            return None
 
         # Return immediately so the table can paint and remain interactive.
         # Disk lookup happens asynchronously; only a cache miss reaches network.
@@ -152,7 +158,7 @@ class AppIconLoader(QObject):
             if pixmap.loadFromData(data) and not pixmap.isNull():
                 self._remember_in_memory(item.key, QIcon(pixmap))
                 self._pending.discard(item.key)
-                self.icon_ready.emit(item.url)
+                self.icon_ready.emit(item.package_name)
                 return
 
         # Cache miss, unreadable image or disk failure. Keep the request marked
@@ -172,9 +178,22 @@ class AppIconLoader(QObject):
             request = QNetworkRequest(QUrl(item.url))
             request.setTransferTimeout(ICON_TIMEOUT_MS)
             request.setAttribute(QNetworkRequest.Attribute.CacheSaveControlAttribute, False)
-            reply = self._manager.get(request)
+            reply = self._network_manager().get(request)
             self._active += 1
+            reply.downloadProgress.connect(
+                lambda received, _total, r=reply: self._abort_oversized(r, received)
+            )
             reply.finished.connect(lambda r=reply, i=item: self._finish(i, r))
+
+    def _network_manager(self) -> QNetworkAccessManager:
+        if self._manager is None:
+            self._manager = QNetworkAccessManager(self)
+        return self._manager
+
+    @staticmethod
+    def _abort_oversized(reply: QNetworkReply, received: int) -> None:
+        if received > MAX_ICON_BYTES and reply.isRunning():
+            reply.abort()
 
     def _finish(self, item: _IconRequest, reply: QNetworkReply) -> None:
         try:
@@ -185,7 +204,7 @@ class AppIconLoader(QObject):
                     if pixmap.loadFromData(data) and not pixmap.isNull():
                         self._remember_in_memory(item.key, QIcon(pixmap))
                         self._disk_pool.start(_DiskStoreTask(item, data))
-                        self.icon_ready.emit(item.url)
+                        self.icon_ready.emit(item.package_name)
                         return
             self._failed.add(item.key)
         finally:
