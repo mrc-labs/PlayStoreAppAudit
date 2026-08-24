@@ -60,11 +60,11 @@ Replace obsolete or confusing icons where a suitable existing Qt/application ass
 
 Move Store icons from experimental/opt-in framing to normal supported behavior if v1.7 observations do not reveal a blocking issue. Finish any required cache growth, CDN failure, stale-data, offline reuse or large-table responsiveness hardening.
 
-### Saved filters / smart queries
+### Smart Queries
 
-Add reusable result-filter expressions that remain distinct from saved audit profiles. The UX/design review must define the model, fields, operators, persistence and application behavior before any Smart Queries code is written. Do not revive an older CRUD design automatically or combine unapproved implementation with the design review.
+Add reusable result-filter expressions that remain distinct from saved Audit Profiles. The separate UX/design review is approved: built-in filters are named **Quick Filters**, while saved Smart Queries use one-level All/Any conditions over a curated field/operator set, a single native builder/manager and versioned `smart_queries` settings storage. The active query is session-only and composes with every existing result-filter surface.
 
-The current proposal is documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Its recommendations remain unapproved and no production Smart Queries code may be added until the listed decisions are reviewed explicitly.
+The approved decisions and permanent guardrails are documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Implementation belongs in the separate `feature/v1.8-smart-queries` PR. Do not add nested groups, scripting, regular expressions, import/export, automation, audit execution behavior or shared commands with Audit Profiles.
 
 ### Product identity
 
@@ -89,7 +89,8 @@ VS Code/Pylance Standard type checking is useful local evidence for touched code
 5. `feature/v1.8-details-control`
 6. `feature/v1.8-display-and-settings`
 7. `ux/v1.8-play-store-icons-and-smart-query-design`
-8. `release/v1.8.0`, only after approved scope and any separately approved Smart Queries implementation are complete
+8. `feature/v1.8-smart-queries`, after explicit approval of the separate UX review
+9. `release/v1.8.0`, only after the approved scope is complete
 
 ## v1.9
 

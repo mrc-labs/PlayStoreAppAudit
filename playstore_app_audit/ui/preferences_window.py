@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
@@ -60,6 +61,7 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
     def __init__(self) -> None:
         super().__init__()
         self.status_filters: set[str] = set()
+        self.smart_query: smart_queries.SmartQuery | None = None
         self.set_v9_preset("All")
         self.set_criticality_filter(None)
 
@@ -68,16 +70,21 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
         self.status_filters = set(filters)
         self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
+    def set_smart_query(self, query: smart_queries.SmartQuery | None) -> None:
+        self.beginFilterChange()
+        self.smart_query = query
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
+
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):
             return False
-        if not self.status_filters:
-            return True
         model = self.sourceModel()
         if not isinstance(model, table_ui.AuditTableModel):
             return True
         row = model.row_dict(source_row)
-        return str(row.get("criticality_key") or "") in self.status_filters
+        if self.status_filters and str(row.get("criticality_key") or "") not in self.status_filters:
+            return False
+        return smart_queries.query_matches(row, self.smart_query)
 
 
 class PreferencesWindow(table_ui.TableWindow):

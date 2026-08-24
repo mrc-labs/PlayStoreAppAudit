@@ -2,9 +2,9 @@
 
 Last updated: 2026-08-24
 
-Status: **proposed for product review; not approved for implementation**.
+Status: **approved on 2026-08-24 and implemented in the dedicated v1.8 Smart Queries PR**.
 
-No Smart Queries production code is included with this review. The Play Store icon hardening in the same v1.8 workstream is independent.
+The seven decisions recorded below are the approved implementation contract. Play Store icon hardening remains independent.
 
 ## Purpose
 
@@ -55,7 +55,7 @@ Each saved query uses stable field/operator identifiers rather than display labe
   "match": "all",
   "conditions": [
     {"field": "age_days", "operator": "greater_or_equal", "value": 730},
-    {"field": "installer_category", "operator": "is", "value": "Alternative Store"}
+    {"field": "installer_category", "operator": "is", "value": "alternative_store"}
   ]
 }
 ```
@@ -203,7 +203,7 @@ The hidden legacy `saved_filters` structure stores only search text, one critica
 
 The dialog needs tab order, accessible names for condition rows, keyboard-accessible Add/Remove controls and labels associated with every editor. Icon-only Remove controls require a tooltip.
 
-Required test groups for a later implementation:
+Required implementation test groups:
 
 - pure normalization and evaluation for every field type/operator;
 - malformed/unknown schema handling;
@@ -216,7 +216,7 @@ Required test groups for a later implementation:
 - 10,000-row performance regression;
 - Qt accessibility and dialog layout at the supported Windows resolutions.
 
-## Decisions Requiring Approval
+## Approved Decisions
 
 The recommended v1.8 implementation baseline is:
 
@@ -228,4 +228,4 @@ The recommended v1.8 implementation baseline is:
 6. No automatic migration of hidden legacy `saved_filters`.
 7. Smart Queries compose with all current filters and never affect audit execution.
 
-Production implementation must not start until these decisions are explicitly approved or amended.
+These decisions were explicitly approved on 2026-08-24. The dedicated implementation must continue to enforce the scope boundaries in this document: Smart Queries remain result-only filters, stay separate from Audit Profiles and do not expand into nested groups, scripting, regular expressions, import/export or automation.

@@ -21,7 +21,8 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Optionally show Play Store app icons beside Store titles.
 - Optionally calculate a transparent Health Score maintenance heuristic.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
-- Filter results, combine status, installer and SDK maintenance filters, and switch between Basic, Device, Technical and Custom views.
+- Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries that compose with installer and SDK maintenance filters.
+- Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
 - Save reusable audit profiles without mixing them with result-filter state.
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and maintain device inventory history and snapshots.
@@ -49,7 +50,7 @@ The v1.7.0 release includes one consolidated third-party source archive and a re
 2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan phone**.
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
 4. Select **Run audit**.
-5. Use the status chips, search box and view presets to inspect the results.
+5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
 6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
 7. Export the complete or currently visible results from the export menu.
 

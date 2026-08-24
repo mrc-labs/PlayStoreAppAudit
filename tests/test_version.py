@@ -45,15 +45,27 @@ def test_release_version_is_semver_triplet() -> None:
 def test_diagnostic_bundle_identifies_the_canonical_version(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(device_insights.state, "load_settings", lambda: {})
+    monkeypatch.setattr(
+        device_insights.state,
+        "load_settings",
+        lambda: {
+            "smart_queries": {"schema_version": 1, "items": [{"name": "Private"}]},
+            "saved_filters": {"Legacy": {"query": "private"}},
+            "audit_profiles": {"Phone": {"schema_version": 1}},
+        },
+    )
     monkeypatch.setattr(device_insights, "portable_mode_active", lambda: False)
     monkeypatch.setattr(device_insights, "app_data_dir_v9", lambda: tmp_path)
     bundle = device_insights.create_diagnostic_bundle(tmp_path / "diagnostics.zip", [])
 
     with zipfile.ZipFile(bundle) as archive:
         system = json.loads(archive.read("system.json"))
+        sanitized = json.loads(archive.read("settings_sanitized.json"))
 
     assert system["app_version"] == __version__
+    assert "smart_queries" not in sanitized
+    assert "saved_filters" not in sanitized
+    assert sanitized["audit_profiles"] == {"Phone": {"schema_version": 1}}
 
 
 def test_qt_application_version_comes_from_the_canonical_version(

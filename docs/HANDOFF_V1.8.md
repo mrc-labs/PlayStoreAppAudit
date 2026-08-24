@@ -69,9 +69,11 @@ The complete UI audit and final review were approved on 2026-08-24. Implement th
 
 Graduate Play Store icons from experimental to normal supported behavior, subject to final cache/CDN/offline/large-table hardening from v1.7 observations.
 
-### Saved filters / smart queries
+### Smart Queries
 
-Implement reusable result-filter expressions, deliberately separate from saved Audit Profiles. Before any code, approve a separate UX/design review covering the model, fields/operators, persistence and application workflow. The design review belongs in `ux/v1.8-play-store-icons-and-smart-query-design` and must not imply that Smart Queries are already implemented.
+Implement reusable result-only filters, deliberately separate from saved Audit Profiles. The seven decisions in `SMART_QUERIES_UX_REVIEW.md` were explicitly approved on 2026-08-24: **Quick Filters** names the built-ins; Smart Queries use one-level All/Any conditions, curated fields/operators, one native builder/manager, versioned `smart_queries` persistence and session-only active state. There is no automatic migration of legacy `saved_filters`, and the completed query is ANDed with all existing result filters without affecting audit execution, ADB, Store lookup or cache behavior.
+
+Permanent v1.8 guardrails exclude nested groups, scripting, regular expressions, import/export, automation and any shared Audit Profile commands or permanent main-table control.
 
 ### Details Panel UX v2
 
@@ -110,7 +112,8 @@ Evaluate a complementary `QStatusBar`, a separate docking/`QDockWidget` prototyp
 5. `feature/v1.8-details-control`
 6. `feature/v1.8-display-and-settings`
 7. `ux/v1.8-play-store-icons-and-smart-query-design`
-8. `release/v1.8.0`, only after the approved scope and any separately approved Smart Queries implementation are complete
+8. `feature/v1.8-smart-queries`, after explicit approval of the separate UX review
+9. `release/v1.8.0`, only after the approved scope is complete
 
 PR1 was merged normally as GitHub PR `#105` at merge commit `d821e01dc320ed24e086164163ad855753f519fd`. It synchronized the approved scope and product identity; the GitHub repository description now uses the official tagline.
 
@@ -126,7 +129,7 @@ The settings hierarchy implementation adds **View > Display Settings** for App I
 
 Play Store icons have completed the v1.8 graduation/hardening pass while remaining optional and disabled by default. The loader creates networking only after a disk miss, caps pending requests and decoded RAM, and stops oversized transfers. The persistent cache rejects unsafe paths and oversized files, prunes corrupt/orphaned entries, and is bounded to 512 entries / 64 MiB while retaining update-marker/CDN reuse and offline hits. Package-indexed notifications avoid scanning the full result model per icon; tests cover 10,000 rows.
 
-The Smart Queries UX/design proposal is now in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). It recommends typed one-level All/Any conditions, a curated field/operator set, View-menu application, a combined native builder/manager and versioned `smart_queries` settings storage with no automatic legacy `saved_filters` migration. These decisions remain unapproved. No Smart Queries production code has been implemented, and implementation must wait for explicit review.
+The Smart Queries UX/design review in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md) is approved and its bounded model is implemented in the dedicated `feature/v1.8-smart-queries` workstream. **View > Quick Filters** contains the built-ins; **View > Smart Queries** exposes New, Manage, Clear and saved definitions without a permanent toolbar control. The native builder/manager supports 1-20 one-level All/Any conditions, Save without Apply, draft Apply without Save, case-insensitive replacement confirmation and deletion confirmation. Saved definitions use versioned `smart_queries` settings, active state stays in memory for the current session, and deleting an active saved definition clears it. Evaluation is pure inside the existing proxy and composes with search, status chips, system visibility, Quick Filters and the SDK Maintenance Filter. Audit Profiles, legacy `saved_filters`, audit execution, Store lookup/cache and ADB behavior remain separate and unchanged. Tests cover normalization, every operator family, missing/invalid values, persistence/CRUD, action availability, accessibility, composition and 10,000 rows with 20 conditions. Windows-native dialog checks cover 1100x700, 1200x760, 1500x900 and 1600x900; no Actions packaging or Nuitka build was dispatched.
 
 ## v1.9 and v2.0 distribution roadmap
 

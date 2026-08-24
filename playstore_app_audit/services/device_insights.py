@@ -733,6 +733,7 @@ def create_diagnostic_bundle(
     sanitized = dict(settings)
     sanitized.pop("recent_sources", None)
     sanitized.pop("saved_filters", None)
+    sanitized.pop("smart_queries", None)
     summary = {
         "app_version": APP_VERSION,
         "python": sys.version,
