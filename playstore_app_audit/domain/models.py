@@ -14,6 +14,51 @@ class StatusKey(StrEnum):
     CURRENT = "green"
 
 
+class AuditRunState(StrEnum):
+    """Observable lifecycle states for one reusable audit session."""
+
+    IDLE = "idle"
+    RUNNING = "running"
+    PAUSED = "paused"
+    STOPPING = "stopping"
+    FINALIZING = "finalizing"
+
+
+class AuditRunOutcome(StrEnum):
+    """Terminal outcomes kept distinct from transient lifecycle states."""
+
+    SUCCESS = "success"
+    STOPPED = "stopped"
+    FAILED = "failed"
+    ABANDONED = "abandoned"
+
+
+@dataclass(slots=True)
+class AuditRunResult:
+    """Completed work and finalization metadata for one audit session.
+
+    ``rows`` contains only cached rows or live package checks that reached a
+    valid semantic result. Work that never completed is represented by its
+    absence, never by a synthetic error row.
+    """
+
+    session: int
+    outcome: AuditRunOutcome
+    rows: list[dict[str, Any]] = field(default_factory=list)
+    cached_count: int = 0
+    live_completed_count: int = 0
+    total_count: int = 0
+    error: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def completed_count(self) -> int:
+        return min(
+            max(0, self.total_count),
+            max(0, self.cached_count) + max(0, self.live_completed_count),
+        )
+
+
 @dataclass(slots=True)
 class AppRecord:
     package_name: str
