@@ -24,10 +24,16 @@ class _Session:
 
 
 def test_html_request_reports_actual_retry_count(monkeypatch) -> None:
-    sleeps: list[float] = []
+    waits: list[float] = []
+
+    class RetryWait:
+        def wait(self, timeout: float) -> bool:
+            waits.append(timeout)
+            return False
+
     session = _Session([_Response(503), _Response(404)])
     monkeypatch.setattr(audit_engine, "_get_session", lambda _language: session)
-    monkeypatch.setattr(audit_engine.time, "sleep", sleeps.append)
+    monkeypatch.setattr(audit_engine.threading, "Event", RetryWait)
 
     result = audit_engine._html_request(
         "com.example.app",
@@ -39,7 +45,7 @@ def test_html_request_reports_actual_retry_count(monkeypatch) -> None:
     assert result["status"] == "not_found_or_unavailable"
     assert result["attempts"] == 2
     assert result["retry_count"] == 1
-    assert sleeps == [0.5]
+    assert waits == [0.5]
 
 
 def test_transient_locale_diagnostics_combine_scraper_and_html_retries(monkeypatch) -> None:

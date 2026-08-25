@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QProgressBar, QStatusBar
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -70,9 +71,10 @@ def test_status_bar_hosts_the_single_canonical_status_and_progress_widgets(
 
     assert action_layout is not None
     assert action_layout.itemAt(0).widget() is window.run_button
-    assert action_layout.itemAt(1).spacerItem() is not None
-    assert action_layout.itemAt(2).widget() is window.export_button
-    assert action_layout.itemAt(3).widget() is window.clear_button
+    assert action_layout.itemAt(1).widget() is window.stop_button
+    assert action_layout.itemAt(2).spacerItem() is not None
+    assert action_layout.itemAt(3).widget() is window.export_button
+    assert action_layout.itemAt(4).widget() is window.clear_button
     assert compact_ui._find_layout_containing(root, window.status_label) is None
     assert compact_ui._find_layout_containing(root, window.progress) is None
 
@@ -174,9 +176,24 @@ def test_audit_lifecycle_progress_and_status_do_not_leave_stale_visible_state(
     assert not window.progress.isHidden()
 
     window._clear_results()
-    assert not window._audit_active
-    assert window.status_label.text() == "Ready"
-    assert window.progress.value() == 0
+    assert window._audit_state is AuditRunState.RUNNING
+    assert window.status_label.text() == "Resumed • 1/1 completed"
+    assert not window.progress.isHidden()
+
+    window._stop_audit()
+    assert window._audit_state is AuditRunState.STOPPING
+    assert window.status_label.text() == "Stopping… 1/1 completed"
+    window._on_controlled_done(
+        AuditRunResult(
+            session=session,
+            outcome=AuditRunOutcome.STOPPED,
+            rows=[],
+            total_count=1,
+        )
+    )
+    app.processEvents()
+    assert window._audit_state is AuditRunState.IDLE
+    assert window.status_label.text().startswith("Audit stopped")
     assert window.progress.isHidden()
 
     completed_session = _start_dormant_audit(window, monkeypatch)
@@ -201,6 +218,7 @@ def test_audit_lifecycle_progress_and_status_do_not_leave_stale_visible_state(
     window._on_controlled_progress(second_session, 0, 1, "com.example.audit")
     monkeypatch.setattr(compact_ui.QMessageBox, "critical", lambda *args: None)
     window._on_controlled_done((second_session, None, "network unavailable", 0, 0))
+    app.processEvents()
     assert window.status_label.text() == "Audit failed"
     assert not window._audit_active
     assert window.progress.isHidden()
