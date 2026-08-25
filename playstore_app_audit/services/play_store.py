@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
@@ -14,6 +14,7 @@ from playstore_app_audit.services.store_locale import (
 )
 
 ProgressCallback = Callable[[int, int, str], None]
+RowCompletedCallback = Callable[[int, dict[str, Any]], None]
 FALLBACK_BATCH_SIZE = 3
 STORE_EVIDENCE_FIELD = "_store_evidence"
 _COUNTRY_LOCALE_EVIDENCE_FIELD = "_country_locale_evidence"
@@ -28,6 +29,13 @@ _DIAGNOSTIC_FIELDS = (
     "outcome",
     "failure_reason",
 )
+
+
+def _wait_for_retry(cancel_event: threading.Event | None, delay_seconds: float) -> bool:
+    if cancel_event is None:
+        time.sleep(max(0.0, float(delay_seconds)))
+        return True
+    return not cancel_event.wait(max(0.0, float(delay_seconds)))
 
 
 def _append_note(existing: object, note: str) -> str:
@@ -167,6 +175,7 @@ def scraper_request(
     language: str,
     country: str,
     config: AuditConfig,
+    cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
     """Query google-play-scraper with terminal NotFound and transient retries."""
     try:
@@ -185,7 +194,10 @@ def scraper_request(
         }
 
     last_error = ""
+    attempts = 0
     for attempt in range(config.max_retries + 1):
+        if cancel_event is not None and cancel_event.is_set():
+            break
         attempts = attempt + 1
         try:
             data = play_app(package_name, lang=language, country=country)
@@ -214,19 +226,25 @@ def scraper_request(
             }
         except Exception as exc:
             last_error = str(exc)[:300]
-            if attempt < config.max_retries:
-                time.sleep(config.retry_sleep_base * (attempt + 1))
+            if attempt < config.max_retries and not _wait_for_retry(
+                cancel_event, config.retry_sleep_base * (attempt + 1)
+            ):
+                break
 
-    attempts = config.max_retries + 1
     return {
         "ok": False,
         "not_found": False,
         "title": "",
         "updated": "",
         "version": "",
-        "error": last_error or "Unknown Google Play scraper error",
+        "error": (
+            "cancelled"
+            if cancel_event is not None and cancel_event.is_set()
+            else (last_error or "Unknown Google Play scraper error")
+        ),
         "attempts": attempts,
         "retry_count": max(0, attempts - 1),
+        "cancelled": cancel_event is not None and cancel_event.is_set(),
     }
 
 
@@ -235,11 +253,21 @@ def fetch_locale(
     language: str,
     country: str,
     config: AuditConfig,
+    cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
     """Fetch one Store locale while preserving validated status semantics."""
     language = resolve_store_language(language, country)
     country = str(country or "").strip().lower()
-    scraper = scraper_request(package_name, language, country, config)
+    scraper = scraper_request(
+        package_name,
+        language,
+        country,
+        config,
+        cancel_event=cancel_event,
+    )
+
+    if scraper.get("cancelled"):
+        return {"status": "cancelled", "language": language, "country": country}
 
     if scraper["ok"] and scraper["updated"]:
         result = {
@@ -268,7 +296,38 @@ def fetch_locale(
     # HTML is still the confirmation/fallback path. A scraper NotFound never
     # becomes a removed classification on its own; the Store response remains
     # the regional evidence used by the existing status model.
-    html = core._html_request(package_name, language, country, config)
+    html = core._html_request(
+        package_name,
+        language,
+        country,
+        config,
+        cancel_event=cancel_event,
+    )
+    if str(html.get("status") or "") == "cancelled":
+        if scraper["ok"]:
+            result = {
+                "status": "available",
+                "http_status": 200,
+                "title": scraper["title"],
+                "updated": scraper["updated"],
+                "version": scraper["version"],
+                "source": "google_play_scraper",
+                "url": f"{core.PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+                "notes": "html_fallback_cancelled",
+                "language": language,
+                "country": country,
+            }
+            result.update(
+                _request_diagnostics(
+                    scraper,
+                    None,
+                    result["status"],
+                    result["updated"],
+                    result["version"],
+                )
+            )
+            return result
+        return {"status": "cancelled", "language": language, "country": country}
     if scraper["ok"]:
         title = scraper["title"] or html.get("title", "")
         updated = scraper["updated"] or html.get("updated", "")
@@ -369,11 +428,17 @@ def _fetch_country(
 ) -> dict[str, Any]:
     language = resolve_store_language(preferred_language, country)
     preferred = fetch_one(package_name, language, country, config)
+    if str(preferred.get("status") or "") == "cancelled":
+        return preferred
     evidence = [_locale_evidence(preferred, "preferred")]
     if not _needs_english_fallback(preferred, language):
         return _with_country_locale_evidence(preferred, evidence)
 
     english = fetch_one(package_name, "en", country, config)
+    if str(english.get("status") or "") == "cancelled":
+        if str(preferred.get("status") or "") == "available":
+            return _with_country_locale_evidence(preferred, evidence)
+        return english
     evidence.append(_locale_evidence(english, "english_fallback"))
     if str(preferred.get("status") or "") == "available":
         if str(english.get("status") or "") == "available":
@@ -422,7 +487,9 @@ def _fetch_locale_with_slot(
         break
 
     try:
-        return fetch_locale(package_name, language, country, config)
+        if cancel_event is None:
+            return fetch_locale(package_name, language, country, config)
+        return fetch_locale(package_name, language, country, config, cancel_event=cancel_event)
     finally:
         request_slots.release()
 
@@ -483,7 +550,7 @@ def _fetch_app_bounded(
         pause_event,
         cancel_event,
     )
-    if primary is None or (cancel_event is not None and cancel_event.is_set()):
+    if primary is None:
         return None
 
     result: dict[str, Any] = {
@@ -505,12 +572,15 @@ def _fetch_app_bounded(
     primary_status = str(primary.get("status") or "")
     markets = _fallback_countries(selected)
 
+    if cancel_event is not None and cancel_event.is_set():
+        return result if primary_status == "available" else None
+
     if primary_status == "available":
         if result["play_last_update"] and result["play_version"]:
             return result
         for country in markets:
             if not _wait_until_running(pause_event, cancel_event):
-                return None
+                return result
             alternative = _fetch_country_with_slot(
                 package_name,
                 country,
@@ -555,7 +625,7 @@ def _fetch_app_bounded(
             if not _wait_until_running(pause_event, cancel_event):
                 return None
             batch = markets[start : start + batch_size]
-            futures = [
+            futures: list[tuple[str, Future[dict[str, Any] | None]]] = [
                 (
                     country,
                     fallback_executor.submit(
@@ -572,12 +642,13 @@ def _fetch_app_bounded(
                 for country in batch
             ]
 
-            for index, (country, future) in enumerate(futures):
-                alternative = future.result()
+            for country, future in futures:
+                try:
+                    alternative = future.result()
+                except CancelledError:
+                    alternative = None
                 if alternative is None:
-                    for _later_country, later_future in futures[index + 1 :]:
-                        later_future.cancel()
-                    return None
+                    continue
 
                 checked.append(country)
                 result[STORE_EVIDENCE_FIELD].extend(
@@ -587,7 +658,9 @@ def _fetch_app_bounded(
                     fallback_progress_callback("check")
                 alt_status = str(alternative.get("status") or "")
                 if alt_status == "available":
-                    for _later_country, later_future in futures[index + 1 :]:
+                    for later_country, later_future in futures:
+                        if later_country == country:
+                            continue
                         later_future.cancel()
                     if primary_status == "not_found_or_unavailable":
                         result["play_status"] = "available_in_other_country"
@@ -620,6 +693,9 @@ def _fetch_app_bounded(
                 if alt_status != "not_found_or_unavailable":
                     failed.append(f"{country}:{alt_status or 'unknown'}")
 
+            if cancel_event is not None and cancel_event.is_set():
+                return None
+
         checked_text = ",".join(checked)
         if not checked:
             result["play_status"] = "multi_country_check_inconclusive"
@@ -650,6 +726,7 @@ def audit_apps(
     progress_callback: ProgressCallback | None = None,
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
+    row_completed_callback: RowCompletedCallback | None = None,
 ) -> list[dict[str, Any]]:
     """Canonical bounded Store audit used by the desktop application."""
     worker_limit = max(1, int(config.max_workers))
@@ -709,40 +786,66 @@ def audit_apps(
                 fallback_progress_callback=fallback_progress,
             )
 
-        with ThreadPoolExecutor(
-            max_workers=worker_limit, thread_name_prefix="playstore-app"
-        ) as executor:
-            futures = {executor.submit(run_one, app): index for index, app in enumerate(apps)}
-            for future in as_completed(futures):
-                index = futures[future]
-                app = apps[index]
-                if cancel_event is not None and cancel_event.is_set():
-                    for pending in futures:
-                        pending.cancel()
-                try:
-                    row = future.result()
+        with ThreadPoolExecutor(max_workers=worker_limit, thread_name_prefix="playstore-app") as executor:
+            pending: dict[Future[dict[str, Any] | None], int] = {}
+            next_index = 0
+
+            def fill_submission_window() -> None:
+                nonlocal next_index
+                while (
+                    next_index < len(apps)
+                    and len(pending) < worker_limit
+                    and (cancel_event is None or not cancel_event.is_set())
+                ):
+                    index = next_index
+                    next_index += 1
+                    pending[executor.submit(run_one, apps[index])] = index
+
+            fill_submission_window()
+            while pending:
+                completed_futures, _not_done = wait(
+                    tuple(pending), return_when=FIRST_COMPLETED
+                )
+                for future in sorted(completed_futures, key=lambda item: pending[item]):
+                    index = pending.pop(future)
+                    app = apps[index]
+                    try:
+                        row = future.result()
+                    except CancelledError:
+                        row = None
+                    except Exception as exc:
+                        if cancel_event is not None and cancel_event.is_set():
+                            row = None
+                        else:
+                            row = {
+                                "app_name": app["app_name"],
+                                "package_name": app["package_name"],
+                                "play_status": "unexpected_error",
+                                "play_http_status": "",
+                                "play_title": "",
+                                "play_last_update": "",
+                                "play_version": "",
+                                "updated_source": "",
+                                "store_url": f"{core.PLAY_URL}?id={app['package_name']}",
+                                "store_country": str(config.country or "").lower(),
+                                "store_language": resolve_store_language(
+                                    config.language, config.country
+                                ),
+                                "notes": str(exc)[:500],
+                                STORE_EVIDENCE_FIELD: [],
+                            }
                     if row is None:
                         continue
                     results[index] = row
-                except Exception as exc:
-                    if cancel_event is not None and cancel_event.is_set():
-                        continue
-                    results[index] = {
-                        "app_name": app["app_name"],
-                        "package_name": app["package_name"],
-                        "play_status": "unexpected_error",
-                        "play_http_status": "",
-                        "play_title": "",
-                        "play_last_update": "",
-                        "play_version": "",
-                        "updated_source": "",
-                        "store_url": f"{core.PLAY_URL}?id={app['package_name']}",
-                        "store_country": str(config.country or "").lower(),
-                        "store_language": resolve_store_language(config.language, config.country),
-                        "notes": str(exc)[:500],
-                        STORE_EVIDENCE_FIELD: [],
-                    }
-                app_completed(app["package_name"])
+                    if row_completed_callback is not None:
+                        row_completed_callback(index, row)
+                    app_completed(app["package_name"])
+
+                if cancel_event is not None and cancel_event.is_set():
+                    for future in pending:
+                        future.cancel()
+                else:
+                    fill_submission_window()
 
     return [row for row in results if row is not None]
 
@@ -764,6 +867,7 @@ class PlayStoreService:
         progress_callback: ProgressCallback | None = None,
         pause_event=None,
         cancel_event=None,
+        row_completed_callback: RowCompletedCallback | None = None,
     ) -> list[dict[str, Any]]:
         return audit_apps(
             apps,
@@ -771,6 +875,7 @@ class PlayStoreService:
             progress_callback,
             pause_event=pause_event,
             cancel_event=cancel_event,
+            row_completed_callback=row_completed_callback,
         )
 
 

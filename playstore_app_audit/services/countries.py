@@ -36,12 +36,19 @@ def audit_apps_multicountry(
     progress_callback: Callable[[int, int, str], None] | None = None,
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
+    row_completed_callback: Callable[[int, dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
+    def completed(index: int, row: dict[str, Any]) -> None:
+        enrich_rows_with_store_metadata([row])
+        if row_completed_callback is not None:
+            row_completed_callback(index, row)
+
     rows = _SERVICE.audit(
         apps,
         config,
         progress_callback,
         pause_event=pause_event,
         cancel_event=cancel_event,
+        row_completed_callback=completed if row_completed_callback is not None else None,
     )
     return enrich_rows_with_store_metadata(rows)
