@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import re
 import threading
-import time
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -220,7 +219,7 @@ def _wait_for_retry(cancel_event: threading.Event | None, delay_seconds: float) 
 
     delay = max(0.0, float(delay_seconds))
     if cancel_event is None:
-        time.sleep(delay)
+        threading.Event().wait(delay)
         return True
     return not cancel_event.wait(delay)
 
@@ -232,6 +231,19 @@ def _scraper_request(
     config: AuditConfig,
     cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
+    # CLI/direct callers do not pass through app.main(), so the same bounded
+    # transport gate must also be enforced at this service boundary.
+    from playstore_app_audit.services.scraper_transport import (
+        install_scraper_transport_timeout,
+    )
+
+    if not install_scraper_transport_timeout():
+        return {
+            "ok": False,
+            "title": "",
+            "updated": "",
+            "error": "bounded google-play-scraper transport unavailable",
+        }
     try:
         from google_play_scraper import app as play_app
     except ImportError as exc:

@@ -359,6 +359,13 @@ def collect_device_metadata_v9(
     cancel_event=None,
     max_workers: int = 6,
 ) -> dict[str, dict[str, str]]:
+    """Collect read-only ADB evidence with cooperative command boundaries.
+
+    Stop prevents the next command or per-package submission but does not kill
+    a running adb process. Existing command timeouts bound that drain: 25s for
+    getprop, 45s for disabled packages, 60s for installer/bulk package queries,
+    and 30s for a per-package dumpsys query.
+    """
     from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 
     settings = state.load_settings()

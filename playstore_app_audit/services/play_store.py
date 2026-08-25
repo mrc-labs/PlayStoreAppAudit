@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-import time
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 from typing import Any
@@ -34,7 +33,7 @@ _DIAGNOSTIC_FIELDS = (
 
 def _wait_for_retry(cancel_event: threading.Event | None, delay_seconds: float) -> bool:
     if cancel_event is None:
-        time.sleep(max(0.0, float(delay_seconds)))
+        threading.Event().wait(max(0.0, float(delay_seconds)))
         return True
     return not cancel_event.wait(max(0.0, float(delay_seconds)))
 
@@ -740,7 +739,14 @@ def audit_apps(
     cancel_event: threading.Event | None = None,
     row_completed_callback: RowCompletedCallback | None = None,
 ) -> list[dict[str, Any]]:
-    """Canonical bounded Store audit used by the desktop application."""
+    """Run the canonical Store audit with cooperative Stop boundaries.
+
+    Submission is limited to ``max_workers`` applications. Once cancellation is
+    observed, no package, retry, country, or language request is started. A
+    request that was already inside urllib/requests may still run until its
+    configured per-request timeout (25 seconds by default); its conclusive row
+    is retained when it remains valid independently of unfinished fallbacks.
+    """
     worker_limit = max(1, int(config.max_workers))
     request_slots = threading.Semaphore(worker_limit)
     results: list[dict[str, Any] | None] = [None] * len(apps)
