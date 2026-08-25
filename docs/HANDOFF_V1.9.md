@@ -1,6 +1,6 @@
 # Play Store App Audit v1.9 Chat Handoff
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 Status: **v1.8.0 is published and immutable; v1.9 PR1, PR2 and PR3 are merged and accepted; the v1.9.0 release-readiness/version-freeze work is active.**
 
