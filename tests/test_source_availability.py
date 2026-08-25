@@ -28,3 +28,7 @@ def test_source_availability_points_to_release_wide_checksum(
     assert bundle["filename"] in text
     assert "SHA256SUMS.txt" in text
     assert bundle["sha256"] not in text
+    assert (
+        "https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.3.0"
+        in text
+    )
