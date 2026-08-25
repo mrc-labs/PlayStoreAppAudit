@@ -8,6 +8,7 @@ from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
+from playstore_app_audit.services.scraper_transport import install_scraper_transport_timeout
 from playstore_app_audit.services.store_locale import (
     primary_language_for_country,
     resolve_store_language,
@@ -178,6 +179,17 @@ def scraper_request(
     cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
     """Query google-play-scraper with terminal NotFound and transient retries."""
+    if not install_scraper_transport_timeout():
+        return {
+            "ok": False,
+            "not_found": False,
+            "title": "",
+            "updated": "",
+            "version": "",
+            "error": "bounded google-play-scraper transport unavailable",
+            "attempts": 0,
+            "retry_count": 0,
+        }
     try:
         from google_play_scraper import app as play_app
         from google_play_scraper.exceptions import NotFoundError
