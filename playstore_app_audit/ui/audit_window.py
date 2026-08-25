@@ -139,6 +139,15 @@ class AuditWindow(BaseWindow):
         self.run_button.clicked.connect(self._start_audit)
         action_row.addWidget(self.run_button, 1)
 
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop))
+        self.stop_button.setEnabled(False)
+        self.stop_button.setToolTip(
+            "Stop cooperatively after already-running Store and ADB operations finish."
+        )
+        self.stop_button.clicked.connect(self._stop_audit)
+        action_row.addWidget(self.stop_button)
+
         self.export_button = QPushButton("Export Results")
         self.export_button.setEnabled(False)
         self.export_button.setIcon(main_action_icon("export_results", self.palette()))
@@ -238,6 +247,9 @@ class AuditWindow(BaseWindow):
     def _set_busy(self, busy: bool) -> None:
         super()._set_busy(busy)
         self.exclude_system_source_check.setEnabled(not busy)
+
+    def _stop_audit(self) -> None:
+        """Lifecycle-aware subclasses provide cooperative Stop semantics."""
 
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(

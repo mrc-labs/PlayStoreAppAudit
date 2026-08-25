@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import sys
 import threading
+from contextlib import suppress
 
 from PySide6.QtCore import QByteArray, QObject, Qt, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
@@ -28,6 +29,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.ui.base_window as base_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
 from playstore_app_audit.services.state import (
@@ -39,7 +41,6 @@ from playstore_app_audit.services.state import (
     load_history,
     load_settings,
     normalise_store_workers,
-    save_history,
     save_settings,
     update_cache,
 )
@@ -88,6 +89,26 @@ class ControlledAuditSignals(QObject):
     done = Signal(object)
 
 
+def coerce_audit_run_result(payload: object) -> AuditRunResult:
+    """Accept pre-v1.99 tuple payloads while production emits typed results."""
+
+    if isinstance(payload, AuditRunResult):
+        return payload
+    session, rows, error, cached_count, live_count = payload  # type: ignore[misc]
+    typed_rows = list(rows or [])
+    cached = max(0, int(cached_count or 0))
+    live = max(0, int(live_count or 0))
+    return AuditRunResult(
+        session=int(session),
+        outcome=AuditRunOutcome.FAILED if error else AuditRunOutcome.SUCCESS,
+        rows=typed_rows,
+        cached_count=cached,
+        live_completed_count=live,
+        total_count=len(typed_rows),
+        error=str(error or ""),
+    )
+
+
 class CompactWindow(AuditWindow):
     """Qt6 desktop UI with pausable audits, cache and advanced controls."""
 
@@ -96,6 +117,9 @@ class CompactWindow(AuditWindow):
         self._audit_session = 0
         self._audit_active = False
         self._audit_paused = False
+        self._audit_state = AuditRunState.IDLE
+        self._audit_requested_outcome: AuditRunOutcome | None = None
+        self._last_audit_outcome: AuditRunOutcome | None = None
         self._audit_pause_event = threading.Event()
         self._audit_pause_event.set()
         self._audit_cancel_event = threading.Event()
@@ -146,7 +170,7 @@ class CompactWindow(AuditWindow):
         self._setup_context_menu()
         self._restore_table_layout()
         self._apply_column_visibility()
-        self._set_run_mode("run")
+        self._set_audit_state(AuditRunState.IDLE)
 
     # ---------- Behaviour hooks ----------
     def _classify_row(self, row: dict[str, object]) -> None:
@@ -175,7 +199,7 @@ class CompactWindow(AuditWindow):
         progress_layout.removeWidget(self.status_label)
         self.run_button.setMinimumWidth(215)
         self.run_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        action_layout.insertStretch(1, 1)
+        action_layout.insertStretch(2, 1)
         action_layout.addWidget(self.export_button)
         action_layout.addWidget(self.clear_button)
         action_layout.setStretch(0, 0)
@@ -547,6 +571,34 @@ class CompactWindow(AuditWindow):
         self._export_rows(self._visible_rows(), "playstore_audit_visible_results.csv")
 
     # ---------- Audit ----------
+    def _set_audit_state(self, state: AuditRunState) -> None:
+        self._audit_state = state
+        self._audit_active = state is not AuditRunState.IDLE
+        self._audit_paused = state is AuditRunState.PAUSED
+
+        if state is AuditRunState.RUNNING:
+            self._set_run_mode("pause")
+            self.stop_button.setEnabled(True)
+        elif state is AuditRunState.PAUSED:
+            self._set_run_mode("resume")
+            self.stop_button.setEnabled(True)
+        elif state is AuditRunState.STOPPING:
+            self.run_button.setText("Stopping…")
+            self.run_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
+        elif state is AuditRunState.FINALIZING:
+            self.run_button.setText("Finalizing…")
+            self.run_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
+        else:
+            self._set_run_mode("run")
+            self.stop_button.setEnabled(False)
+
+        self._sync_progress_visibility()
+        sync_actions = getattr(self, "_sync_action_availability", None)
+        if callable(sync_actions):
+            sync_actions()
+
     def _set_run_mode(self, mode: str) -> None:
         if mode == "pause":
             self.run_button.setText("Pause")
@@ -571,23 +623,23 @@ class CompactWindow(AuditWindow):
         self._sync_progress_visibility()
 
     def _toggle_pause(self) -> None:
-        if not self._audit_active:
+        if self._audit_state not in {AuditRunState.RUNNING, AuditRunState.PAUSED}:
             return
         done, total, _package = self._last_progress
-        if self._audit_paused:
+        if self._audit_state is AuditRunState.PAUSED:
             self._audit_pause_event.set()
-            self._audit_paused = False
-            self._set_run_mode("pause")
+            self._set_audit_state(AuditRunState.RUNNING)
             self.status_label.setText(f"Resumed • {done}/{total} completed")
         else:
             self._audit_pause_event.clear()
-            self._audit_paused = True
-            self._set_run_mode("resume")
+            self._set_audit_state(AuditRunState.PAUSED)
             self.status_label.setText(f"Paused • {done}/{total} completed")
 
     def _start_audit(self) -> None:
-        if self._audit_active:
+        if self._audit_state in {AuditRunState.RUNNING, AuditRunState.PAUSED}:
             self._toggle_pause()
+            return
+        if self._audit_state is not AuditRunState.IDLE:
             return
         try:
             apps, system_packages, classification_method = self._get_apps_to_audit()
@@ -628,14 +680,13 @@ class CompactWindow(AuditWindow):
 
         self._audit_session += 1
         session = self._audit_session
-        self._audit_active = True
-        self._audit_paused = False
+        self._audit_requested_outcome = None
         self._audit_pause_event = threading.Event()
         self._audit_pause_event.set()
         self._audit_cancel_event = threading.Event()
         self._last_progress = (cached_count, len(apps), "")
         self._set_audit_source_controls_enabled(False)
-        self._set_run_mode("pause")
+        self._set_audit_state(AuditRunState.RUNNING)
 
         config = AuditConfig(country=country, language=language, max_workers=store_workers)
         threading.Thread(
@@ -664,12 +715,61 @@ class CompactWindow(AuditWindow):
         cancel_event: threading.Event,
         cache_enabled: bool,
     ) -> None:
+        completed_live: dict[int, dict[str, object]] = {}
+
+        def row_completed(index: int, row: dict[str, object]) -> None:
+            completed_live[index] = dict(row)
+
+        def ordered_live_rows(returned: list[dict[str, object]]) -> list[dict[str, object]]:
+            by_package = {
+                str(row.get("package_name") or ""): dict(row)
+                for row in completed_live.values()
+            }
+            by_package.update(
+                {str(row.get("package_name") or ""): dict(row) for row in returned}
+            )
+            return [
+                by_package[app["package_name"]]
+                for app in live_apps
+                if app["package_name"] in by_package
+            ]
+
+        def all_rows(live_rows: list[dict[str, object]]) -> list[dict[str, object]]:
+            by_package = {package: dict(row) for package, row in cached.items()}
+            by_package.update(
+                {str(row.get("package_name") or ""): dict(row) for row in live_rows}
+            )
+            return [
+                by_package[app["package_name"]]
+                for app in all_apps
+                if app["package_name"] in by_package
+            ]
+
+        def emit_result(
+            outcome: AuditRunOutcome,
+            live_rows: list[dict[str, object]],
+            error: str = "",
+        ) -> None:
+            if session != self._audit_session or self._audit_requested_outcome is AuditRunOutcome.ABANDONED:
+                return
+            self.audit_control_signals.done.emit(
+                AuditRunResult(
+                    session=session,
+                    outcome=outcome,
+                    rows=all_rows(live_rows),
+                    cached_count=len(cached),
+                    live_completed_count=len(live_rows),
+                    total_count=len(all_apps),
+                    error=error,
+                )
+            )
+
         try:
             cached_count = len(cached)
             total_count = len(all_apps)
 
             def progress(done: int, _total: int, package_name: str) -> None:
-                if cancel_event.is_set() or session != self._audit_session:
+                if session != self._audit_session:
                     return
                 self.audit_control_signals.progress.emit(
                     session, cached_count + done, total_count, package_name
@@ -682,21 +782,30 @@ class CompactWindow(AuditWindow):
                     progress,
                     pause_event=pause_event,
                     cancel_event=cancel_event,
+                    row_completed_callback=row_completed,
                 )
                 if live_apps
                 else []
             )
-            if cancel_event.is_set() or session != self._audit_session:
-                return
+            live_rows = ordered_live_rows(list(live_rows))
             if cache_enabled and live_rows:
                 update_cache(live_rows, config.country, config.language)
-            by_package = {package: dict(row) for package, row in cached.items()}
-            by_package.update({str(row.get("package_name") or ""): row for row in live_rows})
-            rows = [by_package[app["package_name"]] for app in all_apps if app["package_name"] in by_package]
-            self.audit_control_signals.done.emit((session, rows, "", cached_count, len(live_rows)))
+            outcome = (
+                AuditRunOutcome.STOPPED
+                if cancel_event.is_set()
+                or self._audit_requested_outcome is AuditRunOutcome.STOPPED
+                else AuditRunOutcome.SUCCESS
+            )
+            emit_result(outcome, live_rows)
         except Exception as exc:
-            if not cancel_event.is_set() and session == self._audit_session:
-                self.audit_control_signals.done.emit((session, None, str(exc), 0, 0))
+            live_rows = ordered_live_rows([])
+            if cache_enabled and live_rows:
+                with suppress(Exception):
+                    update_cache(live_rows, config.country, config.language)
+            # A fatal exception that reaches the worker wins over a concurrent
+            # user Stop. Cancellation paths return normally and therefore keep
+            # the distinct STOPPED outcome.
+            emit_result(AuditRunOutcome.FAILED, live_rows, str(exc))
 
     def _on_controlled_progress(self, session: int, done: int, total: int, package_name: str) -> None:
         if session != self._audit_session or not self._audit_active:
@@ -704,67 +813,112 @@ class CompactWindow(AuditWindow):
         self._last_progress = (done, total, package_name)
         self.progress.setRange(0, total)
         self.progress.setValue(done)
-        if self._audit_paused:
+        if self._audit_state is AuditRunState.STOPPING:
+            self.status_label.setText(f"Stopping… {done}/{total} completed")
+        elif self._audit_state is AuditRunState.PAUSED:
             self.status_label.setText(f"Paused • {done}/{total} completed")
         else:
             self.status_label.setText(f"Completed {done}/{total}: {package_name}")
 
     def _on_controlled_done(self, payload: object) -> None:
-        session, rows, error, cached_count, live_count = payload  # type: ignore[misc]
-        if session != self._audit_session:
+        result = coerce_audit_run_result(payload)
+        if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
-        self._audit_active = False
-        self._audit_paused = False
+        # A worker may have queued SUCCESS immediately before the UI processed
+        # the user's Stop click. Once Stop is accepted while the run is active,
+        # it remains authoritative unless the worker reports a fatal failure.
+        if (
+            self._audit_requested_outcome is AuditRunOutcome.STOPPED
+            and result.outcome is AuditRunOutcome.SUCCESS
+        ):
+            result.outcome = AuditRunOutcome.STOPPED
+        self._last_audit_outcome = result.outcome
         self._audit_pause_event.set()
-        self._set_audit_source_controls_enabled(True)
-        self._set_run_mode("run")
-        if error:
-            self.status_label.setText("Audit failed")
-            self.export_button.setEnabled(bool(self.current_rows))
-            QMessageBox.critical(self, "Audit failed", str(error))
-            return
 
-        typed_rows = list(rows or [])
+        typed_rows = list(result.rows)
         compare_enabled = bool(self.user_settings.get("compare_previous", False))
         history = load_history() if compare_enabled else {}
         for row in typed_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
             self._classify_row(row)
             row["change"] = compare_with_history(row, history) if compare_enabled else ""
-        if compare_enabled:
-            save_history(typed_rows)
 
         self.current_rows = typed_rows
         self.model.set_rows(typed_rows)
-        self.progress.setRange(0, max(len(typed_rows), 1))
-        self.progress.setValue(len(typed_rows))
+        self.progress.setRange(0, max(result.total_count, 1))
+        self.progress.setValue(result.completed_count)
         self.export_button.setEnabled(bool(typed_rows))
         cache_summary = (
-            f" • {cached_count} cached • {live_count} live" if cached_count else f" • {live_count} live"
+            f" • {result.cached_count} cached • {result.live_completed_count} live"
+            if result.cached_count
+            else f" • {result.live_completed_count} live"
         )
-        self.status_label.setText(f"Audit completed{cache_summary}")
+        if result.outcome is AuditRunOutcome.SUCCESS:
+            self.status_label.setText(f"Audit completed{cache_summary}")
+        elif result.outcome is AuditRunOutcome.STOPPED:
+            self.status_label.setText(
+                f"Audit stopped • {result.completed_count}/{result.total_count} completed"
+                f"{cache_summary}"
+            )
+        else:
+            partial = (
+                f" • {result.completed_count}/{result.total_count} completed"
+                if result.completed_count
+                else ""
+            )
+            self.status_label.setText(f"Audit failed{partial}")
         self._update_summary()
         self._apply_column_visibility(reset_order=False)
 
-    def _cancel_active_audit(self) -> None:
-        if not self._audit_active:
-            self._set_run_mode("run")
+        deferred_idle = getattr(self, "_finalizing_session", None) == result.session
+        if not deferred_idle:
+            self._set_audit_source_controls_enabled(True)
+            self._set_audit_state(AuditRunState.IDLE)
+        if result.outcome is AuditRunOutcome.FAILED:
+            QMessageBox.critical(self, "Audit failed", result.error or "Unknown audit failure")
+
+    def _stop_audit(self) -> None:
+        """Request cooperative Stop; bounded in-flight operations drain before idle."""
+
+        if self._audit_state not in {AuditRunState.RUNNING, AuditRunState.PAUSED}:
             return
+        self._audit_requested_outcome = AuditRunOutcome.STOPPED
+        self._audit_cancel_event.set()
+        self._audit_pause_event.set()
+        done, total, _package = self._last_progress
+        self._set_audit_state(AuditRunState.STOPPING)
+        self.status_label.setText(f"Stopping… {done}/{total} completed")
+
+    def _abandon_active_audit(self) -> None:
+        if self._audit_state is AuditRunState.IDLE:
+            return
+        self._audit_requested_outcome = AuditRunOutcome.ABANDONED
+        self._last_audit_outcome = AuditRunOutcome.ABANDONED
         self._audit_cancel_event.set()
         self._audit_pause_event.set()
         self._audit_session += 1
-        self._audit_active = False
-        self._audit_paused = False
+        if hasattr(self, "_finalizing_session"):
+            self._finalizing_session = None
+        if hasattr(self, "_merge_base_rows"):
+            self._merge_base_rows = None
+        if hasattr(self, "_v9_targeted_active"):
+            self._v9_targeted_active = False
         self._set_audit_source_controls_enabled(True)
-        self._set_run_mode("run")
+        self._set_audit_state(AuditRunState.IDLE)
+
+    def _cancel_active_audit(self) -> None:
+        """Compatibility name for non-user abandonment paths."""
+
+        self._abandon_active_audit()
 
     def _clear_results(self) -> None:
-        self._cancel_active_audit()
+        if self._audit_state is not AuditRunState.IDLE:
+            return
         base_ui.BaseWindow._clear_results(self)
-        self._set_run_mode("run")
+        self._set_audit_state(AuditRunState.IDLE)
 
     def closeEvent(self, event) -> None:
-        self._cancel_active_audit()
+        self._abandon_active_audit()
         self._save_table_layout()
         super().closeEvent(event)
 

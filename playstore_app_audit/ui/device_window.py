@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,11 +31,26 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.ui import schema
 
 # Stable device-layer schema aliases. The canonical definitions live in ui.schema.
 V8_EXTRA_COLUMNS = schema.DEVICE_EXTRA_COLUMNS
 V8_MODEL_COLUMNS = schema.DEVICE_MODEL_COLUMNS
+DEVICE_METADATA_FIELDS = (
+    "installed_version",
+    "installed_version_code",
+    "installer_source",
+    "target_sdk",
+    "min_sdk",
+    "first_install_time",
+    "last_local_update",
+    "app_enabled",
+    "compatibility_status",
+    "sensitive_permissions_count",
+    "sensitive_permissions",
+    "version_comparison",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -525,6 +541,56 @@ class DeviceWindow(compact_ui.CompactWindow):
     ) -> None:
         metadata_executor: ThreadPoolExecutor | None = None
         metadata_future = None
+        completed_live: dict[int, dict[str, Any]] = {}
+
+        def row_completed(index: int, row: dict[str, Any]) -> None:
+            completed_live[index] = dict(row)
+
+        def ordered_live_rows(returned: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            by_package = {
+                str(row.get("package_name") or ""): dict(row)
+                for row in completed_live.values()
+            }
+            by_package.update(
+                {str(row.get("package_name") or ""): dict(row) for row in returned}
+            )
+            return [
+                by_package[app["package_name"]]
+                for app in live_apps
+                if app["package_name"] in by_package
+            ]
+
+        def assemble_rows(live_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            by_package = {package: dict(row) for package, row in cached.items()}
+            by_package.update(
+                {str(row.get("package_name") or ""): dict(row) for row in live_rows}
+            )
+            return [
+                by_package[app["package_name"]]
+                for app in all_apps
+                if app["package_name"] in by_package
+            ]
+
+        def emit_result(
+            outcome: AuditRunOutcome,
+            rows: list[dict[str, Any]],
+            live_count: int,
+            error: str = "",
+        ) -> None:
+            if session != self._audit_session or self._audit_requested_outcome is AuditRunOutcome.ABANDONED:
+                return
+            self.audit_control_signals.done.emit(
+                AuditRunResult(
+                    session=session,
+                    outcome=outcome,
+                    rows=rows,
+                    cached_count=len(cached),
+                    live_completed_count=live_count,
+                    total_count=len(all_apps),
+                    error=error,
+                )
+            )
+
         try:
             settings = state.load_settings()
             if self.source_mode == "device" and settings.get("collect_device_metadata", True):
@@ -542,7 +608,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             total_count = len(all_apps)
 
             def progress(done: int, _total: int, package_name: str) -> None:
-                if cancel_event.is_set() or session != self._audit_session:
+                if session != self._audit_session:
                     return
                 self.audit_control_signals.progress.emit(
                     session, cached_count + done, total_count, package_name
@@ -555,26 +621,42 @@ class DeviceWindow(compact_ui.CompactWindow):
                     progress,
                     pause_event=pause_event,
                     cancel_event=cancel_event,
+                    row_completed_callback=row_completed,
                 )
                 if live_apps
                 else []
             )
-            if cancel_event.is_set() or session != self._audit_session:
-                return
+            live_rows = ordered_live_rows(list(live_rows))
             if cache_enabled and live_rows:
                 compact_ui.update_cache(live_rows, config.country, config.language)
 
-            by_package = {package: dict(row) for package, row in cached.items()}
-            by_package.update({str(row.get("package_name") or ""): row for row in live_rows})
-            rows = [by_package[app["package_name"]] for app in all_apps if app["package_name"] in by_package]
+            rows = assemble_rows(live_rows)
 
             metadata = metadata_future.result() if metadata_future is not None else {}
             self._enrich_rows_with_device_metadata(rows, metadata)
             self._pending_device_metadata = metadata
-            self.audit_control_signals.done.emit((session, rows, "", cached_count, len(live_rows)))
+            outcome = (
+                AuditRunOutcome.STOPPED
+                if cancel_event.is_set()
+                or self._audit_requested_outcome is AuditRunOutcome.STOPPED
+                else AuditRunOutcome.SUCCESS
+            )
+            emit_result(outcome, rows, len(live_rows))
         except Exception as exc:
-            if not cancel_event.is_set() and session == self._audit_session:
-                self.audit_control_signals.done.emit((session, None, str(exc), 0, 0))
+            live_rows = ordered_live_rows([])
+            if cache_enabled and live_rows:
+                with suppress(Exception):
+                    compact_ui.update_cache(live_rows, config.country, config.language)
+            rows = assemble_rows(live_rows)
+            metadata: dict[str, dict[str, str]] = {}
+            if metadata_future is not None and metadata_future.done():
+                try:
+                    metadata = metadata_future.result()
+                except Exception:
+                    metadata = {}
+            self._enrich_rows_with_device_metadata(rows, metadata)
+            self._pending_device_metadata = metadata
+            emit_result(AuditRunOutcome.FAILED, rows, len(live_rows), str(exc))
         finally:
             if metadata_executor is not None:
                 metadata_executor.shutdown(wait=False, cancel_futures=True)
@@ -585,49 +667,60 @@ class DeviceWindow(compact_ui.CompactWindow):
             self._update_summary()
             return
 
-        session, rows, error, _cached_count, live_count = payload  # type: ignore[misc]
-        if session != self._audit_session:
+        result = compact_ui.coerce_audit_run_result(payload)
+        if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
         old_rows = self._merge_base_rows
         label = self._subset_label or "Recheck"
+        result.metadata["targeted"] = True
+        result.metadata["targeted_label"] = label
         self._merge_base_rows = None
         self._subset_label = ""
 
-        self._audit_active = False
-        self._audit_paused = False
         self._audit_pause_event.set()
-        self._set_audit_source_controls_enabled(True)
-        self._set_run_mode("run")
+        self._last_audit_outcome = result.outcome
 
-        if error:
-            self.current_rows = old_rows
-            self.model.set_rows(old_rows)
-            self.status_label.setText(f"{label} failed")
-            QMessageBox.critical(self, "Recheck failed", str(error))
-            self._update_summary()
-            return
-
-        new_rows = list(rows or [])
+        new_rows = list(result.rows)
         compare_enabled = bool(self.user_settings.get("compare_previous", False))
         history = state.load_history() if compare_enabled else {}
+        previous_by_package = {
+            str(row.get("package_name") or ""): row for row in old_rows
+        }
         for row in new_rows:
+            previous = previous_by_package.get(str(row.get("package_name") or ""), {})
+            for field in DEVICE_METADATA_FIELDS:
+                if row.get(field) in (None, "") and previous.get(field) not in (None, ""):
+                    row[field] = previous[field]
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
             self._classify_row(row)
             row["change"] = state.compare_with_history(row, history) if compare_enabled else ""
 
         replacements = {str(row.get("package_name") or ""): row for row in new_rows}
         merged = [replacements.get(str(row.get("package_name") or ""), row) for row in old_rows]
-        if compare_enabled:
-            device_metadata.save_history_merged(merged)
 
         self.current_rows = merged
         self.model.set_rows(merged)
         self.export_button.setEnabled(bool(merged))
-        self.progress.setRange(0, max(live_count, 1))
-        self.progress.setValue(live_count)
-        self.status_label.setText(f"{label} completed • {len(new_rows)} app(s) refreshed live")
+        self.progress.setRange(0, max(result.total_count, 1))
+        self.progress.setValue(result.completed_count)
+        if result.outcome is AuditRunOutcome.SUCCESS:
+            self.status_label.setText(f"{label} completed • {len(new_rows)} app(s) refreshed live")
+        elif result.outcome is AuditRunOutcome.STOPPED:
+            self.status_label.setText(
+                f"{label} stopped • {len(new_rows)}/{result.total_count} app(s) refreshed live"
+            )
+        else:
+            self.status_label.setText(
+                f"{label} failed • {len(new_rows)}/{result.total_count} app(s) refreshed live"
+            )
         self._apply_column_visibility(reset_order=False)
         self._update_summary()
+        deferred_idle = getattr(self, "_finalizing_session", None) == result.session
+        if not deferred_idle:
+            self._set_audit_source_controls_enabled(True)
+            self._set_audit_state(AuditRunState.IDLE)
+        if result.outcome is AuditRunOutcome.FAILED:
+            QMessageBox.critical(self, "Recheck failed", result.error or "Unknown recheck failure")
 
 
 def main() -> int:

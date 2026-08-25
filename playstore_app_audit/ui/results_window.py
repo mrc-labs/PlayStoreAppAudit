@@ -28,6 +28,7 @@ import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.smart_queries as smart_queries_ui
 import playstore_app_audit.ui.table_window as table_ui
+from playstore_app_audit.domain.models import AuditRunState
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui.file_menu import (
@@ -457,6 +458,9 @@ class ResultsWindow(menu_ui.MenuWindow):
 
     def _on_controlled_done(self, payload: object) -> None:
         super()._on_controlled_done(payload)
+        self._sync_post_audit_views()
+
+    def _sync_post_audit_views(self) -> None:
         had_previous_inventory = bool(
             self.source_mode == "device"
             and isinstance(getattr(self, "_last_inventory_changes", None), dict)
@@ -710,6 +714,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._sync_action_availability()
 
     def _clear_results(self) -> None:
+        if getattr(self, "_audit_state", AuditRunState.IDLE) is not AuditRunState.IDLE:
+            return
         super()._clear_results()
         if hasattr(self, "details_panel"):
             self.details_panel.clear()

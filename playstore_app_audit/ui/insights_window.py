@@ -32,12 +32,14 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult
 from playstore_app_audit.ui import schema
 
 V9_EXTRA_COLUMNS = schema.INSIGHTS_EXTRA_COLUMNS
@@ -709,12 +711,31 @@ class InsightsWindow(device_ui.DeviceWindow):
             self._v9_targeted_active = False
 
     def _on_controlled_done(self, payload: object) -> None:
+        result = compact_ui.coerce_audit_run_result(payload)
         targeted = self._v9_targeted_active
-        super()._on_controlled_done(payload)
+        if targeted:
+            result.metadata["targeted"] = True
+        super()._on_controlled_done(result)
         self._v9_targeted_active = False
         if self.current_rows:
             for row in self.current_rows:
                 device_insights.apply_health_score(row)
+        if self.current_rows:
+            self.model.set_rows(self.current_rows)
+            self._apply_column_visibility(reset_order=False)
+            self._update_summary()
+
+    def _promote_successful_audit(self, result: AuditRunResult) -> None:
+        """Promote baselines only after all row finalization has succeeded."""
+
+        if result.outcome is not AuditRunOutcome.SUCCESS:
+            return
+        targeted = bool(result.metadata.get("targeted"))
+        if bool(self.user_settings.get("compare_previous", False)):
+            if targeted:
+                device_metadata.save_history_merged(self.current_rows)
+            else:
+                state.save_history(self.current_rows)
         if (
             not targeted
             and self.source_mode == "device"
@@ -725,10 +746,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
                 self.current_rows, self._device_summary
             )
-        if self.current_rows:
             self.model.set_rows(self.current_rows)
-            self._apply_column_visibility(reset_order=False)
-            self._update_summary()
 
     # ---------- Details/context ----------
     def _show_details(self, row: dict[str, Any]) -> None:
