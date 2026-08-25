@@ -18,6 +18,25 @@ def test_package_version_matches_project_metadata() -> None:
     assert __version__ == project["project"]["version"]
 
 
+def test_project_and_update_checker_use_canonical_github_repository() -> None:
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    repository = "mrc-labs/PlayStoreAppAudit"
+    repository_url = f"https://github.com/{repository}"
+
+    assert project["project"]["urls"] == {
+        "Repository": repository_url,
+        "Releases": f"{repository_url}/releases",
+        "Documentation": f"{repository_url}/tree/main/docs",
+    }
+    assert repository == device_insights.GITHUB_REPOSITORY
+    assert (
+        f"https://api.github.com/repos/{repository}/releases/latest"
+        == device_insights.LATEST_RELEASE_API
+    )
+    assert f"{repository_url}/releases/latest" == device_insights.LATEST_RELEASE_PAGE
+
+
 def test_v190_release_version() -> None:
     assert __version__ == "1.9.0"
 
