@@ -1,8 +1,8 @@
 # Play Store App Audit v1.9 Chat Handoff
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
-Status: **v1.8.0 published and immutable; v1.9 PR1 and PR2 are merged, and the accepted complementary QStatusBar implementation is under review.**
+Status: **v1.8.0 is published and immutable; v1.9 PR1, PR2 and PR3 are merged and accepted; the v1.9.0 release-readiness/version-freeze work is active.**
 
 ## Start here
 
@@ -51,6 +51,8 @@ Housekeeping run `32727364125` applied the existing generational policy successf
 
 ## Current technical baseline
 
+- Current source application/release-candidate version: `1.9.0`; derived Windows File/Product version: `1.9.0.0`.
+- Latest published version remains immutable v1.8.0 until the v1.9.0 exact-SHA package, assembly and publication gates pass.
 - Python packaging baseline: 3.13; Quality CI: 3.13 and 3.14.
 - `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
 - UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.
@@ -81,11 +83,14 @@ The first approved v1.9 implementation merged through PR `#116` as one grouped p
 - use **Maintenance Score** everywhere user-facing while retaining `health_score` and the current algorithm;
 - add foreground-only semantic warning colours to version differences and aging/legacy target values;
 - refine the About title/tagline/version hierarchy;
-- use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results.
+- use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results;
+- prevent Display Settings from crashing with populated, sorted or filtered results by using a safe presentation refresh, and keep the Custom preset, column visibility, selection, Details content and widths synchronized across changes and restart.
 
 The separate native Windows prototype merged through PR `#117` and added an automatic extra-wide Details Panel state for usable scroll-viewport widths at or above 1180 px, with exit hysteresis at 1080 px. It keeps Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns with the existing horizontal action row below. At a 1200 px viewport, representative rows reduced required scroll-content height by approximately 29-156 px compared with the existing two-column layout; the 1080 px exit edge still provides approximately 346 px per column without content clipping. Width-aware section minimums ensure compact-height panels scroll instead of truncating wrapped text.
 
-The complementary native `QStatusBar` prototype was accepted after native Windows comparison. It reparents the same canonical `status_label` and progress bar instead of creating or synchronising duplicate status widgets. The label expands on the left; the compact 200 px progress bar appears on the right only while the existing operation flags report active source, audit or finalization work. The action row consequently contains actions only. Source/device identity stays in its existing UI because duplicating it did not add value; the native size grip remains enabled. The status bar neither replaces the Details Panel nor adds a preference or persistence state, and `_set_presentation_status()` continues to protect operational feedback.
+The complementary native `QStatusBar` implementation merged through PR `#118` after native Windows acceptance. It reparents the same canonical `status_label` and progress bar instead of creating or synchronising duplicate status widgets. The label expands on the left; the compact 200 px progress bar appears on the right only while the existing operation flags report active source, audit or finalization work. The action row consequently contains Run, Export Results and Clear Results only. Source/device identity stays in its existing UI because duplicating it did not add value; the native size grip remains enabled. The status bar neither replaces the Details Panel nor adds a preference or persistence state, and `_set_presentation_status()` continues to protect operational feedback.
+
+The v1.9 product/UX feature scope is closed. Release-readiness work may update version metadata, release documentation and genuine release blockers only; it must not reopen accepted UX decisions or start v1.99 work.
 
 `QDockWidget` and richer dashboard/status overview experiments are deferred to v1.99 and require a demonstrated distinct benefit. v1.99 is the likely final Windows x64-only release before v2.0 and should close meaningful pre-v2.0 work rather than become an uncontrolled feature release.
 

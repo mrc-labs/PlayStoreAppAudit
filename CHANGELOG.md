@@ -2,6 +2,37 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [1.9.0] - 2026-08-25
+
+### Added
+
+- Added an automatic extra-wide Details Panel layout that enters at a usable viewport width of 1180 px and exits below 1080 px, while preserving the established 760/680 px narrow/wide hysteresis and the existing outer placement modes.
+- Added a native operational status bar that reuses the application's single status label and progress widget, shows progress only during active work and retains the native resize grip.
+
+### Changed
+
+- Unified friendly Notes presentation across the results table, Details Panel and HTML report, including a complete table tooltip while retaining the original raw Notes in machine-readable data and exports.
+- Renamed the user-facing **Health Score** concept to **Maintenance Score** without changing the algorithm or the compatibility-sensitive `health_score` identifier.
+- Added foreground-only warning colours for **Different**, **Aging target** and **Legacy target** table values using the existing status palette.
+- Improved the About hierarchy and coordinated the Choose File, Scan Phone and Export Results iconography with one project-owned, palette-aware family.
+- Grouped extra-wide Details content into Store/Notes, Installed/Changes and Store evidence/diagnostics columns, with the action row below.
+- Kept the main action row focused on Run, Export Results and Clear Results while operational status and active progress use the status bar; source/device identity remains on its existing surfaces.
+
+### Fixed
+
+- Fixed a Display Settings crash when changing columns with populated, sorted or filtered results by replacing an invalid manual layout-change notification with a safe presentation refresh.
+- Kept Custom preset persistence, checkboxes, visible columns, selection, Details content and saved column widths synchronized across repeated changes and restart, including Advanced Settings interactions.
+
+### Compatibility
+
+- v1.9.0 is prepared as an unsigned Windows x64 Engineering Test Build (ETB); the exact release SHA and public artifact evidence will be recorded only after release validation.
+- The planned project-defined asset set is `PlayStoreAppAudit-v1.9.0-windows-x64.zip`, `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`.
+- Windows ARM64, Linux and macOS remain source-supported but are not planned as v1.9.0 prebuilt targets.
+- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- v1.8 settings and Smart Queries remain compatible: raw Notes and the internal `health_score` field ID are unchanged.
+- Managed ADB remains read-only with respect to installed Android apps.
+
 ## [1.8.0] - 2026-08-24
 
 ### Added

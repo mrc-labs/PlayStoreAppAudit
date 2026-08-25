@@ -18,8 +18,8 @@ def test_package_version_matches_project_metadata() -> None:
     assert __version__ == project["project"]["version"]
 
 
-def test_v180_release_version() -> None:
-    assert __version__ == "1.8.0"
+def test_v190_release_version() -> None:
+    assert __version__ == "1.9.0"
 
 
 def test_release_qt_baseline_is_pinned() -> None:
@@ -146,6 +146,8 @@ def test_local_windows_build_uses_canonical_version_and_x64_validation() -> None
     assert "build_windows_standalone.ps1" in helper
     assert '-ExpectedPeMachine "0x8664"' in helper
     assert '-ExpectedPlatformMachine "AMD64"' in helper
+    assert "w.choose_button.text()=='Choose File'" in helper
+    assert "w.scan_button.text()=='Scan Phone'" in helper
 
     assert "--mode=standalone" in builder
     assert "from playstore_app_audit import __version__; print(__version__)" in builder

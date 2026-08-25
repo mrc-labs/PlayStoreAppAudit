@@ -163,7 +163,7 @@ Run it from a normal Command Prompt:
 build_windows_exe.bat
 ```
 
-The output is placed under `dist/`. Generated icons, deployment configuration and build directories are ignored and must not be committed.
+The packaged output is placed under `artifact/windows-x64-local`; temporary environment/build output remains under ignored local directories. Generated icons, deployment configuration and all local package/build output must not be committed.
 
 This helper is for local x64 engineering. Public release artifacts use the GitHub Actions exact-SHA workflows described below.
 
@@ -395,9 +395,9 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 ## Version handling
 
-The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.8.0` maps to Windows version `1.8.0.0`.
+The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0 and v1.8.0 version metadata are part of their immutable published release profiles. Future v1.9 version changes belong to its own deliberate release freeze.
+v1.7.0 and v1.8.0 version metadata are part of their immutable published release profiles. The current `1.9.0` metadata belongs to the deliberate v1.9 release freeze and does not alter either historical profile.
 
 ## Packaged smoke tests
 
