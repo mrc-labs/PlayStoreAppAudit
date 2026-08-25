@@ -105,7 +105,7 @@ For every current and future release:
 - generate `REPOSITORY_SNAPSHOT.md` and chat/continuation handoffs only after that synchronization;
 - do not call the release cycle closed until remote repository state, local VS Code state and context documentation agree.
 
-The full checklist and rationale are canonical in `docs/RELEASE_CLOSURE.md` and apply to v1.7, v1.8, v1.9, v2.0 and every later release line.
+The full checklist and rationale are canonical in `docs/RELEASE_CLOSURE.md` and apply to v1.7, v1.8, v1.9, v1.99, v2.0 and every later release line.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB) profile
 
@@ -149,19 +149,32 @@ The v1.6.0 release profile is frozen as an unsigned Windows x64 ETB. Product sco
 - Do not add the optional richer dashboard/summary to v1.6.0.
 - If source or release tooling changes after the exact release SHA is recorded, discard that candidate SHA and rebuild the required ETB artifacts from the new exact SHA.
 
-### v1.7-v1.9 Windows x64 Engineering Test Build (ETB) profile
+### v1.7-v1.99 Windows x64 Engineering Test Build (ETB) profile
 
-v1.7.0 and v1.8.0 are published and immutable as unsigned Windows x64 ETBs. v1.9 deliberately continues the same Windows x64-only distribution profile.
+v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ETBs. v1.99 deliberately continues the same Windows x64-only distribution profile unless a later explicit release decision changes it.
 
 - Build Windows x64 only from one exact frozen `main` SHA after the required Quality gates pass.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
-- Do not invoke production Windows signing or build Windows ARM64, Linux or macOS release candidates for v1.8 or v1.9.
+- Do not invoke production Windows signing or build Windows ARM64, Linux or macOS release candidates for v1.8, v1.9 or v1.99.
 - Assemble with `.github/workflows/assemble-windows-engineering-release.yml`.
 - Publish exactly three project-defined assets: the Windows x64 ZIP, one consolidated third-party source `tar.xz`, and `SHA256SUMS.txt`.
 - Current/future Windows x64 ETB GitHub Release titles use suffix `(Win x64 Only)`; the release-body heading still identifies `Engineering Test Build - Windows x64 Only` and the package remains clearly described as unsigned.
 - v1.7.0 is frozen at `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. Do not rebuild, retag or replace it.
 - v1.8.0 is frozen at `ac328f0dffddb6b70fa7600f1291377376bc05d4`. Do not rebuild, retag or replace it.
-- Any source or release-tooling change after a future v1.9 SHA freeze invalidates that candidate and requires a rebuild from the new exact SHA.
+- v1.9.0 is frozen at `6c117009525f40434e9db714dadf1dd01b79f9ab`. Do not rebuild, retag or replace it.
+- v1.99 requires one additional real packaged Windows x64 acceptance candidate before the final release freeze. If source changes after that user-tested candidate, it is not the final release artifact: freeze a new exact `main` SHA, rerun Quality, and build/assemble the canonical final package from the new SHA.
+
+### v1.99 product guardrails
+
+v1.99 is the active cycle and likely final Windows x64-only release before v2.0. Keep it controlled rather than treating it as an open-ended feature release.
+
+- Implement cooperative Stop/Cancel across the real audit pipeline. Never use `QThread.terminate()` or another unsafe forced-termination mechanism. Preserve completed valid results and independent cache entries, mark the audit cancelled/incomplete, do not promote it to the completed history baseline, and return to a reusable idle state.
+- Compare native-Windows layouts for Run/Pause/Stop, Export and Clear before choosing their final placement. Also evaluate the existing Details selector in the status bar by reusing the same state and View-menu synchronization; do not duplicate state.
+- Alternative Distribution Discovery is informational exact-package-ID evidence, not endorsement or an automatic equivalent-app association. Approved providers are Samsung Galaxy Store, Huawei AppGallery, F-Droid, Aptoide, Uptodown, APKMirror and APKPure; Amazon Appstore is excluded. Automatic checks require conclusive eligible Google Play evidence and must not run for transient, scraper or ambiguous failures.
+- The v1.99 Maintenance Score update uses one mutually exclusive Google Play removal/distribution penalty selected from the best verified class: official store `-20`, FOSS repository `-40`, independent store `-45`, APK repository `-50`, or no verified alternative `-60`. Store anomaly is `-20`; Other/inconclusive is `-15`; stale/aging freshness is `-25`/`-15`; legacy/aging target SDK is `-15`/`-10`; installed/store difference is `-5`. Regional unavailability is not automatically Removed.
+- An internal `health_score` rename remains a separate evidence-gated compatibility migration; it is not implied by the scoring update.
+- `QDockWidget` is rejected and not planned. Retain the Details Panel's Auto/Right/Below/Hidden placement and narrow/wide/extra-wide responsiveness.
+- A richer dashboard remains evidence-gated and must add a distinct workflow not already covered by existing summary, filters, Changes, Details and status surfaces.
 
 ### v2.0-or-later production profile
 
@@ -173,6 +186,7 @@ v2.0 is the first planned return to a full multi-platform release. Production si
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
 - The full production public asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+- A Local APK Library is a major v2.0 product pillar: recursively scan local APK directories, parse package/version and useful SDK/icon/file metadata, and compare the local library through the existing Store/evidence/filter/report architecture. Later library-management features such as mass rename, duplicate management and cleanup belong to the v2.x backlog.
 
 v1.3.0 at commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` is already published and immutable. Do not rebuild, retag or replace its artifacts.
 

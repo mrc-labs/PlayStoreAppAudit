@@ -106,11 +106,11 @@ The v1.6.0 public release profile is frozen as an unsigned Windows x64 Engineeri
 
 Rationale: v1.6 focuses on Store-service maturity, locale correctness, details/change UX and reliability while preserving a low-cost, already validated public distribution profile. Production signing and multi-platform release cost remain deferred.
 
-### v1.7, v1.8 and v1.9 Windows x64 Engineering Test Builds (ETB)
+### v1.7, v1.8, v1.9 and v1.99 Windows x64 Engineering Test Builds (ETB)
 
-v1.7, v1.8 and v1.9 deliberately continue the unsigned Windows x64-only Engineering Test Build profile. v1.7.0 and v1.8.0 are published and immutable; v1.9 continues the same distribution constraint.
+v1.7, v1.8, v1.9 and v1.99 deliberately continue the unsigned Windows x64-only Engineering Test Build profile. v1.7.0, v1.8.0 and v1.9.0 are published and immutable; v1.99 continues the same distribution constraint unless a later explicit release decision changes it.
 
-For all three release lines:
+For all four release lines:
 
 - the Windows x64 package must come from one exact frozen `main` SHA after the required Quality/UI gates pass;
 - build with `.github/workflows/build-windows-exe.yml` using `target=x64`;
@@ -121,11 +121,13 @@ For all three release lines:
 - use GitHub Release title suffix `(Win x64 Only)` while the body heading continues to identify `Engineering Test Build - Windows x64 Only`; clearly describe the package as unsigned;
 - any source or release-tooling change after an exact release SHA is recorded invalidates that candidate and requires a new exact SHA and rebuild of the ETB artifacts.
 
-The immutable v1.7.0 release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. The immutable v1.8.0 release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`. v1.9 must freeze its own exact `main` SHA after the required Quality gates pass.
+The immutable v1.7.0 release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. The immutable v1.8.0 release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`. The immutable v1.9.0 release SHA is `6c117009525f40434e9db714dadf1dd01b79f9ab`.
 
-The completed v1.8 product-scope expansion and the v1.9 release line do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8 and v1.9.
+The completed v1.8/v1.9 product scope and the active v1.99 cycle do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8, v1.9 and v1.99.
 
-Rationale: v1.7, v1.8 and v1.9 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the v2.0 distribution milestone.
+v1.99 adds a deliberately authorized packaged acceptance candidate before final release. After feature completion, freeze an RC candidate, build a real Windows x64 package and obtain thorough user acceptance. If corrections change source, that RC SHA and artifact are not final. Freeze a new exact `main` SHA only after acceptance, rerun Quality, then build and assemble the canonical final Windows x64 package from that new SHA. No public RC tag is created.
+
+Rationale: v1.7, v1.8, v1.9 and v1.99 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the v2.0 distribution milestone.
 
 ### v2.0-or-later production release milestone
 
@@ -174,7 +176,7 @@ Package workflows are platform-isolated and exact-SHA guarded:
 Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: future Windows production-signing stage, not planned for normal execution before v2.0;
-- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8/v1.9;
+- `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.99;
 - `.github/workflows/assemble-release.yml`: future six-platform production asset assembly, not planned for normal execution before v2.0.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
@@ -233,7 +235,7 @@ Rationale: the action author, not this Python application, owns the bundled Java
 
 ## Signing policy
 
-Production signing is implemented in source but deliberately deferred from normal v1.6/v1.7/v1.8/v1.9 release work. Reconsider production signing and full production distribution no earlier than the v2.0 milestone.
+Production signing is implemented in source but deliberately deferred from normal v1.6/v1.7/v1.8/v1.9/v1.99 release work. Reconsider production signing and full production distribution no earlier than the v2.0 milestone.
 
 ### macOS production target, v2.0 or later
 
@@ -317,9 +319,81 @@ The accepted v1.9 UX implementations merged through PRs `#116`, `#117` and `#118
 
 The following remain rejected for v1.9: a global Fluent redesign, an icon library without demonstrated need, broad architecture/type refactors and a full internal `health_score` rename. They remain recorded for possible evidence-based future reconsideration rather than being erased from project history.
 
-v1.99 is the likely final Windows x64-only release before v2.0. It is a controlled pre-v2.0 review/closure milestone, not an open-ended feature release. A `QDockWidget` prototype belongs there only if it provides a real benefit over the current Details Panel; a richer dashboard/status overview belongs there only if it answers a distinct workflow. A deliberate internal `health_score` compatibility migration may also be reconsidered there, but is not pre-approved.
+## v1.99 product decisions
+
+v1.99 is the active cycle and likely final Windows x64-only release before v2.0. It is a controlled pre-v2.0 closure milestone, not an open-ended feature release.
+
+### Cooperative audit Stop/Cancel
+
+v1.99 must add a real, cooperative Stop/Cancel lifecycle alongside Run and Pause/Resume.
+
+- Stop scheduling new work immediately and propagate cancellation through Store checks, regional checks and finalization queues.
+- Let in-flight operations exit safely or reach existing timeout boundaries; never use `QThread.terminate()` or an equivalent forced termination.
+- Preserve completed valid results and independently valid cache entries.
+- Mark the audit cancelled/incomplete rather than completed, and never promote it to the completed previous-audit/history baseline.
+- Return the application to a reusable idle state so a later audit starts normally.
+
+Implementation begins only after the complete execution pipeline and every real cancellation boundary are identified.
+
+### Main actions, Details selector and status bar
+
+Final placement of Run/Pause/Stop, Export and Clear is not pre-decided. Compare native-Windows prototypes for: actions in the status bar; a compact upper command strip; and a clear integrated results/header command layout. Run remains primary, Stop must be discoverable while relevant, and action-availability behavior must be preserved. Compare representative widths and DPI levels and obtain visual evidence before choosing.
+
+The existing Details selector (Auto/Right/Below/Hidden) is a stronger status-bar candidate and should be evaluated there by reusing the same state and `View > Details Panel` synchronization. Do not duplicate state. Review status-bar padding, alignment, vertical centering, height, progress/control relationships, size-grip spacing, long-message behavior and 100/125/150/175% DPI evidence.
+
+The warning-coloured **Different**, **Aging target** and **Legacy target** values should receive restrained stronger typography. Test Qt DemiBold/SemiBold first and preserve a visible hierarchy below the first Status column's Bold; do not blindly make every warning Bold.
+
+### Alternative Distribution Discovery
+
+The previously rejected idea of automatic alternative-source association is replaced by an informational exact-package feature named **Alternative Distribution Discovery**. It reports evidence that the same Android package is distributed elsewhere without implying endorsement, equivalence or guaranteed installation safety.
+
+Approved providers and classifications are:
+
+- Samsung Galaxy Store and Huawei AppGallery: `official_store`;
+- F-Droid: `foss_repository`;
+- Aptoide and Uptodown: `independent_store`;
+- APKMirror and APKPure: `apk_repository`, visibly identified as APK repositories.
+
+Amazon Appstore is explicitly excluded.
+
+Automatic discovery is limited to Removed, regional/unavailable-in-selected-country cases, and Store anomalies only when Google Play evidence is sufficiently conclusive. It must not run automatically for transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app check may be evaluated.
+
+Exact Android package ID is the primary identity key; fuzzy title matching alone is never sufficient. Retain provider URL and verification timestamp plus publisher/developer/version/update evidence where available. Review each provider's API/search mechanism, exact package lookup, rate limits, terms/access constraints, regional behavior, available metadata and maintenance risk before implementation.
+
+### Maintenance Score v1.99 update
+
+The user-facing name remains **Maintenance Score**. The v1.99 algorithm uses these target penalties:
+
+- Google Play Removed with no verified alternative distribution: `-60`;
+- Removed with only an APK repository: `-50`;
+- Removed with an independent store: `-45`;
+- Removed with a FOSS repository: `-40`;
+- Removed with at least one official OEM store: `-20`;
+- Store anomaly: `-20`;
+- Other/inconclusive Google Play state: `-15`;
+- stale listing, more than 730 days: `-25`;
+- aging listing, more than 365 and no more than 730 days: `-15`;
+- legacy target SDK relative to the connected device: `-15`;
+- aging target SDK relative to the connected device: `-10`;
+- installed version differs from Google Play: `-5`.
+
+The Removed/alternative penalties are mutually exclusive alternatives for one Google Play availability component. Select the best verified distribution class in this order: `official_store > foss_repository > independent_store > apk_repository`; never stack providers or apply `-60` before an alternative penalty. Other independent score components continue to compose and existing bounds/clamping remain unless a real defect is found. Provider failure or inconclusive evidence is never positive availability evidence. Regional unavailability may trigger discovery but is not automatically Removed and does not receive the Removed substitutions unless the underlying Google Play state genuinely qualifies.
+
+Before implementation, review history/versioned-data implications so score changes do not silently break audit comparisons. Update user-facing methodology/report text and tests with the algorithm. A possible internal `health_score` to `maintenance_score` rename remains a separate evidence-gated migration requiring Smart Query, settings, serialized-data, backward-compatibility and migration tests; defer it when cost exceeds benefit.
+
+### Explicit UX decisions
+
+- `QDockWidget` is rejected and not planned. Retain Auto/Right/Below/Hidden Details placement with narrow/wide/extra-wide internal responsiveness.
+- A richer dashboard/status overview remains evidence-gated and ships only if a prototype proves a distinct workflow beyond Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- Concrete bugs and polish found through real v1.9 use may be considered individually; they are not automatically in scope.
 
 Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later work.
+
+### v2.0 Local APK Library pillar
+
+v2.0 adds a modern Local APK Library/successor core. It will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
+
+Later v2.x candidates include metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
 
 ## Release-script maintenance
 

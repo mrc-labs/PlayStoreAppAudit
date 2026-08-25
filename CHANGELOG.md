@@ -25,9 +25,9 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- v1.9.0 is prepared as an unsigned Windows x64 Engineering Test Build (ETB); the exact release SHA and public artifact evidence will be recorded only after release validation.
-- The planned project-defined asset set is `PlayStoreAppAudit-v1.9.0-windows-x64.zip`, `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`.
-- Windows ARM64, Linux and macOS remain source-supported but are not planned as v1.9.0 prebuilt targets.
+- v1.9.0 was published on 2026-08-25 as an unsigned Windows x64 Engineering Test Build (ETB) from frozen source SHA `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+- The immutable project-defined asset set is exactly `PlayStoreAppAudit-v1.9.0-windows-x64.zip`, `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`; final sizes, SHA-256 values and release evidence are recorded in `docs/PROJECT_STATUS.md` and `docs/RELEASE_NOTES.md`.
+- Windows ARM64, Linux and macOS remain source-supported but were not rebuilt as v1.9.0 prebuilt targets.
 - Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
 - `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
 - v1.8 settings and Smart Queries remain compatible: raw Notes and the internal `health_score` field ID are unchanged.
