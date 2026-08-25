@@ -1,138 +1,75 @@
-# Play Store App Audit v1.9 Chat Handoff
+# Play Store App Audit v1.9 Closure Handoff
 
 Last updated: 2026-08-25
 
-Status: **v1.8.0 is published and immutable; v1.9 PR1, PR2 and PR3 are merged and accepted; the v1.9.0 release-readiness/version-freeze work is active.**
+Status: **v1.9.0 is published, independently verified and immutable. Post-release Actions housekeeping is complete. Active development planning has moved to v1.99; continue from `HANDOFF_V1.99.md`.**
 
-## Start here
+## Closure boundary
 
-This is the canonical human-readable continuation file after v1.8 closure. Read it with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and the generated `REPOSITORY_SNAPSHOT.md` in the current handoff package.
+This file is the final v1.9 release/closure record. It is not the active development handoff. Read `HANDOFF_V1.99.md` with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and a freshly generated `REPOSITORY_SNAPSHOT.md` for new work.
 
-Before changing anything:
+Never modify, rebuild, retag or replace v1.9.0, v1.8.0 or any earlier published release. A later documentation-only `main` commit does not change the immutable v1.9 release source SHA.
 
-1. verify live GitHub repository, open-PR and release state;
-2. run `git status --short` and stop if the local working tree is dirty;
-3. on a clean checkout, fetch/prune, switch to `main` and pull with `--ff-only`;
-4. verify local `HEAD` equals `origin/main` and read the current roadmap/decisions;
-5. do not modify, rebuild, retag or replace v1.8.0 or any earlier published release.
+## Immutable v1.9.0 release
 
-## Latest immutable release
-
-- Release: `v1.8.0`
-- URL: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0
-- Title: `Play Store App Audit v1.8.0 (Win x64 Only)`
+- Version/tag: `v1.9.0`
+- Published: `2026-08-25T02:51:42Z`
+- URL: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0
+- Release ID: `376114171`
+- Title: `Play Store App Audit v1.9.0 (Win x64 Only)`
 - Profile: intentionally unsigned Windows x64 Engineering Test Build, Nuitka standalone ZIP
-- Frozen source SHA: `ac328f0dffddb6b70fa7600f1291377376bc05d4`
-- Application version: `1.8.0`
-- Windows File/Product version: `1.8.0.0`
-- Quality run: `32682693020`
-- Windows x64 build run: `32683271942`
-- Engineering assembler run: `32684933669`
-- Publication: direct authenticated GitHub Release operation after tag verification; no separate v1.8 publication workflow/run
-- Post-release housekeeping run: `32727364125`
+- Frozen source SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`
+- Annotated tag object: `e61033f0ffba3d14f598da4d928aa07390dbbfa9`
+- Tag peel target: exact frozen source SHA
+- Application version: `1.9.0`; Windows File/Product version: `1.9.0.0`
+- Quality run: `32797795985`, passed on Python 3.13 and 3.14
+- Windows x64 build run: `32798334950`
+- Build artifact: ID `9546290578`, `PlayStoreAppAudit-v1.9.0-windows-x64`
+- Engineering assembler run: `32801220807`
+- Assembler artifact: ID `9546545528`, `PlayStoreAppAudit-v1.9.0-windows-x64-engineering-release-assets`
 
-Published assets verified after re-download:
+Published project-defined assets verified after re-download:
 
-- `PlayStoreAppAudit-v1.8.0-windows-x64.zip` - 33,450,079 bytes - SHA-256 `b056be21804d2c22483ebee14c2f2bcbee5611a36ad6c7fea51c3dd91043991d`
-- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` - 73,128,136 bytes - SHA-256 `10ea03905fec3b9e9cf03e30a54e98f2c3ceb9d2aea423df4732a10f1551977e`
-- `SHA256SUMS.txt` - 225 bytes - SHA-256 `09717c84a7096351dcc8ba91609146a877ffb2eee1184b34ccfea40c39bebb6b`
+- `PlayStoreAppAudit-v1.9.0-windows-x64.zip` — asset ID `528529615` — 33,477,938 bytes — SHA-256 `74db811d959a06709aba4d747873ec1b19894e50ba7183f463f7929b44e19c68`
+- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` — asset ID `528529608` — 73,128,144 bytes — SHA-256 `ccccbd72992bed8692388077fd409dc76bb8f64efce8fa2ef283b74797a4df95`
+- `SHA256SUMS.txt` — asset ID `528529607` — 225 bytes — SHA-256 `eb2b5f6d5a8fe978e54367b887c65d77994307447154435e3b3ae81c4bf2bd23`
 
-The annotated tag peels exactly to the frozen SHA. v1.7.0 was rechecked unchanged at `e2d09098bc42c6f16d202d010deda3eb24d99aa3` during v1.8 publication verification.
+## Release verification summary
 
-## Actions state after v1.8
+- Canonical build used Python 3.13.15 AMD64, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`; 403 pytest tests passed.
+- PE AMD64/x64, standalone content, application/Windows version, intentionally unsigned state, startup, legal/source material and exact-SHA provenance checks passed.
+- Managed Platform-Tools 37.0.1 was validated; its PE I386 `adb.exe` ran under Windows WOW64 while application ADB behavior remained read-only.
+- The exact assembler-produced ZIP passed deterministic startup from a clean extraction with isolated data directories before tagging, and its checksum remained unchanged.
+- Publication created the annotated tag only after artifact validation and did not trigger a package rebuild.
+- After publication, exactly three public assets were re-downloaded into a fresh directory. Names, byte sizes and hashes matched; `SHA256SUMS.txt` independently validated both payloads.
+- The re-downloaded public ZIP passed the clean-extraction deterministic packaged smoke again. Version, AMD64 architecture, unsigned state, provenance and unchanged ZIP hash were reconfirmed.
 
-Housekeeping run `32727364125` applied the existing generational policy successfully. It found no run or artifact eligible for deletion inside the 7-day grace window.
+## Post-release Actions state
 
-- Active state: 10 artifacts / 573,766,431 bytes (547.19 MiB).
-- Retain v1.8 build artifact ID `9505311410` and assembler artifact ID `9505354895` as the current canonical release evidence.
-- Allow the documented policy to age out superseded v1.7/UI generations; do not bypass it without a new point-in-time lineage check.
-- Repository retention settings and cleanup logic were not changed.
-- Published Release assets are not Actions artifacts and must never be removed by housekeeping.
+Housekeeping run `32805211585` applied the unchanged seven-day generational policy successfully from the frozen SHA.
 
-## Current technical baseline
+- No failed/cancelled run, successful run or individual artifact was eligible for deletion.
+- Active Actions state: 10 artifacts / 574,199,782 bytes (547.60 MiB).
+- Retain canonical v1.9 build artifact `9546290578` and assembler artifact `9546545528` for audit.
+- The v1.8 build/assembler generation and two UI-style generations remain inside the documented grace period.
+- No manual deletion bypassed policy; published assets, tags, source commits, repository retention and cleanup logic were unchanged.
 
-- Current source application/release-candidate version: `1.9.0`; derived Windows File/Product version: `1.9.0.0`.
-- Latest published version remains immutable v1.8.0 until the v1.9.0 exact-SHA package, assembly and publication gates pass.
-- Python packaging baseline: 3.13; Quality CI: 3.13 and 3.14.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
-- UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.
-- Google Play access remains behind service boundaries.
-- Managed ADB remains read-only with respect to installed Android apps.
-- Store workers default/recommended 16; Store timeout 25 seconds.
-- VS Code/Pylance Standard checking is a local development aid, not a runtime/build change or broad typing mandate.
-- v1.9 release distribution remains unsigned Windows x64 only.
-- v2.0 is the first planned return to multi-platform distribution; production signing remains conditional, not promised.
+## Shipped v1.9 product scope
 
-## v1.8 shipped product baseline
+PR `#116` delivered shared friendly Notes presentation and tooltip with raw-data compatibility, **Maintenance Score** user-facing terminology with stable `health_score`, warning foreground colours, About hierarchy, coordinated main-action icons, and the Display Settings populated-table crash/persistence fix.
 
-- Unified action availability and CSV/HTML/versioned-JSON export definitions.
-- Consistent command naming, contextual help, reduced static UI density and final running-operation safeguards.
-- Compact persistent Details Panel modes: Auto, Right, Below and Hidden.
-- Focused Display Settings and four-category Advanced Settings hierarchy.
-- Play Store icon cache/CDN/offline/large-table hardening.
-- Saved one-level All/Any Smart Queries, distinct from Quick Filters and Audit Profiles.
-- Informational product tagline in repository description, README and About.
+PR `#117` delivered viewport-based narrow/wide/extra-wide Details responsiveness, preserving 760/680 px hysteresis and adding 1180/1080 px extra-wide hysteresis with Store/Notes, Installed/Changes and Evidence/Diagnostics columns.
 
-Detailed implementation and validation evidence is in `HANDOFF_V1.8.md` and `PROJECT_STATUS.md`.
+PR `#118` delivered one native `QStatusBar` using the same canonical status label and progress widget, active-only progress, an action-only main row, no duplicate source/device identity and no new status/persistence model.
 
-## v1.9 planning boundary
+PR `#119` froze version 1.9.0 and release documentation. The subsequent exact-SHA build, assembly, tag, publication, public re-download and smoke verification completed successfully.
 
-The first approved v1.9 implementation merged through PR `#116` as one grouped presentation-consistency PR:
+## Transition to v1.99
 
-- share one friendly Notes presentation across the table, Details Panel and HTML report, add the complete Notes tooltip and preserve raw Notes/Smart Query compatibility;
-- use **Maintenance Score** everywhere user-facing while retaining `health_score` and the current algorithm;
-- add foreground-only semantic warning colours to version differences and aging/legacy target values;
-- refine the About title/tagline/version hierarchy;
-- use one project-owned QPainter icon family for Choose File, Scan Phone and Export Results;
-- prevent Display Settings from crashing with populated, sorted or filtered results by using a safe presentation refresh, and keep the Custom preset, column visibility, selection, Details content and widths synchronized across changes and restart.
+- Current application/source version remains `1.9.0`.
+- Active development cycle is v1.99, likely the final Windows x64-only ETB before v2.0.
+- `HANDOFF_V1.99.md` is the active self-contained continuation handoff.
+- `scripts/export_chat_handoff.ps1` parses numeric handoff versions, so 1.99 sorts newer than 1.9 without a script change.
+- Do not generate a continuation ZIP until the closure documentation PR is reviewed, merged, local VS Code `main` is safely synchronized, and the working tree is clean.
 
-The separate native Windows prototype merged through PR `#117` and added an automatic extra-wide Details Panel state for usable scroll-viewport widths at or above 1180 px, with exit hysteresis at 1080 px. It keeps Store/Notes, Installed/Changes and Store evidence/diagnostics in three columns with the existing horizontal action row below. At a 1200 px viewport, representative rows reduced required scroll-content height by approximately 29-156 px compared with the existing two-column layout; the 1080 px exit edge still provides approximately 346 px per column without content clipping. Width-aware section minimums ensure compact-height panels scroll instead of truncating wrapped text.
-
-The complementary native `QStatusBar` implementation merged through PR `#118` after native Windows acceptance. It reparents the same canonical `status_label` and progress bar instead of creating or synchronising duplicate status widgets. The label expands on the left; the compact 200 px progress bar appears on the right only while the existing operation flags report active source, audit or finalization work. The action row consequently contains Run, Export Results and Clear Results only. Source/device identity stays in its existing UI because duplicating it did not add value; the native size grip remains enabled. The status bar neither replaces the Details Panel nor adds a preference or persistence state, and `_set_presentation_status()` continues to protect operational feedback.
-
-The v1.9 product/UX feature scope is closed. Release-readiness work may update version metadata, release documentation and genuine release blockers only; it must not reopen accepted UX decisions or start v1.99 work.
-
-`QDockWidget` and richer dashboard/status overview experiments are deferred to v1.99 and require a demonstrated distinct benefit. v1.99 is the likely final Windows x64-only release before v2.0 and should close meaningful pre-v2.0 work rather than become an uncontrolled feature release.
-
-A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later.
-
-## Smart Queries guardrails
-
-Smart Queries remain result-only filters and are not audit configuration. Preserve the approved contract in `SMART_QUERIES_UX_REVIEW.md`:
-
-- Quick Filters are built-ins; Smart Queries are saved structured filters.
-- One-level All/Any only, with curated fields/operators.
-- Versioned `smart_queries` persistence and session-only active state.
-- No automatic legacy `saved_filters` migration.
-- Composition with existing table filters without changing audit execution, Store lookup/cache or ADB.
-- No nested groups, scripting, regex, import/export, automation or shared Audit Profile commands.
-
-## Explicitly removed / not planned
-
-Do not reintroduce without a new explicit product decision:
-
-- installed signing-certificate fingerprint/change detection;
-- automatic alternative-source association for unavailable Play apps;
-- audit watchlists/background monitoring;
-- predefined country presets such as DACH/EU/worldwide.
-
-## CI and release budget
-
-- Normal code PRs: compileall, Ruff, pytest, lightweight Qt smoke and targeted static checks.
-- Use native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 only for high-impact UI milestones.
-- Do not run Nuitka for docs-only, naming, icon polish or housekeeping.
-- A full Windows x64 build is for a justified high-impact milestone or the deliberately frozen v1.9 release candidate.
-- Do not create public RC tags.
-
-## Repository and closure rules
-
-- `main` is the only permanent branch; use short-lived branches and normal PR merge commits.
-- No squash/rebase project history.
-- Before every pull, require a clean working tree; never auto-stash/reset/discard user work.
-- Published release history is immutable.
-- Freeze one exact SHA only after required Quality gates pass; reject dispatch/checkout mismatches.
-- Tag only after final artifact validation, and never rebuild on tag push.
-- Keep legal/source validation fail-closed.
-- Finish every future release through `RELEASE_CLOSURE.md`.
-
-The generated handoff snapshot records the actual post-release documentation SHA of `main`. Do not confuse it with the immutable v1.8.0 source SHA above.
+Historical v1.8.0 remains immutable at `ac328f0dffddb6b70fa7600f1291377376bc05d4`; its release evidence remains in `HANDOFF_V1.8.md`, `PROJECT_STATUS.md` history and `RELEASE_NOTES.md`.

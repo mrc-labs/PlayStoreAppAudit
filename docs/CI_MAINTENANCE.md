@@ -53,6 +53,16 @@ The generational policy remains the normal automated safety net. A newer success
 
 The multi-platform `UI style audit` is a deliberate manual workflow for high-impact UI milestones. Normal About, naming, icon-polish and other narrow UI PRs use lightweight Quality checks and local/manual inspection instead of automatically dispatching the three-platform capture matrix.
 
+### v1.9.0 closure snapshot
+
+Post-release housekeeping run `32805211585` applied the unchanged policy successfully on 2026-08-25 from frozen v1.9.0 SHA `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+
+- It saw 10 active artifacts and selected no expired failed/cancelled runs, successful runs or individual artifacts for deletion.
+- Remaining Actions storage was 10 artifacts / 574,199,782 bytes (547.60 MiB).
+- Canonical v1.9 build artifact `9546290578` and assembler artifact `9546545528` were retained.
+- The v1.8 build/assembler generation and two UI-style generations remained within the seven-day grace period.
+- No manual deletion bypassed policy, and no release asset, tag, source commit, retention setting or cleanup logic changed.
+
 ## Engineering Test Build naming
 
 Use **Engineering Test Build** as the canonical public label for an engineering GitHub release. The acronym is **ETB**.

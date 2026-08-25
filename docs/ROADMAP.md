@@ -39,9 +39,17 @@ The v1.8 product and stabilization scope shipped through PRs `#105`-`#113`; rele
 
 The approved Smart Queries contract remains documented in [`SMART_QUERIES_UX_REVIEW.md`](SMART_QUERIES_UX_REVIEW.md). Nested groups, scripting, regular expressions, import/export, automation and audit-setting behavior were not introduced.
 
-## v1.9
+## v1.9 published baseline
 
-v1.9 is in release readiness with its approved product/UX feature scope closed, and remains Windows x64 only. The architectural/UX review's first grouped presentation-consistency scope merged through PR `#116`:
+v1.9.0 was published on 2026-08-25 as an unsigned Windows x64 Engineering Test Build and is immutable.
+
+- Frozen release source SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0
+- Canonical Quality/build/assembler runs: `32797795985`, `32798334950`, `32801220807`.
+- The exact three public assets were re-downloaded and independently verified after publication; sizes and hashes are recorded in `PROJECT_STATUS.md`, `RELEASE_NOTES.md` and `HANDOFF_V1.9.md`.
+- Post-release Actions housekeeping run `32805211585` passed under the unchanged generational retention policy.
+
+The architectural/UX review's first grouped presentation-consistency scope merged through PR `#116`:
 
 - one friendly Notes presentation shared by the table, Details Panel and user-facing HTML report, plus a complete Notes tooltip, while raw Notes remain unchanged in CSV, versioned JSON, diagnostics and Smart Queries;
 - **Maintenance Score** as the user-facing name, with `health_score`, persisted Smart Query field IDs and serialized compatibility keys unchanged and no scoring-algorithm change;
@@ -54,29 +62,112 @@ The evidence-gated Details Panel prototype merged through PR `#117`. It adds an 
 
 The final evidence-gated v1.9 UX implementation merged through PR `#118`: a complementary bottom `QStatusBar` that relocates the same canonical operational label and progress widget rather than adding a second status model. Status expands on the left and the 200 px progress bar appears on the right only during active work. The main row contains Run, Export Results and Clear Results only. Existing source/device context is intentionally not duplicated, the native size grip remains enabled, and the status bar adds no preference or persistence state and does not replace the Details Panel.
 
-PRs `#116`, `#117` and `#118` are merged and accepted. The remaining v1.9 work is release freeze and evidence only; do not add features or reopen the accepted UX scope without a genuine release blocker.
+PRs `#116`, `#117` and `#118` are merged, accepted and published in v1.9.0. Release preparation merged through PR `#119`.
 
-A `QDockWidget` experiment and richer dashboard/status overview are deferred to v1.99 under the evidence requirements below. A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename are rejected for v1.9 but remain recorded for possible future reconsideration. Continue using Qt Widgets with platform/default Windows styling.
+A global Fluent redesign, an icon library without demonstrated need, unnecessary broad architecture/type refactors and a full internal `health_score` rename were rejected for v1.9. Continue using Qt Widgets with platform/default Windows styling.
 
-### v1.9 CI and build budget
+### v1.9 release evidence and cost outcome
 
 - Normal code PRs may run Ruff, pytest, compileall, the lightweight Qt smoke test and targeted static checks.
-- Do not dispatch Windows/Nuitka packaging for documentation, product identity, naming, icon polish or housekeeping changes.
+- No Windows/Nuitka packaging was dispatched for documentation, product identity, naming, icon polish or housekeeping changes.
 - Native Windows checks at 1100x700, 1200x760, 1500x900 and 1600x900 are manual or limited to high-impact UI milestones.
-- Full Windows x64 packaging is reserved for a demonstrated milestone need or the frozen release candidate.
+- The one canonical final Windows x64 package and one engineering assembler run were produced only after the exact release SHA was frozen.
 - VS Code/Pylance Standard type checking is useful local evidence for touched code, not a repository build setting or authorization for a broad typing refactor.
 
 ## v1.99 pre-v2.0 closure
 
-v1.99 is the likely final Windows x64-only release before v2.0. Its purpose is to review and close meaningful outstanding pre-v2.0 items, not to become an uncontrolled feature release.
+v1.99 is the active cycle and likely final Windows x64-only release before v2.0. Its purpose is to close meaningful outstanding pre-v2.0 items, not to become an uncontrolled feature release. The current application/source version remains `1.9.0` until a later deliberate version freeze.
 
-Deferred candidates are deliberately conditional:
+### Cooperative Stop/Cancel
 
-- prototype `QDockWidget` only if it provides a real workflow or usability benefit over the current Details Panel;
-- add a richer dashboard/status overview only if it answers a distinct workflow not already covered by the result summary, filters and Details Panel;
-- reconsider an internal `health_score` rename only as a deliberate compatibility migration with explicit persistence/serialization evidence.
+Add a real Run -> Pause/Resume -> Stop/Cancel lifecycle. Before implementation, inspect the full execution pipeline and identify every cancellation boundary in Store checks, regional checks, scheduling and finalization.
 
-Items that do not meet those evidence thresholds stay deferred or rejected. v1.99 remains on the Windows x64 ETB distribution profile unless a later explicit release decision changes it.
+- Stop scheduling new work immediately and propagate a cooperative cancellation request through every queue.
+- Let in-flight operations return safely or reach existing timeout boundaries; never use `QThread.terminate()` or forced termination.
+- Preserve completed valid results and valid cache entries.
+- Mark the audit cancelled/incomplete, do not promote it to the completed history/previous-audit baseline, and return to a reusable idle state.
+- Verify that another audit can start normally after cancellation.
+
+### Native-Windows main-action layout review
+
+Do not pre-decide that all actions belong in the status bar. Compare improved native prototypes with screenshots/evidence at representative widths and DPI levels:
+
+- Prototype A: Run/Pause/Stop, Export and Clear in the status bar.
+- Prototype B: a compact upper action toolbar/command strip above results.
+- Prototype C: an integrated results/header-area command layout that remains clear and uncluttered.
+
+Run remains primary, Stop is visible while relevant, Export/Clear remain clear, and all action-availability rules remain intact. Avoid both the current tall mostly-empty row and an overcrowded status bar. Obtain user review before choosing the final placement.
+
+### Details selector and status-bar presentation
+
+Evaluate relocating the existing Auto/Right/Below/Hidden Details selector to the status bar. It is a presentation/layout control and a stronger status-bar candidate than the primary application actions. Reuse the same state and `View > Details Panel` synchronization; never add mirrored state.
+
+Review left padding, main-UI alignment, vertical centering/baseline, progress/control relationships, total height, native size-grip spacing, long-message behavior and native Windows behavior at 100%, 125%, 150% and 175% DPI. Base adjustments on visual evidence rather than arbitrary margins.
+
+### Semantic warning typography
+
+Give **Different**, **Aging target** and **Legacy target** slightly stronger typography while preserving hierarchy against the first Status column's Bold. Test Qt DemiBold/SemiBold first. Use full Bold only if it remains visibly distinct; otherwise choose another restrained Qt-native treatment.
+
+### Alternative Distribution Discovery
+
+Replace the rejected broad automatic alternative-source association idea with an informational exact-package feature. It reports that the same Android package appears elsewhere and must not imply endorsement, equivalence or installation safety.
+
+Approved providers:
+
+- Samsung Galaxy Store — `official_store`
+- Huawei AppGallery — `official_store`
+- F-Droid — `foss_repository`
+- Aptoide — `independent_store`
+- Uptodown — `independent_store`
+- APKMirror — `apk_repository`
+- APKPure — `apk_repository`
+
+Amazon Appstore is explicitly excluded. APKMirror and APKPure must be visibly described as APK repositories.
+
+Automatic checks are allowed only for Removed, selected-country/regional unavailability, or a Store anomaly with sufficiently conclusive Google Play evidence. Do not automatically query providers after transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app **Check Alternative Sources** action may be evaluated.
+
+Exact Android package ID is the primary identity key; fuzzy title matching alone is insufficient. Capture listing URL and verification timestamp plus publisher/developer/version/update support metadata where available. Before provider implementation, document API/search mechanisms, exact-ID lookup, rate limits, terms/access constraints, regional behavior, metadata, reliability and maintenance risk for each provider.
+
+### Maintenance Score algorithm update
+
+Keep the user-facing **Maintenance Score** name. Implement these target penalties after reviewing history/versioned-data implications:
+
+- Removed with no verified alternative distribution: `-60`
+- Removed with only an APK repository: `-50`
+- Removed with an independent store: `-45`
+- Removed with a FOSS repository: `-40`
+- Removed with at least one official OEM store: `-20`
+- Store anomaly: `-20`
+- Other/inconclusive Google Play state: `-15`
+- stale listing, more than 730 days: `-25`
+- aging listing, more than 365 and no more than 730 days: `-15`
+- legacy target SDK relative to device: `-15`
+- aging target SDK relative to device: `-10`
+- installed version differs from Google Play: `-5`
+
+The Removed/distribution values are mutually exclusive alternatives for one availability component. Choose the best verified class using `official_store > foss_repository > independent_store > apk_repository`; do not stack providers or first apply `-60`. Other independent penalties continue to compose, and current clamping remains unless a defect is proven. Failed/inconclusive provider checks never count as positive evidence. Regional unavailability may trigger discovery but is not automatically Removed and receives Removed substitutions only when the Google Play state genuinely qualifies.
+
+Update methodology/report text and tests with the algorithm. An internal `health_score` -> `maintenance_score` rename remains a separate evidence-gated migration requiring explicit Smart Query, settings, serialized-data, backward-compatibility and migration coverage; it may stay deferred.
+
+### Evidence-gated and rejected UI work
+
+- A richer dashboard/status overview remains evidence-gated and must add a workflow not already covered by Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- `QDockWidget` is rejected/not planned. Do not prototype it. Keep Auto/Right/Below/Hidden plus narrow/wide/extra-wide Details responsiveness.
+- Review concrete bugs, workflow issues and polish found through real v1.9 use individually rather than accepting all observations automatically.
+
+### Mandatory user-tested RC gate
+
+v1.99 deliberately authorizes one additional packaged Windows x64 acceptance candidate:
+
+1. reach feature-complete candidate state;
+2. freeze an RC candidate and build a real Windows x64 package;
+3. provide it for thorough user acceptance testing;
+4. merge corrective PRs if needed;
+5. if source changed, do not treat that RC SHA/artifact as final;
+6. freeze a new final exact `main` SHA only after user acceptance;
+7. run final Quality, build the canonical final Windows x64 package, assemble and publish normally.
+
+Do not create a public RC tag and never publish an earlier RC after source changes.
 
 ## v2.0 and later
 
@@ -96,14 +187,30 @@ The v2.0 production profile continues to require one frozen SHA, signed/native p
 
 CLI/headless support remains v2.0-or-later scope. It must reuse service/domain boundaries rather than driving the Qt UI or duplicating Store/ADB logic.
 
+### Local APK Library / modern LocalAPK successor core
+
+A Local APK Library is a major v2.0 product pillar. Initial scope:
+
+- scan one or more local APK directories recursively;
+- parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical;
+- compare local APK versions with Google Play and, when appropriate, Alternative Distribution Discovery;
+- reuse existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture.
+
+Do not duplicate existing CSV/export capabilities. Portable mode is not a new feature; the application already supports standalone/local workflows. ADB remains read-only unless a future explicit decision authorizes install/write behavior.
+
+### Later v2.x Local APK backlog
+
+After the core is stable, consider metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements. These are later 2.x candidates, not mandatory v2.0 scope.
+
 ## Explicitly removed / not planned
 
 Do not reintroduce without a new product decision:
 
 - installed signing-certificate fingerprint/change detection;
-- automatic alternative-source association for unavailable Play apps;
+- broad automatic alternative-source association or fuzzy-title equivalence (distinct from approved exact-package Alternative Distribution Discovery);
 - audit watchlists/background monitoring;
 - predefined country presets such as DACH/EU/worldwide.
+- `QDockWidget` for the Details Panel.
 
 ## Release and Git rules
 
@@ -120,4 +227,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-The active human-readable handoff for the next cycle is `HANDOFF_V1.9.md`. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.
+The active human-readable handoff is `HANDOFF_V1.99.md`; `HANDOFF_V1.9.md` is the completed v1.9 closure context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` numerically and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.
