@@ -3,9 +3,14 @@ from __future__ import annotations
 import re
 import subprocess
 import threading
-import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    CancelledError,
+    Future,
+    ThreadPoolExecutor,
+    wait,
+)
 from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
@@ -158,13 +163,20 @@ def collect_device_metadata(
     cancel_event: threading.Event | None = None,
     max_workers: int = 6,
 ) -> dict[str, dict[str, str]]:
-    """Collect installed version + installer source from the connected Android device."""
+    """Collect installed version + installer source from the connected Android device.
+
+    Cancellation is checked between commands and before incremental submissions.
+    An in-flight installer query may drain for up to its 60s subprocess timeout;
+    an in-flight legacy per-package version query has a 25s timeout.
+    """
     packages = list(dict.fromkeys(str(package).strip() for package in packages if str(package).strip()))
     if not adb or not packages:
         return {}
 
     installer_map: dict[str, str] = {}
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            return {}
         result = subprocess.run(
             [adb, "shell", "pm", "list", "packages", "-i"],
             check=True,
@@ -191,16 +203,40 @@ def collect_device_metadata(
         version_name, version_code = _read_package_version(adb, package)
         return package, version_name, version_code
 
-    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, 8))) as executor:
-        futures = {executor.submit(read_one, package): package for package in packages}
-        for future in as_completed(futures):
+    worker_limit = max(1, min(max_workers, 8))
+    with ThreadPoolExecutor(max_workers=worker_limit) as executor:
+        pending: dict[Future[tuple[str, str, str]], int] = {}
+        next_index = 0
+
+        def fill_submission_window() -> None:
+            nonlocal next_index
+            while (
+                next_index < len(packages)
+                and len(pending) < worker_limit
+                and (cancel_event is None or not cancel_event.is_set())
+            ):
+                index = next_index
+                next_index += 1
+                pending[executor.submit(read_one, packages[index])] = index
+
+        fill_submission_window()
+        while pending:
+            completed_futures, _not_done = wait(
+                tuple(pending), return_when=FIRST_COMPLETED
+            )
+            for future in completed_futures:
+                pending.pop(future)
+                try:
+                    package, version_name, version_code = future.result()
+                except CancelledError:
+                    continue
+                metadata[package]["installed_version"] = version_name
+                metadata[package]["installed_version_code"] = version_code
             if cancel_event is not None and cancel_event.is_set():
-                for pending in futures:
-                    pending.cancel()
-                break
-            package, version_name, version_code = future.result()
-            metadata[package]["installed_version"] = version_name
-            metadata[package]["installed_version_code"] = version_code
+                for future in pending:
+                    future.cancel()
+            else:
+                fill_submission_window()
     return metadata
 
 
@@ -210,8 +246,26 @@ def install_core_version_support() -> None:
         return
 
     def scraper_request(
-        package_name: str, language: str, country: str, config: core.AuditConfig
+        package_name: str,
+        language: str,
+        country: str,
+        config: core.AuditConfig,
+        cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
+        # Direct v8 adapter calls may bypass app.main(); fail closed unless the
+        # one approved scraper transport can verify and bound this dependency.
+        from playstore_app_audit.services.scraper_transport import (
+            install_scraper_transport_timeout,
+        )
+
+        if not install_scraper_transport_timeout():
+            return {
+                "ok": False,
+                "title": "",
+                "updated": "",
+                "version": "",
+                "error": "bounded google-play-scraper transport unavailable",
+            }
         try:
             from google_play_scraper import app as play_app
             from google_play_scraper.exceptions import NotFoundError
@@ -226,6 +280,8 @@ def install_core_version_support() -> None:
 
         last_error = ""
         for attempt in range(config.max_retries + 1):
+            if cancel_event is not None and cancel_event.is_set():
+                break
             try:
                 data = play_app(package_name, lang=language, country=country)
                 return {
@@ -241,19 +297,39 @@ def install_core_version_support() -> None:
             except Exception as exc:
                 last_error = str(exc)[:300]
                 if attempt < config.max_retries:
-                    time.sleep(config.retry_sleep_base * (attempt + 1))
+                    delay = config.retry_sleep_base * (attempt + 1)
+                    wait_event = cancel_event or threading.Event()
+                    if wait_event.wait(delay):
+                        break
         return {
             "ok": False,
             "title": "",
             "updated": "",
             "version": "",
-            "error": last_error or "Unknown Google Play scraper error",
+            "error": (
+                "cancelled"
+                if cancel_event is not None and cancel_event.is_set()
+                else (last_error or "Unknown Google Play scraper error")
+            ),
+            "cancelled": cancel_event is not None and cancel_event.is_set(),
         }
 
     def fetch_locale(
-        package_name: str, language: str, country: str, config: core.AuditConfig
+        package_name: str,
+        language: str,
+        country: str,
+        config: core.AuditConfig,
+        cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
-        scraper = scraper_request(package_name, language, country, config)
+        scraper = scraper_request(
+            package_name,
+            language,
+            country,
+            config,
+            cancel_event=cancel_event,
+        )
+        if scraper.get("cancelled"):
+            return {"status": "cancelled"}
         if scraper["ok"] and scraper["updated"]:
             return {
                 "status": "available",
@@ -266,7 +342,26 @@ def install_core_version_support() -> None:
                 "notes": "",
             }
 
-        html = core._html_request(package_name, language, country, config)
+        html = core._html_request(
+            package_name,
+            language,
+            country,
+            config,
+            cancel_event=cancel_event,
+        )
+        if str(html.get("status") or "") == "cancelled":
+            if scraper["ok"]:
+                return {
+                    "status": "available",
+                    "http_status": 200,
+                    "title": scraper["title"],
+                    "updated": scraper["updated"],
+                    "version": scraper["version"],
+                    "source": "google_play_scraper",
+                    "url": f"{core.PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+                    "notes": "html_fallback_cancelled",
+                }
+            return {"status": "cancelled"}
         if scraper["ok"]:
             title = scraper["title"] or html.get("title", "")
             updated = scraper["updated"] or html.get("updated", "")
@@ -338,8 +433,14 @@ def fetch_app_v8(
         return None
 
     selected = (config.country or "").lower()
-    primary = core._fetch_locale(package_name, config.language, selected, config)
-    if cancel_event is not None and cancel_event.is_set():
+    primary = core._fetch_locale(
+        package_name,
+        config.language,
+        selected,
+        config,
+        cancel_event=cancel_event,
+    )
+    if str(primary.get("status") or "") == "cancelled":
         return None
 
     result: dict[str, Any] = {
@@ -358,15 +459,29 @@ def fetch_app_v8(
     primary_status = str(primary.get("status") or "")
     markets = get_fallback_countries(selected)
 
+    if cancel_event is not None and cancel_event.is_set():
+        return result if primary_status == "available" else None
+
     # Healthy listing: only use an alternative market to fill missing metadata.
     if primary_status == "available":
         if result["play_last_update"] and result["play_version"]:
             return result
         for country in markets:
             if not _wait_until_running(pause_event, cancel_event):
-                return None
-            alternative = core._fetch_locale(package_name, "en", country, config)
-            if str(alternative.get("status") or "") != "available":
+                return result
+            alternative = core._fetch_locale(
+                package_name,
+                "en",
+                country,
+                config,
+                cancel_event=cancel_event,
+            )
+            alternative_status = str(alternative.get("status") or "")
+            if alternative_status == "cancelled":
+                return result
+            if alternative_status != "available":
+                if cancel_event is not None and cancel_event.is_set():
+                    return result
                 continue
             if not result["play_last_update"] and alternative.get("updated"):
                 result["play_last_update"] = alternative.get("updated", "")
@@ -387,7 +502,13 @@ def fetch_app_v8(
         if not _wait_until_running(pause_event, cancel_event):
             return None
         checked.append(country)
-        alternative = core._fetch_locale(package_name, "en", country, config)
+        alternative = core._fetch_locale(
+            package_name,
+            "en",
+            country,
+            config,
+            cancel_event=cancel_event,
+        )
         if cancel_event is not None and cancel_event.is_set():
             return None
         alt_status = str(alternative.get("status") or "")
@@ -441,6 +562,7 @@ def audit_apps_v8(
     progress_callback: Callable[[int, int, str], None] | None = None,
     pause_event: threading.Event | None = None,
     cancel_event: threading.Event | None = None,
+    row_completed_callback: Callable[[int, dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     install_core_version_support()
     results: list[dict[str, Any] | None] = [None] * len(apps)
@@ -456,38 +578,64 @@ def audit_apps_v8(
             cancel_event=cancel_event,
         )
 
-    with ThreadPoolExecutor(max_workers=max(1, config.max_workers)) as executor:
-        futures = {executor.submit(run_one, app): index for index, app in enumerate(apps)}
+    worker_limit = max(1, config.max_workers)
+    with ThreadPoolExecutor(max_workers=worker_limit) as executor:
+        pending: dict[Future[dict[str, Any] | None], int] = {}
+        next_index = 0
         completed = 0
-        for future in as_completed(futures):
-            index = futures[future]
-            app = apps[index]
-            if cancel_event is not None and cancel_event.is_set():
-                for pending in futures:
-                    pending.cancel()
-            try:
-                row = future.result()
+
+        def fill_submission_window() -> None:
+            nonlocal next_index
+            while (
+                next_index < len(apps)
+                and len(pending) < worker_limit
+                and (cancel_event is None or not cancel_event.is_set())
+            ):
+                index = next_index
+                next_index += 1
+                pending[executor.submit(run_one, apps[index])] = index
+
+        fill_submission_window()
+        while pending:
+            completed_futures, _not_done = wait(
+                tuple(pending), return_when=FIRST_COMPLETED
+            )
+            for future in sorted(completed_futures, key=lambda item: pending[item]):
+                index = pending.pop(future)
+                app = apps[index]
+                try:
+                    row = future.result()
+                except CancelledError:
+                    row = None
+                except Exception as exc:
+                    if cancel_event is not None and cancel_event.is_set():
+                        row = None
+                    else:
+                        row = {
+                            "app_name": app["app_name"],
+                            "package_name": app["package_name"],
+                            "play_status": "unexpected_error",
+                            "play_http_status": "",
+                            "play_title": "",
+                            "play_last_update": "",
+                            "play_version": "",
+                            "updated_source": "",
+                            "store_url": f"{core.PLAY_URL}?id={app['package_name']}",
+                            "notes": str(exc)[:500],
+                        }
                 if row is None:
                     continue
                 results[index] = row
-            except Exception as exc:
-                if cancel_event is not None and cancel_event.is_set():
-                    continue
-                results[index] = {
-                    "app_name": app["app_name"],
-                    "package_name": app["package_name"],
-                    "play_status": "unexpected_error",
-                    "play_http_status": "",
-                    "play_title": "",
-                    "play_last_update": "",
-                    "play_version": "",
-                    "updated_source": "",
-                    "store_url": f"{core.PLAY_URL}?id={app['package_name']}",
-                    "notes": str(exc)[:500],
-                }
-            completed += 1
-            if progress_callback:
-                progress_callback(completed, len(apps), app["package_name"])
+                if row_completed_callback is not None:
+                    row_completed_callback(index, row)
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, len(apps), app["package_name"])
+            if cancel_event is not None and cancel_event.is_set():
+                for future in pending:
+                    future.cancel()
+            else:
+                fill_submission_window()
     return [row for row in results if row is not None]
 
 

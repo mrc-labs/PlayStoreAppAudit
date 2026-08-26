@@ -32,7 +32,12 @@ def _result(
 
 def test_not_found_is_terminal_in_canonical_scraper_policy(monkeypatch) -> None:
     attempts = 0
-    sleeps: list[float] = []
+    waits: list[float] = []
+
+    class RetryWait:
+        def wait(self, timeout: float) -> bool:
+            waits.append(timeout)
+            return False
 
     def missing_app(*_args, **_kwargs):
         nonlocal attempts
@@ -40,7 +45,7 @@ def test_not_found_is_terminal_in_canonical_scraper_policy(monkeypatch) -> None:
         raise NotFoundError("missing")
 
     monkeypatch.setattr(google_play_scraper, "app", missing_app)
-    monkeypatch.setattr(play_store.time, "sleep", sleeps.append)
+    monkeypatch.setattr(play_store.threading, "Event", RetryWait)
 
     result = play_store.scraper_request(
         "com.example.missing",
@@ -52,12 +57,17 @@ def test_not_found_is_terminal_in_canonical_scraper_policy(monkeypatch) -> None:
     assert result["ok"] is False
     assert result["not_found"] is True
     assert attempts == 1
-    assert sleeps == []
+    assert waits == []
 
 
 def test_transient_scraper_failure_retries_in_canonical_policy(monkeypatch) -> None:
     attempts = 0
-    sleeps: list[float] = []
+    waits: list[float] = []
+
+    class RetryWait:
+        def wait(self, timeout: float) -> bool:
+            waits.append(timeout)
+            return False
 
     def transient_then_success(*_args, **_kwargs):
         nonlocal attempts
@@ -67,7 +77,7 @@ def test_transient_scraper_failure_retries_in_canonical_policy(monkeypatch) -> N
         return {"title": "Example", "updated": 1_700_000_000, "version": "1.2.3"}
 
     monkeypatch.setattr(google_play_scraper, "app", transient_then_success)
-    monkeypatch.setattr(play_store.time, "sleep", sleeps.append)
+    monkeypatch.setattr(play_store.threading, "Event", RetryWait)
 
     result = play_store.scraper_request(
         "com.example.available",
@@ -79,7 +89,7 @@ def test_transient_scraper_failure_retries_in_canonical_policy(monkeypatch) -> N
     assert result["ok"] is True
     assert result["version"] == "1.2.3"
     assert attempts == 2
-    assert sleeps == [1.0]
+    assert waits == [1.0]
 
 
 def test_english_fallback_completes_metadata_without_replacing_localised_title() -> None:

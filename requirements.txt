@@ -1,4 +1,4 @@
-google-play-scraper>=1.2.7
+google-play-scraper==1.2.7
 requests>=2.31
 beautifulsoup4>=4.12
 PySide6-Essentials==6.11.1

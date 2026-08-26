@@ -9,7 +9,12 @@ import playstore_app_audit.services.device_metadata as device_metadata
 
 def test_not_found_skips_scraper_retries(monkeypatch) -> None:
     attempts = 0
-    sleeps: list[float] = []
+    waits: list[float] = []
+
+    class RetryWait:
+        def wait(self, timeout: float) -> bool:
+            waits.append(timeout)
+            return False
 
     def missing_app(*_args, **_kwargs):
         nonlocal attempts
@@ -17,7 +22,7 @@ def test_not_found_skips_scraper_retries(monkeypatch) -> None:
         raise NotFoundError("missing")
 
     monkeypatch.setattr(google_play_scraper, "app", missing_app)
-    monkeypatch.setattr(device_metadata.time, "sleep", sleeps.append)
+    monkeypatch.setattr(device_metadata.threading, "Event", RetryWait)
 
     result = device_metadata.core._scraper_request(
         "com.example.missing",
@@ -28,12 +33,17 @@ def test_not_found_skips_scraper_retries(monkeypatch) -> None:
 
     assert result["ok"] is False
     assert attempts == 1
-    assert sleeps == []
+    assert waits == []
 
 
 def test_transient_scraper_error_still_retries(monkeypatch) -> None:
     attempts = 0
-    sleeps: list[float] = []
+    waits: list[float] = []
+
+    class RetryWait:
+        def wait(self, timeout: float) -> bool:
+            waits.append(timeout)
+            return False
 
     def transient_then_success(*_args, **_kwargs):
         nonlocal attempts
@@ -47,7 +57,7 @@ def test_transient_scraper_error_still_retries(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(google_play_scraper, "app", transient_then_success)
-    monkeypatch.setattr(device_metadata.time, "sleep", sleeps.append)
+    monkeypatch.setattr(device_metadata.threading, "Event", RetryWait)
 
     result = device_metadata.core._scraper_request(
         "com.example.available",
@@ -58,4 +68,4 @@ def test_transient_scraper_error_still_retries(monkeypatch) -> None:
 
     assert result["ok"] is True
     assert attempts == 2
-    assert sleeps == [1.0]
+    assert waits == [1.0]

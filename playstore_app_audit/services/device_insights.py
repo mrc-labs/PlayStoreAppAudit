@@ -359,7 +359,14 @@ def collect_device_metadata_v9(
     cancel_event=None,
     max_workers: int = 6,
 ) -> dict[str, dict[str, str]]:
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    """Collect read-only ADB evidence with cooperative command boundaries.
+
+    Stop prevents the next command or per-package submission but does not kill
+    a running adb process. Existing command timeouts bound that drain: 25s for
+    getprop, 45s for disabled packages, 60s for installer/bulk package queries,
+    and 30s for a per-package dumpsys query.
+    """
+    from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 
     settings = state.load_settings()
     include_permissions = bool(settings.get("permissions_audit_enabled", False))
@@ -368,12 +375,16 @@ def collect_device_metadata_v9(
         return {}
 
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            return {}
         props = _parse_getprop(_run(adb, ["shell", "getprop"], 25))
         device_sdk = int(props.get("ro.build.version.sdk", "0") or 0)
     except Exception:
         device_sdk = 0
 
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            return {}
         disabled_output = _run(adb, ["shell", "pm", "list", "packages", "-d"], 45)
         disabled = {
             line.replace("package:", "", 1).strip()
@@ -385,6 +396,8 @@ def collect_device_metadata_v9(
 
     installer_map: dict[str, str] = {}
     try:
+        if cancel_event is not None and cancel_event.is_set():
+            return {}
         output = _run(adb, ["shell", "pm", "list", "packages", "-i"], 60)
         installer_map = device_metadata._parse_installer_map(output)
     except Exception:
@@ -441,15 +454,40 @@ def collect_device_metadata_v9(
     if not remaining:
         return metadata
 
-    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, 8))) as executor:
-        futures = {executor.submit(read_one, package): package for package in remaining}
-        for future in as_completed(futures):
+    worker_limit = max(1, min(max_workers, 8))
+    with ThreadPoolExecutor(max_workers=worker_limit) as executor:
+        pending: dict[Future[tuple[str, dict[str, str]]], int] = {}
+        next_index = 0
+
+        def fill_submission_window() -> None:
+            nonlocal next_index
+            while (
+                next_index < len(remaining)
+                and len(pending) < worker_limit
+                and (cancel_event is None or not cancel_event.is_set())
+            ):
+                index = next_index
+                next_index += 1
+                pending[executor.submit(read_one, remaining[index])] = index
+
+        fill_submission_window()
+        while pending:
+            completed_futures, _not_done = wait(
+                tuple(pending), return_when=FIRST_COMPLETED
+            )
+            for future in completed_futures:
+                pending.pop(future)
+                try:
+                    package, info = future.result()
+                except CancelledError:
+                    continue
+                if info:
+                    metadata[package] = info
             if cancel_event is not None and cancel_event.is_set():
-                for pending in futures:
-                    pending.cancel()
-                break
-            package, info = future.result()
-            metadata[package] = info
+                for future in pending:
+                    future.cancel()
+            else:
+                fill_submission_window()
     return metadata
 
 

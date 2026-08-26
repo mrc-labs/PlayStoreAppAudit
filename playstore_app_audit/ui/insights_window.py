@@ -32,12 +32,14 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult
 from playstore_app_audit.ui import schema
 
 V9_EXTRA_COLUMNS = schema.INSIGHTS_EXTRA_COLUMNS
@@ -709,26 +711,105 @@ class InsightsWindow(device_ui.DeviceWindow):
             self._v9_targeted_active = False
 
     def _on_controlled_done(self, payload: object) -> None:
+        result = compact_ui.coerce_audit_run_result(payload)
         targeted = self._v9_targeted_active
-        super()._on_controlled_done(payload)
+        if targeted:
+            result.metadata["targeted"] = True
+        super()._on_controlled_done(result)
         self._v9_targeted_active = False
         if self.current_rows:
             for row in self.current_rows:
                 device_insights.apply_health_score(row)
-        if (
-            not targeted
-            and self.source_mode == "device"
-            and self.current_rows
-            and bool(state.load_settings().get("inventory_history_enabled", True))
-            and self._device_summary
-        ):
-            self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
-                self.current_rows, self._device_summary
-            )
         if self.current_rows:
             self.model.set_rows(self.current_rows)
             self._apply_column_visibility(reset_order=False)
             self._update_summary()
+
+    def _report_baseline_persistence_issue(
+        self,
+        *,
+        stage: str,
+        history_status: str,
+        inventory_status: str,
+        error: Exception,
+    ) -> None:
+        """Report a post-success local save problem without failing the audit."""
+
+        error_text = " ".join(str(error).split())[:500] or type(error).__name__
+        device_insights.log_event(
+            "audit_baseline_persistence result=partial "
+            f"stage={stage} history={history_status} inventory={inventory_status} "
+            f"error={error_text}"
+        )
+        if stage == "history":
+            self.status_label.setText("Audit completed • local history baseline not saved")
+            message = "The audit completed, but its local history baseline could not be saved."
+            if inventory_status == "skipped":
+                message += " The device inventory baseline was not updated."
+        elif stage == "inventory":
+            self.status_label.setText("Audit completed • device inventory baseline not saved")
+            if history_status == "saved":
+                message = (
+                    "The audit completed and local history was saved, but the device "
+                    "inventory baseline could not be saved."
+                )
+            else:
+                message = (
+                    "The audit completed, but the device inventory baseline could not be saved."
+                )
+        else:
+            self.status_label.setText("Audit completed • local baseline not fully saved")
+            message = "The audit completed, but its local baselines could not be fully saved."
+        QMessageBox.warning(self, "Audit completed with a local save warning", message)
+
+    def _promote_successful_audit(self, result: AuditRunResult) -> bool:
+        """Persist post-success baselines in order; return whether inventory changed."""
+
+        if result.outcome is not AuditRunOutcome.SUCCESS:
+            return False
+        targeted = bool(result.metadata.get("targeted"))
+        history_requested = bool(self.user_settings.get("compare_previous", False))
+        inventory_requested = bool(
+            not targeted
+            and self.source_mode == "device"
+            and self.current_rows
+            and bool(self.user_settings.get("inventory_history_enabled", True))
+            and self._device_summary
+        )
+        history_status = "not_requested"
+
+        if history_requested:
+            try:
+                if targeted:
+                    device_metadata.save_history_merged(self.current_rows)
+                else:
+                    state.save_history(self.current_rows)
+            except Exception as exc:
+                self._report_baseline_persistence_issue(
+                    stage="history",
+                    history_status="failed",
+                    inventory_status="skipped" if inventory_requested else "not_requested",
+                    error=exc,
+                )
+                return False
+            history_status = "saved"
+
+        if not inventory_requested:
+            return False
+        try:
+            self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
+                self.current_rows, self._device_summary
+            )
+        except Exception as exc:
+            self._report_baseline_persistence_issue(
+                stage="inventory",
+                history_status=history_status,
+                inventory_status="failed",
+                error=exc,
+            )
+            return False
+        self.model.set_rows(self.current_rows)
+        return True
 
     # ---------- Details/context ----------
     def _show_details(self, row: dict[str, Any]) -> None:

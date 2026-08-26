@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import re
 import threading
-import time
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -215,12 +214,36 @@ def _parse_updated_from_html(html: str) -> str:
     return ""
 
 
+def _wait_for_retry(cancel_event: threading.Event | None, delay_seconds: float) -> bool:
+    """Wait for a retry delay, returning false when cooperative Stop wins."""
+
+    delay = max(0.0, float(delay_seconds))
+    if cancel_event is None:
+        threading.Event().wait(delay)
+        return True
+    return not cancel_event.wait(delay)
+
+
 def _scraper_request(
     package_name: str,
     language: str,
     country: str,
     config: AuditConfig,
+    cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
+    # CLI/direct callers do not pass through app.main(), so the same bounded
+    # transport gate must also be enforced at this service boundary.
+    from playstore_app_audit.services.scraper_transport import (
+        install_scraper_transport_timeout,
+    )
+
+    if not install_scraper_transport_timeout():
+        return {
+            "ok": False,
+            "title": "",
+            "updated": "",
+            "error": "bounded google-play-scraper transport unavailable",
+        }
     try:
         from google_play_scraper import app as play_app
     except ImportError as exc:
@@ -233,6 +256,8 @@ def _scraper_request(
 
     last_error = ""
     for attempt in range(config.max_retries + 1):
+        if cancel_event is not None and cancel_event.is_set():
+            break
         try:
             data = play_app(package_name, lang=language, country=country)
             return {
@@ -243,13 +268,19 @@ def _scraper_request(
             }
         except Exception as exc:
             last_error = str(exc)[:300]
-            if attempt < config.max_retries:
-                time.sleep(config.retry_sleep_base * (attempt + 1))
+            if attempt < config.max_retries and not _wait_for_retry(
+                cancel_event, config.retry_sleep_base * (attempt + 1)
+            ):
+                break
     return {
         "ok": False,
         "title": "",
         "updated": "",
-        "error": last_error or "Unknown Google Play scraper error",
+        "error": (
+            "cancelled"
+            if cancel_event is not None and cancel_event.is_set()
+            else (last_error or "Unknown Google Play scraper error")
+        ),
     }
 
 
@@ -258,23 +289,42 @@ def _html_request(
     language: str,
     country: str,
     config: AuditConfig,
+    cancel_event: threading.Event | None = None,
 ) -> dict[str, Any]:
     params = {"id": package_name, "hl": language, "gl": country}
     session = _get_session(language)
     last_error = ""
     attempts = 0
     for attempt in range(config.max_retries + 1):
+        if cancel_event is not None and cancel_event.is_set():
+            return {
+                "ok": False,
+                "status": "cancelled",
+                "http_status": "",
+                "title": "",
+                "updated": "",
+                "url": f"{PLAY_URL}?id={package_name}&hl={language}&gl={country}",
+                "error": "cancelled",
+                "attempts": attempts,
+                "retry_count": max(0, attempts - 1),
+            }
         attempts = attempt + 1
         try:
             response = session.get(PLAY_URL, params=params, timeout=config.timeout_seconds)
             if response.status_code in {429, 500, 502, 503, 504} and attempt < config.max_retries:
-                time.sleep(config.retry_sleep_base * (attempt + 1))
+                if not _wait_for_retry(
+                    cancel_event, config.retry_sleep_base * (attempt + 1)
+                ):
+                    continue
                 continue
             break
         except requests.RequestException as exc:
             last_error = str(exc)[:300]
             if attempt < config.max_retries:
-                time.sleep(config.retry_sleep_base * (attempt + 1))
+                if not _wait_for_retry(
+                    cancel_event, config.retry_sleep_base * (attempt + 1)
+                ):
+                    continue
             else:
                 return {
                     "ok": False,

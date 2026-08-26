@@ -18,8 +18,10 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunState
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.ui.action_icons import main_action_icon
 
@@ -295,7 +297,12 @@ class MainWindow(results_ui.ResultsWindow):
         self, session: int, done: int, total: int, package_name: str
     ) -> None:
         super()._on_controlled_progress(session, done, total, package_name)
-        if session != self._audit_session or not self._audit_active or self._audit_paused:
+        if (
+            session != self._audit_session
+            or not self._audit_active
+            or self._audit_paused
+            or self._audit_state is AuditRunState.STOPPING
+        ):
             return
 
         cached = min(max(0, self._audit_cached_count), total)
@@ -311,45 +318,93 @@ class MainWindow(results_ui.ResultsWindow):
             self.status_label.setText(f"Using cached results • {cached}/{total} cached")
 
     def _on_controlled_done(self, payload: object) -> None:
-        session, _rows, error, cached_count, live_count = payload  # type: ignore[misc]
-        if session != self._audit_session:
+        result = compact_ui.coerce_audit_run_result(payload)
+        if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
         if self._audit_started_at is not None:
             self._audit_pre_finalize_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
-        if error:
-            if self._audit_pre_finalize_seconds is not None:
-                device_insights.log_event(
-                    "audit_performance "
-                    f"result=error pre_finalize_s={self._audit_pre_finalize_seconds:.3f} "
-                    f"cached={cached_count} live={live_count} source={self.source_mode or 'unknown'}"
-                )
-            self._audit_started_at = None
-            self._audit_pre_finalize_seconds = None
-            super()._on_controlled_done(payload)
-            return
+        if (
+            result.outcome is AuditRunOutcome.FAILED
+            and self._audit_pre_finalize_seconds is not None
+        ):
+            device_insights.log_event(
+                "audit_performance "
+                f"result=error pre_finalize_s={self._audit_pre_finalize_seconds:.3f} "
+                f"cached={result.cached_count} live={result.live_completed_count} "
+                f"source={self.source_mode or 'unknown'}"
+            )
 
-        self._finalizing_session = session
-        self._audit_paused = False
+        self._finalizing_session = result.session
         self._audit_pause_event.set()
         self._set_audit_source_controls_enabled(False)
-        self.run_button.setText("Finalizing…")
-        self.run_button.setEnabled(False)
+        self._set_audit_state(AuditRunState.FINALIZING)
         self.export_button.setEnabled(False)
         self.progress.setRange(0, 0)
+        if result.outcome is AuditRunOutcome.STOPPED:
+            prefix = "Finalizing stopped audit results"
+        elif result.outcome is AuditRunOutcome.FAILED:
+            prefix = "Finalizing partial audit results"
+        else:
+            prefix = "Finalizing audit results"
         self.status_label.setText(
-            f"Finalizing audit results • {cached_count} cached • {live_count} live"
+            f"{prefix} • {result.cached_count} cached • {result.live_completed_count} live"
         )
-        QTimer.singleShot(0, lambda: self._complete_controlled_done(payload))
+        QTimer.singleShot(0, lambda: self._complete_controlled_done(result))
 
     def _complete_controlled_done(self, payload: object) -> None:
-        session, _rows, _error, cached_count, live_count = payload  # type: ignore[misc]
-        if session != self._audit_session or self._finalizing_session != session:
+        result = compact_ui.coerce_audit_run_result(payload)
+        if (
+            result.session != self._audit_session
+            or self._finalizing_session != result.session
+            or result.outcome is AuditRunOutcome.ABANDONED
+        ):
             return
-        self._finalizing_session = None
         finalize_started = time.perf_counter()
-        super()._on_controlled_done(payload)
-        finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
-        self._restore_device_source_identity()
+        finalize_seconds = 0.0
+        initial_outcome = result.outcome
+        result_finalized = False
+        try:
+            try:
+                super()._on_controlled_done(result)
+                result_finalized = True
+            except Exception as exc:
+                result.outcome = AuditRunOutcome.FAILED
+                result.error = str(exc)
+                self._last_audit_outcome = AuditRunOutcome.FAILED
+                self.status_label.setText("Audit failed during finalization")
+                self.export_button.setEnabled(bool(self.current_rows))
+                QMessageBox.critical(self, "Audit failed", str(exc))
+            finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
+
+            if result_finalized and result.outcome is AuditRunOutcome.SUCCESS:
+                inventory_changed = False
+                try:
+                    inventory_changed = self._promote_successful_audit(result)
+                except Exception as exc:
+                    # Persistence is deliberately outside result finalization.
+                    # A defensive catch keeps an unexpected save-path error
+                    # from rewriting a successfully finalized audit outcome.
+                    self._report_baseline_persistence_issue(
+                        stage="unexpected",
+                        history_status="unknown",
+                        inventory_status="unknown",
+                        error=exc,
+                    )
+                if inventory_changed:
+                    try:
+                        self._sync_post_audit_views()
+                    except Exception as exc:
+                        device_insights.log_event(
+                            "audit_post_success_refresh result=error "
+                            f"error={' '.join(str(exc).split())[:500] or type(exc).__name__}"
+                        )
+        finally:
+            if not result_finalized:
+                finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
+            self._finalizing_session = None
+            self._set_audit_source_controls_enabled(True)
+            self._set_audit_state(AuditRunState.IDLE)
+            self._restore_device_source_identity()
 
         if self._audit_started_at is not None:
             total_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
@@ -361,14 +416,16 @@ class MainWindow(results_ui.ResultsWindow):
             statuses = ",".join(
                 f"{status}:{count}" for status, count in sorted(status_counts.items())
             ) or "none"
-            device_insights.log_event(
-                "audit_performance "
-                f"result=success total_s={total_seconds:.3f} "
-                f"pre_finalize_s={pre_finalize_seconds:.3f} "
-                f"finalize_s={finalize_seconds:.3f} packages={len(self.current_rows)} "
-                f"cached={cached_count} live={live_count} workers={self.workers_spin.value()} "
-                f"source={self.source_mode or 'unknown'} statuses={statuses}"
-            )
+            if initial_outcome is not AuditRunOutcome.FAILED:
+                device_insights.log_event(
+                    "audit_performance "
+                    f"result={result.outcome.value} total_s={total_seconds:.3f} "
+                    f"pre_finalize_s={pre_finalize_seconds:.3f} "
+                    f"finalize_s={finalize_seconds:.3f} packages={len(self.current_rows)} "
+                    f"cached={result.cached_count} live={result.live_completed_count} "
+                    f"workers={self.workers_spin.value()} "
+                    f"source={self.source_mode or 'unknown'} statuses={statuses}"
+                )
         self._audit_started_at = None
         self._audit_pre_finalize_seconds = None
 

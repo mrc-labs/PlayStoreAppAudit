@@ -99,12 +99,19 @@ def install_performance_diagnostics() -> None:
         language: str,
         country: str,
         config: Any,
+        cancel_event: threading.Event | None = None,
     ) -> dict[str, Any]:
         role = _locale_role(country, language, config)
         started = time.perf_counter()
         status = "exception"
         try:
-            result = original_fetch_locale(package_name, language, country, config)
+            result = original_fetch_locale(
+                package_name,
+                language,
+                country,
+                config,
+                cancel_event=cancel_event,
+            )
             status = str(result.get("status") or "unknown")
             return result
         finally:
@@ -116,6 +123,7 @@ def install_performance_diagnostics() -> None:
         progress_callback: Callable[[int, int, str], None] | None = None,
         pause_event: threading.Event | None = None,
         cancel_event: threading.Event | None = None,
+        row_completed_callback: Callable[[int, dict[str, Any]], None] | None = None,
     ) -> list[dict[str, Any]]:
         _reset_store_stats()
         started = time.perf_counter()
@@ -127,6 +135,7 @@ def install_performance_diagnostics() -> None:
                 progress_callback,
                 pause_event=pause_event,
                 cancel_event=cancel_event,
+                row_completed_callback=row_completed_callback,
             )
         except Exception:
             result = "error"

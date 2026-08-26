@@ -77,7 +77,7 @@ def test_successful_audit_logs_stage_timings_without_package_names(
 
 
 def test_failed_audit_logs_pre_finalize_timing(
-    window: MainWindow, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow, app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     logged: list[str] = []
     monkeypatch.setattr(main_ui.time, "perf_counter", lambda: 203.5)
@@ -94,6 +94,7 @@ def test_failed_audit_logs_pre_finalize_timing(
     window._audit_started_at = 200.0
 
     window._on_controlled_done((13, None, "network failure", 0, 0))
+    app.processEvents()
 
     assert logged == [
         "audit_performance result=error pre_finalize_s=3.500 cached=0 live=0 source=device"
