@@ -360,21 +360,47 @@ class MainWindow(results_ui.ResultsWindow):
         ):
             return
         finalize_started = time.perf_counter()
+        finalize_seconds = 0.0
         initial_outcome = result.outcome
+        result_finalized = False
         try:
-            super()._on_controlled_done(result)
-            if result.outcome is AuditRunOutcome.SUCCESS:
-                self._promote_successful_audit(result)
-                self._sync_post_audit_views()
-        except Exception as exc:
-            result.outcome = AuditRunOutcome.FAILED
-            result.error = str(exc)
-            self._last_audit_outcome = AuditRunOutcome.FAILED
-            self.status_label.setText("Audit failed during finalization")
-            self.export_button.setEnabled(bool(self.current_rows))
-            QMessageBox.critical(self, "Audit failed", str(exc))
-        finally:
+            try:
+                super()._on_controlled_done(result)
+                result_finalized = True
+            except Exception as exc:
+                result.outcome = AuditRunOutcome.FAILED
+                result.error = str(exc)
+                self._last_audit_outcome = AuditRunOutcome.FAILED
+                self.status_label.setText("Audit failed during finalization")
+                self.export_button.setEnabled(bool(self.current_rows))
+                QMessageBox.critical(self, "Audit failed", str(exc))
             finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
+
+            if result_finalized and result.outcome is AuditRunOutcome.SUCCESS:
+                inventory_changed = False
+                try:
+                    inventory_changed = self._promote_successful_audit(result)
+                except Exception as exc:
+                    # Persistence is deliberately outside result finalization.
+                    # A defensive catch keeps an unexpected save-path error
+                    # from rewriting a successfully finalized audit outcome.
+                    self._report_baseline_persistence_issue(
+                        stage="unexpected",
+                        history_status="unknown",
+                        inventory_status="unknown",
+                        error=exc,
+                    )
+                if inventory_changed:
+                    try:
+                        self._sync_post_audit_views()
+                    except Exception as exc:
+                        device_insights.log_event(
+                            "audit_post_success_refresh result=error "
+                            f"error={' '.join(str(exc).split())[:500] or type(exc).__name__}"
+                        )
+        finally:
+            if not result_finalized:
+                finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
             self._finalizing_session = None
             self._set_audit_source_controls_enabled(True)
             self._set_audit_state(AuditRunState.IDLE)

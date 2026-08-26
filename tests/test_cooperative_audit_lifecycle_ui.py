@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -9,6 +10,8 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.device_window as device_ui
+import playstore_app_audit.ui.insights_window as insights_ui
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.ui.main_window import MainWindow
@@ -163,7 +166,20 @@ def test_stopped_run_finalizes_partial_rows_without_baseline_promotion(
 def test_targeted_stop_replaces_only_completed_rows_and_preserves_device_metadata(
     window: MainWindow,
     app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    promotions: list[str] = []
+    window.user_settings["compare_previous"] = True
+    monkeypatch.setattr(
+        device_metadata,
+        "save_history_merged",
+        lambda _rows: promotions.append("history"),
+    )
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: promotions.append("inventory") or {},
+    )
     old_one = {
         **_available_row("com.example.one", "Old one"),
         "installed_version": "7.0",
@@ -198,14 +214,74 @@ def test_targeted_stop_replaces_only_completed_rows_and_preserves_device_metadat
     assert by_package["com.example.one"]["target_sdk"] == "34"
     assert by_package["com.example.two"]["play_title"] == "Old two"
     assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert promotions == []
 
 
-def test_success_promotes_history_and_inventory_only_after_finalization(
+def test_cancelled_optional_device_metadata_keeps_valid_store_row(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata_cancelled = threading.Event()
+    store_row = _available_row("com.example.app")
+    window.source_mode = "device"
+    window._audit_session = 24
+    window._audit_requested_outcome = None
+    window._audit_cancel_event.clear()
+    window._audit_pause_event.set()
+    window._set_audit_state(AuditRunState.RUNNING)
+    monkeypatch.setattr(window, "_get_authorised_adb", lambda: "adb")
+
+    def cancel_metadata(_adb, _packages, cancel_event):
+        cancel_event.set()
+        metadata_cancelled.set()
+        return {}
+
+    def complete_store_row(
+        _apps,
+        _config,
+        _progress,
+        *,
+        pause_event,
+        cancel_event,
+        row_completed_callback,
+    ):
+        del pause_event
+        assert metadata_cancelled.wait(2.0)
+        assert cancel_event.is_set()
+        row_completed_callback(0, store_row)
+        return [store_row]
+
+    monkeypatch.setattr(window, "_collect_device_metadata", cancel_metadata)
+    monkeypatch.setattr(device_metadata, "audit_apps_v8", complete_store_row)
+    apps = [{"app_name": "Example", "package_name": "com.example.app"}]
+
+    device_ui.DeviceWindow._controlled_audit_worker(
+        window,
+        apps,
+        apps,
+        {},
+        AuditConfig(country="us", language="en", max_workers=1),
+        24,
+        window._audit_pause_event,
+        window._audit_cancel_event,
+        False,
+    )
+    app.processEvents()
+
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert len(window.current_rows) == 1
+    assert window.current_rows[0]["package_name"] == "com.example.app"
+    assert window.current_rows[0]["play_status"] == "available"
+
+
+def test_post_success_baseline_persistence_succeeds_in_order(
     window: MainWindow,
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     promotions: list[str] = []
+    warnings: list[str] = []
     window.user_settings["compare_previous"] = True
     window.source_mode = "device"
     window.device_apps_all = [{"app_name": "Example", "package_name": "com.example.app"}]
@@ -215,6 +291,11 @@ def test_success_promotes_history_and_inventory_only_after_finalization(
         device_insights,
         "annotate_inventory_changes_and_save",
         lambda *_args: promotions.append("inventory") or {"had_previous": False},
+    )
+    monkeypatch.setattr(
+        insights_ui.QMessageBox,
+        "warning",
+        lambda _parent, _title, message: warnings.append(message),
     )
     window._audit_session = 10
     window._set_audit_state(AuditRunState.RUNNING)
@@ -234,9 +315,10 @@ def test_success_promotes_history_and_inventory_only_after_finalization(
     assert promotions == ["history", "inventory"]
     assert window._last_audit_outcome is AuditRunOutcome.SUCCESS
     assert window._audit_state is AuditRunState.IDLE
+    assert warnings == []
 
 
-def test_finalization_failure_is_failed_and_does_not_promote(
+def test_result_finalization_failure_is_failed_before_baseline_persistence(
     window: MainWindow,
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
@@ -267,6 +349,229 @@ def test_finalization_failure_is_failed_and_does_not_promote(
     assert window._audit_state is AuditRunState.IDLE
     assert window.status_label.text() == "Audit failed during finalization"
     assert promotions == []
+
+
+def test_post_success_history_persistence_failure_keeps_audit_successful(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persistence_calls: list[str] = []
+    warnings: list[tuple[str, str]] = []
+    criticals: list[str] = []
+    logs: list[str] = []
+    window.user_settings.update(
+        {"compare_previous": True, "inventory_history_enabled": True}
+    )
+    window.source_mode = "device"
+    window.device_apps_all = [{"app_name": "Example", "package_name": "com.example.app"}]
+    window._device_summary = {"device_id": "device-1"}
+
+    def fail_history(_rows) -> None:
+        persistence_calls.append("history")
+        raise OSError("history write denied")
+
+    monkeypatch.setattr(state, "save_history", fail_history)
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: persistence_calls.append("inventory") or {},
+    )
+    monkeypatch.setattr(device_insights, "log_event", logs.append)
+    monkeypatch.setattr(
+        insights_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "critical",
+        lambda _parent, _title, message: criticals.append(message),
+    )
+    window._audit_session = 20
+    window._set_audit_state(AuditRunState.RUNNING)
+
+    window._on_controlled_done(
+        AuditRunResult(
+            session=20,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=[_available_row("com.example.app")],
+            live_completed_count=1,
+            total_count=1,
+        )
+    )
+    app.processEvents()
+
+    assert persistence_calls == ["history"]
+    assert window._last_audit_outcome is AuditRunOutcome.SUCCESS
+    assert window._audit_state is AuditRunState.IDLE
+    assert window.current_rows[0]["package_name"] == "com.example.app"
+    assert window.export_button.isEnabled()
+    assert window.status_label.text() == "Audit completed • local history baseline not saved"
+    assert len(warnings) == 1
+    assert warnings[0][0] == "Audit completed with a local save warning"
+    assert "history baseline could not be saved" in warnings[0][1]
+    assert "inventory baseline was not updated" in warnings[0][1]
+    assert criticals == []
+    assert len(logs) == 1
+    assert "stage=history history=failed inventory=skipped" in logs[0]
+
+
+def test_post_success_inventory_persistence_failure_keeps_audit_successful(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persistence_calls: list[str] = []
+    warnings: list[tuple[str, str]] = []
+    criticals: list[str] = []
+    logs: list[str] = []
+    window.user_settings.update(
+        {"compare_previous": True, "inventory_history_enabled": True}
+    )
+    window.source_mode = "device"
+    window.device_apps_all = [{"app_name": "Example", "package_name": "com.example.app"}]
+    window._device_summary = {"device_id": "device-1"}
+    monkeypatch.setattr(
+        state,
+        "save_history",
+        lambda _rows: persistence_calls.append("history"),
+    )
+
+    def fail_inventory(*_args) -> dict[str, object]:
+        persistence_calls.append("inventory")
+        raise OSError("inventory write denied")
+
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        fail_inventory,
+    )
+    monkeypatch.setattr(device_insights, "log_event", logs.append)
+    monkeypatch.setattr(
+        insights_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "critical",
+        lambda _parent, _title, message: criticals.append(message),
+    )
+    window._audit_session = 21
+    window._set_audit_state(AuditRunState.RUNNING)
+
+    window._on_controlled_done(
+        AuditRunResult(
+            session=21,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=[_available_row("com.example.app")],
+            live_completed_count=1,
+            total_count=1,
+        )
+    )
+    app.processEvents()
+
+    assert persistence_calls == ["history", "inventory"]
+    assert window._last_audit_outcome is AuditRunOutcome.SUCCESS
+    assert window._audit_state is AuditRunState.IDLE
+    assert window.current_rows[0]["package_name"] == "com.example.app"
+    assert window.export_button.isEnabled()
+    assert window.status_label.text() == (
+        "Audit completed • device inventory baseline not saved"
+    )
+    assert len(warnings) == 1
+    assert "local history was saved" in warnings[0][1]
+    assert "inventory baseline could not be saved" in warnings[0][1]
+    assert criticals == []
+    assert len(logs) == 1
+    assert "stage=inventory history=saved inventory=failed" in logs[0]
+
+
+def test_failed_audit_result_never_persists_baselines(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persistence_calls: list[str] = []
+    window.user_settings.update(
+        {"compare_previous": True, "inventory_history_enabled": True}
+    )
+    window.source_mode = "device"
+    window._device_summary = {"device_id": "device-1"}
+    monkeypatch.setattr(
+        state,
+        "save_history",
+        lambda _rows: persistence_calls.append("history"),
+    )
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: persistence_calls.append("inventory") or {},
+    )
+    window._audit_session = 22
+    window._set_audit_state(AuditRunState.RUNNING)
+
+    window._on_controlled_done(
+        AuditRunResult(
+            session=22,
+            outcome=AuditRunOutcome.FAILED,
+            rows=[_available_row("com.example.partial")],
+            live_completed_count=1,
+            total_count=2,
+            error="worker failed",
+        )
+    )
+    app.processEvents()
+
+    assert window._last_audit_outcome is AuditRunOutcome.FAILED
+    assert persistence_calls == []
+
+
+def test_successful_targeted_recheck_persists_merged_history_only(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persistence_calls: list[str] = []
+    old = _available_row("com.example.app", "Old")
+    window.user_settings.update(
+        {"compare_previous": True, "inventory_history_enabled": True}
+    )
+    window.source_mode = "device"
+    window.current_rows = [old]
+    window.model.set_rows(window.current_rows)
+    window._merge_base_rows = [dict(old)]
+    window._subset_label = "App recheck"
+    window._v9_targeted_active = True
+    window._device_summary = {"device_id": "device-1"}
+    monkeypatch.setattr(
+        device_metadata,
+        "save_history_merged",
+        lambda _rows: persistence_calls.append("history-merged"),
+    )
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: persistence_calls.append("inventory") or {},
+    )
+    window._audit_session = 23
+    window._set_audit_state(AuditRunState.RUNNING)
+
+    window._on_controlled_done(
+        AuditRunResult(
+            session=23,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=[_available_row("com.example.app", "New")],
+            live_completed_count=1,
+            total_count=1,
+        )
+    )
+    app.processEvents()
+
+    assert window._last_audit_outcome is AuditRunOutcome.SUCCESS
+    assert window.current_rows[0]["play_title"] == "New"
+    assert persistence_calls == ["history-merged"]
 
 
 def test_close_abandons_and_late_result_is_ignored(window: MainWindow) -> None:
