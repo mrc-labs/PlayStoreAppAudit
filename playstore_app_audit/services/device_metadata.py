@@ -468,7 +468,7 @@ def fetch_app_v8(
             return result
         for country in markets:
             if not _wait_until_running(pause_event, cancel_event):
-                return None
+                return result
             alternative = core._fetch_locale(
                 package_name,
                 "en",
@@ -476,7 +476,12 @@ def fetch_app_v8(
                 config,
                 cancel_event=cancel_event,
             )
-            if str(alternative.get("status") or "") != "available":
+            alternative_status = str(alternative.get("status") or "")
+            if alternative_status == "cancelled":
+                return result
+            if alternative_status != "available":
+                if cancel_event is not None and cancel_event.is_set():
+                    return result
                 continue
             if not result["play_last_update"] and alternative.get("updated"):
                 result["play_last_update"] = alternative.get("updated", "")

@@ -7,6 +7,7 @@ from typing import Any
 import google_play_scraper
 import requests
 
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.play_store as play_store
 from playstore_app_audit.services.audit_engine import AuditConfig
 
@@ -334,3 +335,395 @@ def test_stop_during_regional_request_keeps_valid_row_and_starts_no_next_batch(
     assert len(rows) == 1
     assert rows[0]["play_status"] == "available_in_other_country"
     assert calls == [("us", "en"), ("gb", "en")]
+
+
+def test_stop_during_canonical_metadata_market_preserves_available_primary(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    enrichment_started = threading.Event()
+    release_enrichment = threading.Event()
+    calls: list[tuple[str, str]] = []
+    returned: list[list[dict[str, Any]]] = []
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("gb", "de"))
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        if country == "us":
+            return {
+                "status": "available",
+                "country": country,
+                "language": language,
+                "http_status": 200,
+                "title": "Primary title",
+                "updated": "",
+                "version": "",
+                "source": "test",
+                "url": "https://example.invalid/primary",
+                "notes": "",
+            }
+        if country == "gb":
+            enrichment_started.set()
+            assert release_enrichment.wait(2.0)
+            assert cancel_event is not None and cancel_event.is_set()
+            return {"status": "cancelled", "country": country, "language": language}
+        raise AssertionError(f"Unexpected market started after Stop: {country}")
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+    worker = threading.Thread(
+        target=lambda: returned.append(
+            play_store.audit_apps(
+                [{"app_name": "Example", "package_name": "com.example.app"}],
+                SimpleNamespace(country="us", language="en", max_workers=1),
+                cancel_event=cancel_event,
+            )
+        )
+    )
+    worker.start()
+    assert enrichment_started.wait(2.0)
+    cancel_event.set()
+    release_enrichment.set()
+    worker.join(2.0)
+
+    assert not worker.is_alive()
+    assert len(returned[0]) == 1
+    assert returned[0][0]["play_status"] == "available"
+    assert returned[0][0]["play_title"] == "Primary title"
+    assert returned[0][0]["play_last_update"] == ""
+    assert returned[0][0]["play_version"] == ""
+    assert calls == [("us", "en"), ("gb", "en")]
+
+
+def test_canonical_metadata_completed_in_flight_after_stop_is_merged(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    enrichment_started = threading.Event()
+    release_enrichment = threading.Event()
+    calls: list[tuple[str, str]] = []
+    returned: list[list[dict[str, Any]]] = []
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("gb", "de"))
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        if country == "us":
+            return {
+                "status": "available",
+                "country": country,
+                "language": language,
+                "http_status": 200,
+                "title": "Primary title",
+                "updated": "",
+                "version": "",
+                "source": "test",
+                "url": "https://example.invalid/primary",
+                "notes": "",
+            }
+        if country == "gb":
+            enrichment_started.set()
+            assert release_enrichment.wait(2.0)
+            assert cancel_event is not None and cancel_event.is_set()
+            return {
+                "status": "available",
+                "country": country,
+                "language": language,
+                "http_status": 200,
+                "title": "Fallback title",
+                "updated": "2026-08-20",
+                "version": "2.0",
+                "source": "test",
+                "url": "https://example.invalid/fallback",
+                "notes": "",
+            }
+        raise AssertionError(f"Unexpected market started after Stop: {country}")
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+    worker = threading.Thread(
+        target=lambda: returned.append(
+            play_store.audit_apps(
+                [{"app_name": "Example", "package_name": "com.example.app"}],
+                SimpleNamespace(country="us", language="en", max_workers=1),
+                cancel_event=cancel_event,
+            )
+        )
+    )
+    worker.start()
+    assert enrichment_started.wait(2.0)
+    cancel_event.set()
+    release_enrichment.set()
+    worker.join(2.0)
+
+    assert not worker.is_alive()
+    assert len(returned[0]) == 1
+    assert returned[0][0]["play_title"] == "Primary title"
+    assert returned[0][0]["play_last_update"] == "2026-08-20"
+    assert returned[0][0]["play_version"] == "2.0"
+    assert calls == [("us", "en"), ("gb", "en")]
+
+
+def test_stop_between_canonical_primary_and_metadata_market_preserves_primary(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("gb", "de"))
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        assert country == "us"
+        assert cancel_event is not None
+        cancel_event.set()
+        return {
+            "status": "available",
+            "country": country,
+            "language": language,
+            "http_status": 200,
+            "title": "Primary title",
+            "updated": "",
+            "version": "",
+            "source": "test",
+            "url": "https://example.invalid/primary",
+            "notes": "",
+        }
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+    rows = play_store.audit_apps(
+        [{"app_name": "Example", "package_name": "com.example.app"}],
+        SimpleNamespace(country="us", language="en", max_workers=1),
+        cancel_event=cancel_event,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["play_status"] == "available"
+    assert calls == [("us", "en")]
+
+
+def test_stop_during_english_completion_preserves_valid_preferred_locale(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    english_started = threading.Event()
+    release_english = threading.Event()
+    calls: list[tuple[str, str]] = []
+    returned: list[list[dict[str, Any]]] = []
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("gb",))
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        if language == "de":
+            return {
+                "status": "available",
+                "country": country,
+                "language": language,
+                "http_status": 200,
+                "title": "Bevorzugter Titel",
+                "updated": "",
+                "version": "",
+                "source": "test",
+                "url": "https://example.invalid/preferred",
+                "notes": "",
+            }
+        english_started.set()
+        assert release_english.wait(2.0)
+        assert cancel_event is not None and cancel_event.is_set()
+        return {"status": "cancelled", "country": country, "language": language}
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+    worker = threading.Thread(
+        target=lambda: returned.append(
+            play_store.audit_apps(
+                [{"app_name": "Example", "package_name": "com.example.app"}],
+                SimpleNamespace(country="ch", language="de", max_workers=1),
+                cancel_event=cancel_event,
+            )
+        )
+    )
+    worker.start()
+    assert english_started.wait(2.0)
+    cancel_event.set()
+    release_english.set()
+    worker.join(2.0)
+
+    assert not worker.is_alive()
+    assert len(returned[0]) == 1
+    assert returned[0][0]["play_status"] == "available"
+    assert returned[0][0]["play_title"] == "Bevorzugter Titel"
+    assert calls == [("ch", "de"), ("ch", "en")]
+
+
+def test_stop_before_english_completion_preserves_valid_preferred_locale(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _selected: ("gb",))
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        assert language == "de"
+        assert cancel_event is not None
+        cancel_event.set()
+        return {
+            "status": "available",
+            "country": country,
+            "language": language,
+            "http_status": 200,
+            "title": "Bevorzugter Titel",
+            "updated": "",
+            "version": "",
+            "source": "test",
+            "url": "https://example.invalid/preferred",
+            "notes": "",
+        }
+
+    monkeypatch.setattr(play_store, "fetch_locale", fake_fetch)
+    rows = play_store.audit_apps(
+        [{"app_name": "Example", "package_name": "com.example.app"}],
+        SimpleNamespace(country="ch", language="de", max_workers=1),
+        cancel_event=cancel_event,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["play_status"] == "available"
+    assert rows[0]["play_title"] == "Bevorzugter Titel"
+    assert calls == [("ch", "de")]
+
+
+def test_stop_during_v8_metadata_market_preserves_available_primary(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    enrichment_started = threading.Event()
+    release_enrichment = threading.Event()
+    calls: list[tuple[str, str]] = []
+    returned: list[dict[str, Any] | None] = []
+    monkeypatch.setattr(
+        device_metadata,
+        "get_fallback_countries",
+        lambda _selected: ("gb", "de"),
+    )
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        if country == "us":
+            return {
+                "status": "available",
+                "http_status": 200,
+                "title": "Primary title",
+                "updated": "",
+                "version": "",
+                "source": "test",
+                "url": "https://example.invalid/primary",
+                "notes": "",
+            }
+        if country == "gb":
+            enrichment_started.set()
+            assert release_enrichment.wait(2.0)
+            assert cancel_event is not None and cancel_event.is_set()
+            return {"status": "cancelled"}
+        raise AssertionError(f"Unexpected v8 market started after Stop: {country}")
+
+    monkeypatch.setattr(device_metadata.core, "_fetch_locale", fake_fetch)
+    worker = threading.Thread(
+        target=lambda: returned.append(
+            device_metadata.fetch_app_v8(
+                "Example",
+                "com.example.app",
+                AuditConfig(country="us", language="en"),
+                cancel_event=cancel_event,
+            )
+        )
+    )
+    worker.start()
+    assert enrichment_started.wait(2.0)
+    cancel_event.set()
+    release_enrichment.set()
+    worker.join(2.0)
+
+    assert not worker.is_alive()
+    assert returned[0] is not None
+    assert returned[0]["play_status"] == "available"
+    assert returned[0]["play_title"] == "Primary title"
+    assert calls == [("us", "en"), ("gb", "en")]
+
+
+def test_stop_between_v8_primary_and_metadata_market_preserves_primary(
+    monkeypatch,
+) -> None:
+    cancel_event = threading.Event()
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        device_metadata,
+        "get_fallback_countries",
+        lambda _selected: ("gb", "de"),
+    )
+
+    def fake_fetch(
+        _package: str,
+        language: str,
+        country: str,
+        _config: object,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        calls.append((country, language))
+        assert country == "us"
+        assert cancel_event is not None
+        cancel_event.set()
+        return {
+            "status": "available",
+            "http_status": 200,
+            "title": "Primary title",
+            "updated": "",
+            "version": "",
+            "source": "test",
+            "url": "https://example.invalid/primary",
+            "notes": "",
+        }
+
+    monkeypatch.setattr(device_metadata.core, "_fetch_locale", fake_fetch)
+    row = device_metadata.fetch_app_v8(
+        "Example",
+        "com.example.app",
+        AuditConfig(country="us", language="en"),
+        cancel_event=cancel_event,
+    )
+
+    assert row is not None
+    assert row["play_status"] == "available"
+    assert calls == [("us", "en")]

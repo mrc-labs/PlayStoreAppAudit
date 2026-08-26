@@ -602,11 +602,16 @@ def _fetch_app_bounded(
                 cancel_event,
             )
             if alternative is None:
-                return None
+                # The selected-market listing is already independently valid.
+                # Cancellation may stop optional metadata completion, but it
+                # must not erase that conclusive primary evidence.
+                return result
             result[STORE_EVIDENCE_FIELD].extend(
                 _store_evidence_for_country(alternative, "metadata_completion")
             )
             if str(alternative.get("status") or "") != "available":
+                if cancel_event is not None and cancel_event.is_set():
+                    return result
                 continue
             if not result["play_last_update"] and alternative.get("updated"):
                 result["play_last_update"] = alternative.get("updated", "")
