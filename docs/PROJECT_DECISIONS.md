@@ -325,7 +325,7 @@ v1.99 is the active cycle and likely final Windows x64-only release before v2.0.
 
 ### Cooperative audit Stop/Cancel
 
-v1.99 must add a real, cooperative Stop/Cancel lifecycle alongside Run and Pause/Resume.
+The real cooperative Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25` alongside Run and Pause/Resume.
 
 - Stop scheduling new work immediately and propagate cancellation through Store checks, regional checks and finalization queues.
 - Let in-flight operations exit safely or reach existing timeout boundaries; never use `QThread.terminate()` or an equivalent forced termination.
@@ -333,13 +333,13 @@ v1.99 must add a real, cooperative Stop/Cancel lifecycle alongside Run and Pause
 - Mark the audit cancelled/incomplete rather than completed, and never promote it to the completed previous-audit/history baseline.
 - Return the application to a reusable idle state so a later audit starts normally.
 
-Implementation begins only after the complete execution pipeline and every real cancellation boundary are identified.
+The implementation covers the Store and regional-check scheduling boundaries, preserves valid partial work and independent cache entries, separates successful-result finalization from history/baseline persistence, and returns to a reusable idle state. These semantics remain required for later v1.99 changes.
 
 ### Main actions, Details selector and status bar
 
-Final placement of Run/Pause/Stop, Export and Clear is not pre-decided. Compare native-Windows prototypes for: actions in the status bar; a compact upper command strip; and a clear integrated results/header command layout. Run remains primary, Stop must be discoverable while relevant, and action-availability behavior must be preserved. Compare representative widths and DPI levels and obtain visual evidence before choosing.
+The first v1.99 product/operational UX gate is complete. Native-Windows A/B/C comparison selected the integrated results-header direction, and the focused C0/C1/C2 comparison selected **C2**. The first results header row keeps Run/Pause/Resume and Stop together, followed by the same canonical progress widget, then Export Results and Clear Results. The progress widget has a 120 px minimum and 320 px maximum, expands into available inline space, and remains present in the same geometry for Idle, Running, Paused, Resumed, Stopping, Finalizing and Completed. Idle/completed presentation is a neutral empty determinate track with no percentage or animation; active operations retain the established determinate or busy behavior.
 
-The existing Details selector (Auto/Right/Below/Hidden) is a stronger status-bar candidate and should be evaluated there by reusing the same state and `View > Details Panel` synchronization. Do not duplicate state. Review status-bar padding, alignment, vertical centering, height, progress/control relationships, size-grip spacing, long-message behavior and 100/125/150/175% DPI evidence.
+The second results header row keeps the multi-select status chips, Hide System Apps, search and the existing Details selector. Details retains one synchronized Auto/Right/Below/Hidden model shared with `View > Details Panel`; it is not duplicated or moved to the status bar. The native status bar retains the single canonical operational text label and size grip, with no mirrored status or progress state.
 
 The warning-coloured **Different**, **Aging target** and **Legacy target** values should receive restrained stronger typography. Test Qt DemiBold/SemiBold first and preserve a visible hierarchy below the first Status column's Bold; do not blindly make every warning Bold.
 

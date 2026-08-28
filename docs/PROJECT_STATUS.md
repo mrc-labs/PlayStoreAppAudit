@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-25
+Last updated: 2026-08-28
 
 ## Published release
 
@@ -88,9 +88,9 @@ The accepted product/UX implementation merged through PRs `#116`, `#117` and `#1
 
 The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` and `HANDOFF_V1.99.md`. Key approved planning boundaries are:
 
-- add cooperative safe Stop/Cancel after mapping every pipeline cancellation boundary;
-- compare native-Windows action layouts before choosing among status-bar, compact command-strip or integrated results/header alternatives;
-- evaluate moving the existing synchronized Details selector to the status bar and refine status-bar spacing/alignment/DPI behavior;
+- preserve the cooperative safe Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`;
+- preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
+- keep operational status text in the native status bar and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
 - test restrained DemiBold/SemiBold warning typography against the Bold Status column;
 - implement informational Alternative Distribution Discovery only after provider feasibility review, using exact package identity and the seven approved providers; Amazon Appstore is excluded;
 - update Maintenance Score with the approved mutually exclusive best-source removal penalties and independent Store/freshness/SDK/version components, while preserving the regional-unavailability distinction;

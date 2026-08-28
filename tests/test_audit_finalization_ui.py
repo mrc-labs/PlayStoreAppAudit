@@ -89,5 +89,5 @@ def test_success_is_visibly_finalizing_before_rows_are_installed(
     assert window.status_label.text() == "Audit completed • 2 cached • 1 live"
     assert window.run_button.text() == "Run Play Store Audit"
     assert window.run_button.isEnabled()
-    assert window.progress.maximum() == 1
-    assert window.progress.value() == 1
+    assert window.progress.maximum() == 100
+    assert window.progress.value() == 0

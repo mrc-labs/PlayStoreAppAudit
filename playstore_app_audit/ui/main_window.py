@@ -247,7 +247,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _set_view_preset(self, name: str) -> None:
         # View changes are presentation-only and must not overwrite a useful
-        # audit/progress/result message below the progress bar.
+        # audit/progress/result message in the native status bar.
         status_text = self.status_label.text() if hasattr(self, "status_label") else ""
         super()._set_view_preset(name)
         if hasattr(self, "status_label"):

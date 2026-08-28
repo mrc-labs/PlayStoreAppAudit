@@ -1,8 +1,8 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-08-25
+Last updated: 2026-08-28
 
-Status: **v1.9.0 is published, independently verified and immutable. Post-release housekeeping is complete. v1.99 is the active controlled pre-v2.0 planning cycle; implementation has not begun.**
+Status: **v1.9.0 is published, independently verified and immutable. Post-release housekeeping is complete. v1.99 implementation is active: cooperative audit Stop is merged on `main`, and the first local product/operational UX gate selected and productionized C2.**
 
 ## Start here
 
@@ -81,7 +81,7 @@ v1.99 is likely the final Windows x64-only ETB before v2.0. It closes meaningful
 
 ## Priority 1: cooperative Stop/Cancel
 
-Current Run/Pause behavior cannot deliberately terminate an audit. v1.99 must add Run -> Pause/Resume -> Stop/Cancel.
+Complete on current `main` through PR `#122`, merge SHA `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`. The application now provides Run -> Pause/Resume -> Stop with cooperative cancellation.
 
 Required behavior:
 
@@ -94,11 +94,11 @@ Required behavior:
 - never promote an incomplete audit to the completed previous-audit/history baseline;
 - return to a reusable idle state and allow another audit to start normally.
 
-Before implementation, inspect the complete execution pipeline and identify every real cancellation boundary. Test source/device work, Store/fallback scheduling, pause/resume interaction, finalization, failure paths, clear/restart and a subsequent audit.
+The implementation and regression coverage identify the Store/fallback scheduling, pause/resume, finalization, failure, clear/restart and subsequent-audit boundaries. Preserve this behavior during later v1.99 product work.
 
 ## Priority 2: comparative main-action layout review
 
-The Run/Pause, Export and Clear actions occupy a wide mostly-empty row. Do not assume the status bar is the answer; the user currently prefers another solution but will evaluate it.
+Complete locally. Native-Windows A/B/C comparison selected the integrated results/header direction. A focused C0/C1/C2 comparison then selected **C2**.
 
 Compare native-Windows prototypes with screenshots/evidence at representative widths and DPI levels:
 
@@ -106,13 +106,11 @@ Compare native-Windows prototypes with screenshots/evidence at representative wi
 - Prototype B: compact upper action toolbar/command strip above results.
 - Prototype C: integrated results/header-area commands if clear and uncluttered.
 
-Improve these when a better Qt-native alternative emerges. Run stays primary, Stop is visible/discoverable when relevant, Export/Clear remain clear, and every action-availability rule is preserved. Avoid a tall permanent row and an overcrowded status bar. Do not lock placement before user review.
+The production order is Run/Pause/Resume, Stop, the canonical progress widget, Export Results and Clear Results. Run and Stop remain grouped. Progress is permanently reserved at 120-320 px so command geometry does not move between Idle, Running, Paused, Resumed, Stopping, Finalizing and Completed. Idle/completed progress is neutral and empty; active determinate/busy behavior is unchanged. The prototype selector, runner and prototype-only tests were removed after selection.
 
 ## Priority 3: Details selector and status-bar presentation
 
-Evaluate relocating the same Auto/Right/Below/Hidden Details selector to the status bar. It is a presentation/layout control and a stronger status-bar candidate than primary actions. Reuse the existing state and `View > Details Panel` synchronization; do not create mirrored state.
-
-Review status-bar left padding, main-UI alignment, baseline/vertical centering, progress/control relationships, height, native size-grip spacing, long-message behavior and DPI behavior at 100%, 125%, 150% and 175%. Use native visual evidence rather than arbitrary margins.
+Complete for the first product gate. The second results header row keeps multi-select status chips, Hide System Apps, search and the same Details selector. Auto/Right/Below/Hidden remains one state synchronized with `View > Details Panel`; there is no status-bar duplicate. The native status bar keeps the canonical operational text and size grip, with no progress or primary commands added there.
 
 ## Priority 4: semantic warning typography
 

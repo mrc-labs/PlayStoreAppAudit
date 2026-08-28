@@ -51,6 +51,9 @@ PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
 DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
 
+OPERATION_PROGRESS_MIN_WIDTH = 120
+OPERATION_PROGRESS_MAX_WIDTH = 320
+
 _original_classify_criticality = base_ui.classify_criticality
 
 
@@ -193,38 +196,95 @@ class CompactWindow(AuditWindow):
         progress_layout = progress_card.layout()
         if action_layout is None or progress_layout is None:
             return
-        action_layout.removeWidget(self.export_button)
-        action_layout.removeWidget(self.clear_button)
+
+        action_buttons = (
+            self.run_button,
+            self.stop_button,
+            self.export_button,
+            self.clear_button,
+        )
+        for button in action_buttons:
+            action_layout.removeWidget(button)
+            button.setMinimumWidth(0)
+            button.setMaximumWidth(16777215)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        # Run changes its label throughout the lifecycle. The native prototype
+        # established 180 px as sufficient for its longest label; keeping that
+        # width fixed prevents Pause/Resume/Stopping/Finalizing from moving the
+        # adjacent commands at compact window sizes.
+        self.run_button.setFixedWidth(180)
+
+        root.removeItem(action_layout)
+        while action_layout.count():
+            action_layout.takeAt(0)
+        action_layout.deleteLater()
+
         progress_layout.removeWidget(self.progress)
         progress_layout.removeWidget(self.status_label)
-        self.run_button.setMinimumWidth(215)
-        self.run_button.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        action_layout.insertStretch(2, 1)
-        action_layout.addWidget(self.export_button)
-        action_layout.addWidget(self.clear_button)
-        action_layout.setStretch(0, 0)
-        action_layout.setStretch(1, 1)
 
         self.status_bar = self.statusBar()
         self.status_bar.setObjectName("OperationalStatusBar")
         self.status_bar.setAccessibleName("Operational Status Bar")
         self.status_label.setAccessibleName("Operational Status")
         self.progress.setAccessibleName("Operation Progress")
-        self.progress.setFixedWidth(200)
         self.status_bar.addWidget(self.status_label, 1)
-        self.status_bar.addPermanentWidget(self.progress)
-        self._sync_progress_visibility()
+
+        results_card = self.summary_label.parentWidget()
+        results_layout = results_card.layout() if results_card is not None else None
+        toolbar = (
+            _find_layout_containing(results_layout, self.summary_label)
+            if results_layout is not None
+            else None
+        )
+        chips = (
+            _find_layout_containing(results_layout, self.all_chip)
+            if results_layout is not None
+            else None
+        )
+        if toolbar is not None and chips is not None:
+            toolbar.removeWidget(self.hide_system_check)
+            toolbar.removeWidget(self.search_edit)
+            toolbar.addWidget(self.run_button)
+            toolbar.addWidget(self.stop_button)
+
+            self.progress.setMinimumWidth(OPERATION_PROGRESS_MIN_WIDTH)
+            self.progress.setMaximumWidth(OPERATION_PROGRESS_MAX_WIDTH)
+            self.progress.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            )
+            toolbar.addWidget(self.progress, 1)
+            toolbar.addWidget(self.export_button)
+            toolbar.addWidget(self.clear_button)
+            toolbar.setObjectName("ResultsOperationsHeader")
+
+            self.search_edit.setMinimumWidth(180)
+            self.search_edit.setMaximumWidth(280)
+            self.search_edit.setSizePolicy(
+                QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+            )
+            chips.addWidget(self.hide_system_check)
+            chips.addWidget(self.search_edit)
+            chips.setObjectName("ResultsFiltersHeader")
+
+        self._sync_progress_presentation()
 
         root.removeWidget(progress_card)
         progress_card.hide()
         progress_card.deleteLater()
 
-    def _sync_progress_visibility(self) -> None:
+    def _sync_progress_presentation(self) -> None:
         operation_running = getattr(self, "_operation_running", None)
-        if callable(operation_running):
-            self.progress.setVisible(bool(operation_running()))
-        else:
-            self.progress.setVisible(bool(self._audit_active))
+        running = (
+            bool(operation_running())
+            if callable(operation_running)
+            else bool(self._audit_active)
+        )
+
+        self.progress.setVisible(True)
+        if not running:
+            self.progress.setRange(0, 100)
+            self.progress.setValue(0)
 
     def _compact_results_area(self) -> None:
         results_card = self.table.parentWidget()
@@ -594,7 +654,7 @@ class CompactWindow(AuditWindow):
             self._set_run_mode("run")
             self.stop_button.setEnabled(False)
 
-        self._sync_progress_visibility()
+        self._sync_progress_presentation()
         sync_actions = getattr(self, "_sync_action_availability", None)
         if callable(sync_actions):
             sync_actions()
@@ -616,11 +676,10 @@ class CompactWindow(AuditWindow):
         self.scan_button.setEnabled(enabled)
         self.country_edit.setEnabled(enabled)
         self.exclude_system_source_check.setEnabled(enabled)
-        self._sync_progress_visibility()
 
     def _set_busy(self, busy: bool) -> None:
         super()._set_busy(busy)
-        self._sync_progress_visibility()
+        self._sync_progress_presentation()
 
     def _toggle_pause(self) -> None:
         if self._audit_state not in {AuditRunState.RUNNING, AuditRunState.PAUSED}:

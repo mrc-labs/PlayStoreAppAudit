@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-08-25
+Last updated: 2026-08-28
 
 ## Purpose
 
@@ -80,7 +80,7 @@ v1.99 is the active cycle and likely final Windows x64-only release before v2.0.
 
 ### Cooperative Stop/Cancel
 
-Add a real Run -> Pause/Resume -> Stop/Cancel lifecycle. Before implementation, inspect the full execution pipeline and identify every cancellation boundary in Store checks, regional checks, scheduling and finalization.
+The real Run -> Pause/Resume -> Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`. Preserve its identified cancellation boundaries across Store checks, regional checks, scheduling and finalization.
 
 - Stop scheduling new work immediately and propagate a cooperative cancellation request through every queue.
 - Let in-flight operations return safely or reach existing timeout boundaries; never use `QThread.terminate()` or forced termination.
@@ -90,19 +90,17 @@ Add a real Run -> Pause/Resume -> Stop/Cancel lifecycle. Before implementation, 
 
 ### Native-Windows main-action layout review
 
-Do not pre-decide that all actions belong in the status bar. Compare improved native prototypes with screenshots/evidence at representative widths and DPI levels:
+This product gate is complete. Native A/B/C comparison covered:
 
 - Prototype A: Run/Pause/Stop, Export and Clear in the status bar.
 - Prototype B: a compact upper action toolbar/command strip above results.
 - Prototype C: an integrated results/header-area command layout that remains clear and uncluttered.
 
-Run remains primary, Stop is visible while relevant, Export/Clear remain clear, and all action-availability rules remain intact. Avoid both the current tall mostly-empty row and an overcrowded status bar. Obtain user review before choosing the final placement.
+The integrated results-header direction won, followed by a focused C0/C1/C2 comparison of progress placement. The accepted **C2** order is Run/Pause/Resume, Stop, progress, Export Results and Clear Results. Run and Stop stay grouped; the canonical progress widget remains visibly reserved at idle and through every lifecycle state, expands between 120 and 320 px, and returns to a neutral empty state after completion. Existing action availability remains authoritative.
 
 ### Details selector and status-bar presentation
 
-Evaluate relocating the existing Auto/Right/Below/Hidden Details selector to the status bar. It is a presentation/layout control and a stronger status-bar candidate than the primary application actions. Reuse the same state and `View > Details Panel` synchronization; never add mirrored state.
-
-Review left padding, main-UI alignment, vertical centering/baseline, progress/control relationships, total height, native size-grip spacing, long-message behavior and native Windows behavior at 100%, 125%, 150% and 175% DPI. Base adjustments on visual evidence rather than arbitrary margins.
+The review retained the existing Auto/Right/Below/Hidden Details selector in the second results header row alongside status chips, Hide System Apps and search. It continues to share one state with `View > Details Panel`; no mirrored state was added. The native status bar retains operational text and its size grip, while progress now occupies the stable inline C2 position in the first results header row.
 
 ### Semantic warning typography
 
