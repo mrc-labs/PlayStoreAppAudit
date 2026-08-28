@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 from collections.abc import Mapping
 from typing import Any, Literal
 
@@ -326,6 +327,19 @@ def _joined_fields(row: Mapping[str, Any], fields: list[tuple[str, str]]) -> str
         if value:
             lines.append(f"{label}: {value}")
     return "\n".join(lines)
+
+
+def _joined_semantic_fields(
+    row: Mapping[str, Any], fields: list[tuple[str, str]]
+) -> str:
+    lines: list[str] = []
+    for label, key in fields:
+        value = _text(row.get(key))
+        if value:
+            lines.append(
+                f"{html.escape(label)}: {presentation.semantic_html_value(key, value)}"
+            )
+    return "<br>".join(lines)
 
 
 def _clear_layout(layout) -> None:
@@ -738,14 +752,19 @@ class AppDetailsPanel(QFrame):
             ("Min SDK", "min_sdk"),
             ("Android compatibility", "compatibility_status"),
         ]
-        device_text = _joined_fields(row, device_fields)
+        device_text = _joined_semantic_fields(row, device_fields)
         health_score = _text(row.get("health_score"))
         if health_score:
-            health_line = f"Maintenance Score: {health_score}/100"
-            device_text = f"{device_text}\n{health_line}" if device_text else health_line
+            health_line = f"Maintenance Score: {html.escape(health_score)}/100"
+            device_text = f"{device_text}<br>{health_line}" if device_text else health_line
         inventory_line = device_inventory_line(row)
         if inventory_line:
-            device_text = f"{device_text}\n{inventory_line}" if device_text else inventory_line
+            escaped_inventory = html.escape(inventory_line)
+            device_text = (
+                f"{device_text}<br>{escaped_inventory}"
+                if device_text
+                else escaped_inventory
+            )
         self.device_label.setText(device_text or "No connected-device metadata for this row.")
 
         evidence = evidence_lines(row)

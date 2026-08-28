@@ -91,7 +91,7 @@ The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` a
 - preserve the cooperative safe Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`;
 - preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
 - keep operational status text in the native status bar and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
-- test restrained DemiBold/SemiBold warning typography against the Bold Status column;
+- preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow Medium **Different/Aging target**, dark-orange DemiBold **Legacy target**, and Bold Status, with native selected/disabled roles and unchanged raw values;
 - implement informational Alternative Distribution Discovery only after provider feasibility review, using exact package identity and the seven approved providers; Amazon Appstore is excluded;
 - update Maintenance Score with the approved mutually exclusive best-source removal penalties and independent Store/freshness/SDK/version components, while preserving the regional-unavailability distinction;
 - keep an internal `health_score` rename evidence-gated and separate;

@@ -150,10 +150,12 @@ class AuditTableModel(base_ui.AppTableModel):
         if role == Qt.ItemDataRole.ToolTipRole and column == "notes":
             return presentation.friendly_notes(row)
 
-        if role == Qt.ItemDataRole.FontRole and column == "criticality":
-            font = QFont()
-            font.setBold(True)
-            return font
+        if role == Qt.ItemDataRole.FontRole:
+            if column == "criticality":
+                font = QFont()
+                font.setBold(True)
+                return font
+            return base_ui.semantic_value_font(column, row.get(column))
 
         if role == Qt.ItemDataRole.TextAlignmentRole:
             if column in {

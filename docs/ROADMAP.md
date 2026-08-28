@@ -104,7 +104,7 @@ The review retained the existing Auto/Right/Below/Hidden Details selector in the
 
 ### Semantic warning typography
 
-Give **Different**, **Aging target** and **Legacy target** slightly stronger typography while preserving hierarchy against the first Status column's Bold. Test Qt DemiBold/SemiBold first. Use full Bold only if it remains visibly distinct; otherwise choose another restrained Qt-native treatment.
+This gate is complete. **Different** and **Aging target** reuse the status palette's dark-yellow foreground with Qt Medium weight 500; **Legacy target** reuses dark orange with DemiBold weight 600; Status remains Bold weight 700. The shared presentation mapping is used by the results table, Details Panel, context Details dialog and HTML report. Qt continues to manage selection backgrounds, while the semantic foregrounds remain readable without selection-specific colours; the native disabled-text role remains unchanged. Normal/Modern/Match/Unknown values receive no warning styling, and machine-readable exports/data are unchanged.
 
 ### Alternative Distribution Discovery
 

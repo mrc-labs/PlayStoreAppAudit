@@ -114,14 +114,17 @@ Complete for the first product gate. The second results header row keeps multi-s
 
 ## Priority 4: semantic warning typography
 
-Strengthen **Different**, **Aging target** and **Legacy target** slightly compared with normal cells while keeping them clearly below/different from the first Status column's Bold.
+Complete locally. One pure semantic presentation mapping now serves the results table, selected-row Details Panel, context Details dialog and user-facing HTML report.
 
-1. Test Qt DemiBold/SemiBold.
-2. Use it if Windows visibly distinguishes it from normal and Status Bold.
-3. Use full Bold only if hierarchy does not collapse.
-4. Otherwise choose another restrained Qt-native solution.
+- **Different** and **Aging target**: existing dark-yellow status foreground, Qt Medium weight 500.
+- **Legacy target**: existing dark-orange status foreground, Qt DemiBold weight 600.
+- Normal values: normal weight with no warning colour.
+- Status column: remains Bold weight 700.
+- Selected rows: Qt continues to manage the selection background; the semantic foregrounds remain readable without selection-specific colours.
+- Disabled labels: the native disabled-text palette role is retained.
+- CSV, versioned JSON, raw data, classifications, scoring, settings and schemas: unchanged.
 
-Do not blindly bold all warnings.
+The application retains its established light presentation; this gate does not add or claim a new dark theme.
 
 ## Priority 5: Alternative Distribution Discovery
 

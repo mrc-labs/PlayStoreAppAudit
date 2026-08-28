@@ -862,6 +862,8 @@ class InsightsWindow(device_ui.DeviceWindow):
             label = QLabel(html.escape(value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            label.setObjectName(f"DetailsValue_{key}")
+            base_ui.apply_semantic_label_presentation(label, key, value)
             form.addRow(label_text, label)
         scroll.setWidget(inner)
         root.addWidget(scroll, 1)
