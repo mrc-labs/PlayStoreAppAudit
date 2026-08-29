@@ -153,15 +153,28 @@ is harmful. A low or high score should never replace your own security assessmen
 <p>Every app starts at <b>100</b>. The applicable penalties below are added together, and the final
 value is kept within the 0–100 range.</p>
 <ul>
-  <li><b>Removed from the checked Play markets:</b> −60</li>
+  <li><b>Not found in the configured/checked Google Play markets:</b> −60</li>
+  <li><b>F-Droid main availability recovery:</b> +10, only while that −60 penalty is active</li>
+  <li><b>Aptoide availability recovery:</b> +5, only while that −60 penalty is active</li>
   <li><b>Store anomaly:</b> −20</li>
   <li><b>Other or inconclusive Store state:</b> −15</li>
   <li><b>Stale listing, updated more than 730 days ago:</b> −25</li>
-  <li><b>Aging listing, updated more than 365 and no more than 730 days ago:</b> −10</li>
+  <li><b>Aging listing, updated 366–730 days ago:</b> −15</li>
   <li><b>Legacy target SDK relative to the connected device:</b> −15</li>
-  <li><b>Aging target SDK relative to the connected device:</b> −7</li>
+  <li><b>Aging target SDK relative to the connected device:</b> −10</li>
   <li><b>Installed version differs from the Play Store version:</b> −5</li>
 </ul>
+
+<h2>Alternative-distribution recovery</h2>
+<p>Recovery points apply only when the canonical Google Play result is
+<code>not_found_in_checked_countries</code>: conclusively absent from the configured/checked Google
+Play markets. F-Droid and Aptoide recoveries are cumulative, so the current maximum is +15. They
+reduce distribution-availability concern; they never become a bonus when Google Play is available
+and never change the underlying Google Play or provider evidence.</p>
+<p>A verified active listing in F-Droid main is a meaningful FOSS-distribution signal. Exact-package
+availability through the configured authorized Aptoide API is a smaller independent-distribution
+signal. Neither proves safety, publisher identity, binary equivalence, active maintenance or malware
+status. Unsupported future providers currently contribute no points.</p>
 
 <h2>Target SDK comparison</h2>
 <p>When connected-device metadata is available, the app compares the package target SDK with the
@@ -172,7 +185,9 @@ treated as unknown and does not add either target-SDK penalty.</p>
 <h2>Important interpretation notes</h2>
 <ul>
   <li>A listing unavailable in one country is not automatically globally removed. The audit uses its
-      configured multi-country checks and preserves anomaly or inconclusive states when appropriate.</li>
+      configured multi-country checks and preserves regional, anomaly or inconclusive states when
+      appropriate. Alternative-provider evidence does not make an inconclusive Play result conclusive.</li>
+  <li>A missing or unusable update date does not create an aging or stale-listing penalty.</li>
   <li>A different installed and Store version is not automatically “outdated.” Device-specific builds,
       staged rollouts and regional variations can legitimately differ.</li>
   <li>Installer source and requested permissions do <b>not</b> reduce the score.</li>

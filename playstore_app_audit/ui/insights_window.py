@@ -860,12 +860,26 @@ class InsightsWindow(device_ui.DeviceWindow):
             )
             if not value and key not in {"notes", "change"}:
                 continue
-            label = QLabel(html.escape(value))
+            display_value = f"{value}/100" if key == "health_score" else value
+            label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             label.setObjectName(f"DetailsValue_{key}")
             base_ui.apply_semantic_label_presentation(label, key, value)
             form.addRow(label_text, label)
+            if key == "health_score":
+                breakdown_label = QLabel(
+                    "<br>".join(
+                        html.escape(line)
+                        for line in device_insights.health_score_breakdown_lines(row)
+                    )
+                )
+                breakdown_label.setWordWrap(True)
+                breakdown_label.setTextInteractionFlags(
+                    Qt.TextInteractionFlag.TextSelectableByMouse
+                )
+                breakdown_label.setObjectName("DetailsValue_health_score_breakdown")
+                form.addRow("Score breakdown", breakdown_label)
         alternative_results = alternative_distribution.provider_results(row)
         if alternative_results:
             alternative_label = QLabel(alternative_distribution.provider_evidence_text(row))

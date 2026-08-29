@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
+from playstore_app_audit.domain.alternative_distribution import AlternativeDistributionState
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 
@@ -96,18 +98,46 @@ HEALTH_SCORE_GUIDE = """Maintenance Score
 
 The score is a transparent maintenance heuristic from 0 to 100. It is NOT a malware/security rating and it does not judge whether requested permissions are appropriate.
 
-Current penalties:
-- Removed from checked Play markets: -60
+Current components:
+- Not found in the configured/checked Google Play markets: -60
+- F-Droid main availability recovery while that -60 penalty is active: +10
+- Aptoide availability recovery while that -60 penalty is active: +5
 - Store anomaly: -20
 - Other/inconclusive Store state: -15
 - Stale (>730 days since update): -25
-- Aging (>365 days): -10
+- Aging (366-730 days): -15
 - Legacy target SDK relative to the connected device: -15
-- Aging target SDK relative to the connected device: -7
+- Aging target SDK relative to the connected device: -10
 - Installed version differs from Store version: -5
 
-Installer source and requested permissions do not reduce the score. The score is optional and disabled by default.
+Alternative-provider recovery is cumulative up to +15, but it is never a bonus when Google Play is available and never changes the underlying Play or provider states. Installer source and requested permissions do not reduce the score. The score is optional and disabled by default.
 """
+
+HEALTH_SCORE_BASE = 100
+DEFINITIVE_PLAY_ABSENCE_STATUS = "not_found_in_checked_countries"
+STORE_ANOMALY_PLAY_STATUSES = frozenset(
+    {"available_in_other_country", "available_in_fallback_locale_only"}
+)
+PROVIDER_RECOVERY_POINTS = {"fdroid_main": 10, "aptoide": 5}
+
+
+@dataclass(frozen=True, slots=True)
+class HealthScoreComponent:
+    key: str
+    label: str
+    points: int
+
+
+@dataclass(frozen=True, slots=True)
+class HealthScoreBreakdown:
+    score: int
+    unclamped_score: int
+    play_availability_penalty: int
+    alternative_distribution_recovery: int
+    listing_age_penalty: int
+    compatibility_penalty: int
+    version_comparison_penalty: int
+    components: tuple[HealthScoreComponent, ...]
 
 
 def portable_marker() -> Path:
@@ -517,18 +547,127 @@ def enrich_rows_with_device_metadata_v9(
         )
 
 
-def calculate_health_score(row: dict[str, Any]) -> int:
-    score = 100
-    key = str(row.get("criticality_key") or "")
-    score -= {"red": 60, "blue": 20, "purple": 15, "orange": 25, "yellow": 10}.get(key, 0)
+def _play_availability_score_component(play_status: str) -> HealthScoreComponent | None:
+    if play_status == DEFINITIVE_PLAY_ABSENCE_STATUS:
+        return HealthScoreComponent(
+            "play_availability",
+            "Google Play availability (not found in checked markets)",
+            -60,
+        )
+    if play_status in STORE_ANOMALY_PLAY_STATUSES:
+        return HealthScoreComponent("play_availability", "Store anomaly", -20)
+    if play_status == "available":
+        return None
+    return HealthScoreComponent(
+        "play_availability", "Other/inconclusive Google Play state", -15
+    )
+
+
+def _listing_age_score_component(value: object) -> HealthScoreComponent | None:
+    try:
+        age_days = int(str(value))
+    except (TypeError, ValueError):
+        return None
+    if age_days > 730:
+        return HealthScoreComponent("listing_age", "Listing age (>730 days)", -25)
+    if age_days >= 366:
+        return HealthScoreComponent("listing_age", "Listing age (366-730 days)", -15)
+    return None
+
+
+def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdown:
+    """Calculate one non-overlapping, raw-state Maintenance Score breakdown."""
+
+    components: list[HealthScoreComponent] = []
+    play_status = str(row.get("play_status") or "").strip()
+    play_component = _play_availability_score_component(play_status)
+    play_penalty = play_component.points if play_component is not None else 0
+    if play_component is not None:
+        components.append(play_component)
+
+    recovery = 0
+    if play_status == DEFINITIVE_PLAY_ABSENCE_STATUS:
+        available_provider_ids = {
+            result.provider_id
+            for result in alternative_distribution.provider_results(row)
+            if result.state is AlternativeDistributionState.AVAILABLE
+        }
+        for provider_id, points in PROVIDER_RECOVERY_POINTS.items():
+            if provider_id not in available_provider_ids:
+                continue
+            label = (
+                "F-Droid availability recovery"
+                if provider_id == "fdroid_main"
+                else "Aptoide availability recovery"
+            )
+            components.append(
+                HealthScoreComponent(f"provider_recovery_{provider_id}", label, points)
+            )
+            recovery += points
+
+    age_component = _listing_age_score_component(row.get("age_days"))
+    age_penalty = age_component.points if age_component is not None else 0
+    if age_component is not None:
+        components.append(age_component)
+
     compatibility = str(row.get("compatibility_status") or "")
+    compatibility_component = None
     if compatibility == "Legacy target":
-        score -= 15
+        compatibility_component = HealthScoreComponent(
+            "android_compatibility", "Legacy target SDK", -15
+        )
     elif compatibility == "Aging target":
-        score -= 7
+        compatibility_component = HealthScoreComponent(
+            "android_compatibility", "Aging target SDK", -10
+        )
+    compatibility_penalty = (
+        compatibility_component.points if compatibility_component is not None else 0
+    )
+    if compatibility_component is not None:
+        components.append(compatibility_component)
+
+    version_component = None
     if str(row.get("version_comparison") or "") == "Different":
-        score -= 5
-    return max(0, min(100, score))
+        version_component = HealthScoreComponent(
+            "installed_store_version", "Installed vs Store is Different", -5
+        )
+    version_penalty = version_component.points if version_component is not None else 0
+    if version_component is not None:
+        components.append(version_component)
+
+    unclamped_score = HEALTH_SCORE_BASE + sum(component.points for component in components)
+    score = max(0, min(100, unclamped_score))
+    return HealthScoreBreakdown(
+        score=score,
+        unclamped_score=unclamped_score,
+        play_availability_penalty=play_penalty,
+        alternative_distribution_recovery=recovery,
+        listing_age_penalty=age_penalty,
+        compatibility_penalty=compatibility_penalty,
+        version_comparison_penalty=version_penalty,
+        components=tuple(components),
+    )
+
+
+def health_score_breakdown_lines(row: dict[str, Any]) -> list[str]:
+    breakdown = calculate_health_score_breakdown(row)
+    stored_score = row.get("health_score")
+    if stored_score not in (None, ""):
+        try:
+            if int(str(stored_score)) != breakdown.score:
+                return [
+                    "Stored audit score uses a different calculation; "
+                    "a current-method breakdown is not shown."
+                ]
+        except (TypeError, ValueError):
+            return ["Score breakdown is unavailable for this stored value."]
+    if not breakdown.components:
+        return ["No applicable deductions or recovery."]
+    return [f"{component.label}: {component.points:+d}" for component in breakdown.components]
+
+
+def calculate_health_score(row: dict[str, Any]) -> int:
+    return calculate_health_score_breakdown(row).score
 
 
 def apply_health_score(row: dict[str, Any]) -> None:
@@ -708,6 +847,17 @@ def write_html_report(
         compatibility = presentation.semantic_html_value(
             "compatibility_status", row.get("compatibility_status")
         )
+        health_score = str(row.get("health_score") or "").strip()
+        health_score_html = html.escape(health_score)
+        if health_score:
+            escaped_health_score = html.escape(health_score)
+            breakdown_html = "<br>".join(
+                html.escape(line) for line in health_score_breakdown_lines(row)
+            )
+            health_score_html = (
+                f"<b>{escaped_health_score}/100</b>"
+                f'<div class="score-breakdown">{breakdown_html}</div>'
+            )
         table_rows.append(
             f'<tr class="{_status_class(row)}">'
             f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
@@ -717,7 +867,7 @@ def write_html_report(
             f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
             f"<td>{version_comparison}</td>"
             f"<td>{compatibility}</td>"
-            f"<td>{html.escape(str(row.get('health_score') or ''))}</td>"
+            f"<td>{health_score_html}</td>"
             f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
             "</tr>"
         )
@@ -758,6 +908,7 @@ def write_html_report(
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
+.score-breakdown {{ margin-top: 0.3rem; font-size: 0.82em; line-height: 1.35; }}
 </style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target

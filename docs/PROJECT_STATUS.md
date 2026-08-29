@@ -94,11 +94,11 @@ The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` a
 - keep operational status text in the native status bar and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
 - preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow Medium **Different/Aging target**, dark-orange DemiBold **Legacy target**, and Bold Status, with native selected/disabled roles and unchanged raw values;
 - preserve the locally completed Alternative Distribution Gate 4: built-in F-Droid main plus Advanced/authorized Aptoide behind one non-pluggable exact-package provider model, eligible only after raw `not_found_in_checked_countries`;
-- keep provider evidence secondary/non-fatal and separate from Google Play state, installer source, criticality and Maintenance Score; use the independent two-request/20-second phase and state-sensitive cache;
+- keep provider evidence secondary/non-fatal and separate from Google Play state, installer source and criticality; Maintenance Score may consume only current conclusive Available evidence through the accepted bounded recovery mapping;
 - retain AES-GCM/HKDF protected Aptoide config credentials with honest local copy/casual-disclosure limits, and never expose plaintext/protected credentials or machine identity in diagnostics/exports;
 - keep provider facts in Details/App Details, conditional HTML and explicit JSON schema v2; keep table columns, Friendly Notes, CSV and provider history unchanged;
 - keep Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown listed as not supported in the provider limitations panel; do not scrape them;
-- update Maintenance Score with the approved mutually exclusive best-source removal penalties and independent Store/freshness/SDK/version components, while preserving the regional-unavailability distinction;
+- preserve the locally completed Gate 5 Maintenance Score: definitive checked-market Play absence `-60`, cumulative/deduplicated F-Droid `+10` and Aptoide `+5` recovery only while that penalty is active, Store anomaly/Other `-20`/`-15`, stale/aging `-25`/`-15`, legacy/aging target `-15`/`-10`, Different `-5`, and 0-100 clamping;
 - keep an internal `health_score` rename evidence-gated and separate;
 - require a real packaged Windows x64 user-tested RC before final v1.99 release freeze;
 - treat `QDockWidget` as rejected/not planned; keep richer dashboard work evidence-gated.

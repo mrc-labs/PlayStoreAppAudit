@@ -1121,7 +1121,9 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
     assert "Recent sources" in opened[1][1]
     assert "maintenance heuristic" in opened[2][1]
     assert "not a malware or security score" in opened[2][1]
-    assert "Removed from the checked Play markets: −60" in opened[2][1]
+    assert "Not found in the configured/checked Google Play markets: −60" in opened[2][1]
+    assert "F-Droid main availability recovery: +10" in opened[2][1]
+    assert "Aptoide availability recovery: +5" in opened[2][1]
 
 
 def test_about_dialog_displays_the_canonical_version(

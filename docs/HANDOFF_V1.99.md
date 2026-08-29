@@ -128,7 +128,7 @@ The application retains its established light presentation; this gate does not a
 
 ## Priority 5: Alternative Distribution Discovery
 
-Complete locally as Gate 4. This is secondary exact-package evidence only and never reinterprets Google Play state, installer source, criticality or Maintenance Score.
+Complete locally as Gate 4. This is secondary exact-package evidence only and never reinterprets Google Play state, installer source or criticality. Gate 5 uses only current conclusive Available evidence as bounded Maintenance Score recovery without changing those underlying facts.
 
 - Eligibility is exactly raw `play_status == "not_found_in_checked_countries"`; all available/regional/transient/inconclusive states are skipped.
 - F-Droid main is built in and default-enabled, using only the official active per-package API. Exact ID is mandatory; the archive, search, full index, third-party repos and APK URLs are not used.
@@ -138,36 +138,23 @@ Complete locally as Gate 4. This is secondary exact-package evidence only and ne
 - The separate `alt-v1` cache uses 24-hour Available, 12-hour Not found and 15-minute Inconclusive TTLs, includes normalized Aptoide store name without the key, and is bypassed by Force Full Refresh. There is no provider history.
 - Aptoide's saved key uses a versioned AES-GCM/HKDF-SHA256 envelope bound to a local machine-identity digest and local user. This deters casual config disclosure/copying only; it is not OS/hardware/compromised-account security. Identity or authentication failure retains the ciphertext and requires key replacement.
 - Advanced Settings includes F-Droid/Aptoide controls, masked Replace/Remove/Test connection actions and an expandable provider limitations panel. Samsung, Huawei, Amazon, APKMirror, APKPure and Uptodown are not supported; no scraping is used.
-- Provider evidence is separate in Details/App Details and conditional HTML. JSON is explicit schema v2 with ordered `alternative_distribution.providers`; CSV, table columns/filters, Friendly Notes, history and scoring remain unchanged. Credentials, envelopes and machine identity never enter exports or diagnostics.
+- Provider evidence is separate in Details/App Details and conditional HTML. JSON is explicit schema v2 with ordered `alternative_distribution.providers`; CSV, table columns/filters, Friendly Notes and history remain unchanged. Gate 4 itself did not change scoring; Gate 5 later consumes only conclusive Available evidence through the documented bounded recovery. Credentials, envelopes and machine identity never enter exports or diagnostics.
 
 ## Priority 6: Maintenance Score algorithm
 
-The user-facing concept remains **Maintenance Score**. Approved target penalties:
+Complete locally as Gate 5. The user-facing concept remains **Maintenance Score** and the compatibility field remains `health_score`.
 
-- Removed with no verified alternative distribution: `-60`
-- Removed with only an APK repository: `-50`
-- Removed with an independent store: `-45`
-- Removed with a FOSS repository: `-40`
-- Removed with at least one official OEM store: `-20`
-- Store anomaly: `-20`
-- Other/inconclusive Google Play state: `-15`
-- stale listing, more than 730 days: `-25`
-- aging listing, more than 365 and no more than 730 days: `-15`
-- legacy target SDK relative to the connected device: `-15`
-- aging target SDK relative to the connected device: `-10`
-- installed version differs from Google Play: `-5`
+- Exact `not_found_in_checked_countries` applies one checked-market Google Play absence component of `-60`.
+- Only while that component is active, current conclusive F-Droid main Available evidence recovers `+10` and Aptoide Available evidence recovers `+5`. Recovery is cumulative and provider IDs are deduplicated, so the present maximum is +15 and the net Store effect with both is `-45`.
+- Not found, Inconclusive, Unsupported and Not checked provider states recover nothing. Live and valid cached Available evidence score identically. Unsupported future providers have no scoring behavior.
+- Google Play available receives availability `0` and provider recovery `0`; provider evidence is never an unconditional bonus.
+- `available_in_other_country` and `available_in_fallback_locale_only` remain Store anomaly `-20`; other/inconclusive Play states receive `-15`. Neither receives the definitive `-60`, and availability penalties do not stack.
+- Listing age is `-15` for 366-730 days and `-25` above 730; unknown/unusable age adds nothing.
+- Aging target is `-10`, Legacy target `-15`, and exact conclusive Installed-vs-Store `Different` is `-5`.
+- Independent components compose and the final score is clamped to 0-100. Details, App Details and HTML expose the component breakdown.
+- Raw Play/provider/installer/classification values and the provider cache are unchanged. History stores neither score nor provider evidence; versioned exports retain the score calculated for that audit rather than recomputing it.
 
-Scoring semantics:
-
-1. Removed/alternative penalties are mutually exclusive alternatives for one Google Play availability component. Never apply `-60` and then an alternative penalty.
-2. With multiple verified providers, select the best class: `official_store > foss_repository > independent_store > apk_repository`. Do not stack providers.
-3. Other independent score components continue to compose; keep existing bounds/clamping unless a real defect is found.
-4. Failed queries or inconclusive evidence never count as positive availability evidence.
-5. Regional unavailability is not automatically Removed. Discovery may run, but Removed substitutions apply only if the underlying Google Play state genuinely qualifies.
-6. Review persisted history/versioned-data implications before implementation so score changes do not silently corrupt comparisons.
-7. Update all user-facing methodology/help/report text and tests with the algorithm.
-
-An internal `health_score` -> `maintenance_score` rename is separate and evidence-gated. Any migration must explicitly cover saved Smart Query IDs, settings, serialized/versioned data, backward compatibility and migration tests. It may remain deferred.
+An internal `health_score` -> `maintenance_score` rename is separate and evidence-gated. Smart Query IDs, settings and serialized compatibility keys remain unchanged in Gate 5.
 
 ## Evidence-gated/rejected UI items
 

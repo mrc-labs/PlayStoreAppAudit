@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.change_overview as change_service
+import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 
 AUDIT_CHANGES_FIELD = "_audit_changes"
@@ -768,7 +769,12 @@ class AppDetailsPanel(QFrame):
         health_score = _text(row.get("health_score"))
         if health_score:
             health_line = f"Maintenance Score: {html.escape(health_score)}/100"
-            device_text = f"{device_text}<br>{health_line}" if device_text else health_line
+            breakdown = "<br>".join(
+                html.escape(line)
+                for line in device_insights.health_score_breakdown_lines(dict(row))
+            )
+            health_text = f"{health_line}<br>Score breakdown:<br>{breakdown}"
+            device_text = f"{device_text}<br>{health_text}" if device_text else health_text
         inventory_line = device_inventory_line(row)
         if inventory_line:
             escaped_inventory = html.escape(inventory_line)

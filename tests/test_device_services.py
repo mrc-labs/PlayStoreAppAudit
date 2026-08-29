@@ -30,7 +30,8 @@ def test_compatibility_buckets() -> None:
 
 def test_health_score_penalties_are_transparent() -> None:
     row = {
-        "criticality_key": "orange",
+        "play_status": "available",
+        "age_days": 731,
         "compatibility_status": "Legacy target",
         "version_comparison": "Different",
     }

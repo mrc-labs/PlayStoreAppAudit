@@ -345,7 +345,7 @@ The second v1.99 product gate finalized one shared semantic warning presentation
 
 ### Alternative Distribution Discovery
 
-The Gate 4 implementation is an informational exact-package feature and is secondary to Google Play evidence. It never replaces or reinterprets Google Play availability/country evidence, installer source, criticality or Maintenance Score. Automatic checks run only after the canonical raw state `play_status == "not_found_in_checked_countries"`; available, regional fallback, transient and inconclusive Google Play states are ineligible.
+The Gate 4 implementation is an informational exact-package feature and is secondary to Google Play evidence. It never replaces or reinterprets Google Play availability/country evidence, installer source or criticality. Automatic checks run only after the canonical raw state `play_status == "not_found_in_checked_countries"`; available, regional fallback, transient and inconclusive Google Play states are ineligible. Gate 5 consumes only current conclusive Available provider evidence as a bounded recovery inside Maintenance Score while preserving all underlying states.
 
 The deliberately small, non-pluggable `AlternativeDistributionProvider` protocol has two v1.99 implementations sharing one typed result/state model, one bounded executor, one independent cache and one presentation/export path:
 
@@ -366,26 +366,24 @@ Evidence appears only in the separate **Alternative distribution** subsection of
 
 ### Maintenance Score v1.99 update
 
-The user-facing name remains **Maintenance Score**. The v1.99 algorithm uses these target penalties:
+Gate 5 is implemented locally. The user-facing name remains **Maintenance Score** and every app starts at 100. The algorithm uses raw, non-overlapping components:
 
-- Google Play Removed with no verified alternative distribution: `-60`;
-- Removed with only an APK repository: `-50`;
-- Removed with an independent store: `-45`;
-- Removed with a FOSS repository: `-40`;
-- Removed with at least one official OEM store: `-20`;
-- Store anomaly: `-20`;
-- Other/inconclusive Google Play state: `-15`;
+- exact `play_status == "available"`: Google Play availability `0`;
+- exact `play_status == "not_found_in_checked_countries"`: checked-market Google Play absence `-60`;
+- `available_in_other_country` or `available_in_fallback_locale_only`: Store anomaly `-20`, never `-60`;
+- any other/inconclusive Google Play state: `-15`, never stacked with the definitive `-60`;
 - stale listing, more than 730 days: `-25`;
-- aging listing, more than 365 and no more than 730 days: `-15`;
+- aging listing, 366-730 days: `-15`;
+- unknown/unusable listing age: `0` freshness penalty;
 - legacy target SDK relative to the connected device: `-15`;
 - aging target SDK relative to the connected device: `-10`;
-- installed version differs from Google Play: `-5`.
+- exact conclusive Installed-vs-Store `Different`: `-5`.
 
-The Removed/alternative penalties are mutually exclusive alternatives for one Google Play availability component. Select the best verified distribution class in this order: `official_store > foss_repository > independent_store > apk_repository`; never stack providers or apply `-60` before an alternative penalty. Other independent score components continue to compose and existing bounds/clamping remain unless a real defect is found. Provider failure or inconclusive evidence is never positive availability evidence. Regional unavailability may trigger discovery but is not automatically Removed and does not receive the Removed substitutions unless the underlying Google Play state genuinely qualifies.
+Only while the definitive checked-market absence `-60` component is active, current conclusive F-Droid main availability recovers `+10` and current conclusive Aptoide availability recovers `+5`. The recoveries are cumulative and provider IDs are deduplicated, so the current maximum is the natural sum `+15`: no verified alternative gives a net Store effect of `-60`, Aptoide `-55`, F-Droid `-50`, and both `-45`. Cached and live Available evidence score identically. Not found, Inconclusive, Unsupported and Not checked evidence provides no recovery. Unsupported/future providers have no score branch. Provider presence never raises a Google Play-available app's score.
 
-Gate 4 deliberately does not connect alternative-provider evidence to this planned score update. The current Maintenance Score, `health_score` compatibility field, criticality and Google Play classifications remain unchanged until the separate score gate is implemented and validated.
+The raw Google Play, provider, installer and classification values are never mutated. The score breakdown exposes the base Google Play component and each provider recovery separately in Details, App Details and HTML reports. Independent freshness, SDK and version components continue to compose; the final result is clamped to 0-100.
 
-Before implementation, review history/versioned-data implications so score changes do not silently break audit comparisons. Update user-facing methodology/report text and tests with the algorithm. A possible internal `health_score` to `maintenance_score` rename remains a separate evidence-gated migration requiring Smart Query, settings, serialized-data, backward-compatibility and migration tests; defer it when cost exceeds benefit.
+Audit history stores neither Maintenance Score nor provider evidence, so its baseline schema and comparison semantics remain unchanged. Versioned result exports retain the score calculated for that audit and are not recomputed retroactively. The compatibility-sensitive `health_score` field, Smart Query ID, settings key and serialized key remain unchanged; an internal rename remains a separate evidence-gated migration.
 
 ### Explicit UX decisions
 
