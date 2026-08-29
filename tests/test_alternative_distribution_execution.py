@@ -216,16 +216,44 @@ def test_pause_prevents_submission_resume_continues_and_stop_prevents_pending(tm
     )
 
 
-def test_wall_budget_marks_unsubmitted_checks_not_checked(tmp_path) -> None:
+def test_paused_time_does_not_consume_provider_phase_budget(tmp_path) -> None:
     pause = threading.Event()
+    provider = FakeProvider("fdroid_main", "F-Droid")
+    rows = _rows()[:1]
+
+    thread = threading.Thread(
+        target=lambda: alternative.run_alternative_distribution_phase(
+            rows,
+            {},
+            pause_event=pause,
+            cancel_event=threading.Event(),
+            providers=[provider],
+            cache_file=tmp_path / "cache.json",
+            phase_budget=0.08,
+        )
+    )
+    thread.start()
+    time.sleep(0.12)
+
+    assert thread.is_alive()
+    assert provider.calls == 0
+
+    pause.set()
+    thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert provider.calls == 1
+    assert rows[0][alternative.ROW_FIELD][0]["state"] == "available"
+
+
+def test_wall_budget_marks_unsubmitted_checks_not_checked(tmp_path) -> None:
     rows = _rows()
 
     _run(
         rows,
         [FakeProvider("fdroid_main", "F-Droid")],
         tmp_path / "budget.json",
-        pause_event=pause,
-        phase_budget=0.08,
+        phase_budget=0,
     )
 
     assert rows[0][alternative.ROW_FIELD][0]["state"] == "not_checked"

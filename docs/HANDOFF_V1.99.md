@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 
-Status: **v1.9.0 is published, independently verified and immutable. Post-release housekeeping is complete. v1.99 implementation is active: cooperative audit Stop is merged on `main`; local product gates have productionized C2, semantic warnings and the F-Droid/Aptoide alternative-distribution evidence phase. Remote activity remains frozen until explicitly resumed.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 is feature complete locally with cooperative Stop, production C2, semantic warnings, F-Droid/authorized Aptoide evidence and the Gate 5 Maintenance Score. Stabilization is preparing the mandatory packaged Windows x64 acceptance candidate; remote activity remains frozen until explicitly resumed.**
 
 ## Start here
 
@@ -77,7 +77,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 
 ## v1.99 scope boundary
 
-v1.99 is likely the final Windows x64-only ETB before v2.0. It closes meaningful pre-v2.0 work and concrete v1.9 use findings; it is not an open-ended feature release. Split implementation into reviewable PRs with local validation before pushes. Do not start multiple high-risk product changes in one PR.
+v1.99 is feature complete and likely the final Windows x64-only ETB before v2.0. Stabilization and the mandatory packaged acceptance candidate must not reopen product scope. Any concrete acceptance correction remains a narrow, reviewable change with complete local validation.
 
 ## Priority 1: cooperative Stop/Cancel
 
@@ -134,7 +134,7 @@ Complete locally as Gate 4. This is secondary exact-package evidence only and ne
 - F-Droid main is built in and default-enabled, using only the official active per-package API. Exact ID is mandatory; the archive, search, full index, third-party repos and APK URLs are not used.
 - Aptoide is Advanced/opt-in and default-disabled. It requires an authorized `store_name` and Partner API key, sent only via the documented `Authorization: ApiKey …` header to exact `app/get` requests. The API does not document a reliable public listing URL, so none is fabricated.
 - One non-pluggable protocol and typed Available/Not found/Inconclusive/Unsupported/Not checked result model are shared by orchestration, caching, Details, App Details, HTML and JSON.
-- One independent provider executor is capped at two total requests, with 10-second request timeouts and a 20-second phase budget. Pause blocks new submissions; Resume continues; Stop prevents new submissions and retains completed evidence. Provider failure never fails successful Google Play work.
+- One independent provider executor is capped at two total requests, with 10-second request timeouts and a 20-second active-work phase budget. Pause blocks new submissions without consuming that budget; Resume continues; Stop prevents new submissions and retains completed evidence. Provider failure never fails successful Google Play work.
 - The separate `alt-v1` cache uses 24-hour Available, 12-hour Not found and 15-minute Inconclusive TTLs, includes normalized Aptoide store name without the key, and is bypassed by Force Full Refresh. There is no provider history.
 - Aptoide's saved key uses a versioned AES-GCM/HKDF-SHA256 envelope bound to a local machine-identity digest and local user. This deters casual config disclosure/copying only; it is not OS/hardware/compromised-account security. Identity or authentication failure retains the ciphertext and requires key replacement.
 - Advanced Settings includes F-Droid/Aptoide controls, masked Replace/Remove/Test connection actions and an expandable provider limitations panel. Samsung, Huawei, Amazon, APKMirror, APKPure and Uptodown are not supported; no scraping is used.
@@ -154,11 +154,11 @@ Complete locally as Gate 5. The user-facing concept remains **Maintenance Score*
 - Independent components compose and the final score is clamped to 0-100. Details, App Details and HTML expose the component breakdown.
 - Raw Play/provider/installer/classification values and the provider cache are unchanged. History stores neither score nor provider evidence; versioned exports retain the score calculated for that audit rather than recomputing it.
 
-An internal `health_score` -> `maintenance_score` rename is separate and evidence-gated. Smart Query IDs, settings and serialized compatibility keys remain unchanged in Gate 5.
+The internal `health_score` -> `maintenance_score` migration is deferred to v2.0. Smart Query IDs, settings and serialized compatibility keys remain unchanged in v1.99.
 
-## Evidence-gated/rejected UI items
+## Deferred/rejected UI items
 
-- Richer dashboard/status overview: implement only if a prototype proves a distinct workflow beyond Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- Richer Dashboard/status overview: not v1.99 and not required for the v2.0 core; revisit only in later v2.x or v3.0 when mature multi-source and longitudinal/history workflows justify it.
 - `QDockWidget`: rejected/not planned. Do not prototype it. Retain Auto/Right/Below/Hidden and narrow/wide/extra-wide Details behavior.
 - Concrete bugs/workflow problems/polish found through real v1.9 use: assess each against scope; do not automatically accept everything.
 
@@ -189,7 +189,15 @@ Preserve the established v2.0 goals:
 - production signing/notarization if feasible and fully validated;
 - CLI/headless support built on domain/service layers rather than driving Qt.
 
-Add a major v2.0 pillar: **Local APK Library / modern LocalAPK successor core**.
+Add a major v2.0 pillar: **Local APK Library / modern LocalAPK successor core**. Local APK Audit is also deferred entirely to v2.0.
+
+Recommended technical sequence:
+
+1. parser/verifier spike;
+2. typed `LocalArtifact` with SHA-256 artifact identity;
+3. package-deduplicated Store/provider fan-out;
+4. transient Local APK Audit;
+5. persistent Local APK Library.
 
 Initial v2.0 scope:
 

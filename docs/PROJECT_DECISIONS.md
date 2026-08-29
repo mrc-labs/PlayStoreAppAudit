@@ -321,7 +321,7 @@ The following remain rejected for v1.9: a global Fluent redesign, an icon librar
 
 ## v1.99 product decisions
 
-v1.99 is the active cycle and likely final Windows x64-only release before v2.0. It is a controlled pre-v2.0 closure milestone, not an open-ended feature release.
+v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization and release-candidate work must preserve the frozen product scope.
 
 ### Cooperative audit Stop/Cancel
 
@@ -354,7 +354,7 @@ The deliberately small, non-pluggable `AlternativeDistributionProvider` protocol
 
 The canonical states are Available, Not found, Inconclusive, Unsupported and Not checked. A provider must return its documented exact absence response to produce Not found; ambiguous, malformed, authentication, rate-limit, network and server failures remain Inconclusive. Availability means only that a provider returned an active listing for the exact Android package identifier. It does not establish safety, publisher authorization, binary equivalence, official status or Google Play equivalence.
 
-Provider execution is a separate non-fatal phase after stable Google Play rows. One independent executor allows at most two total provider requests, with a 10-second request timeout and 20-second phase budget. Pause prevents new submissions, Resume continues pending work within the budget, and Stop prevents new submissions while preserving already completed evidence. The existing C2 progress widget switches to busy/indeterminate without moving; status text remains in the native status bar.
+Provider execution is a separate non-fatal phase after stable Google Play rows. One independent executor allows at most two total provider requests, with a 10-second request timeout and 20-second active-work phase budget. Pause prevents new submissions without consuming that phase budget, Resume continues pending work, and Stop prevents new submissions while preserving already completed evidence. The existing C2 progress widget switches to busy/indeterminate without moving; status text remains in the native status bar.
 
 The independent `alt-v1` cache keys provider, exact normalized package ID and, for Aptoide, normalized non-secret store name. Available results live for 24 hours, Not found for 12 hours and Inconclusive for 15 minutes; Unsupported/Not checked are not cached. Force Full Refresh bypasses it. No provider history/change events are introduced.
 
@@ -383,19 +383,21 @@ Only while the definitive checked-market absence `-60` component is active, curr
 
 The raw Google Play, provider, installer and classification values are never mutated. The score breakdown exposes the base Google Play component and each provider recovery separately in Details, App Details and HTML reports. Independent freshness, SDK and version components continue to compose; the final result is clamped to 0-100.
 
-Audit history stores neither Maintenance Score nor provider evidence, so its baseline schema and comparison semantics remain unchanged. Versioned result exports retain the score calculated for that audit and are not recomputed retroactively. The compatibility-sensitive `health_score` field, Smart Query ID, settings key and serialized key remain unchanged; an internal rename remains a separate evidence-gated migration.
+Audit history stores neither Maintenance Score nor provider evidence, so its baseline schema and comparison semantics remain unchanged. Versioned result exports retain the score calculated for that audit and are not recomputed retroactively. The compatibility-sensitive `health_score` field, Smart Query ID, settings key and serialized key remain unchanged in v1.99; the internal rename is deferred to v2.0 as a separate compatibility migration.
 
 ### Explicit UX decisions
 
 - `QDockWidget` is rejected and not planned. Retain Auto/Right/Below/Hidden Details placement with narrow/wide/extra-wide internal responsiveness.
-- A richer dashboard/status overview remains evidence-gated and ships only if a prototype proves a distinct workflow beyond Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- A richer Dashboard/status overview is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when mature multi-source and longitudinal/history workflows justify it.
 - Concrete bugs and polish found through real v1.9 use may be considered individually; they are not automatically in scope.
 
 Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later work.
 
 ### v2.0 Local APK Library pillar
 
-v2.0 adds a modern Local APK Library/successor core. It will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
+Local APK Audit is deferred entirely to v2.0 rather than entering v1.99 with package-only identity. The v2.0 sequence is: parser/verifier spike; typed `LocalArtifact` plus SHA-256 artifact identity; package-deduplicated Store/provider fan-out; transient Local APK Audit; persistent Local APK Library.
+
+The Library will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
 
 Later v2.x candidates include metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
 

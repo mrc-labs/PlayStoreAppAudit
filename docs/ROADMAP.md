@@ -76,7 +76,7 @@ A global Fluent redesign, an icon library without demonstrated need, unnecessary
 
 ## v1.99 pre-v2.0 closure
 
-v1.99 is the active cycle and likely final Windows x64-only release before v2.0. Its purpose is to close meaningful outstanding pre-v2.0 items, not to become an uncontrolled feature release. The current application/source version remains `1.9.0` until a later deliberate version freeze.
+v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization must preserve the approved scope while preparing the mandatory packaged Windows x64 acceptance candidate. The current application/source version remains `1.9.0` until a later deliberate version freeze.
 
 ### Cooperative Stop/Cancel
 
@@ -113,7 +113,7 @@ Gate 4 is implemented locally with two secondary exact-package providers behind 
 - F-Droid's active main repository is built in and enabled by default, using only its official per-package API.
 - Aptoide is Advanced/opt-in and disabled by default; it requires an authorized store identifier and Partner API key, uses the documented exact `app/get` contract and provides a minimal authenticated connection test.
 
-Automatic provider work is strictly eligible only for raw `play_status == "not_found_in_checked_countries"`. It runs after stable Google Play rows with one two-worker executor, 10-second request timeouts, a 20-second phase budget and cooperative Pause/Resume/Stop. Failures are non-fatal. Separate state-sensitive cache TTLs are 24 hours Available, 12 hours Not found and 15 minutes Inconclusive; Force Full Refresh bypasses them.
+Automatic provider work is strictly eligible only for raw `play_status == "not_found_in_checked_countries"`. It runs after stable Google Play rows with one two-worker executor, 10-second request timeouts, a 20-second active-work phase budget and cooperative Pause/Resume/Stop; intentionally paused time does not consume that budget. Failures are non-fatal. Separate state-sensitive cache TTLs are 24 hours Available, 12 hours Not found and 15 minutes Inconclusive; Force Full Refresh bypasses them.
 
 The provider API key is stored only as a versioned machine/user-bound AES-GCM/HKDF-SHA256 protected envelope using the single pinned `cryptography` dependency. This is local config-copy/casual-disclosure protection, not OS/hardware or compromised-account security. Details/App Details, conditional HTML and JSON schema v2 expose neutral provider evidence; the table, Friendly Notes, CSV, history, installer source and Google Play state remain unchanged. Gate 5 subsequently connected only conclusive Available evidence to the bounded Maintenance Score recovery described below.
 
@@ -136,11 +136,11 @@ Gate 5 is complete locally. Keep the user-facing **Maintenance Score** name and 
 
 F-Droid and Aptoide recovery is cumulative and deduplicated; the present mapping therefore recovers at most +15. Not found, Inconclusive, Unsupported and Not checked states recover nothing. Live and valid cached Available evidence are equivalent. No recovery applies when Google Play is available, and unsupported future providers have no scoring behavior. Regional and inconclusive Play states never receive the definitive `-60`; unknown listing age adds no freshness penalty. Independent components compose and the final score is clamped to 0-100.
 
-Details, App Details and HTML reports expose the score components without mutating raw evidence. History does not persist scores/provider evidence, while versioned results preserve the score computed at export time. An internal `health_score` -> `maintenance_score` rename remains a separate evidence-gated migration requiring explicit Smart Query, settings, serialized-data, backward-compatibility and migration coverage.
+Details, App Details and HTML reports expose the score components without mutating raw evidence. History does not persist scores/provider evidence, while versioned results preserve the score computed at export time. The internal `health_score` -> `maintenance_score` migration is deferred to v2.0 and will require explicit Smart Query, settings, serialized-data, backward-compatibility and migration coverage.
 
-### Evidence-gated and rejected UI work
+### Deferred and rejected UI work
 
-- A richer dashboard/status overview remains evidence-gated and must add a workflow not already covered by Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- A richer Dashboard/status overview is not part of v1.99 and is not required for the v2.0 core. Revisit it in later v2.x or v3.0 only when multiple mature sources and longitudinal/history workflows justify a distinct surface.
 - `QDockWidget` is rejected/not planned. Do not prototype it. Keep Auto/Right/Below/Hidden plus narrow/wide/extra-wide Details responsiveness.
 - Review concrete bugs, workflow issues and polish found through real v1.9 use individually rather than accepting all observations automatically.
 
@@ -178,7 +178,17 @@ CLI/headless support remains v2.0-or-later scope. It must reuse service/domain b
 
 ### Local APK Library / modern LocalAPK successor core
 
-A Local APK Library is a major v2.0 product pillar. Initial scope:
+A Local APK Library is a major v2.0 product pillar. The transient Local APK Audit is also deferred entirely to v2.0 because correct support requires artifact-aware identity and a vetted untrusted-APK parser/verifier boundary.
+
+Recommended technical sequence:
+
+1. parser/verifier spike with malformed-input, packaging and legal validation;
+2. typed `LocalArtifact` model with SHA-256 artifact identity;
+3. package-deduplicated Store/provider lookup and artifact fan-out;
+4. transient Local APK Audit input source;
+5. persistent Local APK Library.
+
+Initial Library scope:
 
 - scan one or more local APK directories recursively;
 - parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical;

@@ -533,12 +533,23 @@ def run_alternative_distribution_phase(
                 pending.append((row, provider))
 
     started = time.monotonic()
+    paused_since: float | None = None
+    paused_seconds = 0.0
     active: dict[Future[AlternativeDistributionResult], tuple[dict[str, Any], AlternativeDistributionProvider]] = {}
     unfinished_active: list[tuple[dict[str, Any], AlternativeDistributionProvider]] = []
     executor = ThreadPoolExecutor(max_workers=max(1, min(ALT_MAX_WORKERS, max_workers)), thread_name_prefix="alternative-provider")
     try:
         while pending or active:
-            budget_expired = time.monotonic() - started >= phase_budget
+            now = time.monotonic()
+            if pause_event.is_set():
+                if paused_since is not None:
+                    paused_seconds += now - paused_since
+                    paused_since = None
+            elif paused_since is None:
+                paused_since = now
+            current_pause = now - paused_since if paused_since is not None else 0.0
+            active_seconds = now - started - paused_seconds - current_pause
+            budget_expired = active_seconds >= phase_budget
             if cancel_event.is_set() or budget_expired:
                 break
             while pending and len(active) < max(1, min(ALT_MAX_WORKERS, max_workers)) and pause_event.is_set() and not cancel_event.is_set():

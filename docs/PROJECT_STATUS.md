@@ -85,9 +85,9 @@ The accepted product/UX implementation merged through PRs `#116`, `#117` and `#1
 - Details Panel narrow/wide/extra-wide responsiveness based on actual viewport width, with 760/680 and 1180/1080 px hysteresis and the accepted three-column grouping.
 - A native `QStatusBar` reusing the same canonical status label and progress widget, with active-only progress, no duplicate source/device identity and no new state/persistence model.
 
-## Active v1.99 direction
+## Feature-complete v1.99 direction
 
-The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` and `HANDOFF_V1.99.md`. Key approved planning boundaries are:
+The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` and `HANDOFF_V1.99.md`. Stabilization and the mandatory packaged Windows x64 acceptance candidate must preserve these boundaries:
 
 - preserve the cooperative safe Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`;
 - preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
@@ -99,9 +99,11 @@ The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` a
 - keep provider facts in Details/App Details, conditional HTML and explicit JSON schema v2; keep table columns, Friendly Notes, CSV and provider history unchanged;
 - keep Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown listed as not supported in the provider limitations panel; do not scrape them;
 - preserve the locally completed Gate 5 Maintenance Score: definitive checked-market Play absence `-60`, cumulative/deduplicated F-Droid `+10` and Aptoide `+5` recovery only while that penalty is active, Store anomaly/Other `-20`/`-15`, stale/aging `-25`/`-15`, legacy/aging target `-15`/`-10`, Different `-5`, and 0-100 clamping;
-- keep an internal `health_score` rename evidence-gated and separate;
+- defer the internal `health_score` rename to v2.0 and retain all v1.99 compatibility identifiers;
+- defer Local APK Audit entirely to v2.0, where it follows a parser/verifier spike, typed SHA-256 `LocalArtifact` identity and package-deduplicated Store/provider fan-out;
 - require a real packaged Windows x64 user-tested RC before final v1.99 release freeze;
-- treat `QDockWidget` as rejected/not planned; keep richer dashboard work evidence-gated.
+- treat `QDockWidget` as rejected/not planned;
+- keep a richer Dashboard out of v1.99 and the v2.0 core; revisit it only in later v2.x or v3.0 when mature multi-source/history workflows justify it.
 
 Concrete bugs and polish found through actual v1.9 use may be reviewed individually. They are not automatically accepted scope.
 
@@ -109,7 +111,7 @@ Concrete bugs and polish found through actual v1.9 use may be reviewed individua
 
 v2.0 remains the first planned return to Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 release distribution. Production signing/notarization is preferred but conditional on real eligibility, credentials, cost and end-to-end validation. CLI/headless support must reuse domain/service layers rather than drive Qt.
 
-A Local APK Library / modern LocalAPK successor core is now a major v2.0 product pillar: recursive local APK-directory scanning, package/label/version and useful SDK/icon/file/path metadata, Store/alternative-distribution comparison, and reuse of existing classification/evidence/Details/filter/Smart Query/export architecture. Mass rename, duplicate management, safe outdated-APK cleanup, custom integrations and Explorer integration remain later v2.x candidates.
+A Local APK Library / modern LocalAPK successor core is a major v2.0 product pillar. Its technical sequence begins with a vetted untrusted-APK parser/verifier boundary, then a typed `LocalArtifact` model with SHA-256 identity and package-deduplicated Store/provider fan-out, followed by transient Local APK Audit and the persistent Library. Mass rename, duplicate management, safe outdated-APK cleanup, custom integrations and Explorer integration remain later v2.x candidates.
 
 ## Explicitly removed / rejected
 

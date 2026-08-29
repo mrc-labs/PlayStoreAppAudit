@@ -166,16 +166,17 @@ v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ET
 
 ### v1.99 product guardrails
 
-v1.99 is the active cycle and likely final Windows x64-only release before v2.0. Keep it controlled rather than treating it as an open-ended feature release.
+v1.99 is feature complete and is likely the final Windows x64-only release before v2.0. Keep stabilization and release-candidate work within the frozen product scope.
 
 - Preserve the implemented cooperative Stop/Cancel lifecycle across the real audit pipeline. Never use `QThread.terminate()` or another unsafe forced-termination mechanism. Preserve completed valid results and independent cache entries, mark the audit cancelled/incomplete, do not promote it to the completed history baseline, and return to a reusable idle state.
 - Preserve the accepted C2 operations header: Run/Pause/Resume, Stop, the canonical always-present progress widget, Export Results and Clear Results in that order. The second header row keeps status chips, Hide System Apps, search and the single Details selector. Details continues to reuse the same Auto/Right/Below/Hidden state and View-menu synchronization; do not duplicate state or move operational status text out of the native status bar.
 - Preserve the semantic warning hierarchy across the table, Details surfaces and HTML report: `Different` and `Aging target` reuse the status palette's dark-yellow foreground with Medium emphasis; `Legacy target` reuses dark orange with DemiBold emphasis; the Status column remains Bold. The selection background remains Qt-managed, with warning colours chosen for both selected and unselected readability, and machine-readable values remain unchanged.
-- Alternative Distribution Discovery is informational exact-package-ID evidence, not endorsement or an automatic equivalent-app association. Approved providers are Samsung Galaxy Store, Huawei AppGallery, F-Droid, Aptoide, Uptodown, APKMirror and APKPure; Amazon Appstore is excluded. Automatic checks require conclusive eligible Google Play evidence and must not run for transient, scraper or ambiguous failures.
+- Alternative Distribution Discovery is informational exact-package-ID evidence, not endorsement or an automatic equivalent-app association. v1.99 automatic checks are limited to F-Droid main and optional authorized Aptoide, require conclusive eligible Google Play evidence and must not run for transient, scraper or ambiguous failures. The remaining providers in the limitations panel are not implemented.
 - The v1.99 Maintenance Score update applies `-60` only for raw `play_status == "not_found_in_checked_countries"`, then recovers `+10` for current conclusive F-Droid main availability and `+5` for current conclusive Aptoide availability. Recovery is cumulative, deduplicated, limited to the current `+15` provider mapping and disabled unless the `-60` component is active; it is never an unconditional multi-store bonus. Store anomaly is `-20`; Other/inconclusive is `-15`; stale/aging freshness is `-25`/`-15`; legacy/aging target SDK is `-15`/`-10`; installed/store difference is `-5`. Regional unavailability is not definitive absence. Scores remain clamped to 0-100 and `health_score` remains the compatibility identifier.
-- An internal `health_score` rename remains a separate evidence-gated compatibility migration; it is not implied by the scoring update.
+- Defer the internal `health_score` rename to v2.0. It is a separate compatibility migration and is not implied by the scoring update.
 - `QDockWidget` is rejected and not planned. Retain the Details Panel's Auto/Right/Below/Hidden placement and narrow/wide/extra-wide responsiveness.
-- A richer dashboard remains evidence-gated and must add a distinct workflow not already covered by existing summary, filters, Changes, Details and status surfaces.
+- Do not add Local APK Audit functionality in v1.99. Begin v2.0 with a parser/verifier spike, then a typed `LocalArtifact` model with SHA-256 artifact identity and package-deduplicated Store/provider fan-out before implementing Local APK Audit and the persistent Local APK Library.
+- A richer dashboard is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when multiple mature sources and longitudinal/history workflows justify it.
 
 ### v2.0-or-later production profile
 
