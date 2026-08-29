@@ -345,20 +345,24 @@ The second v1.99 product gate finalized one shared semantic warning presentation
 
 ### Alternative Distribution Discovery
 
-The previously rejected idea of automatic alternative-source association is replaced by an informational exact-package feature named **Alternative Distribution Discovery**. It reports evidence that the same Android package is distributed elsewhere without implying endorsement, equivalence or guaranteed installation safety.
+The Gate 4 implementation is an informational exact-package feature and is secondary to Google Play evidence. It never replaces or reinterprets Google Play availability/country evidence, installer source, criticality or Maintenance Score. Automatic checks run only after the canonical raw state `play_status == "not_found_in_checked_countries"`; available, regional fallback, transient and inconclusive Google Play states are ineligible.
 
-Approved providers and classifications are:
+The deliberately small, non-pluggable `AlternativeDistributionProvider` protocol has two v1.99 implementations sharing one typed result/state model, one bounded executor, one independent cache and one presentation/export path:
 
-- Samsung Galaxy Store and Huawei AppGallery: `official_store`;
-- F-Droid: `foss_repository`;
-- Aptoide and Uptodown: `independent_store`;
-- APKMirror and APKPure: `apk_repository`, visibly identified as APK repositories.
+- **F-Droid main repository** is built in, enabled by default and may be disabled in Advanced Settings. It uses only the official per-package API for active packages in the main repository, requires exact `packageName` equality and never queries the archive, full index, search, third-party repositories or APK URLs.
+- **Aptoide** is Advanced/opt-in and disabled by default. It requires a user-supplied authorized `store_name` and Partner API key. It uses the documented `app/get` exact `package_name` request with `Authorization: ApiKey …`; the API key is never placed in the URL. The response's exact package and documented `file.vername`/`file.vercode` fields are used. No documented reliable public listing URL was established, so the UI does not invent one. A small `apps/get` request with the configured store and `limit=1` powers **Test connection** without depending on a permanent package.
 
-Amazon Appstore is explicitly excluded.
+The canonical states are Available, Not found, Inconclusive, Unsupported and Not checked. A provider must return its documented exact absence response to produce Not found; ambiguous, malformed, authentication, rate-limit, network and server failures remain Inconclusive. Availability means only that a provider returned an active listing for the exact Android package identifier. It does not establish safety, publisher authorization, binary equivalence, official status or Google Play equivalence.
 
-Automatic discovery is limited to Removed, regional/unavailable-in-selected-country cases, and Store anomalies only when Google Play evidence is sufficiently conclusive. It must not run automatically for transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app check may be evaluated.
+Provider execution is a separate non-fatal phase after stable Google Play rows. One independent executor allows at most two total provider requests, with a 10-second request timeout and 20-second phase budget. Pause prevents new submissions, Resume continues pending work within the budget, and Stop prevents new submissions while preserving already completed evidence. The existing C2 progress widget switches to busy/indeterminate without moving; status text remains in the native status bar.
 
-Exact Android package ID is the primary identity key; fuzzy title matching alone is never sufficient. Retain provider URL and verification timestamp plus publisher/developer/version/update evidence where available. Review each provider's API/search mechanism, exact package lookup, rate limits, terms/access constraints, regional behavior, available metadata and maintenance risk before implementation.
+The independent `alt-v1` cache keys provider, exact normalized package ID and, for Aptoide, normalized non-secret store name. Available results live for 24 hours, Not found for 12 hours and Inconclusive for 15 minutes; Unsupported/Not checked are not cached. Force Full Refresh bypasses it. No provider history/change events are introduced.
+
+Aptoide's protected config value uses `cryptography` AES-GCM with an HKDF-SHA256 key derived from application context, a local machine-identity digest and local user identity. The versioned `v1:` envelope contains random salt, nonce and authenticated ciphertext; no raw key, derived key or machine identifier is stored. Windows uses MachineGuid, Linux uses established machine-id files and macOS uses the platform UUID, with a weaker deterministic host/user/network-node fallback. This protects against casual config disclosure and trivial copied-config reuse, not a compromised account, reverse engineering, hardware attack or enterprise threat model. Decryption failure retains the ciphertext, disables/unavailable-gates Aptoide and asks for credential replacement without plaintext fallback.
+
+Advanced Settings includes provider controls and a compact expandable availability/limitations panel for F-Droid, Aptoide, Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown. The latter six are explicitly not implemented because no approved general exact-catalogue API contract was established; the application does not scrape them.
+
+Evidence appears only in the separate **Alternative distribution** subsection of Details/App Details and a conditional HTML section. Friendly Notes and the results-table columns/filters are unchanged. Versioned JSON is explicitly schema v2 with a deterministic `alternative_distribution.providers` collection; CSV remains unchanged. Secrets, protected envelopes and machine identifiers are excluded from exports and diagnostics. The common model intentionally has no speculative `provider_class`.
 
 ### Maintenance Score v1.99 update
 
@@ -378,6 +382,8 @@ The user-facing name remains **Maintenance Score**. The v1.99 algorithm uses the
 - installed version differs from Google Play: `-5`.
 
 The Removed/alternative penalties are mutually exclusive alternatives for one Google Play availability component. Select the best verified distribution class in this order: `official_store > foss_repository > independent_store > apk_repository`; never stack providers or apply `-60` before an alternative penalty. Other independent score components continue to compose and existing bounds/clamping remain unless a real defect is found. Provider failure or inconclusive evidence is never positive availability evidence. Regional unavailability may trigger discovery but is not automatically Removed and does not receive the Removed substitutions unless the underlying Google Play state genuinely qualifies.
+
+Gate 4 deliberately does not connect alternative-provider evidence to this planned score update. The current Maintenance Score, `health_score` compatibility field, criticality and Google Play classifications remain unchanged until the separate score gate is implemented and validated.
 
 Before implementation, review history/versioned-data implications so score changes do not silently break audit comparisons. Update user-facing methodology/report text and tests with the algorithm. A possible internal `health_score` to `maintenance_score` rename remains a separate evidence-gated migration requiring Smart Query, settings, serialized-data, backward-compatibility and migration tests; defer it when cost exceeds benefit.
 

@@ -16,6 +16,7 @@ from typing import Any
 
 import requests
 
+import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
@@ -699,6 +700,7 @@ def write_html_report(
         ).strip()
         device_html = f'<p class="muted">Device: {html.escape(name or "Android device")} · Android {html.escape(str(device_summary.get("android_version") or "?"))} (API {html.escape(str(device_summary.get("android_api") or "?"))}) · Security patch {html.escape(str(device_summary.get("security_patch") or "?"))}</p>'
     table_rows = []
+    alternative_rows: list[str] = []
     for row in rows:
         version_comparison = presentation.semantic_html_value(
             "version_comparison", row.get("version_comparison")
@@ -719,10 +721,44 @@ def write_html_report(
             f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
             "</tr>"
         )
+        provider_results = alternative_distribution.provider_results(row)
+        if provider_results:
+            provider_items: list[str] = []
+            for result in provider_results:
+                details = [
+                    f"Status: {alternative_distribution.STATE_LABELS[result.state]}",
+                    f"Checked: {result.checked_at}" if result.checked_at else "",
+                    f"Source: {result.provenance.title()}" if result.provenance else "",
+                    f"Version: {result.version_name}" if result.version_name else "",
+                    f"Version code: {result.version_code}" if result.version_code != "" else "",
+                    f"Reason: {result.reason}" if result.reason else "",
+                ]
+                detail_text = " · ".join(html.escape(item) for item in details if item)
+                link = (
+                    f' · <a href="{html.escape(result.listing_url, quote=True)}">Open provider listing</a>'
+                    if result.listing_url
+                    else ""
+                )
+                provider_items.append(
+                    f"<li><b>{html.escape(result.provider_name)}</b> — {detail_text}{link}</li>"
+                )
+            package = html.escape(str(row.get("package_name") or ""))
+            alternative_rows.append(
+                f"<section><h3>{package}</h3><ul>{''.join(provider_items)}</ul></section>"
+            )
+    alternative_html = ""
+    if alternative_rows:
+        alternative_html = (
+            "<h2>Alternative distribution checks</h2>"
+            "<p class=\"muted\">Availability means only that a provider returned an active "
+            "listing for the exact package identifier; it does not establish publisher identity "
+            "or binary equivalence.</p>"
+            + "".join(alternative_rows)
+        )
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table></div></body></html>"""
+</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 
@@ -779,6 +815,15 @@ def create_diagnostic_bundle(
     sanitized.pop("recent_sources", None)
     sanitized.pop("saved_filters", None)
     sanitized.pop("smart_queries", None)
+    alternative_settings = sanitized.get("alternative_distribution")
+    if isinstance(alternative_settings, dict):
+        alternative_settings = dict(alternative_settings)
+        aptoide_settings = alternative_settings.get("aptoide")
+        if isinstance(aptoide_settings, dict):
+            aptoide_settings = dict(aptoide_settings)
+            aptoide_settings.pop("api_key_protected", None)
+            alternative_settings["aptoide"] = aptoide_settings
+        sanitized["alternative_distribution"] = alternative_settings
     summary = {
         "app_version": APP_VERSION,
         "python": sys.version,

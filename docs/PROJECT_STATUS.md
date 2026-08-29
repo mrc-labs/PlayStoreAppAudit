@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
 
 ## Published release
 
@@ -65,6 +65,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1; Nuitka: 4.1.3.
+- Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers: 16; Store transport timeout: 25 seconds.
@@ -92,7 +93,11 @@ The complete active scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` a
 - preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
 - keep operational status text in the native status bar and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
 - preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow Medium **Different/Aging target**, dark-orange DemiBold **Legacy target**, and Bold Status, with native selected/disabled roles and unchanged raw values;
-- implement informational Alternative Distribution Discovery only after provider feasibility review, using exact package identity and the seven approved providers; Amazon Appstore is excluded;
+- preserve the locally completed Alternative Distribution Gate 4: built-in F-Droid main plus Advanced/authorized Aptoide behind one non-pluggable exact-package provider model, eligible only after raw `not_found_in_checked_countries`;
+- keep provider evidence secondary/non-fatal and separate from Google Play state, installer source, criticality and Maintenance Score; use the independent two-request/20-second phase and state-sensitive cache;
+- retain AES-GCM/HKDF protected Aptoide config credentials with honest local copy/casual-disclosure limits, and never expose plaintext/protected credentials or machine identity in diagnostics/exports;
+- keep provider facts in Details/App Details, conditional HTML and explicit JSON schema v2; keep table columns, Friendly Notes, CSV and provider history unchanged;
+- keep Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown listed as not supported in the provider limitations panel; do not scrape them;
 - update Maintenance Score with the approved mutually exclusive best-source removal penalties and independent Store/freshness/SDK/version components, while preserving the regional-unavailability distinction;
 - keep an internal `health_score` rename evidence-gated and separate;
 - require a real packaged Windows x64 user-tested RC before final v1.99 release freeze;

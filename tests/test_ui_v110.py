@@ -332,12 +332,14 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert pages is not None
         assert [navigation.item(index).text() for index in range(navigation.count())] == [
             "Store & Cache",
+            "Alternative Distribution",
             "Device",
             "Audit & History",
             "Data & Storage",
         ]
         assert [pages.widget(index).objectName() for index in range(pages.count())] == [
             "StoreCacheSettingsPage",
+            "AlternativeDistributionSettingsPage",
             "DeviceSettingsPage",
             "AuditHistorySettingsPage",
             "DataStorageSettingsPage",

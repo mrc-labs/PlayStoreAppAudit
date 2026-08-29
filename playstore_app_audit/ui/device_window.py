@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
@@ -74,6 +75,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._merge_base_rows: list[dict[str, Any]] | None = None
         self._subset_label = ""
         self._pending_device_metadata: dict[str, dict[str, str]] = {}
+        self._force_refresh_sessions: set[int] = set()
         super().__init__()
         self._build_menu_v8()
         self._apply_column_visibility(reset_order=False)
@@ -521,9 +523,14 @@ class DeviceWindow(compact_ui.CompactWindow):
             settings.get("fallback_countries", device_metadata.DEFAULT_FALLBACK_COUNTRIES),
             selected_country,
         )
+        prospective_session = self._audit_session + 1
+        if self._force_refresh_next:
+            self._force_refresh_sessions.add(prospective_session)
         try:
             super()._start_audit()
         finally:
+            if self._audit_session != prospective_session:
+                self._force_refresh_sessions.discard(prospective_session)
             self._force_refresh_next = False
             self._apps_override = None
 
@@ -635,6 +642,17 @@ class DeviceWindow(compact_ui.CompactWindow):
             metadata = metadata_future.result() if metadata_future is not None else {}
             self._enrich_rows_with_device_metadata(rows, metadata)
             self._pending_device_metadata = metadata
+            if not cancel_event.is_set():
+                alternative_distribution.run_alternative_distribution_phase(
+                    rows,
+                    settings,
+                    pause_event=pause_event,
+                    cancel_event=cancel_event,
+                    force_refresh=session in self._force_refresh_sessions,
+                    phase_callback=lambda eligible: self.audit_control_signals.alternative_phase.emit(
+                        session, eligible
+                    ),
+                )
             outcome = (
                 AuditRunOutcome.STOPPED
                 if cancel_event.is_set()
@@ -658,6 +676,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             self._pending_device_metadata = metadata
             emit_result(AuditRunOutcome.FAILED, rows, len(live_rows), str(exc))
         finally:
+            self._force_refresh_sessions.discard(session)
             if metadata_executor is not None:
                 metadata_executor.shutdown(wait=False, cancel_futures=True)
 

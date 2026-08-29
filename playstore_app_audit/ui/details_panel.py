@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.presentation as presentation
 
@@ -536,6 +537,12 @@ class AppDetailsPanel(QFrame):
         self.store_section, self.store_label = self._section("Store")
         self.device_section, self.device_label = self._section("Installed / device")
         self.evidence_section, self.evidence_label = self._section("Store market evidence")
+        self.alternative_section, self.alternative_label = self._section("Alternative distribution")
+        self.alternative_buttons = QWidget(self.alternative_section)
+        self.alternative_buttons_layout = QVBoxLayout(self.alternative_buttons)
+        self.alternative_buttons_layout.setContentsMargins(0, 3, 0, 0)
+        self.alternative_buttons_layout.setSpacing(4)
+        self.alternative_section.layout().addWidget(self.alternative_buttons)
         self.diagnostics_section, self.diagnostics_label = self._section("Store diagnostics")
         self.changes_section, self.changes_label = self._section("Changes since previous audit")
         self.notes_section, self.notes_label = self._section("Notes")
@@ -632,6 +639,7 @@ class AppDetailsPanel(QFrame):
             evidence_column.setContentsMargins(0, 0, 0, 0)
             evidence_column.setSpacing(12)
             evidence_column.addWidget(self.evidence_section)
+            evidence_column.addWidget(self.alternative_section)
             evidence_column.addWidget(self.diagnostics_section)
             evidence_column.addStretch(1)
             columns.addLayout(store_column, 1)
@@ -654,6 +662,7 @@ class AppDetailsPanel(QFrame):
             left.setSpacing(12)
             left.addWidget(self.store_section)
             left.addWidget(self.evidence_section)
+            left.addWidget(self.alternative_section)
             left.addWidget(self.diagnostics_section)
             left.addStretch(1)
             right = QVBoxLayout()
@@ -678,6 +687,7 @@ class AppDetailsPanel(QFrame):
                 self.store_section,
                 self.device_section,
                 self.evidence_section,
+                self.alternative_section,
                 self.diagnostics_section,
                 self.changes_section,
                 self.notes_section,
@@ -712,12 +722,14 @@ class AppDetailsPanel(QFrame):
             self.store_label,
             self.device_label,
             self.evidence_label,
+            self.alternative_label,
             self.diagnostics_label,
             self.changes_label,
             self.notes_label,
         ):
             label.clear()
         self.open_store_button.setEnabled(False)
+        self._set_alternative_listing_actions([])
         self._sync_extra_wide_section_heights(self.scroll.viewport().width())
 
     def set_row(self, row: Mapping[str, Any], icon: QIcon | None = None) -> None:
@@ -770,6 +782,15 @@ class AppDetailsPanel(QFrame):
         evidence = evidence_lines(row)
         self.evidence_label.setText("\n".join(evidence) if evidence else "No structured Store evidence recorded.")
 
+        alternative_results = alternative_distribution.provider_results(row)
+        self.alternative_label.setText(
+            alternative_distribution.provider_evidence_text(row)
+        )
+        self.alternative_section.setVisible(bool(alternative_results))
+        self._set_alternative_listing_actions(
+            [result.listing_url for result in alternative_results if result.listing_url]
+        )
+
         diagnostics = store_diagnostic_lines(row)
         self.diagnostics_label.setText("\n".join(diagnostics))
         self.diagnostics_section.setVisible(bool(diagnostics))
@@ -788,6 +809,21 @@ class AppDetailsPanel(QFrame):
         self.notes_label.setText(presentation.friendly_notes(row))
         self.open_store_button.setEnabled(bool(_text(row.get("store_url"))))
         self._sync_extra_wide_section_heights(self.scroll.viewport().width())
+
+    def _set_alternative_listing_actions(self, urls: list[str]) -> None:
+        while self.alternative_buttons_layout.count():
+            item = self.alternative_buttons_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        for url in urls:
+            button = QPushButton("Open provider listing")
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button.clicked.connect(
+                lambda _checked=False, target=url: QDesktopServices.openUrl(QUrl(target))
+            )
+            self.alternative_buttons_layout.addWidget(button)
+        self.alternative_buttons.setVisible(bool(urls))
 
     def _open_store(self) -> None:
         if self._row is None:

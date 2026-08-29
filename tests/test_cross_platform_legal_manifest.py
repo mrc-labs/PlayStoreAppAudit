@@ -4,6 +4,18 @@ from pathlib import Path
 import prepare_release_legal_bundle as legal
 
 
+def test_credential_crypto_dependency_closure_has_legal_material() -> None:
+    root = Path(__file__).resolve().parents[1]
+    distributions = {
+        legal._normalize_dist_name(distribution.metadata["Name"]): distribution
+        for distribution in legal._runtime_dependency_closure(root, [])
+    }
+
+    for name in ("cryptography", "cffi", "pycparser"):
+        assert name in distributions
+        assert legal._distribution_license_files(distributions[name])
+
+
 def test_release_platform_mapping(monkeypatch) -> None:
     cases = {
         "Windows": "windows",

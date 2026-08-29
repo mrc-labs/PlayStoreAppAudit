@@ -41,7 +41,7 @@ def test_versioned_json_preserves_structured_v17_row_data() -> None:
     )
 
     assert document["format"] == "play-store-app-audit/results"
-    assert document["schema_version"] == 1
+    assert document["schema_version"] == 2
     assert document["app_version"] == "1.7-test"
     assert document["generated_at_utc"] == "2026-08-22T10:30:00Z"
     assert document["scope"] == "visible"

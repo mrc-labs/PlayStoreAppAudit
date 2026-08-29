@@ -89,6 +89,7 @@ def _find_layout_containing(layout, target_widget):
 
 class ControlledAuditSignals(QObject):
     progress = Signal(int, int, int, str)
+    alternative_phase = Signal(int, int)
     done = Signal(object)
 
 
@@ -127,11 +128,13 @@ class CompactWindow(AuditWindow):
         self._audit_pause_event.set()
         self._audit_cancel_event = threading.Event()
         self._last_progress = (0, 0, "")
+        self._alternative_phase_active = False
 
         super().__init__()
 
         self.audit_control_signals = ControlledAuditSignals()
         self.audit_control_signals.progress.connect(self._on_controlled_progress)
+        self.audit_control_signals.alternative_phase.connect(self._on_alternative_phase)
         self.audit_control_signals.done.connect(self._on_controlled_done)
 
         self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
@@ -688,11 +691,17 @@ class CompactWindow(AuditWindow):
         if self._audit_state is AuditRunState.PAUSED:
             self._audit_pause_event.set()
             self._set_audit_state(AuditRunState.RUNNING)
-            self.status_label.setText(f"Resumed • {done}/{total} completed")
+            if self._alternative_phase_active:
+                self.status_label.setText("Resumed • checking alternative distribution")
+            else:
+                self.status_label.setText(f"Resumed • {done}/{total} completed")
         else:
             self._audit_pause_event.clear()
             self._set_audit_state(AuditRunState.PAUSED)
-            self.status_label.setText(f"Paused • {done}/{total} completed")
+            if self._alternative_phase_active:
+                self.status_label.setText("Paused • no new alternative-provider requests will start")
+            else:
+                self.status_label.setText(f"Paused • {done}/{total} completed")
 
     def _start_audit(self) -> None:
         if self._audit_state in {AuditRunState.RUNNING, AuditRunState.PAUSED}:
@@ -744,6 +753,7 @@ class CompactWindow(AuditWindow):
         self._audit_pause_event.set()
         self._audit_cancel_event = threading.Event()
         self._last_progress = (cached_count, len(apps), "")
+        self._alternative_phase_active = False
         self._set_audit_source_controls_enabled(False)
         self._set_audit_state(AuditRunState.RUNNING)
 
@@ -870,6 +880,7 @@ class CompactWindow(AuditWindow):
         if session != self._audit_session or not self._audit_active:
             return
         self._last_progress = (done, total, package_name)
+        self._alternative_phase_active = False
         self.progress.setRange(0, total)
         self.progress.setValue(done)
         if self._audit_state is AuditRunState.STOPPING:
@@ -878,6 +889,15 @@ class CompactWindow(AuditWindow):
             self.status_label.setText(f"Paused • {done}/{total} completed")
         else:
             self.status_label.setText(f"Completed {done}/{total}: {package_name}")
+
+    def _on_alternative_phase(self, session: int, eligible_count: int) -> None:
+        if session != self._audit_session or not self._audit_active:
+            return
+        self._alternative_phase_active = True
+        self.progress.setRange(0, 0)
+        self.status_label.setText(
+            f"Checking alternative distribution for {eligible_count} package(s)…"
+        )
 
     def _on_controlled_done(self, payload: object) -> None:
         result = coerce_audit_run_result(payload)
@@ -893,6 +913,7 @@ class CompactWindow(AuditWindow):
             result.outcome = AuditRunOutcome.STOPPED
         self._last_audit_outcome = result.outcome
         self._audit_pause_event.set()
+        self._alternative_phase_active = False
 
         typed_rows = list(result.rows)
         compare_enabled = bool(self.user_settings.get("compare_previous", False))
@@ -946,7 +967,10 @@ class CompactWindow(AuditWindow):
         self._audit_pause_event.set()
         done, total, _package = self._last_progress
         self._set_audit_state(AuditRunState.STOPPING)
-        self.status_label.setText(f"Stopping… {done}/{total} completed")
+        if self._alternative_phase_active:
+            self.status_label.setText("Stopping alternative-distribution checks…")
+        else:
+            self.status_label.setText(f"Stopping… {done}/{total} completed")
 
     def _abandon_active_audit(self) -> None:
         if self._audit_state is AuditRunState.IDLE:

@@ -108,23 +108,16 @@ This gate is complete. **Different** and **Aging target** reuse the status palet
 
 ### Alternative Distribution Discovery
 
-Replace the rejected broad automatic alternative-source association idea with an informational exact-package feature. It reports that the same Android package appears elsewhere and must not imply endorsement, equivalence or installation safety.
+Gate 4 is implemented locally with two secondary exact-package providers behind a small non-pluggable common protocol:
 
-Approved providers:
+- F-Droid's active main repository is built in and enabled by default, using only its official per-package API.
+- Aptoide is Advanced/opt-in and disabled by default; it requires an authorized store identifier and Partner API key, uses the documented exact `app/get` contract and provides a minimal authenticated connection test.
 
-- Samsung Galaxy Store — `official_store`
-- Huawei AppGallery — `official_store`
-- F-Droid — `foss_repository`
-- Aptoide — `independent_store`
-- Uptodown — `independent_store`
-- APKMirror — `apk_repository`
-- APKPure — `apk_repository`
+Automatic provider work is strictly eligible only for raw `play_status == "not_found_in_checked_countries"`. It runs after stable Google Play rows with one two-worker executor, 10-second request timeouts, a 20-second phase budget and cooperative Pause/Resume/Stop. Failures are non-fatal. Separate state-sensitive cache TTLs are 24 hours Available, 12 hours Not found and 15 minutes Inconclusive; Force Full Refresh bypasses them.
 
-Amazon Appstore is explicitly excluded. APKMirror and APKPure must be visibly described as APK repositories.
+The provider API key is stored only as a versioned machine/user-bound AES-GCM/HKDF-SHA256 protected envelope using the single pinned `cryptography` dependency. This is local config-copy/casual-disclosure protection, not OS/hardware or compromised-account security. Details/App Details, conditional HTML and JSON schema v2 expose neutral provider evidence; the table, Friendly Notes, CSV, history, installer source, Google Play state and Maintenance Score remain unchanged.
 
-Automatic checks are allowed only for Removed, selected-country/regional unavailability, or a Store anomaly with sufficiently conclusive Google Play evidence. Do not automatically query providers after transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app **Check Alternative Sources** action may be evaluated.
-
-Exact Android package ID is the primary identity key; fuzzy title matching alone is insufficient. Capture listing URL and verification timestamp plus publisher/developer/version/update support metadata where available. Before provider implementation, document API/search mechanisms, exact-ID lookup, rate limits, terms/access constraints, regional behavior, metadata, reliability and maintenance risk for each provider.
+The Advanced Settings limitations panel records Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown as not supported because a suitable authorized general exact-catalogue API contract was not established. No HTML scraping, fuzzy association, APK download or plugin framework is introduced.
 
 ### Maintenance Score algorithm update
 
@@ -144,6 +137,8 @@ Keep the user-facing **Maintenance Score** name. Implement these target penaltie
 - installed version differs from Google Play: `-5`
 
 The Removed/distribution values are mutually exclusive alternatives for one availability component. Choose the best verified class using `official_store > foss_repository > independent_store > apk_repository`; do not stack providers or first apply `-60`. Other independent penalties continue to compose, and current clamping remains unless a defect is proven. Failed/inconclusive provider checks never count as positive evidence. Regional unavailability may trigger discovery but is not automatically Removed and receives Removed substitutions only when the Google Play state genuinely qualifies.
+
+This score work remains a separate gate; the completed provider-evidence gate does not alter current scoring or classification.
 
 Update methodology/report text and tests with the algorithm. An internal `health_score` -> `maintenance_score` rename remains a separate evidence-gated migration requiring explicit Smart Query, settings, serialized-data, backward-compatibility and migration coverage; it may stay deferred.
 

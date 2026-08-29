@@ -1,8 +1,8 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
 
-Status: **v1.9.0 is published, independently verified and immutable. Post-release housekeeping is complete. v1.99 implementation is active: cooperative audit Stop is merged on `main`, and the first local product/operational UX gate selected and productionized C2.**
+Status: **v1.9.0 is published, independently verified and immutable. Post-release housekeeping is complete. v1.99 implementation is active: cooperative audit Stop is merged on `main`; local product gates have productionized C2, semantic warnings and the F-Droid/Aptoide alternative-distribution evidence phase. Remote activity remains frozen until explicitly resumed.**
 
 ## Start here
 
@@ -57,7 +57,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 
 - Current source application version remains `1.9.0`; no v1.99 version bump has occurred.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- `PySide6-Essentials==6.11.1`; `cryptography==50.0.1`; `Nuitka==4.1.3`.
 - UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.
 - Google Play access remains behind services; UI must not absorb Store/device/business behavior.
 - Managed ADB is read-only with respect to installed Android apps.
@@ -128,36 +128,17 @@ The application retains its established light presentation; this gate does not a
 
 ## Priority 5: Alternative Distribution Discovery
 
-This approved informational feature replaces the rejected broad concept of automatic alternative-source association. It reports that the exact Android package appears to be distributed elsewhere. It never implies endorsement, equivalence or guaranteed installation safety.
+Complete locally as Gate 4. This is secondary exact-package evidence only and never reinterprets Google Play state, installer source, criticality or Maintenance Score.
 
-Approved providers/classifications:
-
-- Samsung Galaxy Store — `official_store`
-- Huawei AppGallery — `official_store`
-- F-Droid — `foss_repository`
-- Aptoide — `independent_store`
-- Uptodown — `independent_store`
-- APKMirror — `apk_repository`
-- APKPure — `apk_repository`
-
-Amazon Appstore is explicitly excluded. APKMirror and APKPure must be visibly identified as APK repositories.
-
-Automatic checks are limited to:
-
-- Removed;
-- regional/unavailable in the selected Play Store country;
-- Store anomaly only when Google Play evidence is sufficiently conclusive.
-
-Do not automatically query alternatives for transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app **Check Alternative Sources** action may be evaluated.
-
-Identity/evidence rules:
-
-- exact Android package ID is the primary key;
-- fuzzy title matching alone is never sufficient;
-- retain listing URL and verification timestamp;
-- retain publisher/developer/version/update support metadata where available.
-
-Before provider code, complete a provider-by-provider feasibility review of APIs/search, exact package lookup, rate limits, terms/access constraints, regional behavior, available metadata, reliability and maintenance risk.
+- Eligibility is exactly raw `play_status == "not_found_in_checked_countries"`; all available/regional/transient/inconclusive states are skipped.
+- F-Droid main is built in and default-enabled, using only the official active per-package API. Exact ID is mandatory; the archive, search, full index, third-party repos and APK URLs are not used.
+- Aptoide is Advanced/opt-in and default-disabled. It requires an authorized `store_name` and Partner API key, sent only via the documented `Authorization: ApiKey …` header to exact `app/get` requests. The API does not document a reliable public listing URL, so none is fabricated.
+- One non-pluggable protocol and typed Available/Not found/Inconclusive/Unsupported/Not checked result model are shared by orchestration, caching, Details, App Details, HTML and JSON.
+- One independent provider executor is capped at two total requests, with 10-second request timeouts and a 20-second phase budget. Pause blocks new submissions; Resume continues; Stop prevents new submissions and retains completed evidence. Provider failure never fails successful Google Play work.
+- The separate `alt-v1` cache uses 24-hour Available, 12-hour Not found and 15-minute Inconclusive TTLs, includes normalized Aptoide store name without the key, and is bypassed by Force Full Refresh. There is no provider history.
+- Aptoide's saved key uses a versioned AES-GCM/HKDF-SHA256 envelope bound to a local machine-identity digest and local user. This deters casual config disclosure/copying only; it is not OS/hardware/compromised-account security. Identity or authentication failure retains the ciphertext and requires key replacement.
+- Advanced Settings includes F-Droid/Aptoide controls, masked Replace/Remove/Test connection actions and an expandable provider limitations panel. Samsung, Huawei, Amazon, APKMirror, APKPure and Uptodown are not supported; no scraping is used.
+- Provider evidence is separate in Details/App Details and conditional HTML. JSON is explicit schema v2 with ordered `alternative_distribution.providers`; CSV, table columns/filters, Friendly Notes, history and scoring remain unchanged. Credentials, envelopes and machine identity never enter exports or diagnostics.
 
 ## Priority 6: Maintenance Score algorithm
 

@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
@@ -865,6 +866,25 @@ class InsightsWindow(device_ui.DeviceWindow):
             label.setObjectName(f"DetailsValue_{key}")
             base_ui.apply_semantic_label_presentation(label, key, value)
             form.addRow(label_text, label)
+        alternative_results = alternative_distribution.provider_results(row)
+        if alternative_results:
+            alternative_label = QLabel(alternative_distribution.provider_evidence_text(row))
+            alternative_label.setObjectName("DetailsValue_alternative_distribution")
+            alternative_label.setWordWrap(True)
+            alternative_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            form.addRow("Alternative distribution", alternative_label)
+            for result in alternative_results:
+                if not result.listing_url:
+                    continue
+                listing_button = QPushButton("Open provider listing")
+                listing_button.clicked.connect(
+                    lambda _checked=False, target=result.listing_url: QDesktopServices.openUrl(
+                        QUrl(target)
+                    )
+                )
+                form.addRow("", listing_button)
         scroll.setWidget(inner)
         root.addWidget(scroll, 1)
         row_buttons = QHBoxLayout()

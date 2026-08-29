@@ -242,7 +242,7 @@ def test_extra_wide_layout_groups_existing_sections_in_three_columns(
     expected = [
         [panel.store_section, panel.notes_section],
         [panel.device_section, panel.changes_section],
-        [panel.evidence_section, panel.diagnostics_section],
+        [panel.evidence_section, panel.alternative_section, panel.diagnostics_section],
     ]
     for index, expected_widgets in enumerate(expected):
         column = columns.itemAt(index).layout()

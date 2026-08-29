@@ -54,6 +54,14 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "technical_columns": [],
     "qt_header_state": "",
     "ctk_column_widths": {},
+    "alternative_distribution": {
+        "fdroid_main": {"enabled": True},
+        "aptoide": {
+            "enabled": False,
+            "store_name": "",
+            "api_key_protected": "",
+        },
+    },
 }
 
 TECHNICAL_COLUMNS = {
@@ -102,6 +110,10 @@ def history_path() -> Path:
     return app_data_dir() / "audit_history.json"
 
 
+def alternative_distribution_cache_path() -> Path:
+    return app_data_dir() / "alternative_distribution_cache.json"
+
+
 def load_settings() -> dict[str, Any]:
     data = _read_json(settings_path(), {})
     settings = deepcopy(DEFAULT_SETTINGS)
@@ -139,6 +151,28 @@ def load_settings() -> dict[str, Any]:
     )
     if not isinstance(settings.get("ctk_column_widths"), dict):
         settings["ctk_column_widths"] = {}
+    default_alternative = deepcopy(DEFAULT_SETTINGS["alternative_distribution"])
+    raw_alternative = settings.get("alternative_distribution")
+    if isinstance(raw_alternative, dict):
+        raw_fdroid = raw_alternative.get("fdroid_main")
+        if isinstance(raw_fdroid, dict):
+            default_alternative["fdroid_main"].update(raw_fdroid)
+        raw_aptoide = raw_alternative.get("aptoide")
+        if isinstance(raw_aptoide, dict):
+            default_alternative["aptoide"].update(raw_aptoide)
+    default_alternative["fdroid_main"]["enabled"] = bool(
+        default_alternative["fdroid_main"].get("enabled", True)
+    )
+    default_alternative["aptoide"]["enabled"] = bool(
+        default_alternative["aptoide"].get("enabled", False)
+    )
+    default_alternative["aptoide"]["store_name"] = str(
+        default_alternative["aptoide"].get("store_name") or ""
+    ).strip().lower()
+    default_alternative["aptoide"]["api_key_protected"] = str(
+        default_alternative["aptoide"].get("api_key_protected") or ""
+    ).strip()
+    settings["alternative_distribution"] = default_alternative
     return settings
 
 
@@ -161,6 +195,10 @@ def reset_settings() -> dict[str, Any]:
 
 def clear_cache() -> None:
     _write_json(cache_path(), {})
+
+
+def clear_alternative_distribution_cache() -> None:
+    _write_json(alternative_distribution_cache_path(), {})
 
 
 def _cache_key(country: str, language: str, package_name: str) -> str:

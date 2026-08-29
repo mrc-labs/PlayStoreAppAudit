@@ -37,6 +37,7 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_window as table_ui
@@ -533,6 +534,21 @@ class PreferencesWindow(table_ui.TableWindow):
         store_layout.addLayout(form)
         store_layout.addStretch(1)
 
+        _alternative_page, alternative_layout = add_page(
+            "AlternativeDistributionSettingsPage",
+            "Alternative Distribution",
+            "Configure secondary exact-package evidence after a conclusive Google Play not-found result.",
+        )
+        provider_settings = alternative_settings_ui.AlternativeDistributionSettingsPage(
+            self.user_settings
+        )
+        provider_scroll = QScrollArea()
+        provider_scroll.setObjectName("AlternativeDistributionSettingsScroll")
+        provider_scroll.setWidgetResizable(True)
+        provider_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        provider_scroll.setWidget(provider_settings)
+        alternative_layout.addWidget(provider_scroll, 1)
+
         _device_page, device_layout = add_page(
             "DeviceSettingsPage",
             "Device",
@@ -612,6 +628,7 @@ class PreferencesWindow(table_ui.TableWindow):
             health.setChecked(False)
             compare.setChecked(False)
             portable.setChecked(False)
+            provider_settings.reset_to_defaults()
 
         reset.clicked.connect(reset_controls)
         buttons.rejected.connect(dialog.reject)
@@ -621,6 +638,7 @@ class PreferencesWindow(table_ui.TableWindow):
 
         fallback_text, invalid = device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
+        previous_alternative = self.user_settings.get("alternative_distribution")
         self.user_settings.update(
             {
                 "store_language": (
@@ -635,6 +653,7 @@ class PreferencesWindow(table_ui.TableWindow):
                 "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
                 "compare_previous": compare.isChecked(),
+                "alternative_distribution": provider_settings.configuration(),
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
@@ -643,6 +662,8 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
             state.clear_cache()
+        if previous_alternative != self.user_settings.get("alternative_distribution"):
+            state.clear_alternative_distribution_cache()
         if portable.isChecked() != old_portable:
             ok, portable_msg = device_insights.migrate_portable_mode(portable.isChecked())
             if not ok:
