@@ -93,7 +93,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
         self.view_menu = QMenu("View", bar)
         bar.addMenu(self.view_menu)
-        self.view_presets_menu = QMenu("View Preset", self.view_menu)
+        self.view_presets_menu = QMenu("Column Preset", self.view_menu)
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
@@ -102,6 +102,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
@@ -109,7 +111,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._view_action_group = self.view_action_group
 
         self.display_settings_action = self.view_menu.addAction(
-            "Display Settings…", self._show_display_settings
+            "Customize View…", self._show_display_settings
         )
 
         self.view_menu.addSeparator()

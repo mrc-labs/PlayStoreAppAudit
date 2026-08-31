@@ -145,18 +145,8 @@ class PreferencesWindow(table_ui.TableWindow):
                 columns.append("health_score")
             columns.append("notes")
         elif preset == "Custom":
-            configured = settings.get("custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-            columns = (
-                [c for c in configured if c in insights_ui.V9_MODEL_COLUMNS]
-                if isinstance(configured, list)
-                else list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-            )
-            if "criticality" not in columns:
-                columns.insert(0, "criticality")
-            if "package_name" not in columns:
-                columns.insert(1, "package_name")
-            if compare and "change" not in columns:
-                columns.insert(1, "change")
+            configured = self._normalise_custom_columns(settings.get("custom_view_columns"))
+            columns = configured or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
         else:
             columns = ["criticality"]
             if compare:
@@ -216,7 +206,7 @@ class PreferencesWindow(table_ui.TableWindow):
         file_menu.addAction("Exit", self.close)
 
         view_menu = bar.addMenu("View")
-        presets = view_menu.addMenu("View Preset")
+        presets = view_menu.addMenu("Column Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
@@ -225,9 +215,11 @@ class PreferencesWindow(table_ui.TableWindow):
             action.setChecked(name == current)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             presets.addAction(action)
         self._view_action_group = group
-        view_menu.addAction("Display Settings…", self._show_display_settings)
+        view_menu.addAction("Customize View…", self._show_display_settings)
         view_menu.addSeparator()
         view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
@@ -311,16 +303,26 @@ class PreferencesWindow(table_ui.TableWindow):
         for action in group.actions():
             action.setChecked(action.text() == name)
 
+    def _sync_custom_preset_availability(self) -> None:
+        for action in getattr(self, "view_preset_actions", []) or []:
+            if action.text() == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+        group = getattr(self, "_view_action_group", None)
+        if isinstance(group, QActionGroup):
+            for action in group.actions():
+                if action.text() == "Custom":
+                    action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setObjectName("DisplaySettingsDialog")
-        dialog.setWindowTitle("Display Settings")
+        dialog.setWindowTitle("Customize View")
         dialog.resize(740, 640)
         dialog.setMinimumSize(620, 500)
         root = QVBoxLayout(dialog)
 
-        heading = QLabel("Results Display")
+        heading = QLabel("Customize View")
         heading.setObjectName("SettingsPageTitle")
         heading_font = heading.font()
         heading_font.setBold(True)
@@ -367,7 +369,7 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addWidget(
             self._settings_note(
                 "Status and Package Name are always included. Changing this selection "
-                "activates View > View Preset > Custom."
+                "activates View > Column Preset > Custom."
             )
         )
 
@@ -378,11 +380,9 @@ class PreferencesWindow(table_ui.TableWindow):
         columns_host = QWidget()
         grid = QGridLayout(columns_host)
         grid.setContentsMargins(0, 4, 0, 4)
-        stored_custom = self.user_settings.get(
-            "custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS
-        )
-        if not isinstance(stored_custom, list):
-            stored_custom = list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        stored_custom = self._normalise_custom_columns(
+            self.user_settings.get("custom_view_columns")
+        ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
         initial_columns = (
             list(stored_custom) if current_preset == "Custom" else self._visible_column_order()
@@ -437,6 +437,7 @@ class PreferencesWindow(table_ui.TableWindow):
             updates.update(
                 {
                     "custom_view_columns": custom_columns,
+                    "custom_view_exists": True,
                     "view_preset": "Custom",
                 }
             )
@@ -451,11 +452,13 @@ class PreferencesWindow(table_ui.TableWindow):
                 )
             )
         if columns_changed:
-            self._sync_view_preset_action("Custom")
-        self._apply_column_visibility(reset_order=False)
+            self._apply_column_visibility(reset_order=False)
+            self._persist_current_custom_layout()
+        else:
+            self._sync_custom_preset_availability()
         self._refresh_table_presentation()
         self._update_summary()
-        self._set_presentation_status("Display settings saved")
+        self._set_presentation_status("Customize View settings saved")
 
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()

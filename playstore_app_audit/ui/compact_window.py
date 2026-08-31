@@ -3,7 +3,8 @@ from __future__ import annotations
 import csv
 import sys
 import threading
-from contextlib import suppress
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 
 from PySide6.QtCore import QByteArray, QObject, Qt, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
@@ -121,6 +122,9 @@ class CompactWindow(AuditWindow):
 
     def __init__(self) -> None:
         self.user_settings = load_settings()
+        self._table_layout_tracking_enabled = False
+        self._table_layout_change_depth = 0
+        self._custom_layout_migration_checked = False
         self._audit_session = 0
         self._audit_active = False
         self._audit_paused = False
@@ -352,16 +356,18 @@ class CompactWindow(AuditWindow):
         return columns
 
     def _apply_column_visibility(self, reset_order: bool = False) -> None:
-        visible = set(self._visible_column_order())
-        for logical, column in enumerate(MODEL_COLUMNS):
-            hidden = column not in visible
-            self.table.setColumnHidden(logical, hidden)
-            if reset_order or (not hidden and self.table.columnWidth(logical) <= 0):
-                self.table.setColumnWidth(
-                    logical,
-                    table_layout.default_column_width(self.table, column),
-                )
-        if reset_order:
+        with self._suspend_table_layout_tracking():
+            visible = set(self._visible_column_order())
+            for logical, column in enumerate(MODEL_COLUMNS):
+                hidden = column not in visible
+                self.table.setColumnHidden(logical, hidden)
+                if reset_order or (not hidden and self.table.columnWidth(logical) <= 0):
+                    self.table.setColumnWidth(
+                        logical,
+                        table_layout.default_column_width(self.table, column),
+                    )
+            if not reset_order:
+                return
             header = self.table.horizontalHeader()
             for visual, column in enumerate(self._visible_column_order()):
                 logical = MODEL_COLUMNS.index(column)
@@ -374,31 +380,216 @@ class CompactWindow(AuditWindow):
                     table_layout.default_column_width(self.table, column),
                 )
 
-    def _restore_table_layout(self) -> None:
-        encoded = str(self.user_settings.get("qt_header_state") or "")
-        restored = False
-        if encoded:
+    @contextmanager
+    def _suspend_table_layout_tracking(self) -> Iterator[None]:
+        self._table_layout_change_depth += 1
+        try:
+            yield
+        finally:
+            self._table_layout_change_depth -= 1
+
+    @staticmethod
+    def _normalise_custom_columns(value: object) -> list[str] | None:
+        if not isinstance(value, list):
+            return None
+        columns = list(dict.fromkeys(column for column in value if column in MODEL_COLUMNS))
+        if not columns:
+            return None
+        if "criticality" not in columns:
+            columns.insert(0, "criticality")
+        if "package_name" not in columns:
+            columns.insert(1, "package_name")
+        return columns
+
+    @staticmethod
+    def _normalise_custom_order(value: object, visible: list[str]) -> list[str]:
+        configured = (
+            list(dict.fromkeys(column for column in value if column in MODEL_COLUMNS))
+            if isinstance(value, list)
+            else []
+        )
+        order = list(dict.fromkeys(configured + visible + list(MODEL_COLUMNS)))
+        return [column for column in order if column in MODEL_COLUMNS]
+
+    @staticmethod
+    def _normalise_custom_widths(value: object) -> dict[str, int]:
+        if not isinstance(value, dict):
+            return {}
+        widths: dict[str, int] = {}
+        for column, raw_width in value.items():
+            if column not in MODEL_COLUMNS:
+                continue
             try:
-                restored = self.table.horizontalHeader().restoreState(
-                    QByteArray.fromBase64(encoded.encode("ascii"))
+                width = int(raw_width)
+            except (TypeError, ValueError):
+                continue
+            if 20 <= width <= 10000:
+                widths[column] = width
+        return widths
+
+    def _has_custom_table_layout(self, settings: dict[str, object] | None = None) -> bool:
+        current = settings if settings is not None else self.user_settings
+        return bool(current.get("custom_view_exists")) and self._normalise_custom_columns(
+            current.get("custom_view_columns")
+        ) is not None
+
+    def _current_table_layout(self) -> tuple[list[str], list[str], dict[str, int], str]:
+        header = self.table.horizontalHeader()
+        order = [
+            MODEL_COLUMNS[header.logicalIndex(visual)]
+            for visual in range(header.count())
+            if 0 <= header.logicalIndex(visual) < len(MODEL_COLUMNS)
+        ]
+        visible = [
+            column
+            for column in order
+            if not self.table.isColumnHidden(MODEL_COLUMNS.index(column))
+        ]
+        visible = self._normalise_custom_columns(visible) or ["criticality", "package_name"]
+        widths = {
+            column: self.table.columnWidth(logical)
+            for logical, column in enumerate(MODEL_COLUMNS)
+        }
+        encoded = bytes(header.saveState().toBase64()).decode("ascii")
+        return visible, order, widths, encoded
+
+    def _persist_current_custom_layout(self, *, activate: bool = True) -> None:
+        visible, order, widths, encoded = self._current_table_layout()
+        settings = load_settings()
+        settings.update(
+            {
+                "custom_view_exists": True,
+                "custom_view_columns": visible,
+                "custom_view_order": order,
+                "custom_view_widths": widths,
+                # Preserve the RC2/Phase A header blob as a compatibility alias.
+                "qt_header_state": encoded,
+            }
+        )
+        if activate:
+            settings["view_preset"] = "Custom"
+        self.user_settings = save_settings(settings)
+        sync = getattr(self, "_sync_view_preset_action", None)
+        if activate and callable(sync):
+            sync("Custom")
+        availability = getattr(self, "_sync_custom_preset_availability", None)
+        if callable(availability):
+            availability()
+
+    def _restore_custom_table_layout(self) -> bool:
+        self.user_settings = load_settings()
+        visible = self._normalise_custom_columns(self.user_settings.get("custom_view_columns"))
+        if not self.user_settings.get("custom_view_exists") or visible is None:
+            return False
+        order = self._normalise_custom_order(self.user_settings.get("custom_view_order"), visible)
+        widths = self._normalise_custom_widths(self.user_settings.get("custom_view_widths"))
+        with self._suspend_table_layout_tracking():
+            visible_set = set(visible)
+            for logical, column in enumerate(MODEL_COLUMNS):
+                self.table.setColumnHidden(logical, column not in visible_set)
+            header = self.table.horizontalHeader()
+            for visual, column in enumerate(order):
+                logical = MODEL_COLUMNS.index(column)
+                current_visual = header.visualIndex(logical)
+                if current_visual != visual:
+                    header.moveSection(current_visual, visual)
+            for logical, column in enumerate(MODEL_COLUMNS):
+                self.table.setColumnWidth(
+                    logical,
+                    widths.get(column, table_layout.default_column_width(self.table, column)),
                 )
+        return True
+
+    def _migrate_legacy_custom_layout(self) -> bool:
+        if self._custom_layout_migration_checked:
+            return False
+        self._custom_layout_migration_checked = True
+
+        self.user_settings = load_settings()
+        legacy_columns = self._normalise_custom_columns(
+            self.user_settings.get("custom_view_columns")
+        )
+        legacy_state = str(self.user_settings.get("qt_header_state") or "")
+        current_preset = str(self.user_settings.get("view_preset") or "Basic")
+        restored = False
+        if legacy_state:
+            try:
+                with self._suspend_table_layout_tracking():
+                    restored = self.table.horizontalHeader().restoreState(
+                        QByteArray.fromBase64(legacy_state.encode("ascii"))
+                    )
             except Exception:
                 restored = False
-        if not restored:
-            self._apply_column_visibility(reset_order=True)
+
+        if not restored and legacy_columns is None:
+            return False
+
+        with self._suspend_table_layout_tracking():
+            if legacy_columns is not None:
+                visible = set(legacy_columns)
+                for logical, column in enumerate(MODEL_COLUMNS):
+                    self.table.setColumnHidden(logical, column not in visible)
+            elif not restored:
+                return False
+
+        # An old explicit Custom column list remains a saved Custom while the
+        # user's last built-in selection stays active. A lone header blob is
+        # ambiguous, so preserve its live manual widths/order as active Custom.
+        activate = current_preset == "Custom" or legacy_columns is None
+        self._persist_current_custom_layout(activate=activate)
+        return True
+
+    def _enable_table_layout_tracking(self) -> None:
+        if self._table_layout_tracking_enabled:
+            return
+        header = self.table.horizontalHeader()
+        header.sectionMoved.connect(self._on_manual_table_layout_change)
+        header.sectionResized.connect(self._on_manual_table_layout_change)
+        self._table_layout_tracking_enabled = True
+        availability = getattr(self, "_sync_custom_preset_availability", None)
+        if callable(availability):
+            availability()
+
+    def _on_manual_table_layout_change(self, *_args: object) -> None:
+        if not self._table_layout_tracking_enabled or self._table_layout_change_depth:
+            return
+        self._persist_current_custom_layout()
+
+    def _restore_table_layout(self) -> None:
+        self.user_settings = load_settings()
+        preset = str(self.user_settings.get("view_preset") or "Basic")
+        if self._has_custom_table_layout() and preset == "Custom":
+            if self._restore_custom_table_layout():
+                return
+        elif (
+            not self._has_custom_table_layout()
+            and self._migrate_legacy_custom_layout()
+            and str(self.user_settings.get("view_preset") or "Basic") == "Custom"
+        ):
+            self._restore_custom_table_layout()
+            return
+
+        if preset == "Custom":
+            self.user_settings["view_preset"] = "Basic"
+            self.user_settings = save_settings(self.user_settings)
+        self._apply_column_visibility(reset_order=True)
 
     def _save_table_layout(self) -> None:
         try:
-            encoded = bytes(self.table.horizontalHeader().saveState().toBase64()).decode("ascii")
-            self.user_settings["qt_header_state"] = encoded
-            save_settings(self.user_settings)
+            self.user_settings = load_settings()
+            if (
+                str(self.user_settings.get("view_preset") or "Basic") == "Custom"
+                and self._has_custom_table_layout()
+            ):
+                self._persist_current_custom_layout()
         except Exception:
             pass
 
     def _reset_table_layout(self) -> None:
-        self.user_settings["qt_header_state"] = ""
-        self.user_settings = save_settings(self.user_settings)
         self._apply_column_visibility(reset_order=True)
+        self.user_settings = load_settings()
+        if str(self.user_settings.get("view_preset") or "Basic") == "Custom":
+            self._persist_current_custom_layout()
         self._set_presentation_status("Table layout reset to defaults")
 
     def _set_presentation_status(self, message: str) -> None:

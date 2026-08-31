@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-31
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is complete from parent `b67108874bedfac479b14b07c04eec0ba7f6a138`, covering independent table/header, compact status-bar and device-source polish before the separately scoped Phase B persistence/menu work. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is accepted. Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, limited to Column Preset semantics, persistent/restorable Custom layout and Customize View. Phase B2/B3, packaging and remote activity have not started. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
 
 ## Start here
 
@@ -152,6 +152,14 @@ Phase A does not change Audit Profiles/Presets, Custom preset semantics, Smart Q
 
 The Phase A source gate passed under Python 3.13.15 x64: focused coverage, the full 585-test suite, compileall, Ruff, `pip check`, `git diff --check` and both Qt offscreen smoke paths are green. Native Windows geometry also passed at 100% and actual 175% scaling for 1100, 1320 and 1600 logical px. No Nuitka/package build was run.
 
+## RC3 Phase B1 local-only Column Presets
+
+Phase B1 renames the user-facing preset submenu to `View > Column Preset` and the existing presentation dialog to `Customize View…`. Basic, Device and Technical remain immutable built-in layouts. Resizing or reordering the live header, or changing column visibility in Customize View, promotes the resulting layout to Custom without mutating the originating built-in. Custom is disabled until a real or conservatively migrated custom layout exists; later built-in selection, filtering, sorting, data refresh, audits and restart preserve it.
+
+Custom owns only the table layout: `custom_view_columns` stores visible columns, `custom_view_order` stores full visual order, and `custom_view_widths` stores per-column widths. `custom_view_exists` distinguishes a real Custom layout from an absent default. `view_preset` remains the effective preset identifier. The existing `qt_header_state` and `qt_header_schema_version` remain a compatibility bridge for RC2/Phase A saved header state; valid legacy state is migrated without discarding widths/order, old explicit Custom visibility is retained where possible, and malformed/partial values fall back safely to Phase A semantic widths. Show app icon, date format and other presentation preferences remain global and are not copied into Custom.
+
+The Phase B1 source gate passed under Python 3.13.15 x64: 75 focused tests and the full 596-test suite are green, together with compileall, full Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke and the deterministic Qt event-loop smoke. Phase A wrapped-header, saved-width, compact status-bar and device-source regressions remain green. No Nuitka/package build was run.
+
 ## Priority 5: Alternative Distribution Discovery
 
 Complete locally as Gate 4. This is secondary exact-package evidence only and never reinterprets Google Play state, installer source or criticality. Gate 5 uses only current conclusive Available evidence as bounded Maintenance Score recovery without changing those underlying facts.
@@ -190,7 +198,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phase A is source-only and local-only; no RC3 package has been built:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phases A and B1 are source-only and local-only; no RC3 package has been built:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

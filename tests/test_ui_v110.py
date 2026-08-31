@@ -269,9 +269,9 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
 
 def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert _action_structure(window.view_menu) == [
-        "View Preset",
+        "Column Preset",
         "Details Panel",
-        "Display Settings…",
+        "Customize View…",
         None,
         "Quick Filters",
         "Smart Queries",
@@ -400,7 +400,7 @@ def test_display_settings_save_existing_presentation_keys(
         "play_title",
     ]
     assert window.model._icons_enabled is True
-    assert window.status_label.text() == "Display settings saved"
+    assert window.status_label.text() == "Customize View settings saved"
 
 
 def test_display_settings_toggle_columns_with_populated_sorted_table(

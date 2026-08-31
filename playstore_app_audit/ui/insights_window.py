@@ -156,10 +156,18 @@ class InsightsWindow(device_ui.DeviceWindow):
         if name not in presentation.VIEW_PRESETS:
             return
         settings = state.load_settings()
+        if name == "Custom" and not self._has_custom_table_layout(settings):
+            return
         settings["view_preset"] = name
         self.user_settings = state.save_settings(settings)
-        self._apply_column_visibility(reset_order=True)
-        self.status_label.setText(f"View preset: {name}")
+        if name == "Custom":
+            self._restore_custom_table_layout()
+        else:
+            self._apply_column_visibility(reset_order=True)
+        sync = getattr(self, "_sync_view_preset_action", None)
+        if callable(sync):
+            sync(name)
+        self.status_label.setText(f"Column preset: {name}")
 
     # ---------- Menus ----------
     def _build_menu_v9(self) -> None:
@@ -194,13 +202,15 @@ class InsightsWindow(device_ui.DeviceWindow):
         file_menu.addAction(exit_action)
 
         view_menu = bar.addMenu("View")
-        view_presets = view_menu.addMenu("View Preset")
+        view_presets = view_menu.addMenu("Column Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current_view)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
             view_presets.addAction(action)

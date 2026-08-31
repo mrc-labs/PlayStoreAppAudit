@@ -54,6 +54,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._remove_redundant_content_heading()
         self._rebuild_source_area_v10()
+        self._enable_table_layout_tracking()
 
     def _remove_redundant_content_heading(self) -> None:
         central = self.centralWidget()
