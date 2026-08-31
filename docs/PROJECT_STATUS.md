@@ -60,7 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance rejected it as the final candidate. The reviewed correction source remains version `1.99.0`; the next package will be RC2.
+- RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance rejected it as the final candidate. RC2 technical validation has passed. Local-only RC3 Phase A is complete from parent `b67108874bedfac479b14b07c04eec0ba7f6a138`; version remains `1.99.0`, its Python 3.13.15 source/Qt/native-geometry gate is green, no RC3 package has been built and remote activity remains frozen for the separate privacy workstream.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -92,7 +92,9 @@ The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` 
 
 - preserve the cooperative safe Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`;
 - preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
-- keep operational status text in the edge-to-edge native status bar, with 16 logical px left and 12 logical px right label-content margins, and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
+- keep operational status text in the compact edge-to-edge native status bar, with its size grip, 16 logical px left and 12 logical px right label-content margins, symmetric vertical centering and no residual card-era bottom gap; keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
+- retain the RC3 Phase A semantic table-width policy, bounded Store URL/long-text defaults, compact Maintenance Score, selected two-line headers and final-model saved-width restore; do not replace it with body-value `ResizeToContents` behavior;
+- keep the redundant `Tools > Device Summary…` dialog absent while retaining device-summary collection and its snapshot/diagnostic/metadata/log/export consumers; connected-device source identity may show available Android version/API metadata but not a new serial identifier;
 - preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow DemiBold 600 **Different/Aging target**, dark-orange DemiBold 600 **Legacy target**, Regular 400 **Modern**, and Bold 700 Status, with native selected/disabled roles and unchanged raw values;
 - retain the dedicated device-inventory-history clear boundary: remove only separately keyed `Device Inventory Change` baselines while preserving Device Snapshots, Store cache, previous-audit history, provider cache, settings and current results;
 - default **Show app icon** on when its setting is absent while preserving every explicitly saved on or off value and the existing lazy/cached/non-fatal loading behavior;

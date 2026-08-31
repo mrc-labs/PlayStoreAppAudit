@@ -115,7 +115,7 @@ class AuditTableModel(base_ui.AppTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(self.columns):
             column = self.columns[section]
-            return base_ui.COLUMN_LABELS.get(column, column)
+            return schema.TABLE_HEADER_LABELS.get(column, column)
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -206,7 +206,8 @@ class TableWindow(insights_ui.InsightsWindow):
         self.table.setModel(proxy)
         self.table.setIconSize(QSize(22, 22))
         old_proxy.deleteLater()
-        self._apply_column_visibility(reset_order=True)
+        self._restore_table_layout()
+        self._apply_column_visibility(reset_order=False)
 
     def _show_about(self) -> None:
         dialog = QDialog(self)

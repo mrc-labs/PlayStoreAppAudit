@@ -148,9 +148,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             "Recheck Removed / Anomaly / Other", self._recheck_problematic
         )
         self.tools_menu.addSeparator()
-        self.device_summary_action = self.tools_menu.addAction(
-            "Device Summary…", self._show_device_summary
-        )
         self.snapshots_menu = QMenu("Device Snapshots", self.tools_menu)
         self.tools_menu.addMenu(self.snapshots_menu)
         self.save_device_snapshot_action = self.snapshots_menu.addAction(

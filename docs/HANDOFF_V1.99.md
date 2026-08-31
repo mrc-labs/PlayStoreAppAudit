@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-31
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance found narrow status-bar, warning-weight, inventory-history maintenance and fresh icon-default corrections. RC1 is not the final accepted candidate; the next package will be RC2 after review of the correction source. Remote activity remains frozen pending the final privacy/public-readiness audit and explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is complete from parent `b67108874bedfac479b14b07c04eec0ba7f6a138`, covering independent table/header, compact status-bar and device-source polish before the separately scoped Phase B persistence/menu work. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
 
 ## Start here
 
@@ -110,7 +110,7 @@ The production order is Run/Pause/Resume, Stop, the canonical progress widget, E
 
 ## Priority 3: Details selector and status-bar presentation
 
-Complete for the first product gate, with one RC1 acceptance correction. The second results header row keeps multi-select status chips, Hide System Apps, search and the same Details selector. Auto/Right/Below/Hidden remains one state synchronized with `View > Details Panel`; there is no status-bar duplicate. The native status bar keeps the canonical operational text and size grip, with no progress or primary commands added there. Its full-width native frame remains edge-to-edge while the canonical text label has 16 logical px left and 12 logical px right contents margins; C2 geometry is unchanged.
+Complete for the first product gate, with RC1 and RC3 Phase A acceptance corrections. The second results header row keeps multi-select status chips, Hide System Apps, search and the same Details selector. Auto/Right/Below/Hidden remains one state synchronized with `View > Details Panel`; there is no status-bar duplicate. The native status bar keeps the canonical operational text and size grip, with no progress or primary commands added there. Its full-width native frame remains edge-to-edge while the canonical text label has 16 logical px left and 12 logical px right contents margins. Phase A adds small symmetric vertical label padding and removes the residual card-era bottom gap through style/font-derived layout sizing; C2 horizontal geometry is unchanged.
 
 ## Priority 4: semantic warning typography
 
@@ -135,7 +135,22 @@ The packaged RC1 from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6` passed technica
 - add `Tools > Data Maintenance > Clear Device Inventory History…`, which removes only separately keyed per-device comparison baselines; it preserves explicit Device Snapshots, Play Store audit cache, previous-audit history, provider cache, settings and current results;
 - default **Show app icon** to on only when the preference is absent; existing saved on and off choices remain unchanged. Icon loading retains its existing lazy, cached, non-fatal behavior.
 
-No RC2 package has been built or accepted. The next packaged acceptance candidate after source review will be RC2.
+RC2 technical validation has passed; it is not the final accepted candidate.
+
+## RC3 Phase A local-only stabilization
+
+Phase A is deliberately limited to independent visual and device-summary UX corrections:
+
+- one centralized semantic table-width policy classifies compact, medium, primary and bounded long-text columns without inspecting body values or using `ResizeToContents`;
+- Maintenance Score remains compact, Store URL remains one line and bounded, and saved/manual header widths are restored after the final table-model replacement so they remain authoritative across restart;
+- the table uses one font/style-derived header height with explicit two-line titles for **Maintenance Score**, **Installed vs Store**, **Android Compatibility**, **Device Inventory Change** and **Sensitive Permissions Count**; body-row height and native sorting remain unchanged;
+- the native status bar remains edge-to-edge with its size grip and 16/12 logical px horizontal text insets, while symmetric vertical padding, explicit centering and removal of the residual central bottom gap make the footer compact without moving C2 operations;
+- `Tools > Device Summary…` and its dialog are removed as redundant UI only; device-summary collection, snapshots, diagnostics, metadata, logs and exports remain available;
+- connected-device source identity includes available Android version/API metadata without adding a serial number or permanent row; missing version/API parts are omitted and file sources are unchanged.
+
+Phase A does not change Audit Profiles/Presets, Custom preset semantics, Smart Queries, SDK Maintenance Filter, full menu architecture, Export Results placement or Clear All Filters. Those remain outside this checkpoint. No RC3 package has been built.
+
+The Phase A source gate passed under Python 3.13.15 x64: focused coverage, the full 585-test suite, compileall, Ruff, `pip check`, `git diff --check` and both Qt offscreen smoke paths are green. Native Windows geometry also passed at 100% and actual 175% scaling for 1100, 1320 and 1600 logical px. No Nuitka/package build was run.
 
 ## Priority 5: Alternative Distribution Discovery
 
@@ -175,7 +190,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, so its SHA/artifact is not final and the next package will be RC2:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phase A is source-only and local-only; no RC3 package has been built:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

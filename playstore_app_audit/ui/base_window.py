@@ -395,7 +395,7 @@ class AppTableModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(COLUMNS):
-            return COLUMN_LABELS[COLUMNS[section]]
+            return schema.TABLE_HEADER_LABELS[COLUMNS[section]]
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -652,7 +652,7 @@ class BaseWindow(QMainWindow):
                 border: none;
                 border-right: 1px solid #DDE3E8;
                 border-bottom: 1px solid #D7DEE5;
-                padding: 8px 7px;
+                padding: 3px 7px;
                 font-weight: 650;
             }
             """
@@ -884,9 +884,8 @@ class BaseWindow(QMainWindow):
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         results_layout.addWidget(self.table, 1)
 
-        widths = [160, 250, 175, 110, 90, 220, 155, 320, 150]
-        for column, width in enumerate(widths):
-            self.table.setColumnWidth(column, width)
+        for column, key in enumerate(COLUMNS):
+            self.table.setColumnWidth(column, schema.DEFAULT_WIDTHS.get(key, 140))
 
     def _toggle_advanced(self, visible: bool) -> None:
         self.advanced_panel.setVisible(visible)

@@ -4,7 +4,14 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel, QProgressBar, QStatusBar
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QLabel,
+    QProgressBar,
+    QSizePolicy,
+    QStatusBar,
+)
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
@@ -61,7 +68,11 @@ def test_status_bar_hosts_status_while_results_header_hosts_progress(
     status_margins = window.status_label.contentsMargins()
     assert status_margins.left() == compact_ui.OPERATION_STATUS_LEFT_INSET == 16
     assert status_margins.right() == compact_ui.OPERATION_STATUS_RIGHT_INSET == 12
-    assert status_margins.top() == status_margins.bottom() == 0
+    assert status_margins.top() == status_margins.bottom()
+    assert status_margins.top() >= compact_ui.OPERATION_STATUS_MIN_VERTICAL_PADDING
+    assert window.status_label.alignment() & Qt.AlignmentFlag.AlignVCenter
+    assert status_bar.sizePolicy().verticalPolicy() is QSizePolicy.Policy.Maximum
+    assert window.centralWidget().layout().contentsMargins().bottom() == status_margins.top()
     assert window.progress.parentWidget() is window.summary_label.parentWidget()
     assert status_bar.findChildren(QProgressBar) == []
     assert [
@@ -90,6 +101,32 @@ def test_status_bar_hosts_status_while_results_header_hosts_progress(
         window.clear_button,
     ]
     assert [widget for widget in operation_widgets if widget in expected] == expected
+
+
+def test_status_bar_and_inline_progress_stay_compact_and_centered(
+    window: MainWindow,
+    app: QApplication,
+) -> None:
+    window.show()
+    app.processEvents()
+    status_height = window.status_bar.height()
+
+    for width in (1100, 1320, 1600):
+        window.resize(width, 760)
+        app.processEvents()
+
+        assert window.status_bar.height() == status_height
+        assert 20 <= status_height <= 28
+        assert abs(
+            window.status_label.geometry().center().y()
+            - window.status_bar.rect().center().y()
+        ) <= 1
+        assert abs(
+            window.progress.geometry().center().y()
+            - window.run_button.geometry().center().y()
+        ) <= 1
+
+    assert window.table.horizontalScrollBar().isVisible()
 
 
 def test_source_statuses_and_presentation_guard_use_the_status_bar(

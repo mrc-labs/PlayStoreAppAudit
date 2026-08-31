@@ -109,7 +109,8 @@ class PreferencesWindow(table_ui.TableWindow):
         self.proxy = proxy
         self.table.setModel(proxy)
         old_proxy.deleteLater()
-        self._apply_column_visibility(reset_order=True)
+        self._restore_table_layout()
+        self._apply_column_visibility(reset_order=False)
         self._sync_status_filter_buttons()
         self._update_summary()
 
@@ -236,7 +237,6 @@ class PreferencesWindow(table_ui.TableWindow):
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device Summary…", self._show_device_summary)
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
         snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)

@@ -172,9 +172,6 @@ class ResultsWindow(menu_ui.MenuWindow):
         results_available = bool(self.current_rows)
         visible_results_available = results_available and self.proxy.rowCount() > 0
         device_results_available = self.source_mode == "device" and results_available
-        device_summary_available = inventory_available and bool(
-            getattr(self, "_device_summary", None)
-        )
         inventory_changes_available = device_results_available and bool(
             getattr(self, "_last_inventory_changes", None)
         )
@@ -226,7 +223,6 @@ class ResultsWindow(menu_ui.MenuWindow):
             "advanced_settings_action": idle,
             "force_full_refresh_action": idle and source_available,
             "recheck_problematic_action": idle and problematic_available,
-            "device_summary_action": idle and device_summary_available,
             "save_device_snapshot_action": idle and device_results_available,
             "compare_device_snapshot_action": idle and device_results_available,
             "device_inventory_changes_action": idle and inventory_changes_available,

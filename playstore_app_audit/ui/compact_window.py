@@ -44,7 +44,7 @@ from playstore_app_audit.services.state import (
     save_settings,
     update_cache,
 )
-from playstore_app_audit.ui import schema
+from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.audit_window import AuditWindow
 
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
@@ -55,6 +55,7 @@ OPERATION_PROGRESS_MIN_WIDTH = 120
 OPERATION_PROGRESS_MAX_WIDTH = 320
 OPERATION_STATUS_LEFT_INSET = 16
 OPERATION_STATUS_RIGHT_INSET = 12
+OPERATION_STATUS_MIN_VERTICAL_PADDING = 2
 
 _original_classify_criticality = base_ui.classify_criticality
 
@@ -174,6 +175,7 @@ class CompactWindow(AuditWindow):
         self.table.verticalHeader().setDefaultSectionSize(24)
         self._compact_action_row()
         self._compact_results_area()
+        table_layout.configure_header(self.table)
         self._build_menu()
         self._setup_context_menu()
         self._restore_table_layout()
@@ -232,14 +234,33 @@ class CompactWindow(AuditWindow):
         self.status_bar.setObjectName("OperationalStatusBar")
         self.status_bar.setAccessibleName("Operational Status Bar")
         self.status_label.setAccessibleName("Operational Status")
+        vertical_padding = max(
+            OPERATION_STATUS_MIN_VERTICAL_PADDING,
+            self.status_label.fontMetrics().leading(),
+        )
         self.status_label.setContentsMargins(
             OPERATION_STATUS_LEFT_INSET,
-            0,
+            vertical_padding,
             OPERATION_STATUS_RIGHT_INSET,
-            0,
+            vertical_padding,
         )
+        self.status_label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.status_bar.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Maximum,
+        )
+        self.status_bar.setSizeGripEnabled(True)
         self.progress.setAccessibleName("Operation Progress")
         self.status_bar.addWidget(self.status_label, 1)
+
+        # The original card-only layout left a full content margin below the
+        # results card. With a native status bar that margin reads as unused
+        # footer height, so retain only the same small metric-derived inset as
+        # the status label's vertical padding.
+        left, top, right, _bottom = root.getContentsMargins()
+        root.setContentsMargins(left, top, right, vertical_padding)
 
         results_card = self.summary_label.parentWidget()
         results_layout = results_card.layout() if results_card is not None else None
@@ -264,7 +285,7 @@ class CompactWindow(AuditWindow):
             self.progress.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
             )
-            toolbar.addWidget(self.progress, 1)
+            toolbar.addWidget(self.progress, 1, Qt.AlignmentFlag.AlignVCenter)
             toolbar.addWidget(self.export_button)
             toolbar.addWidget(self.clear_button)
             toolbar.setObjectName("ResultsOperationsHeader")
@@ -336,7 +357,10 @@ class CompactWindow(AuditWindow):
             hidden = column not in visible
             self.table.setColumnHidden(logical, hidden)
             if reset_order or (not hidden and self.table.columnWidth(logical) <= 0):
-                self.table.setColumnWidth(logical, DEFAULT_WIDTHS.get(column, 140))
+                self.table.setColumnWidth(
+                    logical,
+                    table_layout.default_column_width(self.table, column),
+                )
         if reset_order:
             header = self.table.horizontalHeader()
             for visual, column in enumerate(self._visible_column_order()):
@@ -345,7 +369,10 @@ class CompactWindow(AuditWindow):
                 if current_visual != visual:
                     header.moveSection(current_visual, visual)
             for logical, column in enumerate(MODEL_COLUMNS):
-                self.table.setColumnWidth(logical, DEFAULT_WIDTHS.get(column, 140))
+                self.table.setColumnWidth(
+                    logical,
+                    table_layout.default_column_width(self.table, column),
+                )
 
     def _restore_table_layout(self) -> None:
         encoded = str(self.user_settings.get("qt_header_state") or "")

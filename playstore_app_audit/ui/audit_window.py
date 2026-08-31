@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
+from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.base_window import (
     APP_NAME,
@@ -240,9 +241,8 @@ class AuditWindow(BaseWindow):
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         results_layout.addWidget(self.table, 1)
 
-        widths = [160, 250, 175, 110, 90, 220, 155, 320, 150]
-        for column, width in enumerate(widths):
-            self.table.setColumnWidth(column, width)
+        for column, key in enumerate(schema.MODEL_COLUMNS):
+            self.table.setColumnWidth(column, schema.DEFAULT_WIDTHS.get(key, 140))
 
     def _set_busy(self, busy: bool) -> None:
         super()._set_busy(busy)

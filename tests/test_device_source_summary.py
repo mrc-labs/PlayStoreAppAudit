@@ -35,7 +35,42 @@ def test_device_source_identity_handles_partial_metadata() -> None:
     assert _device_source_identity({"model": "Pixel", "android_api": "36"}) == (
         "Pixel • Android API 36"
     )
+    assert _device_source_identity({"model": "Pixel", "android_version": "16"}) == (
+        "Pixel • Android 16"
+    )
+    assert _device_source_identity({"model": "Pixel"}) == "Pixel"
+    assert _device_source_identity({"android_version": "16", "android_api": "36"}) == (
+        "Android 16 (API 36)"
+    )
     assert _device_source_identity({}) == ""
+
+
+def test_device_summary_backend_remains_available_without_the_dialog(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    getprop = "\n".join(
+        (
+            "[ro.product.manufacturer]: [Google]",
+            "[ro.product.model]: [Pixel 9 Pro]",
+            "[ro.build.version.release]: [16]",
+            "[ro.build.version.sdk]: [36]",
+            "[ro.build.version.security_patch]: [2026-08-05]",
+        )
+    )
+
+    def fake_run(_adb: str, args: list[str], _timeout: int) -> str:
+        return "serial-1234\n" if args == ["get-serialno"] else getprop
+
+    monkeypatch.setattr(device_insights, "_run", fake_run)
+    summary = device_insights.collect_device_summary("adb", 12, 5)
+
+    assert summary["manufacturer"] == "Google"
+    assert summary["model"] == "Pixel 9 Pro"
+    assert summary["android_version"] == "16"
+    assert summary["android_api"] == "36"
+    assert summary["serial_masked"] == "••••1234"
+    assert summary["device_id"] != "serial-1234"
+    assert summary["third_party_packages"] == 7
 
 
 def test_phone_scan_enriches_app_source_with_connected_device(
@@ -52,6 +87,7 @@ def test_phone_scan_enriches_app_source_with_connected_device(
     monkeypatch.setattr(compact_ui, "save_settings", lambda values: dict(values))
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
     monkeypatch.setattr(MainWindow, "_get_authorised_adb", lambda self: "adb")
+    monkeypatch.setattr(MainWindow, "_find_adb", lambda self: None)
     monkeypatch.setattr(
         device_insights,
         "collect_device_summary",

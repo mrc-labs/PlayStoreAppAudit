@@ -219,7 +219,6 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device Summary…", self._show_device_summary)
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
         snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)
@@ -370,20 +369,6 @@ class InsightsWindow(device_ui.DeviceWindow):
                     {"package_name": package, "is_system": package in self.device_system_packages}
                 )
         QMessageBox.information(self, "Export complete", f"Package list saved to:\n{selected}")
-
-    def _show_device_summary(self) -> None:
-        if not self._device_summary:
-            QMessageBox.information(self, "No device summary", "Scan a phone with ADB first.")
-            return
-        d = self._device_summary
-        text = (
-            f"Device: {d.get('manufacturer', '')} {d.get('model', '')}\n"
-            f"Serial: {d.get('serial_masked', 'Unknown')}\n"
-            f"Android: {d.get('android_version', '?')} (API {d.get('android_api', '?')})\n"
-            f"Security patch: {d.get('security_patch', '?')}\n"
-            f"Packages: {d.get('total_packages', 0)} total · {d.get('third_party_packages', 0)} third-party · {d.get('system_packages', 0)} system"
-        )
-        QMessageBox.information(self, "Device Summary", text)
 
     def _save_device_snapshot(self) -> None:
         if not self.current_rows or self.source_mode != "device":

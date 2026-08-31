@@ -846,7 +846,6 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
         "Force Full Refresh (Ignore Cache)",
         "Recheck Removed / Anomaly / Other",
         None,
-        "Device Summary…",
         "Device Snapshots",
         "Device Inventory Changes…",
         None,
@@ -860,6 +859,9 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert "Force Full Refresh (Ignore Cache)" not in _action_texts(
         window.data_maintenance_menu
     )
+    assert "Device Summary…" not in _action_texts(window.tools_menu)
+    assert not hasattr(window, "device_summary_action")
+    assert not hasattr(window, "_show_device_summary")
 
 
 def test_action_availability_tracks_source_results_visibility_device_and_busy_state(
@@ -922,7 +924,6 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     window._sync_action_availability()
     assert window.file_phone_package_export_action.isEnabled()
     assert window.scan_phone_package_export_action.isEnabled()
-    assert window.device_summary_action.isEnabled()
     assert window.snapshots_menu.menuAction().isEnabled()
     assert not window.device_inventory_changes_action.isEnabled()
 
