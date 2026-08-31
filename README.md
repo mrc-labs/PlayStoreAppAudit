@@ -121,7 +121,7 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 ## Development
 
-The current source identifies application version `1.9.0`, matching the latest immutable published release. Active development planning is now v1.99; no application-version bump has been made for that cycle.
+The current source identifies application version `1.99.0` for the v1.99 release-candidate cycle. The latest immutable published release remains v1.9.0.
 
 The release-packaging baseline is Python 3.13. Quality CI also exercises Python 3.14 source compatibility.
 

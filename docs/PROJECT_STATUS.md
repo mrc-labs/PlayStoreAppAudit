@@ -59,7 +59,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 
 ## Current development baseline
 
-- Current source application version: `1.9.0`; derived Windows File/Product version: `1.9.0.0`.
+- Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.

@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 is feature complete locally with cooperative Stop, production C2, semantic warnings, F-Droid/authorized Aptoide evidence and the Gate 5 Maintenance Score. Stabilization is preparing the mandatory packaged Windows x64 acceptance candidate; remote activity remains frozen until explicitly resumed.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 is feature complete locally with cooperative Stop, production C2, semantic warnings, F-Droid/authorized Aptoide evidence and the Gate 5 Maintenance Score. GitHub Support has completed removal of the internal pull-request references to the sensitive commits. Stabilization is preparing the mandatory packaged Windows x64 acceptance candidate; remote activity remains frozen pending the final privacy/public-readiness audit and explicit approval to resume it.**
 
 ## Start here
 
@@ -55,7 +55,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 
 ## Current technical baseline
 
-- Current source application version remains `1.9.0`; no v1.99 version bump has occurred.
+- Current source application version is frozen at `1.99.0` for release-candidate preparation.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials==6.11.1`; `cryptography==50.0.1`; `Nuitka==4.1.3`.
 - UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.

@@ -76,7 +76,7 @@ A global Fluent redesign, an icon library without demonstrated need, unnecessary
 
 ## v1.99 pre-v2.0 closure
 
-v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization must preserve the approved scope while preparing the mandatory packaged Windows x64 acceptance candidate. The current application/source version remains `1.9.0` until a later deliberate version freeze.
+v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization must preserve the approved scope while preparing the mandatory packaged Windows x64 acceptance candidate. The application/source version is now frozen at `1.99.0` for the release-candidate cycle.
 
 ### Cooperative Stop/Cancel
 
