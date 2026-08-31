@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 import playstore_app_audit.services.re_audit as re_audit
 import playstore_app_audit.services.result_json as result_json
-import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.state as state
 
 
@@ -25,7 +24,6 @@ def _checked_attr(widget: object, name: str) -> bool:
 def build_window_export_context(window: object) -> dict[str, Any]:
     rows = list(getattr(window, "current_rows", []) or [])
     first = rows[0] if rows and isinstance(rows[0], dict) else {}
-    sdk_filter = sdk_maintenance.active_sdk_filter()
     settings = state.load_settings()
     context: dict[str, Any] = {
         "source_mode": str(getattr(window, "source_mode", "") or ""),
@@ -37,10 +35,12 @@ def build_window_export_context(window: object) -> dict[str, Any]:
             "hide_system": _checked_attr(window, "hide_system_check"),
             "status": sorted(str(item) for item in getattr(window, "_status_filters", set()) or set()),
             "preset": str(getattr(window, "_active_filter_preset", "All") or "All"),
+            # Preserve the v2 export-context shape after retiring the dedicated
+            # session-only SDK filter. SDK row data and Smart Query fields remain.
             "sdk": {
-                "target_sdk_max": sdk_filter.target_sdk_max,
-                "min_sdk_max": sdk_filter.min_sdk_max,
-                "compatibility": sdk_filter.compatibility,
+                "target_sdk_max": None,
+                "min_sdk_max": None,
+                "compatibility": "",
             },
         },
     }

@@ -7,9 +7,9 @@ import pytest
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 import playstore_app_audit.services.device_insights as device_insights
-import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.smart_queries import SmartQueryDialog
@@ -47,10 +47,8 @@ def window_and_settings(
     monkeypatch.setattr(compact_ui, "load_settings", load)
     monkeypatch.setattr(compact_ui, "save_settings", save)
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
-    sdk_maintenance.set_active_sdk_filter(None)
     created = MainWindow()
     yield created, settings
-    sdk_maintenance.set_active_sdk_filter(None)
     created.close()
     app.processEvents()
 
@@ -82,19 +80,124 @@ def _seed_results(window: MainWindow, rows: list[dict[str, object]]) -> None:
     window._update_summary()
 
 
-def test_view_menu_separates_quick_filters_smart_queries_and_audit_profiles(
+def test_view_menu_separates_result_filters_and_tools_exposes_audit_presets(
     window_and_settings: tuple[MainWindow, dict[str, Any]],
 ) -> None:
     window, settings = window_and_settings
     assert window._filter_menu.title() == "Quick Filters"
     assert window.smart_queries_menu.title() == "Smart Queries"
-    assert window.audit_profiles_menu.title() == "Audit Profiles"
-    assert window.view_menu.actions().index(window.smart_queries_menu.menuAction()) < (
-        window.view_menu.actions().index(window.sdk_filter_action)
-    )
+    assert window.audit_profiles_menu.title() == "Audit Presets"
     assert window.audit_profiles_menu.menuAction() in window.tools_menu.actions()
+    assert [action.text() for action in window.audit_profiles_menu.actions()] == [
+        "Save Current as Preset…",
+        "Manage Presets…",
+        "",
+        "No Saved Audit Presets",
+    ]
     assert "active_smart_query" not in settings
     assert settings.get("saved_filters") is None
+
+
+def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
+    window_and_settings: tuple[MainWindow, dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window, settings = window_and_settings
+    legacy_profile = {
+        "schema_version": 1,
+        "source_mode": "file",
+        "view_preset": "Technical",
+        "store_country": "de",
+        "settings": {
+            "store_language": "de",
+            "fallback_countries": "fr, us",
+            "store_workers": 12,
+            "cache_enabled": False,
+            "cache_ttl_hours": 24,
+            "collect_device_metadata": False,
+            "permissions_audit_enabled": True,
+            "inventory_history_enabled": False,
+            "compare_previous": True,
+            "exclude_system_source": False,
+            "search": "preset-search",
+            "active_filter_preset": "Sideloaded",
+            "active_smart_query": {"name": "Preset query"},
+            "sdk_filter": {"target_sdk_max": 28},
+            "details_panel_position": "right",
+            "show_app_icons": True,
+            "date_format": "YYYY-MM-DD",
+            "custom_view_columns": ["criticality"],
+        },
+    }
+    settings.update(
+        {
+            "audit_profiles": {"Existing phone audit": legacy_profile},
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "custom_view_order": ["package_name", "play_title", "criticality"],
+            "custom_view_widths": {"package_name": 319, "play_title": 281},
+            "details_panel_position": "hidden",
+            "show_app_icons": False,
+            "date_format": "DD.MM.YYYY",
+        }
+    )
+    window.user_settings.update(settings)
+    window._set_view_preset("Custom")
+    window._set_details_panel_position("hidden")
+    window.search_edit.setText("current-search")
+    window._set_criticality_filter("orange")
+    window._apply_filter_preset("Old apps")
+    query = _query(
+        "Current SDK query",
+        _condition("compatibility_status", "is", "Legacy target"),
+    )
+    window._apply_smart_query(query)
+    audit_profiles_ui.populate_audit_profiles_menu(window, window.audit_profiles_menu)
+
+    assert "Existing phone audit" in [
+        action.text() for action in window.audit_profiles_menu.actions()
+    ]
+    manage_action = next(
+        action
+        for action in window.audit_profiles_menu.actions()
+        if action.text() == "Manage Presets…"
+    )
+    assert manage_action.isEnabled()
+
+    audit_profiles_ui.apply_window_profile(window, legacy_profile)
+
+    assert settings["store_language"] == "de"
+    assert settings["store_workers"] == 12
+    assert settings["cache_enabled"] is False
+    assert settings["view_preset"] == "Custom"
+    assert settings["custom_view_columns"] == ["criticality", "package_name", "play_title"]
+    assert settings["custom_view_order"] == ["package_name", "play_title", "criticality"]
+    assert settings["custom_view_widths"] == {"package_name": 319, "play_title": 281}
+    assert settings["details_panel_position"] == "hidden"
+    assert settings["show_app_icons"] is False
+    assert settings["date_format"] == "DD.MM.YYYY"
+    assert window.search_edit.text() == "current-search"
+    assert window._status_filters == {"orange"}
+    assert window._active_filter_preset == "Old apps"
+    assert window._active_smart_query is query
+    assert window.proxy.smart_query is query
+    assert next(
+        action for action in window.view_preset_actions if action.text() == "Custom"
+    ).isChecked()
+
+    monkeypatch.setattr(
+        audit_profiles_ui.QInputDialog,
+        "getItem",
+        lambda *_args, **_kwargs: ("Existing phone audit", True),
+    )
+    monkeypatch.setattr(
+        audit_profiles_ui.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: audit_profiles_ui.QMessageBox.StandardButton.Yes,
+    )
+    manage_action.trigger()
+    assert settings["audit_profiles"] == {}
 
 
 def test_smart_query_actions_follow_results_and_running_state(
@@ -124,7 +227,7 @@ def test_smart_query_actions_follow_results_and_running_state(
     window._sync_action_availability()
 
 
-def test_smart_query_composes_with_every_existing_filter_and_preserves_status(
+def test_smart_query_composes_with_search_status_and_quick_filters_and_preserves_status(
     window_and_settings: tuple[MainWindow, dict[str, Any]],
 ) -> None:
     window, settings = window_and_settings
@@ -182,7 +285,6 @@ def test_smart_query_composes_with_every_existing_filter_and_preserves_status(
     window.search_edit.setText("com.keep")
     window._set_criticality_filter("orange")
     window._apply_filter_preset("Old apps")
-    window._set_sdk_filter(sdk_maintenance.SdkMaintenanceFilter(target_sdk_max=32))
     window.status_label.setText("Audit completed: 6 apps")
 
     query = _query(
@@ -192,7 +294,7 @@ def test_smart_query_composes_with_every_existing_filter_and_preserves_status(
     )
     window._apply_smart_query(query)
 
-    assert window.proxy.rowCount() == 1
+    assert window.proxy.rowCount() == 2
     assert window.status_label.text() == "Audit completed: 6 apps"
     assert "Smart Query: Alternative stale apps" in window.summary_label.text()
     assert window.summary_label.toolTip() == "Active Smart Query: Alternative stale apps"

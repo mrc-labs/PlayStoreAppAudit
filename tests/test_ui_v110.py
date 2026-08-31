@@ -275,8 +275,6 @@ def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
         None,
         "Quick Filters",
         "Smart Queries",
-        "SDK Maintenance Filter…",
-        "Clear SDK Filter",
         None,
         "Reset Table Layout",
     ]
@@ -841,7 +839,7 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert not window.clear_button.isEnabled()
     assert _action_structure(window.tools_menu) == [
         "Advanced Settings…",
-        "Audit Profiles",
+        "Audit Presets",
         None,
         "Force Full Refresh (Ignore Cache)",
         "Recheck Removed / Anomaly / Other",
@@ -958,9 +956,6 @@ def test_presentation_actions_preserve_running_operation_status(
     window.status_label.setText(operation_status)
 
     window._apply_filter_preset("Old Apps")
-    assert window.status_label.text() == operation_status
-
-    window._set_sdk_filter(None)
     assert window.status_label.text() == operation_status
 
     window._reset_table_layout()

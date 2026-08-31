@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-31
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is accepted. Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, limited to Column Preset semantics, persistent/restorable Custom layout and Customize View. Phase B2/B3, packaging and remote activity have not started. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is accepted. Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, limited to Column Preset semantics, persistent/restorable Custom layout and Customize View. Phase B2 is complete from Phase B1 checkpoint `4b848c3b00726ddc3d12248e07554969998af66d`, limited to SDK-filter retirement and execution-only Audit Presets. Phase B3, packaging and remote activity have not started. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
 
 ## Start here
 
@@ -148,7 +148,7 @@ Phase A is deliberately limited to independent visual and device-summary UX corr
 - `Tools > Device Summary…` and its dialog are removed as redundant UI only; device-summary collection, snapshots, diagnostics, metadata, logs and exports remain available;
 - connected-device source identity includes available Android version/API metadata without adding a serial number or permanent row; missing version/API parts are omitted and file sources are unchanged.
 
-Phase A does not change Audit Profiles/Presets, Custom preset semantics, Smart Queries, SDK Maintenance Filter, full menu architecture, Export Results placement or Clear All Filters. Those remain outside this checkpoint. No RC3 package has been built.
+Phase A did not change Audit Profiles/Presets, Custom preset semantics, Smart Queries, SDK Maintenance Filter, full menu architecture, Export Results placement or Clear All Filters. Those remained outside that checkpoint. No RC3 package was built.
 
 The Phase A source gate passed under Python 3.13.15 x64: focused coverage, the full 585-test suite, compileall, Ruff, `pip check`, `git diff --check` and both Qt offscreen smoke paths are green. Native Windows geometry also passed at 100% and actual 175% scaling for 1100, 1320 and 1600 logical px. No Nuitka/package build was run.
 
@@ -157,6 +157,16 @@ The Phase A source gate passed under Python 3.13.15 x64: focused coverage, the f
 Phase B1 renames the user-facing preset submenu to `View > Column Preset` and the existing presentation dialog to `Customize View…`. Basic, Device and Technical remain immutable built-in layouts. Resizing or reordering the live header, or changing column visibility in Customize View, promotes the resulting layout to Custom without mutating the originating built-in. Custom is disabled until a real or conservatively migrated custom layout exists; later built-in selection, filtering, sorting, data refresh, audits and restart preserve it.
 
 Custom owns only the table layout: `custom_view_columns` stores visible columns, `custom_view_order` stores full visual order, and `custom_view_widths` stores per-column widths. `custom_view_exists` distinguishes a real Custom layout from an absent default. `view_preset` remains the effective preset identifier. The existing `qt_header_state` and `qt_header_schema_version` remain a compatibility bridge for RC2/Phase A saved header state; valid legacy state is migrated without discarding widths/order, old explicit Custom visibility is retained where possible, and malformed/partial values fall back safely to Phase A semantic widths. Show app icon, date format and other presentation preferences remain global and are not copied into Custom.
+
+## RC3 Phase B2 local-only audit configuration simplification
+
+Phase B2 removes the dedicated `SDK Maintenance Filter…` and `Clear SDK Filter` surface plus its session-global result-filter hook. Inspection confirmed that the retired filter never used settings persistence or startup restoration: its only state was the in-process `SdkMaintenanceFilter(target_sdk_max, min_sdk_max, compatibility)` value. The hook is no longer installed, so seeded legacy-looking values are inert across restart and cannot leave a hidden filter active. The versioned JSON context retains its existing `filters.sdk` shape with neutral values to avoid an unrelated schema change. Target SDK, Min SDK and Android Compatibility collection, table/Details/export data, classification, Maintenance Score inputs and Smart Query fields remain unchanged; Smart Queries are now the advanced SDK/compatibility filtering mechanism.
+
+The user-facing **Audit Profiles** name becomes **Audit Presets**, including `Save Current as Preset…` and `Manage Presets…`. The internal settings key remains `audit_profiles` and schema version remains 1. Existing names and execution settings remain loadable. Historical `view_preset` or nested filter/presentation fields may remain in the stored object, but preset application ignores them; new captures omit `view_preset`. Only source expectation, Store country/language and the existing cache, worker, device-enrichment, permissions, inventory/history and source-exclusion execution options apply. Search, status chips, Quick Filters, Smart Queries, retired SDK-filter values, Column Preset/Custom state, Details placement, app icons, date format and other presentation preferences remain unchanged.
+
+Phase B2 does not perform the Phase B3 menu reorganization, add Clear All Filters, move Export Results, group Device History or build/package RC3.
+
+The Phase B2 source gate passed under Python 3.13.15 x64: 167 focused tests and the full 601-test suite are green, together with compileall, full Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke and deterministic Qt event-loop smoke. Phase A table/status/device behavior, Phase B1 Custom persistence and explicit app-icon-off semantics remain green. No Nuitka/package build was run.
 
 The Phase B1 source gate passed under Python 3.13.15 x64: 75 focused tests and the full 596-test suite are green, together with compileall, full Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke and the deterministic Qt event-loop smoke. Phase A wrapped-header, saved-width, compact status-bar and device-source regressions remain green. No Nuitka/package build was run.
 
@@ -198,7 +208,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phases A and B1 are source-only and local-only; no RC3 package has been built:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phases A, B1 and B2 are source-only and local-only; no RC3 package has been built:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

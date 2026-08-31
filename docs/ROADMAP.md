@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-08-28
+Last updated: 2026-08-31
 
 ## Purpose
 
@@ -110,7 +110,9 @@ This gate is complete. **Different** and **Aging target** reuse the status palet
 
 Phase A is accepted with semantic table widths, selected wrapped headers, saved/manual width restoration, compact native status-bar presentation and removal of the redundant Device Summary UI.
 
-Phase B1 is complete and deliberately limited to column-layout persistence. `View > Column Preset` contains immutable Basic, Device and Technical layouts plus a persistent Custom layout created by manual visibility, order or width changes. Custom remains available across built-in switching, refresh/audit work and restart, and is disabled before a real or conservatively migrated layout exists. `Customize View…` retains the existing display-preference architecture: column changes update Custom, while app icons, date format and equivalent preferences remain global. SDK-filter removal, Audit Presets, full menu reorganization, Clear All Filters and RC3 packaging remain later, separately gated work.
+Phase B1 is complete and deliberately limited to column-layout persistence. `View > Column Preset` contains immutable Basic, Device and Technical layouts plus a persistent Custom layout created by manual visibility, order or width changes. Custom remains available across built-in switching, refresh/audit work and restart, and is disabled before a real or conservatively migrated layout exists. `Customize View…` retains the existing display-preference architecture: column changes update Custom, while app icons, date format and equivalent preferences remain global.
+
+Phase B2 is complete locally. The dedicated SDK Maintenance Filter and its clear action are removed; the former filter was session-only and had no persistence keys, and the runtime hook is gone so legacy-looking settings cannot activate invisible SDK filtering after restart. Target SDK, Min SDK and Android Compatibility data remain unchanged, with Smart Queries as the advanced filtering mechanism. User-facing Audit Profiles are now **Audit Presets** while schema v1 and the internal `audit_profiles` key remain compatible. Presets apply audit-execution state only: historical presentation/filter fields may remain in stored objects but are ignored, and current search, status chips, Quick Filters, Smart Queries, Column Preset/Custom layout, Details placement, app-icon setting and date format remain untouched. Full menu reorganization, Clear All Filters and RC3 packaging remain later, separately gated work.
 
 ### Alternative Distribution Discovery
 

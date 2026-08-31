@@ -5,24 +5,13 @@ import sys
 from PySide6.QtGui import QAction, QActionGroup, QFont, QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
     QMenu,
     QPushButton,
-    QSpinBox,
     QStyle,
-    QVBoxLayout,
-    QWidget,
 )
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
-import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
@@ -121,13 +110,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.smart_queries_menu = QMenu("Smart Queries", self.view_menu)
         self.view_menu.addMenu(self.smart_queries_menu)
         smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
-        self.sdk_filter_action = self.view_menu.addAction(
-            "SDK Maintenance Filter…", self._show_sdk_filter_dialog
-        )
-        self.clear_sdk_filter_action = self.view_menu.addAction(
-            "Clear SDK Filter", self._clear_sdk_filter
-        )
-        self.clear_sdk_filter_action.setEnabled(sdk_maintenance.active_sdk_filter().active())
 
         self.view_menu.addSeparator()
         self.reset_layout_action = self.view_menu.addAction(
@@ -139,7 +121,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.audit_profiles_menu = QMenu("Audit Profiles", self.tools_menu)
+        self.audit_profiles_menu = QMenu("Audit Presets", self.tools_menu)
         self.tools_menu.addMenu(self.audit_profiles_menu)
         audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
@@ -263,119 +245,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if hasattr(self, "summary_label"):
             self.summary_label.setToolTip(f"Active Smart Query: {name}")
         return f"{summary} | Smart Query: {compact_name}"
-
-    @staticmethod
-    def _observed_sdk_default(rows: list[dict[str, object]], key: str, fallback: int) -> int:
-        values: list[int] = []
-        for row in rows:
-            try:
-                value = int(str(row.get(key) or "").strip())
-            except (TypeError, ValueError):
-                continue
-            if value > 0:
-                values.append(value)
-        return max(values) if values else fallback
-
-    @staticmethod
-    def _threshold_control(enabled: bool, value: int) -> tuple[QWidget, QCheckBox, QSpinBox]:
-        host = QWidget()
-        layout = QHBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        check = QCheckBox("Enable")
-        check.setChecked(enabled)
-        spin = QSpinBox()
-        spin.setRange(1, 100)
-        spin.setValue(max(1, value))
-        spin.setEnabled(enabled)
-        check.toggled.connect(spin.setEnabled)
-        layout.addWidget(check)
-        layout.addWidget(spin)
-        layout.addStretch(1)
-        return host, check, spin
-
-    def _show_sdk_filter_dialog(self) -> None:
-        current = sdk_maintenance.active_sdk_filter()
-        dialog = QDialog(self)
-        dialog.setWindowTitle("SDK Maintenance Filter")
-        dialog.setMinimumWidth(500)
-        root = QVBoxLayout(dialog)
-
-        note = QLabel(
-            "Filter observed connected-device SDK metadata. targetSdk and minSdk describe Android "
-            "compatibility and maintenance context only; they are not security or trust scores. "
-            "Rows without a numeric value are excluded when the corresponding threshold is enabled."
-        )
-        note.setWordWrap(True)
-        root.addWidget(note)
-
-        form = QFormLayout()
-        target_default = current.target_sdk_max or self._observed_sdk_default(
-            list(self.current_rows), "target_sdk", 35
-        )
-        target_host, target_enabled, target_spin = self._threshold_control(
-            current.target_sdk_max is not None, target_default
-        )
-        form.addRow("targetSdk at or below", target_host)
-
-        min_default = current.min_sdk_max or self._observed_sdk_default(
-            list(self.current_rows), "min_sdk", 23
-        )
-        min_host, min_enabled, min_spin = self._threshold_control(
-            current.min_sdk_max is not None, min_default
-        )
-        form.addRow("minSdk at or below", min_host)
-
-        compatibility = QComboBox()
-        compatibility.addItem("All compatibility states", "")
-        for value in sdk_maintenance.COMPATIBILITY_VALUES[1:]:
-            compatibility.addItem(value, value)
-        wanted = current.compatibility
-        for index in range(compatibility.count()):
-            if compatibility.itemData(index) == wanted:
-                compatibility.setCurrentIndex(index)
-                break
-        form.addRow("Target compatibility", compatibility)
-        root.addLayout(form)
-
-        buttons_row = QHBoxLayout()
-        clear = QPushButton("Clear Filter")
-        buttons_row.addWidget(clear)
-        buttons_row.addStretch(1)
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons_row.addWidget(buttons)
-        root.addLayout(buttons_row)
-
-        clear.clicked.connect(lambda: (self._clear_sdk_filter(), dialog.reject()))
-        buttons.rejected.connect(dialog.reject)
-        buttons.accepted.connect(dialog.accept)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        if not target_enabled.isChecked() and not min_enabled.isChecked() and not compatibility.currentData():
-            self._clear_sdk_filter()
-            return
-
-        value = sdk_maintenance.SdkMaintenanceFilter(
-            target_sdk_max=target_spin.value() if target_enabled.isChecked() else None,
-            min_sdk_max=min_spin.value() if min_enabled.isChecked() else None,
-            compatibility=str(compatibility.currentData() or ""),
-        )
-        self._set_sdk_filter(value)
-
-    def _set_sdk_filter(self, value: sdk_maintenance.SdkMaintenanceFilter | None) -> None:
-        current = sdk_maintenance.set_active_sdk_filter(value)
-        # Reapply the active built-in preset to trigger Qt's modern filter-change
-        # lifecycle without deprecated invalidateFilter() calls.
-        self.proxy.set_v9_preset(self._active_filter_preset)
-        if hasattr(self, "clear_sdk_filter_action"):
-            self.clear_sdk_filter_action.setEnabled(current.active())
-        self._update_summary()
-        self._set_presentation_status(sdk_maintenance.describe_sdk_filter(current))
-
-    def _clear_sdk_filter(self) -> None:
-        self._set_sdk_filter(None)
 
     @staticmethod
     def _fit_status_chip_to_selected_text(button: QPushButton) -> None:

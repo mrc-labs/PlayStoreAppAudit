@@ -22,9 +22,9 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Optionally calculate a transparent Maintenance Score heuristic.
 - Read friendly Notes consistently in the table, tooltip, Details Panel and HTML report while raw machine-readable Notes remain available in data exports.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
-- Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries that compose with installer and SDK maintenance filters.
+- Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries, including Android Compatibility, Target SDK and Min SDK conditions.
 - Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
-- Save reusable audit profiles without mixing them with result-filter state.
+- Save reusable Audit Presets that affect how the next audit runs without changing result filters or presentation.
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and maintain device inventory history and snapshots.
 - Export all or visible results as CSV, HTML or versioned JSON.
