@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette
+from PySide6.QtGui import QFont, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -36,8 +36,8 @@ def app() -> QApplication:
 @pytest.mark.parametrize(
     ("field", "value", "status_key", "emphasis", "font_weight"),
     [
-        ("version_comparison", "Different", "yellow", "warning", 500),
-        ("compatibility_status", "Aging target", "yellow", "warning", 500),
+        ("version_comparison", "Different", "yellow", "warning", 600),
+        ("compatibility_status", "Aging target", "yellow", "warning", 600),
         (
             "compatibility_status",
             "Legacy target",
@@ -113,10 +113,14 @@ def test_table_warning_typography_preserves_severity_hierarchy(
     status_font = model.data(model.index(2, status_column), Qt.ItemDataRole.FontRole)
 
     assert normal_font is None
-    assert different_font.weight() == aging_font.weight() == 500
-    assert legacy_font.weight() == 600
+    assert (
+        different_font.weight()
+        == aging_font.weight()
+        == legacy_font.weight()
+        == 600
+    )
     assert status_font.weight() == 700
-    assert different_font.weight() < legacy_font.weight() < status_font.weight()
+    assert different_font.weight() < status_font.weight()
 
     warning_colour = model.data(
         model.index(1, compatibility_column), Qt.ItemDataRole.ForegroundRole
@@ -144,6 +148,21 @@ def test_unrelated_values_do_not_receive_warning_presentation() -> None:
         assert presentation.semantic_value_presentation(field, value) is None
         assert presentation.semantic_foreground_colour(field, value) is None
         assert presentation.semantic_html_value(field, value) == value
+
+
+def test_modern_remains_regular_without_semantic_warning_styling(
+    app: QApplication,
+) -> None:
+    label = QLabel("Modern")
+
+    assert label.font().weight() == QFont.Weight.Normal.value
+    assert not base_ui.apply_semantic_label_presentation(
+        label, "compatibility_status", "Modern"
+    )
+    assert label.font().weight() == QFont.Weight.Normal.value
+
+    label.deleteLater()
+    app.processEvents()
 
 
 def test_selected_table_rows_keep_native_highlighted_text_role(
@@ -272,7 +291,7 @@ def test_context_details_dialog_uses_the_same_semantic_label_helper(
                 "compatibility_status": "Legacy target",
             }
         )
-        assert captured["version_comparison"].font().weight() == 500
+        assert captured["version_comparison"].font().weight() == 600
         assert captured["compatibility_status"].font().weight() == 600
     finally:
         window.close()

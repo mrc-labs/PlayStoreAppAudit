@@ -232,6 +232,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             "device_inventory_changes_action": idle and inventory_changes_available,
             "clear_audit_cache_action": idle,
             "clear_audit_history_action": idle,
+            "clear_device_inventory_history_action": idle,
         }
         for name, enabled in action_states.items():
             action = getattr(self, name, None)

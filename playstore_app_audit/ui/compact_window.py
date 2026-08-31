@@ -53,6 +53,8 @@ DEFAULT_WIDTHS = dict(schema.DEFAULT_WIDTHS)
 
 OPERATION_PROGRESS_MIN_WIDTH = 120
 OPERATION_PROGRESS_MAX_WIDTH = 320
+OPERATION_STATUS_LEFT_INSET = 16
+OPERATION_STATUS_RIGHT_INSET = 12
 
 _original_classify_criticality = base_ui.classify_criticality
 
@@ -230,6 +232,12 @@ class CompactWindow(AuditWindow):
         self.status_bar.setObjectName("OperationalStatusBar")
         self.status_bar.setAccessibleName("Operational Status Bar")
         self.status_label.setAccessibleName("Operational Status")
+        self.status_label.setContentsMargins(
+            OPERATION_STATUS_LEFT_INSET,
+            0,
+            OPERATION_STATUS_RIGHT_INSET,
+            0,
+        )
         self.progress.setAccessibleName("Operation Progress")
         self.status_bar.addWidget(self.status_label, 1)
 

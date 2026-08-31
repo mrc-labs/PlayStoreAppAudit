@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-29
+Last updated: 2026-08-31
 
 ## Published release
 
@@ -60,6 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
+- RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance rejected it as the final candidate. The reviewed correction source remains version `1.99.0`; the next package will be RC2.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -91,8 +92,10 @@ The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` 
 
 - preserve the cooperative safe Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25`;
 - preserve the locally accepted C2 operations-header layout after the A/B/C and C0/C1/C2 native comparisons: Run/Pause/Resume, Stop, always-present canonical progress, Export Results and Clear Results;
-- keep operational status text in the native status bar and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
-- preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow Medium **Different/Aging target**, dark-orange DemiBold **Legacy target**, and Bold Status, with native selected/disabled roles and unchanged raw values;
+- keep operational status text in the edge-to-edge native status bar, with 16 logical px left and 12 logical px right label-content margins, and keep the single synchronized Auto/Right/Below/Hidden Details selector on the second results header row with chips, Hide System Apps and search;
+- preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow DemiBold 600 **Different/Aging target**, dark-orange DemiBold 600 **Legacy target**, Regular 400 **Modern**, and Bold 700 Status, with native selected/disabled roles and unchanged raw values;
+- retain the dedicated device-inventory-history clear boundary: remove only separately keyed `Device Inventory Change` baselines while preserving Device Snapshots, Store cache, previous-audit history, provider cache, settings and current results;
+- default **Show app icon** on when its setting is absent while preserving every explicitly saved on or off value and the existing lazy/cached/non-fatal loading behavior;
 - preserve the locally completed Alternative Distribution Gate 4: built-in F-Droid main plus Advanced/authorized Aptoide behind one non-pluggable exact-package provider model, eligible only after raw `not_found_in_checked_countries`;
 - keep provider evidence secondary/non-fatal and separate from Google Play state, installer source and criticality; Maintenance Score may consume only current conclusive Available evidence through the accepted bounded recovery mapping;
 - retain AES-GCM/HKDF protected Aptoide config credentials with honest local copy/casual-disclosure limits, and never expose plaintext/protected credentials or machine identity in diagnostics/exports;

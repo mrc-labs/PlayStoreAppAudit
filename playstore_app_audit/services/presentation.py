@@ -55,12 +55,12 @@ SEMANTIC_VALUE_PRESENTATIONS = {
     ("version_comparison", "Different"): SemanticValuePresentation(
         status_key="yellow",
         emphasis="warning",
-        font_weight=500,
+        font_weight=600,
     ),
     ("compatibility_status", "Aging target"): SemanticValuePresentation(
         status_key="yellow",
         emphasis="warning",
-        font_weight=500,
+        font_weight=600,
     ),
     ("compatibility_status", "Legacy target"): SemanticValuePresentation(
         status_key="orange",

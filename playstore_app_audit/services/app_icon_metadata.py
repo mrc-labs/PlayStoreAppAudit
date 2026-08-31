@@ -5,7 +5,7 @@ from typing import Any
 
 import playstore_app_audit.services.state as state
 
-DEFAULT_SHOW_APP_ICONS = False
+DEFAULT_SHOW_APP_ICONS = True
 ICON_ELIGIBLE_STATUSES = {
     "available",
     "available_in_other_country",
@@ -93,7 +93,7 @@ def clear_icon_metadata() -> None:
 def install_app_icon_metadata_capture() -> bool:
     """Capture reusable metadata from normal scraper calls without extra Store requests.
 
-    The optional icon UI remains disabled by default. Icon URL and developer are
+    The optional icon UI is enabled by default. Icon URL and developer are
     captured from Store responses already needed by the audit. Eligible live rows
     receive the metadata before the normal healthy-result cache write, so cached
     audits can reuse it after restart.

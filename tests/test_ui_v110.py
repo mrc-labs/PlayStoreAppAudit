@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import os
 from pathlib import Path
 
@@ -16,9 +17,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QMessageBox,
     QStackedWidget,
 )
 
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
@@ -315,7 +318,9 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
 ) -> None:
     def inspect_display(dialog: QDialog) -> int:
         assert dialog.objectName() == "DisplaySettingsDialog"
-        assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is not None
+        icons = dialog.findChild(QCheckBox, "ShowAppIconsCheck")
+        assert icons is not None
+        assert icons.isChecked()
         assert dialog.findChild(QComboBox, "DateFormatCombo") is not None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is None
@@ -850,6 +855,7 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert _action_texts(window.data_maintenance_menu) == [
         "Clear Audit Cache",
         "Clear Previous-Audit History",
+        "Clear Device Inventory History…",
     ]
     assert "Force Full Refresh (Ignore Cache)" not in _action_texts(
         window.data_maintenance_menu
@@ -1037,6 +1043,117 @@ def test_clear_current_results_preserves_phone_inventory_and_persistent_data(
     assert window.file_phone_package_export_action.isEnabled()
     assert window.scan_phone_package_export_action.isEnabled()
     assert persistent_deletions == []
+
+
+def test_clear_device_inventory_history_deletes_only_comparison_baselines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(device_insights, "app_data_dir_v9", lambda: tmp_path)
+    baselines = [
+        tmp_path / "inventory_phone_one.json",
+        tmp_path / "inventory_phone_two.json",
+    ]
+    for path in baselines:
+        path.write_text("{}", encoding="utf-8")
+
+    preserved = [
+        tmp_path / "settings.json",
+        tmp_path / "audit_cache.json",
+        tmp_path / "audit_history.json",
+        tmp_path / "alternative_distribution_cache.json",
+        tmp_path / "inventory_notes.txt",
+        tmp_path / "manual_snapshot.psaa.json",
+    ]
+    for path in preserved:
+        path.write_text("preserve", encoding="utf-8")
+    snapshots = tmp_path / "device_snapshots"
+    snapshots.mkdir()
+    snapshot = snapshots / "saved.psaa.json"
+    snapshot.write_text("preserve", encoding="utf-8")
+    colliding_snapshot = tmp_path / "inventory_manual_snapshot.json"
+    colliding_snapshot.write_text(
+        json.dumps({"format": device_insights.DEVICE_SNAPSHOT_FORMAT, "apps": []}),
+        encoding="utf-8",
+    )
+
+    assert device_insights.clear_device_inventory_history() == 2
+    assert all(not path.exists() for path in baselines)
+    assert all(path.read_text(encoding="utf-8") == "preserve" for path in preserved)
+    assert snapshot.read_text(encoding="utf-8") == "preserve"
+    assert colliding_snapshot.is_file()
+
+    rows = [{"package_name": "com.example.app", "installed_version": "1"}]
+    comparison = device_insights.annotate_inventory_changes_and_save(
+        rows,
+        {"device_id": "phone one"},
+    )
+    assert comparison["had_previous"] is False
+
+
+def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    row = {
+        "package_name": "com.example.app",
+        "criticality_key": "green",
+        "device_change": "Version changed",
+        change_service.DEVICE_HISTORY_FLAG: True,
+    }
+    window.source_mode = "device"
+    window.current_rows = [row]
+    window.model.set_rows(window.current_rows)
+    window._last_inventory_changes = {
+        "had_previous": True,
+        "counts": {"version": 1},
+        "removed": [],
+    }
+    window._sync_action_availability()
+    calls: list[None] = []
+    prompts: list[tuple[str, str]] = []
+    answers = [
+        QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.Yes,
+    ]
+
+    def question(
+        _parent: object,
+        title: str,
+        message: str,
+        *_args: object,
+    ) -> QMessageBox.StandardButton:
+        prompts.append((title, message))
+        return answers.pop(0)
+
+    monkeypatch.setattr(QMessageBox, "question", question)
+    monkeypatch.setattr(
+        device_insights,
+        "clear_device_inventory_history",
+        lambda: calls.append(None) or 2,
+    )
+
+    window.clear_device_inventory_history_action.trigger()
+    assert calls == []
+    assert row["device_change"] == "Version changed"
+
+    window.clear_device_inventory_history_action.trigger()
+
+    assert calls == [None]
+    assert prompts[0] == prompts[1]
+    assert prompts[0][0] == "Clear device inventory history?"
+    confirmation = prompts[0][1]
+    assert "Device Inventory Change" in confirmation
+    assert "Device snapshots" in confirmation
+    assert "provider cache" in confirmation
+    assert "settings" in confirmation
+    assert "device_change" not in row
+    assert row[change_service.DEVICE_HISTORY_FLAG] is False
+    assert window._last_inventory_changes == {}
+    assert not window.device_inventory_changes_action.isEnabled()
+    assert window.status_label.text() == (
+        "Device inventory history cleared • 2 baselines removed"
+    )
 
 
 def test_scan_phone_split_control_tracks_current_phone_inventory(

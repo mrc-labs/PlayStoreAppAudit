@@ -1,8 +1,8 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-08-29
+Last updated: 2026-08-31
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 is feature complete locally with cooperative Stop, production C2, semantic warnings, F-Droid/authorized Aptoide evidence and the Gate 5 Maintenance Score. GitHub Support has completed removal of the internal pull-request references to the sensitive commits. Stabilization is preparing the mandatory packaged Windows x64 acceptance candidate; remote activity remains frozen pending the final privacy/public-readiness audit and explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance found narrow status-bar, warning-weight, inventory-history maintenance and fresh icon-default corrections. RC1 is not the final accepted candidate; the next package will be RC2 after review of the correction source. Remote activity remains frozen pending the final privacy/public-readiness audit and explicit approval to resume it.**
 
 ## Start here
 
@@ -110,21 +110,32 @@ The production order is Run/Pause/Resume, Stop, the canonical progress widget, E
 
 ## Priority 3: Details selector and status-bar presentation
 
-Complete for the first product gate. The second results header row keeps multi-select status chips, Hide System Apps, search and the same Details selector. Auto/Right/Below/Hidden remains one state synchronized with `View > Details Panel`; there is no status-bar duplicate. The native status bar keeps the canonical operational text and size grip, with no progress or primary commands added there.
+Complete for the first product gate, with one RC1 acceptance correction. The second results header row keeps multi-select status chips, Hide System Apps, search and the same Details selector. Auto/Right/Below/Hidden remains one state synchronized with `View > Details Panel`; there is no status-bar duplicate. The native status bar keeps the canonical operational text and size grip, with no progress or primary commands added there. Its full-width native frame remains edge-to-edge while the canonical text label has 16 logical px left and 12 logical px right contents margins; C2 geometry is unchanged.
 
 ## Priority 4: semantic warning typography
 
 Complete locally. One pure semantic presentation mapping now serves the results table, selected-row Details Panel, context Details dialog and user-facing HTML report.
 
-- **Different** and **Aging target**: existing dark-yellow status foreground, Qt Medium weight 500.
+- **Different** and **Aging target**: existing dark-yellow status foreground, Qt DemiBold weight 600.
 - **Legacy target**: existing dark-orange status foreground, Qt DemiBold weight 600.
-- Normal values: normal weight with no warning colour.
+- Normal values, including **Modern**: Regular weight 400 with no warning colour.
 - Status column: remains Bold weight 700.
 - Selected rows: Qt continues to manage the selection background; the semantic foregrounds remain readable without selection-specific colours.
 - Disabled labels: the native disabled-text palette role is retained.
 - CSV, versioned JSON, raw data, classifications, scoring, settings and schemas: unchanged.
 
 The application retains its established light presentation; this gate does not add or claim a new dark theme.
+
+## RC1 manual-acceptance corrections
+
+The packaged RC1 from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6` passed technical validation but is not accepted as final. Native Windows 11 review at 175% scaling required these narrow corrections while retaining application version `1.99.0`:
+
+- inset only the operational status label's contents, leaving the native status bar edge-to-edge and C2 untouched;
+- promote **Different** and **Aging target** from Medium 500 to DemiBold 600 because Segoe UI/Qt rendered 500 indistinguishably from regular; keep **Legacy target** at 600, **Modern** at 400 and Status at 700;
+- add `Tools > Data Maintenance > Clear Device Inventory History…`, which removes only separately keyed per-device comparison baselines; it preserves explicit Device Snapshots, Play Store audit cache, previous-audit history, provider cache, settings and current results;
+- default **Show app icon** to on only when the preference is absent; existing saved on and off choices remain unchanged. Icon loading retains its existing lazy, cached, non-fatal behavior.
+
+No RC2 package has been built or accepted. The next packaged acceptance candidate after source review will be RC2.
 
 ## Priority 5: Alternative Distribution Discovery
 
@@ -164,7 +175,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes one additional packaged acceptance candidate before public release:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, so its SHA/artifact is not final and the next package will be RC2:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

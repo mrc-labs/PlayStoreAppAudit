@@ -58,6 +58,10 @@ def test_status_bar_hosts_status_while_results_header_hosts_progress(
     assert status_bar.objectName() == "OperationalStatusBar"
     assert status_bar.isSizeGripEnabled()
     assert window.status_label.parentWidget() is status_bar
+    status_margins = window.status_label.contentsMargins()
+    assert status_margins.left() == compact_ui.OPERATION_STATUS_LEFT_INSET == 16
+    assert status_margins.right() == compact_ui.OPERATION_STATUS_RIGHT_INSET == 12
+    assert status_margins.top() == status_margins.bottom() == 0
     assert window.progress.parentWidget() is window.summary_label.parentWidget()
     assert status_bar.findChildren(QProgressBar) == []
     assert [

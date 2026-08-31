@@ -100,11 +100,11 @@ The integrated results-header direction won, followed by a focused C0/C1/C2 comp
 
 ### Details selector and status-bar presentation
 
-The review retained the existing Auto/Right/Below/Hidden Details selector in the second results header row alongside status chips, Hide System Apps and search. It continues to share one state with `View > Details Panel`; no mirrored state was added. The native status bar retains operational text and its size grip, while progress now occupies the stable inline C2 position in the first results header row.
+The review retained the existing Auto/Right/Below/Hidden Details selector in the second results header row alongside status chips, Hide System Apps and search. It continues to share one state with `View > Details Panel`; no mirrored state was added. The native status bar retains operational text and its size grip, while progress now occupies the stable inline C2 position in the first results header row. RC1 acceptance added 16 logical px left and 12 logical px right contents margins to the operational text label only; the status bar remains edge-to-edge and C2 does not move.
 
 ### Semantic warning typography
 
-This gate is complete. **Different** and **Aging target** reuse the status palette's dark-yellow foreground with Qt Medium weight 500; **Legacy target** reuses dark orange with DemiBold weight 600; Status remains Bold weight 700. The shared presentation mapping is used by the results table, Details Panel, context Details dialog and HTML report. Qt continues to manage selection backgrounds, while the semantic foregrounds remain readable without selection-specific colours; the native disabled-text role remains unchanged. Normal/Modern/Match/Unknown values receive no warning styling, and machine-readable exports/data are unchanged.
+This gate is complete. **Different** and **Aging target** reuse the status palette's dark-yellow foreground with Qt DemiBold weight 600; **Legacy target** reuses dark orange with DemiBold weight 600; **Modern** remains Regular weight 400 and Status remains Bold weight 700. The RC1 correction from 500 to 600 reflects native Segoe UI/Qt evidence that Medium was visually indistinguishable from regular. The shared presentation mapping is used by the results table, Details Panel, context Details dialog and HTML report. Qt continues to manage selection backgrounds, while the semantic foregrounds remain readable without selection-specific colours; the native disabled-text role remains unchanged. Normal/Modern/Match/Unknown values receive no warning styling, and machine-readable exports/data are unchanged.
 
 ### Alternative Distribution Discovery
 
@@ -146,7 +146,7 @@ Details, App Details and HTML reports expose the score components without mutati
 
 ### Mandatory user-tested RC gate
 
-v1.99 deliberately authorizes one additional packaged Windows x64 acceptance candidate:
+v1.99 deliberately requires a packaged Windows x64 acceptance cycle. RC1 from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6` passed technical validation but failed manual acceptance. The source remains version `1.99.0`; after the narrow status-label inset, semantic-weight, device-inventory-history maintenance and fresh icon-default corrections are reviewed, the next package will be RC2:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate and build a real Windows x64 package;

@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
@@ -468,6 +469,46 @@ class InsightsWindow(device_ui.DeviceWindow):
         if removed:
             lines += ["", "Removed packages:"] + [f"  {x}" for x in removed[:150]]
         self._show_text_help("Device Inventory Changes", "\n".join(lines))
+
+    def _clear_device_inventory_history(self) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Clear device inventory history?",
+            "Delete all per-device comparison baselines used by Device Inventory "
+            "Change? The next completed phone audit for each device will create a "
+            "new baseline. Device snapshots, current phone inventory, Play Store "
+            "cache and history, provider cache, settings and current results will "
+            "not be deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            deleted = device_insights.clear_device_inventory_history()
+        except OSError as exc:
+            QMessageBox.critical(
+                self,
+                "Could not clear device inventory history",
+                str(exc),
+            )
+            return
+
+        self._last_inventory_changes = {}
+        for row in self.current_rows:
+            row.pop("device_change", None)
+            row[change_service.DEVICE_HISTORY_FLAG] = False
+        if self.current_rows:
+            self.model.set_rows(self.current_rows)
+        self._update_summary()
+        sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
+        if callable(sync_post_audit_views):
+            sync_post_audit_views()
+        baseline_label = "baseline" if deleted == 1 else "baselines"
+        self.status_label.setText(
+            f"Device inventory history cleared • {deleted} {baseline_label} removed"
+        )
 
     # ---------- Filters ----------
     def _apply_filter_preset(self, name: str) -> None:

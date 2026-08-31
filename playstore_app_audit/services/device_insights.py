@@ -27,6 +27,7 @@ from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
 
 APP_VERSION = __version__
+DEVICE_SNAPSHOT_FORMAT = "PlayStoreAppAudit-device-snapshot-v1"
 GITHUB_REPOSITORY = "mrc-labs/PlayStoreAppAudit"
 LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 LATEST_RELEASE_PAGE = f"https://github.com/{GITHUB_REPOSITORY}/releases/latest"
@@ -682,7 +683,7 @@ def snapshots_dir() -> Path:
 
 def make_device_snapshot(rows: list[dict[str, Any]], device_summary: dict[str, Any]) -> dict[str, Any]:
     return {
-        "format": "PlayStoreAppAudit-device-snapshot-v1",
+        "format": DEVICE_SNAPSHOT_FORMAT,
         "created_at": datetime.now(UTC).isoformat(),
         "device": dict(device_summary or {}),
         "apps": [
@@ -755,6 +756,24 @@ def compare_snapshots(
 def inventory_path(device_id: str) -> Path:
     safe = re.sub(r"[^a-zA-Z0-9_-]", "_", device_id or "unknown")
     return app_data_dir_v9() / f"inventory_{safe}.json"
+
+
+def clear_device_inventory_history() -> int:
+    """Delete only per-device baselines used by Device Inventory Change."""
+
+    deleted = 0
+    for path in app_data_dir_v9().glob("inventory_*.json"):
+        if not path.is_file():
+            continue
+        try:
+            stored = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            stored = None
+        if isinstance(stored, dict) and stored.get("format") == DEVICE_SNAPSHOT_FORMAT:
+            continue
+        path.unlink()
+        deleted += 1
+    return deleted
 
 
 def annotate_inventory_changes_and_save(

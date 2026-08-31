@@ -39,7 +39,11 @@ class AuditTableModel(base_ui.AppTableModel):
     def __init__(self) -> None:
         super().__init__()
         self.columns = schema.MODEL_COLUMNS
-        self._icons_enabled = bool(state.load_settings().get("show_app_icons", False))
+        self._icons_enabled = bool(
+            state.load_settings().get(
+                "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+            )
+        )
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)

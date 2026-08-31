@@ -171,6 +171,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.clear_audit_history_action = self.data_maintenance_menu.addAction(
             "Clear Previous-Audit History", self._clear_audit_history
         )
+        self.clear_device_inventory_history_action = (
+            self.data_maintenance_menu.addAction(
+                "Clear Device Inventory History…",
+                self._clear_device_inventory_history,
+            )
+        )
 
         self.help_menu = QMenu("Help", bar)
         bar.addMenu(self.help_menu)

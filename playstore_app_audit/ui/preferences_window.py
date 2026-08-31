@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
@@ -338,7 +339,13 @@ class PreferencesWindow(table_ui.TableWindow):
         show_icons.setToolTip(
             "Load icons on demand and reuse them from a bounded local cache when available."
         )
-        show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
+        show_icons.setChecked(
+            bool(
+                self.user_settings.get(
+                    "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+                )
+            )
+        )
         date_format = QComboBox()
         date_format.setObjectName("DateFormatCombo")
         date_format.setMaximumWidth(260)
@@ -405,7 +412,7 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addLayout(bottom)
 
         def reset_controls() -> None:
-            show_icons.setChecked(False)
+            show_icons.setChecked(app_icon_metadata.DEFAULT_SHOW_APP_ICONS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             defaults = set(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
             for key, check in custom_checks.items():
@@ -436,7 +443,13 @@ class PreferencesWindow(table_ui.TableWindow):
         self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
         if hasattr(self.model, "set_app_icons_enabled"):
-            self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
+            self.model.set_app_icons_enabled(
+                bool(
+                    self.user_settings.get(
+                        "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+                    )
+                )
+            )
         if columns_changed:
             self._sync_view_preset_action("Custom")
         self._apply_column_visibility(reset_order=False)
