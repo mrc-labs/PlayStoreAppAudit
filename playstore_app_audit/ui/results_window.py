@@ -33,7 +33,6 @@ from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui.file_menu import (
     ResultExportActions,
-    add_result_actions,
     populate_result_export_menu,
 )
 
@@ -133,7 +132,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._install_numeric_sort_proxy()
         self._setup_details_panel()
         self._setup_export_button_menu()
-        self._rebuild_file_menu()
+        self._sync_action_availability()
         self._update_summary()
 
     # ---------- Action availability ----------
@@ -194,12 +193,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         if recent_button is not None:
             recent_button.setEnabled(idle)
 
-        file_result_actions = getattr(self, "file_result_actions", None)
-        if file_result_actions is not None:
-            file_result_actions.run.setEnabled(idle and source_available)
-            file_result_actions.clear.setEnabled(idle and results_available)
+        audit_result_actions = getattr(self, "audit_result_actions", None)
+        if audit_result_actions is not None:
+            audit_result_actions.run.setEnabled(idle and source_available)
+            audit_result_actions.clear.setEnabled(idle and results_available)
             self._set_export_actions_enabled(
-                file_result_actions.exports,
+                audit_result_actions.exports,
                 all_results=idle and results_available,
                 visible_results=idle and visible_results_available,
             )
@@ -236,6 +235,10 @@ class ResultsWindow(menu_ui.MenuWindow):
                 action.setEnabled(enabled)
         if hasattr(self, "snapshots_menu"):
             self.snapshots_menu.menuAction().setEnabled(idle and device_results_available)
+        if hasattr(self, "device_history_menu"):
+            self.device_history_menu.menuAction().setEnabled(
+                idle and (device_results_available or inventory_changes_available)
+            )
         if hasattr(self, "data_maintenance_menu"):
             self.data_maintenance_menu.menuAction().setEnabled(idle)
         if hasattr(self, "audit_profiles_menu"):
@@ -311,7 +314,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_panel.review_changes_requested.connect(self._show_change_overview)
         self.details_panel_menu = self.details_control.mode_menu
         if hasattr(self, "view_menu"):
-            before_action = getattr(self, "display_settings_action", None)
+            before_action = getattr(self, "reset_layout_action", None)
             if before_action is None:
                 before_action = next(
                     (action for action in self.view_menu.actions() if action.isSeparator()),
@@ -672,43 +675,6 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.export_button.setText("Export Results")
         self.export_button.setMenu(menu)
         self._export_results_menu = menu
-
-    def _rebuild_file_menu(self) -> None:
-        if not hasattr(self, "file_menu"):
-            return
-        self.file_menu.clear()
-        self.file_choose_source_action = self.file_menu.addAction(
-            "Choose App List…", self._choose_input
-        )
-        self.recent_menu = self.file_menu.addMenu("Recent Sources")
-        self._recent_menu = self.recent_menu
-        self._populate_recent_menu()
-        self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan Phone with ADB", self._scan_phone
-        )
-        self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
-        )
-        self.file_menu.addSeparator()
-        self.file_result_actions = add_result_actions(
-            self.file_menu,
-            run_audit=self._start_audit,
-            export_all_csv=self._export_results,
-            export_visible_csv=self._export_visible_results,
-            clear_results=self._clear_results,
-            export_all_html=self._export_html_report,
-            export_visible_html=self._export_visible_html_report,
-            export_all_json=lambda: json_export_ui.export_window_results_json(
-                self, visible=False
-            ),
-            export_visible_json=lambda: json_export_ui.export_window_results_json(
-                self, visible=True
-            ),
-        )
-        self.file_export_results_menu = self.file_result_actions.exports.menu
-        self.file_menu.addSeparator()
-        self.file_menu.addAction("Exit", self.close)
-        self._sync_action_availability()
 
     def _clear_results(self) -> None:
         if getattr(self, "_audit_state", AuditRunState.IDLE) is not AuditRunState.IDLE:

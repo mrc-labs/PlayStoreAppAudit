@@ -22,7 +22,10 @@ import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
-from playstore_app_audit.ui.file_menu import add_result_actions
+from playstore_app_audit.ui.file_menu import (
+    ResultActions,
+    populate_result_export_menu,
+)
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -55,18 +58,34 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan Phone with ADB", self._scan_phone
+            "Scan Phone", self._scan_phone
         )
         self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
+            "Export Phone Package List…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
-        self.file_result_actions = add_result_actions(
-            self.file_menu,
-            run_audit=self._start_audit,
+        self.file_menu.addAction("Exit", self.close)
+
+        self.audit_menu = QMenu("Audit", bar)
+        bar.addMenu(self.audit_menu)
+        self.run_audit_action = self.audit_menu.addAction("Run Audit", self._start_audit)
+        self.recheck_problematic_action = self.audit_menu.addAction(
+            "Recheck Removed / Anomaly / Other", self._recheck_problematic
+        )
+        self.force_full_refresh_action = self.audit_menu.addAction(
+            "Force Full Refresh", self._force_full_refresh
+        )
+        self.audit_menu.addSeparator()
+        self.audit_profiles_menu = QMenu("Audit Presets", self.audit_menu)
+        self.audit_menu.addMenu(self.audit_profiles_menu)
+        audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
+        self.audit_menu.addSeparator()
+        self.audit_export_results_menu = QMenu("Export Results", self.audit_menu)
+        self.audit_menu.addMenu(self.audit_export_results_menu)
+        exports = populate_result_export_menu(
+            self.audit_export_results_menu,
             export_all_csv=self._export_results,
             export_visible_csv=self._export_visible_results,
-            clear_results=self._clear_results,
             export_all_html=self._export_html_report,
             export_visible_html=self._export_visible_html_report,
             export_all_json=lambda: json_export_ui.export_window_results_json(
@@ -76,9 +95,14 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 self, visible=True
             ),
         )
-        self.file_export_results_menu = self.file_result_actions.exports.menu
-        self.file_menu.addSeparator()
-        self.file_menu.addAction("Exit", self.close)
+        self.clear_results_action = self.audit_menu.addAction(
+            "Clear Results", self._clear_results
+        )
+        self.audit_result_actions = ResultActions(
+            run=self.run_audit_action,
+            exports=exports,
+            clear=self.clear_results_action,
+        )
 
         self.view_menu = QMenu("View", bar)
         bar.addMenu(self.view_menu)
@@ -102,6 +126,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.display_settings_action = self.view_menu.addAction(
             "Customize View…", self._show_display_settings
         )
+        self.reset_layout_action = self.view_menu.addAction(
+            "Reset Table Layout", self._reset_table_layout
+        )
 
         self.view_menu.addSeparator()
         self._filter_menu = QMenu("Quick Filters", self.view_menu)
@@ -110,10 +137,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.smart_queries_menu = QMenu("Smart Queries", self.view_menu)
         self.view_menu.addMenu(self.smart_queries_menu)
         smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
-
-        self.view_menu.addSeparator()
-        self.reset_layout_action = self.view_menu.addAction(
-            "Reset Table Layout", self._reset_table_layout
+        self.clear_all_filters_action = self.view_menu.addAction(
+            "Clear All Filters", self._clear_all_filters
         )
 
         self.tools_menu = QMenu("Tools", bar)
@@ -121,36 +146,28 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.audit_profiles_menu = QMenu("Audit Presets", self.tools_menu)
-        self.tools_menu.addMenu(self.audit_profiles_menu)
-        audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
-        self.force_full_refresh_action = self.tools_menu.addAction(
-            "Force Full Refresh (Ignore Cache)", self._force_full_refresh
-        )
-        self.recheck_problematic_action = self.tools_menu.addAction(
-            "Recheck Removed / Anomaly / Other", self._recheck_problematic
-        )
-        self.tools_menu.addSeparator()
-        self.snapshots_menu = QMenu("Device Snapshots", self.tools_menu)
-        self.tools_menu.addMenu(self.snapshots_menu)
+        self.device_history_menu = QMenu("Device History", self.tools_menu)
+        self.tools_menu.addMenu(self.device_history_menu)
+        self.snapshots_menu = QMenu("Device Snapshots…", self.device_history_menu)
+        self.device_history_menu.addMenu(self.snapshots_menu)
         self.save_device_snapshot_action = self.snapshots_menu.addAction(
             "Save Current Device Snapshot…", self._save_device_snapshot
         )
         self.compare_device_snapshot_action = self.snapshots_menu.addAction(
             "Compare Current Device with Snapshot…", self._compare_device_snapshot
         )
-        self.device_inventory_changes_action = self.tools_menu.addAction(
+        self.device_inventory_changes_action = self.device_history_menu.addAction(
             "Device Inventory Changes…", self._show_inventory_changes
         )
         self.tools_menu.addSeparator()
         self.data_maintenance_menu = QMenu("Data Maintenance", self.tools_menu)
         self.tools_menu.addMenu(self.data_maintenance_menu)
         self.clear_audit_cache_action = self.data_maintenance_menu.addAction(
-            "Clear Audit Cache", self._clear_audit_cache
+            "Clear Audit Cache…", self._clear_audit_cache
         )
         self.clear_audit_history_action = self.data_maintenance_menu.addAction(
-            "Clear Previous-Audit History", self._clear_audit_history
+            "Clear Previous-Audit History…", self._clear_audit_history
         )
         self.clear_device_inventory_history_action = (
             self.data_maintenance_menu.addAction(
@@ -168,9 +185,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             ),
         )
         self.help_menu.addAction(
-            "How to Import an App List…",
+            "App List Import Guide…",
             lambda: rich_help.show_rich_help(
-                self, "How to Import an App List", help_texts.IMPORT_APP_LIST_GUIDE_HTML
+                self, "App List Import Guide", help_texts.IMPORT_APP_LIST_GUIDE_HTML
             ),
         )
         self.help_menu.addSeparator()
@@ -229,6 +246,16 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self.proxy.set_smart_query(None)
         smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
         self._update_summary()
+
+    def _clear_all_filters(self) -> None:
+        """Reset only session-level controls that can hide current result rows."""
+        self.search_edit.clear()
+        self._set_criticality_filter(None)
+        self._apply_filter_preset("All")
+        self._clear_smart_query()
+        self.hide_system_check.setChecked(False)
+        self._update_summary()
+        self._set_presentation_status("All result filters cleared")
 
     def _on_smart_query_deleted(self, query_id: str) -> None:
         if self._active_smart_query and self._active_smart_query.query_id == query_id:

@@ -116,12 +116,12 @@ def app() -> QApplication:
     return instance
 
 
-def test_final_file_export_menu_exposes_versioned_json_actions(app: QApplication) -> None:
+def test_final_audit_export_menu_exposes_json_actions(app: QApplication) -> None:
     window = MainWindow()
     try:
-        actions = [action.text() for action in window.file_export_results_menu.actions()]
-        assert "Export All Results as Versioned JSON…" in actions
-        assert "Export Visible Results as Versioned JSON…" in actions
+        actions = [action.text() for action in window.audit_export_results_menu.actions()]
+        assert "All JSON" in actions
+        assert "Visible JSON" in actions
     finally:
         window.close()
         app.processEvents()

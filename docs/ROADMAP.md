@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 ## Purpose
 
@@ -112,7 +112,9 @@ Phase A is accepted with semantic table widths, selected wrapped headers, saved/
 
 Phase B1 is complete and deliberately limited to column-layout persistence. `View > Column Preset` contains immutable Basic, Device and Technical layouts plus a persistent Custom layout created by manual visibility, order or width changes. Custom remains available across built-in switching, refresh/audit work and restart, and is disabled before a real or conservatively migrated layout exists. `Customize View…` retains the existing display-preference architecture: column changes update Custom, while app icons, date format and equivalent preferences remain global.
 
-Phase B2 is complete locally. The dedicated SDK Maintenance Filter and its clear action are removed; the former filter was session-only and had no persistence keys, and the runtime hook is gone so legacy-looking settings cannot activate invisible SDK filtering after restart. Target SDK, Min SDK and Android Compatibility data remain unchanged, with Smart Queries as the advanced filtering mechanism. User-facing Audit Profiles are now **Audit Presets** while schema v1 and the internal `audit_profiles` key remain compatible. Presets apply audit-execution state only: historical presentation/filter fields may remain in stored objects but are ignored, and current search, status chips, Quick Filters, Smart Queries, Column Preset/Custom layout, Details placement, app-icon setting and date format remain untouched. Full menu reorganization, Clear All Filters and RC3 packaging remain later, separately gated work.
+Phase B2 is complete locally. The dedicated SDK Maintenance Filter and its clear action are removed; the former filter was session-only and had no persistence keys, and the runtime hook is gone so legacy-looking settings cannot activate invisible SDK filtering after restart. Target SDK, Min SDK and Android Compatibility data remain unchanged, with Smart Queries as the advanced filtering mechanism. User-facing Audit Profiles are now **Audit Presets** while schema v1 and the internal `audit_profiles` key remain compatible. Presets apply audit-execution state only: historical presentation/filter fields may remain in stored objects but are ignored, and current search, status chips, Quick Filters, Smart Queries, Column Preset/Custom layout, Details placement, app-icon setting and date format remain untouched.
+
+The final RC3 local source gate is complete. The top-level `File / Audit / View / Tools / Help` menus now follow command semantics: Audit owns execution, Audit Presets, all/visible result exports and Clear Results; File retains sources and raw phone-package export; View owns presentation and result filters; Tools groups Device Snapshots and Device Inventory Changes under Device History while destructive clears remain under Data Maintenance. `View > Clear All Filters` resets all session result-visibility predicates, including Hide System Apps, without changing source exclusion, current/saved data, sorting or layout/settings state. The full source gate passed on Python 3.13 and 3.14. RC3 packaging remains a later, separately authorized step.
 
 ### Alternative Distribution Discovery
 

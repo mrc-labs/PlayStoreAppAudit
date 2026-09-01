@@ -4,9 +4,11 @@ import os
 from typing import Any
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
@@ -80,14 +82,15 @@ def _seed_results(window: MainWindow, rows: list[dict[str, object]]) -> None:
     window._update_summary()
 
 
-def test_view_menu_separates_result_filters_and_tools_exposes_audit_presets(
+def test_view_menu_separates_result_filters_and_audit_owns_presets(
     window_and_settings: tuple[MainWindow, dict[str, Any]],
 ) -> None:
     window, settings = window_and_settings
     assert window._filter_menu.title() == "Quick Filters"
     assert window.smart_queries_menu.title() == "Smart Queries"
     assert window.audit_profiles_menu.title() == "Audit Presets"
-    assert window.audit_profiles_menu.menuAction() in window.tools_menu.actions()
+    assert window.audit_profiles_menu.menuAction() in window.audit_menu.actions()
+    assert window.audit_profiles_menu.menuAction() not in window.tools_menu.actions()
     assert [action.text() for action in window.audit_profiles_menu.actions()] == [
         "Save Current as Preset…",
         "Manage Presets…",
@@ -310,6 +313,154 @@ def test_smart_query_composes_with_search_status_and_quick_filters_and_preserves
     assert "Smart Query:" not in window.summary_label.text()
     assert window.summary_label.toolTip() == ""
     assert window.status_label.text() == "Audit completed: 6 apps"
+
+
+def test_clear_all_filters_resets_only_current_result_visibility(
+    window_and_settings: tuple[MainWindow, dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window, settings = window_and_settings
+    settings.update(
+        {
+            "audit_profiles": {"Keep preset": {"schema_version": 1}},
+            "view_preset": "Basic",
+            "details_panel_position": "right",
+            "show_app_icons": False,
+            "date_format": "DD.MM.YYYY",
+            "sdk_filter": {"active": True, "target_sdk_max": 28},
+        }
+    )
+    rows = [
+        {
+            "package_name": "com.keep.match",
+            "criticality_key": "orange",
+            "installer_category": "alternative_store",
+            "age_days": 800,
+            "is_system": False,
+        },
+        {
+            "package_name": "com.keep.other-status",
+            "criticality_key": "green",
+            "installer_category": "alternative_store",
+            "age_days": 800,
+            "is_system": False,
+        },
+        {
+            "package_name": "com.keep.current",
+            "criticality_key": "orange",
+            "installer_category": "alternative_store",
+            "age_days": 20,
+            "is_system": False,
+        },
+        {
+            "package_name": "com.keep.system",
+            "criticality_key": "orange",
+            "installer_category": "alternative_store",
+            "age_days": 800,
+            "is_system": True,
+        },
+        {
+            "package_name": "org.other.match",
+            "criticality_key": "orange",
+            "installer_category": "alternative_store",
+            "age_days": 800,
+            "is_system": False,
+        },
+    ]
+    query = _query(
+        "Saved alternative query",
+        _condition("installer_category", "is", "alternative_store"),
+        _condition("age_days", "greater_or_equal", 730),
+    )
+    smart_queries.save_query(query)
+    _seed_results(window, rows)
+    package_column = window.model.columns.index("package_name")
+    window.table.sortByColumn(package_column, window.table.horizontalHeader().sortIndicatorOrder())
+    window.search_edit.setText("com.keep")
+    window._set_criticality_filter("orange")
+    window._apply_filter_preset("Old apps")
+    window._apply_smart_query(query)
+    window.hide_system_check.setChecked(True)
+    assert window.proxy.rowCount() == 1
+    window.table.selectRow(0)
+    selected_package = window.table.currentIndex().data(Qt.ItemDataRole.UserRole)[
+        "package_name"
+    ]
+    sort_section = window.table.horizontalHeader().sortIndicatorSection()
+    sort_order = window.table.horizontalHeader().sortIndicatorOrder()
+    details_position = window._details_panel_position
+    store_country = window.country_edit.text()
+    exclude_system_source = window.exclude_system_source_check.isChecked()
+    protected_settings = {
+        key: settings.get(key)
+        for key in (
+            "audit_profiles",
+            "view_preset",
+            "details_panel_position",
+            "show_app_icons",
+            "date_format",
+            "sdk_filter",
+        )
+    }
+    destructive_calls: list[str] = []
+    monkeypatch.setattr(
+        compact_ui,
+        "clear_cache",
+        lambda: destructive_calls.append("cache"),
+    )
+    monkeypatch.setattr(
+        device_metadata,
+        "clear_history",
+        lambda: destructive_calls.append("audit-history"),
+    )
+    monkeypatch.setattr(
+        device_insights,
+        "clear_device_inventory_history",
+        lambda: destructive_calls.append("inventory-history"),
+    )
+    monkeypatch.setattr(
+        window,
+        "_start_audit",
+        lambda: pytest.fail("Clearing filters must not start an audit"),
+    )
+    monkeypatch.setattr(
+        window,
+        "_scan_phone",
+        lambda: pytest.fail("Clearing filters must not start ADB work"),
+    )
+    operation_status = "Auditing 4/10: com.example.app"
+    window._source_operation_active = True
+    window.status_label.setText(operation_status)
+
+    window.clear_all_filters_action.trigger()
+
+    assert window.search_edit.text() == ""
+    assert window._status_filters == set()
+    assert window._active_filter_preset == "All"
+    assert window.proxy.v9_preset == "All"
+    assert window._active_smart_query is None
+    assert window.proxy.smart_query is None
+    assert not window.hide_system_check.isChecked()
+    assert window.proxy.rowCount() == len(rows)
+    assert window.current_rows == rows
+    assert destructive_calls == []
+    assert window.table.horizontalHeader().sortIndicatorSection() == sort_section
+    assert window.table.horizontalHeader().sortIndicatorOrder() == sort_order
+    assert window._details_panel_position == details_position
+    assert window.country_edit.text() == store_country
+    assert window.exclude_system_source_check.isChecked() == exclude_system_source
+    assert (
+        window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"]
+        == selected_package
+    )
+    assert smart_queries.load_queries() == [query]
+    assert {
+        key: settings.get(key) for key in protected_settings
+    } == protected_settings
+    assert window.status_label.text() == operation_status
+    assert not hasattr(window, "sdk_filter_action")
+    window._source_operation_active = False
+    window._sync_action_availability()
 
 
 def test_dialog_is_native_accessible_and_responsive(

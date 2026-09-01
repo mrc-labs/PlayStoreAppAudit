@@ -225,6 +225,16 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     app.processEvents()
 
     assert _custom_snapshot(settings) == expected
+    first._set_criticality_filter("green")
+    first._apply_filter_preset("Old apps")
+    first.hide_system_check.setChecked(True)
+    first._clear_all_filters()
+    app.processEvents()
+
+    assert _custom_snapshot(settings) == expected
+    assert _visible_order(first) == expected_visible
+    assert _visual_order(first) == expected_order
+    assert _widths(first) == expected_widths
     first.close()
     app.processEvents()
 

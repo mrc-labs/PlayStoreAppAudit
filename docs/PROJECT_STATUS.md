@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 ## Published release
 
@@ -60,7 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance rejected it as the final candidate. RC2 technical validation has passed. Local-only RC3 Phase A is accepted, Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, and Phase B2 is complete from Phase B1 checkpoint `4b848c3b00726ddc3d12248e07554969998af66d`; version remains `1.99.0`, the Phase B2 Python 3.13.15 source/Qt gate is green at 601 tests, no RC3 package has been built and remote activity remains frozen for the separate privacy workstream.
+- RC1 was built and technically validated from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6`, but manual acceptance rejected it as the final candidate. RC2 technical validation has passed. Local-only RC3 Phase A is accepted, Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, Phase B2 is complete from Phase B1 checkpoint `4b848c3b00726ddc3d12248e07554969998af66d`, and the final RC3 source gate is complete from Phase B2 checkpoint `933f374c79fa959e9eb46c5f2e288ac2baedd899`; version remains `1.99.0`, Python 3.13.15 and 3.14.6 are green at 602 tests, no RC3 package has been built and remote activity remains frozen for the separate privacy workstream.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -98,6 +98,8 @@ The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` 
 - keep `View > Customize View…` as the existing presentation dialog: column changes update Custom, while app icons, date format and equivalent presentation preferences remain global and outside the Custom layout;
 - keep the dedicated SDK Maintenance Filter absent; Target SDK, Min SDK and Android Compatibility collection/presentation remain intact, and Smart Queries own advanced SDK/compatibility result conditions;
 - use **Audit Presets** as the user-facing name while retaining schema-v1 `audit_profiles` storage compatibility; applying a preset changes only next-audit execution state and never search, status chips, Quick Filters, Smart Queries, Column Preset/Custom state, Details placement, app-icon visibility or date format;
+- retain the final `File / Audit / View / Tools / Help` ownership: File for sources and raw phone-package export, Audit for execution/presets/result export/Clear Results, View for layouts/Details/result filters, Tools for Advanced Settings plus Device History and Data Maintenance, and Help for guides/methodology/update/diagnostics/About;
+- keep `View > Clear All Filters` presentation-only: it resets search, status chips, Quick Filter, active Smart Query and the session-only Hide System Apps visibility filter without changing current results, saved query/preset definitions, audit/cache/history data, sorting, Column Preset/Custom state or other presentation/audit settings;
 - keep the redundant `Tools > Device Summary…` dialog absent while retaining device-summary collection and its snapshot/diagnostic/metadata/log/export consumers; connected-device source identity may show available Android version/API metadata but not a new serial identifier;
 - preserve the completed warning hierarchy across table, Details and HTML surfaces: dark-yellow DemiBold 600 **Different/Aging target**, dark-orange DemiBold 600 **Legacy target**, Regular 400 **Modern**, and Bold 700 Status, with native selected/disabled roles and unchanged raw values;
 - retain the dedicated device-inventory-history clear boundary: remove only separately keyed `Device Inventory Change` baselines while preserving Device Snapshots, Store cache, previous-audit history, provider cache, settings and current results;
