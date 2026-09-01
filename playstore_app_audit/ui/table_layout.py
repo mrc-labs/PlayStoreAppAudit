@@ -6,22 +6,18 @@ from PySide6.QtWidgets import QHeaderView, QStyle, QTableView
 from playstore_app_audit.ui import schema
 
 HEADER_HORIZONTAL_PADDING = 7
+HEADER_HORIZONTAL_BORDER = 1
 HEADER_VERTICAL_PADDING = 3
 
 
-def header_chrome_width(header: QHeaderView) -> int:
-    """Reserve native header margins and the active sorting indicator."""
+def header_chrome_width(_header: QHeaderView) -> int:
+    """Reserve the shared section padding and border used by the table QSS.
 
-    style = header.style()
-    margin = max(
-        0,
-        style.pixelMetric(QStyle.PixelMetric.PM_HeaderMargin, None, header),
-    )
-    sort_mark = max(
-        0,
-        style.pixelMetric(QStyle.PixelMetric.PM_HeaderMarkSize, None, header),
-    )
-    return 2 * HEADER_HORIZONTAL_PADDING + 2 * margin + sort_mark
+    Only the actively sorted section draws a sort mark, so semantic defaults do
+    not reserve that transient indicator in every column.
+    """
+
+    return 2 * HEADER_HORIZONTAL_PADDING + HEADER_HORIZONTAL_BORDER
 
 
 def default_column_width(table: QTableView, column: str) -> int:

@@ -2,6 +2,21 @@ from __future__ import annotations
 
 from playstore_app_audit.ui import schema
 
+DENSITY_DEFAULTS = {
+    "play_last_update": 104,
+    "age_days": 78,
+    "compatibility_status": 120,
+    "version_comparison": 116,
+    "app_enabled": 88,
+    "device_change": 130,
+    "health_score": 86,
+    "target_sdk": 74,
+    "min_sdk": 70,
+    "sensitive_permissions_count": 124,
+    "play_http_status": 78,
+    "is_system": 78,
+}
+
 
 def test_final_schema_is_unique_and_contains_each_layer() -> None:
     assert len(schema.MODEL_COLUMNS) == len(set(schema.MODEL_COLUMNS))
@@ -30,9 +45,21 @@ def test_semantic_width_categories_keep_short_and_long_values_distinct() -> None
     assert schema.COLUMN_WIDTH_POLICIES["version_comparison"].category is categories.MEDIUM
     assert schema.COLUMN_WIDTH_POLICIES["package_name"].category is categories.PRIMARY
     assert schema.COLUMN_WIDTH_POLICIES["store_url"].category is categories.LONG_TEXT
-    assert schema.DEFAULT_WIDTHS["health_score"] == 100
+    assert schema.DEFAULT_WIDTHS["health_score"] == 86
     assert schema.DEFAULT_WIDTHS["store_url"] == 250
     assert schema.DEFAULT_WIDTHS["package_name"] > schema.DEFAULT_WIDTHS["health_score"]
+
+
+def test_v199_density_defaults_are_exact_and_tightly_bounded() -> None:
+    assert {column: schema.DEFAULT_WIDTHS[column] for column in DENSITY_DEFAULTS} == (
+        DENSITY_DEFAULTS
+    )
+    for column, preferred in DENSITY_DEFAULTS.items():
+        policy = schema.COLUMN_WIDTH_POLICIES[column]
+        assert policy.preferred == preferred
+        assert policy.minimum <= preferred <= policy.maximum
+        assert policy.maximum - preferred <= 4
+        assert schema.semantic_default_width(column) == preferred
 
 
 def test_selected_table_headers_have_explicit_two_line_titles() -> None:
@@ -43,6 +70,8 @@ def test_selected_table_headers_have_explicit_two_line_titles() -> None:
     assert schema.TABLE_HEADER_LABELS["sensitive_permissions_count"] == (
         "Sensitive Permissions\nCount"
     )
+    assert schema.TABLE_HEADER_LABELS["play_http_status"] == "HTTP\nStatus"
+    assert schema.TABLE_HEADER_LABELS["is_system"] == "System\nApp"
     assert schema.TABLE_HEADER_LABELS["store_url"] == "Store URL"
 
 

@@ -13,6 +13,21 @@ from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION
 
+DENSITY_DEFAULTS = {
+    "play_last_update": 104,
+    "age_days": 78,
+    "compatibility_status": 120,
+    "version_comparison": 116,
+    "app_enabled": 88,
+    "device_change": 130,
+    "health_score": 86,
+    "target_sdk": 74,
+    "min_sdk": 70,
+    "sensitive_permissions_count": 124,
+    "play_http_status": 78,
+    "is_system": 78,
+}
+
 
 @pytest.fixture(scope="module")
 def app() -> QApplication:
@@ -68,6 +83,10 @@ def test_semantic_defaults_are_bounded_and_do_not_resize_to_body_values(
                 window.table, column
             )
 
+        for column, preferred in DENSITY_DEFAULTS.items():
+            width = window.table.columnWidth(window.model.columns.index(column))
+            assert preferred <= width <= preferred + 4
+
         score_width = window.table.columnWidth(window.model.columns.index("health_score"))
         url_width = window.table.columnWidth(window.model.columns.index("store_url"))
         package_width = window.table.columnWidth(window.model.columns.index("package_name"))
@@ -85,14 +104,44 @@ def test_semantic_defaults_are_bounded_and_do_not_resize_to_body_values(
             {
                 "package_name": "com.example." + "package" * 40,
                 "store_url": "https://play.google.com/store/apps/details?id=" + "x" * 500,
+                "play_last_update": "2026-08-24",
+                "age_days": 9999,
+                "compatibility_status": "Legacy target",
+                "version_comparison": "Device-specific",
+                "app_enabled": "Disabled",
+                "device_change": "Installer changed",
                 "health_score": 100,
-            }
+                "target_sdk": 999,
+                "min_sdk": 999,
+                "sensitive_permissions_count": 99,
+                "play_http_status": 404,
+                "is_system": False,
+            },
+            {
+                "package_name": "com.example.compact",
+                "play_last_update": "2026-08-24",
+                "age_days": 0,
+                "compatibility_status": "Aging target",
+                "version_comparison": "Different",
+                "app_enabled": "Unknown",
+                "device_change": "Version changed",
+                "health_score": 0,
+                "target_sdk": 35,
+                "min_sdk": 23,
+                "sensitive_permissions_count": 0,
+                "play_http_status": 200,
+                "is_system": True,
+            },
         ]
         before = tuple(window.table.columnWidth(i) for i in range(len(window.model.columns)))
+        body_height = window.table.verticalHeader().defaultSectionSize()
+        header_height = header.height()
         window.model.set_rows(rows)
         app.processEvents()
         after = tuple(window.table.columnWidth(i) for i in range(len(window.model.columns)))
         assert after == before
+        assert window.table.verticalHeader().defaultSectionSize() == body_height == 24
+        assert header.height() == header_height == table_layout.shared_header_height(header)
     finally:
         window.close()
         app.processEvents()
@@ -114,6 +163,8 @@ def test_wrapped_headers_share_one_height_and_preserve_native_sorting(
             "compatibility_status",
             "device_change",
             "sensitive_permissions_count",
+            "play_http_status",
+            "is_system",
         )
         for column in wrapped:
             logical = window.model.columns.index(column)
@@ -122,7 +173,10 @@ def test_wrapped_headers_share_one_height_and_preserve_native_sorting(
             widest_line = max(
                 header.fontMetrics().horizontalAdvance(line) for line in title.splitlines()
             )
-            assert window.table.columnWidth(logical) >= widest_line + chrome
+            policy = schema.COLUMN_WIDTH_POLICIES[column]
+            assert window.table.columnWidth(logical) >= min(
+                widest_line + chrome, policy.maximum
+            )
 
         store_url = window.model.columns.index("store_url")
         assert window.model.headerData(store_url, Qt.Orientation.Horizontal) == "Store URL"
@@ -146,7 +200,7 @@ def test_saved_user_widths_override_defaults_after_restart(
     settings = _technical_settings()
     _patch_settings(monkeypatch, settings)
     columns = ("health_score", "store_url", "package_name")
-    wanted = (111, 273, 333)
+    wanted = (140, 273, 333)
 
     first = MainWindow()
     for column, width in zip(columns, wanted, strict=True):

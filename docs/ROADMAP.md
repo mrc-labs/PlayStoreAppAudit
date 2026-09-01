@@ -116,6 +116,8 @@ Phase B2 is complete locally. The dedicated SDK Maintenance Filter and its clear
 
 The final RC3 local source gate is complete. The top-level `File / Audit / View / Tools / Help` menus now follow command semantics: Audit owns execution, Audit Presets, all/visible result exports and Clear Results; File retains sources and raw phone-package export; View owns presentation and result filters; Tools groups Device Snapshots and Device Inventory Changes under Device History while destructive clears remain under Data Maintenance. `View > Clear All Filters` resets all session result-visibility predicates, including Hide System Apps, without changing source exclusion, current/saved data, sorting or layout/settings state. The full source gate passed on Python 3.13 and 3.14. RC3 packaging remains a later, separately authorized step.
 
+RC4 subsequently built and packaged successfully, with the pristine-Custom packaged regression passing, but acceptance failed for one measured density issue: short-value default columns were materially wider than necessary. The local RC5 source checkpoint narrows only those semantic defaults, adds intentional two-line HTTP Status and System App headers, keeps Store URL bounded at 250 logical px, and preserves manual/Custom widths and immutable built-in preset behavior. Source review passed at Qt-rendered 100% and actual Windows 175% across 1100, 1320 and 1600 logical px. RC5 has not been built.
+
 ### Alternative Distribution Discovery
 
 Gate 4 is implemented locally with two secondary exact-package providers behind a small non-pluggable common protocol:
@@ -156,7 +158,7 @@ Details, App Details and HTML reports expose the score components without mutati
 
 ### Mandatory user-tested RC gate
 
-v1.99 deliberately requires a packaged Windows x64 acceptance cycle. RC1 from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6` passed technical validation but failed manual acceptance. The source remains version `1.99.0`; after the narrow status-label inset, semantic-weight, device-inventory-history maintenance and fresh icon-default corrections are reviewed, the next package will be RC2:
+v1.99 deliberately requires a packaged Windows x64 acceptance cycle. RC4 built and packaged successfully but failed acceptance only on the measured default-column-density issue. The source remains version `1.99.0`; the local density correction is an RC5 source checkpoint, not an RC5 package:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate and build a real Windows x64 package;

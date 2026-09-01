@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-01
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC1 was rejected after technical validation, and RC2 technical validation has passed. Local-only RC3 Phase A is accepted. Phase B1 is complete from Phase A checkpoint `a843c9a72e43cf24c2f069a06a0c40e13bcfa8e9`, limited to Column Preset semantics, persistent/restorable Custom layout and Customize View. Phase B2 is complete from Phase B1 checkpoint `4b848c3b00726ddc3d12248e07554969998af66d`, limited to SDK-filter retirement and execution-only Audit Presets. The final local-only RC3 source gate is complete from Phase B2 checkpoint `933f374c79fa959e9eb46c5f2e288ac2baedd899`, limited to final menu ownership, result-filter reset and source validation. No RC3 package has been built. Remote activity remains frozen pending the separate privacy/public-readiness workstream and explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC4 built and packaged successfully, and its mandatory pristine-Custom regression passed, but packaged acceptance rejected its overly wide short-value column defaults. The local RC5 source checkpoint tightens only those semantic defaults and preserves Custom/manual widths; RC5 has not been built. Remote activity remains frozen pending explicit approval to resume it.**
 
 ## Start here
 
@@ -180,6 +180,14 @@ Tools contains Advanced Settings, `Device History` and `Data Maintenance`. Devic
 
 The final source gate passed with 80 focused tests and 602 full tests on both Python 3.13.15 x64 and Python 3.14.6 x64. Compileall, full repository Ruff, helper compilation, `pip check`, PowerShell helper syntax, `git diff --check`, the canonical Qt source smoke and deterministic event-loop/source-entry smoke are green. The Phase A, B1 and B2 regression contracts remain covered. Native Windows review passed with the platform `windows11` QStyle at real 175% scaling and Qt-rendered 100% scaling for 1100, 1320 and 1600 logical px, including active C2/progress, menus and long labels, Details Auto, headers and the compact status bar. No Nuitka, package build or remote activity occurred.
 
+## RC4 density failure and RC5 source checkpoint
+
+RC4 itself built and packaged successfully. Its fresh packaged defaults also passed the mandatory pristine-Custom check across untouched restart: Basic remained active, `custom_view_exists` remained false and Custom remained disabled. Packaged acceptance nevertheless failed for one confirmed issue at native Windows 175% / 168 DPI: short-value columns consumed materially more horizontal space than their representative values required.
+
+The local RC5 source checkpoint keeps the centralized compact/medium/primary/long-text policy and changes only short-value defaults. Last Update, Age (Days), Android Compatibility, Installed vs Store, Enabled State, Device Inventory Change, Maintenance Score, Target SDK, Min SDK, Sensitive Permissions Count, HTTP Status and System App now prefer 104, 78, 120, 116, 88, 130, 86, 74, 70, 124, 78 and 78 logical px respectively. Normal Segoe UI metrics produce those exact widths except Sensitive Permissions Count at 127 px to retain its accepted two-line title. Store URL remains bounded at 250 px. HTTP Status and System App intentionally join the existing two-line header set; the shared header remains 40 logical px and body rows remain 24 logical px.
+
+Font/header growth is capped by each column's semantic maximum and does not inspect result values or use `ResizeToContents`. Loading representative rows does not change widths. Built-in presets continue to apply current semantic defaults without creating or mutating Custom, while genuine saved/manual widths—including a 140 px Maintenance Score—remain authoritative across restart. Native source geometry and screenshots passed at Qt-rendered 100% and actual 175% for 1100, 1320 and 1600 logical px; Details Auto remains usable on the right at 1600. The Python 3.13.15 x64 source gate passed with 115 focused tests and 610 full tests, plus compileall, Ruff, `pip check`, `git diff --check`, the isolated Qt source smoke and deterministic event-loop smoke. RC5 has not been built or packaged, and no remote activity occurred.
+
 ## Priority 5: Alternative Distribution Discovery
 
 Complete locally as Gate 4. This is secondary exact-package evidence only and never reinterprets Google Play state, installer source or criticality. Gate 5 uses only current conclusive Available evidence as bounded Maintenance Score recovery without changing those underlying facts.
@@ -218,7 +226,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC1 completed technical validation but failed manual acceptance, and RC2 technical validation later passed without becoming the final accepted candidate. RC3 Phases A, B1 and B2 are source-only and local-only; no RC3 package has been built:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. The corrective RC5 source checkpoint is local-only and must pass a separately authorized build and packaged acceptance cycle:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

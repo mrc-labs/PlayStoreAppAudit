@@ -91,6 +91,8 @@ COLUMN_LABELS = {
 
 TABLE_HEADER_LABELS = {
     **COLUMN_LABELS,
+    "play_http_status": "HTTP\nStatus",
+    "is_system": "System\nApp",
     "version_comparison": "Installed vs\nStore",
     "compatibility_status": "Android\nCompatibility",
     "sensitive_permissions_count": "Sensitive Permissions\nCount",
@@ -131,32 +133,32 @@ COLUMN_WIDTH_POLICIES = {
     "change": _width(ColumnWidthCategory.COMPACT, 105, 80, 120),
     "package_name": _width(ColumnWidthCategory.PRIMARY, 300, 240, 340),
     "play_title": _width(ColumnWidthCategory.PRIMARY, 280, 220, 340),
-    "play_last_update": _width(ColumnWidthCategory.COMPACT, 120, 105, 135),
-    "age_days": _width(ColumnWidthCategory.COMPACT, 92, 75, 105),
+    "play_last_update": _width(ColumnWidthCategory.COMPACT, 104, 96, 108),
+    "age_days": _width(ColumnWidthCategory.COMPACT, 78, 70, 82),
     "notes": _width(ColumnWidthCategory.LONG_TEXT, 360, 280, 400),
     "play_status": _width(ColumnWidthCategory.MEDIUM, 180, 145, 210),
     "updated_source": _width(ColumnWidthCategory.MEDIUM, 170, 140, 200),
-    "play_http_status": _width(ColumnWidthCategory.COMPACT, 90, 75, 105),
+    "play_http_status": _width(ColumnWidthCategory.COMPACT, 78, 70, 82),
     "app_name": _width(ColumnWidthCategory.PRIMARY, 220, 180, 280),
     "store_url": _width(ColumnWidthCategory.LONG_TEXT, 250, 220, 280),
-    "is_system": _width(ColumnWidthCategory.COMPACT, 92, 80, 110),
+    "is_system": _width(ColumnWidthCategory.COMPACT, 78, 70, 82),
     "play_version": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
     "installed_version": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
     "installed_version_code": _width(ColumnWidthCategory.COMPACT, 125, 105, 140),
-    "version_comparison": _width(ColumnWidthCategory.MEDIUM, 135, 120, 165),
+    "version_comparison": _width(ColumnWidthCategory.MEDIUM, 116, 104, 120),
     "installer_source": _width(ColumnWidthCategory.LONG_TEXT, 220, 180, 280),
     "installer_category": _width(ColumnWidthCategory.MEDIUM, 155, 130, 185),
     "installer_package": _width(ColumnWidthCategory.LONG_TEXT, 240, 200, 300),
-    "compatibility_status": _width(ColumnWidthCategory.MEDIUM, 145, 125, 175),
-    "target_sdk": _width(ColumnWidthCategory.COMPACT, 90, 78, 105),
-    "min_sdk": _width(ColumnWidthCategory.COMPACT, 80, 70, 95),
+    "compatibility_status": _width(ColumnWidthCategory.MEDIUM, 120, 108, 124),
+    "target_sdk": _width(ColumnWidthCategory.COMPACT, 74, 66, 78),
+    "min_sdk": _width(ColumnWidthCategory.COMPACT, 70, 64, 74),
     "first_install_time": _width(ColumnWidthCategory.MEDIUM, 155, 135, 185),
     "last_local_update": _width(ColumnWidthCategory.MEDIUM, 155, 135, 185),
-    "app_enabled": _width(ColumnWidthCategory.COMPACT, 105, 90, 120),
-    "sensitive_permissions_count": _width(ColumnWidthCategory.COMPACT, 130, 115, 145),
+    "app_enabled": _width(ColumnWidthCategory.COMPACT, 88, 80, 92),
+    "sensitive_permissions_count": _width(ColumnWidthCategory.COMPACT, 124, 112, 128),
     "sensitive_permissions": _width(ColumnWidthCategory.LONG_TEXT, 320, 260, 380),
-    "device_change": _width(ColumnWidthCategory.MEDIUM, 145, 125, 175),
-    "health_score": _width(ColumnWidthCategory.COMPACT, 100, 90, 115),
+    "device_change": _width(ColumnWidthCategory.MEDIUM, 130, 118, 134),
+    "health_score": _width(ColumnWidthCategory.COMPACT, 86, 78, 90),
 }
 
 DEFAULT_WIDTHS = {
@@ -181,9 +183,10 @@ def semantic_default_width(
         header = TABLE_HEADER_LABELS.get(column, COLUMN_LABELS.get(column, column))
         line_width = max((measure_text(line) for line in header.splitlines()), default=0)
         header_width = line_width + max(0, int(header_chrome_width))
-        # The semantic value default is bounded, but an explicitly wrapped
-        # header still wins at larger accessibility fonts so it cannot clip.
-        return max(semantic_width, header_width)
+        # Explicit header lines may grow a default within its semantic range,
+        # but never turn an accessibility/font difference into an unbounded
+        # table-width change.
+        return max(semantic_width, min(policy.maximum, header_width))
     return semantic_width
 
 EXPORT_EXTRA_FIELDS = (

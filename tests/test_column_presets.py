@@ -177,6 +177,12 @@ def test_programmatic_builtin_presets_do_not_create_custom(
         assert settings["view_preset"] == preset
         assert settings["custom_view_exists"] is False
         assert not _custom_action(window).isEnabled()
+        for logical, column in enumerate(window.model.columns):
+            if window.table.isColumnHidden(logical):
+                continue
+            assert window.table.columnWidth(logical) == table_layout.default_column_width(
+                window.table, column
+            )
 
 
 @pytest.mark.parametrize("preset", ["Basic", "Device", "Technical"])
@@ -334,9 +340,12 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
 ) -> None:
     settings, create_window = window_store
     first = create_window()
+    first._set_view_preset("Technical")
     package = first.model.columns.index("package_name")
     title = first.model.columns.index("play_title")
+    score = first.model.columns.index("health_score")
     first.table.setColumnWidth(package, 347)
+    first.table.setColumnWidth(score, 140)
     first.table.horizontalHeader().moveSection(
         first.table.horizontalHeader().visualIndex(title), 0
     )
@@ -380,6 +389,7 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     assert _visible_order(restarted) == expected_visible
     assert _visual_order(restarted) == expected_order
     assert _widths(restarted) == expected_widths
+    assert restarted.table.columnWidth(score) == 140
 
 
 def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
