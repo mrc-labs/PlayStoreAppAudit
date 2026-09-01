@@ -516,8 +516,9 @@ class WorkerSignals(QObject):
     progress = Signal(int, int, str)
     audit_done = Signal(object)
     failed = Signal(str)
-    adb_discovery_done = Signal(object)
+    adb_discovery_done = Signal(object, int)
     adb_scan_done = Signal(object, object)
+    adb_scan_failed = Signal(int, str)
     adb_install_done = Signal(str, str)
 
 
@@ -533,6 +534,7 @@ class BaseWindow(QMainWindow):
         self.signals.audit_done.connect(self._on_audit_done)
         self.signals.failed.connect(self._on_worker_failed)
         self.signals.adb_scan_done.connect(self._on_adb_scan_done)
+        self.signals.adb_scan_failed.connect(self._on_adb_scan_failed)
         self.signals.adb_install_done.connect(self._on_adb_install_done)
 
         self.source_mode: str | None = None
@@ -1192,6 +1194,9 @@ class BaseWindow(QMainWindow):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self._set_busy(False)
+
+    def _on_adb_scan_failed(self, _request_id: int, message: str) -> None:
+        self._on_worker_failed(message)
 
     def _classify_file_system_packages(self, apps: list[dict[str, str]]) -> tuple[set[str], str]:
         system_packages = {

@@ -1,8 +1,8 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0 and feature complete. RC4 built and packaged successfully, and its mandatory pristine-Custom regression passed, but packaged acceptance rejected its overly wide short-value column defaults. The local RC5 source checkpoint tightens only those semantic defaults and preserves Custom/manual widths; RC5 has not been built. Remote activity remains frozen pending explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0. RC5 passed automated and user acceptance and is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally before RC6 for the bounded Scan Phone lifecycle work; Phase A now has a reusable internal ScanSession, shared ADB/device context and measured four-launch Scan path, without compact/full package metadata or Device Inventory semantic changes. RC6 has not been built. Remote activity remains frozen pending explicit approval to resume it.**
 
 ## Start here
 
@@ -186,7 +186,17 @@ RC4 itself built and packaged successfully. Its fresh packaged defaults also pas
 
 The local RC5 source checkpoint keeps the centralized compact/medium/primary/long-text policy and changes only short-value defaults. Last Update, Age (Days), Android Compatibility, Installed vs Store, Enabled State, Device Inventory Change, Maintenance Score, Target SDK, Min SDK, Sensitive Permissions Count, HTTP Status and System App now prefer 104, 78, 120, 116, 88, 130, 86, 74, 70, 124, 78 and 78 logical px respectively. Normal Segoe UI metrics produce those exact widths except Sensitive Permissions Count at 127 px to retain its accepted two-line title. Store URL remains bounded at 250 px. HTTP Status and System App intentionally join the existing two-line header set; the shared header remains 40 logical px and body rows remain 24 logical px.
 
-Font/header growth is capped by each column's semantic maximum and does not inspect result values or use `ResizeToContents`. Loading representative rows does not change widths. Built-in presets continue to apply current semantic defaults without creating or mutating Custom, while genuine saved/manual widths—including a 140 px Maintenance Score—remain authoritative across restart. Native source geometry and screenshots passed at Qt-rendered 100% and actual 175% for 1100, 1320 and 1600 logical px; Details Auto remains usable on the right at 1600. The Python 3.13.15 x64 source gate passed with 115 focused tests and 610 full tests, plus compileall, Ruff, `pip check`, `git diff --check`, the isolated Qt source smoke and deterministic event-loop smoke. RC5 has not been built or packaged, and no remote activity occurred.
+Font/header growth is capped by each column's semantic maximum and does not inspect result values or use `ResizeToContents`. Loading representative rows does not change widths. Built-in presets continue to apply current semantic defaults without creating or mutating Custom, while genuine saved/manual widths—including a 140 px Maintenance Score—remain authoritative across restart. Native source geometry and screenshots passed at Qt-rendered 100% and actual 175% for 1100, 1320 and 1600 logical px; Details Auto remains usable on the right at 1600. The Python 3.13.15 x64 source gate passed with 115 focused tests and 610 full tests, plus compileall, Ruff, `pip check`, `git diff --check`, the isolated Qt source smoke and deterministic event-loop smoke. RC5 subsequently passed its automated and user acceptance and is retained as the accepted rollback/reference candidate; later source changes require RC6.
+
+## Scan Phone lifecycle Phase A checkpoint
+
+Phase A is complete locally. `playstore_app_audit.services.scan_session.ScanSession` is a frozen, slotted internal model for one completed Scan Phone source. It carries an aware `captured_at`, unique session/source IDs, existing hashed/masked device identity, manufacturer/model, Android version/API/security patch, Android locale, immutable package/system-package collections, counts and third-party/all-package scope. It does not carry raw serial, versionCode, installer, enabled state or rich per-package metadata. Its lifetime is the current window/process only; it is not persisted or exported.
+
+The production worker now validates authorization once, parses one shared `getprop` snapshot for both device summary and locale, reuses the serial already present in `adb devices` for hashed/masked identity and enumerates packages with the same RC5 commands (`pm list packages -3` for third-party-only; all packages plus `-s` exact classification when system apps are included). `settings get system system_locales` remains a non-fatal read-only fallback only when the shared properties lack a usable locale. The UI selects a session atomically after complete success. Monotonic request IDs ignore stale discovery, success and failure signals; switching to a file clears the selected session/summary/locale, while a failed replacement scan cannot promote partial state.
+
+The same real phone returned 329 third-party packages in the warm-up and every measured run. Five end-to-end offscreen UI scans were `0.500`, `0.538`, `0.532`, `0.663` and `0.469` seconds: min/median/mean/max `0.469 / 0.532 / 0.541 / 0.663` seconds. Each used exactly one `adb version`, one `adb devices`, one `adb shell getprop`, zero `get-serialno`, one `adb shell pm list packages -3` and zero locale fallbacks: four launches total versus the accepted nine-launch baseline. Median improved from `0.687` to `0.532` seconds (`0.155` seconds / `22.5%`).
+
+The Phase A Python 3.13.15 x64 gate is green at 105 focused / 633 full tests with compileall, Ruff, `pip check`, `git diff --check`, canonical Qt source smoke, deterministic event-loop/source-entry smoke and fake-device Scan smoke. RC5 menus, Custom/table widths, status bar, Audit Presets, Clear All Filters, Store audit enrichment and existing Device Inventory behavior remain green. No Nuitka, package build or remote activity occurred. Stop here: compact package metadata is Phase B, and the Advanced full-metadata option/Run reuse is Phase C.
 
 ## Priority 5: Alternative Distribution Discovery
 
@@ -226,7 +236,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. The corrective RC5 source checkpoint is local-only and must pass a separately authorized build and packaged acceptance cycle:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. Corrective RC5 subsequently passed automated and user acceptance and is the accepted rollback/reference candidate. The later ScanSession source changes invalidate it as a final candidate, so RC6 must repeat the separately authorized build and packaged acceptance cycle after Phases B/C and the final source gate:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;

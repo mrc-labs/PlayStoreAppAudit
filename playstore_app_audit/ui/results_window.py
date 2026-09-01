@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
@@ -591,11 +592,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         source_layout.insertLayout(max(0, source_layout.count() - 1), options)
 
     def _load_input_file(self, path: str) -> None:
-        self._device_store_locale = None
-        store_locale.set_active_device_store_locale(None)
         super()._load_input_file(path)
-        self._apply_store_country_resolution(None)
         if self.source_mode == "file":
+            self._device_store_locale = None
+            self._scan_session = None
+            store_locale.set_active_device_store_locale(None)
+            self._apply_store_country_resolution(None)
             text = self.source_label.text()
             if text.startswith("File selected: "):
                 text = text[len("File selected: ") :]
@@ -604,11 +606,18 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._sync_action_availability()
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
         super()._on_adb_scan_done(apps, system_packages)
-        detected: store_locale.StoreLocale | None = None
-        adb = self._find_adb()
-        if adb:
-            detected = store_locale.detect_android_store_locale(adb)
+        if isinstance(apps, scan_sessions.ScanSession):
+            if self._scan_session is not apps:
+                return
+            detected = apps.locale
+        else:
+            detected: store_locale.StoreLocale | None = None
+            adb = self._find_adb()
+            if adb:
+                detected = store_locale.detect_android_store_locale(adb)
         self._device_store_locale = detected
         store_locale.set_active_device_store_locale(detected)
         self._apply_store_country_resolution(detected)

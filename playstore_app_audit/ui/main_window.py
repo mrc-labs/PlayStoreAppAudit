@@ -435,20 +435,25 @@ class MainWindow(results_ui.ResultsWindow):
         return find_adb()
 
     def _scan_phone(self) -> None:
+        request_id = self._begin_phone_scan_request()
         self._set_busy(True)
         self.progress.setRange(0, 0)
         self.status_label.setText("Looking for ADB…")
-        threading.Thread(target=self._find_adb_worker, daemon=True).start()
+        threading.Thread(target=self._find_adb_worker, args=(request_id,), daemon=True).start()
 
-    def _find_adb_worker(self) -> None:
+    def _find_adb_worker(self, request_id: int) -> None:
         try:
-            self.signals.adb_discovery_done.emit(self._find_adb())
+            self.signals.adb_discovery_done.emit(self._find_adb(), request_id)
         except Exception as exc:
-            self.signals.failed.emit(f"ADB discovery failed:\n\n{exc}")
+            self.signals.adb_scan_failed.emit(
+                request_id, f"ADB discovery failed:\n\n{exc}"
+            )
 
-    def _on_adb_discovery_done(self, adb: str | None) -> None:
+    def _on_adb_discovery_done(self, adb: str | None, request_id: int) -> None:
+        if request_id != self._active_scan_request_id:
+            return
         if adb:
-            self._start_adb_scan(adb)
+            self._start_adb_scan(adb, request_id)
             return
 
         self.progress.setRange(0, 100)
@@ -456,6 +461,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.status_label.setText("ADB not found")
         self._set_busy(False)
         if not runtime.managed_platform_tools_download_supported():
+            self._active_scan_request_id = None
             QMessageBox.information(
                 self,
                 "Native ADB required",
@@ -477,8 +483,10 @@ class MainWindow(results_ui.ResultsWindow):
             QMessageBox.StandardButton.Yes,
         )
         if choice == QMessageBox.StandardButton.Cancel:
+            self._active_scan_request_id = None
             return
         if choice == QMessageBox.StandardButton.No:
+            self._active_scan_request_id = None
             QDesktopServices.openUrl(QUrl(runtime.PLATFORM_TOOLS_PAGE))
             return
         self.pending_scan_after_install = True

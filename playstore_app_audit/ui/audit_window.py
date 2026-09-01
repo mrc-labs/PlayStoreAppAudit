@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 import threading
 
 from PySide6.QtWidgets import (
@@ -22,6 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from playstore_app_audit.services import scan_session as scan_sessions
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
@@ -30,7 +30,6 @@ from playstore_app_audit.ui.base_window import (
     CRITICALITY,
     BaseWindow,
     detect_windows_country,
-    parse_adb_packages,
 )
 
 
@@ -42,6 +41,33 @@ class AuditWindow(BaseWindow):
     - System apps can be excluded at source-load / ADB-scan time.
     - Hide system apps remains a result-table display filter when system apps were loaded.
     """
+
+    def __init__(self) -> None:
+        self._scan_request_sequence = 0
+        self._active_scan_request_id: int | None = None
+        self._scan_session: scan_sessions.ScanSession | None = None
+        super().__init__()
+
+    def _begin_phone_scan_request(self) -> int:
+        self._scan_request_sequence += 1
+        self._active_scan_request_id = self._scan_request_sequence
+        return self._scan_request_sequence
+
+    def _invalidate_phone_scan_request(self, *, clear_session: bool = False) -> None:
+        self._scan_request_sequence += 1
+        self._active_scan_request_id = None
+        self.pending_scan_after_install = False
+        if clear_session:
+            self._scan_session = None
+
+    def _is_current_scan_completion(self, payload: object, request: object) -> bool:
+        if not isinstance(payload, scan_sessions.ScanSession):
+            return True
+        try:
+            request_id = int(request)
+        except (TypeError, ValueError):
+            return False
+        return request_id == self._active_scan_request_id
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -276,6 +302,7 @@ class AuditWindow(BaseWindow):
             skipped = original_count - len(apps)
 
         self.file_apps = apps
+        self._invalidate_phone_scan_request(clear_session=True)
         self.device_apps_all = []
         self.device_system_packages = set()
         self.source_mode = "file"
@@ -288,54 +315,47 @@ class AuditWindow(BaseWindow):
         self.source_label.setText(f"File loaded: {len(apps)}/{original_count} packages{suffix} • {method}")
         self.status_label.setText("File ready. Run the Play Store audit.")
 
-    def _start_adb_scan(self, adb: str) -> None:
+    def _start_adb_scan(self, adb: str, request_id: int | None = None) -> None:
+        if request_id is None:
+            request_id = self._active_scan_request_id or self._begin_phone_scan_request()
+        elif request_id != self._active_scan_request_id:
+            return
         self._set_busy(True)
         self.progress.setRange(0, 0)
         self.status_label.setText("Checking ADB device connection…")
         exclude_system = self.exclude_system_source_check.isChecked()
         threading.Thread(
-            target=self._scan_phone_worker_branch, args=(adb, exclude_system), daemon=True
+            target=self._scan_phone_worker_branch,
+            args=(adb, exclude_system, request_id),
+            daemon=True,
         ).start()
 
-    def _scan_phone_worker_branch(self, adb: str, exclude_system: bool) -> None:
+    def _scan_phone_worker_branch(self, adb: str, exclude_system: bool, request_id: int) -> None:
         try:
-            devices_output = subprocess.run(
-                [adb, "devices"], check=True, capture_output=True, text=True, timeout=20
-            ).stdout.splitlines()
-            rows = [line.split() for line in devices_output[1:] if line.strip()]
-            authorised = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "device"]
-            unauthorised = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "unauthorized"]
-            offline = [parts[0] for parts in rows if len(parts) >= 2 and parts[1] == "offline"]
-            if not authorised:
-                if unauthorised:
-                    raise RuntimeError(
-                        "The phone is visible to ADB but is not authorised. Unlock it and accept 'Allow USB debugging?', then scan again."
-                    )
-                if offline:
-                    raise RuntimeError(
-                        "The phone is visible to ADB but is offline. Reconnect the USB cable, unlock it and try again."
-                    )
-                raise RuntimeError(
-                    "ADB is installed, but no Android phone is visible. Check USB debugging, "
-                    "cable/data mode and any operating-system USB permissions or drivers."
-                )
-
-            command = [adb, "shell", "pm", "list", "packages"]
-            if exclude_system:
-                command.append("-3")
-            result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
-            packages = sorted(parse_adb_packages(result.stdout))
-            if not packages:
-                raise RuntimeError("ADB returned no Android packages.")
-            system_packages = set() if exclude_system else self._get_system_packages_from_adb(adb)
-            apps = [{"app_name": package, "package_name": package} for package in packages]
-            self.signals.adb_scan_done.emit(apps, system_packages)
+            session = scan_sessions.collect_scan_session(adb, exclude_system=exclude_system)
+            self.signals.adb_scan_done.emit(session, request_id)
         except Exception as exc:
-            self.signals.failed.emit(f"ADB connection error:\n\n{exc}")
+            self.signals.adb_scan_failed.emit(
+                request_id, f"ADB connection error:\n\n{exc}"
+            )
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
-        typed_apps = list(apps)  # type: ignore[arg-type]
-        typed_system = set(system_packages)  # type: ignore[arg-type]
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
+        session = apps if isinstance(apps, scan_sessions.ScanSession) else None
+        if session is not None:
+            typed_apps = [
+                {"app_name": package, "package_name": package}
+                for package in session.packages
+            ]
+            typed_system = set(session.system_packages)
+            exclude_system = session.excludes_system_packages
+            self._scan_session = session
+            self._active_scan_request_id = None
+        else:
+            typed_apps = list(apps)  # type: ignore[arg-type]
+            typed_system = set(system_packages)  # type: ignore[arg-type]
+            exclude_system = self.exclude_system_source_check.isChecked()
         self.device_apps_all = typed_apps
         self.device_system_packages = typed_system
         self.file_apps = []
@@ -343,7 +363,7 @@ class AuditWindow(BaseWindow):
         self.source_mode = "device"
         self.path_edit.clear()
 
-        if self.exclude_system_source_check.isChecked():
+        if exclude_system:
             self.source_label.setText(
                 f"Phone scan: {len(typed_apps)} third-party packages loaded • system apps excluded during ADB scan"
             )
@@ -356,6 +376,24 @@ class AuditWindow(BaseWindow):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self._set_busy(False)
+
+    def _on_adb_scan_failed(self, request_id: int, message: str) -> None:
+        if request_id != self._active_scan_request_id:
+            return
+        self._active_scan_request_id = None
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
+        self.status_label.setText("Operation failed")
+        self._set_busy(False)
+        QMessageBox.critical(self, "Operation failed", message)
+
+    def _on_worker_failed(self, message: str) -> None:
+        self._active_scan_request_id = None
+        super()._on_worker_failed(message)
+
+    def closeEvent(self, event) -> None:
+        self._invalidate_phone_scan_request()
+        super().closeEvent(event)
 
     def _start_audit(self) -> None:
         try:

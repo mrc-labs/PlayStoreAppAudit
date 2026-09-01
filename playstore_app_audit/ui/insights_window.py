@@ -36,6 +36,7 @@ import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -293,7 +294,9 @@ class InsightsWindow(device_ui.DeviceWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Invalid app list", str(exc))
             return
+        scan_was_active = self._active_scan_request_id is not None
         self._cancel_active_audit()
+        self._invalidate_phone_scan_request(clear_session=True)
         self.file_apps = apps
         self.file_system_metadata = metadata
         self.device_apps_all = []
@@ -305,6 +308,8 @@ class InsightsWindow(device_ui.DeviceWindow):
         meta_text = f" • system flag available for {len(metadata)} packages" if metadata else ""
         self.source_label.setText(f"File selected: {len(apps)} unique Android packages{meta_text}")
         self.status_label.setText("File ready. Run the Play Store audit.")
+        if scan_was_active:
+            self._set_busy(False)
         device_insights.add_recent_source(path)
         self._populate_recent_menu()
         device_insights.log_event(f"Loaded file source: {Path(path).name} ({len(apps)} packages)")
@@ -338,7 +343,17 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     # ---------- ADB/device ----------
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
         super()._on_adb_scan_done(apps, system_packages)
+        if isinstance(apps, scan_sessions.ScanSession):
+            if self._scan_session is not apps:
+                return
+            self._device_summary = apps.device_summary()
+            name = " ".join(filter(None, [apps.manufacturer, apps.model]))
+            if name:
+                self.status_label.setText(f"Phone scan ready: {name}. Run the Play Store audit.")
+            return
         adb = self._get_authorised_adb()
         if adb:
             try:

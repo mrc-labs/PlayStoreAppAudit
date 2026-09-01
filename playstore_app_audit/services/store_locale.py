@@ -175,23 +175,15 @@ def parse_getprop_output(text: str) -> dict[str, str]:
     return values
 
 
-def detect_android_store_locale(adb: str) -> StoreLocale | None:
-    """Read the Android system locale without modifying the connected device."""
+def detect_android_store_locale_from_properties(
+    adb: str, properties: Mapping[str, str]
+) -> StoreLocale | None:
+    """Resolve a locale from an existing getprop snapshot, with Settings fallback."""
+    detected = locale_from_android_properties(properties)
+    if detected:
+        return detected
     if not adb:
         return None
-    try:
-        result = subprocess.run(
-            [adb, "shell", "getprop"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=25,
-        )
-        detected = locale_from_android_properties(parse_getprop_output(result.stdout))
-        if detected:
-            return detected
-    except Exception:
-        pass
 
     # Some Android builds expose the ordered locale list through Settings even
     # when the corresponding getprop keys are absent. `settings get` is read-only.
@@ -210,3 +202,21 @@ def detect_android_store_locale(adb: str) -> StoreLocale | None:
     except Exception:
         pass
     return None
+
+
+def detect_android_store_locale(adb: str) -> StoreLocale | None:
+    """Read the Android system locale without modifying the connected device."""
+    if not adb:
+        return None
+    try:
+        result = subprocess.run(
+            [adb, "shell", "getprop"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=25,
+        )
+        properties = parse_getprop_output(result.stdout)
+    except Exception:
+        properties = {}
+    return detect_android_store_locale_from_properties(adb, properties)

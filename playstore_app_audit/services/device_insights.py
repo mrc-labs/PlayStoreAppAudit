@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import html
 import json
 import platform
@@ -272,28 +271,9 @@ def collect_device_summary(adb: str, total_packages: int = 0, system_packages: i
         serial = _run(adb, ["get-serialno"], 10).strip()
     except Exception:
         serial = ""
-    device_hash = (
-        hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16] if serial else "unknown"
-    )
-    masked = ("••••" + serial[-4:]) if len(serial) >= 4 else (serial or "Unknown")
-    manufacturer = props.get("ro.product.manufacturer", "")
-    model = props.get("ro.product.model", "")
-    release = props.get("ro.build.version.release", "")
-    sdk = props.get("ro.build.version.sdk", "")
-    patch = props.get("ro.build.version.security_patch", "")
-    return {
-        "device_id": device_hash,
-        "serial_masked": masked,
-        "manufacturer": manufacturer,
-        "model": model,
-        "android_version": release,
-        "android_api": sdk,
-        "security_patch": patch,
-        "total_packages": int(total_packages),
-        "system_packages": int(system_packages),
-        "third_party_packages": max(0, int(total_packages) - int(system_packages)),
-        "captured_at": datetime.now(UTC).isoformat(),
-    }
+    from playstore_app_audit.services.scan_session import device_summary_from_properties
+
+    return device_summary_from_properties(props, serial, total_packages, system_packages)
 
 
 def _permission_labels(text: str) -> list[str]:

@@ -60,7 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC4 built and packaged successfully, and its pristine-Custom packaged regression passed across untouched restart. Packaged acceptance failed for one confirmed issue: overly wide defaults for short-value columns. The local RC5 source checkpoint tightens only those semantic defaults, adds intentional two-line HTTP Status and System App headers, retains Store URL at 250 logical px and preserves genuine Custom/manual widths. Its Python 3.13.15 x64 gate is green at 115 focused / 610 full tests with compile, lint, dependency, whitespace and Qt source/event-loop checks passing. Version remains `1.99.0`; RC5 has not been built and remote activity remains frozen.
+- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle Phase A described below, so RC5 is no longer the final source candidate. Version remains `1.99.0`; no RC6 package has been built and remote activity remains frozen.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -73,6 +73,16 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 - VS Code/Pylance Standard type checking remains a local development target, not a broad typing-refactor mandate.
 
 Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v1.9 release SHA remains fixed even after post-release documentation advances `main`.
+
+### Scan Phone lifecycle Phase A checkpoint
+
+The local-only Phase A checkpoint introduces an internal immutable `ScanSession` for one completed phone-source capture. It owns the captured timestamp, unique session/source identity, existing hashed/masked device association, existing device summary, Android locale, package tuple, package counts and all/third-party scope. A session is selected atomically only after the worker completes; request-generation guards ignore stale success/failure signals, and file selection clears device session/locale/summary state. The lifetime is process/window-local only: it is not written to settings, audit history, Device Inventory, Play Store/provider caches or exports, and it never stores a raw serial.
+
+The production third-party Scan Phone path now performs one ADB executable/version discovery, one `adb devices` validation/authorization probe, one shared `adb shell getprop` capture and one aggregate `adb shell pm list packages -3` enumeration. The serial already returned by `adb devices` supplies the existing hashed/masked identity, eliminating `get-serialno`. Manufacturer/model, Android version/API/security patch and Android locale all reuse the same parsed properties; `settings get system system_locales` remains a read-only fallback only when those properties contain no usable locale. All-package scope retains its existing additional `pm list packages -s` classification call.
+
+The same connected phone returned 329 third-party packages in one warm-up and five measured end-to-end offscreen UI iterations. Each measured scan used exactly four ADB subprocesses with no locale fallback: `0.500`, `0.538`, `0.532`, `0.663` and `0.469` seconds; min/median/mean/max were `0.469 / 0.532 / 0.541 / 0.663` seconds. Against the accepted `0.673 / 0.687 / 0.691 / 0.717` second, nine-launch baseline, median improved by `0.155` seconds (`22.5%`) and launches fell from nine to four. Phase A adds no versionCode, installer, enabled-state or rich per-package metadata; no Advanced full-scan option, Run enrichment, Device Inventory semantic, result/export schema, provider, scoring or cache behavior changed.
+
+The Python 3.13.15 x64 checkpoint covers 105 focused tests and 633 full tests. Compileall, Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke, deterministic event-loop/source-entry smoke and fake-device Scan smoke are green. No Nuitka or package build was run.
 
 ## Shipped in v1.9.0
 

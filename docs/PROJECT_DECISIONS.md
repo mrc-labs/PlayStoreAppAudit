@@ -323,6 +323,14 @@ The following remain rejected for v1.9: a global Fluent redesign, an icon librar
 
 v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization and release-candidate work must preserve the frozen product scope.
 
+### Scan Phone lifecycle Phase A exception
+
+After RC5 automated and user acceptance passed, v1.99 was deliberately reopened before RC6 for a tightly bounded Scan Phone lifecycle improvement. Phase A establishes one internal immutable `ScanSession` as the owner of a completed phone-source capture. The session contains only existing scan context: captured time, unique source/session identity, hashed/masked device identity, existing device summary, Android locale, package list/counts and all/third-party scope. It remains process/window-local and is never written to settings, history, Device Inventory storage, Play Store/provider caches or result exports. Raw device serials are not stored.
+
+The Scan Phone worker owns authorization, one shared properties capture and aggregate package enumeration. The UI atomically selects only a complete current session; request generations prevent stale worker success or failure from replacing a newer phone/file source. File sources clear the selected device session, summary and locale. One `adb devices` result supplies both authorization state and the serial material used for existing hashed/masked identity. One `getprop` result supplies manufacturer/model, Android release/API/security patch and locale; `settings get system system_locales` is retained only as the existing read-only fallback when those properties have no usable locale. All-package scope retains its separate system-package enumeration because exact system classification is required.
+
+Phase A does not authorize versionCode, installer or enabled-state collection during Scan, an Advanced full-metadata Scan option, reuse of future full metadata during Run, Device Inventory semantic changes, export/schema changes, cache changes, or packaging. Those remain outside this checkpoint.
+
 ### Cooperative audit Stop/Cancel
 
 The real cooperative Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25` alongside Run and Pause/Resume.
