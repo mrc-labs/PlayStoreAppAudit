@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterator
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
@@ -36,12 +37,15 @@ def app() -> QApplication:
 def window_store(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[tuple[dict[str, object], Callable[[], MainWindow]]]:
-    settings: dict[str, object] = {
-        "view_preset": "Basic",
-        "recent_sources": [],
-        "qt_header_state": "",
-        "qt_header_schema_version": TABLE_SCHEMA_VERSION,
-    }
+    settings: dict[str, object] = deepcopy(state.DEFAULT_SETTINGS)
+    settings.update(
+        {
+            "view_preset": "Basic",
+            "recent_sources": [],
+            "qt_header_state": "",
+            "qt_header_schema_version": TABLE_SCHEMA_VERSION,
+        }
+    )
     windows: list[MainWindow] = []
 
     def load_settings() -> dict[str, object]:
@@ -98,10 +102,51 @@ def _custom_action(window: MainWindow):
     return next(action for action in window.view_preset_actions if action.text() == "Custom")
 
 
+def test_pristine_settings_remain_basic_without_custom_across_restart(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    settings_file = tmp_path / "settings.json"
+    monkeypatch.setattr(state, "settings_path", lambda: settings_file)
+    monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
+    monkeypatch.setattr(device_insights, "log_event", lambda _message: None)
+
+    first = MainWindow()
+    first.show()
+    app.processEvents()
+    try:
+        fresh = state.load_settings()
+        basic = next(action for action in first.view_preset_actions if action.text() == "Basic")
+        assert fresh["view_preset"] == "Basic"
+        assert fresh["custom_view_exists"] is False
+        assert basic.isChecked()
+        assert not _custom_action(first).isEnabled()
+    finally:
+        first.close()
+        app.processEvents()
+
+    restarted = MainWindow()
+    restarted.show()
+    app.processEvents()
+    try:
+        second = state.load_settings()
+        basic = next(
+            action for action in restarted.view_preset_actions if action.text() == "Basic"
+        )
+        assert second["view_preset"] == "Basic"
+        assert second["custom_view_exists"] is False
+        assert basic.isChecked()
+        assert not _custom_action(restarted).isEnabled()
+    finally:
+        restarted.close()
+        app.processEvents()
+
+
 def test_column_preset_naming_and_custom_starts_disabled(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
 ) -> None:
-    _settings, create_window = window_store
+    settings, create_window = window_store
     window = create_window()
 
     assert window.view_presets_menu.title() == "Column Preset"
@@ -112,8 +157,26 @@ def test_column_preset_naming_and_custom_starts_disabled(
         "Custom",
     ]
     assert window.display_settings_action.text() == "Customize View…"
+    assert settings["view_preset"] == "Basic"
+    assert settings["custom_view_exists"] is False
     assert not _custom_action(window).isEnabled()
     assert window.model._icons_enabled is True
+
+
+def test_programmatic_builtin_presets_do_not_create_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+
+    for preset in ("Basic", "Device", "Technical"):
+        window._set_view_preset(preset)
+        app.processEvents()
+
+        assert settings["view_preset"] == preset
+        assert settings["custom_view_exists"] is False
+        assert not _custom_action(window).isEnabled()
 
 
 @pytest.mark.parametrize("preset", ["Basic", "Device", "Technical"])
@@ -144,6 +207,79 @@ def test_builtin_column_presets_remain_immutable_after_manual_resize(
     assert _visual_order(window) == canonical_order
     assert _widths(window) == canonical_widths
     assert _custom_snapshot(settings) == saved_custom
+
+
+def test_manual_reorder_creates_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+    title = window.model.columns.index("play_title")
+    header = window.table.horizontalHeader()
+
+    header.moveSection(header.visualIndex(title), 0)
+    app.processEvents()
+
+    assert settings["view_preset"] == "Custom"
+    assert settings["custom_view_exists"] is True
+    assert settings["custom_view_order"][0] == "play_title"  # type: ignore[index]
+    assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
+
+
+def test_customize_view_visibility_change_creates_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+
+    def hide_notes(dialog: QDialog) -> int:
+        notes = dialog.findChild(QCheckBox, "CustomColumnCheck_notes")
+        assert notes is not None and notes.isChecked()
+        notes.setChecked(False)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", hide_notes)
+    window._show_display_settings()
+    app.processEvents()
+
+    assert settings["view_preset"] == "Custom"
+    assert settings["custom_view_exists"] is True
+    assert "notes" not in settings["custom_view_columns"]  # type: ignore[operator]
+    assert window.table.isColumnHidden(window.model.columns.index("notes"))
+    assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
+
+
+def test_restoring_custom_does_not_persist_recursively(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+    package = window.model.columns.index("package_name")
+    wanted = window.table.columnWidth(package) + 43
+    window.table.setColumnWidth(package, wanted)
+    app.processEvents()
+    saved_custom = _custom_snapshot(settings)
+    window._set_view_preset("Device")
+
+    persist_calls: list[bool] = []
+    original_persist = window._persist_current_custom_layout
+
+    def track_persist(*, activate: bool = True) -> None:
+        persist_calls.append(activate)
+        original_persist(activate=activate)
+
+    monkeypatch.setattr(window, "_persist_current_custom_layout", track_persist)
+    window._set_view_preset("Custom")
+    app.processEvents()
+
+    assert persist_calls == []
+    assert _custom_snapshot(settings) == saved_custom
+    assert window.table.columnWidth(package) == wanted
 
 
 def test_manual_order_width_and_customize_visibility_round_trip(
@@ -262,10 +398,12 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     app.processEvents()
     legacy_header = settings["qt_header_state"]
     legacy_order = _visual_order(first)
-    for key in CUSTOM_KEYS:
-        settings.pop(key, None)
+    settings.pop("custom_view_order", None)
+    settings.pop("custom_view_widths", None)
     settings.update(
         {
+            "custom_view_exists": False,
+            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS["custom_view_columns"]),
             "qt_header_state": legacy_header,
             "qt_header_schema_version": TABLE_SCHEMA_VERSION,
             "view_preset": "Basic",
@@ -281,6 +419,39 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert _visual_order(migrated) == legacy_order
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
+
+
+def test_default_legacy_header_state_does_not_imply_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    first = create_window()
+    expected_visible = _visible_order(first)
+    expected_order = _visual_order(first)
+    expected_widths = _widths(first)
+    _visible, _order, _widths_by_name, default_header = first._current_table_layout()
+    first.close()
+    app.processEvents()
+    settings.pop("custom_view_order", None)
+    settings.pop("custom_view_widths", None)
+    settings.update(
+        {
+            "custom_view_exists": False,
+            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS["custom_view_columns"]),
+            "qt_header_state": default_header,
+            "view_preset": "Basic",
+        }
+    )
+
+    restarted = create_window()
+
+    assert settings["view_preset"] == "Basic"
+    assert settings["custom_view_exists"] is False
+    assert not _custom_action(restarted).isEnabled()
+    assert _visible_order(restarted) == expected_visible
+    assert _visual_order(restarted) == expected_order
+    assert _widths(restarted) == expected_widths
 
 
 def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
@@ -300,6 +471,26 @@ def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
     assert _custom_action(window).isEnabled()
     window._set_view_preset("Custom")
     assert _visible_order(window) == ["criticality", "package_name", "play_title"]
+
+
+def test_legacy_custom_preset_with_default_columns_migrates(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": False,
+            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS["custom_view_columns"]),
+        }
+    )
+
+    window = create_window()
+
+    assert settings["view_preset"] == "Custom"
+    assert settings["custom_view_exists"] is True
+    assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
+    assert _visible_order(window) == state.DEFAULT_SETTINGS["custom_view_columns"]
 
 
 def test_malformed_custom_state_falls_back_safely_to_basic(

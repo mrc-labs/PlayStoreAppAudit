@@ -52,6 +52,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "exclude_system_source": True,
     "details_panel_position": "right",
     "technical_columns": [],
+    "custom_view_exists": False,
     "qt_header_state": "",
     "ctk_column_widths": {},
     "alternative_distribution": {

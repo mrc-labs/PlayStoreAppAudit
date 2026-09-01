@@ -509,8 +509,19 @@ class CompactWindow(AuditWindow):
         legacy_columns = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
         )
+        default_columns = self._normalise_custom_columns(
+            DEFAULT_SETTINGS.get("custom_view_columns")
+        )
         legacy_state = str(self.user_settings.get("qt_header_state") or "")
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
+
+        # Before persistent Custom layouts existed, every normal close saved a
+        # header blob. Establish the built-in layout first so only semantic
+        # width/order/visibility differences count as legacy user intent.
+        self._apply_column_visibility(reset_order=True)
+        canonical_visible, canonical_order, canonical_widths, _encoded = (
+            self._current_table_layout()
+        )
         restored = False
         if legacy_state:
             try:
@@ -521,7 +532,27 @@ class CompactWindow(AuditWindow):
             except Exception:
                 restored = False
 
-        if not restored and legacy_columns is None:
+        header_is_custom = False
+        if restored:
+            restored_visible, restored_order, restored_widths, _encoded = (
+                self._current_table_layout()
+            )
+            header_is_custom = (
+                restored_visible,
+                restored_order,
+                restored_widths,
+            ) != (
+                canonical_visible,
+                canonical_order,
+                canonical_widths,
+            )
+        columns_are_custom = (
+            legacy_columns is not None
+            and default_columns is not None
+            and legacy_columns != default_columns
+        )
+        preset_is_custom = current_preset == "Custom" and legacy_columns is not None
+        if not (header_is_custom or columns_are_custom or preset_is_custom):
             return False
 
         with self._suspend_table_layout_tracking():
@@ -529,13 +560,11 @@ class CompactWindow(AuditWindow):
                 visible = set(legacy_columns)
                 for logical, column in enumerate(MODEL_COLUMNS):
                     self.table.setColumnHidden(logical, column not in visible)
-            elif not restored:
-                return False
 
-        # An old explicit Custom column list remains a saved Custom while the
-        # user's last built-in selection stays active. A lone header blob is
-        # ambiguous, so preserve its live manual widths/order as active Custom.
-        activate = current_preset == "Custom" or legacy_columns is None
+        # An old explicit Custom column list remains available while the user's
+        # last built-in selection stays active. A semantically changed legacy
+        # header represents the formerly active manual layout and becomes Custom.
+        activate = preset_is_custom or header_is_custom
         self._persist_current_custom_layout(activate=activate)
         return True
 
