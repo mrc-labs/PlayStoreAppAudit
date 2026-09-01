@@ -126,6 +126,12 @@ Phase A reduces the normal third-party Scan Phone command sequence from the obse
 
 On the same connected 329-package phone, five measured end-to-end UI scans after warm-up produced min/median/mean/max `0.469 / 0.532 / 0.541 / 0.663` seconds with four launches each, versus the accepted `0.673 / 0.687 / 0.691 / 0.717` second, nine-launch baseline. Phase A intentionally adds no compact or full per-package metadata, changes no Device Inventory semantics, and does not alter Run enrichment, exports, caches, providers or scoring. RC6 is not built in Phase A.
 
+Phase B is complete locally. Every Standard Scan now attaches a frozen compact T1 record to the exact ScanSession for each package: installed `versionCode`, raw installer package, the existing friendly installer source/category, enabled state and system classification. The normal third-party command sequence is five launches: Phase A's executable/version, authorization/device-list and shared `getprop` calls; one aggregate `pm list packages -3 -i --show-versioncode` replacing plain enumeration; and one aggregate `pm list packages -3 -d` disabled-set query. All-package scope retains its aggregate system classifier. Compatibility fallback remains aggregate-only and never invokes per-package or full dumpsys collection.
+
+Run still performs the existing rich T2 collection only when the connected phone matches the session's hashed device identity. If the phone is disconnected first, Store auditing continues with valid T1 compact values and unavailable rich-only fields. Installed vs Store keeps its versionName semantics. Device Inventory Change and successful-audit baseline promotion use the coherent T1 package/versionCode/installer/enabled/system snapshot, never a T1/T2 hybrid; Scan and stopped/failed audits do not advance it.
+
+The same 329-package phone produced five measured Phase B iterations of `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds, each with five launches. Min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. The median is `0.167` seconds (`31.4%`) above Phase A and only `0.012` seconds (`1.7%`) above the original nine-launch RC5 median. Phase B adds no Advanced option, no full collector during Scan, no persistent session store and no export/cache/provider/scoring changes. Phase C and RC6 packaging have not started.
+
 ### Alternative Distribution Discovery
 
 Gate 4 is implemented locally with two secondary exact-package providers behind a small non-pluggable common protocol:

@@ -820,13 +820,21 @@ class InsightsWindow(device_ui.DeviceWindow):
         if result.outcome is not AuditRunOutcome.SUCCESS:
             return False
         targeted = bool(result.metadata.get("targeted"))
+        source_scan_session = result.metadata.get("scan_session")
+        if not isinstance(source_scan_session, scan_sessions.ScanSession):
+            source_scan_session = None
+        inventory_device_summary = (
+            source_scan_session.device_summary()
+            if source_scan_session is not None
+            else self._device_summary
+        )
         history_requested = bool(self.user_settings.get("compare_previous", False))
         inventory_requested = bool(
             not targeted
-            and self.source_mode == "device"
+            and (source_scan_session is not None or self.source_mode == "device")
             and self.current_rows
             and bool(self.user_settings.get("inventory_history_enabled", True))
-            and self._device_summary
+            and inventory_device_summary
         )
         history_status = "not_requested"
 
@@ -849,8 +857,13 @@ class InsightsWindow(device_ui.DeviceWindow):
         if not inventory_requested:
             return False
         try:
+            t1_inventory_rows = (
+                scan_sessions.inventory_rows(source_scan_session)
+                if source_scan_session is not None
+                else None
+            )
             self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
-                self.current_rows, self._device_summary
+                self.current_rows, inventory_device_summary, t1_inventory_rows
             )
         except Exception as exc:
             self._report_baseline_persistence_issue(

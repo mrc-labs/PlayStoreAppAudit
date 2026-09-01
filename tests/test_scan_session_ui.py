@@ -64,6 +64,17 @@ def _session(
         security_patch="2026-08-05",
         locale=locale,
         packages=(package,),
+        package_metadata=(
+            scan_sessions.CompactPackageMetadata(
+                package_name=package,
+                installed_version_code="100",
+                installer_package="com.android.vending",
+                installer_source="Google Play (com.android.vending)",
+                installer_category="google_play",
+                is_enabled=True,
+                is_system=False,
+            ),
+        ),
         system_packages=frozenset(),
         system_scope="third_party_only",
         locale_fallback_attempted=False,

@@ -60,7 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle Phase A described below, so RC5 is no longer the final source candidate. Version remains `1.99.0`; no RC6 package has been built and remote activity remains frozen.
+- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle work described below; Phases A and B are complete, so RC5 is no longer the final source candidate. Version remains `1.99.0`; Phase C has not started, no RC6 package has been built and remote activity remains frozen.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -74,7 +74,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 
 Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v1.9 release SHA remains fixed even after post-release documentation advances `main`.
 
-### Scan Phone lifecycle Phase A checkpoint
+### Scan Phone lifecycle Phases A and B checkpoints
 
 The local-only Phase A checkpoint introduces an internal immutable `ScanSession` for one completed phone-source capture. It owns the captured timestamp, unique session/source identity, existing hashed/masked device association, existing device summary, Android locale, package tuple, package counts and all/third-party scope. A session is selected atomically only after the worker completes; request-generation guards ignore stale success/failure signals, and file selection clears device session/locale/summary state. The lifetime is process/window-local only: it is not written to settings, audit history, Device Inventory, Play Store/provider caches or exports, and it never stores a raw serial.
 
@@ -82,7 +82,13 @@ The production third-party Scan Phone path now performs one ADB executable/versi
 
 The same connected phone returned 329 third-party packages in one warm-up and five measured end-to-end offscreen UI iterations. Each measured scan used exactly four ADB subprocesses with no locale fallback: `0.500`, `0.538`, `0.532`, `0.663` and `0.469` seconds; min/median/mean/max were `0.469 / 0.532 / 0.541 / 0.663` seconds. Against the accepted `0.673 / 0.687 / 0.691 / 0.717` second, nine-launch baseline, median improved by `0.155` seconds (`22.5%`) and launches fell from nine to four. Phase A adds no versionCode, installer, enabled-state or rich per-package metadata; no Advanced full-scan option, Run enrichment, Device Inventory semantic, result/export schema, provider, scoring or cache behavior changed.
 
-The Python 3.13.15 x64 checkpoint covers 105 focused tests and 633 full tests. Compileall, Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke, deterministic event-loop/source-entry smoke and fake-device Scan smoke are green. No Nuitka or package build was run.
+Phase B keeps the same immutable, process/window-local session and adds one compact per-package T1 record. Every successful Standard Scan captures `package_name`, installed `versionCode`, raw installer package, the existing friendly installer source/category, enabled state and system classification where available. It does not collect or fabricate versionName, target/min SDK, install/update timestamps, permissions, compatibility or full/raw dumpsys data. The supported third-party path replaces plain enumeration with `pm list packages -3 -i --show-versioncode` and adds `pm list packages -3 -d`; unsupported flags degrade through aggregate-only installer/plain enumeration and unavailable fields remain unknown.
+
+At Run, a still-connected matching phone retains the existing concurrent rich T2 collector. A disconnected or different phone does not block Store auditing: captured T1 versionCode, installer, enabled and system values survive, while rich-only values remain unavailable. Installed vs Store remains the existing versionName comparison and is Unknown without installed versionName. Device Inventory Change and its successful-audit baseline now use the coherent T1 package set/versionCode/installer/enabled/system state; Scan, stopped audits and failed audits do not promote it, and missing compact values are not classified as changes.
+
+The Phase B benchmark used the same 329-package phone, third-party-only setting, one warm-up and five end-to-end offscreen UI measurements. Iterations were `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds, each with exactly five launches: `adb version`, `adb devices`, shared `getprop`, compact package enumeration and the disabled-set query. Min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. Median increased `0.167` seconds (`31.4%`) from Phase A but only `0.012` seconds (`1.7%`) from the old nine-launch RC5 median while adding the compact snapshot.
+
+The Python 3.13.15 x64 Phase B source gate is green at 231 focused tests and 650 full tests. Compileall, full Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke, deterministic event-loop/source-entry smoke and explicit fake-device connected/disconnected Scan/Run smoke all passed. No Nuitka or package build was run.
 
 ## Shipped in v1.9.0
 

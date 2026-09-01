@@ -331,6 +331,16 @@ The Scan Phone worker owns authorization, one shared properties capture and aggr
 
 Phase A does not authorize versionCode, installer or enabled-state collection during Scan, an Advanced full-metadata Scan option, reuse of future full metadata during Run, Device Inventory semantic changes, export/schema changes, cache changes, or packaging. Those remain outside this checkpoint.
 
+### Scan Phone lifecycle Phase B exception
+
+Phase B extends the same process/window-local `ScanSession` with one frozen, slotted compact record per scanned package. Standard Scan Phone always captures the installed `versionCode`, raw installer package, the existing friendly installer source/category mapping, enabled/disabled state and system classification where PackageManager supplies them. The session timestamp and device/source identity remain session-level rather than being duplicated per package. Standard Scan does not collect or fabricate versionName, target/min SDK, install/update timestamps, permissions, compatibility or raw/full `dumpsys package` data, and no compact/full-scan setting is introduced.
+
+The preferred package enumeration is the aggregate `pm list packages [-3] -i --show-versioncode`; this replaces rather than duplicates the Phase A enumeration. One matching aggregate `pm list packages [-3] -d` supplies the disabled set, from which the enabled state of other packages in the captured scope is inferred. All-package scope retains the separate aggregate `-s` classifier. Unsupported compact flags may fall back only to installer-capable and then plain aggregate enumeration; a failed disabled query yields Unknown state. Standard Scan never falls back to full or per-package collection.
+
+The compact values belong to T1, the completed Scan Phone instant. Run may still collect the existing rich T2 metadata only when the scanned phone remains connected and its hashed identity matches the session. If it is unavailable, Google Play auditing continues and captured T1 values survive while rich-only fields remain unavailable. Installed vs Store retains its versionName-to-versionName meaning and is therefore Unknown without rich installed versionName; versionCode is not relabelled or compared to Store versionName.
+
+Device Inventory Change now compares and promotes the coherent T1 state: package set, versionCode, installer, enabled state and system classification all come from the same ScanSession. Missing values are not treated as changes. A successful complete phone audit may promote that T1 state; Scan Phone itself and stopped/failed audits do not. Compact session data remains internal and is not added to settings, Play/provider caches, audit history, exports or a persistent ScanSession store. Phase B does not authorize the Phase C Advanced full-metadata Scan option or package building.
+
 ### Cooperative audit Stop/Cancel
 
 The real cooperative Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25` alongside Run and Pause/Resume.

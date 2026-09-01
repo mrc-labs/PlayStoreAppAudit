@@ -1013,6 +1013,9 @@ class CompactWindow(AuditWindow):
         self._set_audit_state(AuditRunState.RUNNING)
 
         config = AuditConfig(country=country, language=language, max_workers=store_workers)
+        source_scan_session = (
+            getattr(self, "_scan_session", None) if self.source_mode == "device" else None
+        )
         threading.Thread(
             target=self._controlled_audit_worker,
             args=(
@@ -1024,6 +1027,7 @@ class CompactWindow(AuditWindow):
                 self._audit_pause_event,
                 self._audit_cancel_event,
                 cache_enabled,
+                source_scan_session,
             ),
             daemon=True,
         ).start()
@@ -1038,6 +1042,7 @@ class CompactWindow(AuditWindow):
         pause_event: threading.Event,
         cancel_event: threading.Event,
         cache_enabled: bool,
+        source_scan_session: object | None = None,
     ) -> None:
         completed_live: dict[int, dict[str, object]] = {}
 
@@ -1085,6 +1090,11 @@ class CompactWindow(AuditWindow):
                     live_completed_count=len(live_rows),
                     total_count=len(all_apps),
                     error=error,
+                    metadata=(
+                        {"scan_session": source_scan_session}
+                        if source_scan_session is not None
+                        else {}
+                    ),
                 )
             )
 

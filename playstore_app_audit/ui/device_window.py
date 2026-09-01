@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -100,6 +101,14 @@ class DeviceWindow(compact_ui.CompactWindow):
         self, rows: list[dict[str, Any]], metadata: dict[str, dict[str, str]]
     ) -> None:
         device_metadata.enrich_rows_with_device_metadata(rows, metadata)
+
+    def _get_matching_scan_session_adb(
+        self, session: scan_sessions.ScanSession | None
+    ) -> str | None:
+        adb = self._get_authorised_adb()
+        if not adb or session is None:
+            return adb
+        return adb if scan_sessions.authorised_device_matches(adb, session.device_id) else None
 
     # ---------- Menus ----------
     def _build_menu_v8(self) -> None:
@@ -545,7 +554,13 @@ class DeviceWindow(compact_ui.CompactWindow):
         pause_event,
         cancel_event,
         cache_enabled,
+        source_scan_session: object | None = None,
     ) -> None:
+        scan_session = (
+            source_scan_session
+            if isinstance(source_scan_session, scan_sessions.ScanSession)
+            else None
+        )
         metadata_executor: ThreadPoolExecutor | None = None
         metadata_future = None
         completed_live: dict[int, dict[str, Any]] = {}
@@ -595,13 +610,16 @@ class DeviceWindow(compact_ui.CompactWindow):
                     live_completed_count=live_count,
                     total_count=len(all_apps),
                     error=error,
+                    metadata=(
+                        {"scan_session": scan_session} if scan_session is not None else {}
+                    ),
                 )
             )
 
         try:
             settings = state.load_settings()
             if self.source_mode == "device" and settings.get("collect_device_metadata", True):
-                adb = self._get_authorised_adb()
+                adb = self._get_matching_scan_session_adb(scan_session)
                 if adb:
                     metadata_executor = ThreadPoolExecutor(max_workers=1)
                     metadata_future = metadata_executor.submit(
@@ -641,6 +659,11 @@ class DeviceWindow(compact_ui.CompactWindow):
 
             metadata = metadata_future.result() if metadata_future is not None else {}
             self._enrich_rows_with_device_metadata(rows, metadata)
+            scan_sessions.enrich_rows_with_compact_metadata(rows, scan_session)
+            for row in rows:
+                row["version_comparison"] = device_metadata.compare_versions(
+                    row.get("installed_version"), row.get("play_version")
+                )
             self._pending_device_metadata = metadata
             if not cancel_event.is_set():
                 alternative_distribution.run_alternative_distribution_phase(
@@ -673,6 +696,11 @@ class DeviceWindow(compact_ui.CompactWindow):
                 except Exception:
                     metadata = {}
             self._enrich_rows_with_device_metadata(rows, metadata)
+            scan_sessions.enrich_rows_with_compact_metadata(rows, scan_session)
+            for row in rows:
+                row["version_comparison"] = device_metadata.compare_versions(
+                    row.get("installed_version"), row.get("play_version")
+                )
             self._pending_device_metadata = metadata
             emit_result(AuditRunOutcome.FAILED, rows, len(live_rows), str(exc))
         finally:

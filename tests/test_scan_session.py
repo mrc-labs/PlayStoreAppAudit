@@ -36,8 +36,38 @@ def _successful_runner(
             return _completed("List of devices attached\nraw-serial-1234\tdevice\n")
         if args == ("shell", "getprop"):
             return _completed(properties)
+        if args == (
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "-3",
+            "-i",
+            "--show-versioncode",
+        ):
+            return _completed(
+                "package:com.example.beta versionCode:202 installer=null\n"
+                "package:com.example.alpha versionCode:101 installer=com.android.vending\n"
+            )
+        if args == ("shell", "pm", "list", "packages", "-3", "-d"):
+            return _completed("package:com.example.beta\n")
         if args == ("shell", "pm", "list", "packages", "-3"):
             return _completed("package:com.example.beta\npackage:com.example.alpha\n")
+        if args == (
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "-i",
+            "--show-versioncode",
+        ):
+            return _completed(
+                "package:com.android.settings versionCode:36 installer=null\n"
+                "package:com.example.beta versionCode:202 installer=null\n"
+                "package:com.example.alpha versionCode:101 installer=com.android.vending\n"
+            )
+        if args == ("shell", "pm", "list", "packages", "-d"):
+            return _completed("package:com.example.beta\n")
         if args == ("shell", "pm", "list", "packages"):
             return _completed(
                 "package:com.android.settings\n"
@@ -80,10 +110,24 @@ def test_scan_session_reuses_one_device_context_and_has_no_raw_serial(
     assert session.system_package_count == 0
     assert session.system_scope == "third_party_only"
     assert not session.locale_fallback_attempted
+    metadata = session.metadata_by_package()
+    assert metadata["com.example.alpha"].installed_version_code == "101"
+    assert metadata["com.example.alpha"].installer_package == "com.android.vending"
+    assert metadata["com.example.alpha"].installer_source == (
+        "Google Play (com.android.vending)"
+    )
+    assert metadata["com.example.alpha"].installer_category == "google_play"
+    assert metadata["com.example.alpha"].is_enabled
+    assert not metadata["com.example.alpha"].is_system
+    assert metadata["com.example.beta"].installed_version_code == "202"
+    assert metadata["com.example.beta"].installer_package == ""
+    assert metadata["com.example.beta"].installer_source == "Unknown / preinstalled"
+    assert not metadata["com.example.beta"].is_enabled
     assert calls == [
         ("devices",),
         ("shell", "getprop"),
-        ("shell", "pm", "list", "packages", "-3"),
+        ("shell", "pm", "list", "packages", "-3", "-i", "--show-versioncode"),
+        ("shell", "pm", "list", "packages", "-3", "-d"),
     ]
 
 
@@ -105,9 +149,12 @@ def test_all_package_scope_preserves_system_classification(
     assert session.system_package_count == 1
     assert session.third_party_package_count == 2
     assert session.system_scope == "all_packages"
-    assert calls[-2:] == [
-        ("shell", "pm", "list", "packages"),
+    assert session.metadata_by_package()["com.android.settings"].is_system
+    assert not session.metadata_by_package()["com.example.alpha"].is_system
+    assert calls[-3:] == [
+        ("shell", "pm", "list", "packages", "-i", "--show-versioncode"),
         ("shell", "pm", "list", "packages", "-s"),
+        ("shell", "pm", "list", "packages", "-d"),
     ]
 
 
@@ -232,7 +279,7 @@ def test_package_enumeration_failure_does_not_return_a_partial_session(
     successful = _successful_runner(calls)
 
     def run(adb: str, *args: str, timeout: int = 30) -> SimpleNamespace:
-        if args == ("shell", "pm", "list", "packages", "-3"):
+        if args[:5] == ("shell", "pm", "list", "packages", "-3"):
             calls.append(args)
             raise subprocess.CalledProcessError(1, [adb, *args])
         return successful(adb, *args, timeout=timeout)
@@ -251,7 +298,7 @@ def test_empty_package_enumeration_is_rejected(
     successful = _successful_runner(calls)
 
     def run(adb: str, *args: str, timeout: int = 30) -> SimpleNamespace:
-        if args == ("shell", "pm", "list", "packages", "-3"):
+        if args[:5] == ("shell", "pm", "list", "packages", "-3"):
             calls.append(args)
             return _completed("")
         return successful(adb, *args, timeout=timeout)

@@ -756,8 +756,64 @@ def clear_device_inventory_history() -> int:
     return deleted
 
 
+def _meaningful_inventory_value(value: object) -> str:
+    text = str(value or "").strip()
+    if text.casefold() in {
+        "",
+        "unknown",
+        "unknown / preinstalled",
+        "none",
+        "null",
+        "n/a",
+    }:
+        return ""
+    return text
+
+
+def _inventory_version_changed(old: dict[str, Any], current: dict[str, Any]) -> bool:
+    old_code = _meaningful_inventory_value(old.get("installed_version_code"))
+    current_code = _meaningful_inventory_value(current.get("installed_version_code"))
+    if old_code and current_code:
+        return old_code != current_code
+    old_name = _meaningful_inventory_value(old.get("installed_version"))
+    current_name = _meaningful_inventory_value(current.get("installed_version"))
+    return bool(old_name and current_name and old_name != current_name)
+
+
+def _inventory_installer_changed(old: dict[str, Any], current: dict[str, Any]) -> bool:
+    old_package = _meaningful_inventory_value(old.get("installer_package"))
+    current_package = _meaningful_inventory_value(current.get("installer_package"))
+    if old_package and current_package:
+        return old_package != current_package
+    old_source = _meaningful_inventory_value(old.get("installer_source"))
+    current_source = _meaningful_inventory_value(current.get("installer_source"))
+    return bool(old_source and current_source and old_source != current_source)
+
+
+def _inventory_enabled_changed(old: dict[str, Any], current: dict[str, Any]) -> bool:
+    old_state = str(old.get("app_enabled") or "").strip().casefold()
+    current_state = str(current.get("app_enabled") or "").strip().casefold()
+    known = {"enabled", "disabled"}
+    return old_state in known and current_state in known and old_state != current_state
+
+
+def _inventory_record(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "installed_version": row.get("installed_version", ""),
+        "installed_version_code": row.get("installed_version_code", ""),
+        "installer_package": row.get("installer_package", ""),
+        "installer_source": row.get("installer_source", ""),
+        "installer_category": row.get("installer_category", ""),
+        "app_enabled": row.get("app_enabled", ""),
+        "is_system": bool(row.get("is_system")),
+        "play_title": row.get("play_title", ""),
+    }
+
+
 def annotate_inventory_changes_and_save(
-    rows: list[dict[str, Any]], device_summary: dict[str, Any]
+    rows: list[dict[str, Any]],
+    device_summary: dict[str, Any],
+    inventory_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     device_id = str(device_summary.get("device_id") or "unknown")
     path = inventory_path(device_id)
@@ -768,33 +824,36 @@ def annotate_inventory_changes_and_save(
     old_apps = previous.get("apps", {}) if isinstance(previous, dict) else {}
     if not isinstance(old_apps, dict):
         old_apps = {}
-    current: dict[str, dict[str, Any]] = {}
+    current_source = rows if inventory_rows is None else inventory_rows
+    current = {
+        str(row.get("package_name") or ""): _inventory_record(row)
+        for row in current_source
+        if str(row.get("package_name") or "")
+    }
     counts = {"new": 0, "version": 0, "installer": 0, "state": 0, "same": 0, "removed": 0}
-    for row in rows:
-        package = str(row.get("package_name") or "")
+    changes: dict[str, str] = {}
+    for package, current_row in current.items():
         old = old_apps.get(package)
         if not isinstance(old, dict):
             change = "New on device"
             counts["new"] += 1
-        elif str(old.get("installed_version") or "") != str(row.get("installed_version") or ""):
+        elif _inventory_version_changed(old, current_row):
             change = "Version changed"
             counts["version"] += 1
-        elif str(old.get("installer_source") or "") != str(row.get("installer_source") or ""):
+        elif _inventory_installer_changed(old, current_row):
             change = "Installer changed"
             counts["installer"] += 1
-        elif str(old.get("app_enabled") or "") != str(row.get("app_enabled") or ""):
+        elif _inventory_enabled_changed(old, current_row):
             change = "State changed"
             counts["state"] += 1
         else:
             change = "Same"
             counts["same"] += 1
-        row["device_change"] = change
-        current[package] = {
-            "installed_version": row.get("installed_version", ""),
-            "installer_source": row.get("installer_source", ""),
-            "app_enabled": row.get("app_enabled", ""),
-            "play_title": row.get("play_title", ""),
-        }
+        changes[package] = change
+    for row in rows:
+        package = str(row.get("package_name") or "")
+        if package in changes:
+            row["device_change"] = changes[package]
     removed = sorted(set(old_apps) - set(current))
     counts["removed"] = len(removed)
     payload = {
