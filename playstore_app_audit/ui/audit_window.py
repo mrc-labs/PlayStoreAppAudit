@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from playstore_app_audit.services import scan_session as scan_sessions
+from playstore_app_audit.services import state
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
@@ -46,14 +47,18 @@ class AuditWindow(BaseWindow):
         self._scan_request_sequence = 0
         self._active_scan_request_id: int | None = None
         self._scan_session: scan_sessions.ScanSession | None = None
+        self._scan_cancel_event = threading.Event()
         super().__init__()
 
     def _begin_phone_scan_request(self) -> int:
+        self._scan_cancel_event.set()
+        self._scan_cancel_event = threading.Event()
         self._scan_request_sequence += 1
         self._active_scan_request_id = self._scan_request_sequence
         return self._scan_request_sequence
 
     def _invalidate_phone_scan_request(self, *, clear_session: bool = False) -> None:
+        self._scan_cancel_event.set()
         self._scan_request_sequence += 1
         self._active_scan_request_id = None
         self.pending_scan_after_install = False
@@ -324,17 +329,33 @@ class AuditWindow(BaseWindow):
         self.progress.setRange(0, 0)
         self.status_label.setText("Checking ADB device connection…")
         exclude_system = self.exclude_system_source_check.isChecked()
+        full_scan = state.load_settings().get("collect_full_device_metadata_on_scan") is True
+        if full_scan:
+            self.status_label.setText("Scanning phone with extended device metadata…")
         threading.Thread(
             target=self._scan_phone_worker_branch,
-            args=(adb, exclude_system, request_id),
+            args=(adb, exclude_system, request_id, full_scan, self._scan_cancel_event),
             daemon=True,
         ).start()
 
-    def _scan_phone_worker_branch(self, adb: str, exclude_system: bool, request_id: int) -> None:
+    def _scan_phone_worker_branch(
+        self, adb: str, exclude_system: bool, request_id: int,
+        full_scan: bool = False, cancel_event: threading.Event | None = None,
+    ) -> None:
         try:
-            session = scan_sessions.collect_scan_session(adb, exclude_system=exclude_system)
+            if full_scan:
+                session = scan_sessions.collect_scan_session(
+                    adb, exclude_system=exclude_system,
+                    collect_full_metadata=True, cancel_event=cancel_event,
+                )
+            else:
+                session = scan_sessions.collect_scan_session(adb, exclude_system=exclude_system)
+            if cancel_event is not None and cancel_event.is_set():
+                return
             self.signals.adb_scan_done.emit(session, request_id)
         except Exception as exc:
+            if cancel_event is not None and cancel_event.is_set():
+                return
             self.signals.adb_scan_failed.emit(
                 request_id, f"ADB connection error:\n\n{exc}"
             )
@@ -373,6 +394,10 @@ class AuditWindow(BaseWindow):
                 f"Phone scan: {len(typed_apps)} total packages • {user_count} third-party • {len(typed_system)} system"
             )
         self.status_label.setText("Phone scan ready. Run the Play Store audit.")
+        if session is not None and session.full_metadata_status is scan_sessions.FullMetadataStatus.INCOMPLETE:
+            self.status_label.setText(
+                "Phone scan ready with compact metadata. Extended metadata could not be captured."
+            )
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self._set_busy(False)

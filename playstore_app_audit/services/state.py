@@ -50,6 +50,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "cache_ttl_hours": 72,
     "compare_previous": False,
     "exclude_system_source": True,
+    "collect_full_device_metadata_on_scan": False,
     "details_panel_position": "right",
     "technical_columns": [],
     "custom_view_exists": False,
@@ -140,6 +141,9 @@ def load_settings() -> dict[str, Any]:
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
+    settings["collect_full_device_metadata_on_scan"] = (
+        settings.get("collect_full_device_metadata_on_scan") is True
+    )
     details_position = str(settings.get("details_panel_position") or "right").strip().casefold()
     settings["details_panel_position"] = (
         details_position
@@ -184,6 +188,9 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
+    merged["collect_full_device_metadata_on_scan"] = (
+        merged.get("collect_full_device_metadata_on_scan") is True
+    )
     _write_json(settings_path(), merged)
     return merged
 

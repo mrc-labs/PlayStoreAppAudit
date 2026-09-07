@@ -105,10 +105,12 @@ class DeviceWindow(compact_ui.CompactWindow):
     def _get_matching_scan_session_adb(
         self, session: scan_sessions.ScanSession | None
     ) -> str | None:
-        adb = self._get_authorised_adb()
-        if not adb or session is None:
-            return adb
-        return adb if scan_sessions.authorised_device_matches(adb, session.device_id) else None
+        if session is None:
+            return self._get_authorised_adb()
+        adb = self._find_adb()
+        # The exact-session check already verifies single-device authorization;
+        # do not precede it with another generic `devices` probe.
+        return adb if adb and scan_sessions.authorised_device_matches(adb, session.device_id) else None
 
     # ---------- Menus ----------
     def _build_menu_v8(self) -> None:
@@ -563,6 +565,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         )
         metadata_executor: ThreadPoolExecutor | None = None
         metadata_future = None
+        captured_metadata: dict[str, dict[str, str]] = {}
         completed_live: dict[int, dict[str, Any]] = {}
 
         def row_completed(index: int, row: dict[str, Any]) -> None:
@@ -618,7 +621,14 @@ class DeviceWindow(compact_ui.CompactWindow):
 
         try:
             settings = state.load_settings()
-            if self.source_mode == "device" and settings.get("collect_device_metadata", True):
+            full_scan_complete = (
+                self.source_mode == "device"
+                and scan_session is not None
+                and scan_session.full_metadata_status is scan_sessions.FullMetadataStatus.COMPLETE
+            )
+            if full_scan_complete:
+                captured_metadata = scan_session.full_metadata_by_package()
+            elif self.source_mode == "device" and settings.get("collect_device_metadata", True):
                 adb = self._get_matching_scan_session_adb(scan_session)
                 if adb:
                     metadata_executor = ThreadPoolExecutor(max_workers=1)
@@ -657,7 +667,7 @@ class DeviceWindow(compact_ui.CompactWindow):
 
             rows = assemble_rows(live_rows)
 
-            metadata = metadata_future.result() if metadata_future is not None else {}
+            metadata = metadata_future.result() if metadata_future is not None else captured_metadata
             self._enrich_rows_with_device_metadata(rows, metadata)
             scan_sessions.enrich_rows_with_compact_metadata(rows, scan_session)
             for row in rows:
@@ -689,7 +699,7 @@ class DeviceWindow(compact_ui.CompactWindow):
                 with suppress(Exception):
                     compact_ui.update_cache(live_rows, config.country, config.language)
             rows = assemble_rows(live_rows)
-            metadata: dict[str, dict[str, str]] = {}
+            metadata: dict[str, dict[str, str]] = captured_metadata
             if metadata_future is not None and metadata_future.done():
                 try:
                     metadata = metadata_future.result()

@@ -351,7 +351,7 @@ class InsightsWindow(device_ui.DeviceWindow):
                 return
             self._device_summary = apps.device_summary()
             name = " ".join(filter(None, [apps.manufacturer, apps.model]))
-            if name:
+            if name and apps.full_metadata_status is not scan_sessions.FullMetadataStatus.INCOMPLETE:
                 self.status_label.setText(f"Phone scan ready: {name}. Run the Play Store audit.")
             return
         adb = self._get_authorised_adb()

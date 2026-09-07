@@ -12,7 +12,8 @@ import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from threading import Event
+from typing import TYPE_CHECKING, Any
 
 import requests
 
@@ -24,6 +25,9 @@ from playstore_app_audit import __version__
 from playstore_app_audit.domain.alternative_distribution import AlternativeDistributionState
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
+
+if TYPE_CHECKING:
+    from playstore_app_audit.services.scan_session import ScanSession
 
 APP_VERSION = __version__
 DEVICE_SNAPSHOT_FORMAT = "PlayStoreAppAudit-device-snapshot-v1"
@@ -365,11 +369,31 @@ def compatibility_label(target_sdk: object, device_sdk: object) -> str:
     return "Legacy target"
 
 
+@dataclass(slots=True)
+class FullCollectionReceipt:
+    """Opt-in completion evidence, separate from the compatibility metadata dict."""
+
+    complete: bool = False
+    includes_permissions: bool = False
+
+
+def _metadata_has_full_inputs(info: dict[str, str]) -> bool:
+    # Optional versionName/timestamps may legitimately be absent. A usable
+    # version alone does not certify a full SDK/device snapshot.
+    return all(
+        str(info.get(key) or "").isdigit()
+        for key in ("installed_version_code", "target_sdk", "min_sdk")
+    )
+
+
 def collect_device_metadata_v9(
     adb: str,
     packages: list[str],
-    cancel_event=None,
+    cancel_event: Event | None = None,
     max_workers: int = 6,
+    *,
+    scan_context: ScanSession | None = None,
+    receipt: FullCollectionReceipt | None = None,
 ) -> dict[str, dict[str, str]]:
     """Collect read-only ADB evidence with cooperative command boundaries.
 
@@ -380,42 +404,89 @@ def collect_device_metadata_v9(
     """
     from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
 
+    from playstore_app_audit.services import installer_source
+
     settings = state.load_settings()
     include_permissions = bool(settings.get("permissions_audit_enabled", False))
+    if receipt is not None:
+        receipt.complete = False
+        receipt.includes_permissions = include_permissions
     packages = list(dict.fromkeys(str(p).strip() for p in packages if str(p).strip()))
     if not adb or not packages:
         return {}
 
+    command_prefix: list[str] = []
+    compact = {}
+    if scan_context is not None:
+        from playstore_app_audit.services.scan_session import authorised_session_serial
+
+        if cancel_event is not None and cancel_event.is_set():
+            return {}
+        if set(packages) != set(scan_context.packages):
+            return {}
+        # Recheck authorization/identity after compact capture, then pin every
+        # full command so a disconnect/replacement cannot collect another phone.
+        command_prefix = ["-s", authorised_session_serial(adb, scan_context.device_id)]
+        compact = scan_context.metadata_by_package()
+
+    def run(args: list[str], timeout: int) -> str:
+        return _run(adb, command_prefix + args, timeout)
+
+    context_complete = True
     try:
         if cancel_event is not None and cancel_event.is_set():
             return {}
-        props = _parse_getprop(_run(adb, ["shell", "getprop"], 25))
-        device_sdk = int(props.get("ro.build.version.sdk", "0") or 0)
+        if scan_context is not None and scan_context.android_api.isdigit():
+            device_sdk = int(scan_context.android_api)
+        else:
+            props = _parse_getprop(run(["shell", "getprop"], 25))
+            device_sdk = int(props.get("ro.build.version.sdk", "0") or 0)
+        context_complete = device_sdk > 0
     except Exception:
         device_sdk = 0
+        context_complete = False
 
     try:
         if cancel_event is not None and cancel_event.is_set():
             return {}
-        disabled_output = _run(adb, ["shell", "pm", "list", "packages", "-d"], 45)
-        disabled = {
-            line.replace("package:", "", 1).strip()
-            for line in disabled_output.splitlines()
-            if line.strip().startswith("package:")
-        }
+        if compact and all(item.is_enabled is not None for item in compact.values()):
+            disabled = {package for package, item in compact.items() if not item.is_enabled}
+        else:
+            disabled_output = run(["shell", "pm", "list", "packages", "-d"], 45)
+            disabled = {
+                line.replace("package:", "", 1).strip()
+                for line in disabled_output.splitlines()
+                if line.strip().startswith("package:")
+            }
     except Exception:
         disabled = set()
+        context_complete = False
 
     installer_map: dict[str, str] = {}
     try:
         if cancel_event is not None and cancel_event.is_set():
             return {}
-        output = _run(adb, ["shell", "pm", "list", "packages", "-i"], 60)
-        installer_map = device_metadata._parse_installer_map(output)
+        if compact and all(item.installer_package is not None for item in compact.values()):
+            installer_map = {package: item.installer_package or "" for package, item in compact.items()}
+        else:
+            output = run(["shell", "pm", "list", "packages", "-i"], 60)
+            installer_map = device_metadata._parse_installer_map(output)
+            if not set(packages).issubset(installer_map):
+                context_complete = False
     except Exception:
-        pass
+        context_complete = False
 
     metadata: dict[str, dict[str, str]] = {}
+
+    def finish() -> dict[str, dict[str, str]]:
+        if receipt is not None:
+            receipt.complete = (
+                context_complete
+                and not (cancel_event is not None and cancel_event.is_set())
+                and set(metadata) == set(packages)
+                and all(_metadata_has_full_inputs(info) for info in metadata.values())
+            )
+        return metadata
 
     # Fast path: one PackageManager dump for the entire inventory. This avoids
     # starting hundreds of separate adb/dumpsys processes on larger phones.
@@ -424,13 +495,15 @@ def collect_device_metadata_v9(
     try:
         cancelled = cancel_event is not None and cancel_event.is_set()
         if not cancelled:
-            bulk_dump = _run(adb, ["shell", "dumpsys", "package"], 60)
+            bulk_dump = run(["shell", "dumpsys", "package"], 60)
             blocks = _extract_bulk_package_blocks(bulk_dump, set(packages))
             for package, dump in blocks.items():
                 info = _parse_package_dump(dump, package in disabled, device_sdk, include_permissions)
                 if not _metadata_is_usable(info):
                     continue
-                info["installer_source"] = device_metadata._friendly_installer(installer_map.get(package, ""))
+                if receipt is not None and not _metadata_has_full_inputs(info):
+                    continue
+                info.update(installer_source.installer_fields(installer_map.get(package, "")))
                 metadata[package] = info
     except Exception:
         # Bulk dumps differ across Android/OEM versions. Falling back is a
@@ -445,7 +518,7 @@ def collect_device_metadata_v9(
         if cancel_event is not None and cancel_event.is_set():
             return package, {}
         try:
-            dump = _run(adb, ["shell", "dumpsys", "package", package], 30)
+            dump = run(["shell", "dumpsys", "package", package], 30)
             info = _parse_package_dump(dump, package in disabled, device_sdk, include_permissions)
         except Exception:
             info = {
@@ -460,11 +533,11 @@ def collect_device_metadata_v9(
                 "sensitive_permissions_count": "" if not include_permissions else "0",
                 "sensitive_permissions": "",
             }
-        info["installer_source"] = device_metadata._friendly_installer(installer_map.get(package, ""))
+        info.update(installer_source.installer_fields(installer_map.get(package, "")))
         return package, info
 
     if not remaining:
-        return metadata
+        return finish()
 
     worker_limit = max(1, min(max_workers, 8))
     with ThreadPoolExecutor(max_workers=worker_limit) as executor:
@@ -500,7 +573,7 @@ def collect_device_metadata_v9(
                     future.cancel()
             else:
                 fill_submission_window()
-    return metadata
+    return finish()
 
 
 def enrich_rows_with_device_metadata_v9(

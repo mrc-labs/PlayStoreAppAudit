@@ -1,14 +1,16 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-09-02
+Last updated: 2026-09-07
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0. RC5 passed automated and user acceptance and is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally before RC6 for the bounded Scan Phone lifecycle work; Phases A and B now provide a reusable internal ScanSession plus an always-on compact T1 package snapshot with a measured five-launch Standard Scan. Phase C has not started, RC6 has not been built and remote activity remains frozen pending explicit approval to resume it.**
+Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0. RC5 passed automated and user acceptance and is the accepted rollback/reference candidate. Phases A/B are accepted. Phase C optional full Scan passes source validation (699 tests on each required Python) and five-iteration benchmarks on the user's replacement Pixel 11 Pro/315-app device. The local `feat: add optional full scan enrichment` checkpoint is READY FOR RC6 BUILD as a source candidate; no package build or remote activity has occurred.**
 
 ## Start here
 
 Read this file with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and the generated `REPOSITORY_SNAPSHOT.md` in a current handoff package.
 
-Before changing anything:
+During the current LOCAL-ONLY freeze, use branch `prototype/v1.99-native-actions` and verify the local Phase C commit subject `feat: add optional full scan enrichment`, whose parent is `f7d100d67697b947bea6f6dec7206516e0a41276`. Inspect local status/history/references only; do not fetch, pull, push, create PRs or mutate GitHub. Phase C does not package RC6; that is the next separately authorized session. Read the complete [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) before proceeding.
+
+When a later session explicitly resumes the canonical remote workflow, before changing anything:
 
 1. verify the live GitHub `main`, open-PR, release and branch state;
 2. run `git status --short` and stop if the local working tree is dirty;
@@ -202,7 +204,17 @@ Run binds the exact ScanSession into its internal result. A still-connected phon
 
 The same real 329-package phone produced one warm-up and five measured end-to-end offscreen UI Standard Scans. Iterations were `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds with five launches each; min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. Against Phase A, median increased `0.167` seconds (`31.4%`); against the original RC5 median, it increased only `0.012` seconds (`1.7%`) while adding the compact snapshot.
 
-The Python 3.13.15 x64 Phase B source gate is green at 231 focused tests and 650 full tests, plus compileall, full Ruff, `pip check`, `git diff --check`, canonical Qt source smoke, deterministic event-loop/source-entry smoke and explicit fake-device connected/disconnected Scan/Run smoke. RC5 menus, Custom/table widths, status bar, Audit Presets, Clear All Filters, Store/provider enrichment, Maintenance Score, exports and Phase A source/locale isolation remain covered. No Advanced full-scan setting, full collector during Scan, Nuitka run, package build or remote activity occurred. Stop here: the Advanced full-metadata Scan option and collector reuse belong only to Phase C.
+The Python 3.13.15 x64 Phase B source gate passed at 231 focused tests and 650 full tests, plus compileall, full Ruff, `pip check`, `git diff --check`, canonical Qt source smoke, deterministic event-loop/source-entry smoke and explicit fake-device connected/disconnected Scan/Run smoke. RC5 menus, Custom/table widths, status bar, Audit Presets, Clear All Filters, Store/provider enrichment, Maintenance Score, exports and Phase A source/locale isolation remained covered. That checkpoint introduced no Advanced full-scan setting, full collector during Scan, package build or remote activity.
+
+Phase C is now implemented locally. Advanced Settings > Device adds **Collect full device metadata during Scan Phone**, key `collect_full_device_metadata_on_scan`, strictly default OFF. Standard Scan keeps compact Phase B behavior. Advanced Scan calls the existing full collector once with session context; available device API/installer/enabled inputs are reused. One fresh authorization/hash match pins the long-running full commands to the same phone. All five real-device iterations confirm five Standard launches plus two additional full-phase launches for Advanced.
+
+The session stores immutable parsed full fields only after an explicit COMPLETE receipt; partial/failed/cancelled capture discards rich partials and preserves compact T1. Run reuses COMPLETE fields with zero collector/dumpsys/ADB calls whether attached or disconnected. INCOMPLETE capture allows normal matching-device T2 fallback, otherwise compact-only results. Existing permission configuration, Installed vs Store meaning, Compatibility classification, T1 inventory authority, successful-only baseline promotion and stale-request/close guards remain intact. A new scan replaces the session; restart does not retain it.
+
+The Phase C source gate is green: Python 3.13.15 x64/PySide6 6.11.1 and Python 3.14.6 x64/PySide6 6.11.2 each passed 699 tests, repository-wide Ruff, compileall/helper compilation, `pip check`, canonical Qt source smoke and deterministic event-loop full Scan/disconnect/cached Run smoke. All 49 new focused tests passed; all 650 previous tests remain. Native Advanced Settings layout also passed with the platform windows11 style at real 175% scaling.
+
+The user confirmed replacing the old Pixel 10 Pro/329-app reference with a Pixel 11 Pro and 315 apps. Five timed iterations after priming give median Standard 0.617 s/5 launches, Standard T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7, and Advanced collector 4.318 s/2 additional. Advanced dumpsys is 4.080 s median, approximately 12.42 MB and 83.0% of total. Run after Advanced costs 2.161 ms median with zero additional collector/dumpsys/ADB calls, avoiding 4.693 s of repeated current-device T2 work. Current-device Advanced saves 0.321 s/6.1% versus Standard + T2; paired surrounding ADB command timings save 0.503 s from context reuse. Historical 10.2% Standard and 43.1% combined improvements include the changed phone and cannot be attributed solely to software. Full distributions/iterations/deltas are in the validation report. **READY FOR RC6 BUILD**, with packaging deferred to the next session. Local benchmark/smoke scripts are ignored under `artifact/phase-c/`. No Nuitka, `build_windows_exe.bat`, package, remote activity or release-history mutation occurred.
+
+The additional same-device Standard check uses the exact committed Phase B source and current C on Pixel 11 Pro/315 apps, five measurements each after priming: medians 0.634 vs 0.613 s, five launches and no dumpsys throughout. This confirms no material Standard regression without relying on the cross-device historical comparison.
 
 ## Priority 5: Alternative Distribution Discovery
 

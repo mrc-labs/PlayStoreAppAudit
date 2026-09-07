@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-01
+Last updated: 2026-09-07
 
 ## Published release
 
@@ -60,7 +60,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle work described below; Phases A and B are complete, so RC5 is no longer the final source candidate. Version remains `1.99.0`; Phase C has not started, no RC6 package has been built and remote activity remains frozen.
+- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle work described below. Phases A/B are accepted; Phase C implementation, source validation and current-device benchmarks pass. The local `feat: add optional full scan enrichment` checkpoint is the RC6 source candidate. Version remains `1.99.0`; no RC6 package has been created and remote activity remains frozen.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -89,6 +89,18 @@ At Run, a still-connected matching phone retains the existing concurrent rich T2
 The Phase B benchmark used the same 329-package phone, third-party-only setting, one warm-up and five end-to-end offscreen UI measurements. Iterations were `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds, each with exactly five launches: `adb version`, `adb devices`, shared `getprop`, compact package enumeration and the disabled-set query. Min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. Median increased `0.167` seconds (`31.4%`) from Phase A but only `0.012` seconds (`1.7%`) from the old nine-launch RC5 median while adding the compact snapshot.
 
 The Python 3.13.15 x64 Phase B source gate is green at 231 focused tests and 650 full tests. Compileall, full Ruff, `pip check`, `git diff --check`, the canonical Qt source smoke, deterministic event-loop/source-entry smoke and explicit fake-device connected/disconnected Scan/Run smoke all passed. No Nuitka or package build was run.
+
+### Scan Phone lifecycle Phase C source validation
+
+The Advanced Settings > Device opt-in **Collect full device metadata during Scan Phone** uses `collect_full_device_metadata_on_scan` and defaults to OFF, including missing or malformed settings. Standard Scan retains the five-launch compact path. Advanced Scan calls the same production full collector once, reusing the session's SDK/installer/enabled inputs after a fresh authorization/device match. Its supported path adds one matching-device check and one device-selected bulk dump; no second collector exists.
+
+An explicit receipt certifies full package coverage, usable versionCode/target/min SDK inputs, valid device context and absence of cancellation. COMPLETE full snapshots are immutable, process/window-local and reused by Run with zero additional full-collector, dumpsys or rich ADB calls, connected or disconnected. INCOMPLETE capture discards rich partials and retains compact T1 data with a concise status message; connected Run may retry normal T2 enrichment. Sensitive permissions keep their existing preference. Device Inventory remains exclusively the coherent compact T1 snapshot and only successful audits promote its baseline.
+
+The final source gate passed on Python **3.13.15 x64: 699 tests**, PySide6 6.11.1, and Python **3.14.6 x64: 699 tests**, PySide6 6.11.2 (Quality permits Qt 6.11+). All 49 new Phase C tests passed. Compileall, required helper compilation, repository-wide Ruff, both `pip check` runs, PowerShell helper syntax, Qt offscreen source smoke and deterministic event-loop/fake-device full Scan > disconnect > cached Run smoke passed. The full suite retains all 650 pre-Phase-C tests. No release dependency/toolchain pin changed.
+
+**READY FOR RC6 BUILD:** five measured iterations after priming on the current Pixel 11 Pro/315-app phone give min/median/mean/max seconds: Standard `0.543 / 0.617 / 0.601 / 0.661` (5 ADB launches); Standard T2 `4.571 / 4.695 / 4.727 / 5.079` (6); Standard + T2 `5.120 / 5.238 / 5.328 / 5.740` (11); Advanced `4.634 / 4.917 / 4.847 / 5.076` (7); Advanced collector subphase `4.074 / 4.318 / 4.273 / 4.488` (2 additional). Run reuse has 2.161 ms median overhead, zero additional collector/dumpsys/ADB calls, and avoids 4.693 s of current T2 collection. Advanced dumpsys is `3.906 / 4.080 / 4.070 / 4.257` s, approximately 12.42 MB and 83.0% of total median. Paired surrounding ADB commands save approximately 0.503 s through context reuse.
+
+The user confirmed replacing the historical Pixel 10 Pro/329-app phone with the Pixel 11 Pro and fewer apps. Current Standard is 0.070 s/10.2% below historical RC5 and Advanced is 3.722 s/43.1% below the historical 8.639 s combined reference, but those cross-device changes must not be credited entirely to software. A supplementary five-iteration comparison of exact committed Phase B vs current C on the same Pixel 11 confirms no material Standard regression: 0.634 vs 0.613 s median, five launches each. The same-device Advanced vs Standard + T2 saving is 0.321 s/6.1%; the historical Phase B compact cost remains 0.167 s/31.4% above Phase A. Detailed iterations, deltas, command accounting and attribution are in the [Phase C validation report](SCANSESSION_PHASE_C_VALIDATION.md). Instrumentation remains ignored/local under `artifact/phase-c/`. No Nuitka, RC6 package or remote operation occurred.
 
 ## Shipped in v1.9.0
 

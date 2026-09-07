@@ -574,6 +574,17 @@ class PreferencesWindow(table_ui.TableWindow):
         collect.setObjectName("CollectDeviceMetadataCheck")
         collect.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         device_layout.addWidget(collect)
+        full_scan = QCheckBox("Collect full device metadata during Scan Phone")
+        full_scan.setObjectName("CollectFullDeviceMetadataOnScanCheck")
+        full_scan.setChecked(self.user_settings.get("collect_full_device_metadata_on_scan") is True)
+        full_scan_note = (
+            "Captures extended installed-app metadata during Scan Phone so it remains "
+            "available if the device is disconnected before the audit. This can "
+            "significantly increase scan time."
+        )
+        full_scan.setToolTip(full_scan_note)
+        device_layout.addWidget(full_scan)
+        device_layout.addWidget(self._settings_note(full_scan_note))
         device_layout.addStretch(1)
 
         _audit_page, audit_layout = add_page(
@@ -639,6 +650,7 @@ class PreferencesWindow(table_ui.TableWindow):
             cache.setChecked(True)
             ttl.setValue(72)
             collect.setChecked(True)
+            full_scan.setChecked(False)
             permissions.setChecked(False)
             inventory.setChecked(True)
             health.setChecked(False)
@@ -665,6 +677,7 @@ class PreferencesWindow(table_ui.TableWindow):
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect.isChecked(),
+                "collect_full_device_metadata_on_scan": full_scan.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
                 "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),

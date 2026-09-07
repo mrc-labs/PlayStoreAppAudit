@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-01
+Last updated: 2026-09-07
 
 ## Purpose
 
@@ -130,7 +130,11 @@ Phase B is complete locally. Every Standard Scan now attaches a frozen compact T
 
 Run still performs the existing rich T2 collection only when the connected phone matches the session's hashed device identity. If the phone is disconnected first, Store auditing continues with valid T1 compact values and unavailable rich-only fields. Installed vs Store keeps its versionName semantics. Device Inventory Change and successful-audit baseline promotion use the coherent T1 package/versionCode/installer/enabled/system snapshot, never a T1/T2 hybrid; Scan and stopped/failed audits do not advance it.
 
-The same 329-package phone produced five measured Phase B iterations of `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds, each with five launches. Min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. The median is `0.167` seconds (`31.4%`) above Phase A and only `0.012` seconds (`1.7%`) above the original nine-launch RC5 median. Phase B adds no Advanced option, no full collector during Scan, no persistent session store and no export/cache/provider/scoring changes. Phase C and RC6 packaging have not started.
+The same 329-package phone produced five measured Phase B iterations of `0.633`, `0.669`, `0.734`, `0.699` and `0.701` seconds, each with five launches. Min/median/mean/max were `0.633 / 0.699 / 0.687 / 0.734` seconds. The median is `0.167` seconds (`31.4%`) above Phase A and only `0.012` seconds (`1.7%`) above the original nine-launch RC5 median. Phase B itself added no Advanced option or full collector during Scan.
+
+Phase C now implements the separate default-OFF Advanced Settings > Device option `collect_full_device_metadata_on_scan`. It reuses the existing full collector with verified ScanSession context and an explicit completion receipt. COMPLETE full Scan data is reused at Run with no new full collection, even disconnected; INCOMPLETE full capture discards rich partials, retains compact data and permits the normal matching-device T2 fallback. Compact T1 remains inventory authority and only successful audits advance its baseline. No export/cache/provider/scoring schema or behavior is changed.
+
+Source validation passed with 49 Phase C tests and 699 full tests on each of Python 3.13.15 x64 and 3.14.6 x64, plus the required static/dependency/Qt/event-loop checks. The five-iteration performance matrix also passed on the user's replacement Pixel 11 Pro with 315 apps: Standard median 0.617 s/5 launches, T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7 and its full-collector subphase 4.318 s/2 additional. Run reuse is 2.161 ms with no new collector/dumpsys/ADB work. Advanced dumpsys remains 83.0% of total median (4.080 s; approximately 12.42 MB). Historical Pixel 10 Pro/329-app comparisons retain an explicit device/scope limitation; the user confirmed the replacement. Phase C is READY FOR RC6 BUILD as a local source candidate. RC6 packaging is a separate future session; no Nuitka, package build or remote operation is authorized here. See [Phase C validation report](SCANSESSION_PHASE_C_VALIDATION.md).
 
 ### Alternative Distribution Discovery
 

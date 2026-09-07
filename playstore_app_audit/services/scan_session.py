@@ -2,13 +2,29 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from enum import StrEnum
+from threading import Event
 from typing import Literal
 from uuid import uuid4
 
 from playstore_app_audit.devices.adb import run_adb
 from playstore_app_audit.services import installer_source, store_locale
+
+
+class FullMetadataStatus(StrEnum):
+    NOT_REQUESTED = "not_requested"
+    INCOMPLETE = "incomplete"
+    COMPLETE = "complete"
+
+
+@dataclass(frozen=True, slots=True)
+class FullPackageMetadata:
+    """Immutable copy of the existing collector's parsed fields; never a raw dump."""
+
+    package_name: str
+    fields: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +74,15 @@ class ScanSession:
     system_packages: frozenset[str]
     system_scope: Literal["third_party_only", "all_packages"]
     locale_fallback_attempted: bool
+    full_metadata_status: FullMetadataStatus = FullMetadataStatus.NOT_REQUESTED
+    full_metadata: tuple[FullPackageMetadata, ...] = ()
+    full_metadata_captured_at: datetime | None = None
+    full_metadata_includes_permissions: bool = False
+
+    def full_metadata_by_package(self) -> dict[str, dict[str, str]]:
+        if self.full_metadata_status is not FullMetadataStatus.COMPLETE:
+            return {}
+        return {item.package_name: dict(item.fields) for item in self.full_metadata}
 
     @property
     def package_count(self) -> int:
@@ -311,6 +336,15 @@ def authorised_device_matches(adb: str, expected_device_id: str) -> bool:
     return bool(expected_device_id) and device_id == expected_device_id
 
 
+def authorised_session_serial(adb: str, expected_device_id: str) -> str:
+    """Verify and return a command-local serial. Never attach it to the session."""
+
+    serial = _authorised_serial(run_adb(adb, "devices", timeout=20).stdout)
+    if _masked_device_identity(serial)[0] != expected_device_id:
+        raise RuntimeError("The connected phone no longer matches this scan.")
+    return serial
+
+
 def device_summary_from_properties(
     properties: dict[str, str],
     serial: str,
@@ -336,7 +370,13 @@ def device_summary_from_properties(
     }
 
 
-def collect_scan_session(adb: str, *, exclude_system: bool) -> ScanSession:
+def collect_scan_session(
+    adb: str,
+    *,
+    exclude_system: bool,
+    collect_full_metadata: bool = False,
+    cancel_event: Event | None = None,
+) -> ScanSession:
     """Collect one atomic, read-only phone source without repeating device context probes."""
 
     captured_at = datetime.now(UTC)
@@ -375,7 +415,7 @@ def collect_scan_session(adb: str, *, exclude_system: bool) -> ScanSession:
 
     device_id, serial_masked = _masked_device_identity(serial)
     session_id = uuid4().hex
-    return ScanSession(
+    session = ScanSession(
         session_id=session_id,
         captured_at=captured_at,
         source_id=f"device:{device_id}:{session_id}",
@@ -393,4 +433,39 @@ def collect_scan_session(adb: str, *, exclude_system: bool) -> ScanSession:
         system_packages=system_packages,
         system_scope="third_party_only" if exclude_system else "all_packages",
         locale_fallback_attempted=fallback_attempted,
+    )
+    if collect_full_metadata:
+        return _capture_full_metadata(adb, session, cancel_event)
+    return session
+
+
+def _capture_full_metadata(
+    adb: str, session: ScanSession, cancel_event: Event | None
+) -> ScanSession:
+    from playstore_app_audit.services import device_insights
+
+    incomplete = replace(session, full_metadata_status=FullMetadataStatus.INCOMPLETE)
+    receipt = device_insights.FullCollectionReceipt()
+    try:
+        metadata = device_insights.collect_device_metadata_v9(
+            adb, list(session.packages), cancel_event,
+            scan_context=session, receipt=receipt,
+        )
+    except Exception:
+        # The compact snapshot is still usable. Do not retain partial rich data
+        # or exception text (which can contain command-local device identities).
+        return incomplete
+    if not receipt.complete or (cancel_event is not None and cancel_event.is_set()):
+        return incomplete
+    if set(metadata) != set(session.packages):
+        return incomplete
+    return replace(
+        session,
+        full_metadata_status=FullMetadataStatus.COMPLETE,
+        full_metadata=tuple(
+            FullPackageMetadata(package, tuple(sorted(metadata[package].items())))
+            for package in session.packages
+        ),
+        full_metadata_captured_at=datetime.now(UTC),
+        full_metadata_includes_permissions=receipt.includes_permissions,
     )

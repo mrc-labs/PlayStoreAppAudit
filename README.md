@@ -84,6 +84,10 @@ The application can use an existing ADB executable from `PATH`, common Android S
 
 USB debugging and device authorization are required. The in-app **ADB setup guide** contains troubleshooting instructions.
 
+Scan Phone always captures compact installed-app information, including versionCode, installer and enabled state where available. In **Tools > Advanced Settings > Device**, **Collect full device metadata during Scan Phone** optionally captures extended metadata such as installed version, SDK information and timestamps. It defaults to OFF and can significantly increase scan time. Sensitive permissions follow the existing permission-audit setting.
+
+After a successful full Scan, Run reuses the captured metadata even if the phone is disconnected; scan again to capture a newer device state. If extended collection fails, the compact scan remains usable and Run can collect extended data from the matching connected phone. The scan session lasts only until it is replaced or the application closes. Device Inventory comparisons use the compact scan snapshot, and scanning alone does not advance the history baseline.
+
 ## Privacy and network behaviour
 
 Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and the activity log are processed and stored locally. The application has no first-party telemetry or analytics service.

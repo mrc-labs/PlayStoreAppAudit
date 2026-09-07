@@ -233,10 +233,11 @@ def test_session_collection_is_scheduled_off_the_ui_thread(
 
     class DeferredThread:
         def __init__(
-            self, *, target: object, args: tuple[str, bool, int], daemon: bool
+            self, *, target: object, args: tuple[object, ...], daemon: bool
         ) -> None:
             assert target is worker
-            assert args == ("adb", True, request_id)
+            assert args == ("adb", True, request_id, False, window._scan_cancel_event)
+            assert not window._scan_cancel_event.is_set()
             assert daemon
 
         def start(self) -> None:
