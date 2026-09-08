@@ -1,5 +1,14 @@
 # ScanSession Phase C validation — local source work
 
+Current candidate update (2026-09-08): the Phase C source checkpoint below is
+historical. Its packaged RC6 failed D2A due to **RC6-D2A-001**, a one-audit lag in
+the Device changes header. The source correction synchronizes summary and Details
+after inventory promotion and clears stale aggregates on full result replacement.
+It passes 711 tests on each required Python; see
+[RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md). RC6 evidence/artifacts
+remain untouched and RC6 must not be reused. The next package is **RC7**, deferred
+to the next session; this fix session ran no package build, D2A continuation or D2B.
+
 Date: 2026-09-07. Application: 1.99.0. Verdict: **READY FOR RC6 BUILD**.
 
 The implementation, final source-validation gate and five real-device iterations after priming pass. The user confirmed that they replaced the **Pixel 10 Pro with 329 apps** with the currently connected **Pixel 11 Pro with 315 third-party apps**. This is the available reference for Phase C. Current within-device measurements prove command reuse and Run savings; cross-device historical timing deltas are observational and cannot be attributed solely to software. The requested original 329-app measurement is unavailable following the device replacement; its historical results remain clearly identified. RC6 packaging belongs to the next session.

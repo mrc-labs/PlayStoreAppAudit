@@ -1,6 +1,24 @@
 # Project Status
 
-Last updated: 2026-09-07
+Last updated: 2026-09-08
+
+## Current local v1.99 candidate correction
+
+RC6 failed D2A due to **RC6-D2A-001**: the Device changes header displayed the
+preceding audit's count while Details showed the current inventory comparison.
+The source fix refreshes the header in the existing post-promotion synchronization
+and discards stale aggregates on full Run/result replacement. The inventory
+algorithm, successful-only T1 promotion and ADB paths are unchanged.
+
+**READY FOR RC7 BUILD**: 121 focused tests and 711 full tests on each of Python
+3.13.15 x64 and 3.14.6 x64 pass, including visible Qt N/N+1 regression coverage.
+See [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md). Version remains
+1.99.0 on local-only `prototype/v1.99-native-actions`; commit subject
+`fix: synchronize device change count`, parent
+`572be8edf4689cacbe23084d7602e0b71e7ed8df`. RC6 must not be reused and its evidence
+is preserved. Packaging RC7 belongs to the next session; no build, D2A continuation,
+D2B or remote operation occurred during this fix. Phase C/RC6 build-readiness
+statements below describe the earlier source checkpoint, not current acceptance.
 
 ## Published release
 

@@ -469,6 +469,9 @@ class ResultsWindow(menu_ui.MenuWindow):
         )
         for row in self.current_rows:
             row[change_service.DEVICE_HISTORY_FLAG] = had_previous_inventory
+        # Successful promotion annotates rows and installs the aggregate after
+        # the initial result refresh. All views must consume that same comparison.
+        self._update_summary()
         self._on_details_model_data_changed()
         if self._change_overview_dialog is not None:
             self._change_overview_dialog.set_groups(self._current_change_groups())

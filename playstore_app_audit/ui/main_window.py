@@ -283,6 +283,8 @@ class MainWindow(results_ui.ResultsWindow):
         if was_active or not self._audit_active:
             return
 
+        self._last_inventory_changes = {}
+        self._update_summary()
         self._audit_started_at = started_at
         self._audit_pre_finalize_seconds = None
         self._audit_cached_count = max(0, self.progress.value())
@@ -366,6 +368,11 @@ class MainWindow(results_ui.ResultsWindow):
         result_finalized = False
         try:
             try:
+                if self._merge_base_rows is None:
+                    # Full replacement must not pair this generation's rows
+                    # with the previous audit's inventory aggregate. Targeted
+                    # Store rechecks retain the existing inventory/merged rows.
+                    self._last_inventory_changes = {}
                 super()._on_controlled_done(result)
                 result_finalized = True
             except Exception as exc:

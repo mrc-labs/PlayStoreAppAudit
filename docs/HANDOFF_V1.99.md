@@ -1,14 +1,14 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-09-07
+Last updated: 2026-09-08
 
-Status: **v1.9.0 is published, independently verified and immutable. v1.99 remains version 1.99.0. RC5 passed automated and user acceptance and is the accepted rollback/reference candidate. Phases A/B are accepted. Phase C optional full Scan passes source validation (699 tests on each required Python) and five-iteration benchmarks on the user's replacement Pixel 11 Pro/315-app device. The local `feat: add optional full scan enrichment` checkpoint is READY FOR RC6 BUILD as a source candidate; no package build or remote activity has occurred.**
+Status: **v1.9.0 is published and immutable. v1.99 remains version 1.99.0. RC5 remains the accepted rollback/reference candidate. RC6 failed D2A due to RC6-D2A-001: Device changes count lagged one completed audit. The targeted source correction passes 711 tests on each required Python and is READY FOR RC7 BUILD. RC6 must not be reused. No packaging, D2A continuation, D2B or remote activity occurred in the fix session.**
 
 ## Start here
 
 Read this file with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and the generated `REPOSITORY_SNAPSHOT.md` in a current handoff package.
 
-During the current LOCAL-ONLY freeze, use branch `prototype/v1.99-native-actions` and verify the local Phase C commit subject `feat: add optional full scan enrichment`, whose parent is `f7d100d67697b947bea6f6dec7206516e0a41276`. Inspect local status/history/references only; do not fetch, pull, push, create PRs or mutate GitHub. Phase C does not package RC6; that is the next separately authorized session. Read the complete [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) before proceeding.
+During the current LOCAL-ONLY freeze, use branch `prototype/v1.99-native-actions` and verify the local commit subject `fix: synchronize device change count`, whose exact parent is `572be8edf4689cacbe23084d7602e0b71e7ed8df`. Inspect local status/history/references only; do not fetch, pull, push, create PRs or mutate GitHub. The next separately authorized package will be RC7. Read [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md) for the root cause, lifecycle ordering, 12 new regressions and dual-Python source gate. Preserve all `artifact/rc6-evidence/` records and artifacts. [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) remains the historical Phase C source checkpoint, superseded for candidate readiness by the defect correction.
 
 When a later session explicitly resumes the canonical remote workflow, before changing anything:
 
@@ -254,7 +254,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. Corrective RC5 subsequently passed automated and user acceptance and is the accepted rollback/reference candidate. The later ScanSession source changes invalidate it as a final candidate, so RC6 must repeat the separately authorized build and packaged acceptance cycle after Phases B/C and the final source gate:
+v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. Corrective RC5 subsequently passed automated and user acceptance and is the accepted rollback/reference candidate. The later ScanSession source changes invalidate it as a final candidate. RC6 subsequently failed D2A on RC6-D2A-001; the corrected source requires a new RC7 package and separately authorized acceptance:
 
 1. reach feature-complete candidate state;
 2. freeze an RC candidate;
