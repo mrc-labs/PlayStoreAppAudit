@@ -2,27 +2,27 @@
 
 Last updated: 2026-09-09
 
-## Current local v1.99 candidate correction
+## Accepted v1.99 candidate and release preparation
 
-RC7 passed D1, D2A and D2B1 but **failed final packaged acceptance** because HTML
-export omitted Device Inventory Change while CSV and JSON preserved the same
-`device_change` result field. The HTML writer's hard-coded table had no matching
-header or row cell. RC7 must not be reused; its package and evidence remain preserved.
+RC8 was built from source `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`
+and passed full packaged acceptance. It includes the narrow correction that adds
+the existing **Device Inventory Change** label and HTML-escaped result value to
+HTML reports, restoring parity with CSV and versioned JSON. Application acceptance
+is complete and must not be repeated. RC6 and RC7 remain failed historical
+candidates and must not be reused; preserve their packages and evidence.
 
-The narrow source correction adds the existing **Device Inventory Change** label
-and an HTML-escaped value read directly from `device_change`. CSV fields, JSON schema
-v2, inventory comparison semantics, ScanSession, ADB, Maintenance Score and provider
-behavior are unchanged. Seven focused regression cases cover Same, Installer changed,
-Version changed, New on device, empty values, escaping and multi-row cross-export
-parity. The full source gate passes **718 tests** on each of Python 3.13.15 x64 and
-3.14.6 x64, plus compileall/helper compilation, repository-wide Ruff, `pip check`,
-PowerShell syntax, `git diff --check` and canonical Qt offscreen smoke.
+The accepted source was merged through PR `#123` with a normal merge commit. PR
+Quality run `34375139356` and post-merge Quality run `34375388948` both passed on
+Python 3.13 and 3.14. The resulting pre-release-metadata `main` SHA is
+`53c85dd46f96243c7e53d348775b76c564c87d5f`. Version remains `1.99.0`.
 
-**READY FOR RC8 BUILD** on local-only `prototype/v1.99-native-actions`, version
-1.99.0, with authorized commit subject `fix: include device changes in html export`
-and parent `6a0c96b7d355278813038207502be39cad350b49`. See
-[RC7 HTML export fix validation](RC7_HTML_EXPORT_FIX_VALIDATION.md). No Nuitka,
-package build, packaged acceptance or remote operation occurred in this fix session.
+The final official Windows x64 build, engineering assembly, annotated `v1.99.0`
+tag and private GitHub Release have not yet been performed. The documentation-only
+release-metadata merge commit supersedes the SHA above as the canonical release
+source after its required Quality gate passes. The repository remains private, and
+private release publication is authorized only while visibility remains private.
+The unresolved historical GitHub Support privacy issue remains open; do not change
+visibility or rerun the historical privacy audit.
 
 ## Published release
 
@@ -82,7 +82,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC4 failed acceptance on short-column density; RC5 remains the accepted rollback/reference candidate. Later ScanSession work required RC6, which failed D2A on RC6-D2A-001. Its correction produced RC7; RC7 passed D1/D2A/D2B1 but failed final packaged acceptance because HTML omitted Device Inventory Change. The narrow export-parity correction is the RC8 source candidate. Version remains `1.99.0`; RC8 has not been built and remote activity remains frozen.
+- RC8 was built from `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance. Its source merged through PR `#123`; final official build/tag/private release work remains pending.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
@@ -192,7 +192,7 @@ Do not reintroduce without a new explicit product decision:
 - Published releases are immutable and all release artifacts derive from one exact frozen SHA.
 - Quality precedes SHA freeze; tagging follows artifact validation; tag pushes do not rebuild binaries.
 - Strict legal/source validation remains fail-closed; ADB remains read-only.
-- v1.99 requires a user-tested packaged RC; source corrections invalidate that RC as a final candidate.
+- v1.99's user-tested packaged-RC requirement is satisfied by RC8; its ZIP remains acceptance evidence and is not the official final release artifact.
 - Complete every release through `RELEASE_CLOSURE.md`, including post-release context, safe local synchronization and handoff generation only from clean synchronized `main`.
 
 See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `HANDOFF_V1.9.md` and `HANDOFF_V1.99.md` for durable policy, release history and continuation context.

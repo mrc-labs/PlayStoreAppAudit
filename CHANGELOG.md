@@ -2,6 +2,36 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [1.99.0] - 2026-09-09
+
+### Added
+
+- Added an immutable per-scan `ScanSession` that captures coherent compact device metadata, including installed version code, installer source, enabled state and system-app classification.
+- Added an opt-in Advanced setting to collect full device metadata during Scan Phone and reuse a complete capture during Run, including after the phone disconnects, without repeating ADB collection.
+- Added exact-package Alternative Distribution Discovery through F-Droid main and optional authorized Aptoide, with bounded provider execution, independent caching and explicit evidence in Details, HTML and versioned JSON.
+- Added cooperative Stop behavior that preserves completed valid results and reusable cache entries while preventing incomplete audits from becoming the history baseline.
+
+### Changed
+
+- Updated Maintenance Score so conclusive Google Play absence has a stronger penalty with bounded recovery only for current conclusive F-Droid or Aptoide availability; `health_score` remains the compatibility identifier.
+- Refined the native Windows results experience with the accepted Run/Stop/progress/export/clear command order, compact status presentation, responsive Details layouts, semantic warning emphasis and denser table defaults.
+- Reworked Column Presets and audit configuration so built-in views remain immutable, Custom layout state persists independently and advanced result filtering remains with Smart Queries.
+- Made Device Inventory comparison consume the same coherent compact Scan Phone snapshot used by the audit rather than a later mixed metadata view.
+
+### Fixed
+
+- Kept Device Inventory Change values and change counts synchronized across completed results and exports.
+- Added Device Inventory Change to HTML reports with escaped values, restoring parity with CSV and versioned JSON exports.
+
+### Compatibility
+
+- v1.99.0 is prepared as an unsigned Windows x64 Engineering Test Build (ETB); the exact release SHA and final artifact evidence will be recorded only after official release validation.
+- The planned project-defined asset set is `PlayStoreAppAudit-v1.99.0-windows-x64.zip`, `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` and `SHA256SUMS.txt`.
+- Windows ARM64, Linux and macOS remain source-supported but are not planned as v1.99.0 prebuilt targets.
+- Python 3.13 remains the packaging baseline; Python 3.13 and 3.14 remain Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Existing settings and serialized compatibility identifiers remain supported; managed ADB remains read-only with respect to installed Android apps.
+
 ## [1.9.0] - 2026-08-25
 
 ### Added

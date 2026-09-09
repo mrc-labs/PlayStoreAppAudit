@@ -98,6 +98,54 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
+## Draft v1.99.0 release body
+
+Planned GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`.
+
+The body below is the canonical pre-evidence v1.99.0 draft. Its Verification section deliberately does not contain the final frozen SHA, official build/assembly run IDs, checksums, asset sizes or publication claims. Add those facts only after the release-metadata PR is merged and the exact-SHA Quality, Windows x64 build, engineering assembly and private publication checks actually succeed.
+
+```markdown
+## Play Store App Audit v1.99.0 (Engineering Test Build - Windows x64 Only)
+
+## What's New / Highlights
+
+### Added
+- A coherent Scan Phone session now captures compact installed version, installer, enabled-state and system-app metadata for every package and keeps that snapshot tied to the selected source.
+- An optional Advanced setting can collect complete device metadata during Scan Phone; a complete capture is reused by Run without repeating ADB work, even if the phone is later disconnected.
+- Alternative Distribution Discovery adds exact-package informational evidence from F-Droid main and optional authorized Aptoide when Google Play is conclusively unavailable in the checked countries.
+- Run now has cooperative Stop behavior that preserves completed valid results and independent cache entries while leaving cancelled audits explicitly incomplete.
+
+### Changed
+- Maintenance Score now distinguishes conclusive checked-market absence from regional or inconclusive Store outcomes and applies only bounded recovery for current conclusive F-Droid or Aptoide availability.
+- The results header now keeps Run/Pause/Resume, Stop, stable progress, Export Results and Clear Results in one predictable order while operational text remains in the compact native status bar.
+- Column Presets, Custom layout persistence, table density, responsive Details presentation and semantic warning emphasis have been refined for clearer native Windows use.
+- Device Inventory comparison now uses the same coherent compact Scan Phone snapshot as the audit, avoiding mixed-time metadata.
+
+### Fixed
+- Device Inventory Change values and summary counts now remain synchronized when results are finalized.
+- HTML reports now include the escaped Device Inventory Change value for every row, matching CSV and versioned JSON exports.
+
+## Compatibility and distribution
+- Engineering Test Build (ETB), Windows x64 only.
+- Application version: `1.99.0`; Windows File Version and Product Version: `1.99.0.0`.
+- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
+- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
+- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.99.0.
+- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
+- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
+- Existing settings and serialized compatibility identifiers, including `health_score`, remain supported.
+- Managed ADB remains read-only with respect to installed Android apps.
+
+## Release assets
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip`
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- The exact frozen source SHA and successful Quality, Windows x64 build and engineering assembly run IDs will be recorded after those release gates pass.
+- Package architecture/version/startup, legal/source material, exact-SHA provenance, final asset-set and checksum evidence will be recorded only after validation of the official release artifacts.
+```
+
 ## Published v1.9.0 release body
 
 GitHub Release title: `Play Store App Audit v1.9.0 (Win x64 Only)`.
