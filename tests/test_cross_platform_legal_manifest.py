@@ -1,19 +1,251 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import prepare_release_legal_bundle as legal
+import pytest
 
 
-def test_credential_crypto_dependency_closure_has_legal_material() -> None:
-    root = Path(__file__).resolve().parents[1]
+def _credential_distributions(monkeypatch) -> None:
     distributions = {
-        legal._normalize_dist_name(distribution.metadata["Name"]): distribution
-        for distribution in legal._runtime_dependency_closure(root, [])
+        "cryptography": SimpleNamespace(
+            metadata={"Name": "cryptography"},
+            version="50.0.1",
+            files=[legal.metadata.PackagePath("cryptography/__init__.py")],
+            requires=["cffi>=2.0.0"],
+        ),
+        "cffi": SimpleNamespace(
+            metadata={"Name": "cffi"},
+            version="2.1.1",
+            files=[
+                legal.metadata.PackagePath(
+                    "_cffi_backend.cp313-win_amd64.pyd"
+                ),
+                legal.metadata.PackagePath("cffi/__init__.py"),
+            ],
+            requires=["pycparser"],
+        ),
+        "pycparser": SimpleNamespace(
+            metadata={"Name": "pycparser"},
+            version="3.0",
+            files=[legal.metadata.PackagePath("pycparser/__init__.py")],
+            requires=[],
+        ),
+    }
+    monkeypatch.setattr(
+        legal,
+        "_project_dependency_names",
+        lambda _root: ["cryptography"],
+    )
+    monkeypatch.setattr(
+        legal.metadata,
+        "distribution",
+        lambda name: distributions[legal._normalize_dist_name(name)],
+    )
+
+
+def _credential_report() -> list[dict[str, str]]:
+    return [
+        {
+            "name": "cryptography.hazmat.primitives.hashes",
+            "kind": "CompiledPythonModule",
+            "distribution": "cryptography",
+        }
+    ]
+
+
+def _dependency_names(
+    dependencies: list[legal.RuntimeDependencyEvidence],
+) -> set[str]:
+    return {
+        legal._normalize_dist_name(item.distribution.metadata["Name"])
+        for item in dependencies
     }
 
-    for name in ("cryptography", "cffi", "pycparser"):
-        assert name in distributions
-        assert legal._distribution_license_files(distributions[name])
+
+def test_cffi_is_retained_with_real_runtime_evidence(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+
+    dependencies = legal._runtime_dependency_closure(
+        tmp_path,
+        ["_cffi_backend.pyd"],
+        _credential_report(),
+        {
+            "cryptography": ("cryptography", "50.0.1"),
+            "cffi": ("cffi", "2.1.1"),
+        },
+    )
+
+    assert _dependency_names(dependencies) == {"cffi", "cryptography"}
+    cffi = next(
+        item
+        for item in dependencies
+        if legal._normalize_dist_name(item.distribution.metadata["Name"])
+        == "cffi"
+    )
+    assert cffi.runtime_evidence == ("_cffi_backend.pyd",)
+
+
+def test_pycparser_metadata_alone_does_not_make_it_runtime(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+
+    dependencies = legal._runtime_dependency_closure(
+        tmp_path,
+        ["_cffi_backend.pyd"],
+        _credential_report(),
+        {
+            "cryptography": ("cryptography", "50.0.1"),
+            "cffi": ("cffi", "2.1.1"),
+        },
+    )
+
+    assert "pycparser" not in _dependency_names(dependencies)
+
+
+def test_pycparser_is_retained_with_real_runtime_evidence(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+
+    dependencies = legal._runtime_dependency_closure(
+        tmp_path,
+        ["_cffi_backend.pyd", "pycparser/__init__.py"],
+        _credential_report(),
+        {
+            "cryptography": ("cryptography", "50.0.1"),
+            "cffi": ("cffi", "2.1.1"),
+        },
+    )
+
+    assert _dependency_names(dependencies) == {
+        "cffi",
+        "cryptography",
+        "pycparser",
+    }
+
+
+def test_direct_dependency_without_runtime_evidence_fails_closed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+
+    with pytest.raises(
+        RuntimeError,
+        match="direct dependency cryptography 50.0.1",
+    ):
+        legal._runtime_dependency_closure(
+            tmp_path,
+            ["_cffi_backend.pyd"],
+            [],
+            {},
+        )
+
+
+def test_unknown_real_nuitka_dependency_fails_closed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+
+    report = _credential_report()
+    report.append(
+        {
+            "name": "unknown_runtime",
+            "kind": "CompiledPythonModule",
+            "distribution": "unknown-distribution",
+        }
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="undeclared runtime distribution unknown-distribution",
+    ):
+        legal._runtime_dependency_closure(
+            tmp_path,
+            ["_cffi_backend.pyd"],
+            report,
+            {
+                "cryptography": ("cryptography", "50.0.1"),
+                "cffi": ("cffi", "2.1.1"),
+                "unknown-distribution": (
+                    "unknown-distribution",
+                    "1.0",
+                ),
+            },
+        )
+
+
+def test_ambiguous_packaged_dependency_fails_closed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _credential_distributions(monkeypatch)
+    original = legal._distribution_top_level_names
+
+    def shared_transitive_top_level(distribution) -> list[str]:
+        if distribution.metadata["Name"] in {"cffi", "pycparser"}:
+            return ["shared_runtime"]
+        return original(distribution)
+
+    monkeypatch.setattr(
+        legal,
+        "_distribution_top_level_names",
+        shared_transitive_top_level,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Ambiguous packaged runtime evidence",
+    ):
+        legal._runtime_dependency_closure(
+            tmp_path,
+            ["shared_runtime/__init__.py"],
+            _credential_report(),
+            {
+                "cryptography": ("cryptography", "50.0.1"),
+            },
+        )
+
+
+def test_nuitka_report_preserves_distribution_inventory(
+    tmp_path: Path,
+) -> None:
+    report = tmp_path / "compilation-report.xml"
+    report.write_text(
+        """<?xml version="1.0" encoding="utf-8"?>
+<nuitka-compilation-report nuitka_version="4.1.3">
+  <module name="_cffi_backend" kind="PythonExtensionModule"
+          distribution="cffi" />
+  <distributions>
+    <distribution name="cffi" version="2.1.1" />
+  </distributions>
+</nuitka-compilation-report>
+""",
+        encoding="utf-8",
+    )
+
+    version, modules, distributions = (
+        legal._load_nuitka_compilation_report(report)
+    )
+
+    assert version == "4.1.3"
+    assert modules == [
+        {
+            "name": "_cffi_backend",
+            "kind": "PythonExtensionModule",
+            "distribution": "cffi",
+        }
+    ]
+    assert distributions == {"cffi": ("cffi", "2.1.1")}
+
 
 
 def test_cffi_abi_tagged_extension_has_runtime_evidence() -> None:
@@ -29,29 +261,11 @@ def test_cffi_abi_tagged_extension_has_runtime_evidence() -> None:
         ["_cffi_backend.pyd"],
         top_level,
     ) == ["_cffi_backend.pyd"]
-    assert legal._compiled_module_evidence(
-        [
-            {
-                "name": "_cffi_backend",
-                "kind": "PythonExtensionModule",
-            }
-        ],
-        top_level,
-    ) == ["_cffi_backend"]
 
 
 def test_runtime_evidence_still_fails_for_absent_distribution() -> None:
     assert legal._runtime_evidence(
         ["unrelated_module.pyd"],
-        ["missing_dependency"],
-    ) == []
-    assert legal._compiled_module_evidence(
-        [
-            {
-                "name": "unrelated_module",
-                "kind": "PythonExtensionModule",
-            }
-        ],
         ["missing_dependency"],
     ) == []
 
