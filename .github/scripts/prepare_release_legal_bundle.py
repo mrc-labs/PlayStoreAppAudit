@@ -11,6 +11,7 @@ import argparse
 import ast
 import hashlib
 import http.client
+import importlib.machinery as machinery
 import importlib.metadata as metadata
 import json
 import platform
@@ -568,6 +569,11 @@ def _distribution_license_files(dist: metadata.Distribution) -> list[metadata.Pa
 
 def _distribution_top_level_names(dist: metadata.Distribution) -> list[str]:
     top_level: set[str] = set()
+    import_suffixes = sorted(
+        machinery.all_suffixes(),
+        key=len,
+        reverse=True,
+    )
     for entry in dist.files or []:
         parts = PurePosixPath(str(entry)).parts
         if not parts or ".dist-info" in parts[0] or ".egg-info" in parts[0]:
@@ -575,8 +581,10 @@ def _distribution_top_level_names(dist: metadata.Distribution) -> list[str]:
         first = parts[0]
         if first.startswith("."):
             continue
-        if first.endswith((".py", ".pyd")):
-            first = first.rsplit(".", 1)[0]
+        for suffix in import_suffixes:
+            if first.endswith(suffix):
+                first = first[: -len(suffix)]
+                break
         if first and first != "__pycache__":
             top_level.add(first)
     return sorted(top_level, key=str.casefold)
