@@ -71,8 +71,8 @@ def test_lifecycle_action_availability_and_clear_guard(window: MainWindow) -> No
     assert not window.stop_button.isEnabled()
     assert window.clear_button.isEnabled()
     assert window.export_button.isEnabled()
-    assert window.file_result_actions.clear.isEnabled()
-    assert window.file_result_actions.exports.menu.menuAction().isEnabled()
+    assert window.audit_result_actions.clear.isEnabled()
+    assert window.audit_result_actions.exports.menu.menuAction().isEnabled()
 
     for state_value in (
         AuditRunState.RUNNING,
@@ -83,8 +83,8 @@ def test_lifecycle_action_availability_and_clear_guard(window: MainWindow) -> No
         window._set_audit_state(state_value)
         assert not window.clear_button.isEnabled()
         assert not window.export_button.isEnabled()
-        assert not window.file_result_actions.clear.isEnabled()
-        assert not window.file_result_actions.exports.menu.menuAction().isEnabled()
+        assert not window.audit_result_actions.clear.isEnabled()
+        assert not window.audit_result_actions.exports.menu.menuAction().isEnabled()
         before = list(window.current_rows)
         window._clear_results()
         assert window.current_rows == before
@@ -92,8 +92,8 @@ def test_lifecycle_action_availability_and_clear_guard(window: MainWindow) -> No
     window._set_audit_state(AuditRunState.IDLE)
     assert window.clear_button.isEnabled()
     assert window.export_button.isEnabled()
-    assert window.file_result_actions.clear.isEnabled()
-    assert window.file_result_actions.exports.menu.menuAction().isEnabled()
+    assert window.audit_result_actions.clear.isEnabled()
+    assert window.audit_result_actions.exports.menu.menuAction().isEnabled()
 
 
 def test_stop_unpauses_and_enters_visible_drain_state(window: MainWindow) -> None:

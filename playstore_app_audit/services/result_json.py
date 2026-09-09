@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from playstore_app_audit import __version__
+from playstore_app_audit.services import alternative_distribution
 
 FORMAT_ID = "play-store-app-audit/results"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _json_safe(value: Any) -> Any:
@@ -47,7 +48,14 @@ def build_results_document(
         created = created.replace(tzinfo=UTC)
     created = created.astimezone(UTC)
     export_scope = "visible" if str(scope).casefold() == "visible" else "all"
-    safe_rows = [_json_safe(dict(row)) for row in rows]
+    safe_rows: list[dict[str, Any]] = []
+    for row in rows:
+        exported = dict(row)
+        providers = alternative_distribution.serialize_provider_results(exported)
+        exported.pop(alternative_distribution.ROW_FIELD, None)
+        if providers:
+            exported["alternative_distribution"] = {"providers": providers}
+        safe_rows.append(_json_safe(exported))
     safe_context = _json_safe(dict(context or {}))
     return {
         "format": FORMAT_ID,

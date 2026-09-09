@@ -31,9 +31,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.alternative_distribution as alternative_distribution
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -154,10 +157,18 @@ class InsightsWindow(device_ui.DeviceWindow):
         if name not in presentation.VIEW_PRESETS:
             return
         settings = state.load_settings()
+        if name == "Custom" and not self._has_custom_table_layout(settings):
+            return
         settings["view_preset"] = name
         self.user_settings = state.save_settings(settings)
-        self._apply_column_visibility(reset_order=True)
-        self.status_label.setText(f"View preset: {name}")
+        if name == "Custom":
+            self._restore_custom_table_layout()
+        else:
+            self._apply_column_visibility(reset_order=True)
+        sync = getattr(self, "_sync_view_preset_action", None)
+        if callable(sync):
+            sync(name)
+        self.status_label.setText(f"Column preset: {name}")
 
     # ---------- Menus ----------
     def _build_menu_v9(self) -> None:
@@ -192,13 +203,15 @@ class InsightsWindow(device_ui.DeviceWindow):
         file_menu.addAction(exit_action)
 
         view_menu = bar.addMenu("View")
-        view_presets = view_menu.addMenu("View Preset")
+        view_presets = view_menu.addMenu("Column Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current_view)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
             view_presets.addAction(action)
@@ -217,7 +230,6 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device Summary…", self._show_device_summary)
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
         snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)
@@ -282,7 +294,9 @@ class InsightsWindow(device_ui.DeviceWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Invalid app list", str(exc))
             return
+        scan_was_active = self._active_scan_request_id is not None
         self._cancel_active_audit()
+        self._invalidate_phone_scan_request(clear_session=True)
         self.file_apps = apps
         self.file_system_metadata = metadata
         self.device_apps_all = []
@@ -294,6 +308,8 @@ class InsightsWindow(device_ui.DeviceWindow):
         meta_text = f" • system flag available for {len(metadata)} packages" if metadata else ""
         self.source_label.setText(f"File selected: {len(apps)} unique Android packages{meta_text}")
         self.status_label.setText("File ready. Run the Play Store audit.")
+        if scan_was_active:
+            self._set_busy(False)
         device_insights.add_recent_source(path)
         self._populate_recent_menu()
         device_insights.log_event(f"Loaded file source: {Path(path).name} ({len(apps)} packages)")
@@ -327,7 +343,17 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     # ---------- ADB/device ----------
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
         super()._on_adb_scan_done(apps, system_packages)
+        if isinstance(apps, scan_sessions.ScanSession):
+            if self._scan_session is not apps:
+                return
+            self._device_summary = apps.device_summary()
+            name = " ".join(filter(None, [apps.manufacturer, apps.model]))
+            if name and apps.full_metadata_status is not scan_sessions.FullMetadataStatus.INCOMPLETE:
+                self.status_label.setText(f"Phone scan ready: {name}. Run the Play Store audit.")
+            return
         adb = self._get_authorised_adb()
         if adb:
             try:
@@ -368,20 +394,6 @@ class InsightsWindow(device_ui.DeviceWindow):
                     {"package_name": package, "is_system": package in self.device_system_packages}
                 )
         QMessageBox.information(self, "Export complete", f"Package list saved to:\n{selected}")
-
-    def _show_device_summary(self) -> None:
-        if not self._device_summary:
-            QMessageBox.information(self, "No device summary", "Scan a phone with ADB first.")
-            return
-        d = self._device_summary
-        text = (
-            f"Device: {d.get('manufacturer', '')} {d.get('model', '')}\n"
-            f"Serial: {d.get('serial_masked', 'Unknown')}\n"
-            f"Android: {d.get('android_version', '?')} (API {d.get('android_api', '?')})\n"
-            f"Security patch: {d.get('security_patch', '?')}\n"
-            f"Packages: {d.get('total_packages', 0)} total · {d.get('third_party_packages', 0)} third-party · {d.get('system_packages', 0)} system"
-        )
-        QMessageBox.information(self, "Device Summary", text)
 
     def _save_device_snapshot(self) -> None:
         if not self.current_rows or self.source_mode != "device":
@@ -467,6 +479,46 @@ class InsightsWindow(device_ui.DeviceWindow):
         if removed:
             lines += ["", "Removed packages:"] + [f"  {x}" for x in removed[:150]]
         self._show_text_help("Device Inventory Changes", "\n".join(lines))
+
+    def _clear_device_inventory_history(self) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Clear device inventory history?",
+            "Delete all per-device comparison baselines used by Device Inventory "
+            "Change? The next completed phone audit for each device will create a "
+            "new baseline. Device snapshots, current phone inventory, Play Store "
+            "cache and history, provider cache, settings and current results will "
+            "not be deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            deleted = device_insights.clear_device_inventory_history()
+        except OSError as exc:
+            QMessageBox.critical(
+                self,
+                "Could not clear device inventory history",
+                str(exc),
+            )
+            return
+
+        self._last_inventory_changes = {}
+        for row in self.current_rows:
+            row.pop("device_change", None)
+            row[change_service.DEVICE_HISTORY_FLAG] = False
+        if self.current_rows:
+            self.model.set_rows(self.current_rows)
+        self._update_summary()
+        sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
+        if callable(sync_post_audit_views):
+            sync_post_audit_views()
+        baseline_label = "baseline" if deleted == 1 else "baselines"
+        self.status_label.setText(
+            f"Device inventory history cleared • {deleted} {baseline_label} removed"
+        )
 
     # ---------- Filters ----------
     def _apply_filter_preset(self, name: str) -> None:
@@ -768,13 +820,21 @@ class InsightsWindow(device_ui.DeviceWindow):
         if result.outcome is not AuditRunOutcome.SUCCESS:
             return False
         targeted = bool(result.metadata.get("targeted"))
+        source_scan_session = result.metadata.get("scan_session")
+        if not isinstance(source_scan_session, scan_sessions.ScanSession):
+            source_scan_session = None
+        inventory_device_summary = (
+            source_scan_session.device_summary()
+            if source_scan_session is not None
+            else self._device_summary
+        )
         history_requested = bool(self.user_settings.get("compare_previous", False))
         inventory_requested = bool(
             not targeted
-            and self.source_mode == "device"
+            and (source_scan_session is not None or self.source_mode == "device")
             and self.current_rows
             and bool(self.user_settings.get("inventory_history_enabled", True))
-            and self._device_summary
+            and inventory_device_summary
         )
         history_status = "not_requested"
 
@@ -797,8 +857,13 @@ class InsightsWindow(device_ui.DeviceWindow):
         if not inventory_requested:
             return False
         try:
+            t1_inventory_rows = (
+                scan_sessions.inventory_rows(source_scan_session)
+                if source_scan_session is not None
+                else None
+            )
             self._last_inventory_changes = device_insights.annotate_inventory_changes_and_save(
-                self.current_rows, self._device_summary
+                self.current_rows, inventory_device_summary, t1_inventory_rows
             )
         except Exception as exc:
             self._report_baseline_persistence_issue(
@@ -859,10 +924,45 @@ class InsightsWindow(device_ui.DeviceWindow):
             )
             if not value and key not in {"notes", "change"}:
                 continue
-            label = QLabel(html.escape(value))
+            display_value = f"{value}/100" if key == "health_score" else value
+            label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            label.setObjectName(f"DetailsValue_{key}")
+            base_ui.apply_semantic_label_presentation(label, key, value)
             form.addRow(label_text, label)
+            if key == "health_score":
+                breakdown_label = QLabel(
+                    "<br>".join(
+                        html.escape(line)
+                        for line in device_insights.health_score_breakdown_lines(row)
+                    )
+                )
+                breakdown_label.setWordWrap(True)
+                breakdown_label.setTextInteractionFlags(
+                    Qt.TextInteractionFlag.TextSelectableByMouse
+                )
+                breakdown_label.setObjectName("DetailsValue_health_score_breakdown")
+                form.addRow("Score breakdown", breakdown_label)
+        alternative_results = alternative_distribution.provider_results(row)
+        if alternative_results:
+            alternative_label = QLabel(alternative_distribution.provider_evidence_text(row))
+            alternative_label.setObjectName("DetailsValue_alternative_distribution")
+            alternative_label.setWordWrap(True)
+            alternative_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            form.addRow("Alternative distribution", alternative_label)
+            for result in alternative_results:
+                if not result.listing_url:
+                    continue
+                listing_button = QPushButton("Open provider listing")
+                listing_button.clicked.connect(
+                    lambda _checked=False, target=result.listing_url: QDesktopServices.openUrl(
+                        QUrl(target)
+                    )
+                )
+                form.addRow("", listing_button)
         scroll.setWidget(inner)
         root.addWidget(scroll, 1)
         row_buttons = QHBoxLayout()

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import html
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
@@ -29,6 +31,70 @@ DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "age_days",
     "notes",
 ]
+
+STATUS_FOREGROUND_COLOURS = {
+    "red": "#7A3D3D",
+    "orange": "#76522E",
+    "yellow": "#6E6229",
+    "blue": "#355F78",
+    "purple": "#684A70",
+    "green": "#396342",
+}
+
+SemanticEmphasis = Literal["warning", "strong_warning"]
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticValuePresentation:
+    status_key: str
+    emphasis: SemanticEmphasis
+    font_weight: int
+
+
+SEMANTIC_VALUE_PRESENTATIONS = {
+    ("version_comparison", "Different"): SemanticValuePresentation(
+        status_key="yellow",
+        emphasis="warning",
+        font_weight=600,
+    ),
+    ("compatibility_status", "Aging target"): SemanticValuePresentation(
+        status_key="yellow",
+        emphasis="warning",
+        font_weight=600,
+    ),
+    ("compatibility_status", "Legacy target"): SemanticValuePresentation(
+        status_key="orange",
+        emphasis="strong_warning",
+        font_weight=600,
+    ),
+}
+
+
+def semantic_value_presentation(
+    field: str, value: object
+) -> SemanticValuePresentation | None:
+    return SEMANTIC_VALUE_PRESENTATIONS.get((field, str(value or "")))
+
+
+def semantic_foreground_colour(field: str, value: object) -> str | None:
+    value_presentation = semantic_value_presentation(field, value)
+    if value_presentation is None:
+        return None
+    return STATUS_FOREGROUND_COLOURS[value_presentation.status_key]
+
+
+def semantic_html_value(field: str, value: object) -> str:
+    text = html.escape(str(value or ""))
+    value_presentation = semantic_value_presentation(field, value)
+    if value_presentation is None:
+        return text
+    colour = STATUS_FOREGROUND_COLOURS[value_presentation.status_key]
+    css_class = value_presentation.emphasis.replace("_", "-")
+    return (
+        f'<span class="semantic-{css_class}" '
+        f'style="color:{colour};font-weight:{value_presentation.font_weight}">'
+        f"{text}</span>"
+    )
 
 
 def _text(value: object) -> str:

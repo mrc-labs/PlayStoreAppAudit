@@ -32,11 +32,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_window as table_ui
@@ -107,7 +109,8 @@ class PreferencesWindow(table_ui.TableWindow):
         self.proxy = proxy
         self.table.setModel(proxy)
         old_proxy.deleteLater()
-        self._apply_column_visibility(reset_order=True)
+        self._restore_table_layout()
+        self._apply_column_visibility(reset_order=False)
         self._sync_status_filter_buttons()
         self._update_summary()
 
@@ -142,18 +145,8 @@ class PreferencesWindow(table_ui.TableWindow):
                 columns.append("health_score")
             columns.append("notes")
         elif preset == "Custom":
-            configured = settings.get("custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-            columns = (
-                [c for c in configured if c in insights_ui.V9_MODEL_COLUMNS]
-                if isinstance(configured, list)
-                else list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
-            )
-            if "criticality" not in columns:
-                columns.insert(0, "criticality")
-            if "package_name" not in columns:
-                columns.insert(1, "package_name")
-            if compare and "change" not in columns:
-                columns.insert(1, "change")
+            configured = self._normalise_custom_columns(settings.get("custom_view_columns"))
+            columns = configured or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
         else:
             columns = ["criticality"]
             if compare:
@@ -213,7 +206,7 @@ class PreferencesWindow(table_ui.TableWindow):
         file_menu.addAction("Exit", self.close)
 
         view_menu = bar.addMenu("View")
-        presets = view_menu.addMenu("View Preset")
+        presets = view_menu.addMenu("Column Preset")
         group = QActionGroup(self)
         group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
@@ -222,9 +215,11 @@ class PreferencesWindow(table_ui.TableWindow):
             action.setChecked(name == current)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             presets.addAction(action)
         self._view_action_group = group
-        view_menu.addAction("Display Settings…", self._show_display_settings)
+        view_menu.addAction("Customize View…", self._show_display_settings)
         view_menu.addSeparator()
         view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
@@ -234,7 +229,6 @@ class PreferencesWindow(table_ui.TableWindow):
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
         tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
-        tools.addAction("Device Summary…", self._show_device_summary)
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
         snapshots.addAction("Compare Current Device with Snapshot…", self._compare_device_snapshot)
@@ -309,16 +303,26 @@ class PreferencesWindow(table_ui.TableWindow):
         for action in group.actions():
             action.setChecked(action.text() == name)
 
+    def _sync_custom_preset_availability(self) -> None:
+        for action in getattr(self, "view_preset_actions", []) or []:
+            if action.text() == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+        group = getattr(self, "_view_action_group", None)
+        if isinstance(group, QActionGroup):
+            for action in group.actions():
+                if action.text() == "Custom":
+                    action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setObjectName("DisplaySettingsDialog")
-        dialog.setWindowTitle("Display Settings")
+        dialog.setWindowTitle("Customize View")
         dialog.resize(740, 640)
         dialog.setMinimumSize(620, 500)
         root = QVBoxLayout(dialog)
 
-        heading = QLabel("Results Display")
+        heading = QLabel("Customize View")
         heading.setObjectName("SettingsPageTitle")
         heading_font = heading.font()
         heading_font.setBold(True)
@@ -337,7 +341,13 @@ class PreferencesWindow(table_ui.TableWindow):
         show_icons.setToolTip(
             "Load icons on demand and reuse them from a bounded local cache when available."
         )
-        show_icons.setChecked(bool(self.user_settings.get("show_app_icons", False)))
+        show_icons.setChecked(
+            bool(
+                self.user_settings.get(
+                    "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+                )
+            )
+        )
         date_format = QComboBox()
         date_format.setObjectName("DateFormatCombo")
         date_format.setMaximumWidth(260)
@@ -359,7 +369,7 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addWidget(
             self._settings_note(
                 "Status and Package Name are always included. Changing this selection "
-                "activates View > View Preset > Custom."
+                "activates View > Column Preset > Custom."
             )
         )
 
@@ -370,11 +380,9 @@ class PreferencesWindow(table_ui.TableWindow):
         columns_host = QWidget()
         grid = QGridLayout(columns_host)
         grid.setContentsMargins(0, 4, 0, 4)
-        stored_custom = self.user_settings.get(
-            "custom_view_columns", presentation.DEFAULT_CUSTOM_VIEW_COLUMNS
-        )
-        if not isinstance(stored_custom, list):
-            stored_custom = list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        stored_custom = self._normalise_custom_columns(
+            self.user_settings.get("custom_view_columns")
+        ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
         initial_columns = (
             list(stored_custom) if current_preset == "Custom" else self._visible_column_order()
@@ -404,7 +412,7 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addLayout(bottom)
 
         def reset_controls() -> None:
-            show_icons.setChecked(False)
+            show_icons.setChecked(app_icon_metadata.DEFAULT_SHOW_APP_ICONS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
             defaults = set(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
             for key, check in custom_checks.items():
@@ -429,19 +437,28 @@ class PreferencesWindow(table_ui.TableWindow):
             updates.update(
                 {
                     "custom_view_columns": custom_columns,
+                    "custom_view_exists": True,
                     "view_preset": "Custom",
                 }
             )
         self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
         if hasattr(self.model, "set_app_icons_enabled"):
-            self.model.set_app_icons_enabled(bool(self.user_settings.get("show_app_icons", False)))
+            self.model.set_app_icons_enabled(
+                bool(
+                    self.user_settings.get(
+                        "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+                    )
+                )
+            )
         if columns_changed:
-            self._sync_view_preset_action("Custom")
-        self._apply_column_visibility(reset_order=False)
+            self._apply_column_visibility(reset_order=False)
+            self._persist_current_custom_layout()
+        else:
+            self._sync_custom_preset_availability()
         self._refresh_table_presentation()
         self._update_summary()
-        self._set_presentation_status("Display settings saved")
+        self._set_presentation_status("Customize View settings saved")
 
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()
@@ -533,6 +550,21 @@ class PreferencesWindow(table_ui.TableWindow):
         store_layout.addLayout(form)
         store_layout.addStretch(1)
 
+        _alternative_page, alternative_layout = add_page(
+            "AlternativeDistributionSettingsPage",
+            "Alternative Distribution",
+            "Configure secondary exact-package evidence after a conclusive Google Play not-found result.",
+        )
+        provider_settings = alternative_settings_ui.AlternativeDistributionSettingsPage(
+            self.user_settings
+        )
+        provider_scroll = QScrollArea()
+        provider_scroll.setObjectName("AlternativeDistributionSettingsScroll")
+        provider_scroll.setWidgetResizable(True)
+        provider_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        provider_scroll.setWidget(provider_settings)
+        alternative_layout.addWidget(provider_scroll, 1)
+
         _device_page, device_layout = add_page(
             "DeviceSettingsPage",
             "Device",
@@ -542,6 +574,17 @@ class PreferencesWindow(table_ui.TableWindow):
         collect.setObjectName("CollectDeviceMetadataCheck")
         collect.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         device_layout.addWidget(collect)
+        full_scan = QCheckBox("Collect full device metadata during Scan Phone")
+        full_scan.setObjectName("CollectFullDeviceMetadataOnScanCheck")
+        full_scan.setChecked(self.user_settings.get("collect_full_device_metadata_on_scan") is True)
+        full_scan_note = (
+            "Captures extended installed-app metadata during Scan Phone so it remains "
+            "available if the device is disconnected before the audit. This can "
+            "significantly increase scan time."
+        )
+        full_scan.setToolTip(full_scan_note)
+        device_layout.addWidget(full_scan)
+        device_layout.addWidget(self._settings_note(full_scan_note))
         device_layout.addStretch(1)
 
         _audit_page, audit_layout = add_page(
@@ -607,11 +650,13 @@ class PreferencesWindow(table_ui.TableWindow):
             cache.setChecked(True)
             ttl.setValue(72)
             collect.setChecked(True)
+            full_scan.setChecked(False)
             permissions.setChecked(False)
             inventory.setChecked(True)
             health.setChecked(False)
             compare.setChecked(False)
             portable.setChecked(False)
+            provider_settings.reset_to_defaults()
 
         reset.clicked.connect(reset_controls)
         buttons.rejected.connect(dialog.reject)
@@ -621,6 +666,7 @@ class PreferencesWindow(table_ui.TableWindow):
 
         fallback_text, invalid = device_metadata.normalise_country_string(fallback.text())
         previous_fallback = str(self.user_settings.get("fallback_countries") or "")
+        previous_alternative = self.user_settings.get("alternative_distribution")
         self.user_settings.update(
             {
                 "store_language": (
@@ -631,10 +677,12 @@ class PreferencesWindow(table_ui.TableWindow):
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect.isChecked(),
+                "collect_full_device_metadata_on_scan": full_scan.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
                 "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
                 "compare_previous": compare.isChecked(),
+                "alternative_distribution": provider_settings.configuration(),
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
@@ -643,6 +691,8 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         if previous_fallback.strip().lower() != fallback_text.strip().lower():
             state.clear_cache()
+        if previous_alternative != self.user_settings.get("alternative_distribution"):
+            state.clear_alternative_distribution_cache()
         if portable.isChecked() != old_portable:
             ok, portable_msg = device_insights.migrate_portable_mode(portable.isChecked())
             if not ok:

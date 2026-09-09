@@ -149,11 +149,14 @@ def install_performance_diagnostics() -> None:
         packages: list[str],
         cancel_event: threading.Event | None = None,
         max_workers: int = 6,
+        **collection_options: Any,
     ) -> dict[str, dict[str, str]]:
         started = time.perf_counter()
         result = "success"
         try:
-            return original_collect_metadata(adb, packages, cancel_event, max_workers=max_workers)
+            return original_collect_metadata(
+                adb, packages, cancel_event, max_workers=max_workers, **collection_options
+            )
         except Exception:
             result = "error"
             raise

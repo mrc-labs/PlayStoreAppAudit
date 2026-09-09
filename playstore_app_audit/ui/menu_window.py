@@ -5,24 +5,13 @@ import sys
 from PySide6.QtGui import QAction, QActionGroup, QFont, QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFormLayout,
-    QHBoxLayout,
-    QLabel,
     QMenu,
     QPushButton,
-    QSpinBox,
     QStyle,
-    QVBoxLayout,
-    QWidget,
 )
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
-import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
@@ -33,7 +22,10 @@ import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
-from playstore_app_audit.ui.file_menu import add_result_actions
+from playstore_app_audit.ui.file_menu import (
+    ResultActions,
+    populate_result_export_menu,
+)
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -66,18 +58,34 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._recent_menu = self.recent_menu
         self._populate_recent_menu()
         self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan Phone with ADB", self._scan_phone
+            "Scan Phone", self._scan_phone
         )
         self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
+            "Export Phone Package List…", self._export_phone_packages_csv
         )
         self.file_menu.addSeparator()
-        self.file_result_actions = add_result_actions(
-            self.file_menu,
-            run_audit=self._start_audit,
+        self.file_menu.addAction("Exit", self.close)
+
+        self.audit_menu = QMenu("Audit", bar)
+        bar.addMenu(self.audit_menu)
+        self.run_audit_action = self.audit_menu.addAction("Run Audit", self._start_audit)
+        self.recheck_problematic_action = self.audit_menu.addAction(
+            "Recheck Removed / Anomaly / Other", self._recheck_problematic
+        )
+        self.force_full_refresh_action = self.audit_menu.addAction(
+            "Force Full Refresh", self._force_full_refresh
+        )
+        self.audit_menu.addSeparator()
+        self.audit_profiles_menu = QMenu("Audit Presets", self.audit_menu)
+        self.audit_menu.addMenu(self.audit_profiles_menu)
+        audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
+        self.audit_menu.addSeparator()
+        self.audit_export_results_menu = QMenu("Export Results", self.audit_menu)
+        self.audit_menu.addMenu(self.audit_export_results_menu)
+        exports = populate_result_export_menu(
+            self.audit_export_results_menu,
             export_all_csv=self._export_results,
             export_visible_csv=self._export_visible_results,
-            clear_results=self._clear_results,
             export_all_html=self._export_html_report,
             export_visible_html=self._export_visible_html_report,
             export_all_json=lambda: json_export_ui.export_window_results_json(
@@ -87,13 +95,18 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 self, visible=True
             ),
         )
-        self.file_export_results_menu = self.file_result_actions.exports.menu
-        self.file_menu.addSeparator()
-        self.file_menu.addAction("Exit", self.close)
+        self.clear_results_action = self.audit_menu.addAction(
+            "Clear Results", self._clear_results
+        )
+        self.audit_result_actions = ResultActions(
+            run=self.run_audit_action,
+            exports=exports,
+            clear=self.clear_results_action,
+        )
 
         self.view_menu = QMenu("View", bar)
         bar.addMenu(self.view_menu)
-        self.view_presets_menu = QMenu("View Preset", self.view_menu)
+        self.view_presets_menu = QMenu("Column Preset", self.view_menu)
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_action_group = QActionGroup(self)
         self.view_action_group.setExclusive(True)
@@ -102,6 +115,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current)
+            if name == "Custom":
+                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
@@ -109,7 +124,10 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._view_action_group = self.view_action_group
 
         self.display_settings_action = self.view_menu.addAction(
-            "Display Settings…", self._show_display_settings
+            "Customize View…", self._show_display_settings
+        )
+        self.reset_layout_action = self.view_menu.addAction(
+            "Reset Table Layout", self._reset_table_layout
         )
 
         self.view_menu.addSeparator()
@@ -119,17 +137,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.smart_queries_menu = QMenu("Smart Queries", self.view_menu)
         self.view_menu.addMenu(self.smart_queries_menu)
         smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
-        self.sdk_filter_action = self.view_menu.addAction(
-            "SDK Maintenance Filter…", self._show_sdk_filter_dialog
-        )
-        self.clear_sdk_filter_action = self.view_menu.addAction(
-            "Clear SDK Filter", self._clear_sdk_filter
-        )
-        self.clear_sdk_filter_action.setEnabled(sdk_maintenance.active_sdk_filter().active())
-
-        self.view_menu.addSeparator()
-        self.reset_layout_action = self.view_menu.addAction(
-            "Reset Table Layout", self._reset_table_layout
+        self.clear_all_filters_action = self.view_menu.addAction(
+            "Clear All Filters", self._clear_all_filters
         )
 
         self.tools_menu = QMenu("Tools", bar)
@@ -137,39 +146,34 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.audit_profiles_menu = QMenu("Audit Profiles", self.tools_menu)
-        self.tools_menu.addMenu(self.audit_profiles_menu)
-        audit_profiles_ui.populate_audit_profiles_menu(self, self.audit_profiles_menu)
         self.tools_menu.addSeparator()
-        self.force_full_refresh_action = self.tools_menu.addAction(
-            "Force Full Refresh (Ignore Cache)", self._force_full_refresh
-        )
-        self.recheck_problematic_action = self.tools_menu.addAction(
-            "Recheck Removed / Anomaly / Other", self._recheck_problematic
-        )
-        self.tools_menu.addSeparator()
-        self.device_summary_action = self.tools_menu.addAction(
-            "Device Summary…", self._show_device_summary
-        )
-        self.snapshots_menu = QMenu("Device Snapshots", self.tools_menu)
-        self.tools_menu.addMenu(self.snapshots_menu)
+        self.device_history_menu = QMenu("Device History", self.tools_menu)
+        self.tools_menu.addMenu(self.device_history_menu)
+        self.snapshots_menu = QMenu("Device Snapshots…", self.device_history_menu)
+        self.device_history_menu.addMenu(self.snapshots_menu)
         self.save_device_snapshot_action = self.snapshots_menu.addAction(
             "Save Current Device Snapshot…", self._save_device_snapshot
         )
         self.compare_device_snapshot_action = self.snapshots_menu.addAction(
             "Compare Current Device with Snapshot…", self._compare_device_snapshot
         )
-        self.device_inventory_changes_action = self.tools_menu.addAction(
+        self.device_inventory_changes_action = self.device_history_menu.addAction(
             "Device Inventory Changes…", self._show_inventory_changes
         )
         self.tools_menu.addSeparator()
         self.data_maintenance_menu = QMenu("Data Maintenance", self.tools_menu)
         self.tools_menu.addMenu(self.data_maintenance_menu)
         self.clear_audit_cache_action = self.data_maintenance_menu.addAction(
-            "Clear Audit Cache", self._clear_audit_cache
+            "Clear Audit Cache…", self._clear_audit_cache
         )
         self.clear_audit_history_action = self.data_maintenance_menu.addAction(
-            "Clear Previous-Audit History", self._clear_audit_history
+            "Clear Previous-Audit History…", self._clear_audit_history
+        )
+        self.clear_device_inventory_history_action = (
+            self.data_maintenance_menu.addAction(
+                "Clear Device Inventory History…",
+                self._clear_device_inventory_history,
+            )
         )
 
         self.help_menu = QMenu("Help", bar)
@@ -181,9 +185,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             ),
         )
         self.help_menu.addAction(
-            "How to Import an App List…",
+            "App List Import Guide…",
             lambda: rich_help.show_rich_help(
-                self, "How to Import an App List", help_texts.IMPORT_APP_LIST_GUIDE_HTML
+                self, "App List Import Guide", help_texts.IMPORT_APP_LIST_GUIDE_HTML
             ),
         )
         self.help_menu.addSeparator()
@@ -243,6 +247,16 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         smart_queries_ui.populate_smart_queries_menu(self, self.smart_queries_menu)
         self._update_summary()
 
+    def _clear_all_filters(self) -> None:
+        """Reset only session-level controls that can hide current result rows."""
+        self.search_edit.clear()
+        self._set_criticality_filter(None)
+        self._apply_filter_preset("All")
+        self._clear_smart_query()
+        self.hide_system_check.setChecked(False)
+        self._update_summary()
+        self._set_presentation_status("All result filters cleared")
+
     def _on_smart_query_deleted(self, query_id: str) -> None:
         if self._active_smart_query and self._active_smart_query.query_id == query_id:
             self._clear_smart_query()
@@ -258,119 +272,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if hasattr(self, "summary_label"):
             self.summary_label.setToolTip(f"Active Smart Query: {name}")
         return f"{summary} | Smart Query: {compact_name}"
-
-    @staticmethod
-    def _observed_sdk_default(rows: list[dict[str, object]], key: str, fallback: int) -> int:
-        values: list[int] = []
-        for row in rows:
-            try:
-                value = int(str(row.get(key) or "").strip())
-            except (TypeError, ValueError):
-                continue
-            if value > 0:
-                values.append(value)
-        return max(values) if values else fallback
-
-    @staticmethod
-    def _threshold_control(enabled: bool, value: int) -> tuple[QWidget, QCheckBox, QSpinBox]:
-        host = QWidget()
-        layout = QHBoxLayout(host)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        check = QCheckBox("Enable")
-        check.setChecked(enabled)
-        spin = QSpinBox()
-        spin.setRange(1, 100)
-        spin.setValue(max(1, value))
-        spin.setEnabled(enabled)
-        check.toggled.connect(spin.setEnabled)
-        layout.addWidget(check)
-        layout.addWidget(spin)
-        layout.addStretch(1)
-        return host, check, spin
-
-    def _show_sdk_filter_dialog(self) -> None:
-        current = sdk_maintenance.active_sdk_filter()
-        dialog = QDialog(self)
-        dialog.setWindowTitle("SDK Maintenance Filter")
-        dialog.setMinimumWidth(500)
-        root = QVBoxLayout(dialog)
-
-        note = QLabel(
-            "Filter observed connected-device SDK metadata. targetSdk and minSdk describe Android "
-            "compatibility and maintenance context only; they are not security or trust scores. "
-            "Rows without a numeric value are excluded when the corresponding threshold is enabled."
-        )
-        note.setWordWrap(True)
-        root.addWidget(note)
-
-        form = QFormLayout()
-        target_default = current.target_sdk_max or self._observed_sdk_default(
-            list(self.current_rows), "target_sdk", 35
-        )
-        target_host, target_enabled, target_spin = self._threshold_control(
-            current.target_sdk_max is not None, target_default
-        )
-        form.addRow("targetSdk at or below", target_host)
-
-        min_default = current.min_sdk_max or self._observed_sdk_default(
-            list(self.current_rows), "min_sdk", 23
-        )
-        min_host, min_enabled, min_spin = self._threshold_control(
-            current.min_sdk_max is not None, min_default
-        )
-        form.addRow("minSdk at or below", min_host)
-
-        compatibility = QComboBox()
-        compatibility.addItem("All compatibility states", "")
-        for value in sdk_maintenance.COMPATIBILITY_VALUES[1:]:
-            compatibility.addItem(value, value)
-        wanted = current.compatibility
-        for index in range(compatibility.count()):
-            if compatibility.itemData(index) == wanted:
-                compatibility.setCurrentIndex(index)
-                break
-        form.addRow("Target compatibility", compatibility)
-        root.addLayout(form)
-
-        buttons_row = QHBoxLayout()
-        clear = QPushButton("Clear Filter")
-        buttons_row.addWidget(clear)
-        buttons_row.addStretch(1)
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons_row.addWidget(buttons)
-        root.addLayout(buttons_row)
-
-        clear.clicked.connect(lambda: (self._clear_sdk_filter(), dialog.reject()))
-        buttons.rejected.connect(dialog.reject)
-        buttons.accepted.connect(dialog.accept)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        if not target_enabled.isChecked() and not min_enabled.isChecked() and not compatibility.currentData():
-            self._clear_sdk_filter()
-            return
-
-        value = sdk_maintenance.SdkMaintenanceFilter(
-            target_sdk_max=target_spin.value() if target_enabled.isChecked() else None,
-            min_sdk_max=min_spin.value() if min_enabled.isChecked() else None,
-            compatibility=str(compatibility.currentData() or ""),
-        )
-        self._set_sdk_filter(value)
-
-    def _set_sdk_filter(self, value: sdk_maintenance.SdkMaintenanceFilter | None) -> None:
-        current = sdk_maintenance.set_active_sdk_filter(value)
-        # Reapply the active built-in preset to trigger Qt's modern filter-change
-        # lifecycle without deprecated invalidateFilter() calls.
-        self.proxy.set_v9_preset(self._active_filter_preset)
-        if hasattr(self, "clear_sdk_filter_action"):
-            self.clear_sdk_filter_action.setEnabled(current.active())
-        self._update_summary()
-        self._set_presentation_status(sdk_maintenance.describe_sdk_filter(current))
-
-    def _clear_sdk_filter(self) -> None:
-        self._set_sdk_filter(None)
 
     @staticmethod
     def _fit_status_chip_to_selected_text(button: QPushButton) -> None:

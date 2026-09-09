@@ -54,6 +54,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._remove_redundant_content_heading()
         self._rebuild_source_area_v10()
+        self._enable_table_layout_tracking()
 
     def _remove_redundant_content_heading(self) -> None:
         central = self.centralWidget()
@@ -247,7 +248,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _set_view_preset(self, name: str) -> None:
         # View changes are presentation-only and must not overwrite a useful
-        # audit/progress/result message below the progress bar.
+        # audit/progress/result message in the native status bar.
         status_text = self.status_label.text() if hasattr(self, "status_label") else ""
         super()._set_view_preset(name)
         if hasattr(self, "status_label"):
@@ -282,6 +283,8 @@ class MainWindow(results_ui.ResultsWindow):
         if was_active or not self._audit_active:
             return
 
+        self._last_inventory_changes = {}
+        self._update_summary()
         self._audit_started_at = started_at
         self._audit_pre_finalize_seconds = None
         self._audit_cached_count = max(0, self.progress.value())
@@ -365,6 +368,11 @@ class MainWindow(results_ui.ResultsWindow):
         result_finalized = False
         try:
             try:
+                if self._merge_base_rows is None:
+                    # Full replacement must not pair this generation's rows
+                    # with the previous audit's inventory aggregate. Targeted
+                    # Store rechecks retain the existing inventory/merged rows.
+                    self._last_inventory_changes = {}
                 super()._on_controlled_done(result)
                 result_finalized = True
             except Exception as exc:
@@ -434,20 +442,25 @@ class MainWindow(results_ui.ResultsWindow):
         return find_adb()
 
     def _scan_phone(self) -> None:
+        request_id = self._begin_phone_scan_request()
         self._set_busy(True)
         self.progress.setRange(0, 0)
         self.status_label.setText("Looking for ADB…")
-        threading.Thread(target=self._find_adb_worker, daemon=True).start()
+        threading.Thread(target=self._find_adb_worker, args=(request_id,), daemon=True).start()
 
-    def _find_adb_worker(self) -> None:
+    def _find_adb_worker(self, request_id: int) -> None:
         try:
-            self.signals.adb_discovery_done.emit(self._find_adb())
+            self.signals.adb_discovery_done.emit(self._find_adb(), request_id)
         except Exception as exc:
-            self.signals.failed.emit(f"ADB discovery failed:\n\n{exc}")
+            self.signals.adb_scan_failed.emit(
+                request_id, f"ADB discovery failed:\n\n{exc}"
+            )
 
-    def _on_adb_discovery_done(self, adb: str | None) -> None:
+    def _on_adb_discovery_done(self, adb: str | None, request_id: int) -> None:
+        if request_id != self._active_scan_request_id:
+            return
         if adb:
-            self._start_adb_scan(adb)
+            self._start_adb_scan(adb, request_id)
             return
 
         self.progress.setRange(0, 100)
@@ -455,6 +468,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.status_label.setText("ADB not found")
         self._set_busy(False)
         if not runtime.managed_platform_tools_download_supported():
+            self._active_scan_request_id = None
             QMessageBox.information(
                 self,
                 "Native ADB required",
@@ -476,8 +490,10 @@ class MainWindow(results_ui.ResultsWindow):
             QMessageBox.StandardButton.Yes,
         )
         if choice == QMessageBox.StandardButton.Cancel:
+            self._active_scan_request_id = None
             return
         if choice == QMessageBox.StandardButton.No:
+            self._active_scan_request_id = None
             QDesktopServices.openUrl(QUrl(runtime.PLATFORM_TOOLS_PAGE))
             return
         self.pending_scan_after_install = True

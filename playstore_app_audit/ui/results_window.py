@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.services.summary as summary_service
@@ -33,7 +34,6 @@ from playstore_app_audit.platform import runtime
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui.file_menu import (
     ResultExportActions,
-    add_result_actions,
     populate_result_export_menu,
 )
 
@@ -133,7 +133,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._install_numeric_sort_proxy()
         self._setup_details_panel()
         self._setup_export_button_menu()
-        self._rebuild_file_menu()
+        self._sync_action_availability()
         self._update_summary()
 
     # ---------- Action availability ----------
@@ -172,9 +172,6 @@ class ResultsWindow(menu_ui.MenuWindow):
         results_available = bool(self.current_rows)
         visible_results_available = results_available and self.proxy.rowCount() > 0
         device_results_available = self.source_mode == "device" and results_available
-        device_summary_available = inventory_available and bool(
-            getattr(self, "_device_summary", None)
-        )
         inventory_changes_available = device_results_available and bool(
             getattr(self, "_last_inventory_changes", None)
         )
@@ -197,12 +194,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         if recent_button is not None:
             recent_button.setEnabled(idle)
 
-        file_result_actions = getattr(self, "file_result_actions", None)
-        if file_result_actions is not None:
-            file_result_actions.run.setEnabled(idle and source_available)
-            file_result_actions.clear.setEnabled(idle and results_available)
+        audit_result_actions = getattr(self, "audit_result_actions", None)
+        if audit_result_actions is not None:
+            audit_result_actions.run.setEnabled(idle and source_available)
+            audit_result_actions.clear.setEnabled(idle and results_available)
             self._set_export_actions_enabled(
-                file_result_actions.exports,
+                audit_result_actions.exports,
                 all_results=idle and results_available,
                 visible_results=idle and visible_results_available,
             )
@@ -226,12 +223,12 @@ class ResultsWindow(menu_ui.MenuWindow):
             "advanced_settings_action": idle,
             "force_full_refresh_action": idle and source_available,
             "recheck_problematic_action": idle and problematic_available,
-            "device_summary_action": idle and device_summary_available,
             "save_device_snapshot_action": idle and device_results_available,
             "compare_device_snapshot_action": idle and device_results_available,
             "device_inventory_changes_action": idle and inventory_changes_available,
             "clear_audit_cache_action": idle,
             "clear_audit_history_action": idle,
+            "clear_device_inventory_history_action": idle,
         }
         for name, enabled in action_states.items():
             action = getattr(self, name, None)
@@ -239,6 +236,10 @@ class ResultsWindow(menu_ui.MenuWindow):
                 action.setEnabled(enabled)
         if hasattr(self, "snapshots_menu"):
             self.snapshots_menu.menuAction().setEnabled(idle and device_results_available)
+        if hasattr(self, "device_history_menu"):
+            self.device_history_menu.menuAction().setEnabled(
+                idle and (device_results_available or inventory_changes_available)
+            )
         if hasattr(self, "data_maintenance_menu"):
             self.data_maintenance_menu.menuAction().setEnabled(idle)
         if hasattr(self, "audit_profiles_menu"):
@@ -314,7 +315,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.details_panel.review_changes_requested.connect(self._show_change_overview)
         self.details_panel_menu = self.details_control.mode_menu
         if hasattr(self, "view_menu"):
-            before_action = getattr(self, "display_settings_action", None)
+            before_action = getattr(self, "reset_layout_action", None)
             if before_action is None:
                 before_action = next(
                     (action for action in self.view_menu.actions() if action.isSeparator()),
@@ -468,6 +469,9 @@ class ResultsWindow(menu_ui.MenuWindow):
         )
         for row in self.current_rows:
             row[change_service.DEVICE_HISTORY_FLAG] = had_previous_inventory
+        # Successful promotion annotates rows and installs the aggregate after
+        # the initial result refresh. All views must consume that same comparison.
+        self._update_summary()
         self._on_details_model_data_changed()
         if self._change_overview_dialog is not None:
             self._change_overview_dialog.set_groups(self._current_change_groups())
@@ -591,11 +595,12 @@ class ResultsWindow(menu_ui.MenuWindow):
         source_layout.insertLayout(max(0, source_layout.count() - 1), options)
 
     def _load_input_file(self, path: str) -> None:
-        self._device_store_locale = None
-        store_locale.set_active_device_store_locale(None)
         super()._load_input_file(path)
-        self._apply_store_country_resolution(None)
         if self.source_mode == "file":
+            self._device_store_locale = None
+            self._scan_session = None
+            store_locale.set_active_device_store_locale(None)
+            self._apply_store_country_resolution(None)
             text = self.source_label.text()
             if text.startswith("File selected: "):
                 text = text[len("File selected: ") :]
@@ -604,11 +609,18 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._sync_action_availability()
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
         super()._on_adb_scan_done(apps, system_packages)
-        detected: store_locale.StoreLocale | None = None
-        adb = self._find_adb()
-        if adb:
-            detected = store_locale.detect_android_store_locale(adb)
+        if isinstance(apps, scan_sessions.ScanSession):
+            if self._scan_session is not apps:
+                return
+            detected = apps.locale
+        else:
+            detected: store_locale.StoreLocale | None = None
+            adb = self._find_adb()
+            if adb:
+                detected = store_locale.detect_android_store_locale(adb)
         self._device_store_locale = detected
         store_locale.set_active_device_store_locale(detected)
         self._apply_store_country_resolution(detected)
@@ -675,43 +687,6 @@ class ResultsWindow(menu_ui.MenuWindow):
         self.export_button.setText("Export Results")
         self.export_button.setMenu(menu)
         self._export_results_menu = menu
-
-    def _rebuild_file_menu(self) -> None:
-        if not hasattr(self, "file_menu"):
-            return
-        self.file_menu.clear()
-        self.file_choose_source_action = self.file_menu.addAction(
-            "Choose App List…", self._choose_input
-        )
-        self.recent_menu = self.file_menu.addMenu("Recent Sources")
-        self._recent_menu = self.recent_menu
-        self._populate_recent_menu()
-        self.file_scan_phone_action = self.file_menu.addAction(
-            "Scan Phone with ADB", self._scan_phone
-        )
-        self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
-        )
-        self.file_menu.addSeparator()
-        self.file_result_actions = add_result_actions(
-            self.file_menu,
-            run_audit=self._start_audit,
-            export_all_csv=self._export_results,
-            export_visible_csv=self._export_visible_results,
-            clear_results=self._clear_results,
-            export_all_html=self._export_html_report,
-            export_visible_html=self._export_visible_html_report,
-            export_all_json=lambda: json_export_ui.export_window_results_json(
-                self, visible=False
-            ),
-            export_visible_json=lambda: json_export_ui.export_window_results_json(
-                self, visible=True
-            ),
-        )
-        self.file_export_results_menu = self.file_result_actions.exports.menu
-        self.file_menu.addSeparator()
-        self.file_menu.addAction("Exit", self.close)
-        self._sync_action_availability()
 
     def _clear_results(self) -> None:
         if getattr(self, "_audit_state", AuditRunState.IDLE) is not AuditRunState.IDLE:

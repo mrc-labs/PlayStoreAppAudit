@@ -22,7 +22,7 @@ from PySide6.QtCore import (
     QUrl,
     Signal,
 )
-from PySide6.QtGui import QColor, QDesktopServices, QFont
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -48,6 +48,7 @@ from PySide6.QtWidgets import (
 
 from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.services import presentation
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
@@ -177,7 +178,7 @@ CRITICALITY = {
         "button": "● Removed",
         "rank": 0,
         "background": "#FDF3F3",
-        "foreground": "#7A3D3D",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["red"],
         "accent": "#C94B4B",
         "tooltip": "Show apps with no conclusive Google Play listing.",
     },
@@ -186,7 +187,7 @@ CRITICALITY = {
         "button": "● Stale",
         "rank": 1,
         "background": "#FFF7EE",
-        "foreground": "#76522E",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["orange"],
         "accent": "#D77A23",
         "tooltip": "Show apps last updated more than 730 days ago.",
     },
@@ -195,7 +196,7 @@ CRITICALITY = {
         "button": "● Aging",
         "rank": 2,
         "background": "#FFFCEF",
-        "foreground": "#6E6229",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["yellow"],
         "accent": "#C6A919",
         "tooltip": "Show apps last updated 366 to 730 days ago.",
     },
@@ -204,7 +205,7 @@ CRITICALITY = {
         "button": "● Anomaly",
         "rank": 3,
         "background": "#F0F7FC",
-        "foreground": "#355F78",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["blue"],
         "accent": "#3A84B8",
         "tooltip": "Show apps with unusual or inconclusive Store availability.",
     },
@@ -213,7 +214,7 @@ CRITICALITY = {
         "button": "● Other",
         "rank": 4,
         "background": "#F8F2FA",
-        "foreground": "#684A70",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["purple"],
         "accent": "#8E5BA6",
         "tooltip": "Show apps with unknown results or audit errors.",
     },
@@ -222,21 +223,52 @@ CRITICALITY = {
         "button": "● Current",
         "rank": 5,
         "background": "#F2F9F3",
-        "foreground": "#396342",
+        "foreground": presentation.STATUS_FOREGROUND_COLOURS["green"],
         "accent": "#4D9560",
         "tooltip": "Show apps updated within the last 365 days.",
     },
 }
 
-SEMANTIC_FOREGROUND_COLOURS = {
-    ("version_comparison", "Different"): CRITICALITY["yellow"]["foreground"],
-    ("compatibility_status", "Aging target"): CRITICALITY["yellow"]["foreground"],
-    ("compatibility_status", "Legacy target"): CRITICALITY["orange"]["foreground"],
-}
-
-
 def semantic_foreground_colour(column: str, value: object) -> str | None:
-    return SEMANTIC_FOREGROUND_COLOURS.get((column, str(value or "")))
+    return presentation.semantic_foreground_colour(column, value)
+
+
+def semantic_value_font(
+    column: str, value: object, base_font: QFont | None = None
+) -> QFont | None:
+    value_presentation = presentation.semantic_value_presentation(column, value)
+    if value_presentation is None:
+        return None
+    font = QFont(base_font) if base_font is not None else QFont()
+    font.setWeight(QFont.Weight(value_presentation.font_weight))
+    return font
+
+
+def apply_semantic_label_presentation(
+    label: QLabel, column: str, value: object
+) -> bool:
+    colour = semantic_foreground_colour(column, value)
+    font = semantic_value_font(column, value, label.font())
+    if colour is None or font is None:
+        return False
+
+    palette = label.palette()
+    semantic_colour = QColor(colour)
+    palette.setColor(
+        QPalette.ColorGroup.Active,
+        QPalette.ColorRole.WindowText,
+        semantic_colour,
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Inactive,
+        QPalette.ColorRole.WindowText,
+        semantic_colour,
+    )
+    # Keep the platform's Disabled-role colour so disabled/unavailable labels
+    # continue to follow native contrast behavior.
+    label.setPalette(palette)
+    label.setFont(font)
+    return True
 
 COLUMNS = schema.MODEL_COLUMNS
 COLUMN_LABELS = dict(schema.COLUMN_LABELS)
@@ -363,7 +395,7 @@ class AppTableModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(COLUMNS):
-            return COLUMN_LABELS[COLUMNS[section]]
+            return schema.TABLE_HEADER_LABELS[COLUMNS[section]]
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -387,12 +419,17 @@ class AppTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.ForegroundRole:
             if column == "criticality":
                 return QColor(info["accent"])
+            semantic_colour = semantic_foreground_colour(column, row.get(column))
+            if semantic_colour:
+                return QColor(semantic_colour)
             return QColor("#263238")
 
-        if role == Qt.ItemDataRole.FontRole and column == "criticality":
-            font = QFont()
-            font.setBold(True)
-            return font
+        if role == Qt.ItemDataRole.FontRole:
+            if column == "criticality":
+                font = QFont()
+                font.setBold(True)
+                return font
+            return semantic_value_font(column, row.get(column))
 
         if role == Qt.ItemDataRole.TextAlignmentRole:
             if column in {"play_status", "play_last_update", "age_days", "criticality"}:
@@ -479,8 +516,9 @@ class WorkerSignals(QObject):
     progress = Signal(int, int, str)
     audit_done = Signal(object)
     failed = Signal(str)
-    adb_discovery_done = Signal(object)
+    adb_discovery_done = Signal(object, int)
     adb_scan_done = Signal(object, object)
+    adb_scan_failed = Signal(int, str)
     adb_install_done = Signal(str, str)
 
 
@@ -496,6 +534,7 @@ class BaseWindow(QMainWindow):
         self.signals.audit_done.connect(self._on_audit_done)
         self.signals.failed.connect(self._on_worker_failed)
         self.signals.adb_scan_done.connect(self._on_adb_scan_done)
+        self.signals.adb_scan_failed.connect(self._on_adb_scan_failed)
         self.signals.adb_install_done.connect(self._on_adb_install_done)
 
         self.source_mode: str | None = None
@@ -615,7 +654,7 @@ class BaseWindow(QMainWindow):
                 border: none;
                 border-right: 1px solid #DDE3E8;
                 border-bottom: 1px solid #D7DEE5;
-                padding: 8px 7px;
+                padding: 3px 7px;
                 font-weight: 650;
             }
             """
@@ -847,9 +886,8 @@ class BaseWindow(QMainWindow):
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         results_layout.addWidget(self.table, 1)
 
-        widths = [160, 250, 175, 110, 90, 220, 155, 320, 150]
-        for column, width in enumerate(widths):
-            self.table.setColumnWidth(column, width)
+        for column, key in enumerate(COLUMNS):
+            self.table.setColumnWidth(column, schema.DEFAULT_WIDTHS.get(key, 140))
 
     def _toggle_advanced(self, visible: bool) -> None:
         self.advanced_panel.setVisible(visible)
@@ -1156,6 +1194,9 @@ class BaseWindow(QMainWindow):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self._set_busy(False)
+
+    def _on_adb_scan_failed(self, _request_id: int, message: str) -> None:
+        self._on_worker_failed(message)
 
     def _classify_file_system_packages(self, apps: list[dict[str, str]]) -> tuple[set[str], str]:
         system_packages = {

@@ -65,7 +65,7 @@ def test_profile_normalisation_is_bounded_and_excludes_filter_state() -> None:
     assert "technical_columns" not in profile["settings"]
 
 
-def test_capture_profile_keeps_source_view_and_audit_settings_only() -> None:
+def test_capture_profile_keeps_audit_execution_settings_only() -> None:
     settings = {
         "store_language": "auto",
         "fallback_countries": "gb, de",
@@ -85,11 +85,10 @@ def test_capture_profile_keeps_source_view_and_audit_settings_only() -> None:
         settings,
         "de",
         source_mode="file",
-        view_preset="Device",
     )
 
     assert profile["source_mode"] == "file"
-    assert profile["view_preset"] == "Device"
+    assert "view_preset" not in profile
     assert profile["store_country"] == "de"
     assert profile["settings"]["permissions_audit_enabled"] is True
     assert "search" not in profile["settings"]
@@ -121,22 +120,117 @@ def test_profile_store_round_trip_and_delete(monkeypatch: pytest.MonkeyPatch) ->
     assert audit_profiles.delete_profile("Phone audit") is False
 
 
-def test_apply_profile_preserves_unrelated_settings_and_sets_view() -> None:
-    country, source, view, merged = audit_profiles.apply_profile_to_settings(
-        _profile(),
+def test_apply_legacy_profile_preserves_all_presentation_and_filter_settings() -> None:
+    legacy = _profile()
+    legacy["settings"].update(
         {
+            "search": "from-preset",
+            "active_filter_preset": "Sideloaded",
+            "active_smart_query": {"name": "Legacy target"},
+            "sdk_filter": {"target_sdk_max": 28},
+            "technical_columns": ["target_sdk"],
+            "details_panel_position": "right",
             "show_app_icons": True,
-            "view_preset": "Basic",
+            "date_format": "YYYY-MM-DD",
+        }
+    )
+    custom_widths = {"package_name": 319}
+    country, source, merged = audit_profiles.apply_profile_to_settings(
+        legacy,
+        {
+            "show_app_icons": False,
+            "date_format": "DD.MM.YYYY",
+            "details_panel_position": "hidden",
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name"],
+            "custom_view_order": ["package_name", "criticality"],
+            "custom_view_widths": custom_widths,
+            "search": "current-search",
+            "active_filter_preset": "Old apps",
+            "active_smart_query": {"name": "Current query"},
             "store_language": "de",
         },
     )
 
     assert country == "ch"
     assert source == "device"
-    assert view == "Technical"
-    assert merged["view_preset"] == "Technical"
     assert merged["store_language"] == "it"
-    assert merged["show_app_icons"] is True
+    assert merged["view_preset"] == "Custom"
+    assert merged["custom_view_widths"] is custom_widths
+    assert merged["show_app_icons"] is False
+    assert merged["date_format"] == "DD.MM.YYYY"
+    assert merged["details_panel_position"] == "hidden"
+    assert merged["search"] == "current-search"
+    assert merged["active_filter_preset"] == "Old apps"
+    assert merged["active_smart_query"] == {"name": "Current query"}
+
+
+def test_loading_legacy_profile_does_not_rewrite_its_stored_object(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = _profile()
+    legacy["settings"]["show_app_icons"] = True
+    stored: dict[str, Any] = {"audit_profiles": {"Existing name": legacy}}
+    monkeypatch.setattr(state, "load_settings", lambda: stored)
+
+    loaded = audit_profiles.load_profiles()
+
+    assert list(loaded) == ["Existing name"]
+    assert loaded["Existing name"]["view_preset"] == "Technical"
+    assert stored["audit_profiles"]["Existing name"] is legacy
+    assert legacy["settings"]["show_app_icons"] is True
+
+
+def test_malformed_profile_fails_without_touching_current_settings() -> None:
+    current = {
+        "store_language": "de",
+        "view_preset": "Custom",
+        "show_app_icons": False,
+    }
+
+    with pytest.raises(ValueError, match="Invalid audit preset"):
+        audit_profiles.apply_profile_to_settings(
+            {"schema_version": 1, "settings": "malformed"},  # type: ignore[arg-type]
+            current,
+        )
+
+    assert current == {
+        "store_language": "de",
+        "view_preset": "Custom",
+        "show_app_icons": False,
+    }
+
+
+def test_unknown_profile_schema_is_ignored_safely() -> None:
+    future = _profile()
+    future["schema_version"] = 999
+
+    assert audit_profiles.normalise_profile(future) is None
+
+
+def test_partial_profile_applies_safely_without_touching_unrelated_state() -> None:
+    country, source, merged = audit_profiles.apply_profile_to_settings(
+        {
+            "schema_version": 1,
+            "store_country": "it",
+            "settings": {"store_workers": 8},
+        },
+        {
+            "view_preset": "Custom",
+            "details_panel_position": "below",
+            "show_app_icons": False,
+            "date_format": "DD.MM.YYYY",
+        },
+    )
+
+    assert country == "it"
+    assert source == "any"
+    assert merged["store_workers"] == 8
+    assert merged["view_preset"] == "Custom"
+    assert merged["details_panel_position"] == "below"
+    assert merged["show_app_icons"] is False
+    assert merged["date_format"] == "DD.MM.YYYY"
 
 
 class _Text:
@@ -192,7 +286,12 @@ class _Window:
         self.workers_spin = _Spin()
         self.exclude_system_source_check = _Check()
         self.status_label = _Text()
-        self.view_preset_actions = [_Action("Basic"), _Action("Technical")]
+        self.search_edit = _Text("current-search")
+        self._status_filters = {"orange"}
+        self._active_filter_preset = "Old apps"
+        self._active_smart_query = object()
+        self.view_preset_actions = [_Action("Basic"), _Action("Custom")]
+        self.view_preset_actions[1].checked = True
         self.country_resolution_calls: list[object] = []
         self.view_calls: list[str] = []
         self.user_settings: dict[str, Any] = {}
@@ -207,7 +306,17 @@ class _Window:
 def test_apply_window_profile_updates_runtime_controls_without_switching_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    saved_state: dict[str, Any] = {"show_app_icons": True, "view_preset": "Basic"}
+    saved_state: dict[str, Any] = {
+        "show_app_icons": False,
+        "date_format": "DD.MM.YYYY",
+        "details_panel_position": "hidden",
+        "view_preset": "Custom",
+        "custom_view_exists": True,
+        "custom_view_columns": ["criticality", "package_name"],
+        "custom_view_order": ["package_name", "criticality"],
+        "custom_view_widths": {"package_name": 319},
+        "store_language": "de",
+    }
     fallback_calls: list[tuple[object, str]] = []
 
     monkeypatch.setattr(state, "load_settings", lambda: dict(saved_state))
@@ -233,8 +342,19 @@ def test_apply_window_profile_updates_runtime_controls_without_switching_source(
     assert window.country_resolution_calls == [None]
     assert window.workers_spin.value == 12
     assert window.exclude_system_source_check.checked is False
-    assert window.view_calls == ["Technical"]
+    assert window.view_calls == []
     assert [action.checked for action in window.view_preset_actions] == [False, True]
     assert fallback_calls == [("de, fr, us", "ch")]
-    assert saved_state["show_app_icons"] is True
-    assert "profile expects source: Android phone" in window.status_label.text()
+    assert saved_state["show_app_icons"] is False
+    assert saved_state["date_format"] == "DD.MM.YYYY"
+    assert saved_state["details_panel_position"] == "hidden"
+    assert saved_state["view_preset"] == "Custom"
+    assert saved_state["custom_view_columns"] == ["criticality", "package_name"]
+    assert saved_state["custom_view_order"] == ["package_name", "criticality"]
+    assert saved_state["custom_view_widths"] == {"package_name": 319}
+    assert window.search_edit.text() == "current-search"
+    assert window._status_filters == {"orange"}
+    assert window._active_filter_preset == "Old apps"
+    assert window._active_smart_query is not None
+    assert "preset expects source: Android phone" in window.status_label.text()
+    assert window.status_label.text().startswith("Audit preset applied")

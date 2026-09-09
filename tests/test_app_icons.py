@@ -30,8 +30,30 @@ def app() -> QApplication:
     return instance
 
 
-def test_app_icons_are_off_by_default() -> None:
-    assert state.DEFAULT_SETTINGS["show_app_icons"] is False
+def test_app_icons_are_on_by_default() -> None:
+    assert metadata.DEFAULT_SHOW_APP_ICONS is True
+    assert state.DEFAULT_SETTINGS["show_app_icons"] is True
+
+
+@pytest.mark.parametrize(
+    ("saved_value", "expected"),
+    [(None, True), (True, True), (False, False)],
+)
+def test_app_icon_default_preserves_explicit_saved_preference(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    saved_value: bool | None,
+    expected: bool,
+) -> None:
+    path = tmp_path / "settings.json"
+    if saved_value is not None:
+        path.write_text(
+            json.dumps({"show_app_icons": saved_value}),
+            encoding="utf-8",
+        )
+    monkeypatch.setattr(state, "settings_path", lambda: path)
+
+    assert state.load_settings()["show_app_icons"] is expected
 
 
 def test_icon_metadata_accepts_only_https_urls() -> None:

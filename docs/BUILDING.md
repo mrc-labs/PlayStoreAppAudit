@@ -411,7 +411,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0 and v1.9.0 version metadata are part of their immutable published release profiles. Current source remains `1.9.0` while v1.99 planning begins; do not bump it until a deliberate v1.99 version-freeze change.
+v1.7.0, v1.8.0 and v1.9.0 version metadata are part of their immutable published release profiles. Current source is now frozen at `1.99.0` for the v1.99 Windows x64 release-candidate cycle.
 
 ## Packaged smoke tests
 

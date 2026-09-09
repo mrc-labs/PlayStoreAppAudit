@@ -321,11 +321,41 @@ The following remain rejected for v1.9: a global Fluent redesign, an icon librar
 
 ## v1.99 product decisions
 
-v1.99 is the active cycle and likely final Windows x64-only release before v2.0. It is a controlled pre-v2.0 closure milestone, not an open-ended feature release.
+v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization and release-candidate work must preserve the frozen product scope.
+
+### Scan Phone lifecycle Phase A exception
+
+After RC5 automated and user acceptance passed, v1.99 was deliberately reopened before RC6 for a tightly bounded Scan Phone lifecycle improvement. Phase A establishes one internal immutable `ScanSession` as the owner of a completed phone-source capture. The session contains only existing scan context: captured time, unique source/session identity, hashed/masked device identity, existing device summary, Android locale, package list/counts and all/third-party scope. It remains process/window-local and is never written to settings, history, Device Inventory storage, Play Store/provider caches or result exports. Raw device serials are not stored.
+
+The Scan Phone worker owns authorization, one shared properties capture and aggregate package enumeration. The UI atomically selects only a complete current session; request generations prevent stale worker success or failure from replacing a newer phone/file source. File sources clear the selected device session, summary and locale. One `adb devices` result supplies both authorization state and the serial material used for existing hashed/masked identity. One `getprop` result supplies manufacturer/model, Android release/API/security patch and locale; `settings get system system_locales` is retained only as the existing read-only fallback when those properties have no usable locale. All-package scope retains its separate system-package enumeration because exact system classification is required.
+
+Phase A does not authorize versionCode, installer or enabled-state collection during Scan, an Advanced full-metadata Scan option, reuse of future full metadata during Run, Device Inventory semantic changes, export/schema changes, cache changes, or packaging. Those remain outside this checkpoint.
+
+### Scan Phone lifecycle Phase B exception
+
+Phase B extends the same process/window-local `ScanSession` with one frozen, slotted compact record per scanned package. Standard Scan Phone always captures the installed `versionCode`, raw installer package, the existing friendly installer source/category mapping, enabled/disabled state and system classification where PackageManager supplies them. The session timestamp and device/source identity remain session-level rather than being duplicated per package. Standard Scan does not collect or fabricate versionName, target/min SDK, install/update timestamps, permissions, compatibility or raw/full `dumpsys package` data, and no compact/full-scan setting is introduced.
+
+The preferred package enumeration is the aggregate `pm list packages [-3] -i --show-versioncode`; this replaces rather than duplicates the Phase A enumeration. One matching aggregate `pm list packages [-3] -d` supplies the disabled set, from which the enabled state of other packages in the captured scope is inferred. All-package scope retains the separate aggregate `-s` classifier. Unsupported compact flags may fall back only to installer-capable and then plain aggregate enumeration; a failed disabled query yields Unknown state. Standard Scan never falls back to full or per-package collection.
+
+The compact values belong to T1, the completed Scan Phone instant. Run may still collect the existing rich T2 metadata only when the scanned phone remains connected and its hashed identity matches the session. If it is unavailable, Google Play auditing continues and captured T1 values survive while rich-only fields remain unavailable. Installed vs Store retains its versionName-to-versionName meaning and is therefore Unknown without rich installed versionName; versionCode is not relabelled or compared to Store versionName.
+
+Device Inventory Change now compares and promotes the coherent T1 state: package set, versionCode, installer, enabled state and system classification all come from the same ScanSession. Missing values are not treated as changes. A successful complete phone audit may promote that T1 state; Scan Phone itself and stopped/failed audits do not. Compact session data remains internal and is not added to settings, Play/provider caches, audit history, exports or a persistent ScanSession store. Phase B does not authorize the Phase C Advanced full-metadata Scan option or package building.
+
+### Scan Phone lifecycle Phase C exception
+
+Phase C adds the global Advanced Settings > Device preference `collect_full_device_metadata_on_scan`, labelled **Collect full device metadata during Scan Phone**. It defaults to OFF; only a literal JSON boolean `true` enables it. Missing and malformed values resolve to OFF on load/save. It is independent of Column Presets, Custom View, filters, Audit Presets and output schemas. The existing connected-device metadata preference still controls deferred T2 collection; the explicit full-Scan preference controls Scan capture, and an already completed full snapshot is reused even if execution preferences subsequently change.
+
+Standard Scan preserves the Phase B compact command path. Advanced Scan first captures that same immutable compact inventory, then invokes the existing `collect_device_metadata_v9` once with the exact ScanSession context. The collector reuses available Android API, installer and enabled-state inputs. A fresh single-device authorization/hash check guards the transition to the slow phase; all subsequent full commands use a command-local device selector. No raw serial enters ScanSession or logs. Missing context alone triggers the existing aggregate fallback queries. Standard T2 still discovers ADB and verifies the exact authorized phone, but the exact check replaces the redundant generic authorization probe; its standalone full collector retains the existing commands and fallback semantics. Installer fields are now added locally in the production v9 collector, removing its old cross-module installer wrapper.
+
+The frozen/slotted ScanSession has explicit `NOT_REQUESTED`, `INCOMPLETE` and `COMPLETE` full-metadata states, immutable parsed field tuples, a successful-capture timestamp and the permissions configuration used at capture. Completion requires an affirmative collector receipt: valid device SDK/context, installer/enabled collection or valid compact inputs, complete package coverage, parsed versionCode/target/min SDK inputs for every package, and no cancellation. A nonempty dictionary does not establish completion. Optional versionName/timestamps may legitimately be absent. Unrecognized bulk or incomplete package blocks use the existing per-package fallback. Full failure, incomplete coverage or cancellation discards all optional rich data while retaining the valid compact snapshot. The native status bar reports compact success with unavailable extended metadata; Run may perform normal T2 enrichment if the matching phone is available, otherwise it retains compact fields only.
+
+Run with a COMPLETE snapshot reuses its parsed rich fields without rediscovery, device authorization or further full collection, whether the phone is connected or disconnected. A new Scan Phone is the way to capture a new device state. Existing versionName comparison and Android Compatibility classification remain unchanged; sensitive permissions use only the existing permission-audit preference as captured during Scan. The compact T1 package set/versionCode/installer/enabled/system fields retain final row precedence and sole Device Inventory authority. Scanning never promotes history; only a successful complete audit promotes its coherent T1 inventory, and stopped/failed work does not.
+
+The existing request-generation guards continue to protect source/device/session replacement and late worker signals. A per-request cooperative event stops optional work at collector command boundaries and suppresses cancelled/closed-window completion; it never terminates an in-flight ADB command. ScanSession and parsed full data remain window/process-local. No raw package dump is persisted, no new cache/history/export schema is introduced, and only the nonsensitive preference persists across restart. This exception authorizes source validation only; RC6 packaging remains a separate session.
 
 ### Cooperative audit Stop/Cancel
 
-v1.99 must add a real, cooperative Stop/Cancel lifecycle alongside Run and Pause/Resume.
+The real cooperative Stop/Cancel lifecycle merged through PR `#122` at `c5322d42a7ebdd0f7e61fd1c25b69828d8535e25` alongside Run and Pause/Resume.
 
 - Stop scheduling new work immediately and propagate cancellation through Store checks, regional checks and finalization queues.
 - Let in-flight operations exit safely or reach existing timeout boundaries; never use `QThread.terminate()` or an equivalent forced termination.
@@ -333,65 +363,91 @@ v1.99 must add a real, cooperative Stop/Cancel lifecycle alongside Run and Pause
 - Mark the audit cancelled/incomplete rather than completed, and never promote it to the completed previous-audit/history baseline.
 - Return the application to a reusable idle state so a later audit starts normally.
 
-Implementation begins only after the complete execution pipeline and every real cancellation boundary are identified.
+The implementation covers the Store and regional-check scheduling boundaries, preserves valid partial work and independent cache entries, separates successful-result finalization from history/baseline persistence, and returns to a reusable idle state. These semantics remain required for later v1.99 changes.
 
 ### Main actions, Details selector and status bar
 
-Final placement of Run/Pause/Stop, Export and Clear is not pre-decided. Compare native-Windows prototypes for: actions in the status bar; a compact upper command strip; and a clear integrated results/header command layout. Run remains primary, Stop must be discoverable while relevant, and action-availability behavior must be preserved. Compare representative widths and DPI levels and obtain visual evidence before choosing.
+The first v1.99 product/operational UX gate is complete. Native-Windows A/B/C comparison selected the integrated results-header direction, and the focused C0/C1/C2 comparison selected **C2**. The first results header row keeps Run/Pause/Resume and Stop together, followed by the same canonical progress widget, then Export Results and Clear Results. The progress widget has a 120 px minimum and 320 px maximum, expands into available inline space, and remains present in the same geometry for Idle, Running, Paused, Resumed, Stopping, Finalizing and Completed. Idle/completed presentation is a neutral empty determinate track with no percentage or animation; active operations retain the established determinate or busy behavior.
 
-The existing Details selector (Auto/Right/Below/Hidden) is a stronger status-bar candidate and should be evaluated there by reusing the same state and `View > Details Panel` synchronization. Do not duplicate state. Review status-bar padding, alignment, vertical centering, height, progress/control relationships, size-grip spacing, long-message behavior and 100/125/150/175% DPI evidence.
+The second results header row keeps the multi-select status chips, Hide System Apps, search and the existing Details selector. Details retains one synchronized Auto/Right/Below/Hidden model shared with `View > Details Panel`; it is not duplicated or moved to the status bar. The native status bar retains the single canonical operational text label and size grip, with no mirrored status or progress state. RC1 native Windows review established 16 logical px left and 12 logical px right contents margins on that label; the full-width status-bar frame remains edge-to-edge and the C2 header geometry is unaffected.
 
-The warning-coloured **Different**, **Aging target** and **Legacy target** values should receive restrained stronger typography. Test Qt DemiBold/SemiBold first and preserve a visible hierarchy below the first Status column's Bold; do not blindly make every warning Bold.
+The second v1.99 product gate finalized one shared semantic warning presentation across the results table, Details Panel, context Details dialog and HTML report. Installed-vs-Store **Different** and Android Compatibility **Aging target** reuse the existing status palette's dark-yellow foreground at Qt DemiBold weight 600. **Legacy target** reuses the stronger dark-orange foreground at DemiBold weight 600. **Modern** and other normal values remain Regular weight 400 and the first Status column remains Bold weight 700. The stronger Legacy severity is communicated by its dark-orange colour rather than a different font weight. RC1 native Segoe UI/Qt evidence required moving Different/Aging from 500 to 600 because Medium was visually indistinguishable from regular. Qt continues to manage the table selection background; the semantic foregrounds remain readable on selected and unselected rows without selection-specific colours. Disabled labels retain the native disabled role, and the application continues to use its established light presentation rather than claiming an unsupported dark theme. CSV, JSON, raw models, classifications, scoring, persistence and schemas are unchanged.
+
+RC1 from `7c3f2e768f5a6592e12a835b40a31d70a59e0bc6` passed package/technical validation but was not accepted as final. The narrow correction keeps version `1.99.0`, adds `Tools > Data Maintenance > Clear Device Inventory History…` for only the per-device `inventory_<sanitized-device-id>.json` comparison baselines, and preserves explicit Device Snapshots, Play Store audit cache, previous-audit history, provider cache, settings and current results. A later completed device audit establishes a new per-device baseline. **Show app icon** now defaults on only when the setting is absent; existing saved true and false values remain authoritative, and icon loading remains lazy, cached and non-fatal. The next package will be RC2; it is not yet built or accepted.
+
+### RC3 Column Preset and Custom layout persistence
+
+RC3 Phase B1 renames only the user-facing preset concept to **Column Preset** and the existing Display Settings dialog to **Customize View**. Basic, Device and Technical remain immutable built-in definitions. Any manual header resize/reorder or Customize View visibility change captures the resulting table state as Custom; applying a built-in never mutates or deletes that saved Custom state. Custom is unavailable until a real or conservatively migrated layout exists and then survives sorting, filtering, refresh/audit work, built-in switching and restart.
+
+The deliberately small settings extension keeps `view_preset` as the effective identifier and stores Custom visibility, full visual order and widths in `custom_view_columns`, `custom_view_order` and `custom_view_widths`, gated by `custom_view_exists`. The existing `qt_header_state` remains a compatibility alias and the source for conservative RC2/Phase A migration; `qt_header_schema_version` keeps its existing invalidation role. Malformed/partial values are sanitized or fall back to the Phase A semantic defaults without wiping unrelated settings. App-icon visibility, date format and equivalent presentation preferences remain global and are not members of Custom.
+
+### RC3 SDK filtering and Audit Preset boundary
+
+The dedicated SDK Maintenance Filter is retired in RC3 Phase B2. It was an in-process, session-only additional result predicate with no settings keys and no startup restoration; removing its UI and install hook guarantees that no old or legacy-looking settings value can reactivate it invisibly. Target SDK, Min SDK and Android Compatibility remain first-class collected/presented data, classification/scoring inputs and Smart Query fields. Smart Queries are the advanced mechanism for SDK and compatibility result conditions. The versioned JSON filter-context member remains neutral and structurally compatible rather than forcing an unrelated schema change.
+
+The same checkpoint renames Audit Profiles to **Audit Presets** only on user-facing surfaces. The compatibility-sensitive settings key remains `audit_profiles`, schema version remains 1 and existing saved names remain valid. A preset owns audit-execution state only: source expectation, Store locale/country, cache and refresh-related choices, worker count, device metadata/permission enrichment, history/compare behavior and source-system exclusion. It never applies search, status chips, Quick Filters, Smart Queries, SDK-filter remnants, Column Preset or Custom layout state, Details placement, app-icon visibility, date format or another presentation preference. Historical unrelated fields remain safe to retain in stored schema-v1 objects but are ignored during application; new preset captures omit the historical `view_preset` presentation field.
+
+### RC3 final command ownership and result-filter reset
+
+The final v1.99 menu ownership is semantic and permanent unless a later deliberate UX decision changes it. File owns source/input operations and raw phone-package-list export. Audit owns audit execution, targeted recheck, full refresh, execution-only Audit Presets, result export and Clear Results. View owns Column Preset/Custom, Customize View, Details placement and result filtering. Tools owns Advanced Settings, non-destructive Device History inspection and separately grouped destructive Data Maintenance. Help owns guides, methodology, update checks, diagnostics and About. Result exports exist under Audit only; the header export surface continues to use the same canonical handlers and synchronized availability.
+
+`View > Clear All Filters` is a session presentation command. It clears search, multi-status chips, Quick Filter, the active Smart Query and Hide System Apps because that checkbox is an unpersisted result-visibility predicate. It deliberately does not change the separately persisted source-exclusion choice, results, sorting, saved Smart Queries, Audit Presets, caches/history, Column Preset/Custom state, Details placement, app icons, date format or audit/store settings. The retired SDK filter has no live predicate or persistence to clear. Presentation-status guards remain authoritative during active operations.
 
 ### Alternative Distribution Discovery
 
-The previously rejected idea of automatic alternative-source association is replaced by an informational exact-package feature named **Alternative Distribution Discovery**. It reports evidence that the same Android package is distributed elsewhere without implying endorsement, equivalence or guaranteed installation safety.
+The Gate 4 implementation is an informational exact-package feature and is secondary to Google Play evidence. It never replaces or reinterprets Google Play availability/country evidence, installer source or criticality. Automatic checks run only after the canonical raw state `play_status == "not_found_in_checked_countries"`; available, regional fallback, transient and inconclusive Google Play states are ineligible. Gate 5 consumes only current conclusive Available provider evidence as a bounded recovery inside Maintenance Score while preserving all underlying states.
 
-Approved providers and classifications are:
+The deliberately small, non-pluggable `AlternativeDistributionProvider` protocol has two v1.99 implementations sharing one typed result/state model, one bounded executor, one independent cache and one presentation/export path:
 
-- Samsung Galaxy Store and Huawei AppGallery: `official_store`;
-- F-Droid: `foss_repository`;
-- Aptoide and Uptodown: `independent_store`;
-- APKMirror and APKPure: `apk_repository`, visibly identified as APK repositories.
+- **F-Droid main repository** is built in, enabled by default and may be disabled in Advanced Settings. It uses only the official per-package API for active packages in the main repository, requires exact `packageName` equality and never queries the archive, full index, search, third-party repositories or APK URLs.
+- **Aptoide** is Advanced/opt-in and disabled by default. It requires a user-supplied authorized `store_name` and Partner API key. It uses the documented `app/get` exact `package_name` request with `Authorization: ApiKey …`; the API key is never placed in the URL. The response's exact package and documented `file.vername`/`file.vercode` fields are used. No documented reliable public listing URL was established, so the UI does not invent one. A small `apps/get` request with the configured store and `limit=1` powers **Test connection** without depending on a permanent package.
 
-Amazon Appstore is explicitly excluded.
+The canonical states are Available, Not found, Inconclusive, Unsupported and Not checked. A provider must return its documented exact absence response to produce Not found; ambiguous, malformed, authentication, rate-limit, network and server failures remain Inconclusive. Availability means only that a provider returned an active listing for the exact Android package identifier. It does not establish safety, publisher authorization, binary equivalence, official status or Google Play equivalence.
 
-Automatic discovery is limited to Removed, regional/unavailable-in-selected-country cases, and Store anomalies only when Google Play evidence is sufficiently conclusive. It must not run automatically for transient network failures, scraper failures, ambiguous Other states or inconclusive Google Play evidence. A manual per-app check may be evaluated.
+Provider execution is a separate non-fatal phase after stable Google Play rows. One independent executor allows at most two total provider requests, with a 10-second request timeout and 20-second active-work phase budget. Pause prevents new submissions without consuming that phase budget, Resume continues pending work, and Stop prevents new submissions while preserving already completed evidence. The existing C2 progress widget switches to busy/indeterminate without moving; status text remains in the native status bar.
 
-Exact Android package ID is the primary identity key; fuzzy title matching alone is never sufficient. Retain provider URL and verification timestamp plus publisher/developer/version/update evidence where available. Review each provider's API/search mechanism, exact package lookup, rate limits, terms/access constraints, regional behavior, available metadata and maintenance risk before implementation.
+The independent `alt-v1` cache keys provider, exact normalized package ID and, for Aptoide, normalized non-secret store name. Available results live for 24 hours, Not found for 12 hours and Inconclusive for 15 minutes; Unsupported/Not checked are not cached. Force Full Refresh bypasses it. No provider history/change events are introduced.
+
+Aptoide's protected config value uses `cryptography` AES-GCM with an HKDF-SHA256 key derived from application context, a local machine-identity digest and local user identity. The versioned `v1:` envelope contains random salt, nonce and authenticated ciphertext; no raw key, derived key or machine identifier is stored. Windows uses MachineGuid, Linux uses established machine-id files and macOS uses the platform UUID, with a weaker deterministic host/user/network-node fallback. This protects against casual config disclosure and trivial copied-config reuse, not a compromised account, reverse engineering, hardware attack or enterprise threat model. Decryption failure retains the ciphertext, disables/unavailable-gates Aptoide and asks for credential replacement without plaintext fallback.
+
+Advanced Settings includes provider controls and a compact expandable availability/limitations panel for F-Droid, Aptoide, Samsung Galaxy Store, Huawei AppGallery, Amazon Appstore, APKMirror, APKPure and Uptodown. The latter six are explicitly not implemented because no approved general exact-catalogue API contract was established; the application does not scrape them.
+
+Evidence appears only in the separate **Alternative distribution** subsection of Details/App Details and a conditional HTML section. Friendly Notes and the results-table columns/filters are unchanged. Versioned JSON is explicitly schema v2 with a deterministic `alternative_distribution.providers` collection; CSV remains unchanged. Secrets, protected envelopes and machine identifiers are excluded from exports and diagnostics. The common model intentionally has no speculative `provider_class`.
 
 ### Maintenance Score v1.99 update
 
-The user-facing name remains **Maintenance Score**. The v1.99 algorithm uses these target penalties:
+Gate 5 is implemented locally. The user-facing name remains **Maintenance Score** and every app starts at 100. The algorithm uses raw, non-overlapping components:
 
-- Google Play Removed with no verified alternative distribution: `-60`;
-- Removed with only an APK repository: `-50`;
-- Removed with an independent store: `-45`;
-- Removed with a FOSS repository: `-40`;
-- Removed with at least one official OEM store: `-20`;
-- Store anomaly: `-20`;
-- Other/inconclusive Google Play state: `-15`;
+- exact `play_status == "available"`: Google Play availability `0`;
+- exact `play_status == "not_found_in_checked_countries"`: checked-market Google Play absence `-60`;
+- `available_in_other_country` or `available_in_fallback_locale_only`: Store anomaly `-20`, never `-60`;
+- any other/inconclusive Google Play state: `-15`, never stacked with the definitive `-60`;
 - stale listing, more than 730 days: `-25`;
-- aging listing, more than 365 and no more than 730 days: `-15`;
+- aging listing, 366-730 days: `-15`;
+- unknown/unusable listing age: `0` freshness penalty;
 - legacy target SDK relative to the connected device: `-15`;
 - aging target SDK relative to the connected device: `-10`;
-- installed version differs from Google Play: `-5`.
+- exact conclusive Installed-vs-Store `Different`: `-5`.
 
-The Removed/alternative penalties are mutually exclusive alternatives for one Google Play availability component. Select the best verified distribution class in this order: `official_store > foss_repository > independent_store > apk_repository`; never stack providers or apply `-60` before an alternative penalty. Other independent score components continue to compose and existing bounds/clamping remain unless a real defect is found. Provider failure or inconclusive evidence is never positive availability evidence. Regional unavailability may trigger discovery but is not automatically Removed and does not receive the Removed substitutions unless the underlying Google Play state genuinely qualifies.
+Only while the definitive checked-market absence `-60` component is active, current conclusive F-Droid main availability recovers `+10` and current conclusive Aptoide availability recovers `+5`. The recoveries are cumulative and provider IDs are deduplicated, so the current maximum is the natural sum `+15`: no verified alternative gives a net Store effect of `-60`, Aptoide `-55`, F-Droid `-50`, and both `-45`. Cached and live Available evidence score identically. Not found, Inconclusive, Unsupported and Not checked evidence provides no recovery. Unsupported/future providers have no score branch. Provider presence never raises a Google Play-available app's score.
 
-Before implementation, review history/versioned-data implications so score changes do not silently break audit comparisons. Update user-facing methodology/report text and tests with the algorithm. A possible internal `health_score` to `maintenance_score` rename remains a separate evidence-gated migration requiring Smart Query, settings, serialized-data, backward-compatibility and migration tests; defer it when cost exceeds benefit.
+The raw Google Play, provider, installer and classification values are never mutated. The score breakdown exposes the base Google Play component and each provider recovery separately in Details, App Details and HTML reports. Independent freshness, SDK and version components continue to compose; the final result is clamped to 0-100.
+
+Audit history stores neither Maintenance Score nor provider evidence, so its baseline schema and comparison semantics remain unchanged. Versioned result exports retain the score calculated for that audit and are not recomputed retroactively. The compatibility-sensitive `health_score` field, Smart Query ID, settings key and serialized key remain unchanged in v1.99; the internal rename is deferred to v2.0 as a separate compatibility migration.
 
 ### Explicit UX decisions
 
 - `QDockWidget` is rejected and not planned. Retain Auto/Right/Below/Hidden Details placement with narrow/wide/extra-wide internal responsiveness.
-- A richer dashboard/status overview remains evidence-gated and ships only if a prototype proves a distinct workflow beyond Summary, status chips, Quick Filters, Smart Queries, Changes, Details and the improved status bar.
+- A richer Dashboard/status overview is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when mature multi-source and longitudinal/history workflows justify it.
 - Concrete bugs and polish found through real v1.9 use may be considered individually; they are not automatically in scope.
 
 Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later work.
 
 ### v2.0 Local APK Library pillar
 
-v2.0 adds a modern Local APK Library/successor core. It will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
+Local APK Audit is deferred entirely to v2.0 rather than entering v1.99 with package-only identity. The v2.0 sequence is: parser/verifier spike; typed `LocalArtifact` plus SHA-256 artifact identity; package-deduplicated Store/provider fan-out; transient Local APK Audit; persistent Local APK Library.
+
+The Library will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
 
 Later v2.x candidates include metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
 

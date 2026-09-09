@@ -22,12 +22,12 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Optionally calculate a transparent Maintenance Score heuristic.
 - Read friendly Notes consistently in the table, tooltip, Details Panel and HTML report while raw machine-readable Notes remain available in data exports.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
-- Filter results with search, status chips and Quick Filters, then save one-level All/Any Smart Queries that compose with installer and SDK maintenance filters.
+- Filter results with search, status chips and Quick Filters, save one-level All/Any Smart Queries, and restore full result visibility with **View > Clear All Filters**.
 - Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
-- Save reusable audit profiles without mixing them with result-filter state.
+- Save reusable Audit Presets that affect how the next audit runs without changing result filters or presentation.
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
-- Compare with a previous audit and maintain device inventory history and snapshots.
-- Export all or visible results as CSV, HTML or versioned JSON.
+- Compare with a previous audit and inspect snapshots/inventory changes under **Tools > Device History**.
+- Export all or visible results as CSV, HTML or versioned JSON from **Audit > Export Results**.
 - Follow operational status in the native status bar, with progress shown only while source, audit or finalization work is active.
 
 ## Download and installation
@@ -51,10 +51,10 @@ The v1.9.0 release includes one consolidated third-party source archive and a re
 1. Start the application.
 2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan Phone**.
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
-4. Select **Run Play Store Audit**.
+4. Select the header **Run Play Store Audit** button or **Audit > Run Audit**.
 5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
 6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
-7. Export the complete or currently visible results from the export menu.
+7. Export the complete or currently visible results from **Audit > Export Results**.
 
 A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. The included `sample_packages.csv` shows the simplest supported CSV format.
 
@@ -83,6 +83,10 @@ The application can use an existing ADB executable from `PATH`, common Android S
 - Linux ARM64 requires a native ADB supplied by the operating system, distribution or an ARM64-compatible Android SDK.
 
 USB debugging and device authorization are required. The in-app **ADB setup guide** contains troubleshooting instructions.
+
+Scan Phone always captures compact installed-app information, including versionCode, installer and enabled state where available. In **Tools > Advanced Settings > Device**, **Collect full device metadata during Scan Phone** optionally captures extended metadata such as installed version, SDK information and timestamps. It defaults to OFF and can significantly increase scan time. Sensitive permissions follow the existing permission-audit setting.
+
+After a successful full Scan, Run reuses the captured metadata even if the phone is disconnected; scan again to capture a newer device state. If extended collection fails, the compact scan remains usable and Run can collect extended data from the matching connected phone. The scan session lasts only until it is replaced or the application closes. Device Inventory comparisons use the compact scan snapshot, and scanning alone does not advance the history baseline.
 
 ## Privacy and network behaviour
 
@@ -121,7 +125,7 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 ## Development
 
-The current source identifies application version `1.9.0`, matching the latest immutable published release. Active development planning is now v1.99; no application-version bump has been made for that cycle.
+The current source identifies application version `1.99.0` for the v1.99 release-candidate cycle. The latest immutable published release remains v1.9.0.
 
 The release-packaging baseline is Python 3.13. Quality CI also exercises Python 3.14 source compatibility.
 

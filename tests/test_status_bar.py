@@ -4,7 +4,14 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel, QProgressBar, QStatusBar
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QLabel,
+    QProgressBar,
+    QSizePolicy,
+    QStatusBar,
+)
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
@@ -44,39 +51,82 @@ def window(
     app.processEvents()
 
 
-def test_status_bar_hosts_the_single_canonical_status_and_progress_widgets(
+def test_status_bar_hosts_status_while_results_header_hosts_progress(
     window: MainWindow,
 ) -> None:
     status_bar = window.statusBar()
-    root = window.centralWidget().layout()
-    action_layout = compact_ui._find_layout_containing(root, window.run_button)
+    results_layout = window.summary_label.parentWidget().layout()
+    operations = compact_ui._find_layout_containing(
+        results_layout, window.summary_label
+    )
 
     assert isinstance(status_bar, QStatusBar)
     assert status_bar is window.status_bar
     assert status_bar.objectName() == "OperationalStatusBar"
     assert status_bar.isSizeGripEnabled()
     assert window.status_label.parentWidget() is status_bar
-    assert window.progress.parentWidget() is status_bar
-    assert status_bar.findChildren(QProgressBar) == [window.progress]
+    status_margins = window.status_label.contentsMargins()
+    assert status_margins.left() == compact_ui.OPERATION_STATUS_LEFT_INSET == 16
+    assert status_margins.right() == compact_ui.OPERATION_STATUS_RIGHT_INSET == 12
+    assert status_margins.top() == status_margins.bottom()
+    assert status_margins.top() >= compact_ui.OPERATION_STATUS_MIN_VERTICAL_PADDING
+    assert window.status_label.alignment() & Qt.AlignmentFlag.AlignVCenter
+    assert status_bar.sizePolicy().verticalPolicy() is QSizePolicy.Policy.Maximum
+    assert window.centralWidget().layout().contentsMargins().bottom() == status_margins.top()
+    assert window.progress.parentWidget() is window.summary_label.parentWidget()
+    assert status_bar.findChildren(QProgressBar) == []
     assert [
         label
         for label in window.findChildren(QLabel)
         if label.accessibleName() == "Operational Status"
     ] == [window.status_label]
     assert window.progress.accessibleName() == "Operation Progress"
-    assert window.progress.minimumWidth() == 200
-    assert window.progress.maximumWidth() == 200
-    assert window.progress.isHidden()
+    assert window.progress.minimumWidth() == compact_ui.OPERATION_PROGRESS_MIN_WIDTH
+    assert window.progress.maximumWidth() == compact_ui.OPERATION_PROGRESS_MAX_WIDTH
+    assert not window.progress.isHidden()
+    assert window.progress.value() == 0
     assert window.status_label.text() == "Ready"
 
-    assert action_layout is not None
-    assert action_layout.itemAt(0).widget() is window.run_button
-    assert action_layout.itemAt(1).widget() is window.stop_button
-    assert action_layout.itemAt(2).spacerItem() is not None
-    assert action_layout.itemAt(3).widget() is window.export_button
-    assert action_layout.itemAt(4).widget() is window.clear_button
-    assert compact_ui._find_layout_containing(root, window.status_label) is None
-    assert compact_ui._find_layout_containing(root, window.progress) is None
+    assert operations is not None
+    operation_widgets = [
+        operations.itemAt(index).widget()
+        for index in range(operations.count())
+        if operations.itemAt(index).widget() is not None
+    ]
+    expected = [
+        window.run_button,
+        window.stop_button,
+        window.progress,
+        window.export_button,
+        window.clear_button,
+    ]
+    assert [widget for widget in operation_widgets if widget in expected] == expected
+
+
+def test_status_bar_and_inline_progress_stay_compact_and_centered(
+    window: MainWindow,
+    app: QApplication,
+) -> None:
+    window.show()
+    app.processEvents()
+    status_height = window.status_bar.height()
+
+    for width in (1100, 1320, 1600):
+        window.resize(width, 760)
+        app.processEvents()
+
+        assert window.status_bar.height() == status_height
+        assert 20 <= status_height <= 28
+        assert abs(
+            window.status_label.geometry().center().y()
+            - window.status_bar.rect().center().y()
+        ) <= 1
+        assert abs(
+            window.progress.geometry().center().y()
+            - window.run_button.geometry().center().y()
+        ) <= 1
+
+    assert window.table.horizontalScrollBar().isVisible()
 
 
 def test_source_statuses_and_presentation_guard_use_the_status_bar(
@@ -89,7 +139,8 @@ def test_source_statuses_and_presentation_guard_use_the_status_bar(
 
     window._load_input_file(str(source))
     assert window.status_label.text() == "File ready. Run the Play Store audit."
-    assert window.progress.isHidden()
+    assert not window.progress.isHidden()
+    assert window.progress.value() == 0
 
     window._set_busy(True)
     window.progress.setRange(0, 0)
@@ -105,7 +156,8 @@ def test_source_statuses_and_presentation_guard_use_the_status_bar(
         set(),
     )
     assert window.status_label.text() == "Phone scan ready. Run the Play Store audit."
-    assert window.progress.isHidden()
+    assert not window.progress.isHidden()
+    assert window.progress.value() == 0
 
     window._set_presentation_status("Display settings saved")
     assert window.status_label.text() == "Display settings saved"
@@ -194,7 +246,8 @@ def test_audit_lifecycle_progress_and_status_do_not_leave_stale_visible_state(
     app.processEvents()
     assert window._audit_state is AuditRunState.IDLE
     assert window.status_label.text().startswith("Audit stopped")
-    assert window.progress.isHidden()
+    assert not window.progress.isHidden()
+    assert window.progress.value() == 0
 
     completed_session = _start_dormant_audit(window, monkeypatch)
     row = {
@@ -211,8 +264,8 @@ def test_audit_lifecycle_progress_and_status_do_not_leave_stale_visible_state(
 
     app.processEvents()
     assert window.status_label.text() == "Audit completed • 1 live"
-    assert window.progress.value() == 1
-    assert window.progress.isHidden()
+    assert window.progress.value() == 0
+    assert not window.progress.isHidden()
 
     second_session = _start_dormant_audit(window, monkeypatch)
     window._on_controlled_progress(second_session, 0, 1, "com.example.audit")
@@ -221,10 +274,11 @@ def test_audit_lifecycle_progress_and_status_do_not_leave_stale_visible_state(
     app.processEvents()
     assert window.status_label.text() == "Audit failed"
     assert not window._audit_active
-    assert window.progress.isHidden()
+    assert not window.progress.isHidden()
+    assert window.progress.value() == 0
 
 
-def test_details_responsive_modes_do_not_disturb_status_bar_hosting(
+def test_details_responsive_modes_do_not_disturb_status_or_progress_hosting(
     window: MainWindow,
 ) -> None:
     status_bar = window.status_bar
@@ -238,4 +292,4 @@ def test_details_responsive_modes_do_not_disturb_status_bar_hosting(
         assert window.status_label is status_label
         assert window.progress is progress
         assert status_label.parentWidget() is status_bar
-        assert progress.parentWidget() is status_bar
+        assert progress.parentWidget() is window.summary_label.parentWidget()

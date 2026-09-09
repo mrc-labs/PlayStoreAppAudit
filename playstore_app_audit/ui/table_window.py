@@ -39,7 +39,11 @@ class AuditTableModel(base_ui.AppTableModel):
     def __init__(self) -> None:
         super().__init__()
         self.columns = schema.MODEL_COLUMNS
-        self._icons_enabled = bool(state.load_settings().get("show_app_icons", False))
+        self._icons_enabled = bool(
+            state.load_settings().get(
+                "show_app_icons", app_icon_metadata.DEFAULT_SHOW_APP_ICONS
+            )
+        )
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
@@ -111,7 +115,7 @@ class AuditTableModel(base_ui.AppTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal and 0 <= section < len(self.columns):
             column = self.columns[section]
-            return base_ui.COLUMN_LABELS.get(column, column)
+            return schema.TABLE_HEADER_LABELS.get(column, column)
         return section + 1
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -150,10 +154,12 @@ class AuditTableModel(base_ui.AppTableModel):
         if role == Qt.ItemDataRole.ToolTipRole and column == "notes":
             return presentation.friendly_notes(row)
 
-        if role == Qt.ItemDataRole.FontRole and column == "criticality":
-            font = QFont()
-            font.setBold(True)
-            return font
+        if role == Qt.ItemDataRole.FontRole:
+            if column == "criticality":
+                font = QFont()
+                font.setBold(True)
+                return font
+            return base_ui.semantic_value_font(column, row.get(column))
 
         if role == Qt.ItemDataRole.TextAlignmentRole:
             if column in {
@@ -200,7 +206,8 @@ class TableWindow(insights_ui.InsightsWindow):
         self.table.setModel(proxy)
         self.table.setIconSize(QSize(22, 22))
         old_proxy.deleteLater()
-        self._apply_column_visibility(reset_order=True)
+        self._restore_table_layout()
+        self._apply_column_visibility(reset_order=False)
 
     def _show_about(self) -> None:
         dialog = QDialog(self)

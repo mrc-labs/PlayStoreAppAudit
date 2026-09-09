@@ -64,6 +64,8 @@ def _view_preset(value: object) -> str:
 def normalise_profile(profile: object) -> dict[str, Any] | None:
     if not isinstance(profile, dict):
         return None
+    if profile.get("schema_version", PROFILE_SCHEMA_VERSION) != PROFILE_SCHEMA_VERSION:
+        return None
     settings = profile.get("settings")
     if not isinstance(settings, dict):
         return None
@@ -87,13 +89,17 @@ def normalise_profile(profile: object) -> dict[str, Any] | None:
     for key in _BOOLEAN_FIELDS:
         clean[key] = bool(settings.get(key, key in _TRUE_DEFAULT_FIELDS))
 
-    return {
+    normalised = {
         "schema_version": PROFILE_SCHEMA_VERSION,
         "source_mode": _source_mode(profile.get("source_mode")),
-        "view_preset": _view_preset(profile.get("view_preset")),
         "store_country": _country(profile.get("store_country")),
         "settings": clean,
     }
+    # Preserve this historical presentation field when reading an existing
+    # schema-v1 profile, but never require or apply it as Audit Preset state.
+    if "view_preset" in profile:
+        normalised["view_preset"] = _view_preset(profile.get("view_preset"))
+    return normalised
 
 
 def capture_profile(
@@ -101,14 +107,12 @@ def capture_profile(
     store_country: object,
     *,
     source_mode: object = "any",
-    view_preset: object = "Basic",
 ) -> dict[str, Any]:
     raw_settings = {key: settings.get(key) for key in PROFILE_FIELDS}
     profile = normalise_profile(
         {
             "schema_version": PROFILE_SCHEMA_VERSION,
             "source_mode": source_mode,
-            "view_preset": view_preset,
             "store_country": store_country,
             "settings": raw_settings,
         }
@@ -133,10 +137,10 @@ def load_profiles() -> dict[str, dict[str, Any]]:
 def save_profile(name: object, profile: dict[str, Any]) -> dict[str, Any]:
     clean_name = _profile_name(name)
     if not clean_name:
-        raise ValueError("Profile name cannot be empty.")
+        raise ValueError("Preset name cannot be empty.")
     clean_profile = normalise_profile(profile)
     if clean_profile is None:
-        raise ValueError("Invalid audit profile.")
+        raise ValueError("Invalid audit preset.")
 
     settings = state.load_settings()
     stored = settings.get(SETTINGS_KEY, {})
@@ -163,16 +167,14 @@ def delete_profile(name: object) -> bool:
 def apply_profile_to_settings(
     profile: dict[str, Any],
     current_settings: dict[str, Any] | None = None,
-) -> tuple[str, str, str, dict[str, Any]]:
+) -> tuple[str, str, dict[str, Any]]:
     clean = normalise_profile(profile)
     if clean is None:
-        raise ValueError("Invalid audit profile.")
+        raise ValueError("Invalid audit preset.")
     merged = dict(current_settings or state.load_settings())
     merged.update(clean["settings"])
-    merged["view_preset"] = clean["view_preset"]
     return (
         str(clean["store_country"]),
         str(clean["source_mode"]),
-        str(clean["view_preset"]),
         merged,
     )

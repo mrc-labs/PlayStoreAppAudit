@@ -175,13 +175,14 @@ def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
     discovery_ran = False
     thread_started = False
 
-    def discover() -> None:
+    def discover(_request_id: int) -> None:
         nonlocal discovery_ran
         discovery_ran = True
 
     class DeferredThread:
-        def __init__(self, *, target: Any, daemon: bool) -> None:
+        def __init__(self, *, target: Any, args: tuple[int], daemon: bool) -> None:
             assert target is discover
+            assert args == (1,)
             assert daemon
 
         def start(self) -> None:
@@ -195,6 +196,7 @@ def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
         progress=progress,
         status_label=status,
         _find_adb_worker=discover,
+        _begin_phone_scan_request=lambda: 1,
     )
     monkeypatch.setattr(main_window.threading, "Thread", DeferredThread)
 

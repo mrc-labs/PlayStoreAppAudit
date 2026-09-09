@@ -50,10 +50,20 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "cache_ttl_hours": 72,
     "compare_previous": False,
     "exclude_system_source": True,
+    "collect_full_device_metadata_on_scan": False,
     "details_panel_position": "right",
     "technical_columns": [],
+    "custom_view_exists": False,
     "qt_header_state": "",
     "ctk_column_widths": {},
+    "alternative_distribution": {
+        "fdroid_main": {"enabled": True},
+        "aptoide": {
+            "enabled": False,
+            "store_name": "",
+            "api_key_protected": "",
+        },
+    },
 }
 
 TECHNICAL_COLUMNS = {
@@ -102,6 +112,10 @@ def history_path() -> Path:
     return app_data_dir() / "audit_history.json"
 
 
+def alternative_distribution_cache_path() -> Path:
+    return app_data_dir() / "alternative_distribution_cache.json"
+
+
 def load_settings() -> dict[str, Any]:
     data = _read_json(settings_path(), {})
     settings = deepcopy(DEFAULT_SETTINGS)
@@ -127,6 +141,9 @@ def load_settings() -> dict[str, Any]:
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
+    settings["collect_full_device_metadata_on_scan"] = (
+        settings.get("collect_full_device_metadata_on_scan") is True
+    )
     details_position = str(settings.get("details_panel_position") or "right").strip().casefold()
     settings["details_panel_position"] = (
         details_position
@@ -139,6 +156,28 @@ def load_settings() -> dict[str, Any]:
     )
     if not isinstance(settings.get("ctk_column_widths"), dict):
         settings["ctk_column_widths"] = {}
+    default_alternative = deepcopy(DEFAULT_SETTINGS["alternative_distribution"])
+    raw_alternative = settings.get("alternative_distribution")
+    if isinstance(raw_alternative, dict):
+        raw_fdroid = raw_alternative.get("fdroid_main")
+        if isinstance(raw_fdroid, dict):
+            default_alternative["fdroid_main"].update(raw_fdroid)
+        raw_aptoide = raw_alternative.get("aptoide")
+        if isinstance(raw_aptoide, dict):
+            default_alternative["aptoide"].update(raw_aptoide)
+    default_alternative["fdroid_main"]["enabled"] = bool(
+        default_alternative["fdroid_main"].get("enabled", True)
+    )
+    default_alternative["aptoide"]["enabled"] = bool(
+        default_alternative["aptoide"].get("enabled", False)
+    )
+    default_alternative["aptoide"]["store_name"] = str(
+        default_alternative["aptoide"].get("store_name") or ""
+    ).strip().lower()
+    default_alternative["aptoide"]["api_key_protected"] = str(
+        default_alternative["aptoide"].get("api_key_protected") or ""
+    ).strip()
+    settings["alternative_distribution"] = default_alternative
     return settings
 
 
@@ -149,6 +188,9 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
+    merged["collect_full_device_metadata_on_scan"] = (
+        merged.get("collect_full_device_metadata_on_scan") is True
+    )
     _write_json(settings_path(), merged)
     return merged
 
@@ -161,6 +203,10 @@ def reset_settings() -> dict[str, Any]:
 
 def clear_cache() -> None:
     _write_json(cache_path(), {})
+
+
+def clear_alternative_distribution_cache() -> None:
+    _write_json(alternative_distribution_cache_path(), {})
 
 
 def _cache_key(country: str, language: str, package_name: str) -> str:

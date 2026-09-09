@@ -223,7 +223,6 @@ def _install_installer_map_capture() -> None:
 
 def _install_collectors() -> None:
     original_legacy = device_metadata.collect_device_metadata
-    original_v9 = device_insights.collect_device_metadata_v9
 
     def collect_legacy(
         adb: str,
@@ -235,18 +234,7 @@ def _install_collectors() -> None:
         result = original_legacy(adb, packages, cancel_event, max_workers)
         return _enrich_metadata(result, packages, _installer_map_snapshot())
 
-    def collect_v9(
-        adb: str,
-        packages: list[str],
-        cancel_event=None,
-        max_workers: int = 6,
-    ) -> dict[str, dict[str, str]]:
-        _clear_installer_map()
-        result = original_v9(adb, packages, cancel_event, max_workers)
-        return _enrich_metadata(result, packages, _installer_map_snapshot())
-
     device_metadata.collect_device_metadata = collect_legacy
-    device_insights.collect_device_metadata_v9 = collect_v9
 
 
 def _copy_structured_installer_fields(

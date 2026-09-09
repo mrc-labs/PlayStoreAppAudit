@@ -9,7 +9,6 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.result_json as result_json
-import playstore_app_audit.services.sdk_maintenance as sdk_maintenance
 import playstore_app_audit.ui.json_export as json_export
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -41,7 +40,7 @@ def test_versioned_json_preserves_structured_v17_row_data() -> None:
     )
 
     assert document["format"] == "play-store-app-audit/results"
-    assert document["schema_version"] == 1
+    assert document["schema_version"] == 2
     assert document["app_version"] == "1.7-test"
     assert document["generated_at_utc"] == "2026-08-22T10:30:00Z"
     assert document["scope"] == "visible"
@@ -94,22 +93,16 @@ class _WindowStub:
     current_rows = [{"store_language": "it", "package_name": "com.example.app"}]
 
 
-def test_export_context_contains_filters_but_not_source_file_paths() -> None:
-    sdk_maintenance.set_active_sdk_filter(
-        sdk_maintenance.SdkMaintenanceFilter(target_sdk_max=32, min_sdk_max=23)
-    )
-    try:
-        context = json_export.build_window_export_context(_WindowStub())
-    finally:
-        sdk_maintenance.set_active_sdk_filter(None)
+def test_export_context_neutralizes_retired_sdk_filter_without_changing_shape() -> None:
+    context = json_export.build_window_export_context(_WindowStub())
 
     assert context["source_mode"] == "device"
     assert context["store_country"] == "ch"
     assert context["store_language"] == "it"
     assert context["filters"]["preset"] == "Alternative stores"
     assert context["filters"]["sdk"] == {
-        "target_sdk_max": 32,
-        "min_sdk_max": 23,
+        "target_sdk_max": None,
+        "min_sdk_max": None,
         "compatibility": "",
     }
     assert "path" not in json.dumps(context).casefold()
@@ -123,12 +116,12 @@ def app() -> QApplication:
     return instance
 
 
-def test_final_file_export_menu_exposes_versioned_json_actions(app: QApplication) -> None:
+def test_final_audit_export_menu_exposes_json_actions(app: QApplication) -> None:
     window = MainWindow()
     try:
-        actions = [action.text() for action in window.file_export_results_menu.actions()]
-        assert "Export All Results as Versioned JSON…" in actions
-        assert "Export Visible Results as Versioned JSON…" in actions
+        actions = [action.text() for action in window.audit_export_results_menu.actions()]
+        assert "All JSON" in actions
+        assert "Visible JSON" in actions
     finally:
         window.close()
         app.processEvents()
