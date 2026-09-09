@@ -2,13 +2,17 @@
 
 Last updated: 2026-09-09
 
-Status: **v1.9.0 is published and immutable. v1.99 remains version 1.99.0. RC5 remains the accepted rollback/reference candidate. RC7 passed D1, D2A and D2B1 but failed final packaged acceptance because HTML omitted Device Inventory Change while CSV and JSON preserved it. The narrow HTML export correction passes 718 tests on each required Python and is READY FOR RC8 BUILD. RC7 must not be reused. No package build, packaged acceptance or remote activity occurred in the fix session.**
+Status: **v1.9.0 is published and immutable. v1.99 remains version 1.99.0. RC8 was built from accepted source `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance. The accepted source was merged through PR `#123`; its merge commit `53c85dd46f96243c7e53d348775b76c564c87d5f` passed both PR and post-merge Quality. The final official build, annotated `v1.99.0` tag and private GitHub Release have not yet been created. The repository remains private.**
 
 ## Start here
 
 Read this file with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and the generated `REPOSITORY_SNAPSHOT.md` in a current handoff package.
 
-During the current LOCAL-ONLY freeze, use branch `prototype/v1.99-native-actions` and verify the local commit subject `fix: include device changes in html export`, whose exact parent is `6a0c96b7d355278813038207502be39cad350b49`. Inspect local status/history/references only; do not fetch, pull, push, create PRs or mutate GitHub. The next separately authorized package will be RC8. Read [RC7_HTML_EXPORT_FIX_VALIDATION.md](RC7_HTML_EXPORT_FIX_VALIDATION.md) for the export-parity root cause, seven new regressions and dual-Python source gate. Preserve all `artifact/rc7-evidence/` records and the failed RC7 package unchanged. [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md) and [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) remain historical source checkpoints superseded for candidate readiness by this correction.
+RC8 full packaged acceptance is complete and must not be repeated. Its accepted source was `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`; PR `#123` merged that source to `main` at `53c85dd46f96243c7e53d348775b76c564c87d5f`. PR Quality run `34375139356` and post-merge Quality run `34375388948` passed on Python 3.13 and 3.14. This SHA is the pre-release-metadata baseline; the merge commit produced by the release-metadata PR supersedes it as the exact v1.99.0 release source after its required Quality gate passes.
+
+The next separately authorized phase is the final official Windows x64 build and engineering assembly from that new exact `main` SHA, followed by artifact validation, the annotated `v1.99.0` tag and a GitHub Release that remains accessible only through the private repository. Do not reuse the RC8 ZIP as the official final artifact. The unresolved historical GitHub Support privacy issue remains open; do not change repository visibility or rerun the historical privacy audit. Preserve all RC and privacy evidence without committing or publishing it.
+
+Read [RC7_HTML_EXPORT_FIX_VALIDATION.md](RC7_HTML_EXPORT_FIX_VALIDATION.md) for the export-parity root cause and regression coverage. [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md) and [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) remain historical source checkpoints.
 
 When a later session explicitly resumes the canonical remote workflow, before changing anything:
 
@@ -57,7 +61,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 
 ## Current technical baseline
 
-- Current source application version is frozen at `1.99.0` for release-candidate preparation.
+- Current source application version is frozen at `1.99.0` for final release preparation.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials==6.11.1`; `cryptography==50.0.1`; `Nuitka==4.1.3`.
 - UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.
@@ -254,20 +258,9 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 ## Mandatory v1.99 user-tested RC
 
-v1.99 authorizes the required packaged acceptance cycle before public release. RC4 built and packaged successfully but failed acceptance only on default column density. Corrective RC5 subsequently passed automated and user acceptance and is the accepted rollback/reference candidate. The later ScanSession source changes invalidate it as a final candidate. RC6 failed D2A on RC6-D2A-001. Corrective RC7 passed D1, D2A and D2B1, then failed final packaged acceptance because HTML omitted Device Inventory Change while CSV and JSON preserved it. RC7 must not be reused; the corrected source requires a new RC8 package and separately authorized acceptance:
+The mandatory packaged acceptance cycle is complete. RC4 failed on default column density, RC5 became the accepted rollback/reference candidate, RC6 failed its focused device-inventory acceptance check, and RC7 failed final packaged acceptance because HTML omitted Device Inventory Change while CSV and JSON preserved it. RC8 incorporated the narrow HTML parity correction, was built from `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance.
 
-1. reach feature-complete candidate state;
-2. freeze an RC candidate;
-3. build a real Windows x64 packaged RC;
-4. provide it for thorough user acceptance testing;
-5. collect real-use corrections and merge focused corrective PRs if required;
-6. if source changes, the RC SHA/artifact is not final;
-7. freeze a new final exact `main` SHA only after acceptance;
-8. run final Quality;
-9. build the canonical final Windows x64 package;
-10. assemble and publish normally.
-
-Never create a public RC tag or publish an earlier candidate after source changes.
+The accepted RC8 source was merged through PR `#123`. Its PR Quality run `34375139356` and post-merge Quality run `34375388948` passed, producing merge commit `53c85dd46f96243c7e53d348775b76c564c87d5f`. Application acceptance must not be repeated. After the documentation-only release-metadata PR is merged and its Quality gate passes, record its new exact `main` SHA as the canonical v1.99.0 release source, build and assemble the official Windows x64 ETB from that exact SHA, validate the final artifacts, then tag and publish privately. The RC8 ZIP remains acceptance evidence and must not be reused or uploaded as the official final package.
 
 ## v2.0 roadmap
 
@@ -315,5 +308,6 @@ Later 2.x candidates, not mandatory v2.0 scope: metadata-template mass rename, d
 - Never squash/rewrite published project history.
 - Before pulls, require a clean tree; never auto-stash/reset/discard user work.
 - Complete releases through `RELEASE_CLOSURE.md`.
+- Keep the repository private. The unresolved historical GitHub Support privacy issue remains open, and private v1.99.0 publication is authorized only while visibility remains private.
 - `scripts/export_chat_handoff.ps1` numerically selects `HANDOFF_V1.99.md` over `HANDOFF_V1.9.md`; no script change is required.
 - Generate the next handoff ZIP only after the closure PR is reviewed and merged, local VS Code `main` is safely synchronized to canonical remote `main`, and the tree is clean.
