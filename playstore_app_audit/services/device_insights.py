@@ -978,6 +978,7 @@ def write_html_report(
         compatibility = presentation.semantic_html_value(
             "compatibility_status", row.get("compatibility_status")
         )
+        device_change = html.escape(str(row.get("device_change") or ""))
         health_score = str(row.get("health_score") or "").strip()
         health_score_html = html.escape(health_score)
         if health_score:
@@ -998,6 +999,7 @@ def write_html_report(
             f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
             f"<td>{version_comparison}</td>"
             f"<td>{compatibility}</td>"
+            f"<td>{device_change}</td>"
             f"<td>{health_score_html}</td>"
             f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
             "</tr>"
@@ -1040,7 +1042,7 @@ def write_html_report(
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
 .score-breakdown {{ margin-top: 0.3rem; font-size: 0.82em; line-height: 1.35; }}
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
+</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 

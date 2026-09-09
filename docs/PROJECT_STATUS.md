@@ -1,24 +1,28 @@
 # Project Status
 
-Last updated: 2026-09-08
+Last updated: 2026-09-09
 
 ## Current local v1.99 candidate correction
 
-RC6 failed D2A due to **RC6-D2A-001**: the Device changes header displayed the
-preceding audit's count while Details showed the current inventory comparison.
-The source fix refreshes the header in the existing post-promotion synchronization
-and discards stale aggregates on full Run/result replacement. The inventory
-algorithm, successful-only T1 promotion and ADB paths are unchanged.
+RC7 passed D1, D2A and D2B1 but **failed final packaged acceptance** because HTML
+export omitted Device Inventory Change while CSV and JSON preserved the same
+`device_change` result field. The HTML writer's hard-coded table had no matching
+header or row cell. RC7 must not be reused; its package and evidence remain preserved.
 
-**READY FOR RC7 BUILD**: 121 focused tests and 711 full tests on each of Python
-3.13.15 x64 and 3.14.6 x64 pass, including visible Qt N/N+1 regression coverage.
-See [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md). Version remains
-1.99.0 on local-only `prototype/v1.99-native-actions`; commit subject
-`fix: synchronize device change count`, parent
-`572be8edf4689cacbe23084d7602e0b71e7ed8df`. RC6 must not be reused and its evidence
-is preserved. Packaging RC7 belongs to the next session; no build, D2A continuation,
-D2B or remote operation occurred during this fix. Phase C/RC6 build-readiness
-statements below describe the earlier source checkpoint, not current acceptance.
+The narrow source correction adds the existing **Device Inventory Change** label
+and an HTML-escaped value read directly from `device_change`. CSV fields, JSON schema
+v2, inventory comparison semantics, ScanSession, ADB, Maintenance Score and provider
+behavior are unchanged. Seven focused regression cases cover Same, Installer changed,
+Version changed, New on device, empty values, escaping and multi-row cross-export
+parity. The full source gate passes **718 tests** on each of Python 3.13.15 x64 and
+3.14.6 x64, plus compileall/helper compilation, repository-wide Ruff, `pip check`,
+PowerShell syntax, `git diff --check` and canonical Qt offscreen smoke.
+
+**READY FOR RC8 BUILD** on local-only `prototype/v1.99-native-actions`, version
+1.99.0, with authorized commit subject `fix: include device changes in html export`
+and parent `6a0c96b7d355278813038207502be39cad350b49`. See
+[RC7 HTML export fix validation](RC7_HTML_EXPORT_FIX_VALIDATION.md). No Nuitka,
+package build, packaged acceptance or remote operation occurred in this fix session.
 
 ## Published release
 
@@ -78,7 +82,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC4 built and packaged successfully, but acceptance rejected its overly wide defaults for short-value columns. RC5 then built from the narrow density correction, passed automated acceptance and passed user acceptance; it is the accepted rollback/reference candidate. v1.99 was explicitly reopened locally for the tightly scoped Scan Phone lifecycle work described below. Phases A/B are accepted; Phase C implementation, source validation and current-device benchmarks pass. The local `feat: add optional full scan enrichment` checkpoint is the RC6 source candidate. Version remains `1.99.0`; no RC6 package has been created and remote activity remains frozen.
+- RC4 failed acceptance on short-column density; RC5 remains the accepted rollback/reference candidate. Later ScanSession work required RC6, which failed D2A on RC6-D2A-001. Its correction produced RC7; RC7 passed D1/D2A/D2B1 but failed final packaged acceptance because HTML omitted Device Inventory Change. The narrow export-parity correction is the RC8 source candidate. Version remains `1.99.0`; RC8 has not been built and remote activity remains frozen.
 - Latest published release: immutable v1.9.0.
 - Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
 - v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
