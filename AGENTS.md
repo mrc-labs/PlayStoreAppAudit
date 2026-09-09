@@ -151,7 +151,7 @@ The v1.6.0 release profile is frozen as an unsigned Windows x64 ETB. Product sco
 
 ### v1.7-v1.99 Windows x64 Engineering Test Build (ETB) profile
 
-v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ETBs. v1.99 deliberately continues the same Windows x64-only distribution profile unless a later explicit release decision changes it.
+v1.7.0, v1.8.0, v1.9.0 and v1.99.0 are published and immutable as unsigned Windows x64 ETBs.
 
 - Build Windows x64 only from one exact frozen `main` SHA after the required Quality gates pass.
 - Use `.github/workflows/build-windows-exe.yml` with `target=x64`.
@@ -162,11 +162,12 @@ v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ET
 - v1.7.0 is frozen at `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. Do not rebuild, retag or replace it.
 - v1.8.0 is frozen at `ac328f0dffddb6b70fa7600f1291377376bc05d4`. Do not rebuild, retag or replace it.
 - v1.9.0 is frozen at `6c117009525f40434e9db714dadf1dd01b79f9ab`. Do not rebuild, retag or replace it.
-- v1.99 requires one additional real packaged Windows x64 acceptance candidate before the final release freeze. If source changes after that user-tested candidate, it is not the final release artifact: freeze a new exact `main` SHA, rerun Quality, and build/assemble the canonical final package from the new SHA.
+- v1.99.0 is frozen at `1065744488e548663e3ba365566a9932837f5fb5`. Do not rebuild, retag or replace it.
+- v1.99's additional real packaged Windows x64 acceptance requirement was satisfied by RC8; its accepted package remains historical evidence and is not the immutable final release artifact.
 
 ### v1.99 product guardrails
 
-v1.99 is feature complete and is likely the final Windows x64-only release before v2.0. Keep stabilization and release-candidate work within the frozen product scope.
+v1.99 is feature complete, published and immutable as the final planned Windows x64-only release before v2.0. Preserve its shipped product scope while later development moves to v2.0 planning.
 
 - Preserve the implemented cooperative Stop/Cancel lifecycle across the real audit pipeline. Never use `QThread.terminate()` or another unsafe forced-termination mechanism. Preserve completed valid results and independent cache entries, mark the audit cancelled/incomplete, do not promote it to the completed history baseline, and return to a reusable idle state.
 - Preserve the accepted C2 operations header: Run/Pause/Resume, Stop, the canonical always-present progress widget, Export Results and Clear Results in that order. The second header row keeps status chips, Hide System Apps, search and the single Details selector. Details continues to reuse the same Auto/Right/Below/Hidden state and View-menu synchronization; do not duplicate state or move operational status text out of the native status bar.

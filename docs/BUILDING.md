@@ -113,7 +113,7 @@ The exact v1.6 release SHA is the `main` merge commit produced by the profile/ve
 
 ### v1.7-v1.99 Windows x64 Engineering Test Builds (ETB)
 
-v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ETBs. v1.99 deliberately reuses the same exact-SHA x64-only release profile unless a later explicit release decision changes it.
+v1.7.0, v1.8.0, v1.9.0 and v1.99.0 are published and immutable as unsigned Windows x64 ETBs.
 
 - Build with `.github/workflows/build-windows-exe.yml` using `target=x64` only.
 - Do not invoke production Windows signing or build Windows ARM64/Linux/macOS release candidates.
@@ -123,7 +123,8 @@ v1.7.0, v1.8.0 and v1.9.0 are published and immutable as unsigned Windows x64 ET
 - v1.7.0 frozen release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
 - v1.8.0 frozen release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
 - v1.9.0 frozen release SHA is `6c117009525f40434e9db714dadf1dd01b79f9ab`.
-- v1.99 requires a real packaged Windows x64 user-acceptance candidate before the separate final exact-SHA release freeze.
+- v1.99.0 frozen release SHA is `1065744488e548663e3ba365566a9932837f5fb5`.
+- v1.99's real packaged Windows x64 user-acceptance gate was satisfied by RC8 before the separate final exact-SHA release freeze.
 
 ### v2.0-or-later full production release
 
@@ -411,7 +412,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0 and v1.9.0 version metadata are part of their immutable published release profiles. Current source is now frozen at `1.99.0` for the v1.99 Windows x64 release-candidate cycle.
+v1.7.0, v1.8.0, v1.9.0 and v1.99.0 version metadata are part of their immutable published release profiles. Current source remains `1.99.0` until the next deliberately scoped development-version change.
 
 ## Packaged smoke tests
 

@@ -98,11 +98,11 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
-## Draft v1.99.0 release body
+## Published v1.99.0 release body
 
-Planned GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`.
+GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`.
 
-The body below is the canonical pre-evidence v1.99.0 draft. Its Verification section deliberately does not contain the final frozen SHA, official build/assembly run IDs, checksums, asset sizes or publication claims. Add those facts only after the release-metadata PR is merged and the exact-SHA Quality, Windows x64 build, engineering assembly and private publication checks actually succeed.
+The body below records the final v1.99.0 wording and verified release evidence [published on 2026-09-09](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0). Annotated tag object `3b4088de9295e6637ced0f5a3d4246b8c8f00680` peels to immutable source SHA `1065744488e548663e3ba365566a9932837f5fb5`; the tag, source, release body and three assets are immutable.
 
 ```markdown
 ## Play Store App Audit v1.99.0 (Engineering Test Build - Windows x64 Only)
@@ -137,13 +137,18 @@ The body below is the canonical pre-evidence v1.99.0 draft. Its Verification sec
 - Managed ADB remains read-only with respect to installed Android apps.
 
 ## Release assets
-- `PlayStoreAppAudit-v1.99.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip` - 38,344,767 bytes.
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` - 73,128,144 bytes.
+- `SHA256SUMS.txt` - 227 bytes.
 
 ## Verification
-- The exact frozen source SHA and successful Quality, Windows x64 build and engineering assembly run IDs will be recorded after those release gates pass.
-- Package architecture/version/startup, legal/source material, exact-SHA provenance, final asset-set and checksum evidence will be recorded only after validation of the official release artifacts.
+- Frozen source SHA: `1065744488e548663e3ba365566a9932837f5fb5`.
+- Post-merge Quality run `34397570534` passed on Python 3.13 and 3.14.
+- Windows x64 build run `34397819253` passed exact-SHA provenance, all 727 tests, Nuitka compilation, PE AMD64 architecture, application/Windows version checks, standalone validation, deterministic packaged smoke and public-strict legal/source validation.
+- Engineering assembler run `34401780853` verified the source workflow, repository, exact SHA, x64-only build lineage and exact three-file asset set.
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip` SHA-256: `cc556054280ef09bb693a8fd5d6e861c138ee387f96b098788b18db3e171f6c6`.
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` SHA-256: `873087f13af891bb20e6e52d97342ba507311f9e13d1f05b80823103e58b80a3`.
+- Final project-defined release asset count: 3. The annotated tag peels to the frozen SHA, all assets and `SHA256SUMS.txt` were re-downloaded and independently verified, and repository visibility remained private.
 ```
 
 ## Published v1.9.0 release body

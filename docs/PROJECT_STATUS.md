@@ -2,68 +2,49 @@
 
 Last updated: 2026-09-09
 
-## Accepted v1.99 candidate and release preparation
+## Published v1.99.0 release
 
-RC8 was built from source `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`
-and passed full packaged acceptance. It includes the narrow correction that adds
-the existing **Device Inventory Change** label and HTML-escaped result value to
-HTML reports, restoring parity with CSV and versioned JSON. Application acceptance
-is complete and must not be repeated. RC6 and RC7 remain failed historical
-candidates and must not be reused; preserve their packages and evidence.
-
-The accepted source was merged through PR `#123` with a normal merge commit. PR
-Quality run `34375139356` and post-merge Quality run `34375388948` both passed on
-Python 3.13 and 3.14. The resulting pre-release-metadata `main` SHA is
-`53c85dd46f96243c7e53d348775b76c564c87d5f`. Version remains `1.99.0`.
-
-The final official Windows x64 build, engineering assembly, annotated `v1.99.0`
-tag and private GitHub Release have not yet been performed. The documentation-only
-release-metadata merge commit supersedes the SHA above as the canonical release
-source after its required Quality gate passes. The repository remains private, and
-private release publication is authorized only while visibility remains private.
-The unresolved historical GitHub Support privacy issue remains open; do not change
-visibility or rerun the historical privacy audit.
-
-## Published release
-
-- Latest published version: `v1.9.0`
-- Published: `2026-08-25T02:51:42Z`
-- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0
-- GitHub Release ID: `376114171`
-- GitHub Release title: `Play Store App Audit v1.9.0 (Win x64 Only)`
-- Release-body heading: `Play Store App Audit v1.9.0 (Engineering Test Build - Windows x64 Only)`
-- Immutable frozen release SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`
-- Annotated tag: `v1.9.0`; tag object `e61033f0ffba3d14f598da4d928aa07390dbbfa9`; peel target is the exact frozen SHA
+- Latest published version: `v1.99.0`
+- Published: `2026-09-09T20:44:16Z`
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0
+- GitHub Release ID: `385831055`
+- GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`
+- Release-body heading: `Play Store App Audit v1.99.0 (Engineering Test Build - Windows x64 Only)`
+- Immutable frozen release SHA: `1065744488e548663e3ba365566a9932837f5fb5`
+- Annotated tag: `v1.99.0`; tag object `3b4088de9295e6637ced0f5a3d4246b8c8f00680`; peel target is the exact frozen SHA
 - Release class: Engineering Test Build (ETB), Windows x64 only
 - Package form: Nuitka standalone ZIP
-- Application version: `1.9.0`
-- Windows File/Product version: `1.9.0.0`
+- Application version: `1.99.0`; Windows File/Product version: `1.99.0.0`
 - Signing: intentionally unsigned
-- Public project-defined assets: exactly 3
+- Project-defined release assets: exactly 3
+- Repository visibility after publication and verification: `PRIVATE`
 
-Published v1.9.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets. v1.8.0 remains immutable at `ac328f0dffddb6b70fa7600f1291377376bc05d4`, and earlier published releases remain immutable as well.
+Published v1.99.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets. RC8 remains the completed user-acceptance evidence and must not be reused as a release artifact; RC6 and RC7 remain failed historical candidates.
 
-## v1.9.0 release evidence
+## v1.99.0 release evidence
 
-The candidate was quality-validated, built, assembled, smoke-tested, tagged, published, re-downloaded and independently reverified from one exact frozen `main` SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+The final package was quality-validated, built, legally inventoried, assembled, smoke-tested, tagged, published, re-downloaded and independently reverified from one exact frozen `main` SHA: `1065744488e548663e3ba365566a9932837f5fb5`.
 
-- Canonical Quality run: `32797795985`, successful on Python 3.13 and 3.14.
-- Canonical Windows x64 build run: `32798334950`, successful from the frozen SHA.
-- Canonical build artifact: ID `9546290578`, `PlayStoreAppAudit-v1.9.0-windows-x64`, 179,980,464 compressed Actions bytes.
-- Canonical engineering assembler run: `32801220807`, successful with the exact three-file ETB set from the same SHA.
-- Canonical assembler artifact: ID `9546545528`, `PlayStoreAppAudit-v1.9.0-windows-x64-engineering-release-assets`, 106,515,133 compressed Actions bytes.
-- The canonical build used Python 3.13.15 AMD64, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`; all 403 tests passed during the build.
-- Package validation confirmed PE AMD64/x64, standalone layout, application version `1.9.0`, Windows File/Product version `1.9.0.0`, intentional unsigned state, startup, required/forbidden runtime contents, legal/source material and exact-SHA provenance.
-- Managed Android Platform-Tools 37.0.1 was validated. Its `adb.exe` is PE I386 and ran successfully under Windows WOW64; ADB application behavior remains read-only.
-- Before tagging, the exact assembler-produced ZIP passed a clean-extraction deterministic packaged smoke with isolated application-data directories, and its hash remained unchanged.
-- Publication created one annotated tag and one non-draft/non-prerelease GitHub Release; tag pushes did not rebuild the package.
-- After publication, all three public assets were downloaded from the GitHub Release into a fresh directory. Exact asset count, names, byte sizes and hashes matched, `SHA256SUMS.txt` was independently parsed, and the public ZIP passed the same clean-extraction packaged smoke with isolated data directories.
+- Legal-tooling fix PR `#126` merged normally at the frozen SHA after PR Quality run `34397322972`; post-merge Quality run `34397570534` passed on Python 3.13 and 3.14.
+- Canonical Windows x64 build run `34397819253` passed from the exact SHA with Python 3.13.15 AMD64, 727 tests, `PySide6-Essentials==6.11.1`, `Nuitka==4.1.3`, PE AMD64, version checks, standalone validation, deterministic packaged smoke and `PUBLIC/STRICT` legal validation.
+- Canonical build artifact: ID `10123641304`, `PlayStoreAppAudit-v1.99.0-windows-x64`, 184,838,528 compressed Actions bytes.
+- Canonical engineering assembler run `34401780853` passed exact-SHA/build-lineage and exact three-file asset-set checks.
+- Canonical assembler artifact: ID `10123756577`, `PlayStoreAppAudit-v1.99.0-windows-x64-engineering-release-assets`, 111,364,719 compressed Actions bytes.
+- Before tagging, a clean extraction of the assembler-produced ZIP independently passed content, PE AMD64, version and deterministic packaged-smoke validation.
+- After publication, exactly three assets were downloaded into a fresh directory; names, byte sizes and SHA-256 values matched both GitHub's digests and `SHA256SUMS.txt`.
+- The annotated tag peels to the exact frozen SHA, the Release is non-draft/non-prerelease, and the repository remained private.
 
 Published project-defined assets:
 
-- `PlayStoreAppAudit-v1.9.0-windows-x64.zip`: 33,477,938 bytes; asset ID `528529615`; SHA-256 `74db811d959a06709aba4d747873ec1b19894e50ba7183f463f7929b44e19c68`
-- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz`: 73,128,144 bytes; asset ID `528529608`; SHA-256 `ccccbd72992bed8692388077fd409dc76bb8f64efce8fa2ef283b74797a4df95`
-- `SHA256SUMS.txt`: 225 bytes; asset ID `528529607`; SHA-256 `eb2b5f6d5a8fe978e54367b887c65d77994307447154435e3b3ae81c4bf2bd23`
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip`: 38,344,767 bytes; asset ID `553536304`; SHA-256 `cc556054280ef09bb693a8fd5d6e861c138ee387f96b098788b18db3e171f6c6`
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz`: 73,128,144 bytes; asset ID `553536280`; SHA-256 `873087f13af891bb20e6e52d97342ba507311f9e13d1f05b80823103e58b80a3`
+- `SHA256SUMS.txt`: 227 bytes; asset ID `553536279`; SHA-256 `656013312212a9de482c8986b70d9185a3e6452ef09c7077e08e411888da382c`
+
+### Legal inventory closure
+
+The final legal-tooling correction is evidence-driven and general. Installed `Requires-Dist` metadata now creates transitive candidates but does not by itself prove that a transitive component ships. Direct project runtime dependencies still require evidence, while transitive dependencies enter the legal inventory only when final package files or Nuitka compilation/distribution attribution prove presence. Unknown, unattributable, version-mismatched or ambiguously owned real runtime evidence remains a hard failure.
+
+The strongest local synthetic end-to-end check reproduced the Windows build environment, verified all source archives, injected and validated the legal bundle against the preserved 633-module Nuitka report and final standalone tree, and passed `PUBLIC/STRICT`. The resulting 13-distribution runtime inventory contained `cffi` through ABI-tagged `_cffi_backend` evidence; `pycparser` was the sole metadata-only candidate and was correctly excluded. No dependency-name whitelist was added.
 
 ### Preserved v1.8.0 historical reference
 
@@ -71,21 +52,17 @@ Published v1.8.0 remains unchanged: it was published on 2026-08-24 from frozen S
 
 ### Post-release Actions housekeeping
 
-Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from the frozen release SHA using the unchanged generational retention policy with a 7-day grace period.
+The post-publication review found exactly the two canonical v1.99 artifacts and no redundant eligible artifacts, so no deletion was needed.
 
-- The apply run saw 10 active artifacts and found no expired failed/cancelled runs, superseded successful runs or individual artifacts eligible for deletion.
-- Active storage remains 10 artifacts / 574,199,782 bytes (547.60 MiB).
-- Canonical v1.9 build artifact `9546290578` and assembler artifact `9546545528` remain available for audit.
-- The v1.8 build/assembler generation and two UI-style generations remain retained within the documented grace period; no manual deletion bypassed policy.
-- GitHub Release assets, tags, source commits, earlier releases, repository retention settings and the cleanup algorithm were not changed.
+- Active storage: 2 artifacts / 296,203,247 bytes (282.48 MiB).
+- Canonical build artifact `10123641304` and assembler artifact `10123756577` remain available for audit.
+- GitHub Release assets, tags, source commits, earlier releases, repository retention settings and cleanup logic were not changed.
 
 ## Current development baseline
 
 - Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
-- RC8 was built from `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance. Its source merged through PR `#123`; final official build/tag/private release work remains pending.
-- Latest published release: immutable v1.9.0.
-- Active development cycle: v1.99, likely the final Windows x64-only pre-v2.0 release.
-- v1.99 remains a controlled Windows x64 ETB cycle; it is not an open-ended feature release.
+- Latest published release: immutable v1.99.0 at release SHA `1065744488e548663e3ba365566a9932837f5fb5`.
+- v1.99 product and release work is complete; active forward planning moves to v2.0.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials`: 6.11.1; Nuitka: 4.1.3.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
@@ -94,7 +71,7 @@ Manual housekeeping run `32805211585` completed successfully on 2026-08-25 from 
 - Default/recommended concurrent Store workers: 16; Store transport timeout: 25 seconds.
 - VS Code/Pylance Standard type checking remains a local development target, not a broad typing-refactor mandate.
 
-Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v1.9 release SHA remains fixed even after post-release documentation advances `main`.
+Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v1.99.0 release SHA remains fixed even after post-release documentation advances `main`.
 
 ### Scan Phone lifecycle Phases A and B checkpoints
 
@@ -120,7 +97,7 @@ An explicit receipt certifies full package coverage, usable versionCode/target/m
 
 The final source gate passed on Python **3.13.15 x64: 699 tests**, PySide6 6.11.1, and Python **3.14.6 x64: 699 tests**, PySide6 6.11.2 (Quality permits Qt 6.11+). All 49 new Phase C tests passed. Compileall, required helper compilation, repository-wide Ruff, both `pip check` runs, PowerShell helper syntax, Qt offscreen source smoke and deterministic event-loop/fake-device full Scan > disconnect > cached Run smoke passed. The full suite retains all 650 pre-Phase-C tests. No release dependency/toolchain pin changed.
 
-**READY FOR RC6 BUILD:** five measured iterations after priming on the current Pixel 11 Pro/315-app phone give min/median/mean/max seconds: Standard `0.543 / 0.617 / 0.601 / 0.661` (5 ADB launches); Standard T2 `4.571 / 4.695 / 4.727 / 5.079` (6); Standard + T2 `5.120 / 5.238 / 5.328 / 5.740` (11); Advanced `4.634 / 4.917 / 4.847 / 5.076` (7); Advanced collector subphase `4.074 / 4.318 / 4.273 / 4.488` (2 additional). Run reuse has 2.161 ms median overhead, zero additional collector/dumpsys/ADB calls, and avoids 4.693 s of current T2 collection. Advanced dumpsys is `3.906 / 4.080 / 4.070 / 4.257` s, approximately 12.42 MB and 83.0% of total median. Paired surrounding ADB commands save approximately 0.503 s through context reuse.
+At the historical pre-RC6 source checkpoint, five measured iterations after priming on the current Pixel 11 Pro/315-app phone gave min/median/mean/max seconds: Standard `0.543 / 0.617 / 0.601 / 0.661` (5 ADB launches); Standard T2 `4.571 / 4.695 / 4.727 / 5.079` (6); Standard + T2 `5.120 / 5.238 / 5.328 / 5.740` (11); Advanced `4.634 / 4.917 / 4.847 / 5.076` (7); Advanced collector subphase `4.074 / 4.318 / 4.273 / 4.488` (2 additional). Run reuse had 2.161 ms median overhead, zero additional collector/dumpsys/ADB calls, and avoided 4.693 s of current T2 collection. Advanced dumpsys was `3.906 / 4.080 / 4.070 / 4.257` s, approximately 12.42 MB and 83.0% of total median. Paired surrounding ADB commands saved approximately 0.503 s through context reuse.
 
 The user confirmed replacing the historical Pixel 10 Pro/329-app phone with the Pixel 11 Pro and fewer apps. Current Standard is 0.070 s/10.2% below historical RC5 and Advanced is 3.722 s/43.1% below the historical 8.639 s combined reference, but those cross-device changes must not be credited entirely to software. A supplementary five-iteration comparison of exact committed Phase B vs current C on the same Pixel 11 confirms no material Standard regression: 0.634 vs 0.613 s median, five launches each. The same-device Advanced vs Standard + T2 saving is 0.321 s/6.1%; the historical Phase B compact cost remains 0.167 s/31.4% above Phase A. Detailed iterations, deltas, command accounting and attribution are in the [Phase C validation report](SCANSESSION_PHASE_C_VALIDATION.md). Instrumentation remains ignored/local under `artifact/phase-c/`. No Nuitka, RC6 package or remote operation occurred.
 
