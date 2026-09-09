@@ -25,7 +25,7 @@ def _fixture(
     report_sha = "a" * 64
 
     evidence = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": "Nuitka compilation report",
         "nuitka_version": "2.7.0",
         "source_report_sha256": report_sha,
@@ -34,11 +34,20 @@ def _fixture(
             {
                 "name": "example",
                 "kind": "CompiledPythonModule",
+                "distribution": "example-dist",
             },
             {
                 "name": "example.helper",
                 "kind": "CompiledPythonModule",
+                "distribution": "example-dist",
             },
+        ],
+        "distribution_count": 1,
+        "distributions": [
+            {
+                "name": "example-dist",
+                "version": "1.2.3",
+            }
         ],
     }
 
@@ -83,16 +92,17 @@ def test_staged_nuitka_evidence_is_accepted(
         tmp_path
     )
 
-    modules = validator._validate_nuitka_build_evidence(
+    modules, distributions = validator._validate_nuitka_build_evidence(
         release_dir,
         package_dir,
         manifest,
     )
 
     assert modules == {
-        "example",
-        "example.helper",
+        "example": "example-dist",
+        "example.helper": "example-dist",
     }
+    assert distributions == {"example-dist": "1.2.3"}
 
 
 def test_packaged_nuitka_evidence_is_rejected(
@@ -122,4 +132,22 @@ def test_packaged_nuitka_evidence_is_rejected(
             release_dir,
             package_dir,
             manifest,
+        )
+
+
+def test_compiled_distribution_missing_from_legal_inventory_fails_closed(
+    tmp_path: Path,
+) -> None:
+    package_dir = tmp_path / "package"
+    package_dir.mkdir()
+
+    with pytest.raises(
+        validator.ValidationError,
+        match="absent from legal inventory",
+    ):
+        validator._validate_dependency_evidence(
+            package_dir,
+            {"runtime_dependencies": []},
+            {"example": "example-dist"},
+            {"example-dist": "1.2.3"},
         )

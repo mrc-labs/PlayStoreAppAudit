@@ -84,6 +84,10 @@ LEGAL_ROOT_FILES = {
 LEGAL_ROOT_DIRS = {"licenses"}
 LICENSE_FILE_RE = re.compile(r"^(?:licen[cs]e|copying|notice|authors?)(?:[._-].*)?$", re.IGNORECASE)
 REQUIREMENT_NAME_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+EXTENSION_ABI_TAG_RE = re.compile(
+    r"\.(?:(?:cpython|cp|pypy)\d+[a-z]*|abi3)(?:[-_].*)?$",
+    re.IGNORECASE,
+)
 SHA256_HEX_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 SHA256_PAGE_RE = re.compile(
     r"\bSHA\s*[-_ ]?\s*256(?:\s+Hash)?\b.{0,1024}?\b([0-9a-fA-F]{64})\b",
@@ -101,6 +105,14 @@ class SourceAssetSpec:
     url: str
     sha256: str
     provenance_url: str
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeDependencyEvidence:
+    distribution: metadata.Distribution
+    top_level_names: tuple[str, ...]
+    runtime_evidence: tuple[str, ...]
+    nuitka_compiled_modules: tuple[str, ...]
 
 
 def _sha256(path: Path) -> str:
@@ -506,22 +518,14 @@ def _normalize_dist_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
-def _runtime_dependency_closure(
+def _declared_dependency_candidates(
     repo_root: Path,
-    _package_files: Iterable[str],
-) -> list[metadata.Distribution]:
-    """Return the installed dependency closure declared by the project.
-
-    Runtime inclusion is validated separately because Nuitka may compile
-    pure-Python distributions into the executable without leaving package
-    files in the standalone directory.
-    """
-
+) -> tuple[dict[str, metadata.Distribution], set[str]]:
     direct_names = _project_dependency_names(repo_root)
     direct_keys = {_normalize_dist_name(name) for name in direct_names}
     queue = deque(direct_names)
     seen: set[str] = set()
-    result: list[metadata.Distribution] = []
+    result: dict[str, metadata.Distribution] = {}
 
     while queue:
         requested = queue.popleft()
@@ -541,7 +545,7 @@ def _runtime_dependency_closure(
                 ) from exc
             continue
 
-        result.append(dist)
+        result[key] = dist
 
         for requirement in dist.requires or []:
             if "extra ==" in requirement.lower() or "extra==" in requirement.lower():
@@ -552,9 +556,162 @@ def _runtime_dependency_closure(
             if match:
                 queue.append(match.group(1))
 
+    return result, direct_keys
+
+
+def _module_matches_top_level(
+    module_name: str,
+    top_level_names: Iterable[str],
+) -> bool:
+    return any(
+        module_name == top_level
+        or module_name.startswith(top_level + ".")
+        for top_level in top_level_names
+    )
+
+
+def _runtime_dependency_closure(
+    repo_root: Path,
+    package_files: Iterable[str],
+    report_modules: Iterable[dict[str, str]],
+    report_distributions: dict[str, tuple[str, str]],
+) -> list[RuntimeDependencyEvidence]:
+    """Return only declared runtime dependencies supported by build evidence.
+
+    Installed ``Requires-Dist`` metadata defines the candidate graph, not the
+    shipped inventory. Direct project dependencies must have runtime evidence.
+    Transitive candidates are retained only when a standalone file or Nuitka
+    module proves their presence in the built runtime.
+    """
+
+    candidates, direct_keys = _declared_dependency_candidates(repo_root)
+    top_levels = {
+        key: tuple(_distribution_top_level_names(dist))
+        for key, dist in candidates.items()
+    }
+    file_evidence: dict[str, set[str]] = {
+        key: set() for key in candidates
+    }
+    compiled_evidence: dict[str, set[str]] = {
+        key: set() for key in candidates
+    }
+
+    for key, (name, version) in report_distributions.items():
+        if key not in candidates:
+            raise RuntimeError(
+                f"Nuitka report identifies undeclared runtime distribution "
+                f"{name} {version}"
+            )
+        installed = candidates[key]
+        if installed.version != version:
+            raise RuntimeError(
+                f"Nuitka report/installed distribution version mismatch for "
+                f"{name}: report={version}, installed={installed.version}"
+            )
+
+    for rel in package_files:
+        owners = [
+            key
+            for key, names in top_levels.items()
+            if _runtime_evidence([rel], names)
+        ]
+
+        if len(owners) > 1:
+            names = ", ".join(sorted(owners))
+            raise RuntimeError(
+                f"Ambiguous packaged runtime evidence {rel}: matches {names}"
+            )
+
+        if owners:
+            file_evidence[owners[0]].add(rel)
+
+    for item in report_modules:
+        module_name = item.get("name", "").strip()
+        if not module_name:
+            raise RuntimeError(
+                "Nuitka runtime evidence contains an unnamed module"
+            )
+
+        declared_distribution = item.get("distribution", "")
+        if not isinstance(declared_distribution, str):
+            raise RuntimeError(
+                f"Nuitka module {module_name} has invalid distribution evidence"
+            )
+        declared_distribution = declared_distribution.strip()
+
+        if declared_distribution:
+            owner = _normalize_dist_name(declared_distribution)
+            if owner not in candidates:
+                raise RuntimeError(
+                    f"Nuitka module {module_name} identifies undeclared runtime "
+                    f"distribution {declared_distribution}"
+                )
+            if owner not in report_distributions:
+                raise RuntimeError(
+                    f"Nuitka module {module_name} identifies distribution "
+                    f"{declared_distribution}, but the report distribution "
+                    f"inventory omits it"
+                )
+            if not _module_matches_top_level(
+                module_name,
+                top_levels[owner],
+            ):
+                raise RuntimeError(
+                    f"Nuitka module {module_name} does not match installed "
+                    f"distribution {declared_distribution}"
+                )
+            compiled_evidence[owner].add(module_name)
+            continue
+
+        owners = [
+            key
+            for key, names in top_levels.items()
+            if _module_matches_top_level(module_name, names)
+        ]
+        if len(owners) > 1:
+            names = ", ".join(sorted(owners))
+            raise RuntimeError(
+                f"Ambiguous Nuitka runtime evidence {module_name}: matches {names}"
+            )
+        if owners:
+            compiled_evidence[owners[0]].add(module_name)
+
+    result: list[RuntimeDependencyEvidence] = []
+    for key, dist in candidates.items():
+        files = tuple(sorted(file_evidence[key], key=str.casefold))
+        modules = tuple(
+            sorted(compiled_evidence[key], key=str.casefold)
+        )
+
+        if not files and not modules:
+            if key in report_distributions:
+                name, version = report_distributions[key]
+                raise RuntimeError(
+                    f"Nuitka report inventories runtime distribution "
+                    f"{name} {version}, but no module or packaged-file "
+                    f"evidence can be attributed to it"
+                )
+            if key in direct_keys:
+                raise RuntimeError(
+                    f"No file-backed or Nuitka-compiled runtime evidence found for "
+                    f"direct dependency {dist.metadata['Name']} {dist.version}"
+                )
+            continue
+
+        result.append(
+            RuntimeDependencyEvidence(
+                distribution=dist,
+                top_level_names=top_levels[key],
+                runtime_evidence=files,
+                nuitka_compiled_modules=modules,
+            )
+        )
+
     return sorted(
         result,
-        key=lambda dist: _normalize_dist_name(dist.metadata["Name"]),
+        key=lambda item: _normalize_dist_name(
+            item.distribution.metadata["Name"]
+        ),
     )
 
 
@@ -585,6 +742,7 @@ def _distribution_top_level_names(dist: metadata.Distribution) -> list[str]:
             if first.endswith(suffix):
                 first = first[: -len(suffix)]
                 break
+        first = EXTENSION_ABI_TAG_RE.sub("", first)
         if first and first != "__pycache__":
             top_level.add(first)
     return sorted(top_level, key=str.casefold)
@@ -1153,7 +1311,11 @@ def _xml_local_name(tag: str) -> str:
 
 def _load_nuitka_compilation_report(
     report_path: Path,
-) -> tuple[str, list[dict[str, str]]]:
+) -> tuple[
+    str,
+    list[dict[str, str]],
+    dict[str, tuple[str, str]],
+]:
     try:
         root = ET.parse(report_path).getroot()
     except (OSError, ET.ParseError) as exc:
@@ -1171,8 +1333,29 @@ def _load_nuitka_compilation_report(
         raise RuntimeError("Nuitka compilation report has no nuitka_version")
 
     modules_by_name: dict[str, dict[str, str]] = {}
+    distributions: dict[str, tuple[str, str]] = {}
 
     for element in root.iter():
+        if _xml_local_name(element.tag) == "distribution":
+            name = element.attrib.get("name", "").strip()
+            version = element.attrib.get("version", "").strip()
+            if not name or not version:
+                raise RuntimeError(
+                    "Nuitka report contains an incomplete distribution record"
+                )
+            key = _normalize_dist_name(name)
+            existing_distribution = distributions.get(key)
+            if (
+                existing_distribution is not None
+                and existing_distribution != (name, version)
+            ):
+                raise RuntimeError(
+                    f"Nuitka report contains conflicting distribution "
+                    f"records for {name}"
+                )
+            distributions[key] = (name, version)
+            continue
+
         if _xml_local_name(element.tag) != "module":
             continue
 
@@ -1181,9 +1364,13 @@ def _load_nuitka_compilation_report(
             continue
 
         kind = element.attrib.get("kind", "").strip()
+        distribution = element.attrib.get("distribution", "").strip()
 
         existing = modules_by_name.get(name)
-        if existing is not None and existing.get("kind") != kind:
+        if existing is not None and (
+            existing.get("kind") != kind
+            or existing.get("distribution", "") != distribution
+        ):
             raise RuntimeError(
                 f"Nuitka report contains conflicting module entries for {name}"
             )
@@ -1191,6 +1378,7 @@ def _load_nuitka_compilation_report(
         modules_by_name[name] = {
             "name": name,
             "kind": kind,
+            "distribution": distribution,
         }
 
     modules = [
@@ -1203,27 +1391,12 @@ def _load_nuitka_compilation_report(
             "Nuitka compilation report contains no compiled/included module records"
         )
 
-    return nuitka_version, modules
+    if not distributions:
+        raise RuntimeError(
+            "Nuitka compilation report contains no distribution inventory"
+        )
 
-
-def _compiled_module_evidence(
-    report_modules: list[dict[str, str]],
-    top_level_names: list[str],
-) -> list[str]:
-    result: set[str] = set()
-
-    for item in report_modules:
-        module_name = item["name"]
-
-        for top_level in top_level_names:
-            if (
-                module_name == top_level
-                or module_name.startswith(top_level + ".")
-            ):
-                result.add(module_name)
-                break
-
-    return sorted(result, key=str.casefold)
+    return nuitka_version, modules, distributions
 
 
 def _write_nuitka_build_evidence(
@@ -1231,6 +1404,7 @@ def _write_nuitka_build_evidence(
     report_path: Path,
     nuitka_version: str,
     report_modules: list[dict[str, str]],
+    report_distributions: dict[str, tuple[str, str]],
 ) -> tuple[str, str]:
     destination = (
         release_dir
@@ -1240,12 +1414,20 @@ def _write_nuitka_build_evidence(
     destination.parent.mkdir(parents=True, exist_ok=True)
 
     evidence = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": "Nuitka compilation report",
         "nuitka_version": nuitka_version,
         "source_report_sha256": _sha256(report_path),
         "module_count": len(report_modules),
         "modules": report_modules,
+        "distribution_count": len(report_distributions),
+        "distributions": [
+            {"name": name, "version": version}
+            for name, version in sorted(
+                report_distributions.values(),
+                key=lambda item: item[0].casefold(),
+            )
+        ],
     }
 
     destination.write_text(
@@ -1740,9 +1922,11 @@ def main() -> int:
             f"Nuitka compilation report does not exist: {nuitka_report}"
         )
 
-    report_nuitka_version, report_modules = (
-        _load_nuitka_compilation_report(nuitka_report)
-    )
+    (
+        report_nuitka_version,
+        report_modules,
+        report_distributions,
+    ) = _load_nuitka_compilation_report(nuitka_report)
 
     if not package_dir.is_dir():
         raise RuntimeError(f"Package directory does not exist: {package_dir}")
@@ -1874,7 +2058,13 @@ def main() -> int:
     )
 
     dependencies: list[dict[str, Any]] = []
-    for dist in _runtime_dependency_closure(repo_root, runtime_paths):
+    for dependency in _runtime_dependency_closure(
+        repo_root,
+        runtime_paths,
+        report_modules,
+        report_distributions,
+    ):
+        dist = dependency.distribution
         copied_files, metadata_files = _copy_distribution_legal_files(
             dist,
             licenses_root,
@@ -1913,18 +2103,11 @@ def main() -> int:
                 f"{dist.metadata['Name']} {dist.version}"
             )
 
-        top_level = _distribution_top_level_names(dist)
-        evidence = _runtime_evidence(runtime_paths, top_level)
-        compiled_evidence = _compiled_module_evidence(
-            report_modules,
-            top_level,
+        top_level = list(dependency.top_level_names)
+        evidence = list(dependency.runtime_evidence)
+        compiled_evidence = list(
+            dependency.nuitka_compiled_modules
         )
-
-        if not evidence and not compiled_evidence:
-            raise RuntimeError(
-                f"No file-backed or Nuitka-compiled runtime evidence found for "
-                f"dependency {dist.metadata['Name']} {dist.version}"
-            )
         dependencies.append(
             {
                 "name": dist.metadata["Name"],
@@ -1959,6 +2142,7 @@ def main() -> int:
             nuitka_report,
             report_nuitka_version,
             report_modules,
+            report_distributions,
         )
     )
 

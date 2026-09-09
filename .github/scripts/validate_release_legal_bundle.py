@@ -677,7 +677,7 @@ def _validate_nuitka_build_evidence(
     release_dir: Path,
     package_dir: Path,
     manifest: dict[str, Any],
-) -> set[str]:
+) -> tuple[dict[str, str], dict[str, str]]:
     nuitka = manifest.get("toolchain", {}).get("nuitka")
     _require(isinstance(nuitka, dict), "Manifest Nuitka metadata is missing")
 
@@ -740,7 +740,7 @@ def _validate_nuitka_build_evidence(
     _validate_portable_manifest(evidence)
 
     _require(
-        evidence.get("schema_version") == 1,
+        evidence.get("schema_version") == 2,
         "Unsupported Nuitka build-evidence schema",
     )
     _require(
@@ -767,7 +767,7 @@ def _validate_nuitka_build_evidence(
         "Nuitka build-evidence module_count mismatch",
     )
 
-    module_names: set[str] = set()
+    module_distributions: dict[str, str] = {}
 
     for item in modules:
         _require(
@@ -777,6 +777,7 @@ def _validate_nuitka_build_evidence(
 
         name = item.get("name")
         kind = item.get("kind")
+        distribution = item.get("distribution", "")
 
         _require(
             isinstance(name, str) and name,
@@ -787,25 +788,80 @@ def _validate_nuitka_build_evidence(
             f"Nuitka build evidence contains invalid kind for {name}",
         )
         _require(
+            isinstance(distribution, str),
+            f"Nuitka build evidence contains invalid distribution for {name}",
+        )
+        _require(
+            "\\" not in distribution
+            and "/" not in distribution
+            and ":" not in distribution,
+            f"Nuitka build evidence contains path-like distribution for {name}",
+        )
+        _require(
             "\\" not in name
             and "/" not in name
             and ":" not in name,
             f"Nuitka build evidence contains path-like module name: {name}",
         )
         _require(
-            name not in module_names,
+            name not in module_distributions,
             f"Duplicate Nuitka build-evidence module: {name}",
         )
 
-        module_names.add(name)
+        module_distributions[name] = (
+            _normalize_dist_name(distribution)
+            if distribution
+            else ""
+        )
 
-    return module_names
+    distributions = evidence.get("distributions")
+    _require(
+        isinstance(distributions, list) and distributions,
+        "Nuitka build evidence contains no distributions",
+    )
+    _require(
+        evidence.get("distribution_count") == len(distributions),
+        "Nuitka build-evidence distribution_count mismatch",
+    )
+
+    distribution_versions: dict[str, str] = {}
+    for item in distributions:
+        _require(
+            isinstance(item, dict),
+            "Nuitka build evidence contains a non-object distribution",
+        )
+        name = item.get("name")
+        version = item.get("version")
+        _require(
+            isinstance(name, str) and name,
+            "Nuitka build evidence contains an invalid distribution name",
+        )
+        _require(
+            isinstance(version, str) and version,
+            f"Nuitka build evidence contains an invalid version for {name}",
+        )
+        normalized = _normalize_dist_name(name)
+        _require(
+            normalized not in distribution_versions,
+            f"Duplicate Nuitka build-evidence distribution: {name}",
+        )
+        distribution_versions[normalized] = version
+
+    for module_name, distribution in module_distributions.items():
+        _require(
+            not distribution or distribution in distribution_versions,
+            f"Nuitka module {module_name} references a distribution absent "
+            f"from build evidence: {distribution}",
+        )
+
+    return module_distributions, distribution_versions
 
 
 def _validate_dependency_evidence(
     package_dir: Path,
     manifest: dict[str, Any],
-    compiled_modules: set[str],
+    compiled_modules: dict[str, str],
+    compiled_distributions: dict[str, str],
 ) -> None:
     existing = {
         path.relative_to(package_dir).as_posix()
@@ -813,8 +869,13 @@ def _validate_dependency_evidence(
         if path.is_file()
     }
 
+    manifest_distributions: dict[str, str] = {}
+
     for item in manifest["runtime_dependencies"]:
         name = item.get("name")
+        version = item.get("version")
+        if isinstance(name, str) and isinstance(version, str):
+            manifest_distributions[_normalize_dist_name(name)] = version
 
         file_evidence = item.get("runtime_evidence")
         compiled_evidence = item.get("nuitka_compiled_modules")
@@ -851,6 +912,14 @@ def _validate_dependency_evidence(
                 f"from sanitized build evidence: {module_name}",
             )
 
+            declared_distribution = compiled_modules[module_name]
+            _require(
+                not declared_distribution
+                or declared_distribution == _normalize_dist_name(str(name)),
+                f"Nuitka module {module_name} is attributed to "
+                f"{declared_distribution}, not dependency {name}",
+            )
+
             _require(
                 any(
                     module_name == top
@@ -866,6 +935,16 @@ def _validate_dependency_evidence(
                 _runtime_legal_path(package_dir, rel).is_file(),
                 f"Dependency license file missing: {rel}",
             )
+
+    for name, version in compiled_distributions.items():
+        _require(
+            name in manifest_distributions,
+            f"Nuitka runtime distribution is absent from legal inventory: {name}",
+        )
+        _require(
+            manifest_distributions[name] == version,
+            f"Nuitka/legal inventory version mismatch for {name}",
+        )
 
 
 def _validate_openssl(package_dir: Path, manifest: dict[str, Any]) -> None:
@@ -1132,7 +1211,7 @@ def main() -> int:
     _validate_forbidden_runtime(package_dir, manifest)
     _validate_qt_license_mapping(package_dir, manifest)
     _validate_qt_attributions(package_dir, manifest)
-    compiled_modules = _validate_nuitka_build_evidence(
+    compiled_modules, compiled_distributions = _validate_nuitka_build_evidence(
         release_dir,
         package_dir,
         manifest,
@@ -1141,6 +1220,7 @@ def main() -> int:
         package_dir,
         manifest,
         compiled_modules,
+        compiled_distributions,
     )
     _validate_openssl(package_dir, manifest)
     _validate_source_assets(release_dir, package_dir, manifest, args.public)
