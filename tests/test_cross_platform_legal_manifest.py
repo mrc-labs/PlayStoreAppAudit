@@ -16,6 +16,46 @@ def test_credential_crypto_dependency_closure_has_legal_material() -> None:
         assert legal._distribution_license_files(distributions[name])
 
 
+def test_cffi_abi_tagged_extension_has_runtime_evidence() -> None:
+    cffi = legal.metadata.distribution("cffi")
+    top_level = legal._distribution_top_level_names(cffi)
+
+    assert "_cffi_backend" in top_level
+    assert not any(
+        name.startswith("_cffi_backend.")
+        for name in top_level
+    )
+    assert legal._runtime_evidence(
+        ["_cffi_backend.pyd"],
+        top_level,
+    ) == ["_cffi_backend.pyd"]
+    assert legal._compiled_module_evidence(
+        [
+            {
+                "name": "_cffi_backend",
+                "kind": "PythonExtensionModule",
+            }
+        ],
+        top_level,
+    ) == ["_cffi_backend"]
+
+
+def test_runtime_evidence_still_fails_for_absent_distribution() -> None:
+    assert legal._runtime_evidence(
+        ["unrelated_module.pyd"],
+        ["missing_dependency"],
+    ) == []
+    assert legal._compiled_module_evidence(
+        [
+            {
+                "name": "unrelated_module",
+                "kind": "PythonExtensionModule",
+            }
+        ],
+        ["missing_dependency"],
+    ) == []
+
+
 def test_release_platform_mapping(monkeypatch) -> None:
     cases = {
         "Windows": "windows",
