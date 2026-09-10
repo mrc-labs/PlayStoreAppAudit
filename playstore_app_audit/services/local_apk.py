@@ -511,9 +511,9 @@ def _parse_manifest(data: bytes, limits: ApkParseLimits) -> _ParsedManifest:
             "AndroidManifest.xml is missing a valid manifest root.",
         )
 
-    package_id = _metadata_text(root.get("package"), limits)
+    package_id = root.get("package")
     if (
-        package_id is None
+        not isinstance(package_id, str)
         or len(package_id) > 255
         or _PACKAGE_ID_RE.fullmatch(package_id) is None
     ):

@@ -146,6 +146,37 @@ def test_artifact_identity_is_distinct_from_package_identity(tmp_path: Path) -> 
     assert first.artifact_id != second.artifact_id
 
 
+@pytest.mark.parametrize(
+    "malformed_package_id",
+    [" com.example.app ", "com.example\x00.app"],
+)
+def test_package_identity_is_validated_without_normalization(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    malformed_package_id: str,
+) -> None:
+    path = _write_apk(tmp_path / "malformed-identity.apk")
+    root = ElementTree.Element("manifest", {"package": malformed_package_id})
+
+    class FakePrinter:
+        def __init__(self, _data: bytes) -> None:
+            pass
+
+        def get_xml_obj(self) -> ElementTree.Element:
+            return root
+
+        def is_valid(self) -> bool:
+            return True
+
+    monkeypatch.setattr(local_apk, "_AXMLPrinter", FakePrinter)
+
+    result = local_apk.parse_local_apk(path)
+
+    assert result.artifact is None
+    assert result.failure is not None
+    assert result.failure.kind is LocalArtifactFailureKind.MALFORMED_MANIFEST
+
+
 def test_same_size_same_mtime_rewrite_cannot_mix_hash_and_parsed_metadata(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
