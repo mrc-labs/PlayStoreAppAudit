@@ -26,6 +26,7 @@ from playstore_app_audit import __version__
 from playstore_app_audit.domain.alternative_distribution import AlternativeDistributionState
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.services.version_relationship import VERSION_MISMATCH_STATES
 
 if TYPE_CHECKING:
     from playstore_app_audit.services.scan_session import ScanSession
@@ -113,9 +114,12 @@ Current components:
 - Aging (366-730 days): -15
 - Legacy target SDK relative to the connected device: -15
 - Aging target SDK relative to the connected device: -10
-- Installed version differs from Store version: -5
+- Source-relevant installed/Local APK version is numerically Outdated: -15
+- Source-relevant installed/Local APK version is Different but not safely ordered: -5
+- Local APK version relationship is Unknown: -15
 
 Alternative-provider recovery is cumulative up to +15, but it is never a bonus when Google Play is available and never changes the underlying Play or provider states. Installer source and requested permissions do not reduce the score. The score is optional and disabled by default.
+Only one source-relevant version component is applied. Newer, Match and Device-specific add no penalty; optional ADB Unknown also adds no penalty.
 """
 
 HEALTH_SCORE_BASE = 100
@@ -242,7 +246,12 @@ def row_matches_filter(row: dict[str, Any], preset: str) -> bool:
     if preset == "Sideloaded":
         return "sideload" in str(row.get("installer_source") or "").casefold()
     if preset == "Version mismatch":
-        return str(row.get("version_comparison") or "") == "Different"
+        field = (
+            "local_apk_version_comparison"
+            if local_apk_audit.is_local_apk_source(row.get("source_mode"))
+            else "version_comparison"
+        )
+        return str(row.get(field) or "") in VERSION_MISMATCH_STATES
     if preset == "Disabled":
         return str(row.get("app_enabled") or "").casefold() == "disabled"
     if preset == "Sensitive permissions":
@@ -682,9 +691,25 @@ def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdow
         components.append(compatibility_component)
 
     version_component = None
-    if str(row.get("version_comparison") or "") == "Different":
+    local_source = local_apk_audit.is_local_apk_source(row.get("source_mode"))
+    comparison_field = "local_apk_version_comparison" if local_source else "version_comparison"
+    relationship = str(row.get(comparison_field) or "")
+    source_label = "Local APK" if local_source else "Installed"
+    if relationship == "Outdated":
         version_component = HealthScoreComponent(
-            "installed_store_version", "Installed vs Store is Different", -5
+            "local_store_version" if local_source else "installed_store_version",
+            f"{source_label} vs Store is Outdated",
+            -15,
+        )
+    elif relationship == "Different":
+        version_component = HealthScoreComponent(
+            "local_store_version" if local_source else "installed_store_version",
+            f"{source_label} vs Store is Different",
+            -5,
+        )
+    elif local_source and relationship == "Unknown":
+        version_component = HealthScoreComponent(
+            "local_store_version", "Local APK vs Store is Unknown", -15
         )
     version_penalty = version_component.points if version_component is not None else 0
     if version_component is not None:
@@ -960,7 +985,7 @@ def write_html_report(
             ("green", "Current"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
-            ("red", "Removed"),
+            ("red", "Not Found"),
             ("blue", "Anomaly"),
             ("purple", "Other"),
         )
@@ -1061,12 +1086,12 @@ def write_html_report(
         )
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     table_header = (
-        "<th>Status</th><th>APK filename</th><th>Package</th><th>Local version</th>"
+        "<th>Store Status</th><th>APK filename</th><th>Package</th><th>Local version</th>"
         "<th>Local version code</th><th>Play Store version</th>"
         "<th>Local APK vs Store</th><th>Play Store title</th><th>Last update</th>"
         "<th>APK SHA-256</th><th>Notes</th>"
         if local_apk_report
-        else "<th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
+        else "<th>Store Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
         "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
         "<th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
     )

@@ -35,6 +35,7 @@ import playstore_app_audit.services.alternative_distribution as alternative_dist
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
@@ -228,7 +229,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
-        tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
+        tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
@@ -891,7 +892,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         inner = QWidget()
         form = QFormLayout(inner)
         fields = [
-            ("Status", "criticality"),
+            ("Store Status", "criticality"),
             ("Maintenance Score", "health_score"),
             ("Change", "change"),
             ("Package Name", "package_name"),
@@ -981,6 +982,19 @@ class InsightsWindow(device_ui.DeviceWindow):
         root.addLayout(row_buttons)
         dialog.exec()
 
+    def _local_file_location_action(
+        self, row: dict[str, Any]
+    ) -> tuple[str, bool] | None:
+        location_handler = getattr(self, "_open_local_apk_location", None)
+        local_location = str(row.get("local_apk_location") or "").strip()
+        if (
+            not local_apk_audit.is_local_apk_source(row.get("source_mode"))
+            or not local_location
+            or not callable(location_handler)
+        ):
+            return None
+        return local_location, Path(local_location).is_file()
+
     def _show_row_context_menu(self, pos) -> None:
         index = self.table.indexAt(pos)
         row = self._row_from_proxy_index(index)
@@ -992,6 +1006,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         recheck = menu.addAction("Force Recheck This App")
         open_store = menu.addAction("Open in Google Play")
         open_info = menu.addAction("Open App Info on Phone")
+        location_action = self._local_file_location_action(row)
+        local_location = location_action[0] if location_action is not None else ""
+        local_location_exists = location_action[1] if location_action is not None else False
+        open_location = menu.addAction("Open File Location") if location_action else None
         menu.addSeparator()
         copy_package = menu.addAction("Copy Package Name")
         copy_title = menu.addAction("Copy Play Store Title")
@@ -1004,6 +1022,8 @@ class InsightsWindow(device_ui.DeviceWindow):
         recheck.setEnabled(availability.recheck)
         open_store.setEnabled(availability.store)
         open_info.setEnabled(availability.app_info)
+        if open_location is not None:
+            open_location.setEnabled(local_location_exists)
         copy_package.setEnabled(availability.package)
         copy_title.setEnabled(availability.title)
         copy_url.setEnabled(availability.url)
@@ -1018,6 +1038,10 @@ class InsightsWindow(device_ui.DeviceWindow):
                 QDesktopServices.openUrl(QUrl(str(row.get("store_url"))))
         elif chosen is open_info:
             self._open_app_info(package_name)
+        elif open_location is not None and chosen is open_location:
+            location_handler = getattr(self, "_open_local_apk_location", None)
+            if callable(location_handler):
+                location_handler(local_location)
         elif chosen is copy_package:
             QApplication.clipboard().setText(str(row.get("package_name") or ""))
         elif chosen is copy_title:
@@ -1026,9 +1050,10 @@ class InsightsWindow(device_ui.DeviceWindow):
             QApplication.clipboard().setText(str(row.get("store_url") or ""))
         elif chosen is copy_row:
             header = self.table.horizontalHeader()
+            model_columns = getattr(self.model, "columns", V9_MODEL_COLUMNS)
             visible = [
-                (header.visualIndex(i), V9_MODEL_COLUMNS[i])
-                for i in range(len(V9_MODEL_COLUMNS))
+                (header.visualIndex(i), model_columns[i])
+                for i in range(len(model_columns))
                 if not self.table.isColumnHidden(i)
             ]
             visible.sort()

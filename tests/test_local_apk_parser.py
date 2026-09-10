@@ -478,6 +478,51 @@ def test_manifest_split_markers_are_detected(
     assert parsed.requires_split_handling is True
 
 
+@pytest.mark.parametrize(
+    ("version_name", "version_code"),
+    [("10.0.427", "24100594"), ("4.31.2 + Auto", "1192")],
+)
+def test_manifest_recovers_exact_pyaxmlparser_normalised_android_attributes(
+    monkeypatch: pytest.MonkeyPatch,
+    version_name: str,
+    version_code: str,
+) -> None:
+    root = ElementTree.fromstring(
+        f'<manifest package="org.example.app" versionName="{version_name}" '
+        f'versionCode="{version_code}"><application label="Recovered label" /></manifest>'
+    )
+
+    class FakePrinter:
+        def __init__(self, _data: bytes) -> None:
+            pass
+
+        def get_xml_obj(self) -> ElementTree.Element:
+            return root
+
+        def is_valid(self) -> bool:
+            return True
+
+    monkeypatch.setattr(local_apk, "_AXMLPrinter", FakePrinter)
+    parsed = local_apk._parse_manifest(b"controlled", local_apk.DEFAULT_APK_PARSE_LIMITS)
+    assert parsed.version_name_raw == version_name
+    assert parsed.version_code_raw == version_code
+    assert parsed.application_label_raw == "Recovered label"
+
+
+def test_canonical_android_attribute_remains_authoritative() -> None:
+    namespace = "http://schemas.android.com/apk/res/android"
+    element = ElementTree.Element(
+        "manifest",
+        {f"{{{namespace}}}versionName": "canonical", "versionName": "fallback"},
+    )
+    assert (
+        local_apk._element_android_value(
+            element, "versionName", local_apk.DEFAULT_APK_PARSE_LIMITS
+        )
+        == "canonical"
+    )
+
+
 def test_parse_result_requires_exactly_one_outcome(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="exactly one"):
         LocalArtifactParseResult()

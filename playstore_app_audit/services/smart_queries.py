@@ -155,13 +155,13 @@ FIELD_DEFINITIONS = (
     FieldDefinition("notes", "Notes", FieldType.TEXT),
     FieldDefinition(
         "criticality_key",
-        "Status",
+        "Store Status",
         FieldType.CHOICE,
         _choices(
             ("green", "Current"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
-            ("red", "Removed"),
+            ("red", "Not Found"),
             ("blue", "Store Anomaly"),
             ("purple", "Other / Inconclusive"),
         ),
@@ -190,6 +190,21 @@ FIELD_DEFINITIONS = (
         FieldType.CHOICE,
         _choices(
             ("Match", "Match"),
+            ("Outdated", "Outdated"),
+            ("Newer", "Newer"),
+            ("Different", "Different"),
+            ("Device-specific", "Device-specific"),
+            ("Unknown", "Unknown"),
+        ),
+    ),
+    FieldDefinition(
+        "local_apk_version_comparison",
+        "Local APK vs Store",
+        FieldType.CHOICE,
+        _choices(
+            ("Match", "Match"),
+            ("Outdated", "Outdated"),
+            ("Newer", "Newer"),
             ("Different", "Different"),
             ("Device-specific", "Device-specific"),
             ("Unknown", "Unknown"),

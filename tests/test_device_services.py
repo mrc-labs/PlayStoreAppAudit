@@ -16,7 +16,11 @@ def test_country_parser_deduplicates_and_accepts_uk_alias() -> None:
 
 def test_version_comparison_is_conservative() -> None:
     assert compare_versions("v1.2.3", "1.2.3") == "Match"
-    assert compare_versions("1.2.3", "1.2.4") == "Different"
+    assert compare_versions("1.2.3", "1.2.4") == "Outdated"
+    assert compare_versions("10.0.427", "10.2.568") == "Outdated"
+    assert compare_versions("4.31.2 + Auto", "4.35.0") == "Outdated"
+    assert compare_versions("1.10.0", "1.9.8") == "Newer"
+    assert compare_versions("1.2.3 beta", "1.2.3 release") == "Different"
     assert compare_versions("1.2.3", "Varies with device") == "Device-specific"
     assert compare_versions("", "1.2.3") == "Unknown"
 
@@ -43,5 +47,12 @@ def test_builtin_filters() -> None:
     assert row_matches_filter({"criticality_key": "yellow"}, "Old apps")
     assert row_matches_filter({"installer_source": "Sideload / package installer"}, "Sideloaded")
     assert row_matches_filter({"version_comparison": "Different"}, "Version mismatch")
+    assert row_matches_filter({"version_comparison": "Outdated"}, "Version mismatch")
+    assert row_matches_filter({"version_comparison": "Newer"}, "Version mismatch")
+    assert row_matches_filter(
+        {"source_mode": "local_apk", "local_apk_version_comparison": "Outdated"},
+        "Version mismatch",
+    )
+    assert not row_matches_filter({"version_comparison": "Device-specific"}, "Version mismatch")
     assert row_matches_filter({"app_enabled": "Disabled"}, "Disabled")
     assert row_matches_filter({"sensitive_permissions_count": "2"}, "Sensitive permissions")

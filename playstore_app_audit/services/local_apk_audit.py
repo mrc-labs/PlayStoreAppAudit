@@ -33,8 +33,8 @@ def association_result_row(
 ) -> dict[str, Any] | None:
     """Convert one completed association to the shared audit-row schema.
 
-    The canonical path is deliberately omitted. Remote evidence contains only
-    the package-level fields returned by the existing Store/provider services.
+    The canonical path is attached only after package-level Store/provider work
+    has completed, so it remains local UI evidence and never enters a request.
     """
 
     evidence = association.package_evidence
@@ -54,6 +54,7 @@ def association_result_row(
             "package_name": artifact.package_lookup_key,
             "is_system": None,
             "local_apk_file_name": artifact.file_name,
+            "local_apk_location": str(artifact.canonical_path),
             "local_apk_sha256": artifact.artifact_sha256,
             "local_apk_label": artifact.application_label,
             "local_apk_version_name": artifact.version_name,

@@ -15,7 +15,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Fall back across configurable countries without treating one regional absence as global removal.
 - Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
 - Show live progress while regional fallback countries are being verified.
-- Classify listings as Current, Aging, Stale, Removed, Store anomaly or Other.
+- Classify Store listings as Current, Aging, Stale, Not Found, Store anomaly or Other.
 - Inspect the selected result in a dedicated Details Panel with Store/device metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
 - Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
 - Optionally show Play Store app icons beside Store titles.
@@ -34,7 +34,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 v2.0 is the next planned major release and the return to a full multi-platform distribution. Development, correction, stabilization and packaged acceptance are Windows x64-first. After that implementation is functionally complete and accepted, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
 
-A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The v2 development source now contains the parser, typed `LocalArtifact`, package-deduplicated Store fan-out, transient multi-file Local APK Audit workflow, and the user-facing persistent Local APK Library. This functionality is not part of the current published v1.99.0 release.
+A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The v2 development source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
 
 The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Play Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
@@ -59,7 +59,7 @@ The v1.99.0 release includes one consolidated third-party source archive and a r
 ## Quick start
 
 1. Start the application.
-2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan Phone**.
+2. Choose a CSV/TSV/TXT package list, select Local APK file(s) or a folder, or connect an Android phone and select **Scan Phone**.
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
 4. Select the header **Run** button or **Audit > Run Audit**.
 5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
@@ -73,13 +73,23 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 - **Current:** the listing was updated within the last 365 days.
 - **Aging:** the last update was more than 365 and no more than 730 days ago.
 - **Stale:** the last update was more than 730 days ago.
-- **Removed:** the package was unavailable in the configured countries that were successfully checked.
+- **Not Found:** no listing was found in the configured countries that were successfully checked; this does not prove global removal.
 - **Store anomaly:** Store responses were inconsistent or otherwise unusual.
 - **Other:** the check was incomplete, failed or could not be classified confidently.
 
 The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Maintenance Score Methodology**.
 
-An installed version that differs from the Store version is reported as a difference, not automatically as outdated. Device-specific variants, staged rollouts and regional releases can legitimately differ.
+Installed and Local APK versions use a conservative Match / Outdated / Newer / Different / Device-specific / Unknown relationship. Outdated is reported only when leading numeric components establish ordering; it does not guarantee that an update is offered to a particular device because staged and device-specific rollouts remain possible.
+
+## Debug / troubleshooting
+
+Start an explicit source-development debug session with:
+
+```bash
+python main.py --debug
+```
+
+The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. A future packaged executable can use the same `PlayStoreAppAudit.exe --debug` argument. Debug logs are never uploaded automatically. They may contain local filesystem paths and filenames, so review them before sharing.
 
 ## Android phone and ADB support
 

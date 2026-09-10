@@ -40,6 +40,7 @@ def test_curated_fields_exclude_technical_internals() -> None:
         "criticality_key",
         "play_status",
         "version_comparison",
+        "local_apk_version_comparison",
         "installer_category",
         "compatibility_status",
         "app_enabled",

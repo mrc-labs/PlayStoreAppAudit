@@ -15,6 +15,7 @@ from typing import Any
 
 import playstore_app_audit.services.audit_engine as core
 import playstore_app_audit.services.state as state
+from playstore_app_audit.services.version_relationship import compare_versions
 
 DEFAULT_FALLBACK_COUNTRIES = "us, gb, de, fr, it, ch, es, ca, au, jp"
 DEFAULT_DEVICE_INFO_ENABLED = True
@@ -91,23 +92,7 @@ def save_history_merged(rows: list[dict[str, Any]]) -> None:
 
 def _normalise_version(value: object) -> str:
     text = str(value or "").strip()
-    if text.lower() in {"none", "null", "n/a"}:
-        return ""
-    return text
-
-
-def compare_versions(installed: object, store: object) -> str:
-    installed_text = _normalise_version(installed)
-    store_text = _normalise_version(store)
-    if not installed_text or not store_text:
-        return "Unknown"
-    if store_text.casefold() in {"varies with device", "varies by device", "varies"}:
-        return "Device-specific"
-
-    def canonical(value: str) -> str:
-        return re.sub(r"\s+", "", value.strip().lstrip("vV")).casefold()
-
-    return "Match" if canonical(installed_text) == canonical(store_text) else "Different"
+    return "" if text.casefold() in {"none", "null", "n/a"} else text
 
 
 def _friendly_installer(package: str) -> str:
@@ -675,7 +660,7 @@ def dashboard_summary(rows: list[dict[str, Any]], visible_count: int | None = No
             f"Current {counts['green']}",
             f"Aging {counts['yellow']}",
             f"Stale {counts['orange']}",
-            f"Removed {counts['red']}",
+            f"Not Found {counts['red']}",
             f"Anomaly {counts['blue']}",
             f"Other {counts['purple']}",
         ]

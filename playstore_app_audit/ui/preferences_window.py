@@ -227,7 +227,7 @@ class PreferencesWindow(table_ui.TableWindow):
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
         tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
-        tools.addAction("Recheck Removed / Anomaly / Other", self._recheck_problematic)
+        tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
@@ -368,7 +368,7 @@ class PreferencesWindow(table_ui.TableWindow):
         root.addWidget(custom_heading)
         root.addWidget(
             self._settings_note(
-                "Status and Package Name are always included. Changing this selection "
+                "Store Status and Package Name are always included. Changing this selection "
                 "activates View > Column Preset > Custom."
             )
         )

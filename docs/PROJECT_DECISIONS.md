@@ -485,15 +485,13 @@ package-evidence result among all matching artifacts without modifying or
 collapsing their SHA-256 identities. Different contexts use separate calls; no
 second cache, Store implementation or concurrency layer is introduced.
 
-The first Local APK UI is a transient source mode, not a Library. Multi-file
-parsing runs outside the GUI thread with cooperative between-file cancellation
-and a generation guard; partial success remains usable. Each completed artifact
-becomes one shared-schema result row, including SHA-256 identity, while Store and
-provider requests continue receiving only the exact package ID and normal lookup
-context. Local artifact rows never masquerade as installed/device apps and are
-excluded from package-keyed audit history and Device Inventory promotion. Their
-absolute filesystem paths remain session-only parser metadata and are omitted
-from result rows and default exports.
+The first Local APK UI was a transient source mode, not a Library. Multi-file
+parsing ran outside the GUI thread with cooperative between-file cancellation
+and a generation guard; partial success remained usable. Each completed artifact
+became one shared-schema result row, including SHA-256 identity, while Store and
+provider requests received only the exact package ID and normal lookup context.
+Local artifact rows did not masquerade as installed/device apps and were
+excluded from package-keyed audit history and Device Inventory promotion.
 
 Persistent Library phase 5a uses a dedicated schema-version-1
 `local_apk_library.json` document under the active platform app-data directory.
@@ -506,21 +504,23 @@ the bounded parser, ignore directory links, support cooperative cancellation and
 partial success, and allow only a fully completed root scan to infer a missing
 location. Scanning/persistence performs no Store/provider/cache work. A Library
 audit projection returns one deterministic present `LocalArtifact` per exact
-SHA for the existing fan-out service. Phase 5b owns all end-user Library UI.
+SHA for the existing fan-out service. The original plan assigned end-user
+Library UI to phase 5b.
 
-Phase 5b exposes that core through `File > Local APK Library…` and a compact
-secondary action beside the unchanged transient `Choose APK(s)` control. The
-focused Qt dialog separates registered folders from one artifact row per exact
-SHA, shows every Present/Missing physical location in selected-artifact details,
-and rejects new exact/nested/containing root overlap without rewriting existing
-nested documents. Root removal deletes only the registration and its Library
-location metadata, never filesystem content. Explicit scan workers are
-cooperative and generation-guarded; completed, partial and failed state is saved,
-while cancelled mutations are discarded in favor of the last persisted state.
-`Audit Library` establishes `local_apk_library` and passes one present
-representative per SHA into the existing package-deduplicated audit pipeline.
-Library audit results remain outside package history, ScanSession and Device
-Inventory, and Library JSON still contains no Store/provider evidence.
+The later v2.0 UX review supersedes the separate phase 5b Library manager. The
+persistent core and existing JSON remain intact as future infrastructure, but
+v2.0 exposes one session-local APK source with explicit-file and recursive-folder
+selection. Selection/discovery performs no full parse and never registers a
+Library root; Run performs bounded parsing and emits one result per physical
+file while Store/provider work remains package-deduplicated. Location is local
+UI evidence and is excluded from remote requests and default exports.
+
+Installed and Local APK version relationships use the same conservative
+Match/Outdated/Newer/Different/Device-specific/Unknown vocabulary. Outdated is
+inferred only from an unambiguous differing leading numeric component and costs
+15 Maintenance Score points; Different costs 5. Local Unknown costs 15 because
+version verification is core to that source, while optional ADB Unknown is not
+penalized. Exactly one source-relevant version component applies per row.
 
 ## Release-script maintenance
 

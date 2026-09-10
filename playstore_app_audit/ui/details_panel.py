@@ -329,6 +329,14 @@ def _joined_fields(row: Mapping[str, Any], fields: list[tuple[str, str]]) -> str
         value = _text(row.get(key))
         if value:
             lines.append(f"{label}: {value}")
+    if (
+        row.get("local_apk_version_comparison") == "Outdated"
+        or row.get("version_comparison") == "Outdated"
+    ):
+        lines.append(
+            "Update note: Store version ordering does not guarantee that an update is "
+            "currently offered to every device or rollout cohort."
+        )
     return "\n".join(lines)
 
 
@@ -359,6 +367,7 @@ def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
         return []
     fields = (
         ("Filename", "local_apk_file_name"),
+        ("Location", "local_apk_location"),
         ("SHA-256", "local_apk_sha256"),
         ("Local label", "local_apk_label"),
         ("Local version", "local_apk_version_name"),

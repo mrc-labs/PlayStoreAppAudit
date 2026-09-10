@@ -32,6 +32,53 @@ DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "notes",
 ]
 
+LOCALIZED_MONTHS = {
+    "jan": 1,
+    "january": 1,
+    "gen": 1,
+    "gennaio": 1,
+    "feb": 2,
+    "february": 2,
+    "febbraio": 2,
+    "mar": 3,
+    "march": 3,
+    "marzo": 3,
+    "apr": 4,
+    "april": 4,
+    "aprile": 4,
+    "may": 5,
+    "maggio": 5,
+    "mag": 5,
+    "jun": 6,
+    "june": 6,
+    "giu": 6,
+    "giugno": 6,
+    "jul": 7,
+    "july": 7,
+    "lug": 7,
+    "luglio": 7,
+    "aug": 8,
+    "august": 8,
+    "ago": 8,
+    "agosto": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "set": 9,
+    "settembre": 9,
+    "oct": 10,
+    "october": 10,
+    "ott": 10,
+    "ottobre": 10,
+    "nov": 11,
+    "november": 11,
+    "novembre": 11,
+    "dec": 12,
+    "december": 12,
+    "dic": 12,
+    "dicembre": 12,
+}
+
 STATUS_FOREGROUND_COLOURS = {
     "red": "#7A3D3D",
     "orange": "#76522E",
@@ -52,10 +99,25 @@ class SemanticValuePresentation:
 
 
 SEMANTIC_VALUE_PRESENTATIONS = {
+    ("version_comparison", "Outdated"): SemanticValuePresentation(
+        status_key="orange", emphasis="strong_warning", font_weight=600
+    ),
     ("version_comparison", "Different"): SemanticValuePresentation(
         status_key="yellow",
         emphasis="warning",
         font_weight=600,
+    ),
+    ("version_comparison", "Unknown"): SemanticValuePresentation(
+        status_key="purple", emphasis="warning", font_weight=400
+    ),
+    ("local_apk_version_comparison", "Outdated"): SemanticValuePresentation(
+        status_key="orange", emphasis="strong_warning", font_weight=600
+    ),
+    ("local_apk_version_comparison", "Different"): SemanticValuePresentation(
+        status_key="yellow", emphasis="warning", font_weight=600
+    ),
+    ("local_apk_version_comparison", "Unknown"): SemanticValuePresentation(
+        status_key="purple", emphasis="warning", font_weight=400
     ),
     ("compatibility_status", "Aging target"): SemanticValuePresentation(
         status_key="yellow",
@@ -195,6 +257,26 @@ def install_defaults() -> None:
     defaults.setdefault("custom_view_columns", list(DEFAULT_CUSTOM_VIEW_COLUMNS))
 
 
+def _localized_month_date(text: str):
+    for pattern, month_index, day_index, year_index in (
+        (r"^(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})$", 2, 1, 3),
+        (r"^([A-Za-zÀ-ÿ.]+)\s+(\d{1,2}),?\s+(\d{4})$", 1, 2, 3),
+    ):
+        match = re.fullmatch(pattern, text)
+        if match is None:
+            continue
+        month = LOCALIZED_MONTHS.get(match.group(month_index).casefold().rstrip("."))
+        if month is None:
+            continue
+        try:
+            return datetime(
+                int(match.group(year_index)), month, int(match.group(day_index))
+            ).date()
+        except ValueError:
+            return None
+    return None
+
+
 def _parse_date(value: object):
     text = str(value or "").strip()
     if not text:
@@ -205,6 +287,10 @@ def _parse_date(value: object):
         return datetime.fromisoformat(iso).date()
     except ValueError:
         pass
+
+    localized = _localized_month_date(text)
+    if localized is not None:
+        return localized
 
     # Common Google Play / ADB text forms.
     for pattern in (
@@ -279,7 +365,17 @@ def concise_summary(rows: list[dict[str, Any]], visible_count: int | None = None
         return "No Results Yet"
     visible = total if visible_count is None else max(0, int(visible_count))
     parts = [f"{visible}/{total} shown"]
-    differences = sum(1 for row in rows if str(row.get("version_comparison") or "") == "Different")
+    mismatches = {"Outdated", "Newer", "Different"}
+    differences = sum(
+        1
+        for row in rows
+        if str(
+            row.get("local_apk_version_comparison")
+            if str(row.get("source_mode") or "").startswith("local_apk")
+            else row.get("version_comparison")
+        )
+        in mismatches
+    )
     if differences:
         parts.append(f"Version differences {differences}")
     return "  •  ".join(parts)

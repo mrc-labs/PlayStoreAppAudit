@@ -174,8 +174,8 @@ MONTHS = {
 
 CRITICALITY = {
     "red": {
-        "label": "●  Removed",
-        "button": "● Removed",
+        "label": "●  Not Found",
+        "button": "● Not Found",
         "rank": 0,
         "background": "#FDF3F3",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["red"],
@@ -881,7 +881,9 @@ class BaseWindow(QMainWindow):
         self.table.horizontalHeader().setToolTip(
             "Click a column header to sort, or drag it to reorder columns."
         )
-        self.table.setToolTip("Double-click a result row to open its Google Play page.")
+        self.table.setToolTip(
+            "Double-click to open Google Play when available. Right-click for more options."
+        )
         self.table.doubleClicked.connect(self._open_selected_store_url)
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         results_layout.addWidget(self.table, 1)

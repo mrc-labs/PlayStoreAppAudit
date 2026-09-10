@@ -601,7 +601,17 @@ def _element_android_value(
 ) -> str | None:
     if element is None:
         return None
-    return _metadata_text(element.get(_android_attribute(name)), limits)
+    canonical = element.get(_android_attribute(name))
+    if canonical is not None:
+        return _metadata_text(canonical, limits)
+    # pyaxmlparser normalises malformed ``android:name`` attributes by removing
+    # the prefix when the namespace URI is absent. Limit recovery to the exact
+    # Android attribute requested; never search arbitrary attributes.
+    for fallback_name in (name, f"android:{name}"):
+        fallback = element.get(fallback_name)
+        if fallback is not None:
+            return _metadata_text(fallback, limits)
+    return None
 
 
 def _required_split_metadata(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import replace
@@ -25,10 +26,10 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
+import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
-import playstore_app_audit.ui.local_apk_library as local_apk_library_ui
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.domain.local_artifacts import (
@@ -37,12 +38,14 @@ from playstore_app_audit.domain.local_artifacts import (
 )
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.platform.file_locations import open_file_location
 from playstore_app_audit.services.audit_engine import AuditConfig
-from playstore_app_audit.services.local_apk_library import LocalApkLibraryService
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.device_window import RowActionAvailability
+
+logger = logging.getLogger(__name__)
 
 
 def _detach_layout(layout, keep: set[object]) -> None:
@@ -57,8 +60,8 @@ def _detach_layout(layout, keep: set[object]) -> None:
 
 
 class LocalApkSourceSignals(QObject):
-    progress = Signal(int, int, int, str)
-    done = Signal(int, object, object)
+    progress = Signal(int, int, str)
+    done = Signal(int, object, str)
     failed = Signal(int, str)
 
 
@@ -70,8 +73,7 @@ class MainWindow(results_ui.ResultsWindow):
     """
 
     def __init__(self) -> None:
-        self._local_apk_artifacts: tuple[LocalArtifact, ...] = ()
-        self._local_apk_library_dialog: local_apk_library_ui.LocalApkLibraryDialog | None = None
+        self._local_apk_candidates: tuple[Path, ...] = ()
         self._local_apk_parse_generation = 0
         self._local_apk_parse_cancel_event = threading.Event()
         self._local_apk_parse_active = False
@@ -82,18 +84,20 @@ class MainWindow(results_ui.ResultsWindow):
         self._finalizing_session: int | None = None
         super().__init__()
         self.local_apk_source_signals = LocalApkSourceSignals(self)
-        self.local_apk_source_signals.progress.connect(self._on_local_apk_parse_progress)
-        self.local_apk_source_signals.done.connect(self._on_local_apk_parse_done)
-        self.local_apk_source_signals.failed.connect(self._on_local_apk_parse_failed)
+        self.local_apk_source_signals.progress.connect(self._on_local_apk_discovery_progress)
+        self.local_apk_source_signals.done.connect(self._on_local_apk_discovery_done)
+        self.local_apk_source_signals.failed.connect(self._on_local_apk_discovery_failed)
         self.choose_apk_button = QPushButton("Choose APK(s)")
         self.choose_apk_button.setIcon(main_action_icon("choose_file", self.palette()))
         self.choose_apk_button.clicked.connect(self._choose_local_apks)
-        self.file_choose_apk_action = QAction("Choose APK(s)…", self)
+        self.file_choose_apk_action = QAction("Choose APK file(s)…", self)
         self.file_choose_apk_action.triggered.connect(self._choose_local_apks)
         self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_choose_apk_action)
-        self.file_local_apk_library_action = QAction("Local APK Library…", self)
-        self.file_local_apk_library_action.triggered.connect(self._open_local_apk_library)
-        self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_local_apk_library_action)
+        self.file_choose_apk_folder_action = QAction("Choose APK Folder…", self)
+        self.file_choose_apk_folder_action.triggered.connect(self._choose_local_apk_folder)
+        self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_choose_apk_folder_action)
+        self.choose_apk_folder_action = QAction("Choose Folder…", self)
+        self.choose_apk_folder_action.triggered.connect(self._choose_local_apk_folder)
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._remove_redundant_content_heading()
         self._rebuild_source_area_v10()
@@ -215,14 +219,12 @@ class MainWindow(results_ui.ResultsWindow):
 
         self.local_apk_options_button = QToolButton()
         self.local_apk_options_button.setObjectName("LocalApkOptionsButton")
-        self.local_apk_options_button.setToolTip("Standalone APK options")
-        self.local_apk_options_button.setAccessibleName("Standalone APK Options")
+        self.local_apk_options_button.setToolTip("Choose Local APK source")
+        self.local_apk_options_button.setAccessibleName("Choose Local APK Source")
         self.local_apk_options_button.setArrowType(Qt.ArrowType.DownArrow)
         self.local_apk_options_button.setFixedWidth(30)
-        self.local_apk_options_menu = QMenu(
-            "Standalone APK Options", self.local_apk_options_button
-        )
-        self.local_apk_options_menu.addAction(self.file_local_apk_library_action)
+        self.local_apk_options_menu = QMenu("Choose Local APK Source", self.local_apk_options_button)
+        self.local_apk_options_menu.addAction(self.choose_apk_folder_action)
         self.local_apk_options_button.clicked.connect(self._show_local_apk_options_menu)
         layout.addWidget(self.local_apk_options_button)
         return controls
@@ -305,7 +307,7 @@ class MainWindow(results_ui.ResultsWindow):
         or_label.setObjectName("Muted")
         row.addWidget(or_label)
         row.addWidget(
-            self._source_option("Standalone APK File(s)", self._apk_source_controls()), 1
+            self._source_option("Standalone APK(s)", self._apk_source_controls()), 1
         )
         apk_or_label = QLabel("or")
         apk_or_label.setObjectName("Muted")
@@ -329,7 +331,7 @@ class MainWindow(results_ui.ResultsWindow):
     # ---------- Transient Local APK source ----------
     def _has_loaded_source(self) -> bool:
         if local_apk_audit.is_local_apk_source(self.source_mode):
-            return bool(self._local_apk_artifacts)
+            return bool(self._local_apk_candidates)
         return super()._has_loaded_source()
 
     def _sync_action_availability(self) -> None:
@@ -340,7 +342,8 @@ class MainWindow(results_ui.ResultsWindow):
         local_source = local_apk_audit.is_local_apk_source(self.source_mode)
         self.choose_apk_button.setEnabled(idle)
         self.file_choose_apk_action.setEnabled(idle)
-        self.file_local_apk_library_action.setEnabled(idle)
+        self.file_choose_apk_folder_action.setEnabled(idle)
+        self.choose_apk_folder_action.setEnabled(idle)
         self.local_apk_options_button.setEnabled(idle)
         self.exclude_system_source_check.setEnabled(idle and not local_source)
         self.hide_system_check.setEnabled(idle and not local_source)
@@ -353,19 +356,43 @@ class MainWindow(results_ui.ResultsWindow):
         if hasattr(self, "choose_apk_button"):
             self.choose_apk_button.setEnabled(enabled)
             self.file_choose_apk_action.setEnabled(enabled)
-            self.file_local_apk_library_action.setEnabled(enabled)
+            self.file_choose_apk_folder_action.setEnabled(enabled)
+            self.choose_apk_folder_action.setEnabled(enabled)
             self.local_apk_options_button.setEnabled(enabled)
         self.exclude_system_source_check.setEnabled(
             enabled and not local_apk_audit.is_local_apk_source(self.source_mode)
         )
 
     def _visible_column_order(self) -> list[str]:
-        if not local_apk_audit.is_local_apk_source(self.source_mode):
-            return super()._visible_column_order()
         preset = str(state.load_settings().get("view_preset") or "Basic")
         if preset == "Technical":
-            return list(schema.MODEL_COLUMNS)
+            if self.source_mode is None:
+                return list(schema.MODEL_COLUMNS)
+            store_columns = [
+                "criticality",
+                "change",
+                "package_name",
+                "play_title",
+                "play_last_update",
+                "age_days",
+                "notes",
+                "play_status",
+                "updated_source",
+                "play_http_status",
+                "store_url",
+                "play_version",
+                "health_score",
+            ]
+            if not bool(state.load_settings().get("compare_previous", False)):
+                store_columns.remove("change")
+            if self.source_mode == "device":
+                return list(dict.fromkeys(store_columns + list(schema.DEVICE_EXTRA_COLUMNS) + list(schema.INSIGHTS_EXTRA_COLUMNS)))
+            if local_apk_audit.is_local_apk_source(self.source_mode):
+                return list(dict.fromkeys(store_columns + list(schema.LOCAL_APK_EXTRA_COLUMNS)))
+            return store_columns
         if preset == "Custom":
+            return super()._visible_column_order()
+        if not local_apk_audit.is_local_apk_source(self.source_mode):
             return super()._visible_column_order()
         return [
             "criticality",
@@ -389,73 +416,17 @@ class MainWindow(results_ui.ResultsWindow):
         if selected:
             self._begin_local_apk_parse([Path(path) for path in selected])
 
-    def _local_apk_library_service(self) -> LocalApkLibraryService:
-        return LocalApkLibraryService()
-
-    def _open_local_apk_library(self) -> None:
-        if self._operation_running():
-            return
-        existing = self._local_apk_library_dialog
-        if existing is not None and existing.isVisible():
-            existing.raise_()
-            existing.activateWindow()
-            return
-        dialog = local_apk_library_ui.LocalApkLibraryDialog(
-            self,
-            service=self._local_apk_library_service(),
-        )
-        dialog.audit_requested.connect(self._begin_local_apk_library_audit)
-        dialog.finished.connect(lambda _result: self._clear_local_apk_library_dialog())
-        self._local_apk_library_dialog = dialog
-        dialog.show()
-
-    def _clear_local_apk_library_dialog(self) -> None:
-        self._local_apk_library_dialog = None
-
-    def _begin_local_apk_library_audit(self, value: object) -> None:
-        artifacts = tuple(
-            artifact
-            for artifact in (value if isinstance(value, tuple) else ())
-            if isinstance(artifact, LocalArtifact)
-        )
-        if not artifacts:
-            QMessageBox.information(
-                self,
-                "No auditable Library artifacts",
-                "The Library has no currently verified APK artifacts to audit.",
-            )
-            return
-        self._cancel_active_audit()
-        self._invalidate_phone_scan_request(clear_session=True)
-        self._invalidate_local_apk_parse(clear_artifacts=True)
-        self.file_apps = []
-        self.file_system_metadata = {}
-        self.device_apps_all = []
-        self.device_system_packages = set()
-        self._device_summary = {}
-        self._device_store_locale = None
-        store_locale.set_active_device_store_locale(None)
-        self._apply_store_country_resolution(None)
-        self._local_apk_artifacts = artifacts
-        self.source_mode = local_apk_audit.LIBRARY_SOURCE_MODE
-        self.path_edit.clear()
-        self.source_label.setToolTip("")
-        self._clear_source_result_rows()
-        unique_packages = len({artifact.package_lookup_key for artifact in artifacts})
-        self.source_label.setText(
-            f"Local APK Library: {len(artifacts)} artifact(s) • {unique_packages} package(s)"
-        )
-        self.status_label.setText("Local APK Library ready. Starting audit…")
-        self._apply_column_visibility(reset_order=False)
-        self._sync_action_availability()
-        QTimer.singleShot(0, self._start_audit)
+    def _choose_local_apk_folder(self) -> None:
+        selected = QFileDialog.getExistingDirectory(self, "Choose folder containing APK files")
+        if selected:
+            self._begin_local_apk_folder_discovery(Path(selected))
 
     def _invalidate_local_apk_parse(self, *, clear_artifacts: bool = False) -> None:
         self._local_apk_parse_cancel_event.set()
         self._local_apk_parse_generation += 1
         self._local_apk_parse_active = False
         if clear_artifacts:
-            self._local_apk_artifacts = ()
+            self._local_apk_candidates = ()
 
     def _clear_source_result_rows(self) -> None:
         self.current_rows = []
@@ -469,12 +440,18 @@ class MainWindow(results_ui.ResultsWindow):
         self._update_summary()
 
     def _begin_local_apk_parse(self, paths: list[Path]) -> None:
+        candidates = local_apk_source.normalise_explicit_apks(paths)
+        self._establish_local_apk_candidates(candidates, "selected")
+
+    def _establish_local_apk_candidates(
+        self,
+        candidates: tuple[Path, ...],
+        description: str,
+    ) -> None:
+        logger.info("Local APK candidates established: count=%d source=%s", len(candidates), description)
         self._cancel_active_audit()
         self._invalidate_phone_scan_request(clear_session=True)
         self._invalidate_local_apk_parse(clear_artifacts=True)
-        self._local_apk_parse_cancel_event = threading.Event()
-        request_id = self._local_apk_parse_generation
-        self._local_apk_parse_active = True
         self.file_apps = []
         self.file_system_metadata = {}
         self.device_apps_all = []
@@ -483,141 +460,120 @@ class MainWindow(results_ui.ResultsWindow):
         self._device_store_locale = None
         store_locale.set_active_device_store_locale(None)
         self._apply_store_country_resolution(None)
-        self.source_mode = None
+        self._local_apk_candidates = candidates
+        self.source_mode = local_apk_audit.SOURCE_MODE if candidates else None
         self.path_edit.clear()
-        self.source_label.setToolTip("")
+        self.source_label.setToolTip("\n".join(str(path) for path in candidates))
+        self._clear_source_result_rows()
+        self._set_busy(False)
+        self.progress.setRange(0, max(1, len(candidates)))
+        self.progress.setValue(0)
+        if candidates:
+            self.source_label.setText(f"{len(candidates)} APK file(s) {description}")
+            self.status_label.setText("Local APK source ready. Run the Play Store audit.")
+        else:
+            self.source_label.setText(f"No standalone APK files {description}")
+            self.status_label.setText("No Local APK source was established")
+        self._apply_column_visibility(reset_order=False)
+        self._sync_action_availability()
+
+    def _begin_local_apk_folder_discovery(self, root: Path) -> None:
+        logger.info("Local APK folder discovery started: root=%s", root)
+        self._cancel_active_audit()
+        self._invalidate_phone_scan_request(clear_session=True)
+        self._invalidate_local_apk_parse(clear_artifacts=True)
+        self._local_apk_parse_cancel_event = threading.Event()
+        request_id = self._local_apk_parse_generation
+        self._local_apk_parse_active = True
         self._clear_source_result_rows()
         self._set_busy(True)
-        self.progress.setRange(0, len(paths))
-        self.progress.setValue(0)
-        self.source_label.setText(f"Parsing {len(paths)} selected APK file(s)…")
-        self.status_label.setText("Reading local APK metadata…")
-        self._launch_local_apk_parse_worker(
-            request_id,
-            tuple(paths),
-            self._local_apk_parse_cancel_event,
-        )
+        self.stop_button.setEnabled(True)
+        self.progress.setRange(0, 0)
+        self.source_label.setText(f"Discovering APK files in {root}…")
+        self.status_label.setText("Scanning folder names only; APK contents are not being parsed.")
+        self._launch_local_apk_discovery_worker(request_id, root, self._local_apk_parse_cancel_event)
 
-    def _launch_local_apk_parse_worker(
+    def _launch_local_apk_discovery_worker(
         self,
         request_id: int,
-        paths: tuple[Path, ...],
+        root: Path,
         cancel_event: threading.Event,
     ) -> None:
         threading.Thread(
-            target=self._local_apk_parse_worker,
-            args=(request_id, paths, cancel_event),
+            target=self._local_apk_discovery_worker,
+            args=(request_id, root, cancel_event),
             daemon=True,
         ).start()
 
-    def _local_apk_parse_worker(
+    def _local_apk_discovery_worker(
         self,
         request_id: int,
-        paths: tuple[Path, ...],
+        root: Path,
         cancel_event: threading.Event,
     ) -> None:
-        artifacts: list[LocalArtifact] = []
-        failures: list[LocalArtifactParseFailure] = []
         try:
-            for index, path in enumerate(paths, start=1):
-                if cancel_event.is_set():
-                    return
-                result = local_apk.parse_local_apk(path)
-                if result.artifact is not None:
-                    artifacts.append(result.artifact)
-                elif result.failure is not None:
-                    failures.append(result.failure)
-                self.local_apk_source_signals.progress.emit(
-                    request_id, index, len(paths), path.name
-                )
-            if not cancel_event.is_set():
-                self.local_apk_source_signals.done.emit(
-                    request_id, tuple(artifacts), tuple(failures)
-                )
+            result = local_apk_source.discover_folder_apks(
+                root,
+                cancel_event=cancel_event,
+                progress_callback=lambda count, path: self.local_apk_source_signals.progress.emit(
+                    request_id, count, path.name
+                ),
+            )
+            self.local_apk_source_signals.done.emit(request_id, result, str(root))
         except Exception as exc:
+            logger.exception("Local APK folder discovery failed: root=%s", root)
             if not cancel_event.is_set():
                 self.local_apk_source_signals.failed.emit(request_id, str(exc))
 
-    def _on_local_apk_parse_progress(
-        self, request_id: int, done: int, total: int, file_name: str
-    ) -> None:
+    def _on_local_apk_discovery_progress(self, request_id: int, count: int, file_name: str) -> None:
         if request_id != self._local_apk_parse_generation or not self._local_apk_parse_active:
             return
-        self.progress.setRange(0, total)
-        self.progress.setValue(done)
-        self.status_label.setText(f"Parsed {done}/{total}: {file_name}")
+        self.status_label.setText(f"Found {count} APK file(s) • {file_name}")
 
-    @staticmethod
-    def _local_apk_failure_summary(
-        failures: tuple[LocalArtifactParseFailure, ...],
-    ) -> str:
-        lines = [
-            f"{failure.path.name}: {failure.kind.value.replace('_', ' ')}"
-            for failure in failures[:5]
-        ]
-        if len(failures) > len(lines):
-            lines.append(f"…and {len(failures) - len(lines)} more")
-        return "\n".join(lines)
-
-    def _on_local_apk_parse_done(
-        self,
-        request_id: int,
-        artifacts: object,
-        failures: object,
-    ) -> None:
+    def _on_local_apk_discovery_done(self, request_id: int, value: object, selected_root: str) -> None:
         if request_id != self._local_apk_parse_generation or not self._local_apk_parse_active:
             return
-        artifact_items = artifacts if isinstance(artifacts, tuple) else ()
-        failure_items = failures if isinstance(failures, tuple) else ()
-        parsed = tuple(item for item in artifact_items if isinstance(item, LocalArtifact))
-        rejected = tuple(
-            item for item in failure_items if isinstance(item, LocalArtifactParseFailure)
-        )
         self._local_apk_parse_active = False
-        self._local_apk_artifacts = parsed
-        self.source_mode = local_apk_audit.SOURCE_MODE if parsed else None
         self._set_busy(False)
-        self.progress.setRange(0, max(1, len(parsed) + len(rejected)))
-        self.progress.setValue(len(parsed) + len(rejected))
-        if parsed:
-            unique_packages = len({item.package_lookup_key for item in parsed})
-            rejected_text = f" • {len(rejected)} rejected" if rejected else ""
-            self.source_label.setText(
-                f"Local APK source: {len(parsed)} artifact(s) • "
-                f"{unique_packages} package(s){rejected_text}"
-            )
-            self.source_label.setToolTip("\n".join(item.file_name for item in parsed))
-            self.status_label.setText("Local APK source ready. Run the Play Store audit.")
-        else:
-            self.source_label.setText("No valid standalone APK was selected")
-            self.status_label.setText("Local APK source was not established")
-        self._apply_column_visibility(reset_order=False)
-        if rejected:
-            QMessageBox.warning(
-                self,
-                "Some APK files could not be used" if parsed else "No usable APK files",
-                f"{len(rejected)} of {len(parsed) + len(rejected)} selected APK file(s) "
-                f"were rejected.\n\n{self._local_apk_failure_summary(rejected)}",
-            )
-        self._sync_action_availability()
+        self.stop_button.setEnabled(False)
+        if not isinstance(value, local_apk_source.LocalApkDiscoveryResult) or value.cancelled:
+            self.source_label.setText("Local APK folder discovery cancelled")
+            self.status_label.setText("No Local APK source was established")
+            self._sync_action_availability()
+            return
+        self._establish_local_apk_candidates(value.paths, f"found in {selected_root}")
 
-    def _on_local_apk_parse_failed(self, request_id: int, message: str) -> None:
+    def _on_local_apk_discovery_failed(self, request_id: int, message: str) -> None:
         if request_id != self._local_apk_parse_generation or not self._local_apk_parse_active:
             return
         self._local_apk_parse_active = False
-        self._local_apk_artifacts = ()
+        self._local_apk_candidates = ()
         self.source_mode = None
         self._set_busy(False)
-        self.source_label.setText("No valid standalone APK was selected")
-        self.status_label.setText("Local APK parsing failed")
-        QMessageBox.critical(self, "Local APK parsing failed", message)
+        self.stop_button.setEnabled(False)
+        self.source_label.setText("No standalone APK files found")
+        self.status_label.setText("Local APK folder discovery failed")
+        QMessageBox.critical(self, "Local APK folder discovery failed", message)
+
+    def _stop_audit(self) -> None:
+        if self._local_apk_parse_active:
+            self._invalidate_local_apk_parse(clear_artifacts=True)
+            self.source_mode = None
+            self._set_busy(False)
+            self.stop_button.setEnabled(False)
+            self.progress.setRange(0, 100)
+            self.progress.setValue(0)
+            self.source_label.setText("Local APK folder discovery cancelled")
+            self.status_label.setText("No Local APK source was established")
+            return
+        super()._stop_audit()
 
     def _load_input_file(self, path: str) -> None:
         previous_mode = self.source_mode
         self._invalidate_local_apk_parse()
         super()._load_input_file(path)
         if self.source_mode == "file":
-            self._local_apk_artifacts = ()
+            self._local_apk_candidates = ()
             if local_apk_audit.is_local_apk_source(previous_mode):
                 self._clear_source_result_rows()
                 self.status_label.setText("File ready. Run the Play Store audit.")
@@ -682,15 +638,11 @@ class MainWindow(results_ui.ResultsWindow):
         )
 
     def _start_local_apk_audit(self) -> None:
-        artifacts = self._local_apk_artifacts
-        if not artifacts:
-            message = (
-                "The Library has no currently verified APK artifacts to audit."
-                if self.source_mode == local_apk_audit.LIBRARY_SOURCE_MODE
-                else "Choose one or more standalone APK files first."
-            )
-            QMessageBox.warning(self, "No APK source", message)
+        candidates = self._local_apk_candidates
+        if not candidates:
+            QMessageBox.warning(self, "No APK source", "Choose APK file(s) or a folder first.")
             return
+        logger.info("Local APK parse/audit started: candidates=%d", len(candidates))
         source_mode = str(self.source_mode)
         self.user_settings = state.load_settings()
         country = (
@@ -722,7 +674,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.current_rows = []
         self.model.set_rows([])
         self.export_button.setEnabled(False)
-        self.progress.setRange(0, len(artifacts))
+        self.progress.setRange(0, len(candidates))
         self.progress.setValue(0)
         self._audit_session += 1
         session = self._audit_session
@@ -730,14 +682,14 @@ class MainWindow(results_ui.ResultsWindow):
         self._audit_pause_event = threading.Event()
         self._audit_pause_event.set()
         self._audit_cancel_event = threading.Event()
-        self._last_progress = (0, len(artifacts), "")
+        self._last_progress = (0, len(candidates), "")
         self._alternative_phase_active = False
         self._set_audit_source_controls_enabled(False)
         self._set_audit_state(AuditRunState.RUNNING)
         threading.Thread(
             target=self._local_apk_audit_worker,
             args=(
-                artifacts,
+                candidates,
                 config,
                 dict(self.user_settings),
                 session,
@@ -754,7 +706,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _local_apk_audit_worker(
         self,
-        artifacts: tuple[LocalArtifact, ...],
+        candidates: tuple[Path, ...],
         config: AuditConfig,
         settings: dict[str, object],
         session: int,
@@ -763,6 +715,65 @@ class MainWindow(results_ui.ResultsWindow):
         force_refresh: bool,
         source_mode: str = local_apk_audit.SOURCE_MODE,
     ) -> None:
+        artifacts: list[LocalArtifact] = []
+        failures: list[LocalArtifactParseFailure] = []
+        unexpected_failures: list[str] = []
+        for index, path in enumerate(candidates, start=1):
+            if cancel_event.is_set():
+                break
+            pause_event.wait()
+            if cancel_event.is_set():
+                break
+            try:
+                parsed = local_apk.parse_local_apk(path)
+            except Exception as exc:
+                logger.exception("Unexpected Local APK parser failure: path=%s", path)
+                unexpected_failures.append(f"{path.name}: {type(exc).__name__}")
+            else:
+                if parsed.artifact is not None:
+                    artifacts.append(parsed.artifact)
+                elif parsed.failure is not None:
+                    logger.info(
+                        "Local APK candidate rejected: path=%s kind=%s",
+                        path,
+                        parsed.failure.kind.value,
+                    )
+                    failures.append(parsed.failure)
+            self.audit_control_signals.progress.emit(
+                session, index, len(candidates), f"Parsing APK • {path.name}"
+            )
+        logger.info(
+            "Local APK parsing finished: valid=%d rejected=%d cancelled=%s",
+            len(artifacts),
+            len(failures) + len(unexpected_failures),
+            cancel_event.is_set(),
+        )
+        failure_lines = [
+            f"{failure.path.name}: {failure.kind.value.replace('_', ' ')}"
+            for failure in failures[:5]
+        ]
+        failure_lines.extend(unexpected_failures[: max(0, 5 - len(failure_lines))])
+        omitted_failures = len(failures) + len(unexpected_failures) - len(failure_lines)
+        if omitted_failures > 0:
+            failure_lines.append(f"…and {omitted_failures} more")
+
+        if not artifacts:
+            outcome = AuditRunOutcome.STOPPED if cancel_event.is_set() else AuditRunOutcome.FAILED
+            self.audit_control_signals.done.emit(
+                AuditRunResult(
+                    session=session,
+                    outcome=outcome,
+                    total_count=len(candidates),
+                    error="No selected APK file could be parsed." if not cancel_event.is_set() else "",
+                    metadata={
+                        "source_mode": source_mode,
+                        "parse_failure_count": len(failures) + len(unexpected_failures),
+                        "parse_failure_summary": "\n".join(failure_lines),
+                    },
+                )
+            )
+            return
+
         artifact_counts: dict[str, int] = {}
         for artifact in artifacts:
             artifact_counts[artifact.package_lookup_key] = (
@@ -777,14 +788,14 @@ class MainWindow(results_ui.ResultsWindow):
             completed_artifacts += artifact_counts.get(package_name, 0)
             self.audit_control_signals.progress.emit(
                 session,
-                min(completed_artifacts, len(artifacts)),
-                len(artifacts),
+                min(completed_artifacts, len(candidates)),
+                len(candidates),
                 package_name,
             )
 
         try:
             result = self._local_artifact_store_service().collect(
-                artifacts,
+                tuple(artifacts),
                 config,
                 settings,
                 force_refresh=force_refresh,
@@ -817,14 +828,17 @@ class MainWindow(results_ui.ResultsWindow):
                         rows=rows,
                         cached_count=cached_count,
                         live_completed_count=max(0, len(rows) - cached_count),
-                        total_count=len(artifacts),
+                        total_count=len(candidates),
                         metadata={
                             "source_mode": source_mode,
                             "issues": list(result.issues),
+                            "parse_failure_count": len(failures) + len(unexpected_failures),
+                            "parse_failure_summary": "\n".join(failure_lines),
                         },
                     )
                 )
         except Exception as exc:
+            logger.exception("Local APK Store audit failed")
             if (
                 session == self._audit_session
                 and self._audit_requested_outcome is not AuditRunOutcome.ABANDONED
@@ -833,7 +847,7 @@ class MainWindow(results_ui.ResultsWindow):
                     AuditRunResult(
                         session=session,
                         outcome=AuditRunOutcome.FAILED,
-                        total_count=len(artifacts),
+                        total_count=len(candidates),
                         error=str(exc),
                         metadata={"source_mode": source_mode},
                     )
@@ -852,6 +866,11 @@ class MainWindow(results_ui.ResultsWindow):
             return replace(availability, recheck=False, app_info=False)
         return availability
 
+    def _open_local_apk_location(self, location: str) -> None:
+        opened, message = open_file_location(location)
+        if not opened:
+            QMessageBox.information(self, "File location unavailable", message)
+
     def _on_controlled_progress(
         self, session: int, done: int, total: int, package_name: str
     ) -> None:
@@ -862,6 +881,15 @@ class MainWindow(results_ui.ResultsWindow):
             or self._audit_paused
             or self._audit_state is AuditRunState.STOPPING
         ):
+            return
+        if (
+            local_apk_audit.is_local_apk_source(self.source_mode)
+            and package_name.startswith("Parsing APK • ")
+        ):
+            self.status_label.setText(
+                f"Parsing APK files • {done}/{total} • "
+                f"{package_name.removeprefix('Parsing APK • ')}"
+            )
             return
 
         cached = min(max(0, self._audit_cached_count), total)
@@ -880,6 +908,15 @@ class MainWindow(results_ui.ResultsWindow):
         result = compact_ui.coerce_audit_run_result(payload)
         if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
+        parse_failure_count = int(result.metadata.get("parse_failure_count") or 0)
+        if parse_failure_count:
+            summary = str(result.metadata.get("parse_failure_summary") or "").strip()
+            QMessageBox.warning(
+                self,
+                "Some APK files could not be parsed",
+                f"{parse_failure_count} APK file(s) were rejected. Valid files were retained."
+                + (f"\n\n{summary}" if summary else ""),
+            )
         if self._audit_started_at is not None:
             self._audit_pre_finalize_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
         if (
@@ -1065,8 +1102,6 @@ class MainWindow(results_ui.ResultsWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._invalidate_local_apk_parse(clear_artifacts=True)
-        if self._local_apk_library_dialog is not None:
-            self._local_apk_library_dialog.close()
         super().closeEvent(event)
 
     def _install_platform_tools_worker(self) -> None:
