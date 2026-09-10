@@ -217,7 +217,10 @@ Recommended technical sequence:
    source boundary);
 3. package-deduplicated Store/provider lookup and artifact fan-out (source/service complete);
 4. transient Local APK Audit input source (source/UI implementation complete);
-5. persistent Local APK Library.
+5. persistent Local APK Library:
+   - phase 5a versioned persistence, recursive scanning and artifact/location
+     semantics (core implementation complete);
+   - phase 5b Qt Library UI integration (next).
 
 Initial Library scope:
 
@@ -237,8 +240,12 @@ package in one homogeneous lookup context while preserving every artifact SHA.
 The transient source now accepts selected standalone APK files, parses them off
 the GUI thread, and produces one existing-table result per valid artifact through
 the package-deduplicated Store/provider boundary. It deliberately does not write
-package-keyed audit history or Device Inventory state. The next implementation
-step is item 5: persistent Library design and implementation.
+package-keyed audit history or Device Inventory state. The phase 5a core now
+registers roots, scans explicitly without following directory links, persists
+versioned SHA/artifact/location state atomically and projects one present
+artifact per SHA into the existing fan-out boundary. The next implementation
+step is phase 5b: integrate that validated core into a Qt Library surface without
+changing the transient `Choose APK(s)` workflow.
 
 ## v2.1 planned follow-up
 

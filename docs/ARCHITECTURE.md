@@ -34,6 +34,19 @@ every corresponding artifact. It creates no cache or worker pool of its own.
 Different lookup contexts require separate calls and retain the existing Store
 and provider cache-key semantics.
 
+`domain.local_apk_library` and `services.local_apk_library` form the persistent
+Library core. The version-1 `local_apk_library.json` document, stored through the
+active platform app-data directory, separates registered roots, SHA-256 artifact
+records and physical path-to-SHA associations. Explicit deterministic scans do
+not follow directory links, reuse `parse_local_apk()` for every candidate, and
+merge partial successes conservatively. Only a fully completed root scan can
+mark an unseen known location not present; failed, partial and cancelled roots
+retain prior presence knowledge. Atomic writes and typed load/save/scan outcomes
+keep this boundary independent from settings, history, inventories and Store or
+provider caches. The projection for later Library audits chooses one present
+location per exact SHA while preserving every location in Library state. See
+`LOCAL_APK_LIBRARY.md`.
+
 The canonical `ui.main_window.MainWindow` owns the transient Local APK source
 interaction. It uses a small background parsing worker with cooperative
 between-file cancellation and a monotonically increasing request guard, then

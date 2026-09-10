@@ -204,7 +204,32 @@ metadata in Details. They do not use installed-version or system-app semantics,
 inherit phone locale state, enter package-keyed audit history, or promote Device
 Inventory/ScanSession baselines. Absolute local paths are not included in result
 rows or default exports. This workflow remains session-transient; directory
-scanning and persistent Local APK Library state are the next milestone.
+scanning and persistent Local APK Library state belong to the separate core
+checkpoint below.
+
+### v2.0 persistent Local APK Library core checkpoint
+
+Phase 5a is complete at the domain/service boundary. The project-owned
+`local_apk_library.json` schema starts at version 1 and stores registered roots,
+path-independent artifacts identified only by exact SHA-256, and separate
+physical path-to-SHA location associations. Identical bytes at multiple paths
+remain one artifact with every location retained. Changed bytes at one path
+create a new SHA identity without mutating or deleting the old record; completed
+rescans retain unseen locations as not present.
+
+Recursive scanning is deterministic, case-insensitive for `.apk`, ignores other
+formats and directory links/reparse points, calls the existing bounded parser,
+supports cooperative cancellation/progress, and preserves valid results across
+bounded typed issues. Partial, failed and cancelled root scans cannot falsely
+mark all prior locations missing. Version/schema/shape failures are typed, and
+JSON saves use a flushed sibling temporary file plus atomic replacement.
+
+The core makes no Store/provider/cache calls and persists no remote evidence.
+Its audit projection reconstructs one deterministic present `LocalArtifact` per
+exact SHA for the existing package-deduplicated fan-out boundary. The transient
+`Choose APK(s)` workflow remains available in v2 development source with its
+one-row-per-explicit-file semantics. The next phase is 5b: Qt Library UI
+integration. v1.99.0 remains the current published release.
 
 ## Explicitly removed / rejected
 
