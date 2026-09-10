@@ -22,6 +22,13 @@ def test_structured_update_wins_over_localized_visible_date() -> None:
     assert presentation.format_date_value(updated) == "2026-08-23"
 
 
+def test_localized_visible_update_uses_configured_default_format() -> None:
+    html = '<div>Aggiornata il 23 ago 2026</div>'
+    updated = _parse_updated_from_html(html)
+    assert updated == "23 ago 2026"
+    assert presentation.format_date_value(updated) == "2026-08-23"
+
+
 def test_explicit_updated_field_is_accepted() -> None:
     html = '<script>{"updated":"Aug 1, 2026"}</script>'
     assert _parse_updated_from_html(html) == "Aug 1, 2026"
