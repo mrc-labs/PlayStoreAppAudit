@@ -74,9 +74,9 @@ A global Fluent redesign, an icon library without demonstrated need, unnecessary
 - The one canonical final Windows x64 package and one engineering assembler run were produced only after the exact release SHA was frozen.
 - VS Code/Pylance Standard type checking is useful local evidence for touched code, not a repository build setting or authorization for a broad typing refactor.
 
-## v1.99 pre-v2.0 closure
+## v1.99 completed release
 
-v1.99 is feature complete and likely the final Windows x64-only release before v2.0. Stabilization must preserve the approved scope while preparing the mandatory packaged Windows x64 acceptance candidate. The application/source version is now frozen at `1.99.0` for the release-candidate cycle.
+v1.99.0 is published and immutable as the final planned Windows x64-only release before v2.0. RC8 satisfied the mandatory packaged acceptance gate. The final Quality, Windows x64 build, public-strict legal validation and engineering assembly passed from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`; annotated tag `v1.99.0` and the three canonical assets were published in the private repository on 2026-09-09. Active forward planning now moves to v2.0 while preserving the shipped v1.99 scope.
 
 ### Cooperative Stop/Cancel
 
@@ -134,7 +134,7 @@ The same 329-package phone produced five measured Phase B iterations of `0.633`,
 
 Phase C now implements the separate default-OFF Advanced Settings > Device option `collect_full_device_metadata_on_scan`. It reuses the existing full collector with verified ScanSession context and an explicit completion receipt. COMPLETE full Scan data is reused at Run with no new full collection, even disconnected; INCOMPLETE full capture discards rich partials, retains compact data and permits the normal matching-device T2 fallback. Compact T1 remains inventory authority and only successful audits advance its baseline. No export/cache/provider/scoring schema or behavior is changed.
 
-Source validation passed with 49 Phase C tests and 699 full tests on each of Python 3.13.15 x64 and 3.14.6 x64, plus the required static/dependency/Qt/event-loop checks. The five-iteration performance matrix also passed on the user's replacement Pixel 11 Pro with 315 apps: Standard median 0.617 s/5 launches, T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7 and its full-collector subphase 4.318 s/2 additional. Run reuse is 2.161 ms with no new collector/dumpsys/ADB work. Advanced dumpsys remains 83.0% of total median (4.080 s; approximately 12.42 MB). Historical Pixel 10 Pro/329-app comparisons retain an explicit device/scope limitation; the user confirmed the replacement. Phase C is READY FOR RC6 BUILD as a local source candidate. RC6 packaging is a separate future session; no Nuitka, package build or remote operation is authorized here. See [Phase C validation report](SCANSESSION_PHASE_C_VALIDATION.md).
+Source validation passed with 49 Phase C tests and 699 full tests on each of Python 3.13.15 x64 and 3.14.6 x64, plus the required static/dependency/Qt/event-loop checks. The five-iteration performance matrix also passed on the user's replacement Pixel 11 Pro with 315 apps: Standard median 0.617 s/5 launches, T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7 and its full-collector subphase 4.318 s/2 additional. Run reuse is 2.161 ms with no new collector/dumpsys/ADB work. Advanced dumpsys remains 83.0% of total median (4.080 s; approximately 12.42 MB). Historical Pixel 10 Pro/329-app comparisons retain an explicit device/scope limitation; the user confirmed the replacement. This was the completed pre-RC6 source checkpoint; later RC6/RC7 corrections and accepted RC8 superseded it. See [Phase C validation report](SCANSESSION_PHASE_C_VALIDATION.md).
 
 ### Alternative Distribution Discovery
 
@@ -176,17 +176,9 @@ Details, App Details and HTML reports expose the score components without mutati
 
 ### Mandatory user-tested RC gate
 
-v1.99 deliberately requires a packaged Windows x64 acceptance cycle. RC4 built and packaged successfully but failed acceptance only on the measured default-column-density issue. The source remains version `1.99.0`; the local density correction is an RC5 source checkpoint, not an RC5 package:
+The gate is complete. RC4 failed on measured default-column density, RC5 became the accepted rollback/reference candidate, RC6 failed focused Device Inventory acceptance, and RC7 failed export parity. RC8 from `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` passed full packaged acceptance; its correction merged through PR `#123`. No public RC tag was created and no RC artifact was published as final.
 
-1. reach feature-complete candidate state;
-2. freeze an RC candidate and build a real Windows x64 package;
-3. provide it for thorough user acceptance testing;
-4. merge corrective PRs if needed;
-5. if source changed, do not treat that RC SHA/artifact as final;
-6. freeze a new final exact `main` SHA only after user acceptance;
-7. run final Quality, build the canonical final Windows x64 package, assemble and publish normally.
-
-Do not create a public RC tag and never publish an earlier RC after source changes.
+Subsequent legal-tooling corrections were handled as release-engineering changes, each invalidating the earlier final candidate. The general evidence-based closure fix merged through PR `#126`; Quality run `34397570534`, official build `34397819253` and assembler `34401780853` passed from the new exact release SHA. The immutable release artifact therefore comes only from `1065744488e548663e3ba365566a9932837f5fb5`, not from RC8 or either failed final attempt.
 
 ## v2.0 and later
 
@@ -250,7 +242,7 @@ Do not reintroduce without a new product decision:
 - Every release uses one exact frozen SHA and tags only after artifact validation.
 - Tag pushes do not rebuild binaries.
 - Keep strict legal/source validation fail-closed.
-- v1.9 remains a Windows x64 ETB; do not add Windows ARM64/Linux/macOS release packaging without an explicit roadmap/decision change.
+- v1.99.0 remains a Windows x64 ETB; do not add Windows ARM64/Linux/macOS release packaging retroactively.
 - Windows x64 ETB GitHub Release titles use `(Win x64 Only)`; body headings identify `Engineering Test Build - Windows x64 Only`.
 - Finish every release through `RELEASE_CLOSURE.md`, including post-release documentation and safe local VS Code synchronization.
 

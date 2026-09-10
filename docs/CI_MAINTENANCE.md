@@ -63,6 +63,16 @@ Post-release housekeeping run `32805211585` applied the unchanged policy success
 - The v1.8 build/assembler generation and two UI-style generations remained within the seven-day grace period.
 - No manual deletion bypassed policy, and no release asset, tag, source commit, retention setting or cleanup logic changed.
 
+### v1.99.0 closure snapshot
+
+The post-publication review on 2026-09-09 followed immutable v1.99.0 release SHA `1065744488e548663e3ba365566a9932837f5fb5` through canonical build run `34397819253` and assembler run `34401780853`.
+
+- Active Actions storage contained exactly 2 artifacts / 296,203,247 bytes (282.48 MiB).
+- Canonical build artifact `10123641304`, `PlayStoreAppAudit-v1.99.0-windows-x64`, occupied 184,838,528 compressed Actions bytes.
+- Canonical assembler artifact `10123756577`, `PlayStoreAppAudit-v1.99.0-windows-x64-engineering-release-assets`, occupied 111,364,719 compressed Actions bytes.
+- Both artifacts are the current canonical audit evidence; no redundant eligible artifact was present, so no deletion was required.
+- The three GitHub Release assets, annotated tag, exact source commit, retention settings and cleanup logic remained unchanged, and repository visibility remained private.
+
 ## Engineering Test Build naming
 
 Use **Engineering Test Build** as the canonical public label for an engineering GitHub release. The acronym is **ETB**.

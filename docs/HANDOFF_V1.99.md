@@ -2,66 +2,64 @@
 
 Last updated: 2026-09-09
 
-Status: **v1.9.0 is published and immutable. v1.99 remains version 1.99.0. RC8 was built from accepted source `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance. The accepted source was merged through PR `#123`; its merge commit `53c85dd46f96243c7e53d348775b76c564c87d5f` passed both PR and post-merge Quality. The final official build, annotated `v1.99.0` tag and private GitHub Release have not yet been created. The repository remains private.**
+Status: **v1.99.0 is published and immutable from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`. The final official build and public-strict legal gate passed, annotated tag `v1.99.0` peels to that SHA, exactly three canonical assets were published and independently reverified, and the repository remains PRIVATE. v1.99 work is complete; active forward planning moves to v2.0.**
 
 ## Start here
 
 Read this file with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `AGENTS.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `RELEASE_CLOSURE.md` and the generated `REPOSITORY_SNAPSHOT.md` in a current handoff package.
 
-RC8 full packaged acceptance is complete and must not be repeated. Its accepted source was `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`; PR `#123` merged that source to `main` at `53c85dd46f96243c7e53d348775b76c564c87d5f`. PR Quality run `34375139356` and post-merge Quality run `34375388948` passed on Python 3.13 and 3.14. This SHA is the pre-release-metadata baseline; the merge commit produced by the release-metadata PR supersedes it as the exact v1.99.0 release source after its required Quality gate passes.
+RC8 full packaged acceptance is complete and must not be repeated. Its accepted source was `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`; PR `#123` merged that source to `main` at `53c85dd46f96243c7e53d348775b76c564c87d5f`. Later release-only legal-tooling changes superseded that pre-release baseline. The general runtime-evidence fix merged through PR `#126` at the immutable release SHA after PR and post-merge Quality passed.
 
-The next separately authorized phase is the final official Windows x64 build and engineering assembly from that new exact `main` SHA, followed by artifact validation, the annotated `v1.99.0` tag and a GitHub Release that remains accessible only through the private repository. Do not reuse the RC8 ZIP as the official final artifact. The unresolved historical GitHub Support privacy issue remains open; do not change repository visibility or rerun the historical privacy audit. Preserve all RC and privacy evidence without committing or publishing it.
+The final official Windows x64 build `34397819253` and engineering assembly `34401780853` passed from the exact release SHA; the resulting artifacts, annotated tag and private GitHub Release are immutable. Do not reuse RC packages, rerun acceptance, rebuild v1.99.0, or change the repository visibility. The unresolved historical GitHub Support privacy issue remains open; do not rerun the historical privacy audit.
 
 Read [RC7_HTML_EXPORT_FIX_VALIDATION.md](RC7_HTML_EXPORT_FIX_VALIDATION.md) for the export-parity root cause and regression coverage. [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md) and [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) remain historical source checkpoints.
 
-When a later session explicitly resumes the canonical remote workflow, before changing anything:
+When a later session begins v2.0 work, before changing anything:
 
 1. verify the live GitHub `main`, open-PR, release and branch state;
 2. run `git status --short` and stop if the local working tree is dirty;
 3. on a clean checkout, fetch/prune, switch to `main` and pull with `--ff-only`;
 4. verify local `HEAD` equals `origin/main` and read the current roadmap/decisions;
 5. inspect the complete relevant implementation and tests before modifying code;
-6. do not modify, rebuild, retag or replace v1.9.0, v1.8.0 or any earlier published release.
+6. do not modify, rebuild, retag or replace v1.99.0 or any earlier published release.
 
-The immutable v1.9 release SHA is not expected to equal later post-release documentation `main`. Always distinguish release lineage from current repository context.
+The immutable v1.99.0 release SHA is not expected to equal later post-release documentation `main`. Always distinguish release lineage from current repository context.
 
 ## Latest immutable release
 
-- Release/tag: `v1.9.0`
-- Published: `2026-08-25T02:51:42Z`
-- URL: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0
-- Release ID: `376114171`
-- Title: `Play Store App Audit v1.9.0 (Win x64 Only)`
+- Release/tag: `v1.99.0`
+- Published: `2026-09-09T20:44:16Z`
+- URL: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0
+- Release ID: `385831055`
+- Title: `Play Store App Audit v1.99.0 (Win x64 Only)`
 - Profile: intentionally unsigned Windows x64 Engineering Test Build, Nuitka standalone ZIP
-- Frozen source SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`
-- Annotated tag object: `e61033f0ffba3d14f598da4d928aa07390dbbfa9`
+- Frozen source SHA: `1065744488e548663e3ba365566a9932837f5fb5`
+- Annotated tag object: `3b4088de9295e6637ced0f5a3d4246b8c8f00680`
 - Tag peel target: exact frozen source SHA
-- Application version: `1.9.0`; Windows File/Product version: `1.9.0.0`
-- Canonical Quality run: `32797795985`, passed on Python 3.13 and 3.14
-- Canonical Windows x64 build run/artifact: `32798334950` / ID `9546290578`, `PlayStoreAppAudit-v1.9.0-windows-x64`
-- Canonical engineering assembler run/artifact: `32801220807` / ID `9546545528`, `PlayStoreAppAudit-v1.9.0-windows-x64-engineering-release-assets`
+- Application version: `1.99.0`; Windows File/Product version: `1.99.0.0`
+- Canonical Quality run: `34397570534`, passed on Python 3.13 and 3.14
+- Canonical Windows x64 build run/artifact: `34397819253` / ID `10123641304`, `PlayStoreAppAudit-v1.99.0-windows-x64`
+- Canonical engineering assembler run/artifact: `34401780853` / ID `10123756577`, `PlayStoreAppAudit-v1.99.0-windows-x64-engineering-release-assets`
 
 Published assets, all independently re-downloaded and verified:
 
-- `PlayStoreAppAudit-v1.9.0-windows-x64.zip` — ID `528529615` — 33,477,938 bytes — SHA-256 `74db811d959a06709aba4d747873ec1b19894e50ba7183f463f7929b44e19c68`
-- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` — ID `528529608` — 73,128,144 bytes — SHA-256 `ccccbd72992bed8692388077fd409dc76bb8f64efce8fa2ef283b74797a4df95`
-- `SHA256SUMS.txt` — ID `528529607` — 225 bytes — SHA-256 `eb2b5f6d5a8fe978e54367b887c65d77994307447154435e3b3ae81c4bf2bd23`
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip` — ID `553536304` — 38,344,767 bytes — SHA-256 `cc556054280ef09bb693a8fd5d6e861c138ee387f96b098788b18db3e171f6c6`
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` — ID `553536280` — 73,128,144 bytes — SHA-256 `873087f13af891bb20e6e52d97342ba507311f9e13d1f05b80823103e58b80a3`
+- `SHA256SUMS.txt` — ID `553536279` — 227 bytes — SHA-256 `656013312212a9de482c8986b70d9185a3e6452ef09c7077e08e411888da382c`
 
-Package validation confirmed PE AMD64/x64, application 1.9.0, Windows File/Product 1.9.0.0, standalone content, intentional unsigned state, startup, legal/source material and exact-SHA provenance. Clean extracted packaged smoke passed before tagging and again after public re-download with isolated data directories; the ZIP checksum remained canonical.
+Package validation confirmed PE AMD64/x64, application 1.99.0, Windows File/Product 1.99.0.0, standalone content, intentional unsigned state, startup, public-strict legal/source material and exact-SHA provenance. Clean extracted packaged smoke passed before tagging; all three release assets were freshly re-downloaded after publication and independently checksum-verified.
 
-## Actions state after v1.9
+## Actions state after v1.99
 
-Post-release housekeeping run `32805211585` passed from the frozen SHA using the unchanged seven-day generational policy.
+Post-publication review found exactly the two canonical v1.99 artifacts and no redundant eligible artifact.
 
-- No run or artifact was eligible for deletion.
-- Active state: 10 artifacts / 574,199,782 bytes (547.60 MiB).
-- Retain v1.9 build artifact `9546290578` and assembler artifact `9546545528` as canonical audit evidence.
-- v1.8 build/assembler and two UI-style predecessor generations remain in grace.
-- No manual deletion, retention-policy change, build, assembler or release mutation occurred during housekeeping.
+- Active state: 2 artifacts / 296,203,247 bytes (282.48 MiB).
+- Retain build artifact `10123641304` and assembler artifact `10123756577` as canonical audit evidence.
+- No deletion, retention-policy change, build, assembler or release mutation occurred during housekeeping.
 
 ## Current technical baseline
 
-- Current source application version is frozen at `1.99.0` for final release preparation.
+- Current source application version remains `1.99.0` after the immutable v1.99.0 release; change it only through deliberately scoped v2.0 work.
 - Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
 - `PySide6-Essentials==6.11.1`; `cryptography==50.0.1`; `Nuitka==4.1.3`.
 - UI: Qt 6 / PySide6 Qt Widgets with platform/default QStyle.
@@ -70,7 +68,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 - Store workers default/recommended 16; Store timeout 25 seconds.
 - Basic view remains compact; advanced behavior remains separated.
 - Presentation-only changes must not overwrite active operational status.
-- No broad architecture, inheritance, typing, theme or dependency rewrite is authorized by v1.99 planning.
+- No broad architecture, inheritance, typing, theme or dependency rewrite is implied by the completed v1.99 release.
 
 ## Shipped v1.9 UX baseline to preserve
 
@@ -83,7 +81,7 @@ Post-release housekeeping run `32805211585` passed from the frozen SHA using the
 
 ## v1.99 scope boundary
 
-v1.99 is feature complete and likely the final Windows x64-only ETB before v2.0. Stabilization and the mandatory packaged acceptance candidate must not reopen product scope. Any concrete acceptance correction remains a narrow, reviewable change with complete local validation.
+v1.99 is feature complete, published and immutable as the final planned Windows x64-only ETB before v2.0. Preserve its shipped scope and move new product work to the v2.0 roadmap.
 
 ## Priority 1: cooperative Stop/Cancel
 
@@ -216,7 +214,7 @@ The session stores immutable parsed full fields only after an explicit COMPLETE 
 
 The Phase C source gate is green: Python 3.13.15 x64/PySide6 6.11.1 and Python 3.14.6 x64/PySide6 6.11.2 each passed 699 tests, repository-wide Ruff, compileall/helper compilation, `pip check`, canonical Qt source smoke and deterministic event-loop full Scan/disconnect/cached Run smoke. All 49 new focused tests passed; all 650 previous tests remain. Native Advanced Settings layout also passed with the platform windows11 style at real 175% scaling.
 
-The user confirmed replacing the old Pixel 10 Pro/329-app reference with a Pixel 11 Pro and 315 apps. Five timed iterations after priming give median Standard 0.617 s/5 launches, Standard T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7, and Advanced collector 4.318 s/2 additional. Advanced dumpsys is 4.080 s median, approximately 12.42 MB and 83.0% of total. Run after Advanced costs 2.161 ms median with zero additional collector/dumpsys/ADB calls, avoiding 4.693 s of repeated current-device T2 work. Current-device Advanced saves 0.321 s/6.1% versus Standard + T2; paired surrounding ADB command timings save 0.503 s from context reuse. Historical 10.2% Standard and 43.1% combined improvements include the changed phone and cannot be attributed solely to software. Full distributions/iterations/deltas are in the validation report. **READY FOR RC6 BUILD**, with packaging deferred to the next session. Local benchmark/smoke scripts are ignored under `artifact/phase-c/`. No Nuitka, `build_windows_exe.bat`, package, remote activity or release-history mutation occurred.
+The user confirmed replacing the old Pixel 10 Pro/329-app reference with a Pixel 11 Pro and 315 apps. Five timed iterations after priming gave median Standard 0.617 s/5 launches, Standard T2 4.695 s/6, combined 5.238 s/11, Advanced 4.917 s/7, and Advanced collector 4.318 s/2 additional. Advanced dumpsys was 4.080 s median, approximately 12.42 MB and 83.0% of total. Run after Advanced cost 2.161 ms median with zero additional collector/dumpsys/ADB calls, avoiding 4.693 s of repeated current-device T2 work. Current-device Advanced saved 0.321 s/6.1% versus Standard + T2; paired surrounding ADB command timings saved 0.503 s from context reuse. Historical 10.2% Standard and 43.1% combined improvements include the changed phone and cannot be attributed solely to software. Full distributions/iterations/deltas are in the validation report. This paragraph is the historical pre-RC6 source checkpoint; RC8 and the final release superseded its build-readiness status. Local benchmark/smoke scripts remain ignored under `artifact/phase-c/`.
 
 The additional same-device Standard check uses the exact committed Phase B source and current C on Pixel 11 Pro/315 apps, five measurements each after priming: medians 0.634 vs 0.613 s, five launches and no dumpsys throughout. This confirms no material Standard regression without relying on the cross-device historical comparison.
 
@@ -260,7 +258,7 @@ The internal `health_score` -> `maintenance_score` migration is deferred to v2.0
 
 The mandatory packaged acceptance cycle is complete. RC4 failed on default column density, RC5 became the accepted rollback/reference candidate, RC6 failed its focused device-inventory acceptance check, and RC7 failed final packaged acceptance because HTML omitted Device Inventory Change while CSV and JSON preserved it. RC8 incorporated the narrow HTML parity correction, was built from `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96` and passed full packaged acceptance.
 
-The accepted RC8 source was merged through PR `#123`. Its PR Quality run `34375139356` and post-merge Quality run `34375388948` passed, producing merge commit `53c85dd46f96243c7e53d348775b76c564c87d5f`. Application acceptance must not be repeated. After the documentation-only release-metadata PR is merged and its Quality gate passes, record its new exact `main` SHA as the canonical v1.99.0 release source, build and assemble the official Windows x64 ETB from that exact SHA, validate the final artifacts, then tag and publish privately. The RC8 ZIP remains acceptance evidence and must not be reused or uploaded as the official final package.
+The accepted RC8 source was merged through PR `#123`. Its PR Quality run `34375139356` and post-merge Quality run `34375388948` passed, producing merge commit `53c85dd46f96243c7e53d348775b76c564c87d5f`. Application acceptance must not be repeated. Release-only legal-tooling corrections subsequently produced the new exact final SHA `1065744488e548663e3ba365566a9932837f5fb5`; build `34397819253`, assembler `34401780853`, annotated tag `v1.99.0` and private Release `385831055` completed successfully. The RC8 ZIP remains historical acceptance evidence and was not reused or uploaded as the official final package.
 
 ## v2.0 roadmap
 

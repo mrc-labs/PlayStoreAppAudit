@@ -108,7 +108,7 @@ Rationale: v1.6 focuses on Store-service maturity, locale correctness, details/c
 
 ### v1.7, v1.8, v1.9 and v1.99 Windows x64 Engineering Test Builds (ETB)
 
-v1.7, v1.8, v1.9 and v1.99 deliberately continue the unsigned Windows x64-only Engineering Test Build profile. v1.7.0, v1.8.0 and v1.9.0 are published and immutable; v1.99 continues the same distribution constraint unless a later explicit release decision changes it.
+v1.7, v1.8, v1.9 and v1.99 deliberately use the unsigned Windows x64-only Engineering Test Build profile. All four releases are published and immutable.
 
 For all four release lines:
 
@@ -121,11 +121,11 @@ For all four release lines:
 - use GitHub Release title suffix `(Win x64 Only)` while the body heading continues to identify `Engineering Test Build - Windows x64 Only`; clearly describe the package as unsigned;
 - any source or release-tooling change after an exact release SHA is recorded invalidates that candidate and requires a new exact SHA and rebuild of the ETB artifacts.
 
-The immutable v1.7.0 release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. The immutable v1.8.0 release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`. The immutable v1.9.0 release SHA is `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+The immutable v1.7.0 release SHA is `e2d09098bc42c6f16d202d010deda3eb24d99aa3`. The immutable v1.8.0 release SHA is `ac328f0dffddb6b70fa7600f1291377376bc05d4`. The immutable v1.9.0 release SHA is `6c117009525f40434e9db714dadf1dd01b79f9ab`. The immutable v1.99.0 release SHA is `1065744488e548663e3ba365566a9932837f5fb5`.
 
-The completed v1.8/v1.9 product scope and the active v1.99 cycle do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8, v1.9 and v1.99.
+The completed v1.8/v1.9/v1.99 product scopes do not change the distribution profile. Windows ARM64 and non-Windows release artifacts remain outside v1.7, v1.8, v1.9 and v1.99.
 
-v1.99 adds a deliberately authorized packaged acceptance candidate before final release. After feature completion, freeze an RC candidate, build a real Windows x64 package and obtain thorough user acceptance. If corrections change source, that RC SHA and artifact are not final. Freeze a new exact `main` SHA only after acceptance, rerun Quality, then build and assemble the canonical final Windows x64 package from that new SHA. No public RC tag is created.
+v1.99 added a deliberately authorized packaged acceptance candidate before final release. RC8 satisfied that gate. Later legal-tooling corrections invalidated earlier final candidates, so the immutable release was rebuilt and assembled from the new exact SHA above; no public RC tag was created.
 
 Rationale: v1.7, v1.8, v1.9 and v1.99 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the v2.0 distribution milestone.
 
