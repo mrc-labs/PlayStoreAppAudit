@@ -44,7 +44,7 @@ CLI/headless support is planned separately for v2.1 rather than v2.0. See the [P
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The current published v1.99.0 release is a Windows x64 Engineering Test Build (ETB) and provides one prebuilt package:
+The current published v1.99.0 release is a Windows x64-only build and provides one prebuilt package:
 
 - Windows x64
 
@@ -112,7 +112,7 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 | Platform | Current published v1.99.0 | Planned v2.0 |
 | --- | --- | --- |
-| Windows x64 | ETB ZIP | Primary implementation/acceptance platform and final v2.0 build |
+| Windows x64 | Windows x64 ZIP | Primary implementation/acceptance platform and final v2.0 build |
 | Windows ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
 | Linux x64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
 | Linux ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
@@ -164,6 +164,6 @@ Developer references:
 
 ## Building from source
 
-Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.99.0 profile used one exact `main` SHA, built only the Windows x64 ETB candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 ETB asset set, then tagged and published the already validated artifacts without rebuilding.
+Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.99.0 profile used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
 
 The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Development and packaged acceptance remain Windows x64-first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
