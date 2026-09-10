@@ -1,0 +1,41 @@
+name: Feature request / suggestion
+description: Suggest an improvement or new capability for Play Store App Audit
+title: "[Suggestion]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Describe the problem or workflow first, then the change you would like to see.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: What are you trying to accomplish, and what is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested improvement
+      description: Describe the behavior or feature you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Example use case
+      description: Give a concrete example if possible.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Mention workarounds or alternative approaches you have tried.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that an existing open issue does not already cover this suggestion.
+          required: true
