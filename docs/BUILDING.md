@@ -61,11 +61,23 @@ For the Windows x64 ETB profiles through v1.99 and the preserved future producti
 - Packaging Python: 3.13
 - Quality CI: Python 3.13 and 3.14
 - `PySide6-Essentials==6.11.1`
+- `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
 - `Nuitka==4.1.3`
 - Qt Widgets
 - official JavaScript GitHub Actions at their currently supported majors
 
 Do not change these as incidental cleanup. Toolchain migration requires a dedicated PR and package evidence.
+
+`pyaxmlparser` is Apache-2.0 and currently declares `lxml` (BSD-3-Clause),
+`click>=6.7` (BSD-3-Clause) and `asn1crypto>=0.24.0` (MIT). `lxml` is a compiled
+native dependency; its wheel's own bundled legal material must be inventoried.
+The release legal tooling must retain its fail-closed runtime-evidence behavior:
+inventory and copy license/notice files for the exact transitive components that
+Nuitka actually ships. These permissive dependencies do not change the required
+Qt corresponding-source set or release asset count. The parser foundation has
+Python 3.13/3.14 source evidence but no Nuitka evidence yet; validate actual
+Windows x64 standalone inclusion and legal inventory before the v2.0 release
+freeze, without triggering the other five targets during primary development.
 
 ## Release profiles
 

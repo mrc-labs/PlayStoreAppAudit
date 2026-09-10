@@ -142,6 +142,16 @@ v2.0 is the first planned return to the full six-platform production release arc
 
 Rationale: the production architecture can remain maintained and testable without forcing signing credentials, publisher eligibility, notarization setup or six-target release cost into v1.6, v1.7 or v1.8.
 
+Windows x64 is the primary v2.0 implementation, correction, stabilization and
+packaged-acceptance platform. Do not spend normal feature-development cycles
+building Windows ARM64, Linux x64/ARM64 or macOS x64/ARM64 in parallel. Those
+five targets form the final cross-platform production gate only after Windows
+x64 is functionally complete and accepted. Defects in shared code found there
+must be fixed, relevant Windows x64 regressions rerun and affected targets
+revalidated before freezing the one exact SHA used for all six final artifacts.
+Production signing/notarization remains conditional until proven in that final
+phase. CLI/headless remains a v2.1 concern.
+
 ## Packaging and legal model
 
 - Windows uses standalone packaging.
@@ -450,6 +460,21 @@ Local APK Audit is deferred entirely to v2.0 rather than entering v1.99 with pac
 The Library will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
 
 Later v2.x candidates include metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
+
+The parser foundation uses a bounded standard-library ZIP boundary with the
+pinned Apache-2.0 `pyaxmlparser==0.3.31` binary-manifest/resource parser. One
+immutable, slotted `LocalArtifact` represents one exact standalone APK and is
+identified by its SHA-256; its exact manifest package ID is a separate future
+Store lookup key.
+Missing optional metadata remains unknown. The boundary never extracts archive
+paths, applies explicit file/central-directory/entry/expansion/manifest/resource
+limits, and returns typed failures for malformed, unsupported and split inputs.
+
+Certificate/signature extraction and cryptographic signature verification are
+both outside this checkpoint. SHA-256 is artifact identity, not publisher or
+installability verification. `.apks`, `.aab` and split APKs remain unsupported.
+See `LOCAL_APK_PARSER.md` for the evaluated alternatives, exact fields, limits,
+dependency/legal effect and residual risks.
 
 ## Release-script maintenance
 

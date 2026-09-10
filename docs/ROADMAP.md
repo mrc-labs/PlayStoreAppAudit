@@ -194,14 +194,27 @@ Production-trust signing is the ideal target for Windows and macOS, including no
 
 The v2.0 production profile continues to require one frozen SHA, signed/native post-sign validation where applicable, strict legal/source evidence and the eight-file multi-platform asset set documented in `BUILDING.md`.
 
+Windows x64 is the primary platform for v2.0 implementation, correction,
+stabilization and packaged acceptance. Normal feature work does not build or
+validate Windows ARM64, Linux x64/ARM64 or macOS x64/ARM64 in parallel. Those
+five targets are the final cross-platform production gate after the Windows x64
+implementation is functionally complete, corrected and stabilized. If that gate
+finds a shared-code defect, fix it, rerun relevant Windows x64 regressions and
+repeat validation for every affected target before freezing the final SHA. All
+six final artifacts must still derive from that one exact frozen SHA.
+Signing/notarization feasibility is proven only in the applicable final
+production phase and is not promised in advance. CLI/headless remains v2.1.
+
 ### Local APK Library / modern LocalAPK successor core
 
 A Local APK Library is a major v2.0 product pillar. The transient Local APK Audit is also deferred entirely to v2.0 because correct support requires artifact-aware identity and a vetted untrusted-APK parser/verifier boundary.
 
 Recommended technical sequence:
 
-1. parser/verifier spike with malformed-input, packaging and legal validation;
-2. typed `LocalArtifact` model with SHA-256 artifact identity;
+1. parser/verifier foundation with malformed-input and legal assessment
+   (source implementation complete; Windows x64 package evidence remains later);
+2. typed `LocalArtifact` model with SHA-256 artifact identity (complete at the
+   source boundary);
 3. package-deduplicated Store/provider lookup and artifact fan-out;
 4. transient Local APK Audit input source;
 5. persistent Local APK Library.
@@ -214,6 +227,12 @@ Initial Library scope:
 - reuse existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture.
 
 Do not duplicate existing CSV/export capabilities. Portable mode is not a new feature; the application already supports standalone/local workflows. ADB remains read-only unless a future explicit decision authorizes install/write behavior.
+
+The implemented parser boundary is documented in `LOCAL_APK_PARSER.md`. It is
+limited to standalone APK files, deliberately does not claim signing
+verification, and leaves `.apks`, `.aab`, split APKs, UI and persistence to
+later explicitly scoped work. The next implementation step is item 3, not a
+transient audit or Library UI shortcut.
 
 ## v2.1 planned follow-up
 

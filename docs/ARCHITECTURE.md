@@ -19,6 +19,12 @@ Production code is organized by responsibility:
 
 Version-suffixed compatibility modules are not part of the production architecture. Historical implementations remain available through Git history and tags.
 
+The v2.0 Local APK foundation follows the same dependency direction:
+`domain.local_artifacts` owns the immutable SHA-256 artifact identity and typed
+parse outcomes, while `services.local_apk` owns bounded filesystem/ZIP and
+binary-manifest/resource parsing. Local APK parsing has no Qt or ADB dependency.
+Package ID remains a Store fan-out key rather than artifact identity.
+
 ## Dependency direction
 
 The preferred dependency flow is:
@@ -32,6 +38,14 @@ UI -> services -> domain
 UI code coordinates interaction and presentation. Store parsing, audit classification and persistence belong in services; ADB and operating-system details belong in the device and platform layers. Domain and Store parsing code must not depend on Qt.
 
 Side effects stay at the edges: network access in Store/update services, filesystem state in persistence/reporting services, subprocess work in device/platform code and user interaction in the UI.
+
+Local APKs are untrusted filesystem input. The parser captures a bounded
+temporary snapshot and SHA-256 in one streaming pass, parses only that snapshot,
+then re-hashes the source before success. It preflights ZIP structure and
+resource limits, decompresses only bounded metadata members in memory, and never
+extracts archive paths. It currently accepts only standalone `.apk`; split APKs,
+`.apks`, `.aab` and signature verification are explicitly outside the boundary.
+See `LOCAL_APK_PARSER.md`.
 
 ## Qt UI structure
 
