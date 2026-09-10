@@ -1,0 +1,64 @@
+name: Bug report
+description: Report a reproducible problem in Play Store App Audit
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Play Store App Audit. Please avoid sharing sensitive local paths, device identifiers, API keys, or other private data.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: The version shown in Help > About Play Store App Audit.
+      placeholder: e.g. 2.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x64
+        - Windows ARM64
+        - Linux x64
+        - Linux ARM64
+        - macOS Intel/x64
+        - macOS Apple Silicon/ARM64
+        - Other / source run
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Choose ...
+        3. Click ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics or screenshots
+      description: Optional. You can create a diagnostic bundle from Help > Create Diagnostic Bundle… and attach only what you are comfortable sharing. Review attachments for sensitive information first.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that an existing open issue does not already describe this problem.
+          required: true
+        - label: I reviewed any attachments for private or sensitive information.
+          required: true
