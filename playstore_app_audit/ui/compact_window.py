@@ -33,6 +33,7 @@ from app_icon import ensure_runtime_icon
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
+from playstore_app_audit.services.local_apk_audit import is_local_apk_source
 from playstore_app_audit.services.state import (
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
@@ -1181,13 +1182,13 @@ class CompactWindow(AuditWindow):
         self._alternative_phase_active = False
 
         typed_rows = list(result.rows)
-        transient_local_apk = result.metadata.get("source_mode") == "local_apk"
-        compare_enabled = bool(self.user_settings.get("compare_previous", False)) and not transient_local_apk
+        local_apk_source = is_local_apk_source(result.metadata.get("source_mode"))
+        compare_enabled = bool(self.user_settings.get("compare_previous", False)) and not local_apk_source
         history = load_history() if compare_enabled else {}
         for row in typed_rows:
             row["is_system"] = (
                 None
-                if transient_local_apk
+                if local_apk_source
                 else str(row.get("package_name") or "") in self.current_system_packages
             )
             self._classify_row(row)

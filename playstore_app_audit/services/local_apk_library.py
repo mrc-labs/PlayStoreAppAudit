@@ -216,6 +216,28 @@ class LocalApkLibraryService:
             roots=tuple(sorted(roots_by_key.values(), key=lambda item: _path_key(item.path))),
         )
 
+    def remove_root(
+        self,
+        library: LocalApkLibrary,
+        root: str | Path,
+    ) -> LocalApkLibrary:
+        """Remove one exact registration and its owned location metadata.
+
+        Artifact metadata is retained conservatively. This method performs no
+        filesystem operation and never removes the directory or APK files.
+        """
+
+        root_key = _path_key(_normalise_path(root))
+        return replace(
+            library,
+            roots=tuple(item for item in library.roots if _path_key(item.path) != root_key),
+            locations=tuple(
+                location
+                for location in library.locations
+                if _path_key(location.root_path) != root_key
+            ),
+        )
+
     def rescan(
         self,
         library: LocalApkLibrary,

@@ -231,6 +231,32 @@ exact SHA for the existing package-deduplicated fan-out boundary. The transient
 one-row-per-explicit-file semantics. The next phase is 5b: Qt Library UI
 integration. v1.99.0 remains the current published release.
 
+### v2.0 persistent Local APK Library UI checkpoint
+
+Phase 5b is complete in the v2 development source. `File > Local APK Library…`
+and the Standalone APK control's compact secondary menu open a focused Qt
+Library dialog without adding a fourth source card or replacing transient
+`Choose APK(s)`. Registered folders show scan status/time and support explicit
+add, remove, selected rescan, rescan-all and cooperative cancel actions. New
+overlapping roots are explained and rejected; pre-existing nested-root documents
+still load and display. Removing a folder changes only Library registration and
+location metadata and never deletes APK files or directories.
+
+The artifact table is SHA-based, so identical physical copies occupy one row;
+selected details show the full SHA, package/version/SDK metadata and every known
+Present/Missing location. Scans run off the GUI thread with generation guards.
+Completed, partial and failed coherent state is saved through the core's atomic
+writer, while cancellation reloads the last persisted state without saving
+partial mutations. Invalid Library documents disable writes and remain
+untouched.
+
+`Audit Library` establishes the explicit `local_apk_library` source and reuses
+the existing one-representative-per-SHA projection, package-deduplicated
+Store/provider fan-out, caches, lifecycle, table, Details and CSV/JSON/HTML
+exports. Library audit results do not enter previous-audit history, Device
+Inventory or ScanSession, and absolute paths remain absent from remote calls and
+default exports. v1.99.0 remains the current published release.
+
 ## Explicitly removed / rejected
 
 Do not reintroduce without a new explicit product decision:

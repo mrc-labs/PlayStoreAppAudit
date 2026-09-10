@@ -19,6 +19,7 @@ import requests
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
@@ -946,7 +947,9 @@ def write_html_report(
     path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None
 ) -> Path:
     target = Path(path)
-    local_apk_report = any(row.get("source_mode") == "local_apk" for row in rows)
+    local_apk_report = any(
+        local_apk_audit.is_local_apk_source(row.get("source_mode")) for row in rows
+    )
     counts = {
         key: sum(1 for row in rows if _status_class(row) == key)
         for key in ("green", "yellow", "orange", "red", "blue", "purple")

@@ -220,7 +220,7 @@ Recommended technical sequence:
 5. persistent Local APK Library:
    - phase 5a versioned persistence, recursive scanning and artifact/location
      semantics (core implementation complete);
-   - phase 5b Qt Library UI integration (next).
+   - phase 5b Qt Library UI integration (source implementation complete).
 
 Initial Library scope:
 
@@ -243,9 +243,13 @@ the package-deduplicated Store/provider boundary. It deliberately does not write
 package-keyed audit history or Device Inventory state. The phase 5a core now
 registers roots, scans explicitly without following directory links, persists
 versioned SHA/artifact/location state atomically and projects one present
-artifact per SHA into the existing fan-out boundary. The next implementation
-step is phase 5b: integrate that validated core into a Qt Library surface without
-changing the transient `Choose APK(s)` workflow.
+artifact per SHA into the existing fan-out boundary. Phase 5b now exposes the
+Library through a focused Qt dialog with explicit folder management/rescans,
+SHA-based artifact rows, all-location details and a distinct Library audit source
+that reuses the established fan-out/result/export lifecycle. The transient
+`Choose APK(s)` workflow remains unchanged. Watchers, duplicate cleanup,
+rename/move/delete operations and the later v2.x Library-management backlog
+remain excluded.
 
 ## v2.1 planned follow-up
 

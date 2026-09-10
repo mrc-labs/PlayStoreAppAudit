@@ -8,7 +8,8 @@ The v2.0 phase 5a core provides a Qt-independent persistent Local APK Library.
 `playstore_app_audit.domain.local_apk_library` owns its immutable typed state and
 operation results; `playstore_app_audit.services.local_apk_library` owns root
 registration, explicit recursive scans, schema validation and atomic JSON
-persistence. The end-user Library UI is phase 5b and is not yet implemented.
+persistence. Phase 5b exposes those boundaries through the focused
+`playstore_app_audit.ui.local_apk_library.LocalApkLibraryDialog`.
 
 The Library is stored as `local_apk_library.json` in the active application-data
 directory resolved by `playstore_app_audit.platform.runtime.app_data_dir()`, so
@@ -89,10 +90,24 @@ Different SHA-256 values remain distinct even when their package ID matches.
 This does not change transient `Choose APK(s)`: explicitly selected files still
 produce one transient row per selected valid file.
 
-## Deferred to phase 5b and later
+## Qt Library surface
 
-Phase 5b will add the Qt Library surfaces for adding folders, explicit rescans,
-viewing current/missing locations, and launching audits through the existing
-fan-out boundary. Watchers, deletion, duplicate cleanup, mass rename, Explorer
-integration, APK installation, certificate/signature work, split APKs,
-`.apks`, and `.aab` remain outside this core.
+`File > Local APK Library…` and the compact secondary menu beside
+`Choose APK(s)` open the Library without changing current results. The dialog
+shows registered folders and their last scan state separately from one artifact
+row per exact SHA. Selected-artifact details expose the full metadata and every
+known Present/Missing location. It supports explicit add/remove/rescan actions
+and cooperative cancellation; removing a registration never touches files on
+disk. New overlapping roots are rejected with an explanation, while existing
+nested-root documents remain readable.
+
+Completed, partial and failed scans are persisted through this service's atomic
+writer. Cancelled scan mutations are not saved. `Audit Library` uses the
+one-representative-per-SHA projection and establishes the distinct
+`local_apk_library` result source while reusing the existing Store/provider and
+result lifecycle. Transient `Choose APK(s)` retains one row per explicitly
+selected file.
+
+Watchers, file deletion, duplicate cleanup, mass rename, Explorer integration,
+APK installation, certificate/signature work, split APKs, `.apks`, and `.aab`
+remain outside this milestone.
