@@ -25,6 +25,15 @@ parse outcomes, while `services.local_apk` owns bounded filesystem/ZIP and
 binary-manifest/resource parsing. Local APK parsing has no Qt or ADB dependency.
 Package ID remains a Store fan-out key rather than artifact identity.
 
+`services.local_artifact_store` is the package-evidence coordination boundary.
+One call has one `AuditConfig`, provider/settings context and refresh policy; it
+deduplicates exact `package_lookup_key` values in first-seen order, submits the
+unique batch through the existing Play Store/cache/provider services, and fans
+one immutable `domain.local_artifact_store.PackageStoreEvidence` object back to
+every corresponding artifact. It creates no cache or worker pool of its own.
+Different lookup contexts require separate calls and retain the existing Store
+and provider cache-key semantics.
+
 ## Dependency direction
 
 The preferred dependency flow is:

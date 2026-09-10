@@ -215,7 +215,7 @@ Recommended technical sequence:
    (source implementation complete; Windows x64 package evidence remains later);
 2. typed `LocalArtifact` model with SHA-256 artifact identity (complete at the
    source boundary);
-3. package-deduplicated Store/provider lookup and artifact fan-out;
+3. package-deduplicated Store/provider lookup and artifact fan-out (source/service complete);
 4. transient Local APK Audit input source;
 5. persistent Local APK Library.
 
@@ -231,8 +231,10 @@ Do not duplicate existing CSV/export capabilities. Portable mode is not a new fe
 The implemented parser boundary is documented in `LOCAL_APK_PARSER.md`. It is
 limited to standalone APK files, deliberately does not claim signing
 verification, and leaves `.apks`, `.aab`, split APKs, UI and persistence to
-later explicitly scoped work. The next implementation step is item 3, not a
-transient audit or Library UI shortcut.
+later explicitly scoped work. The package-level fan-out now reuses the existing
+Play Store cache/audit and Alternative Distribution boundaries once per exact
+package in one homogeneous lookup context while preserving every artifact SHA.
+The next implementation step is item 4, not a persistent Library UI shortcut.
 
 ## v2.1 planned follow-up
 
