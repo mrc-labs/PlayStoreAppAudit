@@ -1,35 +1,38 @@
 from __future__ import annotations
 
 import csv
+import io
+import json
 import os
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
+import playstore_app_audit.platform.file_locations as file_locations
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
+import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-import playstore_app_audit.ui.main_window as main_ui
 from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
     LocalArtifactFailureKind,
     LocalArtifactFormat,
     LocalArtifactParseFailure,
     LocalArtifactParseResult,
-    LocalArtifactWarning,
 )
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
-from playstore_app_audit.ui import details_panel
+from playstore_app_audit.ui import details_panel, schema
+from playstore_app_audit.ui.base_window import EXPORT_FIELDS
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -48,14 +51,13 @@ def _artifact(path: Path, sha: str, package: str = "com.example.same") -> LocalA
         target_sdk=35,
         compile_sdk=35,
         application_debuggable=False,
-        permissions=("android.permission.INTERNET",),
-        features=("android.hardware.camera",),
+        permissions=(),
+        features=(),
         icon_reference=None,
         file_name=path.name,
         canonical_path=path.resolve(),
         file_size=1234,
         modified_at=datetime(2026, 9, 10, 10, 0, tzinfo=UTC),
-        warnings=(LocalArtifactWarning.APPLICATION_LABEL_UNRESOLVED,),
     )
 
 
@@ -68,15 +70,11 @@ def app() -> QApplication:
 
 
 @pytest.fixture
-def window(
-    app: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> MainWindow:
+def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
     settings: dict[str, object] = {
         "view_preset": "Basic",
         "recent_sources": [],
-        "exclude_system_source": True,
-        "compare_previous": True,
-        "inventory_history_enabled": True,
+        "compare_previous": False,
         "cache_enabled": False,
         "store_language": "en",
         "store_workers": 4,
@@ -94,166 +92,87 @@ def window(
     app.processEvents()
 
 
-def test_partial_parse_keeps_valid_artifacts_in_selection_order(
-    window: MainWindow,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+def test_choose_files_establishes_candidates_without_parsing(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    paths = [tmp_path / "first.apk", tmp_path / "broken.apk", tmp_path / "second.apk"]
-    first = _artifact(paths[0], "a" * 64)
-    second = _artifact(paths[2], "b" * 64, "com.example.other")
-    failure = LocalArtifactParseFailure(
-        paths[1], LocalArtifactFailureKind.MALFORMED_ARCHIVE, "broken fixture"
-    )
-    outcomes = {
-        paths[0]: LocalArtifactParseResult(artifact=first),
-        paths[1]: LocalArtifactParseResult(failure=failure),
-        paths[2]: LocalArtifactParseResult(artifact=second),
-    }
-    warnings: list[tuple[object, ...]] = []
-    monkeypatch.setattr(local_apk, "parse_local_apk", lambda path: outcomes[path])
-    monkeypatch.setattr(
-        compact_ui.QMessageBox,
-        "warning",
-        lambda *args, **_kwargs: warnings.append(args),
-    )
-    jobs: list[tuple[int, tuple[Path, ...], threading.Event]] = []
-    monkeypatch.setattr(
-        window,
-        "_launch_local_apk_parse_worker",
-        lambda request, selected, cancel: jobs.append((request, selected, cancel)),
-    )
-    window.source_mode = "device"
-    window._scan_session = object()
-    window._device_store_locale = main_ui.store_locale.StoreLocale(
-        language="de", country="de", locale="de-DE", source="test"
-    )
-    window._store_country_manual_override = False
-    window.country_edit.setText("de")
-    monkeypatch.setattr(main_ui.runtime, "detect_host_store_country", lambda: "us")
-
-    window._begin_local_apk_parse(paths)
-    window._local_apk_parse_worker(*jobs[0])
-
+    first = tmp_path / "one.apk"
+    first.write_bytes(b"candidate")
+    parser_calls: list[Path] = []
+    monkeypatch.setattr(local_apk, "parse_local_apk", lambda path: parser_calls.append(path))
+    window._begin_local_apk_parse([first, first, tmp_path / "missing.apk"])
+    assert window._local_apk_candidates == (first.resolve(),)
     assert window.source_mode == "local_apk"
-    assert window._local_apk_artifacts == (first, second)
-    assert "2 artifact(s)" in window.source_label.text()
-    assert "1 rejected" in window.source_label.text()
-    assert len(warnings) == 1
+    assert parser_calls == []
     assert window.run_button.isEnabled()
-    assert not window.exclude_system_source_check.isEnabled()
-    assert not window.hide_system_check.isEnabled()
-    assert window._scan_session is None
-    assert window._device_store_locale is None
-    assert window.country_edit.text() == "us"
-    assert window._visible_column_order()[:5] == [
-        "criticality",
-        "local_apk_file_name",
-        "package_name",
-        "local_apk_label",
-        "local_apk_version_name",
-    ]
 
 
-def test_choose_apks_uses_multi_file_apk_picker(
-    window: MainWindow,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+def test_folder_discovery_is_recursive_case_insensitive_and_filtered(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    nested = root / "nested"
+    nested.mkdir(parents=True)
+    first = root / "a.APK"
+    second = nested / "b.apk"
+    first.write_bytes(b"a")
+    second.write_bytes(b"b")
+    (nested / "ignored.apks").write_bytes(b"x")
+    (nested / "ignored.aab").write_bytes(b"x")
+    result = local_apk_source.discover_folder_apks(root)
+    expected = tuple(sorted((first.resolve(), second.resolve()), key=lambda p: os.path.normcase(str(p))))
+    assert result.paths == expected
+    assert not result.cancelled
+
+
+def test_folder_discovery_does_not_follow_directory_links(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (outside / "hidden.apk").write_bytes(b"x")
+    link = root / "linked"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory links are unavailable in this environment")
+    assert local_apk_source.discover_folder_apks(root).paths == ()
+
+
+def test_folder_discovery_rejects_a_link_as_the_selected_root(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "hidden.apk").write_bytes(b"x")
+    link = tmp_path / "selected-link"
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError:
+        pytest.skip("Directory links are unavailable in this environment")
+    assert local_apk_source.discover_folder_apks(link).paths == ()
+
+
+def test_zero_folder_result_and_stale_completion_are_safe(
+    window: MainWindow, tmp_path: Path
 ) -> None:
-    selected = [str(tmp_path / "one.apk"), str(tmp_path / "two.apk")]
-    picker_calls: list[tuple[object, ...]] = []
-    captured: list[list[Path]] = []
-    monkeypatch.setattr(
-        main_ui.QFileDialog,
-        "getOpenFileNames",
-        lambda *args: picker_calls.append(args) or (selected, "Android APK files (*.apk)"),
-    )
-    monkeypatch.setattr(window, "_begin_local_apk_parse", lambda paths: captured.append(paths))
-
-    window.choose_apk_button.click()
-
-    assert captured == [[Path(selected[0]), Path(selected[1])]]
-    assert picker_calls[0][-1] == "Android APK files (*.apk)"
-    assert window.choose_apk_button.text() == "Choose APK(s)"
-
-
-def test_zero_valid_apks_does_not_establish_source(
-    window: MainWindow,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    path = tmp_path / "broken.apk"
-    failure = LocalArtifactParseFailure(
-        path, LocalArtifactFailureKind.MALFORMED_ARCHIVE, "broken fixture"
-    )
-    monkeypatch.setattr(
-        local_apk,
-        "parse_local_apk",
-        lambda _path: LocalArtifactParseResult(failure=failure),
-    )
-    jobs: list[tuple[int, tuple[Path, ...], threading.Event]] = []
-    monkeypatch.setattr(
-        window,
-        "_launch_local_apk_parse_worker",
-        lambda request, selected, cancel: jobs.append((request, selected, cancel)),
-    )
-
-    window._begin_local_apk_parse([path])
-    window._local_apk_parse_worker(*jobs[0])
-
+    root = tmp_path / "empty"
+    root.mkdir()
+    result = local_apk_source.discover_folder_apks(root)
+    window._local_apk_parse_generation = 4
+    window._local_apk_parse_active = True
+    window._on_local_apk_discovery_done(3, result, str(root))
+    assert window._local_apk_candidates == ()
+    window._on_local_apk_discovery_done(4, result, str(root))
     assert window.source_mode is None
-    assert window._local_apk_artifacts == ()
     assert not window.run_button.isEnabled()
 
 
-def test_stale_parse_completion_cannot_replace_newer_selection(
-    window: MainWindow,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    jobs: list[tuple[int, tuple[Path, ...], threading.Event]] = []
-    monkeypatch.setattr(
-        window,
-        "_launch_local_apk_parse_worker",
-        lambda request, selected, cancel: jobs.append((request, selected, cancel)),
-    )
-    old = _artifact(tmp_path / "old.apk", "c" * 64)
-    current = _artifact(tmp_path / "current.apk", "d" * 64)
-
-    window._begin_local_apk_parse([old.canonical_path])
-    old_request = jobs[-1][0]
-    window._begin_local_apk_parse([current.canonical_path])
-    current_request = jobs[-1][0]
-    window._on_local_apk_parse_done(old_request, (old,), ())
-
+def test_folder_discovery_stop_is_cooperative(window: MainWindow) -> None:
+    cancellation = threading.Event()
+    window._local_apk_parse_cancel_event = cancellation
+    window._local_apk_parse_active = True
+    window._set_busy(True)
+    window._stop_audit()
+    assert cancellation.is_set()
+    assert not window._local_apk_parse_active
+    assert not window.stop_button.isEnabled()
     assert window.source_mode is None
-    assert window._local_apk_artifacts == ()
-
-    window._on_local_apk_parse_done(current_request, (current,), ())
-    assert window.source_mode == "local_apk"
-    assert window._local_apk_artifacts == (current,)
-
-
-def test_switching_to_file_discards_transient_local_state(
-    window: MainWindow, tmp_path: Path
-) -> None:
-    artifact = _artifact(tmp_path / "local.apk", "e" * 64)
-    window._local_apk_artifacts = (artifact,)
-    window.source_mode = "local_apk"
-    window.current_rows = [{"source_mode": "local_apk", "local_apk_sha256": artifact.artifact_sha256}]
-    window.model.set_rows(window.current_rows)
-    source = tmp_path / "packages.csv"
-    source.write_text("package_name\ncom.example.file\n", encoding="utf-8")
-
-    window._load_input_file(str(source))
-
-    assert window.source_mode == "file"
-    assert window._local_apk_artifacts == ()
-    assert window.current_rows == []
-    assert window.file_apps == [
-        {"app_name": "com.example.file", "package_name": "com.example.file"}
-    ]
-    assert window._scan_session is None
 
 
 @dataclass
@@ -266,146 +185,218 @@ class FakeStore:
         config: AuditConfig,
         progress_callback=None,
         **_kwargs,
-    ) -> list[dict[str, Any]]:
+    ):
         self.calls.append([dict(app) for app in apps])
-        rows: list[dict[str, Any]] = []
-        for index, app_row in enumerate(apps, start=1):
-            package = app_row["package_name"]
-            rows.append(
-                {
-                    "app_name": package,
-                    "package_name": package,
-                    "play_status": "available",
-                    "play_title": "Store title",
-                    "play_version": "2.0",
-                    "play_last_update": "2026-09-01",
-                    "store_country": config.country,
-                    "store_language": config.language,
-                    "notes": "",
-                }
-            )
-            if progress_callback is not None:
-                progress_callback(index, len(apps), package)
-        return rows
+        return [
+            {
+                "package_name": app["package_name"],
+                "play_status": "available",
+                "play_version": "2.0",
+                "play_last_update": "2026-08-23",
+                "store_country": config.country,
+            }
+            for app in apps
+        ]
 
 
-def _no_alternatives(rows, settings, **kwargs) -> list[str]:
-    del rows, settings, kwargs
+def _no_alternatives(_rows, _settings, **_kwargs) -> list[str]:
     return []
 
 
-def test_local_audit_preserves_artifacts_deduplicates_network_and_skips_history(
+def test_run_parses_candidates_keeps_partial_success_and_physical_rows(
     window: MainWindow,
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    first = _artifact(tmp_path / "first.apk", "1" * 64)
-    second = _artifact(tmp_path / "second.apk", "2" * 64)
+    first = tmp_path / "first.apk"
+    copy = tmp_path / "copy.apk"
+    broken = tmp_path / "broken.apk"
+    crashed = tmp_path / "crashed.apk"
+    for path in (first, copy, broken, crashed):
+        path.write_bytes(path.name.encode())
+    outcomes = {
+        first: LocalArtifactParseResult(artifact=_artifact(first, "1" * 64)),
+        copy: LocalArtifactParseResult(artifact=_artifact(copy, "1" * 64)),
+        broken: LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                broken, LocalArtifactFailureKind.MALFORMED_ARCHIVE, "broken"
+            )
+        ),
+    }
     store = FakeStore()
-    service = LocalArtifactStoreService(
-        store_service=store,
-        alternative_runner=_no_alternatives,
-    )
-    persistence: list[str] = []
-    monkeypatch.setattr(window, "_local_artifact_store_service", lambda: service)
+    warnings: list[tuple[str, str]] = []
     monkeypatch.setattr(
-        compact_ui,
-        "load_history",
-        lambda: (_ for _ in ()).throw(AssertionError("history must not load")),
+        compact_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
     )
-    monkeypatch.setattr(state, "save_history", lambda _rows: persistence.append("history"))
+
+    def parse_candidate(path: Path) -> LocalArtifactParseResult:
+        if path == crashed:
+            raise RuntimeError("synthetic parser crash")
+        return outcomes[path]
+
+    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
     monkeypatch.setattr(
-        device_insights,
-        "annotate_inventory_changes_and_save",
-        lambda *_args: persistence.append("inventory") or {},
+        window,
+        "_local_artifact_store_service",
+        lambda: LocalArtifactStoreService(store_service=store, alternative_runner=_no_alternatives),
     )
     window.source_mode = "local_apk"
-    window._local_apk_artifacts = (first, second)
+    window._local_apk_candidates = (first, copy, broken, crashed)
     window._audit_session = 20
     window._set_audit_state(AuditRunState.RUNNING)
-
+    running = threading.Event()
+    running.set()
     window._local_apk_audit_worker(
-        (first, second),
-        AuditConfig(country="us", language="en"),
-        {"cache_enabled": False, "compare_previous": True},
+        window._local_apk_candidates,
+        AuditConfig(),
+        {"cache_enabled": False},
         20,
-        threading.Event(),
+        running,
         threading.Event(),
         False,
     )
     app.processEvents()
-
-    assert store.calls == [
-        [{"app_name": "com.example.same", "package_name": "com.example.same"}]
-    ]
-    assert window._audit_state is AuditRunState.IDLE
+    assert store.calls == [[{"app_name": "com.example.same", "package_name": "com.example.same"}]]
     assert window._last_audit_outcome is AuditRunOutcome.SUCCESS
-    assert [row["local_apk_sha256"] for row in window.current_rows] == [
-        "1" * 64,
-        "2" * 64,
+    assert [row["local_apk_location"] for row in window.current_rows] == [
+        str(first.resolve()),
+        str(copy.resolve()),
     ]
-    assert all(row["is_system"] is None for row in window.current_rows)
-    assert all("installed_version" not in row for row in window.current_rows)
-    assert all(row["local_apk_version_comparison"] == "Different" for row in window.current_rows)
-    assert persistence == []
+    assert [row["local_apk_sha256"] for row in window.current_rows] == ["1" * 64, "1" * 64]
+    assert all(row["local_apk_version_comparison"] == "Outdated" for row in window.current_rows)
+    assert len(warnings) == 1
+    assert warnings[0][0] == "Some APK files could not be parsed"
+    assert "2 APK file(s) were rejected" in warnings[0][1]
 
+
+def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:
+    path = tmp_path / "private" / "one.apk"
+    path.parent.mkdir()
+    path.write_bytes(b"x")
+    artifact = _artifact(path, "2" * 64)
+    store = FakeStore()
+    fanout = LocalArtifactStoreService(store_service=store, alternative_runner=_no_alternatives).collect(
+        (artifact,), AuditConfig(), {"cache_enabled": False}
+    )
+    row = local_apk_audit.association_result_rows(fanout.associations)[0]
+    assert schema.COLUMN_LABELS["local_apk_location"] == "Location"
+    assert "local_apk_location" in schema.MODEL_COLUMNS
+    assert "local_apk_location" not in schema.EXPORT_EXTRA_FIELDS
     panel = details_panel.AppDetailsPanel()
-    panel.set_row(window.current_rows[0])
-    detail_text = panel.local_apk_label.text()
-    assert "Filename: first.apk" in detail_text
-    assert f"SHA-256: {'1' * 64}" in detail_text
-    assert "Local version: 1.0" in detail_text
-    assert "Version code: 10" in detail_text
-    assert "Min SDK: 23" in detail_text
-    assert "Target SDK: 35" in detail_text
-    assert "Compile SDK: 35" in detail_text
-    assert "Debuggable: No" in detail_text
-    assert "android.permission.INTERNET" in detail_text
-    assert "application_label_unresolved" in detail_text
-    assert not panel.local_apk_section.isHidden()
-    assert panel.device_section.isHidden()
+    panel.set_row(row)
+    assert f"Location: {path.resolve()}" in panel.local_apk_label.text()
+    document = result_json.build_results_document([row])
+    html_path = device_insights.write_html_report(tmp_path / "report.html", [row])
+    csv_output = io.StringIO()
+    writer = csv.DictWriter(csv_output, fieldnames=EXPORT_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerow(row)
+    assert "local_apk_location" not in document["results"][0]
+    assert str(path.resolve()) not in json.dumps(document)
+    assert str(path.resolve()) not in csv_output.getvalue()
+    assert str(path.resolve()) not in html_path.read_text(encoding="utf-8")
     panel.deleteLater()
 
 
-def test_exports_preserve_artifacts_without_absolute_path(
+@pytest.mark.parametrize(
+    ("source_mode", "expected", "excluded"),
+    [
+        ("file", "play_status", "installed_version"),
+        ("device", "installed_version", "local_apk_location"),
+        ("local_apk", "local_apk_location", "installed_version"),
+    ],
+)
+def test_technical_view_is_source_aware(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
+    source_mode: str,
+    expected: str,
+    excluded: str,
+) -> None:
+    monkeypatch.setattr(
+        state,
+        "load_settings",
+        lambda: {"view_preset": "Technical", "compare_previous": False},
+    )
+    window.source_mode = source_mode
+    columns = window._visible_column_order()
+    assert expected in columns
+    assert excluded not in columns
+
+
+def test_custom_view_can_include_location(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        state,
+        "load_settings",
+        lambda: {
+            "view_preset": "Custom",
+            "custom_view_columns": ["criticality", "package_name", "local_apk_location"],
+        },
+    )
+    assert "local_apk_location" in window._visible_column_order()
+
+
+def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: MainWindow) -> None:
+    file_actions = [action.text() for action in window.file_menu.actions()]
+    assert "Local APK Library…" not in file_actions
+    assert "Choose APK Folder…" in file_actions
+    assert [action.text() for action in window.local_apk_options_menu.actions()] == [
+        "Choose Folder…"
+    ]
+    assert window.table.toolTip() == (
+        "Double-click to open Google Play when available. Right-click for more options."
+    )
+    assert schema.COLUMN_LABELS["criticality"] == "Store Status"
+
+
+def test_location_model_tooltip_is_full_path(tmp_path: Path) -> None:
+    from playstore_app_audit.ui.table_window import AuditTableModel
+
+    location = str((tmp_path / "one.apk").resolve())
+    model = AuditTableModel()
+    model.set_rows([{"local_apk_location": location}])
+    index = model.index(0, model.columns.index("local_apk_location"))
+    assert index.data(Qt.ItemDataRole.ToolTipRole) == location
+
+
+def test_windows_file_location_uses_argument_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "one.apk"
+    path.write_bytes(b"x")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(file_locations.runtime, "platform_key", lambda: "windows")
+    monkeypatch.setattr(
+        file_locations.subprocess,
+        "Popen",
+        lambda args, **_kwargs: calls.append(args),
+    )
+    assert file_locations.open_file_location(path) == (True, "")
+    assert calls == [["explorer.exe", f"/select,{path.resolve()}"]]
+    missing = file_locations.open_file_location(tmp_path / "missing.apk")
+    assert not missing[0]
+
+
+def test_open_file_location_context_action_is_local_and_requires_a_file(
+    window: MainWindow,
     tmp_path: Path,
 ) -> None:
-    first = _artifact(tmp_path / "first.apk", "7" * 64)
-    second = _artifact(tmp_path / "second.apk", "8" * 64)
-    store = FakeStore()
-    fanout = LocalArtifactStoreService(
-        store_service=store,
-        alternative_runner=_no_alternatives,
-    ).collect(
-        (first, second), AuditConfig(), {"cache_enabled": False}
+    path = tmp_path / "one.apk"
+    path.write_bytes(b"x")
+    assert window._local_file_location_action(
+        {"source_mode": "local_apk", "local_apk_location": str(path.resolve())}
+    ) == (str(path.resolve()), True)
+    assert (
+        window._local_file_location_action(
+            {"source_mode": "file", "local_apk_location": str(path.resolve())}
+        )
+        is None
     )
-    rows = local_apk_audit.association_result_rows(fanout.associations)
-    csv_path = tmp_path / "results.csv"
-    monkeypatch.setattr(
-        compact_ui.QFileDialog,
-        "getSaveFileName",
-        lambda *_args, **_kwargs: (str(csv_path), "CSV (*.csv)"),
-    )
-    monkeypatch.setattr(compact_ui.QMessageBox, "information", lambda *_args: None)
-    window.source_mode = "local_apk"
-    window.current_rows = rows
-    window._export_results()
-
-    with csv_path.open(encoding="utf-8-sig", newline="") as handle:
-        csv_rows = list(csv.DictReader(handle))
-    document = result_json.build_results_document(rows)
-    html_path = device_insights.write_html_report(tmp_path / "results.html", rows)
-    exported_text = csv_path.read_text(encoding="utf-8-sig") + html_path.read_text(
-        encoding="utf-8"
-    )
-
-    assert [row["local_apk_sha256"] for row in csv_rows] == ["7" * 64, "8" * 64]
-    assert [row["local_apk_file_name"] for row in document["results"]] == [
-        "first.apk",
-        "second.apk",
-    ]
-    assert str(tmp_path.resolve()) not in exported_text
-    assert all("canonical_path" not in row for row in document["results"])
+    assert window._local_file_location_action(
+        {"source_mode": "local_apk", "local_apk_location": str(tmp_path / "gone.apk")}
+    ) == (str(tmp_path / "gone.apk"), False)

@@ -243,15 +243,40 @@ def test_android_compatibility_penalties_use_canonical_labels(
 
 @pytest.mark.parametrize(
     ("version_comparison", "penalty"),
-    [("Different", -5), ("Match", 0), ("Unknown", 0), ("Device-specific", 0), ("", 0)],
+    [
+        ("Outdated", -15),
+        ("Different", -5),
+        ("Newer", 0),
+        ("Match", 0),
+        ("Unknown", 0),
+        ("Device-specific", 0),
+        ("", 0),
+    ],
 )
-def test_only_conclusive_different_version_comparison_is_penalized(
+def test_installed_version_penalty_is_relationship_aware(
     version_comparison: str, penalty: int
 ) -> None:
     breakdown = _breakdown(version_comparison=version_comparison)
 
     assert breakdown.version_comparison_penalty == penalty
     assert breakdown.score == 100 + penalty
+
+
+@pytest.mark.parametrize(
+    ("relationship", "penalty"),
+    [("Outdated", -15), ("Different", -5), ("Unknown", -15), ("Newer", 0), ("Match", 0)],
+)
+def test_local_apk_version_penalty_is_source_aware(
+    relationship: str, penalty: int
+) -> None:
+    row = _row(version_comparison="Outdated")
+    row.update(
+        source_mode="local_apk",
+        local_apk_version_comparison=relationship,
+    )
+    breakdown = device_insights.calculate_health_score_breakdown(row)
+    assert breakdown.version_comparison_penalty == penalty
+    assert [component.key for component in breakdown.components].count("local_store_version") <= 1
 
 
 def test_independent_penalties_compose_and_score_is_clamped_to_zero() -> None:

@@ -21,7 +21,7 @@ from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.app_icon_loader import AppIconLoader
 
-TABLE_SCHEMA_VERSION = "v12-schema-1"
+TABLE_SCHEMA_VERSION = "v12-schema-2"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
 
@@ -151,8 +151,11 @@ class AuditTableModel(base_ui.AppTableModel):
                 return QColor(semantic_colour)
             return QColor("#263238")
 
-        if role == Qt.ItemDataRole.ToolTipRole and column == "notes":
-            return presentation.friendly_notes(row)
+        if role == Qt.ItemDataRole.ToolTipRole:
+            if column == "notes":
+                return presentation.friendly_notes(row)
+            if column == "local_apk_location":
+                return str(row.get(column) or "")
 
         if role == Qt.ItemDataRole.FontRole:
             if column == "criticality":

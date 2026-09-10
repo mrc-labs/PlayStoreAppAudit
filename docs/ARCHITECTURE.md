@@ -47,27 +47,21 @@ provider caches. The projection for later Library audits chooses one present
 location per exact SHA while preserving every location in Library state. See
 `LOCAL_APK_LIBRARY.md`.
 
-The canonical `ui.main_window.MainWindow` owns the transient Local APK source
-interaction. It uses a small background parsing worker with cooperative
-between-file cancellation and a monotonically increasing request guard, then
-passes immutable artifacts to `LocalArtifactStoreService`. The UI conversion in
-`services.local_apk_audit` emits one shared-schema row per completed artifact
-without its canonical path. Local APK rows reuse table, Details and export
+The canonical `ui.main_window.MainWindow` owns the session-local APK source. It
+establishes explicit candidates immediately or uses
+`services.local_apk_source` for lightweight recursive folder discovery. Run
+then performs bounded parsing off the GUI thread and passes immutable artifacts
+to `LocalArtifactStoreService`. The UI conversion in
+`services.local_apk_audit` emits one shared-schema row per physical completed
+file. Location remains available to the local table/Details UI but is removed
+from default exports and never enters package-only remote calls. Local APK rows reuse table, Details and export
 surfaces but are explicitly excluded from installed-device enrichment,
 ScanSession/Device Inventory promotion and package-keyed audit history.
 
-`ui.local_apk_library.LocalApkLibraryDialog` is the focused phase 5b Library
-surface. It loads and writes only through `LocalApkLibraryService`, presents
-registered roots separately from one artifact row per SHA-256, and runs explicit
-rescans on a small cooperative background worker with request-generation guards.
-Completed, partial and failed scan results are saved atomically; cancelled
-results are discarded and the last persisted Library is reloaded. The dialog
-emits only the core's one-representative-per-SHA audit projection to
-`MainWindow`, which establishes the distinct `local_apk_library` source mode and
-reuses the existing Local APK Store/provider, result, Details and export path.
-Both Local APK source modes bypass package history and Device Inventory; local
-paths remain confined to Library management Details and never enter result rows
-or remote lookup input.
+The dedicated Library dialog/runtime entry points were removed by the v2.0 UX
+review. The Qt-independent persistent Library domain/service and existing user
+JSON remain intact as future infrastructure; folder selection does not mutate
+them and there is no startup watcher or background rescan.
 
 ## Dependency direction
 

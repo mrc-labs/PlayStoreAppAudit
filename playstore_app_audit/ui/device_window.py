@@ -144,7 +144,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         force_refresh = QAction("Force Full Refresh (Ignore Cache)", self)
         force_refresh.triggered.connect(self._force_full_refresh)
         tools.addAction(force_refresh)
-        retry_problematic = QAction("Recheck Removed / Anomaly / Other", self)
+        retry_problematic = QAction("Recheck Not Found / Anomaly / Other", self)
         retry_problematic.triggered.connect(self._recheck_problematic)
         tools.addAction(retry_problematic)
         tools.addSeparator()
@@ -227,7 +227,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         ttl.setSuffix(" hours")
         store_form.addRow("Healthy-result cache TTL", ttl)
         cache_note = QLabel(
-            "Default: 72 hours. Only healthy available listings with a valid update date are reused. Removed, anomaly and error states always run live."
+            "Default: 72 hours. Only healthy available listings with a valid update date are reused. Not Found, anomaly and error states always run live."
         )
         cache_note.setWordWrap(True)
         cache_note.setStyleSheet("color:#6F7C87;")
@@ -240,7 +240,10 @@ class DeviceWindow(compact_ui.CompactWindow):
         collect_device.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         device_layout.addWidget(collect_device)
         device_note = QLabel(
-            "Enabled by default. This reads package metadata locally through ADB. Version comparison reports Match / Different / Device-specific / Unknown; it does not assume that a different version is necessarily outdated."
+            "Enabled by default. This reads package metadata locally through ADB. "
+            "Version comparison reports Match / Outdated / Newer / Different / "
+            "Device-specific / Unknown and infers ordering only from safely comparable "
+            "leading numeric components."
         )
         device_note.setWordWrap(True)
         device_note.setStyleSheet("color:#6F7C87;")
@@ -341,7 +344,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         root.addWidget(title)
         form = QFormLayout()
         fields = [
-            ("Status", "criticality"),
+            ("Store Status", "criticality"),
             ("Change", "change"),
             ("Package Name", "package_name"),
             ("Play Store Title", "play_title"),
@@ -476,7 +479,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             QMessageBox.information(
                 self,
                 "No problematic apps",
-                "There are no Removed, Store anomaly or Other results to recheck.",
+                "There are no Not Found, Store anomaly or Other results to recheck.",
             )
             return
         self._start_subset_refresh(packages, "Problematic-app recheck")

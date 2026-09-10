@@ -36,7 +36,16 @@ def app() -> QApplication:
 @pytest.mark.parametrize(
     ("field", "value", "status_key", "emphasis", "font_weight"),
     [
+        ("version_comparison", "Outdated", "orange", "strong_warning", 600),
         ("version_comparison", "Different", "yellow", "warning", 600),
+        (
+            "local_apk_version_comparison",
+            "Outdated",
+            "orange",
+            "strong_warning",
+            600,
+        ),
+        ("local_apk_version_comparison", "Different", "yellow", "warning", 600),
         ("compatibility_status", "Aging target", "yellow", "warning", 600),
         (
             "compatibility_status",

@@ -217,10 +217,11 @@ Recommended technical sequence:
    source boundary);
 3. package-deduplicated Store/provider lookup and artifact fan-out (source/service complete);
 4. transient Local APK Audit input source (source/UI implementation complete);
-5. persistent Local APK Library:
+5. persistent Local APK Library infrastructure:
    - phase 5a versioned persistence, recursive scanning and artifact/location
      semantics (core implementation complete);
-   - phase 5b Qt Library UI integration (source implementation complete).
+   - the separate phase 5b manager was removed from the v2.0 product UX after
+     source-workflow review; the core remains future infrastructure.
 
 Initial Library scope:
 
@@ -237,17 +238,17 @@ verification, and leaves `.apks`, `.aab`, split APKs, UI and persistence to
 later explicitly scoped work. The package-level fan-out now reuses the existing
 Play Store cache/audit and Alternative Distribution boundaries once per exact
 package in one homogeneous lookup context while preserving every artifact SHA.
-The transient source now accepts selected standalone APK files, parses them off
-the GUI thread, and produces one existing-table result per valid artifact through
-the package-deduplicated Store/provider boundary. It deliberately does not write
-package-keyed audit history or Device Inventory state. The phase 5a core now
+The Local APK source now accepts explicit standalone APK files or recursively
+discovers them from a chosen folder without parsing during selection. Run parses
+the candidates off the GUI thread and produces one existing-table result per
+physical valid file through the package-deduplicated Store/provider boundary.
+It deliberately does not write package-keyed audit history or Device Inventory
+state. The phase 5a core now
 registers roots, scans explicitly without following directory links, persists
 versioned SHA/artifact/location state atomically and projects one present
-artifact per SHA into the existing fan-out boundary. Phase 5b now exposes the
-Library through a focused Qt dialog with explicit folder management/rescans,
-SHA-based artifact rows, all-location details and a distinct Library audit source
-that reuses the established fan-out/result/export lifecycle. The transient
-`Choose APK(s)` workflow remains unchanged. Watchers, duplicate cleanup,
+artifact per SHA into the existing fan-out boundary. The persistent core is not
+currently exposed as a separate v2.0 manager and selected folders are never
+silently registered. Watchers, duplicate cleanup,
 rename/move/delete operations and the later v2.x Library-management backlog
 remain excluded.
 

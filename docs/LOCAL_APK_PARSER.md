@@ -156,11 +156,11 @@ The service-level package-deduplicated Store/provider fan-out is now complete at
 the source boundary. It groups `LocalArtifact` objects by exact
 `package_lookup_key` within one homogeneous lookup context, reuses the existing
 Store/cache/provider services, and shares package evidence without collapsing
-artifact SHA-256 identities. The transient Local APK Audit source is also now
-complete in the v2 development source: it selects standalone files, invokes this
-parser outside the GUI thread, preserves partial successes, and keeps artifact
-state session-only. The persistent Library phase 5a core is now complete. It
+artifact SHA-256 identities. The Local APK source selects standalone files or
+discovers a folder without parsing, then invokes this parser outside the GUI
+thread only when Run is pressed, preserves partial successes, and keeps source
+state session-only. The persistent Library phase 5a core is complete. It
 reuses this parser for explicit recursive directory scans and persists versioned
-SHA-256 artifact and location state without Store/provider evidence. The phase
-5b Qt Library UI now exposes that core while the transient workflow remains
-available independently. See `LOCAL_APK_LIBRARY.md`.
+SHA-256 artifact and location state without Store/provider evidence. The
+separate Library UI is no longer exposed in v2.0; the core remains future
+infrastructure. See `LOCAL_APK_LIBRARY.md`.

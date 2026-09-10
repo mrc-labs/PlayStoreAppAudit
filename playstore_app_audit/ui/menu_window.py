@@ -70,7 +70,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar.addMenu(self.audit_menu)
         self.run_audit_action = self.audit_menu.addAction("Run Audit", self._start_audit)
         self.recheck_problematic_action = self.audit_menu.addAction(
-            "Recheck Removed / Anomaly / Other", self._recheck_problematic
+            "Recheck Not Found / Anomaly / Other", self._recheck_problematic
         )
         self.force_full_refresh_action = self.audit_menu.addAction(
             "Force Full Refresh", self._force_full_refresh

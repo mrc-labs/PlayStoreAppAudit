@@ -52,10 +52,25 @@ class SemanticValuePresentation:
 
 
 SEMANTIC_VALUE_PRESENTATIONS = {
+    ("version_comparison", "Outdated"): SemanticValuePresentation(
+        status_key="orange", emphasis="strong_warning", font_weight=600
+    ),
     ("version_comparison", "Different"): SemanticValuePresentation(
         status_key="yellow",
         emphasis="warning",
         font_weight=600,
+    ),
+    ("version_comparison", "Unknown"): SemanticValuePresentation(
+        status_key="purple", emphasis="warning", font_weight=400
+    ),
+    ("local_apk_version_comparison", "Outdated"): SemanticValuePresentation(
+        status_key="orange", emphasis="strong_warning", font_weight=600
+    ),
+    ("local_apk_version_comparison", "Different"): SemanticValuePresentation(
+        status_key="yellow", emphasis="warning", font_weight=600
+    ),
+    ("local_apk_version_comparison", "Unknown"): SemanticValuePresentation(
+        status_key="purple", emphasis="warning", font_weight=400
     ),
     ("compatibility_status", "Aging target"): SemanticValuePresentation(
         status_key="yellow",
@@ -279,7 +294,17 @@ def concise_summary(rows: list[dict[str, Any]], visible_count: int | None = None
         return "No Results Yet"
     visible = total if visible_count is None else max(0, int(visible_count))
     parts = [f"{visible}/{total} shown"]
-    differences = sum(1 for row in rows if str(row.get("version_comparison") or "") == "Different")
+    mismatches = {"Outdated", "Newer", "Different"}
+    differences = sum(
+        1
+        for row in rows
+        if str(
+            row.get("local_apk_version_comparison")
+            if str(row.get("source_mode") or "").startswith("local_apk")
+            else row.get("version_comparison")
+        )
+        in mismatches
+    )
     if differences:
         parts.append(f"Version differences {differences}")
     return "  •  ".join(parts)

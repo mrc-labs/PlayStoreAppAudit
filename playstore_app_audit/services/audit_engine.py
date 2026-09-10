@@ -160,6 +160,10 @@ def normalise_updated(value: Any) -> str:
         except (OverflowError, OSError, ValueError):
             return str(value)
     text = str(value).strip()
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%Y-%m-%d")
+    except ValueError:
+        pass
     if re.fullmatch(r"\d{10,13}", text):
         timestamp = float(text)
         if len(text) == 13:
@@ -193,6 +197,14 @@ def _parse_updated_from_html(html: str) -> str:
     """
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text("\n", strip=True)
+    embedded_patterns = [
+        r'"dateModified"\s*:\s*"([^"]+)"',
+        r'"updated"\s*:\s*"([^"]+)"',
+    ]
+    for pattern in embedded_patterns:
+        match = re.search(pattern, html, re.IGNORECASE)
+        if match:
+            return normalise_updated(match.group(1))
     visible_patterns = [
         r"Aggiornata il\s+([0-9]{1,2}\s+[A-Za-zÀ-ÿ]+\s+[0-9]{4})",
         r"Ultimo aggiornamento\s+([0-9]{1,2}\s+[A-Za-zÀ-ÿ]+\s+[0-9]{4})",
@@ -201,14 +213,6 @@ def _parse_updated_from_html(html: str) -> str:
     ]
     for pattern in visible_patterns:
         match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    embedded_patterns = [
-        r'"dateModified"\s*:\s*"([^"]+)"',
-        r'"updated"\s*:\s*"([^"]+)"',
-    ]
-    for pattern in embedded_patterns:
-        match = re.search(pattern, html, re.IGNORECASE)
         if match:
             return match.group(1).strip()
     return ""

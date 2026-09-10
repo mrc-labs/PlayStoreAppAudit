@@ -701,7 +701,7 @@ class CompactWindow(AuditWindow):
         ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
         ttl.setSuffix(" hours")
         ttl.setToolTip(
-            "Only healthy available listings are cached. Removed/anomaly/error results are always checked live."
+            "Only healthy available listings are cached. Not Found/anomaly/error results are always checked live."
         )
         store_form.addRow("Healthy-result cache TTL", ttl)
         cache_note = QLabel(

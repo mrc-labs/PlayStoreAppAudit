@@ -226,36 +226,31 @@ JSON saves use a flushed sibling temporary file plus atomic replacement.
 
 The core makes no Store/provider/cache calls and persists no remote evidence.
 Its audit projection reconstructs one deterministic present `LocalArtifact` per
-exact SHA for the existing package-deduplicated fan-out boundary. The transient
-`Choose APK(s)` workflow remains available in v2 development source with its
-one-row-per-explicit-file semantics. The next phase is 5b: Qt Library UI
-integration. v1.99.0 remains the current published release.
+exact SHA for the existing package-deduplicated fan-out boundary. This core
+remains available as future infrastructure and is not mutated by the current
+session-local source. v1.99.0 remains the current published release.
 
-### v2.0 persistent Local APK Library UI checkpoint
+### v2.0 Local APK source UX/correctness checkpoint
 
-Phase 5b is complete in the v2 development source. `File > Local APK Library…`
-and the Standalone APK control's compact secondary menu open a focused Qt
-Library dialog without adding a fourth source card or replacing transient
-`Choose APK(s)`. Registered folders show scan status/time and support explicit
-add, remove, selected rescan, rescan-all and cooperative cancel actions. New
-overlapping roots are explained and rejected; pre-existing nested-root documents
-still load and display. Removing a folder changes only Library registration and
-location metadata and never deletes APK files or directories.
+The dedicated persistent Library manager was removed from the current v2.0 UX.
+The accepted three-card layout instead exposes one `Standalone APK(s)` source:
+`Choose APK(s)` selects physical files and its compact menu selects a folder for
+recursive, case-insensitive `.apk` discovery. Discovery performs no parsing,
+hashing or network work; Run performs bounded parsing and then reuses the
+package-deduplicated Store/provider fan-out.
 
-The artifact table is SHA-based, so identical physical copies occupy one row;
-selected details show the full SHA, package/version/SDK metadata and every known
-Present/Missing location. Scans run off the GUI thread with generation guards.
-Completed, partial and failed coherent state is saved through the core's atomic
-writer, while cancellation reloads the last persisted state without saving
-partial mutations. Invalid Library documents disable writes and remain
-untouched.
+Interactive results use one row per physical file, including a local-only
+Location field in the schema, Technical view and Details. Identical bytes retain
+one SHA identity internally but remain separate physical rows; package-equal
+files share Store/cache work. Default exports and remote requests exclude the
+Location and other private local evidence.
 
-`Audit Library` establishes the explicit `local_apk_library` source and reuses
-the existing one-representative-per-SHA projection, package-deduplicated
-Store/provider fan-out, caches, lifecycle, table, Details and CSV/JSON/HTML
-exports. Library audit results do not enter previous-audit history, Device
-Inventory or ScanSession, and absolute paths remain absent from remote calls and
-default exports. v1.99.0 remains the current published release.
+Store status now uses the conservative `Not Found` wording. Installed and Local
+APK versions share ordered Match/Outdated/Newer/Different/Device-specific/Unknown
+semantics and source-aware scoring. Structured update dates win over localized
+visible text, and `--debug` creates an opt-in per-session app-data log. The
+persistent Library core/data remains intact as future infrastructure. v1.99.0
+remains the current published release.
 
 ## Explicitly removed / rejected
 

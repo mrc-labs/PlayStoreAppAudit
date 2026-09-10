@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
 
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 from playstore_app_audit import __version__
 from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.services import debug_logging
 from playstore_app_audit.services.app_icon_metadata import install_app_icon_metadata_capture
 from playstore_app_audit.services.performance_diagnostics import install_performance_diagnostics
 from playstore_app_audit.services.play_store import install_play_store_service
@@ -18,7 +20,21 @@ from playstore_app_audit.ui.main_window import MainWindow
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
 
 
+def consume_debug_argument(arguments: list[str]) -> tuple[list[str], bool]:
+    debug = "--debug" in arguments[1:]
+    return ([item for item in arguments if item != "--debug"] if debug else list(arguments), debug)
+
+
 def main() -> int:
+    qt_arguments, debug = consume_debug_argument(sys.argv)
+    sys.argv = qt_arguments
+    if debug:
+        debug_path = debug_logging.start_debug_logging()
+        logging.getLogger("playstore_app_audit").info("Debug log: %s", debug_path)
+        if sys.stdout is not None:
+            print(f"Debug log: {debug_path}", flush=True)
+    else:
+        debug_logging.configure_parser_logging(debug=False)
     install_scraper_transport_timeout()
     install_play_store_service()
     install_performance_diagnostics()

@@ -162,7 +162,9 @@ value is kept within the 0–100 range.</p>
   <li><b>Aging listing, updated 366–730 days ago:</b> −15</li>
   <li><b>Legacy target SDK relative to the connected device:</b> −15</li>
   <li><b>Aging target SDK relative to the connected device:</b> −10</li>
-  <li><b>Installed version differs from the Play Store version:</b> −5</li>
+  <li><b>Source-relevant installed/Local APK version is numerically Outdated:</b> −15</li>
+  <li><b>Source-relevant installed/Local APK version is Different but not safely ordered:</b> −5</li>
+  <li><b>Local APK version relationship is Unknown:</b> −15</li>
 </ul>
 
 <h2>Alternative-distribution recovery</h2>
@@ -188,8 +190,10 @@ treated as unknown and does not add either target-SDK penalty.</p>
       configured multi-country checks and preserves regional, anomaly or inconclusive states when
       appropriate. Alternative-provider evidence does not make an inconclusive Play result conclusive.</li>
   <li>A missing or unusable update date does not create an aging or stale-listing penalty.</li>
-  <li>A different installed and Store version is not automatically “outdated.” Device-specific builds,
-      staged rollouts and regional variations can legitimately differ.</li>
+  <li>Only one source-relevant version component applies. Match, Newer and Device-specific have no
+      version penalty. Optional ADB Unknown also has no penalty.</li>
+  <li>Outdated requires safely comparable leading numeric components. It does not guarantee that an
+      update is available to a particular device; staged and device-specific rollouts can differ.</li>
   <li>Installer source and requested permissions do <b>not</b> reduce the score.</li>
   <li>The methodology does not change the audit’s status classification; it summarizes existing
       maintenance signals in a separate number.</li>

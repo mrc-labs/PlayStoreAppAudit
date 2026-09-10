@@ -56,6 +56,7 @@ INSIGHTS_EXTRA_COLUMNS = (
 )
 LOCAL_APK_EXTRA_COLUMNS = (
     "local_apk_file_name",
+    "local_apk_location",
     "local_apk_label",
     "local_apk_version_name",
     "local_apk_version_code",
@@ -67,7 +68,7 @@ MODEL_COLUMNS = tuple(
 )
 
 COLUMN_LABELS = {
-    "criticality": "Status",
+    "criticality": "Store Status",
     "change": "Change",
     "package_name": "Package Name",
     "play_title": "Play Store Title",
@@ -98,6 +99,7 @@ COLUMN_LABELS = {
     "device_change": "Device Inventory Change",
     "health_score": "Maintenance Score",
     "local_apk_file_name": "APK Filename",
+    "local_apk_location": "Location",
     "local_apk_label": "Local App Label",
     "local_apk_version_name": "Local APK Version",
     "local_apk_version_code": "Local Version Code",
@@ -178,6 +180,7 @@ COLUMN_WIDTH_POLICIES = {
     "device_change": _width(ColumnWidthCategory.MEDIUM, 130, 118, 134),
     "health_score": _width(ColumnWidthCategory.COMPACT, 86, 78, 90),
     "local_apk_file_name": _width(ColumnWidthCategory.PRIMARY, 230, 180, 300),
+    "local_apk_location": _width(ColumnWidthCategory.LONG_TEXT, 360, 260, 480),
     "local_apk_label": _width(ColumnWidthCategory.PRIMARY, 220, 170, 280),
     "local_apk_version_name": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
     "local_apk_version_code": _width(ColumnWidthCategory.COMPACT, 125, 105, 140),
@@ -228,7 +231,7 @@ EXPORT_EXTRA_FIELDS = (
     "installer_package",
     *INSIGHTS_EXTRA_COLUMNS,
     "source_mode",
-    *LOCAL_APK_EXTRA_COLUMNS,
+    *(column for column in LOCAL_APK_EXTRA_COLUMNS if column != "local_apk_location"),
     "local_apk_long_version_code",
     "local_apk_file_size",
     "local_apk_modified_at",

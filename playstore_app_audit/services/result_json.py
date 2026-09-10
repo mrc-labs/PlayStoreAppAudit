@@ -51,6 +51,7 @@ def build_results_document(
     safe_rows: list[dict[str, Any]] = []
     for row in rows:
         exported = dict(row)
+        exported.pop("local_apk_location", None)
         providers = alternative_distribution.serialize_provider_results(exported)
         exported.pop(alternative_distribution.ROW_FIELD, None)
         if providers:

@@ -112,7 +112,7 @@ def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
                 "com.example.removed",
                 device_change="Installer changed",
                 play_status="not_found_in_checked_countries",
-                criticality="Removed",
+                criticality="Not Found",
                 criticality_key="red",
                 health_score=50,
             ),
@@ -169,7 +169,7 @@ def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
     ]
     assert [row["play_status"] for row in csv_rows] == expected_store_statuses
     assert [row["play_status"] for row in json_rows] == expected_store_statuses
-    assert [row["Status"] for row in html_rows] == ["Current", "Removed", "Other"]
+    assert [row["Store Status"] for row in html_rows] == ["Current", "Not Found", "Other"]
 
     assert alternative_distribution.ROW_FIELD not in base_window.EXPORT_FIELDS
     assert json_rows[1]["alternative_distribution"]["providers"][0]["provider_id"] == "fdroid_main"
