@@ -495,6 +495,19 @@ excluded from package-keyed audit history and Device Inventory promotion. Their
 absolute filesystem paths remain session-only parser metadata and are omitted
 from result rows and default exports.
 
+Persistent Library phase 5a uses a dedicated schema-version-1
+`local_apk_library.json` document under the active platform app-data directory.
+Registered roots, exact SHA-256 artifact metadata and physical locations are
+separate records: neither package ID nor path is artifact identity. Multiple
+locations for identical bytes are retained; replacement bytes at the same path
+create a new artifact association while preserving the old artifact and
+historical location as not present. Explicit deterministic recursive scans reuse
+the bounded parser, ignore directory links, support cooperative cancellation and
+partial success, and allow only a fully completed root scan to infer a missing
+location. Scanning/persistence performs no Store/provider/cache work. A Library
+audit projection returns one deterministic present `LocalArtifact` per exact
+SHA for the existing fan-out service. Phase 5b owns all end-user Library UI.
+
 ## Release-script maintenance
 
 Do not delete `.github/scripts` files based on file count or size alone.

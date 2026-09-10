@@ -34,7 +34,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 v2.0 is the next planned major release and the return to a full multi-platform distribution. Development, correction, stabilization and packaged acceptance are Windows x64-first. After that implementation is functionally complete and accepted, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
 
-A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, comparing local artifacts with Store/provider evidence, and building toward a persistent Local APK Library. The v2 development source now contains the parser, typed `LocalArtifact`, package-deduplicated Store fan-out and transient multi-file Local APK Audit workflow. This workflow is development-state functionality and is not part of the current published v1.99.0 release.
+A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The v2 development source now contains the parser, typed `LocalArtifact`, package-deduplicated Store fan-out, transient multi-file Local APK Audit workflow, and versioned persistent Library core. The end-user Library UI remains the next development phase. This functionality is not part of the current published v1.99.0 release.
 
 The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Play Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
@@ -158,6 +158,7 @@ Developer references:
 - [Current project status](docs/PROJECT_STATUS.md)
 - [Product roadmap](docs/ROADMAP.md)
 - [Local APK parser foundation](docs/LOCAL_APK_PARSER.md)
+- [Persistent Local APK Library core](docs/LOCAL_APK_LIBRARY.md)
 - [v1.99 chat handoff](docs/HANDOFF_V1.99.md)
 - [v1.9 release-closure handoff](docs/HANDOFF_V1.9.md)
 - [Project guidance for coding agents](AGENTS.md)
