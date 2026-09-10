@@ -152,6 +152,25 @@ v2.0 remains the first planned return to Windows x64/ARM64, Linux x64/ARM64 and 
 
 A Local APK Library / modern LocalAPK successor core is a major v2.0 product pillar. Its technical sequence begins with a vetted untrusted-APK parser/verifier boundary, then a typed `LocalArtifact` model with SHA-256 identity and package-deduplicated Store/provider fan-out, followed by transient Local APK Audit and the persistent Library. Mass rename, duplicate management, safe outdated-APK cleanup, custom integrations and Explorer integration remain later v2.x candidates.
 
+### v2.0 Local APK parser foundation checkpoint
+
+The first v2.0 source checkpoint implements the parser boundary and typed
+artifact model without UI, persistence or Store/provider fan-out. A bounded
+standard-library ZIP preflight feeds only `AndroidManifest.xml` and optionally
+`resources.arsc` to pinned `pyaxmlparser==0.3.31`. A bounded snapshot makes the
+exact file SHA-256 and parsed metadata refer to the same captured bytes; package
+ID remains a distinct identity. The immutable model preserves file/path/time,
+package/version/SDK, label/icon-reference and compact manifest metadata without
+inventing missing values; typed failures cover malformed, limited, unsupported
+and detected split inputs.
+
+The checkpoint extracts no signing certificate data and performs no
+cryptographic signature verification. `.apks`, `.aab` and split APKs are not
+supported. Focused source validation covers real compiled AXML/ARSC fixtures,
+identity separation and archive limits. No Nuitka package or non-Windows target
+was built. Full details and remaining packaging risk are in
+`LOCAL_APK_PARSER.md`.
+
 ## Explicitly removed / rejected
 
 Do not reintroduce without a new explicit product decision:
