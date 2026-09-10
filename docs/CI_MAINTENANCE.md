@@ -73,16 +73,18 @@ The post-publication review on 2026-09-09 followed immutable v1.99.0 release SHA
 - Both artifacts are the current canonical audit evidence; no redundant eligible artifact was present, so no deletion was required.
 - The three GitHub Release assets, annotated tag, exact source commit, retention settings and cleanup logic remained unchanged, and repository visibility remained private.
 
-## Engineering Test Build naming
+## Public release naming
 
-Use **Engineering Test Build** as the canonical public label for an engineering GitHub release. The acronym is **ETB**.
+Do not use **Engineering Test Build** or **ETB** in public GitHub Release titles, release-body headings or public compatibility labels. Build validation and signing status should be stated directly instead of encoded in a build-class label.
 
-For a Windows x64-only ETB:
+For a Windows x64-only public release:
 
 - GitHub Release title suffix: `(Win x64 Only)`
-- release-body heading: `## Play Store App Audit vX.Y.Z (Engineering Test Build - Windows x64 Only)`
+- optional release-body heading: `## Play Store App Audit vX.Y.Z (Windows x64 Only)`
+- compatibility wording: `Windows x64 only.`
+- if unsigned, state separately and explicitly that the Windows package is unsigned.
 
-Use "build" rather than "release" in the label because the GitHub object is already a Release and ETB describes the validation/trust level of the published binary build. Production releases do not use the ETB suffix.
+This naming rule applies to future releases and to editorial normalization of already published release prose. It does not rename historical workflow files, internal artifact identifiers or other implementation names that contain `engineering`; those remain internal compatibility/history details unless separately migrated.
 
 ## Local release candidates
 
