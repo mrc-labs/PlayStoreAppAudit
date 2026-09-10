@@ -188,6 +188,24 @@ context-aware cache keys in control across operations. No Local APK UI,
 persistence, scanning or packaged acceptance is included. The next milestone is
 the transient Local APK Audit input source.
 
+### v2.0 transient Local APK Audit checkpoint
+
+The v2 development source now provides the first user-facing Local APK workflow:
+`Choose APK(s)` selects one or more standalone `.apk` files, which are parsed on
+a cooperative background source worker with request-generation protection.
+Valid artifacts remain usable after partial parse failure; zero valid artifacts
+does not establish a source. The existing package fan-out then performs Store and
+eligible provider work once per exact package while emitting one ordered result
+row for every SHA-distinct artifact.
+
+Local APK rows expose filename, local label/version/version code, SHA-256 and
+Store evidence in the shared table/export path, with bounded richer parser
+metadata in Details. They do not use installed-version or system-app semantics,
+inherit phone locale state, enter package-keyed audit history, or promote Device
+Inventory/ScanSession baselines. Absolute local paths are not included in result
+rows or default exports. This workflow remains session-transient; directory
+scanning and persistent Local APK Library state are the next milestone.
+
 ## Explicitly removed / rejected
 
 Do not reintroduce without a new explicit product decision:

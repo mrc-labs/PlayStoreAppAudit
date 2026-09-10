@@ -240,7 +240,7 @@ def test_extra_wide_layout_groups_existing_sections_in_three_columns(
     assert columns.count() == 3
 
     expected = [
-        [panel.store_section, panel.notes_section],
+        [panel.store_section, panel.local_apk_section, panel.notes_section],
         [panel.device_section, panel.changes_section],
         [panel.evidence_section, panel.alternative_section, panel.diagnostics_section],
     ]

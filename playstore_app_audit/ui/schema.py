@@ -54,7 +54,17 @@ INSIGHTS_EXTRA_COLUMNS = (
     "device_change",
     "health_score",
 )
-MODEL_COLUMNS = tuple(dict.fromkeys(DEVICE_MODEL_COLUMNS + INSIGHTS_EXTRA_COLUMNS))
+LOCAL_APK_EXTRA_COLUMNS = (
+    "local_apk_file_name",
+    "local_apk_label",
+    "local_apk_version_name",
+    "local_apk_version_code",
+    "local_apk_version_comparison",
+    "local_apk_sha256",
+)
+MODEL_COLUMNS = tuple(
+    dict.fromkeys(DEVICE_MODEL_COLUMNS + INSIGHTS_EXTRA_COLUMNS + LOCAL_APK_EXTRA_COLUMNS)
+)
 
 COLUMN_LABELS = {
     "criticality": "Status",
@@ -87,6 +97,12 @@ COLUMN_LABELS = {
     "sensitive_permissions": "Sensitive Permissions",
     "device_change": "Device Inventory Change",
     "health_score": "Maintenance Score",
+    "local_apk_file_name": "APK Filename",
+    "local_apk_label": "Local App Label",
+    "local_apk_version_name": "Local APK Version",
+    "local_apk_version_code": "Local Version Code",
+    "local_apk_version_comparison": "Local APK vs Store",
+    "local_apk_sha256": "APK SHA-256",
 }
 
 TABLE_HEADER_LABELS = {
@@ -98,6 +114,8 @@ TABLE_HEADER_LABELS = {
     "sensitive_permissions_count": "Sensitive Permissions\nCount",
     "device_change": "Device Inventory\nChange",
     "health_score": "Maintenance\nScore",
+    "local_apk_version_comparison": "Local APK vs\nStore",
+    "local_apk_version_code": "Local Version\nCode",
 }
 
 
@@ -159,6 +177,12 @@ COLUMN_WIDTH_POLICIES = {
     "sensitive_permissions": _width(ColumnWidthCategory.LONG_TEXT, 320, 260, 380),
     "device_change": _width(ColumnWidthCategory.MEDIUM, 130, 118, 134),
     "health_score": _width(ColumnWidthCategory.COMPACT, 86, 78, 90),
+    "local_apk_file_name": _width(ColumnWidthCategory.PRIMARY, 230, 180, 300),
+    "local_apk_label": _width(ColumnWidthCategory.PRIMARY, 220, 170, 280),
+    "local_apk_version_name": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
+    "local_apk_version_code": _width(ColumnWidthCategory.COMPACT, 125, 105, 140),
+    "local_apk_version_comparison": _width(ColumnWidthCategory.MEDIUM, 120, 108, 135),
+    "local_apk_sha256": _width(ColumnWidthCategory.LONG_TEXT, 280, 220, 360),
 }
 
 DEFAULT_WIDTHS = {
@@ -203,4 +227,16 @@ EXPORT_EXTRA_FIELDS = (
     "installer_category",
     "installer_package",
     *INSIGHTS_EXTRA_COLUMNS,
+    "source_mode",
+    *LOCAL_APK_EXTRA_COLUMNS,
+    "local_apk_long_version_code",
+    "local_apk_file_size",
+    "local_apk_modified_at",
+    "local_apk_min_sdk",
+    "local_apk_target_sdk",
+    "local_apk_compile_sdk",
+    "local_apk_debuggable",
+    "local_apk_permissions",
+    "local_apk_features",
+    "local_apk_warnings",
 )

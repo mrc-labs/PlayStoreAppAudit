@@ -216,7 +216,7 @@ Recommended technical sequence:
 2. typed `LocalArtifact` model with SHA-256 artifact identity (complete at the
    source boundary);
 3. package-deduplicated Store/provider lookup and artifact fan-out (source/service complete);
-4. transient Local APK Audit input source;
+4. transient Local APK Audit input source (source/UI implementation complete);
 5. persistent Local APK Library.
 
 Initial Library scope:
@@ -234,7 +234,11 @@ verification, and leaves `.apks`, `.aab`, split APKs, UI and persistence to
 later explicitly scoped work. The package-level fan-out now reuses the existing
 Play Store cache/audit and Alternative Distribution boundaries once per exact
 package in one homogeneous lookup context while preserving every artifact SHA.
-The next implementation step is item 4, not a persistent Library UI shortcut.
+The transient source now accepts selected standalone APK files, parses them off
+the GUI thread, and produces one existing-table result per valid artifact through
+the package-deduplicated Store/provider boundary. It deliberately does not write
+package-keyed audit history or Device Inventory state. The next implementation
+step is item 5: persistent Library design and implementation.
 
 ## v2.1 planned follow-up
 

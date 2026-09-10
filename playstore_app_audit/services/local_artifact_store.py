@@ -48,6 +48,7 @@ class AlternativeDistributionRunner(Protocol):
         force_refresh: bool = False,
         providers: list[AlternativeDistributionProvider] | None = None,
         cache_file: Path | None = None,
+        phase_callback: Callable[[int], None] | None = None,
     ) -> list[str]: ...
 
 
@@ -103,6 +104,7 @@ class LocalArtifactStoreService:
         providers: list[AlternativeDistributionProvider] | None = None,
         provider_cache_file: Path | None = None,
         progress_callback: Callable[[int, int, str], None] | None = None,
+        alternative_phase_callback: Callable[[int], None] | None = None,
     ) -> LocalArtifactStoreFanoutResult:
         ordered_artifacts = tuple(artifacts)
         unique_apps: list[dict[str, str]] = []
@@ -170,6 +172,7 @@ class LocalArtifactStoreService:
                 force_refresh=force_refresh,
                 providers=providers,
                 cache_file=provider_cache_file,
+                phase_callback=alternative_phase_callback,
             )
 
         evidence_by_package: dict[str, PackageStoreEvidence] = {}
