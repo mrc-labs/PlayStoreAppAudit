@@ -1,6 +1,6 @@
 # Play Store App Audit v1.99 Chat Handoff
 
-Last updated: 2026-09-09
+Last updated: 2026-09-10
 
 Status: **v1.99.0 is published and immutable from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`. The final official build and public-strict legal gate passed, annotated tag `v1.99.0` peels to that SHA, exactly three canonical assets were published and independently reverified, and the repository remains PRIVATE. v1.99 work is complete; active forward planning moves to v2.0.**
 
@@ -10,7 +10,7 @@ Read this file with `PROJECT_STATUS.md`, `ROADMAP.md`, `PROJECT_DECISIONS.md`, `
 
 RC8 full packaged acceptance is complete and must not be repeated. Its accepted source was `a0cd1fb0146cc3dbdf6427f5c3baf4f0fc24ec96`; PR `#123` merged that source to `main` at `53c85dd46f96243c7e53d348775b76c564c87d5f`. Later release-only legal-tooling changes superseded that pre-release baseline. The general runtime-evidence fix merged through PR `#126` at the immutable release SHA after PR and post-merge Quality passed.
 
-The final official Windows x64 build `34397819253` and engineering assembly `34401780853` passed from the exact release SHA; the resulting artifacts, annotated tag and private GitHub Release are immutable. Do not reuse RC packages, rerun acceptance, rebuild v1.99.0, or change the repository visibility. The unresolved historical GitHub Support privacy issue remains open; do not rerun the historical privacy audit.
+The final official Windows x64 build `34397819253` and engineering assembly `34401780853` passed from the exact release SHA; the resulting artifacts, annotated tag and private GitHub Release are immutable. Do not reuse RC packages, rerun acceptance, rebuild v1.99.0, or change the repository visibility. The historical GitHub Support privacy cleanup is resolved and the final targeted read-only verification passed; do not rerun the historical privacy audit as routine work.
 
 Read [RC7_HTML_EXPORT_FIX_VALIDATION.md](RC7_HTML_EXPORT_FIX_VALIDATION.md) for the export-parity root cause and regression coverage. [RC6_D2A_001_FIX_VALIDATION.md](RC6_D2A_001_FIX_VALIDATION.md) and [SCANSESSION_PHASE_C_VALIDATION.md](SCANSESSION_PHASE_C_VALIDATION.md) remain historical source checkpoints.
 
@@ -267,8 +267,7 @@ Preserve the established v2.0 goals:
 - Windows x64 and ARM64;
 - Linux x64 and ARM64;
 - macOS x64 and ARM64;
-- production signing/notarization if feasible and fully validated;
-- CLI/headless support built on domain/service layers rather than driving Qt.
+- production signing/notarization if feasible and fully validated.
 
 Add a major v2.0 pillar: **Local APK Library / modern LocalAPK successor core**. Local APK Audit is also deferred entirely to v2.0.
 
@@ -289,6 +288,10 @@ Initial v2.0 scope:
 
 Do not duplicate existing CSV/export capability. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes install/write behavior.
 
+## v2.1 roadmap
+
+CLI/headless support is assigned to v2.1 and must be built on domain/service layers rather than driving Qt or duplicating Store/ADB business logic. The exact CLI command surface and first headless use case remain deliberate v2.1 design decisions; do not pull CLI implementation into the v2.0 core.
+
 Later 2.x candidates, not mandatory v2.0 scope: metadata-template mass rename, duplicate detection/management, safe previewed outdated-APK cleanup, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
 
 ## Validation and release budget
@@ -306,6 +309,6 @@ Later 2.x candidates, not mandatory v2.0 scope: metadata-template mass rename, d
 - Never squash/rewrite published project history.
 - Before pulls, require a clean tree; never auto-stash/reset/discard user work.
 - Complete releases through `RELEASE_CLOSURE.md`.
-- Keep the repository private. The unresolved historical GitHub Support privacy issue remains open, and private v1.99.0 publication is authorized only while visibility remains private.
+- Keep the repository private for current development. The historical GitHub Support privacy cleanup is resolved and the final targeted read-only verification passed. If a future change to PUBLIC is considered, run one deliberate final public-readiness audit immediately before changing visibility.
 - `scripts/export_chat_handoff.ps1` numerically selects `HANDOFF_V1.99.md` over `HANDOFF_V1.9.md`; no script change is required.
 - Generate the next handoff ZIP only after the closure PR is reviewed and merged, local VS Code `main` is safely synchronized to canonical remote `main`, and the tree is clean.
