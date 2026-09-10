@@ -29,7 +29,7 @@ The cleanup implementation is `.github/scripts/cleanup_actions_retention.py`, in
 
 ## Hard retention ceiling
 
-GitHub still imposes an artifact/log retention ceiling independently of the generational policy. Workflow uploads should therefore use the repository-default retention instead of a short per-artifact override. For this private repository, configure the repository's **Actions > General > Artifact and log retention** to the longest desired safety ceiling supported by GitHub.
+GitHub still imposes an artifact/log retention ceiling independently of the generational policy. Workflow uploads should therefore use the repository-default retention instead of a short per-artifact override. Configure the repository's **Actions > General > Artifact and log retention** to the longest desired safety ceiling supported by GitHub.
 
 The generational housekeeping policy is responsible for deleting redundant data earlier. The repository-level ceiling exists only as a final safety limit for the current successful generation if no successor is built for a long time.
 
