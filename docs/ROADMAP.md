@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-07
+Last updated: 2026-09-10
 
 ## Purpose
 
@@ -180,7 +180,7 @@ The gate is complete. RC4 failed on measured default-column density, RC5 became 
 
 Subsequent legal-tooling corrections were handled as release-engineering changes, each invalidating the earlier final candidate. The general evidence-based closure fix merged through PR `#126`; Quality run `34397570534`, official build `34397819253` and assembler `34401780853` passed from the new exact release SHA. The immutable release artifact therefore comes only from `1065744488e548663e3ba365566a9932837f5fb5`, not from RC8 or either failed final attempt.
 
-## v2.0 and later
+## v2.0
 
 ### First planned return to multi-platform distribution
 
@@ -193,10 +193,6 @@ v2.0 is the first planned release after v1.3 to return to the full six prebuilt 
 Production-trust signing is the ideal target for Windows and macOS, including notarization/stapling on macOS, but it must not be promised until eligibility, credentials, provider cost and complete end-to-end validation are proven. If signing is not feasible, make a new explicit release decision rather than silently weakening verification.
 
 The v2.0 production profile continues to require one frozen SHA, signed/native post-sign validation where applicable, strict legal/source evidence and the eight-file multi-platform asset set documented in `BUILDING.md`.
-
-### CLI/headless work
-
-CLI/headless support remains v2.0-or-later scope. It must reuse service/domain boundaries rather than driving the Qt UI or duplicating Store/ADB logic.
 
 ### Local APK Library / modern LocalAPK successor core
 
@@ -219,7 +215,13 @@ Initial Library scope:
 
 Do not duplicate existing CSV/export capabilities. Portable mode is not a new feature; the application already supports standalone/local workflows. ADB remains read-only unless a future explicit decision authorizes install/write behavior.
 
-### Later v2.x Local APK backlog
+## v2.1 planned follow-up
+
+### CLI/headless work
+
+CLI/headless support is assigned to v2.1. It must reuse service/domain boundaries rather than driving the Qt UI or duplicating Store/ADB logic. The exact command surface and first headless use case remain deliberate v2.1 design decisions; do not pull CLI implementation into the v2.0 core.
+
+## Later v2.x Local APK backlog
 
 After the core is stable, consider metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements. These are later 2.x candidates, not mandatory v2.0 scope.
 
