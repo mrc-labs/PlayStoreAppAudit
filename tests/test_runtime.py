@@ -174,10 +174,16 @@ def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
 
     discovery_ran = False
     thread_started = False
+    local_apk_state_invalidated = False
 
     def discover(_request_id: int) -> None:
         nonlocal discovery_ran
         discovery_ran = True
+
+    def invalidate_local_apk_parse(*, clear_artifacts: bool) -> None:
+        nonlocal local_apk_state_invalidated
+        assert clear_artifacts
+        local_apk_state_invalidated = True
 
     class DeferredThread:
         def __init__(self, *, target: Any, args: tuple[int], daemon: bool) -> None:
@@ -197,6 +203,8 @@ def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
         status_label=status,
         _find_adb_worker=discover,
         _begin_phone_scan_request=lambda: 1,
+        _invalidate_local_apk_parse=invalidate_local_apk_parse,
+        source_mode="file",
     )
     monkeypatch.setattr(main_window.threading, "Thread", DeferredThread)
 
@@ -204,3 +212,4 @@ def test_scan_phone_schedules_adb_discovery_without_running_it_inline(
 
     assert thread_started
     assert not discovery_ran
+    assert local_apk_state_invalidated

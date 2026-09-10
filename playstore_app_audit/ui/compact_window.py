@@ -1181,10 +1181,15 @@ class CompactWindow(AuditWindow):
         self._alternative_phase_active = False
 
         typed_rows = list(result.rows)
-        compare_enabled = bool(self.user_settings.get("compare_previous", False))
+        transient_local_apk = result.metadata.get("source_mode") == "local_apk"
+        compare_enabled = bool(self.user_settings.get("compare_previous", False)) and not transient_local_apk
         history = load_history() if compare_enabled else {}
         for row in typed_rows:
-            row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
+            row["is_system"] = (
+                None
+                if transient_local_apk
+                else str(row.get("package_name") or "") in self.current_system_packages
+            )
             self._classify_row(row)
             row["change"] = compare_with_history(row, history) if compare_enabled else ""
 

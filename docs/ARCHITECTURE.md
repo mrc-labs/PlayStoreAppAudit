@@ -34,6 +34,15 @@ every corresponding artifact. It creates no cache or worker pool of its own.
 Different lookup contexts require separate calls and retain the existing Store
 and provider cache-key semantics.
 
+The canonical `ui.main_window.MainWindow` owns the transient Local APK source
+interaction. It uses a small background parsing worker with cooperative
+between-file cancellation and a monotonically increasing request guard, then
+passes immutable artifacts to `LocalArtifactStoreService`. The UI conversion in
+`services.local_apk_audit` emits one shared-schema row per completed artifact
+without its canonical path. Local APK rows reuse table, Details and export
+surfaces but are explicitly excluded from installed-device enrichment,
+ScanSession/Device Inventory promotion and package-keyed audit history.
+
 ## Dependency direction
 
 The preferred dependency flow is:

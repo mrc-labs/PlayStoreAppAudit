@@ -485,6 +485,16 @@ package-evidence result among all matching artifacts without modifying or
 collapsing their SHA-256 identities. Different contexts use separate calls; no
 second cache, Store implementation or concurrency layer is introduced.
 
+The first Local APK UI is a transient source mode, not a Library. Multi-file
+parsing runs outside the GUI thread with cooperative between-file cancellation
+and a generation guard; partial success remains usable. Each completed artifact
+becomes one shared-schema result row, including SHA-256 identity, while Store and
+provider requests continue receiving only the exact package ID and normal lookup
+context. Local artifact rows never masquerade as installed/device apps and are
+excluded from package-keyed audit history and Device Inventory promotion. Their
+absolute filesystem paths remain session-only parser metadata and are omitted
+from result rows and default exports.
+
 ## Release-script maintenance
 
 Do not delete `.github/scripts` files based on file count or size alone.

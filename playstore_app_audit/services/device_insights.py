@@ -946,6 +946,7 @@ def write_html_report(
     path: str | Path, rows: list[dict[str, Any]], device_summary: dict[str, Any] | None = None
 ) -> Path:
     target = Path(path)
+    local_apk_report = any(row.get("source_mode") == "local_apk" for row in rows)
     counts = {
         key: sum(1 for row in rows if _status_class(row) == key)
         for key in ("green", "yellow", "orange", "red", "blue", "purple")
@@ -990,20 +991,37 @@ def write_html_report(
                 f"<b>{escaped_health_score}/100</b>"
                 f'<div class="score-breakdown">{breakdown_html}</div>'
             )
-        table_rows.append(
-            f'<tr class="{_status_class(row)}">'
-            f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
-            f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
-            f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
-            f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
-            f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
-            f"<td>{version_comparison}</td>"
-            f"<td>{compatibility}</td>"
-            f"<td>{device_change}</td>"
-            f"<td>{health_score_html}</td>"
-            f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
-            "</tr>"
-        )
+        if local_apk_report:
+            table_rows.append(
+                f'<tr class="{_status_class(row)}">'
+                f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('local_apk_file_name') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('local_apk_version_name') or ''))}</td>"
+                f"<td>{html.escape('' if row.get('local_apk_version_code') is None else str(row.get('local_apk_version_code')))}</td>"
+                f"<td>{html.escape(str(row.get('play_version') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('local_apk_version_comparison') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('local_apk_sha256') or ''))}</td>"
+                f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
+                "</tr>"
+            )
+        else:
+            table_rows.append(
+                f'<tr class="{_status_class(row)}">'
+                f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
+                f"<td>{version_comparison}</td>"
+                f"<td>{compatibility}</td>"
+                f"<td>{device_change}</td>"
+                f"<td>{health_score_html}</td>"
+                f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
+                "</tr>"
+            )
         provider_results = alternative_distribution.provider_results(row)
         if provider_results:
             provider_items: list[str] = []
@@ -1039,10 +1057,20 @@ def write_html_report(
             + "".join(alternative_rows)
         )
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    table_header = (
+        "<th>Status</th><th>APK filename</th><th>Package</th><th>Local version</th>"
+        "<th>Local version code</th><th>Play Store version</th>"
+        "<th>Local APK vs Store</th><th>Play Store title</th><th>Last update</th>"
+        "<th>APK SHA-256</th><th>Notes</th>"
+        if local_apk_report
+        else "<th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
+        "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
+        "<th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
+    )
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
 .score-breakdown {{ margin-top: 0.3rem; font-size: 0.82em; line-height: 1.35; }}
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr><th>Status</th><th>Package</th><th>Play Store title</th><th>Last update</th><th>Age</th><th>Installed vs Store</th><th>Android compatibility</th><th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th></tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
+</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr>{table_header}</tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 

@@ -156,5 +156,8 @@ The service-level package-deduplicated Store/provider fan-out is now complete at
 the source boundary. It groups `LocalArtifact` objects by exact
 `package_lookup_key` within one homogeneous lookup context, reuses the existing
 Store/cache/provider services, and shares package evidence without collapsing
-artifact SHA-256 identities. The next Local APK phase is the transient Local APK
-Audit input source; directory scanning and persistent Library state remain later.
+artifact SHA-256 identities. The transient Local APK Audit source is also now
+complete in the v2 development source: it selects standalone files, invokes this
+parser outside the GUI thread, preserves partial successes, and keeps artifact
+state session-only. The next Local APK phase is the persistent Library; directory
+scanning, indexing and Library storage are not part of the transient workflow.

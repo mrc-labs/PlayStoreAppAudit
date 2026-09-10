@@ -344,6 +344,51 @@ def _joined_semantic_fields(
     return "<br>".join(lines)
 
 
+def _bounded_list_text(value: object, *, limit: int = 20) -> str:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return _text(value)
+    items = [str(item).strip() for item in value if str(item).strip()]
+    visible = items[:limit]
+    suffix = f" (+{len(items) - limit} more)" if len(items) > limit else ""
+    return ", ".join(visible) + suffix
+
+
+def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
+    if _text(row.get("source_mode")) != "local_apk":
+        return []
+    fields = (
+        ("Filename", "local_apk_file_name"),
+        ("SHA-256", "local_apk_sha256"),
+        ("Local label", "local_apk_label"),
+        ("Local version", "local_apk_version_name"),
+        ("Version code", "local_apk_version_code"),
+        ("Long version code", "local_apk_long_version_code"),
+        ("Local APK vs Store", "local_apk_version_comparison"),
+        ("File size (bytes)", "local_apk_file_size"),
+        ("Modified (UTC)", "local_apk_modified_at"),
+        ("Min SDK", "local_apk_min_sdk"),
+        ("Target SDK", "local_apk_target_sdk"),
+        ("Compile SDK", "local_apk_compile_sdk"),
+    )
+    lines: list[str] = []
+    for label, key in fields:
+        value = row.get(key)
+        if value is not None and str(value) != "":
+            lines.append(f"{label}: {value}")
+    debuggable = row.get("local_apk_debuggable")
+    if isinstance(debuggable, bool):
+        lines.append(f"Debuggable: {'Yes' if debuggable else 'No'}")
+    for label, key in (
+        ("Permissions", "local_apk_permissions"),
+        ("Features", "local_apk_features"),
+        ("Parser warnings", "local_apk_warnings"),
+    ):
+        value = _bounded_list_text(row.get(key))
+        if value:
+            lines.append(f"{label}: {value}")
+    return lines
+
+
 def _clear_layout(layout) -> None:
     while layout.count():
         item = layout.takeAt(0)
@@ -524,7 +569,9 @@ class AppDetailsPanel(QFrame):
         self.scroll.setWidget(self.content)
         root.addWidget(self.scroll, 1)
 
-        self.placeholder = QLabel("Select a result row to inspect Store, device and previous-audit details.")
+        self.placeholder = QLabel(
+            "Select a result row to inspect Store, local artifact, device and previous-audit details."
+        )
         self.placeholder.setWordWrap(True)
         self.placeholder.setObjectName("Muted")
         self.content_layout.addWidget(self.placeholder)
@@ -536,6 +583,7 @@ class AppDetailsPanel(QFrame):
         self.content_layout.addWidget(self.sections_host)
 
         self.store_section, self.store_label = self._section("Store")
+        self.local_apk_section, self.local_apk_label = self._section("Local APK artifact")
         self.device_section, self.device_label = self._section("Installed / device")
         self.evidence_section, self.evidence_label = self._section("Store market evidence")
         self.alternative_section, self.alternative_label = self._section("Alternative distribution")
@@ -628,6 +676,7 @@ class AppDetailsPanel(QFrame):
             store_column.setContentsMargins(0, 0, 0, 0)
             store_column.setSpacing(12)
             store_column.addWidget(self.store_section)
+            store_column.addWidget(self.local_apk_section)
             store_column.addWidget(self.notes_section)
             store_column.addStretch(1)
             device_column = QVBoxLayout()
@@ -669,6 +718,7 @@ class AppDetailsPanel(QFrame):
             right = QVBoxLayout()
             right.setContentsMargins(0, 0, 0, 0)
             right.setSpacing(12)
+            right.addWidget(self.local_apk_section)
             right.addWidget(self.device_section)
             right.addWidget(self.changes_section)
             right.addStretch(1)
@@ -686,6 +736,7 @@ class AppDetailsPanel(QFrame):
         else:
             for section in (
                 self.store_section,
+                self.local_apk_section,
                 self.device_section,
                 self.evidence_section,
                 self.alternative_section,
@@ -721,6 +772,7 @@ class AppDetailsPanel(QFrame):
             widget.hide()
         for label in (
             self.store_label,
+            self.local_apk_label,
             self.device_label,
             self.evidence_label,
             self.alternative_label,
@@ -738,7 +790,12 @@ class AppDetailsPanel(QFrame):
         self.placeholder.hide()
         for widget in self._section_widgets:
             widget.show()
-        self.title_label.setText(_text(row.get("play_title")) or _text(row.get("package_name")) or "App")
+        self.title_label.setText(
+            _text(row.get("local_apk_label"))
+            or _text(row.get("play_title"))
+            or _text(row.get("package_name"))
+            or "App"
+        )
         self.developer_label.setText(_text(row.get("developer")))
         self.set_icon(icon)
 
@@ -753,6 +810,10 @@ class AppDetailsPanel(QFrame):
             ("Store URL", "store_url"),
         ]
         self.store_label.setText(_joined_fields(row, store_fields) or "No Store metadata available.")
+
+        local_apk_lines = local_apk_details_lines(row)
+        self.local_apk_label.setText("\n".join(local_apk_lines))
+        self.local_apk_section.setVisible(bool(local_apk_lines))
 
         device_fields = [
             ("Installed version", "installed_version"),
@@ -784,6 +845,8 @@ class AppDetailsPanel(QFrame):
                 else escaped_inventory
             )
         self.device_label.setText(device_text or "No connected-device metadata for this row.")
+        local_apk_row = _text(row.get("source_mode")) == "local_apk"
+        self.device_section.setVisible(not local_apk_row)
 
         evidence = evidence_lines(row)
         self.evidence_label.setText("\n".join(evidence) if evidence else "No structured Store evidence recorded.")
@@ -811,6 +874,7 @@ class AppDetailsPanel(QFrame):
         else:
             change_text = "Previous-audit comparison was not enabled for this run."
         self.changes_label.setText(change_text)
+        self.changes_section.setVisible(not local_apk_row)
 
         self.notes_label.setText(presentation.friendly_notes(row))
         self.open_store_button.setEnabled(bool(_text(row.get("store_url"))))
