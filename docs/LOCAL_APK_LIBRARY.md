@@ -28,7 +28,9 @@ The Library deliberately keeps three concepts distinct:
 Artifacts are logically keyed by SHA-256. Path-independent parser metadata is
 stored once per artifact. Location records point to an artifact SHA-256 and
 carry only the registered root, usable absolute path, filename, modified time,
-presence, and first/last-seen times. Two paths containing identical bytes are
+presence, and first/last-seen times. `present=True` means that the path-to-exact-
+SHA association was verified by its current successful parse, not merely that a
+filesystem entry exists at that path. Two paths containing identical bytes are
 therefore one artifact with two locations. If bytes at a path change, the old
 path/SHA association is retained as not present and a new association points to
 the new SHA; the old artifact identity is never mutated or automatically

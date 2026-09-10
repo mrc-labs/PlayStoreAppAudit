@@ -377,6 +377,52 @@ def test_changed_file_at_same_path_points_to_new_artifact(tmp_path: Path) -> Non
     assert old_location.path == new_location.path
 
 
+@pytest.mark.parametrize("failure_mode", ["typed", "exception"])
+def test_parser_rejection_invalidates_verified_association_at_same_path(
+    tmp_path: Path,
+    failure_mode: str,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    path = root / "one.apk"
+    path.write_bytes(b"valid")
+
+    def parser(candidate: Path) -> LocalArtifactParseResult:
+        if candidate.read_bytes() == b"valid":
+            return _fake_parser(candidate)
+        if failure_mode == "exception":
+            raise RuntimeError("unexpected parser fixture")
+        return LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                candidate,
+                LocalArtifactFailureKind.MALFORMED_ARCHIVE,
+                "Rejected changed APK fixture.",
+            )
+        )
+
+    service = _service(tmp_path, parser=parser)
+    library = _scan(service, root)
+    old_sha = _sha(b"valid")
+    assert library.artifacts[0].artifact_sha256 == old_sha
+    assert library.locations[0].present
+    assert [artifact.artifact_sha256 for artifact in service.auditable_artifacts(library)] == [
+        old_sha
+    ]
+    path.write_bytes(b"rejected")
+
+    result = service.rescan(library)
+
+    assert result.roots[0].status is LibraryRootScanStatus.COMPLETED
+    assert len(result.issues) == 1
+    assert result.issues[0].kind is LibraryScanIssueKind.PARSER_FAILURE
+    assert len(result.library.artifacts) == 1
+    assert result.library.artifacts[0].artifact_sha256 == old_sha
+    assert len(result.library.locations) == 1
+    assert result.library.locations[0].artifact_sha256 == old_sha
+    assert not result.library.locations[0].present
+    assert service.auditable_artifacts(result.library) == ()
+
+
 def test_missing_location_after_completed_scan_is_retained_not_present(tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()

@@ -402,6 +402,7 @@ class LocalApkLibraryService:
                 try:
                     parse_result = self._parser(entry_path)
                 except Exception as exc:
+                    self._invalidate_present_location(entry_path, locations_by_key)
                     issue(
                         LocalApkLibraryScanIssue(
                             root_path,
@@ -412,6 +413,7 @@ class LocalApkLibraryService:
                     )
                     continue
                 if parse_result.failure is not None:
+                    self._invalidate_present_location(entry_path, locations_by_key)
                     issue(
                         LocalApkLibraryScanIssue(
                             root_path,
@@ -470,10 +472,7 @@ class LocalApkLibraryService:
     ) -> None:
         sha256 = artifact.artifact_sha256
         artifacts_by_sha[sha256] = _artifact_record(artifact)
-        path_key = _path_key(location_path)
-        for key, old_location in tuple(locations_by_key.items()):
-            if old_location.present and _path_key(old_location.path) == path_key and key[0] != sha256:
-                locations_by_key[key] = replace(old_location, present=False)
+        LocalApkLibraryService._invalidate_present_location(location_path, locations_by_key)
 
         key = _location_key(sha256, location_path)
         existing = locations_by_key.get(key)
@@ -488,6 +487,16 @@ class LocalApkLibraryService:
             first_seen_at=first_seen_at,
             last_seen_at=now,
         )
+
+    @staticmethod
+    def _invalidate_present_location(
+        location_path: Path,
+        locations_by_key: dict[tuple[str, str], LocalApkLibraryLocation],
+    ) -> None:
+        path_key = _path_key(location_path)
+        for key, location in tuple(locations_by_key.items()):
+            if location.present and _path_key(location.path) == path_key:
+                locations_by_key[key] = replace(location, present=False)
 
     def auditable_artifacts(self, library: LocalApkLibrary) -> tuple[LocalArtifact, ...]:
         """Return one deterministic present representative per exact SHA-256.
