@@ -28,7 +28,17 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and inspect snapshots/inventory changes under **Tools > Device History**.
 - Export all or visible results as CSV, HTML or versioned JSON from **Audit > Export Results**.
-- Follow operational status in the native status bar, with progress shown only while source, audit or finalization work is active.
+- Follow operational status in the native status bar and audit progress in the results header.
+
+## Road to v2.0
+
+v2.0 is the next planned major release and the return to a full multi-platform distribution. Development, correction, stabilization and packaged acceptance are Windows x64-first. After that implementation is functionally complete and accepted, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
+
+A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, comparing local artifacts with Store/provider evidence, and building toward transient Local APK Audit and a persistent Local APK Library. The parser and typed `LocalArtifact` foundation are already present in the v2 development source; the end-user Local APK workflow is not part of the current v1.99.0 release.
+
+The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Play Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
+
+CLI/headless support is planned separately for v2.1 rather than v2.0. See the [Product roadmap](docs/ROADMAP.md) for the current release plan.
 
 ## Download and installation
 
@@ -42,7 +52,7 @@ Download the Windows x64 ZIP, extract it to a normal folder, then start the appl
 
 The Windows v1.99.0 package is intentionally unsigned. v2.0 is the first planned return to multi-platform distribution; production signing is the preferred target but remains contingent on successful credential/provider validation. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the current package. That warning reflects signing and reputation status, not an application error or a finding that the application is unsafe.
 
-Windows ARM64, Linux and macOS remain supported by the shared source tree, and the immutable v1.3.0 release remains available with Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages. v1.99.0 deliberately does not rebuild those targets in order to keep this ETB focused and inexpensive.
+Only Windows x64 is currently published as a v1.99.0 prebuilt. Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages are planned to return with v2.0. They are intentionally not built in parallel during normal feature development: Windows x64 is completed and stabilized first, then the other five targets are validated in the final v2.0 cross-platform production gate.
 
 The v1.99.0 release includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` alongside the Windows x64 ZIP. All three project-defined assets were validated from frozen source SHA `1065744488e548663e3ba365566a9932837f5fb5` before publication and reverified after download from the [published release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0).
 
@@ -51,7 +61,7 @@ The v1.99.0 release includes one consolidated third-party source archive and a r
 1. Start the application.
 2. Choose a CSV, TSV or TXT package list, or connect an Android phone and select **Scan Phone**.
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
-4. Select the header **Run Play Store Audit** button or **Audit > Run Audit**.
+4. Select the header **Run** button or **Audit > Run Audit**.
 5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
 6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
 7. Export the complete or currently visible results from **Audit > Export Results**.
@@ -100,14 +110,14 @@ CSV and HTML reports contain the audit/device fields selected by the application
 
 ## Platform support
 
-| Platform | Source support | Current published v1.99.0 | Latest older prebuilt |
-| --- | --- | --- | --- |
-| Windows x64 | Supported | ETB ZIP | v1.9.0 ZIP |
-| Windows ARM64 | Supported | Not rebuilt | v1.3.0 ZIP |
-| Linux x64 | Supported | Not rebuilt | v1.3.0 standalone ZIP |
-| Linux ARM64 | Supported | Not rebuilt | v1.3.0 standalone ZIP |
-| macOS Intel / x64 | Supported | Not rebuilt | v1.3.0 app bundle ZIP |
-| macOS Apple Silicon / ARM64 | Supported | Not rebuilt | v1.3.0 app bundle ZIP |
+| Platform | Current published v1.99.0 | Planned v2.0 |
+| --- | --- | --- |
+| Windows x64 | ETB ZIP | Primary implementation/acceptance platform and final v2.0 build |
+| Windows ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
+| Linux x64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
+| Linux ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
+| macOS Intel / x64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
+| macOS Apple Silicon / ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
 
 The published v1.99.0 Windows x64 package was produced from exact commit `1065744488e548663e3ba365566a9932837f5fb5` after post-merge Quality validation, then assembled and checksum-verified before and after publication.
 
@@ -147,6 +157,7 @@ Developer references:
 - [Durable project decisions](docs/PROJECT_DECISIONS.md)
 - [Current project status](docs/PROJECT_STATUS.md)
 - [Product roadmap](docs/ROADMAP.md)
+- [Local APK parser foundation](docs/LOCAL_APK_PARSER.md)
 - [v1.99 chat handoff](docs/HANDOFF_V1.99.md)
 - [v1.9 release-closure handoff](docs/HANDOFF_V1.9.md)
 - [Project guidance for coding agents](AGENTS.md)
@@ -155,4 +166,4 @@ Developer references:
 
 Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.99.0 profile used one exact `main` SHA, built only the Windows x64 ETB candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 ETB asset set, then tagged and published the already validated artifacts without rebuilding.
 
-The full signed Windows/Linux/macOS x64/ARM64 production release path remains implemented for a future v2.0-or-later milestone. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
+The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Development and packaged acceptance remain Windows x64-first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
