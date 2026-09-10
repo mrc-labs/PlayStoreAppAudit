@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.presentation as presentation
 
 AUDIT_CHANGES_FIELD = "_audit_changes"
@@ -354,7 +355,7 @@ def _bounded_list_text(value: object, *, limit: int = 20) -> str:
 
 
 def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
-    if _text(row.get("source_mode")) != "local_apk":
+    if not local_apk_audit.is_local_apk_source(_text(row.get("source_mode"))):
         return []
     fields = (
         ("Filename", "local_apk_file_name"),
@@ -845,7 +846,9 @@ class AppDetailsPanel(QFrame):
                 else escaped_inventory
             )
         self.device_label.setText(device_text or "No connected-device metadata for this row.")
-        local_apk_row = _text(row.get("source_mode")) == "local_apk"
+        local_apk_row = local_apk_audit.is_local_apk_source(
+            _text(row.get("source_mode"))
+        )
         self.device_section.setVisible(not local_apk_row)
 
         evidence = evidence_lines(row)

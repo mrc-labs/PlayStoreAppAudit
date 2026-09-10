@@ -56,6 +56,19 @@ without its canonical path. Local APK rows reuse table, Details and export
 surfaces but are explicitly excluded from installed-device enrichment,
 ScanSession/Device Inventory promotion and package-keyed audit history.
 
+`ui.local_apk_library.LocalApkLibraryDialog` is the focused phase 5b Library
+surface. It loads and writes only through `LocalApkLibraryService`, presents
+registered roots separately from one artifact row per SHA-256, and runs explicit
+rescans on a small cooperative background worker with request-generation guards.
+Completed, partial and failed scan results are saved atomically; cancelled
+results are discarded and the last persisted Library is reloaded. The dialog
+emits only the core's one-representative-per-SHA audit projection to
+`MainWindow`, which establishes the distinct `local_apk_library` source mode and
+reuses the existing Local APK Store/provider, result, Details and export path.
+Both Local APK source modes bypass package history and Device Inventory; local
+paths remain confined to Library management Details and never enter result rows
+or remote lookup input.
+
 ## Dependency direction
 
 The preferred dependency flow is:

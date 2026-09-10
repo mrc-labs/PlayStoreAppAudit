@@ -571,6 +571,31 @@ def test_duplicate_root_registration_is_normalised(tmp_path: Path) -> None:
     assert len(library.roots) == 1
 
 
+def test_remove_root_drops_only_registration_and_owned_locations(tmp_path: Path) -> None:
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+    first_root.mkdir()
+    second_root.mkdir()
+    first_apk = first_root / "first.apk"
+    second_apk = second_root / "second.apk"
+    first_apk.write_bytes(b"first")
+    second_apk.write_bytes(b"second")
+    service = _service(tmp_path)
+    library = service.register_roots(service.empty_library(), [first_root, second_root])
+    library = service.rescan(library).library
+
+    updated = service.remove_root(library, first_root)
+
+    assert [root.path for root in updated.roots] == [second_root.resolve()]
+    assert {location.path for location in updated.locations} == {second_apk.resolve()}
+    assert len(updated.artifacts) == 2
+    assert first_apk.read_bytes() == b"first"
+    assert first_root.is_dir()
+    assert [artifact.canonical_path for artifact in service.auditable_artifacts(updated)] == [
+        second_apk.resolve()
+    ]
+
+
 def test_scan_issues_are_bounded(tmp_path: Path) -> None:
     root = tmp_path / "root"
     root.mkdir()

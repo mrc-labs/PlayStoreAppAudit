@@ -508,6 +508,20 @@ location. Scanning/persistence performs no Store/provider/cache work. A Library
 audit projection returns one deterministic present `LocalArtifact` per exact
 SHA for the existing fan-out service. Phase 5b owns all end-user Library UI.
 
+Phase 5b exposes that core through `File > Local APK Library…` and a compact
+secondary action beside the unchanged transient `Choose APK(s)` control. The
+focused Qt dialog separates registered folders from one artifact row per exact
+SHA, shows every Present/Missing physical location in selected-artifact details,
+and rejects new exact/nested/containing root overlap without rewriting existing
+nested documents. Root removal deletes only the registration and its Library
+location metadata, never filesystem content. Explicit scan workers are
+cooperative and generation-guarded; completed, partial and failed state is saved,
+while cancelled mutations are discarded in favor of the last persisted state.
+`Audit Library` establishes `local_apk_library` and passes one present
+representative per SHA into the existing package-deduplicated audit pipeline.
+Library audit results remain outside package history, ScanSession and Device
+Inventory, and Library JSON still contains no Store/provider evidence.
+
 ## Release-script maintenance
 
 Do not delete `.github/scripts` files based on file count or size alone.

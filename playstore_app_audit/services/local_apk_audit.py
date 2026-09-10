@@ -8,6 +8,12 @@ from playstore_app_audit.domain.local_artifact_store import LocalArtifactStoreAs
 from playstore_app_audit.services import alternative_distribution, device_metadata
 
 SOURCE_MODE = "local_apk"
+LIBRARY_SOURCE_MODE = "local_apk_library"
+LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
+
+
+def is_local_apk_source(source_mode: object) -> bool:
+    return isinstance(source_mode, str) and source_mode in LOCAL_APK_SOURCE_MODES
 
 
 def _mutable_value(value: Any) -> Any:
@@ -22,6 +28,8 @@ def _mutable_value(value: Any) -> Any:
 
 def association_result_row(
     association: LocalArtifactStoreAssociation,
+    *,
+    source_mode: str = SOURCE_MODE,
 ) -> dict[str, Any] | None:
     """Convert one completed association to the shared audit-row schema.
 
@@ -41,7 +49,7 @@ def association_result_row(
     local_version = artifact.version_name or ""
     row.update(
         {
-            "source_mode": SOURCE_MODE,
+            "source_mode": source_mode,
             "app_name": artifact.application_label or artifact.file_name,
             "package_name": artifact.package_lookup_key,
             "is_system": None,
@@ -72,10 +80,12 @@ def association_result_row(
 
 def association_result_rows(
     associations: tuple[LocalArtifactStoreAssociation, ...],
+    *,
+    source_mode: str = SOURCE_MODE,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for association in associations:
-        row = association_result_row(association)
+        row = association_result_row(association, source_mode=source_mode)
         if row is not None:
             rows.append(row)
     return rows

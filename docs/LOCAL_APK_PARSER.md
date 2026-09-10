@@ -161,6 +161,6 @@ complete in the v2 development source: it selects standalone files, invokes this
 parser outside the GUI thread, preserves partial successes, and keeps artifact
 state session-only. The persistent Library phase 5a core is now complete. It
 reuses this parser for explicit recursive directory scans and persists versioned
-SHA-256 artifact and location state without Store/provider evidence. The
-end-user Qt Library UI is the next phase; the transient workflow remains
+SHA-256 artifact and location state without Store/provider evidence. The phase
+5b Qt Library UI now exposes that core while the transient workflow remains
 available independently. See `LOCAL_APK_LIBRARY.md`.

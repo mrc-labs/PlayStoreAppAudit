@@ -28,6 +28,7 @@ import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.local_apk_library as local_apk_library_ui
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.domain.local_artifacts import (
@@ -37,6 +38,7 @@ from playstore_app_audit.domain.local_artifacts import (
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.local_apk_library import LocalApkLibraryService
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
@@ -69,6 +71,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def __init__(self) -> None:
         self._local_apk_artifacts: tuple[LocalArtifact, ...] = ()
+        self._local_apk_library_dialog: local_apk_library_ui.LocalApkLibraryDialog | None = None
         self._local_apk_parse_generation = 0
         self._local_apk_parse_cancel_event = threading.Event()
         self._local_apk_parse_active = False
@@ -88,6 +91,9 @@ class MainWindow(results_ui.ResultsWindow):
         self.file_choose_apk_action = QAction("Choose APK(s)…", self)
         self.file_choose_apk_action.triggered.connect(self._choose_local_apks)
         self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_choose_apk_action)
+        self.file_local_apk_library_action = QAction("Local APK Library…", self)
+        self.file_local_apk_library_action.triggered.connect(self._open_local_apk_library)
+        self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_local_apk_library_action)
         self.signals.adb_discovery_done.connect(self._on_adb_discovery_done)
         self._remove_redundant_content_heading()
         self._rebuild_source_area_v10()
@@ -197,6 +203,34 @@ class MainWindow(results_ui.ResultsWindow):
         button = self.scan_phone_options_button
         self.scan_phone_options_menu.popup(button.mapToGlobal(QPoint(0, button.height())))
 
+    def _apk_source_controls(self) -> QWidget:
+        controls = QWidget()
+        controls.setObjectName("ApkSourceControls")
+        layout = QHBoxLayout(controls)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        self.choose_apk_button.setMinimumWidth(108)
+        layout.addWidget(self.choose_apk_button)
+
+        self.local_apk_options_button = QToolButton()
+        self.local_apk_options_button.setObjectName("LocalApkOptionsButton")
+        self.local_apk_options_button.setToolTip("Standalone APK options")
+        self.local_apk_options_button.setAccessibleName("Standalone APK Options")
+        self.local_apk_options_button.setArrowType(Qt.ArrowType.DownArrow)
+        self.local_apk_options_button.setFixedWidth(30)
+        self.local_apk_options_menu = QMenu(
+            "Standalone APK Options", self.local_apk_options_button
+        )
+        self.local_apk_options_menu.addAction(self.file_local_apk_library_action)
+        self.local_apk_options_button.clicked.connect(self._show_local_apk_options_menu)
+        layout.addWidget(self.local_apk_options_button)
+        return controls
+
+    def _show_local_apk_options_menu(self) -> None:
+        button = self.local_apk_options_button
+        self.local_apk_options_menu.popup(button.mapToGlobal(QPoint(0, button.height())))
+
     # ---------- UX ----------
     def _source_option(self, label_text: str, button) -> QFrame:
         frame = QFrame()
@@ -270,7 +304,9 @@ class MainWindow(results_ui.ResultsWindow):
         or_label = QLabel("or")
         or_label.setObjectName("Muted")
         row.addWidget(or_label)
-        row.addWidget(self._source_option("Standalone APK File(s)", self.choose_apk_button), 1)
+        row.addWidget(
+            self._source_option("Standalone APK File(s)", self._apk_source_controls()), 1
+        )
         apk_or_label = QLabel("or")
         apk_or_label.setObjectName("Muted")
         row.addWidget(apk_or_label)
@@ -292,7 +328,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     # ---------- Transient Local APK source ----------
     def _has_loaded_source(self) -> bool:
-        if self.source_mode == local_apk_audit.SOURCE_MODE:
+        if local_apk_audit.is_local_apk_source(self.source_mode):
             return bool(self._local_apk_artifacts)
         return super()._has_loaded_source()
 
@@ -301,9 +337,11 @@ class MainWindow(results_ui.ResultsWindow):
         if not hasattr(self, "choose_apk_button"):
             return
         idle = not self._operation_running()
-        local_source = self.source_mode == local_apk_audit.SOURCE_MODE
+        local_source = local_apk_audit.is_local_apk_source(self.source_mode)
         self.choose_apk_button.setEnabled(idle)
         self.file_choose_apk_action.setEnabled(idle)
+        self.file_local_apk_library_action.setEnabled(idle)
+        self.local_apk_options_button.setEnabled(idle)
         self.exclude_system_source_check.setEnabled(idle and not local_source)
         self.hide_system_check.setEnabled(idle and not local_source)
         if local_source:
@@ -315,12 +353,14 @@ class MainWindow(results_ui.ResultsWindow):
         if hasattr(self, "choose_apk_button"):
             self.choose_apk_button.setEnabled(enabled)
             self.file_choose_apk_action.setEnabled(enabled)
+            self.file_local_apk_library_action.setEnabled(enabled)
+            self.local_apk_options_button.setEnabled(enabled)
         self.exclude_system_source_check.setEnabled(
-            enabled and self.source_mode != local_apk_audit.SOURCE_MODE
+            enabled and not local_apk_audit.is_local_apk_source(self.source_mode)
         )
 
     def _visible_column_order(self) -> list[str]:
-        if self.source_mode != local_apk_audit.SOURCE_MODE:
+        if not local_apk_audit.is_local_apk_source(self.source_mode):
             return super()._visible_column_order()
         preset = str(state.load_settings().get("view_preset") or "Basic")
         if preset == "Technical":
@@ -348,6 +388,67 @@ class MainWindow(results_ui.ResultsWindow):
         )
         if selected:
             self._begin_local_apk_parse([Path(path) for path in selected])
+
+    def _local_apk_library_service(self) -> LocalApkLibraryService:
+        return LocalApkLibraryService()
+
+    def _open_local_apk_library(self) -> None:
+        if self._operation_running():
+            return
+        existing = self._local_apk_library_dialog
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return
+        dialog = local_apk_library_ui.LocalApkLibraryDialog(
+            self,
+            service=self._local_apk_library_service(),
+        )
+        dialog.audit_requested.connect(self._begin_local_apk_library_audit)
+        dialog.finished.connect(lambda _result: self._clear_local_apk_library_dialog())
+        self._local_apk_library_dialog = dialog
+        dialog.show()
+
+    def _clear_local_apk_library_dialog(self) -> None:
+        self._local_apk_library_dialog = None
+
+    def _begin_local_apk_library_audit(self, value: object) -> None:
+        artifacts = tuple(
+            artifact
+            for artifact in (value if isinstance(value, tuple) else ())
+            if isinstance(artifact, LocalArtifact)
+        )
+        if not artifacts:
+            QMessageBox.information(
+                self,
+                "No auditable Library artifacts",
+                "The Library has no currently verified APK artifacts to audit.",
+            )
+            return
+        self._cancel_active_audit()
+        self._invalidate_phone_scan_request(clear_session=True)
+        self._invalidate_local_apk_parse(clear_artifacts=True)
+        self.file_apps = []
+        self.file_system_metadata = {}
+        self.device_apps_all = []
+        self.device_system_packages = set()
+        self._device_summary = {}
+        self._device_store_locale = None
+        store_locale.set_active_device_store_locale(None)
+        self._apply_store_country_resolution(None)
+        self._local_apk_artifacts = artifacts
+        self.source_mode = local_apk_audit.LIBRARY_SOURCE_MODE
+        self.path_edit.clear()
+        self.source_label.setToolTip("")
+        self._clear_source_result_rows()
+        unique_packages = len({artifact.package_lookup_key for artifact in artifacts})
+        self.source_label.setText(
+            f"Local APK Library: {len(artifacts)} artifact(s) • {unique_packages} package(s)"
+        )
+        self.status_label.setText("Local APK Library ready. Starting audit…")
+        self._apply_column_visibility(reset_order=False)
+        self._sync_action_availability()
+        QTimer.singleShot(0, self._start_audit)
 
     def _invalidate_local_apk_parse(self, *, clear_artifacts: bool = False) -> None:
         self._local_apk_parse_cancel_event.set()
@@ -517,7 +618,7 @@ class MainWindow(results_ui.ResultsWindow):
         super()._load_input_file(path)
         if self.source_mode == "file":
             self._local_apk_artifacts = ()
-            if previous_mode == local_apk_audit.SOURCE_MODE:
+            if local_apk_audit.is_local_apk_source(previous_mode):
                 self._clear_source_result_rows()
                 self.status_label.setText("File ready. Run the Play Store audit.")
             self._apply_column_visibility(reset_order=False)
@@ -558,7 +659,7 @@ class MainWindow(results_ui.ResultsWindow):
         was_active = self._audit_active
         started_at = time.perf_counter() if not was_active else None
         if (
-            self.source_mode == local_apk_audit.SOURCE_MODE
+            local_apk_audit.is_local_apk_source(self.source_mode)
             and self._audit_state is AuditRunState.IDLE
         ):
             self._start_local_apk_audit()
@@ -583,8 +684,14 @@ class MainWindow(results_ui.ResultsWindow):
     def _start_local_apk_audit(self) -> None:
         artifacts = self._local_apk_artifacts
         if not artifacts:
-            QMessageBox.warning(self, "No APK source", "Choose one or more standalone APK files first.")
+            message = (
+                "The Library has no currently verified APK artifacts to audit."
+                if self.source_mode == local_apk_audit.LIBRARY_SOURCE_MODE
+                else "Choose one or more standalone APK files first."
+            )
+            QMessageBox.warning(self, "No APK source", message)
             return
+        source_mode = str(self.source_mode)
         self.user_settings = state.load_settings()
         country = (
             self.country_edit.text().strip()
@@ -637,6 +744,7 @@ class MainWindow(results_ui.ResultsWindow):
                 self._audit_pause_event,
                 self._audit_cancel_event,
                 force_refresh,
+                source_mode,
             ),
             daemon=True,
         ).start()
@@ -653,6 +761,7 @@ class MainWindow(results_ui.ResultsWindow):
         pause_event: threading.Event,
         cancel_event: threading.Event,
         force_refresh: bool,
+        source_mode: str = local_apk_audit.SOURCE_MODE,
     ) -> None:
         artifact_counts: dict[str, int] = {}
         for artifact in artifacts:
@@ -686,7 +795,10 @@ class MainWindow(results_ui.ResultsWindow):
                     session, eligible
                 ),
             )
-            rows = local_apk_audit.association_result_rows(result.associations)
+            rows = local_apk_audit.association_result_rows(
+                result.associations,
+                source_mode=source_mode,
+            )
             cached_count = sum(1 for row in rows if row.get("cache_hit"))
             outcome = (
                 AuditRunOutcome.STOPPED
@@ -707,7 +819,7 @@ class MainWindow(results_ui.ResultsWindow):
                         live_completed_count=max(0, len(rows) - cached_count),
                         total_count=len(artifacts),
                         metadata={
-                            "source_mode": local_apk_audit.SOURCE_MODE,
+                            "source_mode": source_mode,
                             "issues": list(result.issues),
                         },
                     )
@@ -723,12 +835,12 @@ class MainWindow(results_ui.ResultsWindow):
                         outcome=AuditRunOutcome.FAILED,
                         total_count=len(artifacts),
                         error=str(exc),
-                        metadata={"source_mode": local_apk_audit.SOURCE_MODE},
+                        metadata={"source_mode": source_mode},
                     )
                 )
 
     def _promote_successful_audit(self, result: AuditRunResult) -> bool:
-        if result.metadata.get("source_mode") == local_apk_audit.SOURCE_MODE:
+        if local_apk_audit.is_local_apk_source(result.metadata.get("source_mode")):
             return False
         return super()._promote_successful_audit(result)
 
@@ -736,7 +848,7 @@ class MainWindow(results_ui.ResultsWindow):
         self, row: dict[str, Any]
     ) -> RowActionAvailability:
         availability = super()._row_action_availability(row)
-        if row.get("source_mode") == local_apk_audit.SOURCE_MODE:
+        if local_apk_audit.is_local_apk_source(row.get("source_mode")):
             return replace(availability, recheck=False, app_info=False)
         return availability
 
@@ -887,7 +999,7 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _scan_phone(self) -> None:
         self._invalidate_local_apk_parse(clear_artifacts=True)
-        if self.source_mode == local_apk_audit.SOURCE_MODE:
+        if local_apk_audit.is_local_apk_source(self.source_mode):
             self.source_mode = None
             self._clear_source_result_rows()
             self._apply_column_visibility(reset_order=False)
@@ -953,6 +1065,8 @@ class MainWindow(results_ui.ResultsWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self._invalidate_local_apk_parse(clear_artifacts=True)
+        if self._local_apk_library_dialog is not None:
+            self._local_apk_library_dialog.close()
         super().closeEvent(event)
 
     def _install_platform_tools_worker(self) -> None:
