@@ -171,6 +171,23 @@ identity separation and archive limits. No Nuitka package or non-Windows target
 was built. Full details and remaining packaging risk are in
 `LOCAL_APK_PARSER.md`.
 
+### v2.0 Local APK Store fan-out checkpoint
+
+The second v2.0 source checkpoint adds a Qt-independent service that accepts
+immutable `LocalArtifact` objects, deduplicates their exact package lookup keys
+within one Store/provider context, and reuses the existing healthy-result cache,
+canonical Play Store batch service and Alternative Distribution phase. The
+first-seen package order and original artifact order are deterministic; distinct
+artifact SHA-256 identities remain intact, while same-package artifacts share
+one immutable package-evidence object. Existing per-package Store failure states
+and the definitive `not_found_in_checked_countries` provider gate are unchanged.
+
+The coordinator adds no thread pool and no Local APK-specific cache. Different
+country/language/provider/refresh contexts use separate calls, leaving existing
+context-aware cache keys in control across operations. No Local APK UI,
+persistence, scanning or packaged acceptance is included. The next milestone is
+the transient Local APK Audit input source.
+
 ## Explicitly removed / rejected
 
 Do not reintroduce without a new explicit product decision:

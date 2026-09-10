@@ -476,6 +476,15 @@ installability verification. `.apks`, `.aab` and split APKs remain unsupported.
 See `LOCAL_APK_PARSER.md` for the evaluated alternatives, exact fields, limits,
 dependency/legal effect and residual risks.
 
+Package-level Store/provider fan-out is a separate service boundary. One call
+represents one `AuditConfig`, provider/settings context and refresh policy, so
+deduplication within that call uses the exact validated `package_lookup_key`.
+The coordinator passes only first-seen unique packages to the existing Store
+cache/audit and Alternative Distribution services, then shares one immutable
+package-evidence result among all matching artifacts without modifying or
+collapsing their SHA-256 identities. Different contexts use separate calls; no
+second cache, Store implementation or concurrency layer is introduced.
+
 ## Release-script maintenance
 
 Do not delete `.github/scripts` files based on file count or size alone.

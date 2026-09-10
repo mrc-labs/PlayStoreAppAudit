@@ -152,7 +152,9 @@ inventory remain a later Windows x64 packaging gate before v2.0 release freeze.
 
 ## Next phase
 
-The next Local APK phase is a service-level package-deduplicated Store/provider
-fan-out: group `LocalArtifact` objects by exact `package_lookup_key`, perform one
-eligible remote lookup per package, and attach the same evidence back to every
-artifact without collapsing their SHA-256 identities.
+The service-level package-deduplicated Store/provider fan-out is now complete at
+the source boundary. It groups `LocalArtifact` objects by exact
+`package_lookup_key` within one homogeneous lookup context, reuses the existing
+Store/cache/provider services, and shares package evidence without collapsing
+artifact SHA-256 identities. The next Local APK phase is the transient Local APK
+Audit input source; directory scanning and persistent Library state remain later.
