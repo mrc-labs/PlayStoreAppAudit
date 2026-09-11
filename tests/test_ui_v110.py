@@ -459,7 +459,7 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
 
     rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.alpha",
             "play_title": "Alpha",
@@ -578,7 +578,7 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     window._apply_column_visibility(reset_order=False)
     window.current_rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.persisted",
             "play_title": "Persisted",
@@ -670,7 +670,7 @@ def test_advanced_settings_preserve_display_preferences(
     )
     window.current_rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.populated",
         }
@@ -756,7 +756,7 @@ def test_details_internal_reflow_preserves_results_and_outer_layout_state(
             "notes": "raw alpha note",
         },
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.beta",
             "play_title": "Beta",

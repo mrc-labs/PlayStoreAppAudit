@@ -12,7 +12,7 @@ def _history_entry(**overrides: object) -> dict[str, object]:
     entry: dict[str, object] = {
         "criticality_key": "green",
         "criticality_rank": 5,
-        "criticality": "Current",
+        "criticality": "Recent Update",
         "play_status": "available",
         "play_version": "1.0",
         "play_last_update": "2026-07-01",
@@ -30,7 +30,7 @@ def _row(**overrides: object) -> dict[str, object]:
         "package_name": "com.example.app",
         "criticality_key": "green",
         "criticality_rank": 5,
-        "criticality": "Current",
+        "criticality": "Recent Update",
         "play_status": "available",
         "play_version": "1.0",
         "play_last_update": "2026-07-01",
@@ -52,7 +52,7 @@ def test_sparse_legacy_history_does_not_invent_unavailable_or_version_events() -
         "com.example.app": {
             "criticality_key": "green",
             "criticality_rank": 5,
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "play_last_update": "2026-07-01",
         }
     }
@@ -160,7 +160,7 @@ def test_store_metadata_maintenance_and_installer_changes_are_structured() -> No
         },
         {
             "type": "maintenance_state_changed",
-            "previous": "Current",
+            "previous": "Recent Update",
             "current": "Aging",
             "previous_key": "green",
             "current_key": "yellow",

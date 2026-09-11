@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
-    QTableView,
     QVBoxLayout,
 )
 
@@ -57,11 +56,11 @@ class SemanticSelectionDelegate(QStyledItemDelegate):
         if not option.state & QStyle.StateFlag.State_Selected:
             return
 
-        view = self.parent()
-        if isinstance(view, QTableView) and index != view.currentIndex():
-            # Some Windows styles render State_HasFocus as a blue leading edge.
-            # SelectRows can otherwise repeat that marker in every selected cell.
-            option.state &= ~QStyle.StateFlag.State_HasFocus
+        # Some Windows styles render State_HasFocus as a blue leading edge on
+        # the current cell. Row selection and keyboard navigation are carried
+        # by the view/selection model, so selected cells do not need that extra
+        # focus primitive.
+        option.state &= ~QStyle.StateFlag.State_HasFocus
 
         row = index.data(Qt.ItemDataRole.UserRole)
         model = index.model()
@@ -149,8 +148,6 @@ class AuditTableModel(base_ui.AppTableModel):
                 if package_name:
                     present_packages.add(package_name)
                 continue
-            if not row.get("cache_hit"):
-                continue
             self._metadata_backfill.schedule(row.get("package_name"), country, language)
         if present_packages:
             logger.debug(
@@ -178,6 +175,7 @@ class AuditTableModel(base_ui.AppTableModel):
             if icon_url and not str(row.get("play_icon_url") or "").strip():
                 row["play_icon_url"] = icon_url
                 self._icon_rows_by_package.setdefault(request.package_name, []).append(row_index)
+                self.icon_for_row(row)
                 changed = True
             if developer and not str(row.get("developer") or "").strip():
                 row["developer"] = developer
@@ -321,6 +319,8 @@ class AuditTableModel(base_ui.AppTableModel):
                 "play_last_update",
                 "age_days",
                 "criticality",
+                "version_comparison",
+                "local_apk_version_comparison",
                 "target_sdk",
                 "min_sdk",
                 "health_score",

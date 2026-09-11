@@ -579,7 +579,7 @@ def test_icon_ready_updates_only_rows_indexed_for_the_package(
     app.processEvents()
 
 
-def test_legacy_available_cache_rows_schedule_one_metadata_backfill_per_package(
+def test_available_rows_schedule_one_metadata_backfill_per_package(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
@@ -596,7 +596,7 @@ def test_legacy_available_cache_rows_schedule_one_metadata_backfill_per_package(
                 "package_name": "com.example.legacy",
                 "play_status": "available",
                 "play_last_update": "2026-08-01",
-                "cache_hit": True,
+                "cache_hit": False,
             },
             {
                 "package_name": "com.example.legacy",
@@ -687,7 +687,6 @@ def test_successful_metadata_backfill_updates_rows_cache_and_normal_icon_loader(
     assert model.rows[0]["play_icon_url"] == "https://example.invalid/backfilled.png"
     assert model.rows[0]["developer"] == "Example Developer"
     assert len(persisted) == 1
-    assert model.icon_for_row(model.rows[0]) is expected
     assert loaded == [
         (
             "com.example.app",
@@ -709,6 +708,12 @@ def test_failed_metadata_backfill_leaves_audit_row_untouched(
         "package_name": "com.example.app",
         "play_status": "available",
         "play_last_update": "2026-08-01",
+        "play_version": "5.0",
+        "criticality": "Recent Update",
+        "criticality_key": "green",
+        "criticality_rank": 5,
+        "local_apk_version_comparison": "Outdated",
+        "health_score": 90,
         "cache_hit": True,
     }
     model.set_rows([row])
@@ -755,3 +760,33 @@ def test_targeted_cache_metadata_update_preserves_original_fetched_time(
     entry = next(iter(after.values()))
     assert entry["fetched_at"] == fetched_at
     assert entry["row"]["play_icon_url"] == "https://example.invalid/backfilled.png"
+
+
+def test_healthy_cache_roundtrip_retains_canonical_store_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_path = tmp_path / "audit_cache.json"
+    monkeypatch.setattr(state, "cache_path", lambda: cache_path)
+    state.update_cache(
+        [
+            {
+                "package_name": "com.example.cached",
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+                "play_icon_url": "https://example.invalid/canonical.png",
+                "developer": "Canonical Developer",
+            }
+        ],
+        "it",
+        "en",
+    )
+
+    loaded = state.load_fresh_cache(
+        [{"app_name": "Example", "package_name": "com.example.cached"}],
+        "it",
+        "en",
+        72,
+    )["com.example.cached"]
+
+    assert loaded["play_icon_url"] == "https://example.invalid/canonical.png"
+    assert loaded["developer"] == "Canonical Developer"

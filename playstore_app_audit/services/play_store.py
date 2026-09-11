@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, CancelledError, Future, ThreadPoolExecutor, wait
@@ -30,6 +31,8 @@ _DIAGNOSTIC_FIELDS = (
     "failure_reason",
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _wait_for_retry(cancel_event: threading.Event | None, delay_seconds: float) -> bool:
     if cancel_event is None:
@@ -45,7 +48,7 @@ def _append_note(existing: object, note: str) -> str:
 
 def _as_non_negative_int(value: object) -> int:
     try:
-        return max(0, int(value or 0))
+        return max(0, int(value or 0))  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return 0
 
@@ -170,6 +173,11 @@ def _normalise_version(value: object) -> str:
     return text
 
 
+def _normalise_https_url(value: object) -> str:
+    text = str(value or "").strip()
+    return text if text.lower().startswith("https://") else ""
+
+
 def scraper_request(
     package_name: str,
     language: str,
@@ -218,6 +226,8 @@ def scraper_request(
                 "title": str(data.get("title") or "").strip(),
                 "updated": core.normalise_updated(data.get("updated")),
                 "version": _normalise_version(data.get("version")),
+                "icon_url": _normalise_https_url(data.get("icon")),
+                "developer": str(data.get("developer") or "").strip(),
                 "error": "",
                 "attempts": attempts,
                 "retry_count": max(0, attempts - 1),
@@ -287,6 +297,8 @@ def fetch_locale(
             "title": scraper["title"],
             "updated": scraper["updated"],
             "version": scraper["version"],
+            "icon_url": scraper.get("icon_url", ""),
+            "developer": scraper.get("developer", ""),
             "source": "google_play_scraper",
             "url": f"{core.PLAY_URL}?id={package_name}&hl={language}&gl={country}",
             "notes": "",
@@ -322,6 +334,8 @@ def fetch_locale(
                 "title": scraper["title"],
                 "updated": scraper["updated"],
                 "version": scraper["version"],
+                "icon_url": scraper.get("icon_url", ""),
+                "developer": scraper.get("developer", ""),
                 "source": "google_play_scraper",
                 "url": f"{core.PLAY_URL}?id={package_name}&hl={language}&gl={country}",
                 "notes": "html_fallback_cancelled",
@@ -348,6 +362,8 @@ def fetch_locale(
             "title": title,
             "updated": updated,
             "version": scraper["version"],
+            "icon_url": scraper.get("icon_url", ""),
+            "developer": scraper.get("developer", ""),
             "source": "google_play_scraper"
             if scraper["updated"]
             else ("html_fallback" if updated else ""),
@@ -416,7 +432,7 @@ def _merge_available_metadata(
     fallback: dict[str, Any],
 ) -> dict[str, Any]:
     merged = dict(preferred)
-    for key in ("updated", "version"):
+    for key in ("updated", "version", "icon_url", "developer"):
         if not merged.get(key) and fallback.get(key):
             merged[key] = fallback.get(key, "")
     if not merged.get("title") and fallback.get("title"):
@@ -572,6 +588,8 @@ def _fetch_app_bounded(
         "play_title": primary.get("title", ""),
         "play_last_update": primary.get("updated", ""),
         "play_version": primary.get("version", ""),
+        "play_icon_url": primary.get("icon_url", ""),
+        "developer": primary.get("developer", ""),
         "updated_source": primary.get("source", ""),
         "store_url": primary.get("url", f"{core.PLAY_URL}?id={package_name}"),
         "store_country": selected,
@@ -622,6 +640,10 @@ def _fetch_app_bounded(
                 result["play_version"] = alternative.get("version", "")
             if not result["play_title"] and alternative.get("title"):
                 result["play_title"] = alternative.get("title", "")
+            if not result["play_icon_url"] and alternative.get("icon_url"):
+                result["play_icon_url"] = alternative.get("icon_url", "")
+            if not result["developer"] and alternative.get("developer"):
+                result["developer"] = alternative.get("developer", "")
             result["notes"] = _append_note(
                 result["notes"],
                 f"missing_metadata_completed_from_fallback_market:{country}/{alternative.get('language', '')}",
@@ -696,6 +718,12 @@ def _fetch_app_bounded(
                         alternative.get("updated", "") or result["play_last_update"]
                     )
                     result["play_version"] = alternative.get("version", "") or result["play_version"]
+                    result["play_icon_url"] = (
+                        alternative.get("icon_url", "") or result["play_icon_url"]
+                    )
+                    result["developer"] = (
+                        alternative.get("developer", "") or result["developer"]
+                    )
                     source = str(alternative.get("source") or "")
                     result["updated_source"] = (
                         f"{source}_multi_country" if source else result["updated_source"]
@@ -859,6 +887,13 @@ def audit_apps(
                             }
                     if row is None:
                         continue
+                    logger.debug(
+                        "Store row icon metadata: package=%s status=%s icon=%s developer=%s",
+                        app["package_name"],
+                        row.get("play_status", ""),
+                        "present" if row.get("play_icon_url") else "missing",
+                        "present" if row.get("developer") else "missing",
+                    )
                     results[index] = row
                     if row_completed_callback is not None:
                         row_completed_callback(index, row)
@@ -910,6 +945,6 @@ def install_play_store_service() -> bool:
         return True
     service = PlayStoreService()
     device_metadata.audit_apps_v8 = service.audit
-    device_metadata._canonical_play_store_service = service
-    device_metadata._canonical_play_store_service_installed = True
+    device_metadata._canonical_play_store_service = service  # type: ignore[attr-defined]
+    device_metadata._canonical_play_store_service_installed = True  # type: ignore[attr-defined]
     return True

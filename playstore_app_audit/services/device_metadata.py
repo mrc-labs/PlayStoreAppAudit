@@ -657,7 +657,7 @@ def dashboard_summary(rows: list[dict[str, Any]], visible_count: int | None = No
         parts.append(f"{total} apps")
     parts.extend(
         [
-            f"Current {counts['green']}",
+            f"Recent Update {counts['green']}",
             f"Aging {counts['yellow']}",
             f"Stale {counts['orange']}",
             f"Not Found {counts['red']}",

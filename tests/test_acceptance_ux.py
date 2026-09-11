@@ -148,7 +148,7 @@ def test_store_status_chip_counts_ignore_local_relationship_state(
 
 
 @pytest.mark.parametrize("source_mode", ["device", "local_apk", "file"])
-def test_store_status_dots_remain_for_every_source_type(source_mode: str) -> None:
+def test_store_status_text_is_symbol_free_for_every_source_type(source_mode: str) -> None:
     from playstore_app_audit.ui.base_window import CRITICALITY
 
     model = AuditTableModel()
@@ -163,7 +163,7 @@ def test_store_status_dots_remain_for_every_source_type(source_mode: str) -> Non
     )
     index = model.index(0, model.columns.index("criticality"))
 
-    assert str(index.data(Qt.ItemDataRole.DisplayRole)).startswith("●")
+    assert index.data(Qt.ItemDataRole.DisplayRole) == "Recent Update"
 
 
 def test_source_status_text_names_the_active_source(
@@ -453,11 +453,11 @@ def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
     assert relationship_index.data(Qt.ItemDataRole.ForegroundRole) == QColor(
         CRITICALITY[status_key]["foreground"]
     )
-    assert relationship_index.data(Qt.ItemDataRole.FontRole).weight() == 600
+    assert relationship_index.data(Qt.ItemDataRole.FontRole).weight() == 700
     assert package.data(Qt.ItemDataRole.BackgroundRole) is None
 
 
-def test_selected_local_row_has_one_focus_marker_and_keeps_both_semantics(
+def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
 ) -> None:
@@ -493,7 +493,7 @@ def test_selected_local_row_has_one_focus_marker_and_keeps_both_semantics(
         if name in {"criticality", "local_apk_version_comparison"}:
             selected_colours[name] = option.palette.color(QPalette.ColorRole.Highlight)
 
-    assert focus_cells == 1
+    assert focus_cells == 0
     assert selected_colours["criticality"] != selected_colours["local_apk_version_comparison"]
 
 

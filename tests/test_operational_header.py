@@ -228,7 +228,9 @@ def test_c2_controls_do_not_overlap_or_clip_at_review_sizes(
 ) -> None:
     window = _create_window(app, monkeypatch, width=width, height=height)
     try:
-        window.summary_label.setText("250 apps • 18 Removed • 27 Stale • 205 Current")
+        window.summary_label.setText(
+            "250 apps • 18 Removed • 27 Stale • 205 Recent Update"
+        )
         window.progress.setRange(0, 24)
         window.progress.setValue(7)
         window._set_audit_state(AuditRunState.RUNNING)

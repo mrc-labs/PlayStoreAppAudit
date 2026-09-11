@@ -100,40 +100,40 @@ class SemanticValuePresentation:
 
 SEMANTIC_VALUE_PRESENTATIONS = {
     ("version_comparison", "Outdated"): SemanticValuePresentation(
-        status_key="orange", emphasis="strong_warning", font_weight=600
+        status_key="orange", emphasis="strong_warning", font_weight=700
     ),
     ("version_comparison", "Different"): SemanticValuePresentation(
-        status_key="yellow", emphasis="warning", font_weight=600
+        status_key="yellow", emphasis="warning", font_weight=700
     ),
     ("version_comparison", "Unknown"): SemanticValuePresentation(
-        status_key="purple", emphasis="warning", font_weight=600
+        status_key="purple", emphasis="warning", font_weight=700
     ),
     ("version_comparison", "Device-specific"): SemanticValuePresentation(
-        status_key="blue", emphasis="warning", font_weight=600
+        status_key="blue", emphasis="warning", font_weight=700
     ),
     ("version_comparison", "Newer"): SemanticValuePresentation(
-        status_key="green", emphasis="warning", font_weight=600
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("version_comparison", "Match"): SemanticValuePresentation(
-        status_key="green", emphasis="warning", font_weight=600
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Outdated"): SemanticValuePresentation(
-        status_key="orange", emphasis="strong_warning", font_weight=600
+        status_key="orange", emphasis="strong_warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Different"): SemanticValuePresentation(
-        status_key="yellow", emphasis="warning", font_weight=600
+        status_key="yellow", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Unknown"): SemanticValuePresentation(
-        status_key="purple", emphasis="warning", font_weight=600
+        status_key="purple", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Device-specific"): SemanticValuePresentation(
-        status_key="blue", emphasis="warning", font_weight=600
+        status_key="blue", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Newer"): SemanticValuePresentation(
-        status_key="green", emphasis="warning", font_weight=600
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Match"): SemanticValuePresentation(
-        status_key="green", emphasis="warning", font_weight=600
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("compatibility_status", "Aging target"): SemanticValuePresentation(
         status_key="yellow", emphasis="warning", font_weight=600

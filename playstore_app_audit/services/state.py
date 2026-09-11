@@ -27,7 +27,7 @@ _AVAILABLE_PLAY_STATUSES = frozenset(
 _CHECKED_UNAVAILABLE_PLAY_STATUSES = frozenset({"not_found_in_checked_countries"})
 _MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
 _MAINTENANCE_LABELS = {
-    "green": "Current",
+    "green": "Recent Update",
     "yellow": "Aging",
     "orange": "Stale",
 }
@@ -79,7 +79,7 @@ TECHNICAL_COLUMNS = {
 
 def normalise_store_workers(value: object) -> int:
     try:
-        workers = int(value)
+        workers = int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         workers = DEFAULT_STORE_WORKERS
     return max(MIN_STORE_WORKERS, min(MAX_STORE_WORKERS, workers))
@@ -448,8 +448,8 @@ def changes_with_history(
         changes.append(
             {
                 "type": "maintenance_state_changed",
-                "previous": str(previous.get("criticality") or _MAINTENANCE_LABELS[previous_key]),
-                "current": str(row.get("criticality") or _MAINTENANCE_LABELS[current_key]),
+                "previous": _MAINTENANCE_LABELS[previous_key],
+                "current": _MAINTENANCE_LABELS[current_key],
                 "previous_key": previous_key,
                 "current_key": current_key,
             }

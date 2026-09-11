@@ -994,7 +994,7 @@ def write_html_report(
     cards = "".join(
         f'<div class="card {key}"><b>{label}</b><span>{counts[key]}</span></div>'
         for key, label in (
-            ("green", "Current"),
+            ("green", "Recent Update"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
             ("red", "Not Found"),

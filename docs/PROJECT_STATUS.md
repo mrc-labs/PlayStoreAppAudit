@@ -257,15 +257,24 @@ manual sorting remains authoritative until another source is established.
 
 Local APK table rows keep ordinary cells neutral while Local APK vs Store and
 Store Status retain independent semantic cells, including through selection;
-the filter chips are explicitly labelled Store Status. Source summaries name
+the filter chips are explicitly labelled Store Status. Selected cells suppress
+the Windows current-cell focus edge without changing row selection or keyboard
+navigation. Installed vs Store and Local APK vs Store values use their existing
+semantic colours with the same Bold 700 typography and centered alignment as
+Store Status. Status text is symbol-free, and the green `<=365 days` state is
+named Recent Update while its internal `green` key, rank and semantics remain
+unchanged. Source summaries name
 Phone, Local APK or App List, while Store Country is uppercase in the UI and
 lowercase in execution/cache contexts. Store date presentation uses
 Last Store Update and Store Age (Days) without changing internal/export keys.
 Windows file reveal uses `SHOpenFolderAndSelectItems`, with a checked native
 parent-folder fallback, and debug sessions retain first-party DEBUG while
 limiting known recoverable pyaxmlparser warning signatures and urllib3 noise.
-Healthy legacy cache rows missing Store icon metadata receive a bounded,
-package-deduplicated asynchronous metadata completion; successful results feed
+The canonical scraper result now propagates HTTPS icon URL and developer through
+locale/fallback resolution into every healthy Store row and normal cache writes,
+so Local APK, ADB and App List share the same metadata path. Any healthy available
+live or cached row still missing an icon is eligible for bounded,
+package-deduplicated asynchronous metadata completion; successful results start
 the existing icon loader and update only icon/developer cache fields.
 
 Store status uses the conservative `Not Found` wording. Installed and Local
