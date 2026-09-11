@@ -57,9 +57,10 @@ def test_debug_session_keeps_first_party_detail_and_third_party_warnings(
     previous_level = root.level
     loggers = {
         name: logging.getLogger(name)
-        for name in ("playstore_app_audit.acceptance", "pyaxmlparser.parser", "urllib3.connectionpool")
+        for name in ("playstore_app_audit.acceptance", "pyaxmlparser.arscutil", "urllib3.connectionpool")
     }
     previous_levels = {name: logger.level for name, logger in loggers.items()}
+    previous_filters = {name: list(logger.filters) for name, logger in loggers.items()}
     parent_levels = {
         name: logging.getLogger(name).level
         for name in ("playstore_app_audit", "pyaxmlparser", "urllib3")
@@ -71,9 +72,9 @@ def test_debug_session_keeps_first_party_detail_and_third_party_warnings(
             logger.setLevel(logging.NOTSET)
         path = debug_logging.start_debug_logging()
         loggers["playstore_app_audit.acceptance"].debug("first-party phase detail")
-        loggers["pyaxmlparser.parser"].debug("parser token flood")
-        loggers["pyaxmlparser.parser"].warning("parser warning retained")
-        loggers["pyaxmlparser.parser"].error("parser failure retained")
+        loggers["pyaxmlparser.arscutil"].debug("parser token flood")
+        loggers["pyaxmlparser.arscutil"].warning("parser warning retained")
+        loggers["pyaxmlparser.arscutil"].error("parser failure retained")
         loggers["urllib3.connectionpool"].debug("connection chatter")
         for handler in root.handlers:
             handler.flush()
@@ -91,23 +92,50 @@ def test_debug_session_keeps_first_party_detail_and_third_party_warnings(
         root.setLevel(previous_level)
         for name, level in previous_levels.items():
             loggers[name].setLevel(level)
+        for name, filters in previous_filters.items():
+            loggers[name].filters[:] = filters
         for name, level in parent_levels.items():
             logging.getLogger(name).setLevel(level)
         sys.excepthook = previous_excepthook
         threading.excepthook = previous_threading_excepthook
 
 
-def test_normal_parser_noise_filter_is_narrow() -> None:
+def test_normal_parser_noise_filter_covers_known_recoverable_floods() -> None:
     filter_ = debug_logging._NormalParserNoiseFilter()
-    known = logging.LogRecord("x", logging.WARNING, "", 0, "res1 is not zero!", (), None)
+    known_messages = (
+        "res1 is not zero!",
+        "invalid decoded string length",
+        "RES_TABLE_LIBRARY_TYPE chunk is not supported",
+        "Name 'android:name' starts with 'android:' prefix! The Manifest seems to be broken? Removing prefix.",
+    )
+    for message in known_messages:
+        record = logging.LogRecord("x", logging.WARNING, "", 0, message, (), None)
+        assert not filter_.filter(record)
     real = logging.LogRecord("x", logging.ERROR, "", 0, "manifest parse failed", (), None)
-    assert not filter_.filter(known)
     assert filter_.filter(real)
 
 
-def test_debug_mode_removes_only_the_normal_parser_noise_filter() -> None:
+def test_debug_parser_noise_filter_keeps_one_representative_and_unknown_warnings() -> None:
+    filter_ = debug_logging._DebugParserNoiseFilter()
+    first = logging.LogRecord("x", logging.WARNING, "", 0, "res1 is not zero!", (), None)
+    duplicate = logging.LogRecord("x", logging.WARNING, "", 0, "res1 is not zero!", (), None)
+    other_known = logging.LogRecord(
+        "x", logging.WARNING, "", 0, "invalid decoded string length", (), None
+    )
+    unknown = logging.LogRecord("x", logging.WARNING, "", 0, "unexpected parser warning", (), None)
+    error = logging.LogRecord("x", logging.ERROR, "", 0, "manifest parse failed", (), None)
+
+    assert filter_.filter(first)
+    assert not filter_.filter(duplicate)
+    assert filter_.filter(other_known)
+    assert filter_.filter(unknown)
+    assert filter_.filter(error)
+
+
+def test_debug_mode_replaces_only_project_parser_noise_filters() -> None:
     logger = logging.getLogger("pyaxmlparser.axmlprinter")
     unrelated = logging.Filter()
+    previous_filters = list(logger.filters)
     logger.addFilter(unrelated)
     try:
         debug_logging.configure_parser_logging(debug=False)
@@ -121,5 +149,9 @@ def test_debug_mode_removes_only_the_normal_parser_noise_filter() -> None:
             isinstance(item, debug_logging._NormalParserNoiseFilter)
             for item in logger.filters
         )
+        assert any(
+            isinstance(item, debug_logging._DebugParserNoiseFilter)
+            for item in logger.filters
+        )
     finally:
-        logger.removeFilter(unrelated)
+        logger.filters[:] = previous_filters
