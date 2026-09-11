@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QTableView,
     QVBoxLayout,
 )
 
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
+TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
@@ -48,6 +50,15 @@ LOCAL_APK_RELATIONSHIP_STATUS = {
 }
 
 
+def _suppress_table_item_focus_outline(table: QTableView) -> None:
+    """Hide the native current-cell focus outline without disabling table focus."""
+
+    current = table.styleSheet().strip()
+    if TABLE_ITEM_FOCUS_STYLE in current:
+        return
+    table.setStyleSheet("\n".join(part for part in (current, TABLE_ITEM_FOCUS_STYLE) if part))
+
+
 class SemanticSelectionDelegate(QStyledItemDelegate):
     """Keep one native row selection while retaining semantic status cells."""
 
@@ -56,11 +67,13 @@ class SemanticSelectionDelegate(QStyledItemDelegate):
         if not option.state & QStyle.StateFlag.State_Selected:
             return
 
-        # Some Windows styles render State_HasFocus as a blue leading edge on
-        # the current cell. Row selection and keyboard navigation are carried
-        # by the view/selection model, so selected cells do not need that extra
-        # focus primitive.
-        option.state &= ~QStyle.StateFlag.State_HasFocus
+        # Windows can render a blue current-cell edge from either the ordinary
+        # focus state or the keyboard-focus transition state. Row selection and
+        # keyboard navigation remain owned by the view/selection model, so the
+        # selected item itself does not need either focus-painting hint.
+        option.state &= ~(
+            QStyle.StateFlag.State_HasFocus | QStyle.StateFlag.State_KeyboardFocusChange
+        )
 
         row = index.data(Qt.ItemDataRole.UserRole)
         model = index.model()
@@ -360,6 +373,7 @@ class TableWindow(insights_ui.InsightsWindow):
         self.proxy = proxy
         self.table.setModel(proxy)
         self.table.setItemDelegate(SemanticSelectionDelegate(self.table))
+        _suppress_table_item_focus_outline(self.table)
         self.table.setIconSize(QSize(22, 22))
         if hasattr(self, "_on_details_model_data_changed"):
             stable_model.store_metadata_ready.connect(self._on_details_model_data_changed)
