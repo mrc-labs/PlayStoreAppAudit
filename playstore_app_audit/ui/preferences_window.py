@@ -575,7 +575,9 @@ class PreferencesWindow(table_ui.TableWindow):
         ttl.setMaximumWidth(180)
         ttl.setRange(1, 720)
         ttl.setSuffix(" hours")
-        ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
+        ttl.setValue(
+            int(self.user_settings.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS))
+        )
         form.addRow("Store Language", language)
         form.addRow("Fallback Store Countries", fallback)
         fallback_note = QLabel(
@@ -691,7 +693,7 @@ class PreferencesWindow(table_ui.TableWindow):
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             workers.setValue(state.DEFAULT_STORE_WORKERS)
             cache.setChecked(True)
-            ttl.setValue(72)
+            ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect.setChecked(True)
             full_scan.setChecked(False)
             permissions.setChecked(False)

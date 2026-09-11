@@ -157,7 +157,7 @@ def test_stopped_run_finalizes_partial_rows_without_baseline_promotion(
         "com.example.live",
     ]
     assert window.status_label.text().startswith("Audit stopped • 2/3 completed")
-    assert window.export_button.isEnabled()
+    assert not window.export_button.isEnabled()
     assert window.clear_button.isEnabled()
     assert window.run_button.isEnabled()
     assert promotions == []
@@ -745,7 +745,7 @@ def test_stopped_worker_caches_only_canonical_positive_rows_and_excludes_unfinis
     fresh = state.load_fresh_cache(live_apps, "us", "en", 72)
     assert set(fresh) == {"com.example.positive"}
     assert "com.example.unfinished" not in fresh
-    assert window.export_button.isEnabled()
+    assert not window.export_button.isEnabled()
 
 
 def test_worker_exception_before_any_result_is_failed(

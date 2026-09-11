@@ -96,13 +96,14 @@ def test_source_selector_order_buttons_and_or_separators(
     ]
     assert labels == ["Android Phone (ADB)", "Local APK(s)", "App List File"]
     assert window.scan_button.text() == "Scan Phone"
-    assert window.choose_apk_button.text() == "Choose APK(s)"
+    assert window.choose_apk_button.text() == "Choose APK Source…"
     assert window.choose_button.text() == "Choose File"
     assert len([label for label in window.findChildren(QLabel) if label.text() == "or"]) == 2
     assert window.findChild(QPushButton, "RecentSourcesButton") is None
     assert window.recent_sources_button.accessibleName() == "Recent Sources"
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
-        "Choose Folder…"
+        "File(s)…",
+        "Folder…",
     ]
 
 
@@ -181,7 +182,7 @@ def test_source_status_text_names_the_active_source(
     assert window.source_label.text().startswith("App List source:")
 
     window._establish_local_apk_candidates((apk,), "selected")
-    assert window.source_label.text().startswith("Local APK source:")
+    assert window.source_label.text().startswith("Local package source:")
 
     window.source_mode = "device"
     window._device_summary = {"manufacturer": "Google", "model": "Pixel"}

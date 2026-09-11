@@ -271,6 +271,7 @@ class AuditTableModel(base_ui.AppTableModel):
 
         row = self.rows[index.row()]
         column = self.columns[index.column()]
+        provisional = bool(row.get("_audit_provisional"))
         key = str(row.get("criticality_key") or "purple")
         info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
 
@@ -288,6 +289,8 @@ class AuditTableModel(base_ui.AppTableModel):
         local_apk_row = str(row.get("source_mode") or "").startswith("local_apk")
 
         if role == Qt.ItemDataRole.BackgroundRole:
+            if provisional and not row.get("criticality_key"):
+                return None
             if not local_apk_row:
                 return QColor(info["background"])
             if column == "criticality":
@@ -299,7 +302,7 @@ class AuditTableModel(base_ui.AppTableModel):
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
-            if column == "criticality":
+            if column == "criticality" and not provisional:
                 return QColor(info["accent"])
             if local_apk_row and column == "local_apk_version_comparison":
                 relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))

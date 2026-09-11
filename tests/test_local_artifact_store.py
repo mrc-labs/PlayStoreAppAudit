@@ -109,6 +109,45 @@ def test_duplicate_packages_are_looked_up_once_and_fanned_out_by_identity() -> N
     assert result.associations[2].package_evidence is result.packages[1]
 
 
+def test_progress_callback_exposes_store_rows_without_sending_local_evidence() -> None:
+    artifact = _artifact("com.example.private", "9" * 64, 1)
+
+    class CallbackStore:
+        def __init__(self) -> None:
+            self.apps: list[dict[str, str]] = []
+
+        def audit(self, apps, config, _progress=None, *, row_completed_callback, **_kwargs):
+            self.apps = [dict(app) for app in apps]
+            row = {
+                "package_name": apps[0]["package_name"],
+                "play_status": "available",
+                "play_version": "2.0",
+                "store_country": config.country,
+            }
+            row_completed_callback(0, row)
+            return [row]
+
+    store = CallbackStore()
+    completed: list[tuple[str, dict[str, Any]]] = []
+    LocalArtifactStoreService(
+        store_service=store,
+        alternative_runner=_no_alternatives,
+    ).collect(
+        [artifact],
+        AuditConfig(),
+        {"cache_enabled": False},
+        row_completed_callback=lambda package, row: completed.append((package, row)),
+    )
+
+    assert store.apps == [
+        {"app_name": "com.example.private", "package_name": "com.example.private"}
+    ]
+    assert completed[0][0] == "com.example.private"
+    remote_payload = repr(store.apps)
+    assert str(artifact.canonical_path) not in remote_payload
+    assert artifact.artifact_sha256 not in remote_payload
+
+
 def test_store_failure_row_is_isolated_and_store_evidence_is_immutable() -> None:
     store = FakeStoreService(
         statuses={

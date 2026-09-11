@@ -223,11 +223,13 @@ class DeviceWindow(compact_ui.CompactWindow):
         store_form.addRow("", cache_enabled)
         ttl = QSpinBox()
         ttl.setRange(1, 720)
-        ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
+        ttl.setValue(
+            int(self.user_settings.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS))
+        )
         ttl.setSuffix(" hours")
         store_form.addRow("Healthy-result cache TTL", ttl)
         cache_note = QLabel(
-            "Default: 72 hours. Only healthy available listings with a valid update date are reused. Not Found, anomaly and error states always run live."
+            "Default: 24 hours. Only healthy available listings with a valid update date are reused. Not Found, anomaly and error states always run live."
         )
         cache_note.setWordWrap(True)
         cache_note.setStyleSheet("color:#6F7C87;")
@@ -288,7 +290,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             language.setText("en")
             fallback.setText(device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             cache_enabled.setChecked(True)
-            ttl.setValue(72)
+            ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
             compare.setChecked(False)
             for check in technical_checks.values():
@@ -573,6 +575,20 @@ class DeviceWindow(compact_ui.CompactWindow):
 
         def row_completed(index: int, row: dict[str, Any]) -> None:
             completed_live[index] = dict(row)
+            if session == self._audit_session and index < len(live_apps):
+                app = live_apps[index]
+                progressive = dict(row)
+                progressive.update(
+                    {
+                        "source_mode": self.source_mode or "",
+                        "app_name": app.get("app_name", app["package_name"]),
+                        "package_name": app["package_name"],
+                        "is_system": app["package_name"] in self.current_system_packages,
+                        "_audit_provisional": True,
+                        "_provisional_key": app["package_name"],
+                    }
+                )
+                self.audit_control_signals.row_available.emit(session, progressive)
 
         def ordered_live_rows(returned: list[dict[str, Any]]) -> list[dict[str, Any]]:
             by_package = {

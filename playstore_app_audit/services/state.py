@@ -13,6 +13,8 @@ CACHE_SCHEMA_VERSION = 2
 DEFAULT_STORE_WORKERS = 16
 MIN_STORE_WORKERS = 4
 MAX_STORE_WORKERS = 32
+DEFAULT_CACHE_TTL_HOURS = 24
+CACHE_TTL_DEFAULT_MIGRATION_KEY = "cache_ttl_default_migrated_v2"
 STORE_LANGUAGE_AUTO_MIGRATION_KEY = "store_language_auto_migrated"
 AUDIT_CHANGES_FIELD = "_audit_changes"
 STORE_EVIDENCE_FIELD = "_store_evidence"
@@ -47,7 +49,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     STORE_LANGUAGE_AUTO_MIGRATION_KEY: True,
     "store_workers": DEFAULT_STORE_WORKERS,
     "cache_enabled": True,
-    "cache_ttl_hours": 72,
+    "cache_ttl_hours": DEFAULT_CACHE_TTL_HOURS,
+    CACHE_TTL_DEFAULT_MIGRATION_KEY: True,
     "compare_previous": False,
     "exclude_system_source": True,
     "collect_full_device_metadata_on_scan": False,
@@ -134,6 +137,21 @@ def load_settings() -> dict[str, Any]:
     settings["store_language"] = raw_language or "auto"
     settings[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
 
+    # Before v2, 72 hours was written indistinguishably as the application
+    # default. Migrate that legacy value exactly once. The persisted marker
+    # makes a later deliberate user choice of 72 hours stable.
+    cache_default_migrated = bool(
+        isinstance(data, dict) and data.get(CACHE_TTL_DEFAULT_MIGRATION_KEY)
+    )
+    migrate_legacy_cache_default = (
+        isinstance(data, dict)
+        and not cache_default_migrated
+        and data.get("cache_ttl_hours") == 72
+    )
+    if migrate_legacy_cache_default:
+        settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
+    settings[CACHE_TTL_DEFAULT_MIGRATION_KEY] = True
+
     # Device was the v1.x name for the richer source-oriented table layout.
     # Preserve Custom data verbatim while conservatively migrating only that
     # retired built-in name.
@@ -142,9 +160,15 @@ def load_settings() -> dict[str, Any]:
 
     settings["store_workers"] = normalise_store_workers(settings.get("store_workers"))
     try:
-        settings["cache_ttl_hours"] = max(0, min(24 * 30, int(settings.get("cache_ttl_hours", 72))))
+        settings["cache_ttl_hours"] = max(
+            0,
+            min(
+                24 * 30,
+                int(settings.get("cache_ttl_hours", DEFAULT_CACHE_TTL_HOURS)),
+            ),
+        )
     except (TypeError, ValueError):
-        settings["cache_ttl_hours"] = 72
+        settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
@@ -185,6 +209,8 @@ def load_settings() -> dict[str, Any]:
         default_alternative["aptoide"].get("api_key_protected") or ""
     ).strip()
     settings["alternative_distribution"] = default_alternative
+    if migrate_legacy_cache_default:
+        _write_json(settings_path(), settings)
     return settings
 
 
@@ -194,6 +220,7 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     language = str(merged.get("store_language") or "auto").strip().lower()
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
+    merged[CACHE_TTL_DEFAULT_MIGRATION_KEY] = True
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
     merged["collect_full_device_metadata_on_scan"] = (
         merged.get("collect_full_device_metadata_on_scan") is True

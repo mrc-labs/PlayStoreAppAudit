@@ -77,9 +77,9 @@ def normalise_profile(profile: object) -> dict[str, Any] | None:
     )
     language = str(settings.get("store_language") or "auto").strip().lower() or "auto"
     try:
-        ttl = int(settings.get("cache_ttl_hours", 72))
+        ttl = int(settings.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS))
     except (TypeError, ValueError):
-        ttl = 72
+        ttl = state.DEFAULT_CACHE_TTL_HOURS
     ttl = max(1, min(720, ttl))
 
     clean: dict[str, Any] = {

@@ -195,7 +195,10 @@ class ResultsWindow(menu_ui.MenuWindow):
         idle = not running
         source_available = self._has_loaded_source()
         inventory_available = self.source_mode == "device" and bool(self.device_apps_all)
-        results_available = bool(self.current_rows)
+        rows_available = bool(self.current_rows)
+        results_available = rows_available and not bool(
+            getattr(self, "_results_incomplete", False)
+        )
         visible_results_available = results_available and self.proxy.rowCount() > 0
         device_results_available = self.source_mode == "device" and results_available
         inventory_changes_available = device_results_available and bool(
@@ -208,7 +211,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         if not getattr(self, "_audit_active", False):
             self.run_button.setEnabled(idle and source_available)
         self.export_button.setEnabled(idle and results_available)
-        self.clear_button.setEnabled(idle and results_available)
+        self.clear_button.setEnabled(idle and rows_available)
 
         for name in ("file_choose_source_action", "file_scan_phone_action"):
             action = getattr(self, name, None)
@@ -223,7 +226,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         audit_result_actions = getattr(self, "audit_result_actions", None)
         if audit_result_actions is not None:
             audit_result_actions.run.setEnabled(idle and source_available)
-            audit_result_actions.clear.setEnabled(idle and results_available)
+            audit_result_actions.clear.setEnabled(idle and rows_available)
             self._set_export_actions_enabled(
                 audit_result_actions.exports,
                 all_results=idle and results_available,

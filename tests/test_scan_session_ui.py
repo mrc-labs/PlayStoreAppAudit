@@ -37,6 +37,9 @@ def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
     monkeypatch.setattr(compact_ui, "save_settings", lambda values: dict(values))
     monkeypatch.setattr(device_insights, "get_recent_sources", lambda: [])
     created = MainWindow()
+    # Session-focused tests invoke completion handlers directly; auto-start is
+    # covered independently by test_source_autostart_progressive.py.
+    monkeypatch.setattr(created, "_schedule_first_audit", lambda: None)
     yield created
     created.close()
     app.processEvents()

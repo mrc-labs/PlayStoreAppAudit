@@ -99,11 +99,14 @@ def test_choose_files_establishes_candidates_without_parsing(
     first = tmp_path / "one.apk"
     first.write_bytes(b"candidate")
     parser_calls: list[Path] = []
+    scheduled: list[bool] = []
     monkeypatch.setattr(local_apk, "parse_local_apk", lambda path: parser_calls.append(path))
+    monkeypatch.setattr(window, "_schedule_first_audit", lambda: scheduled.append(True))
     window._begin_local_apk_parse([first, first, tmp_path / "missing.apk"])
     assert window._local_apk_candidates == (first.resolve(),)
     assert window.source_mode == "local_apk"
     assert parser_calls == []
+    assert scheduled == [True]
     assert window.run_button.isEnabled()
 
 
@@ -115,12 +118,33 @@ def test_folder_discovery_is_recursive_case_insensitive_and_filtered(tmp_path: P
     second = nested / "b.apk"
     first.write_bytes(b"a")
     second.write_bytes(b"b")
-    (nested / "ignored.apks").write_bytes(b"x")
+    third = nested / "bundle.apks"
+    third.write_bytes(b"x")
     (nested / "ignored.aab").write_bytes(b"x")
     result = local_apk_source.discover_folder_apks(root)
-    expected = tuple(sorted((first.resolve(), second.resolve()), key=lambda p: os.path.normcase(str(p))))
+    expected = tuple(
+        sorted(
+            (first.resolve(), second.resolve(), third.resolve()),
+            key=lambda p: os.path.normcase(str(p)),
+        )
+    )
     assert result.paths == expected
     assert not result.cancelled
+
+
+def test_explicit_package_formats_are_case_insensitive_and_deduplicated(
+    tmp_path: Path,
+) -> None:
+    paths = [
+        tmp_path / name
+        for name in ("one.APK", "two.APKS", "three.APKM", "four.XAPK")
+    ]
+    for path in paths:
+        path.write_bytes(b"synthetic")
+
+    selected = local_apk_source.normalise_explicit_apks([*paths, paths[1]])
+
+    assert set(selected) == {path.resolve() for path in paths}
 
 
 def test_folder_discovery_does_not_follow_directory_links(tmp_path: Path) -> None:
@@ -269,8 +293,58 @@ def test_run_parses_candidates_keeps_partial_success_and_physical_rows(
     assert [row["local_apk_sha256"] for row in window.current_rows] == ["1" * 64, "1" * 64]
     assert all(row["local_apk_version_comparison"] == "Outdated" for row in window.current_rows)
     assert len(warnings) == 1
-    assert warnings[0][0] == "Some APK files could not be parsed"
-    assert "2 APK file(s) were rejected" in warnings[0][1]
+    assert warnings[0][0] == "Some package files could not be parsed"
+    assert "2 package file(s) were rejected" in warnings[0][1]
+
+
+def test_stop_during_parse_keeps_source_evidence_and_starts_no_store_work(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.apk"
+    second = tmp_path / "second.apk"
+    first.write_bytes(b"first")
+    second.write_bytes(b"second")
+    cancel_event = threading.Event()
+    store_calls: list[bool] = []
+
+    def parse_candidate(path: Path) -> LocalArtifactParseResult:
+        cancel_event.set()
+        return LocalArtifactParseResult(artifact=_artifact(path, "3" * 64))
+
+    class StoreMustNotRun:
+        def collect(self, *_args, **_kwargs):
+            store_calls.append(True)
+            raise AssertionError("Store collection started after parse cancellation")
+
+    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(window, "_local_artifact_store_service", StoreMustNotRun)
+    window.source_mode = "local_apk"
+    window._audit_session = 21
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (first, second),
+        AuditConfig(),
+        {"cache_enabled": False},
+        21,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    assert store_calls == []
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert len(window.current_rows) == 1
+    assert window.current_rows[0]["local_apk_location"] == str(first.resolve())
+    assert "health_score" not in window.current_rows[0]
+    assert not window.export_button.isEnabled()
 
 
 def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:
@@ -345,9 +419,10 @@ def test_custom_view_can_include_location(
 def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: MainWindow) -> None:
     file_actions = [action.text() for action in window.file_menu.actions()]
     assert "Local APK Library…" not in file_actions
-    assert "Choose APK Folder…" in file_actions
+    assert "Choose Package Folder…" in file_actions
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
-        "Choose Folder…"
+        "File(s)…",
+        "Folder…",
     ]
     assert window.table.toolTip() == (
         "Double-click to open Google Play when available. Right-click for more options."

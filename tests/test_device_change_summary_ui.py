@@ -31,6 +31,9 @@ from playstore_app_audit.ui.main_window import MainWindow
 @pytest.fixture
 def inventory(window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(device_insights, "app_data_dir_v9", lambda: tmp_path)
+    # These tests establish scan sessions directly and then drive explicit
+    # audit generations. Auto-start is covered by its dedicated source tests.
+    monkeypatch.setattr(window, "_schedule_first_audit", lambda: None)
     window.user_settings["inventory_history_enabled"] = True
     window.show()
     return device_insights.inventory_path("device-a")
@@ -175,7 +178,8 @@ def test_new_run_clears_visible_previous_count_before_worker_completion(
     before = inventory.read_bytes()
     window._start_audit()
     assert window._audit_state is AuditRunState.RUNNING
-    assert not window.current_rows
+    assert len(window.current_rows) == 1
+    assert window.current_rows[0]["_audit_provisional"] is True
     assert "Device changes" not in window.summary_label.text()
     assert inventory.read_bytes() == before
 
