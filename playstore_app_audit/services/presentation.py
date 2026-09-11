@@ -22,7 +22,7 @@ DATE_FORMATS = {
 }
 DEFAULT_DATE_FORMAT = "YYYY-MM-DD"
 DATE_FIELDS = {"play_last_update", "first_install_time", "last_local_update"}
-VIEW_PRESETS = ("Basic", "Device", "Technical", "Custom")
+VIEW_PRESETS = ("Basic", "Source Details", "Technical", "Custom")
 DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "criticality",
     "package_name",

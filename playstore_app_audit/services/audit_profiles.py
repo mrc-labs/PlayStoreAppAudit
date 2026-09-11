@@ -19,7 +19,7 @@ PROFILE_FIELDS = (
     "compare_previous",
     "exclude_system_source",
 )
-VIEW_PRESETS = frozenset({"Basic", "Device", "Technical", "Custom"})
+VIEW_PRESETS = frozenset({"Basic", "Source Details", "Technical", "Custom"})
 SOURCE_MODES = frozenset({"any", "file", "device"})
 
 _BOOLEAN_FIELDS = frozenset(
@@ -58,6 +58,8 @@ def _source_mode(value: object) -> str:
 
 def _view_preset(value: object) -> str:
     preset = str(value or "").strip()
+    if preset == "Device":
+        return "Source Details"
     return preset if preset in VIEW_PRESETS else "Basic"
 
 

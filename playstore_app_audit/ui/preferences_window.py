@@ -125,7 +125,7 @@ class PreferencesWindow(table_ui.TableWindow):
             columns = list(insights_ui.V9_MODEL_COLUMNS)
             if not compare and "change" in columns:
                 columns.remove("change")
-        elif preset == "Device":
+        elif preset == "Source Details":
             columns = ["criticality"]
             if compare:
                 columns.append("change")

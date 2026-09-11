@@ -82,6 +82,14 @@ def _device_source_identity(summary: dict[str, Any]) -> str:
 
 
 class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
+    LOCAL_APK_RELATIONSHIP_RANK = {
+        "Outdated": 0,
+        "Unknown": 1,
+        "Different": 2,
+        "Device-specific": 3,
+        "Newer": 4,
+        "Match": 5,
+    }
     NUMERIC_SORT_COLUMNS = frozenset(
         {
             "age_days",
@@ -114,6 +122,24 @@ class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
                 return self._numeric_sort_value(left_row.get(column)) < self._numeric_sort_value(
                     right_row.get(column)
                 )
+            if column == "local_apk_version_comparison":
+                left_row = model.row_dict(left.row())
+                right_row = model.row_dict(right.row())
+
+                def local_apk_priority(row: dict[str, object]) -> tuple[int, int, str, str]:
+                    relationship = str(row.get(column) or "Unknown")
+                    try:
+                        store_rank = int(str(row.get("criticality_rank", 99)))
+                    except (TypeError, ValueError):
+                        store_rank = 99
+                    return (
+                        self.LOCAL_APK_RELATIONSHIP_RANK.get(relationship, 1),
+                        store_rank,
+                        str(row.get("local_apk_file_name") or "").strip().casefold(),
+                        str(row.get("package_name") or "").strip().casefold(),
+                    )
+
+                return local_apk_priority(left_row) < local_apk_priority(right_row)
         return super().lessThan(left, right)
 
 

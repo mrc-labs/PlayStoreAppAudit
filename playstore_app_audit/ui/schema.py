@@ -35,6 +35,7 @@ COMPACT_MODEL_COLUMNS = (
 DEVICE_EXTRA_COLUMNS = (
     "play_version",
     "installed_version",
+    "installed_version_code",
     "version_comparison",
     "installer_source",
     "installer_category",
@@ -72,8 +73,8 @@ COLUMN_LABELS = {
     "change": "Change",
     "package_name": "Package Name",
     "play_title": "Play Store Title",
-    "play_last_update": "Last Update",
-    "age_days": "Age (Days)",
+    "play_last_update": "Last Store Update",
+    "age_days": "Store Age (Days)",
     "notes": "Notes",
     "play_status": "Play Status",
     "updated_source": "Update Source",
@@ -109,6 +110,8 @@ COLUMN_LABELS = {
 
 TABLE_HEADER_LABELS = {
     **COLUMN_LABELS,
+    "play_last_update": "Last Store\nUpdate",
+    "age_days": "Store Age\n(Days)",
     "play_http_status": "HTTP\nStatus",
     "is_system": "System\nApp",
     "version_comparison": "Installed vs\nStore",

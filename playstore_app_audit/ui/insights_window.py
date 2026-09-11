@@ -124,7 +124,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             columns = list(V9_MODEL_COLUMNS)
             if not compare and "change" in columns:
                 columns.remove("change")
-        elif preset == "Device":
+        elif preset == "Source Details":
             columns = ["criticality"]
             if compare:
                 columns.append("change")

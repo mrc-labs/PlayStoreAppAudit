@@ -251,14 +251,14 @@ FIELD_DEFINITIONS = (
             ("Same", "Unchanged"),
         ),
     ),
-    FieldDefinition("age_days", "Age (Days)", FieldType.NUMBER),
+    FieldDefinition("age_days", "Store Age (Days)", FieldType.NUMBER),
     FieldDefinition("target_sdk", "Target SDK", FieldType.NUMBER),
     FieldDefinition("min_sdk", "Min SDK", FieldType.NUMBER),
     FieldDefinition(
         "sensitive_permissions_count", "Sensitive Permissions Count", FieldType.NUMBER
     ),
     FieldDefinition("health_score", "Maintenance Score", FieldType.NUMBER),
-    FieldDefinition("play_last_update", "Last Update", FieldType.DATE),
+    FieldDefinition("play_last_update", "Last Store Update", FieldType.DATE),
     FieldDefinition("first_install_time", "First Installed", FieldType.DATE),
     FieldDefinition("last_local_update", "Last Local Update", FieldType.DATE),
     FieldDefinition("is_system", "System App", FieldType.BOOLEAN),
