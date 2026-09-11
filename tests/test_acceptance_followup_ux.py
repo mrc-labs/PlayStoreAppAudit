@@ -86,3 +86,36 @@ def test_selected_current_cell_does_not_keep_windows_focus_edge(app: QApplicatio
         view.deleteLater()
         model.deleteLater()
         app.processEvents()
+
+
+def test_available_live_row_missing_icon_metadata_is_eligible_for_bounded_backfill(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(table_ui.state, "load_settings", lambda: {"show_app_icons": True})
+    monkeypatch.setattr(table_ui.app_icon_metadata, "icon_url_for_package", lambda _package: "")
+    model = table_ui.AuditTableModel()
+    scheduled: list[tuple[object, object, object]] = []
+    monkeypatch.setattr(
+        model._metadata_backfill,
+        "schedule",
+        lambda package, country, language: scheduled.append((package, country, language)) or True,
+    )
+    try:
+        model.set_store_context_provider(lambda: ("it", "it"))
+        model.set_rows(
+            [
+                {
+                    "source_mode": "local_apk",
+                    "package_name": "com.example.live-no-icon",
+                    "play_status": "available",
+                    "play_last_update": "2026-09-01",
+                    "cache_hit": False,
+                }
+            ]
+        )
+
+        assert scheduled == [("com.example.live-no-icon", "it", "it")]
+    finally:
+        model.deleteLater()
+        app.processEvents()
