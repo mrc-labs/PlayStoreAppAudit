@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -481,6 +481,7 @@ def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
     app.processEvents()
 
     delegate = window.table.itemDelegate()
+    selected_states = 0
     focus_cells = 0
     selected_colours: dict[str, QColor] = {}
     for column, name in enumerate(window.model.columns):
@@ -489,10 +490,12 @@ def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
         option.initFrom(window.table)
         option.state |= QStyle.StateFlag.State_Selected | QStyle.StateFlag.State_HasFocus
         delegate.initStyleOption(option, index)
+        selected_states += bool(option.state & QStyle.StateFlag.State_Selected)
         focus_cells += bool(option.state & QStyle.StateFlag.State_HasFocus)
         if name in {"criticality", "local_apk_version_comparison"}:
-            selected_colours[name] = option.palette.color(QPalette.ColorRole.Highlight)
+            selected_colours[name] = option.backgroundBrush.color()
 
+    assert selected_states == 0
     assert focus_cells == 0
     assert selected_colours["criticality"] != selected_colours["local_apk_version_comparison"]
 
