@@ -7,7 +7,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem, QTableView
 
-import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.table_window as table_ui
 
 
