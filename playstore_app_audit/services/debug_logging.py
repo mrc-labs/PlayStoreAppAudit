@@ -47,11 +47,23 @@ def start_debug_logging() -> Path:
     path = logs_dir / f"debug-{started.strftime('%Y%m%d-%H%M%S-%f')}.log"
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
+
+    # Keep first-party diagnostics detailed without recording every internal
+    # parser token/resource or urllib3 connection event. Third-party warnings
+    # and errors still reach the debug session and real parser failures remain
+    # visible.
+    logging.getLogger("playstore_app_audit").setLevel(logging.DEBUG)
+    logging.getLogger("pyaxmlparser").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
     file_handler = logging.FileHandler(path, encoding="utf-8")
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
-    if sys.stderr is not None and not any(isinstance(item, logging.StreamHandler) and not isinstance(item, logging.FileHandler) for item in root.handlers):
+    if sys.stderr is not None and not any(
+        isinstance(item, logging.StreamHandler) and not isinstance(item, logging.FileHandler)
+        for item in root.handlers
+    ):
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setFormatter(formatter)
         root.addHandler(console_handler)
