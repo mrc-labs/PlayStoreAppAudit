@@ -51,6 +51,8 @@ _BASIC = {
     ),
 }
 
+# Source Details intentionally stays readable. Build identifiers, raw SDK
+# values and package-level installer identifiers belong in Technical/Custom.
 _SOURCE_DETAILS = {
     SOURCE_FILE: (
         "criticality",
@@ -72,16 +74,12 @@ _SOURCE_DETAILS = {
         "play_title",
         "version_comparison",
         "installed_version",
-        "installed_version_code",
         "play_version",
         "play_last_update",
         "age_days",
         "compatibility_status",
-        "target_sdk",
-        "min_sdk",
         "installer_source",
         "installer_category",
-        "installer_package",
         "app_enabled",
         "first_install_time",
         "last_local_update",
@@ -97,7 +95,6 @@ _SOURCE_DETAILS = {
         "package_name",
         "play_title",
         "local_apk_version_name",
-        "local_apk_version_code",
         "play_version",
         "play_last_update",
         "age_days",
