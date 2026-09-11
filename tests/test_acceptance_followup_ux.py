@@ -57,7 +57,9 @@ def test_version_relationship_cells_match_store_status_emphasis_and_alignment(
         app.processEvents()
 
 
-def test_selected_current_cell_does_not_keep_windows_focus_edge(app: QApplication) -> None:
+def test_selected_current_cell_uses_custom_row_paint_without_changing_selection(
+    app: QApplication,
+) -> None:
     model = table_ui.AuditTableModel()
     view = QTableView()
     delegate = table_ui.SemanticSelectionDelegate(view)
@@ -69,19 +71,28 @@ def test_selected_current_cell_does_not_keep_windows_focus_edge(app: QApplicatio
                     "criticality_key": "green",
                     "criticality": "Recent Update",
                     "local_apk_version_comparison": "Match",
+                    "package_name": "com.example.app",
                 }
             ]
         )
         view.setModel(model)
-        index = model.index(0, model.columns.index("criticality"))
+        view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
+        index = model.index(0, model.columns.index("package_name"))
         view.setCurrentIndex(index)
+        view.selectRow(0)
+        assert view.selectionModel().isSelected(index)
+
         option = QStyleOptionViewItem()
         option.state |= QStyle.StateFlag.State_Selected | QStyle.StateFlag.State_HasFocus
-
         delegate.initStyleOption(option, index)
 
-        assert option.state & QStyle.StateFlag.State_Selected
+        # The delegate removes only the native selected-item paint state. The
+        # view/selection model remains selected and keyboard navigation remains intact.
+        assert not option.state & QStyle.StateFlag.State_Selected
         assert not option.state & QStyle.StateFlag.State_HasFocus
+        assert view.selectionModel().isSelected(index)
+        assert option.backgroundBrush.color().name().lower() == table_ui.SELECTED_ROW_BACKGROUND.lower()
     finally:
         view.deleteLater()
         model.deleteLater()
