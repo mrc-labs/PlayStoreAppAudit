@@ -67,6 +67,8 @@ def test_focus_outline_stylesheet_does_not_disable_keyboard_focus(
         table_ui._suppress_table_item_focus_outline(view)
 
         assert "gridline-color" in first_style
+        assert "QTableView::item:focus { outline: none; border: none; }" in first_style
+        assert "QTableView::item:selected { border: none; }" in first_style
         assert table_ui.TABLE_ITEM_FOCUS_STYLE in first_style
         assert view.styleSheet().count(table_ui.TABLE_ITEM_FOCUS_STYLE) == 1
         assert view.focusPolicy() == original_policy
