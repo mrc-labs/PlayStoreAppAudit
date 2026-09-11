@@ -5,14 +5,39 @@ import subprocess
 import sys
 from ctypes import POINTER, byref, c_int, c_long, c_void_p, wintypes
 from pathlib import Path
+from typing import Any
 
 from playstore_app_audit.platform import runtime
 
 logger = logging.getLogger(__name__)
 
+_COINIT_APARTMENTTHREADED = 0x2
+_RPC_E_CHANGED_MODE = 0x80010106
+
 
 def _hresult_succeeded(value: int) -> bool:
     return c_int(value).value >= 0
+
+
+def _windows_initialize_com(ole32: Any) -> tuple[bool, bool, int]:
+    """Ensure COM is available on the calling thread for Shell selection APIs.
+
+    Returns ``(ready, must_uninitialize, hresult)``. ``RPC_E_CHANGED_MODE`` means
+    the thread already has COM initialized with a different apartment model, so
+    Shell APIs may still be used but this helper must not uninitialize that
+    caller-owned COM state.
+    """
+
+    ole32.CoInitializeEx.argtypes = [c_void_p, wintypes.DWORD]
+    ole32.CoInitializeEx.restype = c_long
+    ole32.CoUninitialize.argtypes = []
+    ole32.CoUninitialize.restype = None
+    result = int(ole32.CoInitializeEx(None, _COINIT_APARTMENTTHREADED))
+    if _hresult_succeeded(result):
+        return True, True, result
+    if result & 0xFFFFFFFF == _RPC_E_CHANGED_MODE:
+        return True, False, result
+    return False, False, result
 
 
 def _windows_reveal_file(path: Path) -> tuple[bool, int]:
@@ -45,37 +70,47 @@ def _windows_reveal_file(path: Path) -> tuple[bool, int]:
     ole32.CoTaskMemFree.argtypes = [c_void_p]
     ole32.CoTaskMemFree.restype = None
 
-    folder_pidl = c_void_p()
-    item_pidl = c_void_p()
-    attributes = wintypes.DWORD()
-    result = int(
-        shell32.SHParseDisplayName(
-            str(path.parent), None, byref(folder_pidl), 0, byref(attributes)
-        )
-    )
-    if not _hresult_succeeded(result):
-        if folder_pidl.value:
-            ole32.CoTaskMemFree(folder_pidl)
-        return False, result
+    com_ready, must_uninitialize, com_result = _windows_initialize_com(ole32)
+    if not com_ready:
+        return False, com_result
+
     try:
+        folder_pidl = c_void_p()
+        item_pidl = c_void_p()
+        attributes = wintypes.DWORD()
         result = int(
-            shell32.SHParseDisplayName(str(path), None, byref(item_pidl), 0, byref(attributes))
+            shell32.SHParseDisplayName(
+                str(path.parent), None, byref(folder_pidl), 0, byref(attributes)
+            )
         )
         if not _hresult_succeeded(result):
-            if item_pidl.value:
-                ole32.CoTaskMemFree(item_pidl)
+            if folder_pidl.value:
+                ole32.CoTaskMemFree(folder_pidl)
             return False, result
         try:
-            child_pidl = shell32.ILFindLastID(item_pidl)
-            if not child_pidl:
-                return False, -1
-            children = (c_void_p * 1)(child_pidl)
-            result = int(shell32.SHOpenFolderAndSelectItems(folder_pidl, 1, children, 0))
-            return _hresult_succeeded(result), result
+            result = int(
+                shell32.SHParseDisplayName(
+                    str(path), None, byref(item_pidl), 0, byref(attributes)
+                )
+            )
+            if not _hresult_succeeded(result):
+                if item_pidl.value:
+                    ole32.CoTaskMemFree(item_pidl)
+                return False, result
+            try:
+                child_pidl = shell32.ILFindLastID(item_pidl)
+                if not child_pidl:
+                    return False, -1
+                children = (c_void_p * 1)(child_pidl)
+                result = int(shell32.SHOpenFolderAndSelectItems(folder_pidl, 1, children, 0))
+                return _hresult_succeeded(result), result
+            finally:
+                ole32.CoTaskMemFree(item_pidl)
         finally:
-            ole32.CoTaskMemFree(item_pidl)
+            ole32.CoTaskMemFree(folder_pidl)
     finally:
-        ole32.CoTaskMemFree(folder_pidl)
+        if must_uninitialize:
+            ole32.CoUninitialize()
 
 
 def _windows_open_folder(path: Path) -> tuple[bool, int]:
