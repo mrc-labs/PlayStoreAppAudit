@@ -92,6 +92,30 @@ def test_transient_scraper_failure_retries_in_canonical_policy(monkeypatch) -> N
     assert waits == [1.0]
 
 
+def test_canonical_store_result_propagates_icon_and_developer(monkeypatch) -> None:
+    def available_app(*_args, **_kwargs):
+        return {
+            "title": "Example",
+            "updated": 1_700_000_000,
+            "version": "1.2.3",
+            "icon": "https://example.invalid/icon.png",
+            "developer": "Example Developer",
+        }
+
+    monkeypatch.setattr(google_play_scraper, "app", available_app)
+    monkeypatch.setattr(play_store, "_fallback_countries", lambda _country: ())
+
+    result = play_store.PlayStoreService().fetch_one(
+        "Example",
+        "com.example.available",
+        AuditConfig(country="it", language="it", max_retries=0),
+    )
+
+    assert result["play_status"] == "available"
+    assert result["play_icon_url"] == "https://example.invalid/icon.png"
+    assert result["developer"] == "Example Developer"
+
+
 def test_english_fallback_completes_metadata_without_replacing_localised_title() -> None:
     calls: list[tuple[str, str]] = []
 

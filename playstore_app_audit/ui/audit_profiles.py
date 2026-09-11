@@ -40,7 +40,7 @@ def apply_window_profile(window: object, profile: dict[str, Any]) -> None:
 
     country_edit = getattr(window, "country_edit", None)
     if country_edit is not None and hasattr(country_edit, "setText"):
-        country_edit.setText(country)
+        country_edit.setText(country.upper())
         window._store_country_manual_override = True  # type: ignore[attr-defined]
         apply_country = getattr(window, "_apply_store_country_resolution", None)
         if callable(apply_country):

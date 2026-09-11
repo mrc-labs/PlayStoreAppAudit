@@ -244,7 +244,7 @@ def test_android_compatibility_penalties_use_canonical_labels(
 @pytest.mark.parametrize(
     ("version_comparison", "penalty"),
     [
-        ("Outdated", -15),
+        ("Outdated", -10),
         ("Different", -5),
         ("Newer", 0),
         ("Match", 0),
@@ -264,7 +264,14 @@ def test_installed_version_penalty_is_relationship_aware(
 
 @pytest.mark.parametrize(
     ("relationship", "penalty"),
-    [("Outdated", -15), ("Different", -5), ("Unknown", -15), ("Newer", 0), ("Match", 0)],
+    [
+        ("Outdated", -10),
+        ("Different", -5),
+        ("Unknown", -15),
+        ("Device-specific", 0),
+        ("Newer", 0),
+        ("Match", 0),
+    ],
 )
 def test_local_apk_version_penalty_is_source_aware(
     relationship: str, penalty: int
@@ -273,10 +280,53 @@ def test_local_apk_version_penalty_is_source_aware(
     row.update(
         source_mode="local_apk",
         local_apk_version_comparison=relationship,
+        local_apk_version_name="" if relationship == "Unknown" else "1.0",
+        play_version="2.0",
     )
     breakdown = device_insights.calculate_health_score_breakdown(row)
     assert breakdown.version_comparison_penalty == penalty
     assert [component.key for component in breakdown.components].count("local_store_version") <= 1
+
+
+def test_outdated_and_aging_store_penalties_remain_independent() -> None:
+    row = _row(age_days=500)
+    row.update(
+        source_mode="local_apk",
+        local_apk_version_comparison="Outdated",
+        local_apk_version_name="1.0",
+        play_version="2.0",
+    )
+
+    breakdown = device_insights.calculate_health_score_breakdown(row)
+
+    assert breakdown.version_comparison_penalty == -10
+    assert breakdown.listing_age_penalty == -15
+    assert breakdown.score == 75
+
+
+@pytest.mark.parametrize(
+    "play_status",
+    [
+        "not_found_in_checked_countries",
+        "multi_country_check_inconclusive",
+        "check_failed",
+    ],
+)
+def test_local_unknown_from_missing_store_counterpart_has_no_version_penalty(
+    play_status: str,
+) -> None:
+    row = _row(play_status=play_status)
+    row.update(
+        source_mode="local_apk",
+        local_apk_version_comparison="Unknown",
+        local_apk_version_name="1.0",
+        play_version="",
+    )
+
+    breakdown = device_insights.calculate_health_score_breakdown(row)
+
+    assert breakdown.version_comparison_penalty == 0
+    assert all(component.key != "local_store_version" for component in breakdown.components)
 
 
 def test_independent_penalties_compose_and_score_is_clamped_to_zero() -> None:

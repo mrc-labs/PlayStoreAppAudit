@@ -357,7 +357,7 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
 
     first.current_rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.persist",
             "play_title": "Persist",

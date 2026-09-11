@@ -365,27 +365,75 @@ def test_location_model_tooltip_is_full_path(tmp_path: Path) -> None:
     assert index.data(Qt.ItemDataRole.ToolTipRole) == location
 
 
-def test_windows_file_location_uses_argument_list(
+@pytest.mark.parametrize("file_name", ["one file.apk", "one # copy.apk", "caffè_日本.apk"])
+def test_windows_file_location_uses_native_shell_selection(
+    file_name: str,
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    path = tmp_path / "folder with spaces" / "one # copy.apk"
+    path = tmp_path / "folder with spaces" / file_name
     path.parent.mkdir()
     path.write_bytes(b"x")
-    calls: list[list[str]] = []
+    reveals: list[Path] = []
     monkeypatch.setattr(file_locations.runtime, "platform_key", lambda: "windows")
+    monkeypatch.setattr(
+        file_locations.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: pytest.fail("Explorer subprocess must not be used on Windows"),
+    )
+    monkeypatch.setattr(
+        file_locations,
+        "_windows_reveal_file",
+        lambda selected: (reveals.append(selected) is None, 0),
+    )
+    with caplog.at_level(logging.DEBUG, logger=file_locations.__name__):
+        assert file_locations.open_file_location(path) == (True, "")
+    assert reveals == [path.resolve()]
+    missing = file_locations.open_file_location(tmp_path / "missing # file.apk")
+    assert not missing[0]
+    assert "reveal requested: platform=windows" in caplog.text
+    assert "native reveal succeeded: platform=windows" in caplog.text
+    assert "final outcome: platform=windows success=true" in caplog.text
+    assert "reveal failed: platform=windows reason=missing" in caplog.text
+
+
+def test_windows_native_reveal_failure_opens_parent_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    path = tmp_path / "folder" / "one.apk"
+    path.parent.mkdir()
+    path.write_bytes(b"x")
+    fallbacks: list[Path] = []
+    monkeypatch.setattr(file_locations.runtime, "platform_key", lambda: "windows")
+    monkeypatch.setattr(file_locations, "_windows_reveal_file", lambda _path: (False, -1))
+    monkeypatch.setattr(
+        file_locations,
+        "_windows_open_folder",
+        lambda parent: (fallbacks.append(parent) is None, 42),
+    )
+
+    with caplog.at_level(logging.DEBUG, logger=file_locations.__name__):
+        assert file_locations.open_file_location(path) == (True, "")
+
+    assert fallbacks == [path.parent.resolve()]
+    assert "native reveal failed" in caplog.text
+    assert "parent-folder fallback" in caplog.text
+
+
+def test_non_windows_file_location_keeps_existing_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "one file.apk"
+    path.write_bytes(b"x")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(file_locations.runtime, "platform_key", lambda: "linux")
     monkeypatch.setattr(
         file_locations.subprocess,
         "Popen",
         lambda args, **_kwargs: calls.append(args),
     )
-    with caplog.at_level(logging.DEBUG, logger=file_locations.__name__):
-        assert file_locations.open_file_location(path) == (True, "")
-    assert calls == [["explorer.exe", "/select,", str(path.resolve())]]
-    missing = file_locations.open_file_location(tmp_path / "missing # file.apk")
-    assert not missing[0]
-    assert "reveal requested: platform=windows" in caplog.text
-    assert "reveal succeeded: platform=windows" in caplog.text
-    assert "reveal failed: platform=windows reason=missing" in caplog.text
+
+    assert file_locations.open_file_location(path) == (True, "")
+    assert calls == [["xdg-open", str(path.parent.resolve())]]
 
 
 def test_open_file_location_context_action_is_local_and_requires_a_file(

@@ -145,7 +145,7 @@ def test_change_events_and_device_inventory_are_rendered_only_with_baseline() ->
             },
             {
                 "type": "maintenance_state_changed",
-                "previous": "Current",
+                "previous": "Recent Update",
                 "current": "Aging",
             },
         ],
@@ -155,14 +155,14 @@ def test_change_events_and_device_inventory_are_rendered_only_with_baseline() ->
 
     assert details_ui.change_lines(row) == [
         "Play Store version changed: 1.0 → 2.0",
-        "Maintenance state changed: Current → Aging",
+        "Maintenance state changed: Recent Update → Aging",
     ]
     assert details_ui.device_inventory_line(row) == "Since previous phone scan: Newly installed"
 
     row[change_service.DEVICE_HISTORY_FLAG] = False
     assert details_ui.change_lines(row) == [
         "Play Store version changed: 1.0 → 2.0",
-        "Maintenance state changed: Current → Aging",
+        "Maintenance state changed: Recent Update → Aging",
     ]
     assert details_ui.device_inventory_line(row) == "Inventory history: First phone-scan baseline"
 

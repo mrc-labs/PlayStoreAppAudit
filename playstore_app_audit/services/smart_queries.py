@@ -158,7 +158,7 @@ FIELD_DEFINITIONS = (
         "Store Status",
         FieldType.CHOICE,
         _choices(
-            ("green", "Current"),
+            ("green", "Recent Update"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
             ("red", "Not Found"),
@@ -386,11 +386,16 @@ def _valid_uuid(value: object) -> str | None:
 
 
 def normalise_query(value: object, *, require_name: bool = True) -> SmartQuery | None:
+    raw_id: object
+    raw_name: object
+    raw_match: object
+    raw_conditions: object
+    schema_version: object
     if isinstance(value, SmartQuery):
         raw_id = value.query_id
         raw_name = value.name
-        raw_match: object = value.match
-        raw_conditions: object = value.conditions
+        raw_match = value.match
+        raw_conditions = value.conditions
         schema_version = SCHEMA_VERSION
     elif isinstance(value, Mapping):
         raw_id = value.get("id")

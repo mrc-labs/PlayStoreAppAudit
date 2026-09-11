@@ -12,6 +12,7 @@ import urllib.request
 import zipfile
 from datetime import date, datetime
 from pathlib import Path
+from typing import cast
 
 from PySide6.QtCore import (
     QAbstractTableModel,
@@ -174,8 +175,8 @@ MONTHS = {
 
 CRITICALITY = {
     "red": {
-        "label": "●  Not Found",
-        "button": "● Not Found",
+        "label": "Not Found",
+        "button": "Not Found",
         "rank": 0,
         "background": "#FDF3F3",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["red"],
@@ -183,8 +184,8 @@ CRITICALITY = {
         "tooltip": "Show apps with no conclusive Google Play listing.",
     },
     "orange": {
-        "label": "●  Stale",
-        "button": "● Stale",
+        "label": "Stale",
+        "button": "Stale",
         "rank": 1,
         "background": "#FFF7EE",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["orange"],
@@ -192,8 +193,8 @@ CRITICALITY = {
         "tooltip": "Show apps last updated more than 730 days ago.",
     },
     "yellow": {
-        "label": "●  Aging",
-        "button": "● Aging",
+        "label": "Aging",
+        "button": "Aging",
         "rank": 2,
         "background": "#FFFCEF",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["yellow"],
@@ -201,8 +202,8 @@ CRITICALITY = {
         "tooltip": "Show apps last updated 366 to 730 days ago.",
     },
     "blue": {
-        "label": "●  Store anomaly",
-        "button": "● Anomaly",
+        "label": "Store anomaly",
+        "button": "Anomaly",
         "rank": 3,
         "background": "#F0F7FC",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["blue"],
@@ -210,8 +211,8 @@ CRITICALITY = {
         "tooltip": "Show apps with unusual or inconclusive Store availability.",
     },
     "purple": {
-        "label": "●  Other",
-        "button": "● Other",
+        "label": "Other",
+        "button": "Other",
         "rank": 4,
         "background": "#F8F2FA",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["purple"],
@@ -219,8 +220,8 @@ CRITICALITY = {
         "tooltip": "Show apps with unknown results or audit errors.",
     },
     "green": {
-        "label": "●  Current",
-        "button": "● Current",
+        "label": "Recent Update",
+        "button": "Recent Update",
         "rank": 5,
         "background": "#F2F9F3",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["green"],
@@ -432,7 +433,14 @@ class AppTableModel(QAbstractTableModel):
             return semantic_value_font(column, row.get(column))
 
         if role == Qt.ItemDataRole.TextAlignmentRole:
-            if column in {"play_status", "play_last_update", "age_days", "criticality"}:
+            if column in {
+                "play_status",
+                "play_last_update",
+                "age_days",
+                "criticality",
+                "version_comparison",
+                "local_apk_version_comparison",
+            }:
                 return int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
 
         if role == Qt.ItemDataRole.UserRole:
@@ -498,10 +506,10 @@ class AppFilterProxy(QSortFilterProxyModel):
 
         def sort_value(row: dict[str, object]):
             if column == "criticality":
-                return int(row.get("criticality_rank", 99))
+                return int(row.get("criticality_rank", 99))  # type: ignore[call-overload]
             if column == "age_days":
                 try:
-                    return int(row.get("age_days", ""))
+                    return int(row.get("age_days", ""))  # type: ignore[call-overload]
                 except (TypeError, ValueError):
                     return -1
             if column == "play_last_update":
@@ -829,6 +837,12 @@ class BaseWindow(QMainWindow):
 
         chip_row = QHBoxLayout()
         chip_row.setSpacing(6)
+        self.store_status_filter_label = QLabel("Store Status:")
+        self.store_status_filter_label.setObjectName("StoreStatusFilterLabel")
+        self.store_status_filter_label.setToolTip(
+            "These filters use Store Status only; version relationships remain independent."
+        )
+        chip_row.addWidget(self.store_status_filter_label)
         self.all_chip = QPushButton("All")
         self.all_chip.setObjectName("CriticalityButton")
         self.all_chip.setCheckable(True)
@@ -1178,8 +1192,8 @@ class BaseWindow(QMainWindow):
             self.signals.failed.emit(f"ADB connection error:\n\n{exc}")
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
-        typed_apps = list(apps)  # type: ignore[arg-type]
-        typed_system = set(system_packages)  # type: ignore[arg-type]
+        typed_apps = list(cast(list[dict[str, str]], apps))
+        typed_system = set(cast(set[str], system_packages))
         self.device_apps_all = typed_apps
         self.device_system_packages = typed_system
         self.file_apps = []
@@ -1319,7 +1333,7 @@ class BaseWindow(QMainWindow):
         self.status_label.setText(f"Completed {done}/{total}: {package_name}")
 
     def _on_audit_done(self, rows: object) -> None:
-        typed_rows = list(rows)  # type: ignore[arg-type]
+        typed_rows = list(cast(list[dict[str, object]], rows))
         for row in typed_rows:
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
             classify_criticality(row)
@@ -1397,7 +1411,7 @@ class BaseWindow(QMainWindow):
             if hidden_system:
                 parts.append(f"{hidden_system} system hidden")
         if self.criticality_filter:
-            parts.append(str(CRITICALITY[self.criticality_filter]["label"]).replace("●  ", ""))
+            parts.append(str(CRITICALITY[self.criticality_filter]["label"]))
         self.summary_label.setText("  •  ".join(parts))
 
     def _open_selected_store_url(self, proxy_index: QModelIndex) -> None:

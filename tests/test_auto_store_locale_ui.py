@@ -62,7 +62,7 @@ def test_phone_scan_keeps_host_country_and_uses_android_language(
         )
 
         assert window.source_mode == "device"
-        assert window.country_edit.text() == "de"
+        assert window.country_edit.text() == "DE"
         assert store_locale.resolve_store_language("auto", "de") == "it"
         assert "computer's region: DE" in window.country_edit.toolTip()
         assert "Android system locale: it-CH" in window.source_label.toolTip()
@@ -93,7 +93,7 @@ def test_phone_scan_uses_android_region_only_when_host_region_is_unavailable(
             set(),
         )
 
-        assert window.country_edit.text() == "ch"
+        assert window.country_edit.text() == "CH"
         assert store_locale.resolve_store_language("auto", "ch") == "it"
         assert "falls back to Android locale region CH" in window.country_edit.toolTip()
         assert "not the Google Play account country" in window.country_edit.toolTip()
@@ -125,7 +125,7 @@ def test_manual_country_override_survives_phone_scan(
             set(),
         )
 
-        assert window.country_edit.text() == "fr"
+        assert window.country_edit.text() == "FR"
         assert "Manual Store country override: FR" in window.country_edit.toolTip()
         assert store_locale.resolve_store_language("auto", "fr") == "it"
     finally:
@@ -156,13 +156,13 @@ def test_loading_file_clears_phone_language_and_country_fallback_context(
             [{"app_name": "Example", "package_name": "com.example.app"}],
             set(),
         )
-        assert window.country_edit.text() == "ch"
+        assert window.country_edit.text() == "CH"
 
         window._load_input_file(str(source))
 
         assert window.source_mode == "file"
         assert store_locale.active_device_store_locale() is None
-        assert window.country_edit.text() == "us"
+        assert window.country_edit.text() == "US"
         assert store_locale.resolve_store_language("auto", "us") == "en"
     finally:
         store_locale.set_active_device_store_locale(None)
@@ -185,7 +185,7 @@ def test_loading_file_with_host_region_uses_country_default_language(
 
         assert window.source_mode == "file"
         assert store_locale.active_device_store_locale() is None
-        assert window.country_edit.text() == "ch"
+        assert window.country_edit.text() == "CH"
         assert store_locale.resolve_store_language("auto", "ch") == "de"
     finally:
         store_locale.set_active_device_store_locale(None)

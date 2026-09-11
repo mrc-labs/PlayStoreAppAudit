@@ -384,15 +384,24 @@ def test_display_settings_save_existing_presentation_keys(
         icons = dialog.findChild(QCheckBox, "ShowAppIconsCheck")
         date_format = dialog.findChild(QComboBox, "DateFormatCombo")
         title_column = dialog.findChild(QCheckBox, "CustomColumnCheck_play_title")
+        technical_column = dialog.findChild(
+            QCheckBox, "CustomColumnCheck_installed_version_code"
+        )
+        common_group = dialog.findChild(QGroupBox, "CustomColumnsCommonGroup")
+        advanced_group = dialog.findChild(QGroupBox, "CustomColumnsAdvancedGroup")
         assert icons is not None
         assert date_format is not None
         assert title_column is not None
+        assert technical_column is not None
+        assert common_group is not None and common_group.title() == "Common"
+        assert advanced_group is not None and advanced_group.title() == "Advanced / Technical"
         for check in dialog.findChildren(QCheckBox):
             if check.objectName().startswith("CustomColumnCheck_"):
                 check.setChecked(False)
         icons.setChecked(True)
         date_format.setCurrentText("DD/MM/YYYY")
         title_column.setChecked(True)
+        technical_column.setChecked(True)
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", accept_display)
@@ -404,6 +413,7 @@ def test_display_settings_save_existing_presentation_keys(
         "criticality",
         "package_name",
         "play_title",
+        "installed_version_code",
     ]
     assert window.model._icons_enabled is True
     assert window.status_label.text() == "Customize View settings saved"
@@ -449,7 +459,7 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
 
     rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.alpha",
             "play_title": "Alpha",
@@ -568,7 +578,7 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     window._apply_column_visibility(reset_order=False)
     window.current_rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.persisted",
             "play_title": "Persisted",
@@ -660,7 +670,7 @@ def test_advanced_settings_preserve_display_preferences(
     )
     window.current_rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.populated",
         }
@@ -746,7 +756,7 @@ def test_details_internal_reflow_preserves_results_and_outer_layout_state(
             "notes": "raw alpha note",
         },
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "package_name": "com.example.beta",
             "play_title": "Beta",

@@ -100,34 +100,46 @@ class SemanticValuePresentation:
 
 SEMANTIC_VALUE_PRESENTATIONS = {
     ("version_comparison", "Outdated"): SemanticValuePresentation(
-        status_key="orange", emphasis="strong_warning", font_weight=600
+        status_key="orange", emphasis="strong_warning", font_weight=700
     ),
     ("version_comparison", "Different"): SemanticValuePresentation(
-        status_key="yellow",
-        emphasis="warning",
-        font_weight=600,
+        status_key="yellow", emphasis="warning", font_weight=700
     ),
     ("version_comparison", "Unknown"): SemanticValuePresentation(
-        status_key="purple", emphasis="warning", font_weight=400
+        status_key="purple", emphasis="warning", font_weight=700
+    ),
+    ("version_comparison", "Device-specific"): SemanticValuePresentation(
+        status_key="blue", emphasis="warning", font_weight=700
+    ),
+    ("version_comparison", "Newer"): SemanticValuePresentation(
+        status_key="green", emphasis="warning", font_weight=700
+    ),
+    ("version_comparison", "Match"): SemanticValuePresentation(
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Outdated"): SemanticValuePresentation(
-        status_key="orange", emphasis="strong_warning", font_weight=600
+        status_key="orange", emphasis="strong_warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Different"): SemanticValuePresentation(
-        status_key="yellow", emphasis="warning", font_weight=600
+        status_key="yellow", emphasis="warning", font_weight=700
     ),
     ("local_apk_version_comparison", "Unknown"): SemanticValuePresentation(
-        status_key="purple", emphasis="warning", font_weight=400
+        status_key="purple", emphasis="warning", font_weight=700
+    ),
+    ("local_apk_version_comparison", "Device-specific"): SemanticValuePresentation(
+        status_key="blue", emphasis="warning", font_weight=700
+    ),
+    ("local_apk_version_comparison", "Newer"): SemanticValuePresentation(
+        status_key="green", emphasis="warning", font_weight=700
+    ),
+    ("local_apk_version_comparison", "Match"): SemanticValuePresentation(
+        status_key="green", emphasis="warning", font_weight=700
     ),
     ("compatibility_status", "Aging target"): SemanticValuePresentation(
-        status_key="yellow",
-        emphasis="warning",
-        font_weight=600,
+        status_key="yellow", emphasis="warning", font_weight=600
     ),
     ("compatibility_status", "Legacy target"): SemanticValuePresentation(
-        status_key="orange",
-        emphasis="strong_warning",
-        font_weight=600,
+        status_key="orange", emphasis="strong_warning", font_weight=600
     ),
 }
 
@@ -231,7 +243,7 @@ PC / ADB method
   "package_name" | Set-Content packages.csv
   .\\adb.exe shell pm list packages -3 | ForEach-Object { $_ -replace "^package:", "" } | Sort-Object -Unique | Add-Content packages.csv
 
-Remove '-3' if you also want system packages. The resulting CSV can be loaded with Choose file or drag-and-drop.
+Remove '-3' if you also want system apps. The resulting CSV can be loaded with Choose file or drag-and-drop.
 
 Phone-only methods
 Android itself does not provide a standard built-in button that exports all package IDs to CSV. You have two practical options:
@@ -366,18 +378,26 @@ def concise_summary(rows: list[dict[str, Any]], visible_count: int | None = None
     visible = total if visible_count is None else max(0, int(visible_count))
     parts = [f"{visible}/{total} shown"]
     mismatches = {"Outdated", "Newer", "Different"}
+    source_mode = str(rows[0].get("source_mode") or "") if rows else ""
+    local_source = source_mode.startswith("local_apk")
     differences = sum(
         1
         for row in rows
         if str(
             row.get("local_apk_version_comparison")
-            if str(row.get("source_mode") or "").startswith("local_apk")
+            if local_source
             else row.get("version_comparison")
         )
         in mismatches
     )
     if differences:
-        parts.append(f"Version differences {differences}")
+        if local_source:
+            label = "Local APK differences"
+        elif source_mode == "device":
+            label = "Installed version differences"
+        else:
+            label = "Version differences"
+        parts.append(f"{label} {differences}")
     return "  •  ".join(parts)
 
 

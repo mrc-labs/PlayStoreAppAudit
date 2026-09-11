@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
-    QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -43,6 +43,34 @@ import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
+
+ADVANCED_CUSTOM_COLUMNS = frozenset(
+    {
+        "play_status",
+        "updated_source",
+        "play_http_status",
+        "is_system",
+        "installed_version_code",
+        "installer_package",
+        "target_sdk",
+        "min_sdk",
+        "sensitive_permissions_count",
+        "sensitive_permissions",
+        "local_apk_version_code",
+        "local_apk_sha256",
+    }
+)
+
+
+def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    choices = tuple(
+        column
+        for column in insights_ui.V9_MODEL_COLUMNS
+        if column not in {"criticality", "package_name"}
+    )
+    common = tuple(column for column in choices if column not in ADVANCED_CUSTOM_COLUMNS)
+    advanced = tuple(column for column in choices if column in ADVANCED_CUSTOM_COLUMNS)
+    return common, advanced
 
 
 class FormattedAuditTableModel(table_ui.AuditTableModel):
@@ -378,8 +406,21 @@ class PreferencesWindow(table_ui.TableWindow):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         columns_host = QWidget()
-        grid = QGridLayout(columns_host)
-        grid.setContentsMargins(0, 4, 0, 4)
+        groups_layout = QHBoxLayout(columns_host)
+        groups_layout.setContentsMargins(0, 4, 0, 4)
+        groups_layout.setSpacing(12)
+        common_group = QGroupBox("Common")
+        common_group.setObjectName("CustomColumnsCommonGroup")
+        common_group.setToolTip("Human-readable fields for ordinary result-table use.")
+        common_layout = QVBoxLayout(common_group)
+        advanced_group = QGroupBox("Advanced / Technical")
+        advanced_group.setObjectName("CustomColumnsAdvancedGroup")
+        advanced_group.setToolTip(
+            "Raw Store evidence, build identifiers, SDK values and specialist fields."
+        )
+        advanced_layout = QVBoxLayout(advanced_group)
+        groups_layout.addWidget(common_group, 1)
+        groups_layout.addWidget(advanced_group, 1)
         stored_custom = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
         ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
@@ -389,15 +430,17 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         configured = set(initial_columns)
         custom_checks: dict[str, QCheckBox] = {}
-        choices = [c for c in insights_ui.V9_MODEL_COLUMNS if c not in {"criticality", "package_name"}]
-        for index, key in enumerate(choices):
+        common_columns, advanced_columns = custom_column_groups()
+        common_set = set(common_columns)
+        for key in (*common_columns, *advanced_columns):
             label = base_ui.COLUMN_LABELS.get(key, key)
             check = QCheckBox(label)
             check.setObjectName(f"CustomColumnCheck_{key}")
             check.setChecked(key in configured)
             custom_checks[key] = check
-            grid.addWidget(check, index // 2, index % 2)
-        grid.setRowStretch((len(choices) + 1) // 2, 1)
+            (common_layout if key in common_set else advanced_layout).addWidget(check)
+        common_layout.addStretch(1)
+        advanced_layout.addStretch(1)
         scroll.setWidget(columns_host)
         root.addWidget(scroll, 1)
 

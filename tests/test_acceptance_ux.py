@@ -9,12 +9,20 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QLabel,
+    QPushButton,
+    QStyle,
+    QStyleOptionViewItem,
+)
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import column_presets, table_layout
+import playstore_app_audit.ui.preferences_window as preferences_ui
+from playstore_app_audit.ui import column_presets, schema, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.results_window import NumericAuditFilterProxy
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION, AuditTableModel
@@ -98,6 +106,90 @@ def test_source_selector_order_buttons_and_or_separators(
     ]
 
 
+def test_store_status_label_precedes_criticality_only_chips(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    _settings, create_window = window_store
+    window = create_window()
+    parent_layout = window.store_status_filter_label.parentWidget().layout()
+    layout = compact_ui._find_layout_containing(
+        parent_layout, window.store_status_filter_label
+    )
+
+    assert window.store_status_filter_label.text() == "Store Status:"
+    assert layout is not None
+    assert layout.indexOf(window.store_status_filter_label) < layout.indexOf(window.all_chip)
+    assert "version relationships remain independent" in window.store_status_filter_label.toolTip()
+
+
+def test_store_status_chip_counts_ignore_local_relationship_state(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    _settings, create_window = window_store
+    window = create_window()
+    window.current_rows = [
+        {
+            "source_mode": "local_apk",
+            "criticality_key": "red",
+            "local_apk_version_comparison": "Outdated",
+        },
+        {
+            "source_mode": "local_apk",
+            "criticality_key": "red",
+            "local_apk_version_comparison": "Match",
+        },
+    ]
+    window.model.set_rows(window.current_rows)
+
+    window._update_summary()
+
+    assert window.criticality_buttons["red"].text().endswith(" 2")
+    assert window.criticality_buttons["green"].text().endswith(" 0")
+
+
+@pytest.mark.parametrize("source_mode", ["device", "local_apk", "file"])
+def test_store_status_text_is_symbol_free_for_every_source_type(source_mode: str) -> None:
+    from playstore_app_audit.ui.base_window import CRITICALITY
+
+    model = AuditTableModel()
+    model.set_rows(
+        [
+            {
+                "source_mode": source_mode,
+                "criticality_key": "green",
+                "criticality": CRITICALITY["green"]["label"],
+            }
+        ]
+    )
+    index = model.index(0, model.columns.index("criticality"))
+
+    assert index.data(Qt.ItemDataRole.DisplayRole) == "Recent Update"
+
+
+def test_source_status_text_names_the_active_source(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    tmp_path: Path,
+) -> None:
+    _settings, create_window = window_store
+    window = create_window()
+    app_list = tmp_path / "apps.csv"
+    app_list.write_text("package_name\ncom.example.app\n", encoding="utf-8")
+    apk = tmp_path / "one.apk"
+    apk.write_bytes(b"not parsed during selection")
+
+    window._load_input_file(str(app_list))
+    assert window.source_label.text().startswith("App List source:")
+
+    window._establish_local_apk_candidates((apk,), "selected")
+    assert window.source_label.text().startswith("Local APK source:")
+
+    window.source_mode = "device"
+    window._device_summary = {"manufacturer": "Google", "model": "Pixel"}
+    window.source_label.setText("Phone scan: 1 third-party package loaded")
+    window._restore_device_source_identity()
+    assert window.source_label.text().startswith("Phone source: Google Pixel")
+
+
 @pytest.mark.parametrize(
     ("preset", "source", "expected"),
     [
@@ -141,10 +233,9 @@ def test_source_selector_order_buttons_and_or_separators(
             "device",
             [
                 "criticality", "change", "package_name", "play_title",
-                "version_comparison", "installed_version", "installed_version_code",
-                "play_version", "play_last_update", "age_days", "compatibility_status",
-                "target_sdk", "min_sdk", "installer_source", "installer_category",
-                "installer_package", "app_enabled", "first_install_time",
+                "version_comparison", "installed_version", "play_version",
+                "play_last_update", "age_days", "compatibility_status",
+                "installer_source", "installer_category", "app_enabled", "first_install_time",
                 "last_local_update", "device_change", "health_score", "notes",
             ],
         ),
@@ -154,7 +245,7 @@ def test_source_selector_order_buttons_and_or_separators(
             [
                 "local_apk_version_comparison", "criticality", "local_apk_file_name",
                 "local_apk_label", "package_name", "play_title",
-                "local_apk_version_name", "local_apk_version_code", "play_version",
+                "local_apk_version_name", "play_version",
                 "play_last_update", "age_days", "local_apk_location", "health_score", "notes",
             ],
         ),
@@ -328,7 +419,14 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
 
 @pytest.mark.parametrize(
     ("relationship", "status_key"),
-    [("Outdated", "orange"), ("Different", "yellow"), ("Unknown", "purple"), ("Match", "green")],
+    [
+        ("Outdated", "orange"),
+        ("Different", "yellow"),
+        ("Unknown", "purple"),
+        ("Device-specific", "blue"),
+        ("Newer", "green"),
+        ("Match", "green"),
+    ],
 )
 def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
     relationship: str, status_key: str
@@ -352,7 +450,74 @@ def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
     assert relationship_index.data(Qt.ItemDataRole.BackgroundRole) == QColor(
         CRITICALITY[status_key]["background"]
     )
+    assert relationship_index.data(Qt.ItemDataRole.ForegroundRole) == QColor(
+        CRITICALITY[status_key]["foreground"]
+    )
+    assert relationship_index.data(Qt.ItemDataRole.FontRole).weight() == 700
     assert package.data(Qt.ItemDataRole.BackgroundRole) is None
+
+
+def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    _settings, create_window = window_store
+    window = create_window()
+    window.source_mode = "local_apk"
+    window.model.set_rows(
+        [
+            {
+                "source_mode": "local_apk",
+                "criticality_key": "red",
+                "criticality": "Not Found",
+                "local_apk_version_comparison": "Outdated",
+                "package_name": "com.example.app",
+            }
+        ]
+    )
+    window.table.selectRow(0)
+    current = window.proxy.index(0, window.model.columns.index("package_name"))
+    window.table.setCurrentIndex(current)
+    app.processEvents()
+
+    delegate = window.table.itemDelegate()
+    selected_states = 0
+    focus_cells = 0
+    selected_colours: dict[str, QColor] = {}
+    for column, name in enumerate(window.model.columns):
+        index = window.proxy.index(0, column)
+        option = QStyleOptionViewItem()
+        option.initFrom(window.table)
+        option.state |= QStyle.StateFlag.State_Selected | QStyle.StateFlag.State_HasFocus
+        delegate.initStyleOption(option, index)
+        selected_states += bool(option.state & QStyle.StateFlag.State_Selected)
+        focus_cells += bool(option.state & QStyle.StateFlag.State_HasFocus)
+        if name in {"criticality", "local_apk_version_comparison"}:
+            selected_colours[name] = option.backgroundBrush.color()
+
+    assert selected_states == 0
+    assert focus_cells == 0
+    assert selected_colours["criticality"] != selected_colours["local_apk_version_comparison"]
+
+
+def test_customize_column_groups_partition_the_existing_schema() -> None:
+    common, advanced = preferences_ui.custom_column_groups()
+    expected = set(schema.MODEL_COLUMNS) - {"criticality", "package_name"}
+
+    assert set(common).isdisjoint(advanced)
+    assert set(common) | set(advanced) == expected
+    assert {"play_title", "local_apk_location", "installer_source"} <= set(common)
+    assert {
+        "installed_version_code",
+        "local_apk_version_code",
+        "target_sdk",
+        "min_sdk",
+        "installer_package",
+        "local_apk_sha256",
+        "play_status",
+        "play_http_status",
+        "updated_source",
+    } <= set(advanced)
 
 
 def test_file_and_adb_keep_whole_row_store_tint() -> None:

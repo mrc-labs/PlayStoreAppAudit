@@ -16,27 +16,66 @@ from playstore_app_audit.platform import runtime
 _NOISY_MESSAGES = (
     "starts with 'android:' prefix! The Manifest seems to be broken? Removing prefix.",
     "res1 is not zero!",
+    "invalid decoded string length",
+    "RES_TABLE_LIBRARY_TYPE chunk is not supported",
+)
+_PARSER_LOGGERS = (
+    "pyaxmlparser.axmlprinter",
+    "pyaxmlparser.arscutil",
+    "pyaxmlparser.stringblock",
+    "pyaxmlparser.arscparser",
 )
 
 
 class _NormalParserNoiseFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.ERROR:
+            return True
         message = record.getMessage()
         return not any(noise in message for noise in _NOISY_MESSAGES)
 
 
-def configure_parser_logging(*, debug: bool) -> None:
-    """Filter two known recoverable pyaxmlparser warnings only in normal mode."""
+class _DebugParserNoiseFilter(logging.Filter):
+    """Keep one representative copy of known recoverable parser-warning floods."""
 
-    for name in ("pyaxmlparser.axmlprinter", "pyaxmlparser.arscutil"):
+    def __init__(self) -> None:
+        super().__init__()
+        self._seen: set[str] = set()
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _signature(message: str) -> str | None:
+        for noise in _NOISY_MESSAGES:
+            if noise in message:
+                return noise
+        return None
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.ERROR:
+            return True
+        signature = self._signature(record.getMessage())
+        if signature is None:
+            return True
+        with self._lock:
+            if signature in self._seen:
+                return False
+            self._seen.add(signature)
+        return True
+
+
+def configure_parser_logging(*, debug: bool) -> None:
+    """Bound known recoverable pyaxmlparser warning floods without hiding real failures."""
+
+    for name in _PARSER_LOGGERS:
         logger = logging.getLogger(name)
+        logger.filters[:] = [
+            item
+            for item in logger.filters
+            if not isinstance(item, (_NormalParserNoiseFilter, _DebugParserNoiseFilter))
+        ]
         if debug:
-            logger.filters[:] = [
-                item
-                for item in logger.filters
-                if not isinstance(item, _NormalParserNoiseFilter)
-            ]
-        elif not any(isinstance(item, _NormalParserNoiseFilter) for item in logger.filters):
+            logger.addFilter(_DebugParserNoiseFilter())
+        else:
             logger.addFilter(_NormalParserNoiseFilter())
 
 
@@ -49,12 +88,13 @@ def start_debug_logging() -> Path:
     root.setLevel(logging.DEBUG)
 
     # Keep first-party diagnostics detailed without recording every internal
-    # parser token/resource or urllib3 connection event. Third-party warnings
-    # and errors still reach the debug session and real parser failures remain
-    # visible.
+    # parser token/resource or urllib3 connection event. Known recoverable
+    # parser-warning floods are reduced to one representative occurrence each;
+    # unknown warnings and all errors still pass through.
     logging.getLogger("playstore_app_audit").setLevel(logging.DEBUG)
     logging.getLogger("pyaxmlparser").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    configure_parser_logging(debug=True)
 
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
     file_handler = logging.FileHandler(path, encoding="utf-8")
@@ -100,5 +140,4 @@ def start_debug_logging() -> Path:
         platform.platform(),
         started.isoformat(),
     )
-    configure_parser_logging(debug=True)
     return path

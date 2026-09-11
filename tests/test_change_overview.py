@@ -87,7 +87,11 @@ def test_store_change_groups_follow_product_order_and_keep_transition_detail() -
     row = _row(
         **{
             state.AUDIT_CHANGES_FIELD: [
-                {"type": "maintenance_state_changed", "previous": "Current", "current": "Aging"},
+                {
+                    "type": "maintenance_state_changed",
+                    "previous": "Recent Update",
+                    "current": "Aging",
+                },
                 {"type": "store_version_changed", "previous": "1.0", "current": "2.0"},
                 {
                     "type": "newly_unavailable_in_checked_countries",

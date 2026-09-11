@@ -36,16 +36,30 @@ def app() -> QApplication:
 @pytest.mark.parametrize(
     ("field", "value", "status_key", "emphasis", "font_weight"),
     [
-        ("version_comparison", "Outdated", "orange", "strong_warning", 600),
-        ("version_comparison", "Different", "yellow", "warning", 600),
+        ("version_comparison", "Outdated", "orange", "strong_warning", 700),
+        ("version_comparison", "Different", "yellow", "warning", 700),
+        ("version_comparison", "Unknown", "purple", "warning", 700),
+        ("version_comparison", "Device-specific", "blue", "warning", 700),
+        ("version_comparison", "Newer", "green", "warning", 700),
+        ("version_comparison", "Match", "green", "warning", 700),
         (
             "local_apk_version_comparison",
             "Outdated",
             "orange",
             "strong_warning",
-            600,
+            700,
         ),
-        ("local_apk_version_comparison", "Different", "yellow", "warning", 600),
+        ("local_apk_version_comparison", "Different", "yellow", "warning", 700),
+        ("local_apk_version_comparison", "Unknown", "purple", "warning", 700),
+        (
+            "local_apk_version_comparison",
+            "Device-specific",
+            "blue",
+            "warning",
+            700,
+        ),
+        ("local_apk_version_comparison", "Newer", "green", "warning", 700),
+        ("local_apk_version_comparison", "Match", "green", "warning", 700),
         ("compatibility_status", "Aging target", "yellow", "warning", 600),
         (
             "compatibility_status",
@@ -82,19 +96,19 @@ def test_table_warning_typography_preserves_severity_hierarchy(
 ) -> None:
     rows = [
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "version_comparison": "Same",
             "compatibility_status": "Modern",
         },
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "version_comparison": "Different",
             "compatibility_status": "Aging target",
         },
         {
-            "criticality": "Current",
+            "criticality": "Recent Update",
             "criticality_key": "green",
             "version_comparison": "Different",
             "compatibility_status": "Legacy target",
@@ -122,14 +136,10 @@ def test_table_warning_typography_preserves_severity_hierarchy(
     status_font = model.data(model.index(2, status_column), Qt.ItemDataRole.FontRole)
 
     assert normal_font is None
-    assert (
-        different_font.weight()
-        == aging_font.weight()
-        == legacy_font.weight()
-        == 600
-    )
+    assert different_font.weight() == 700
+    assert aging_font.weight() == legacy_font.weight() == 600
     assert status_font.weight() == 700
-    assert different_font.weight() < status_font.weight()
+    assert different_font.weight() == status_font.weight()
 
     warning_colour = model.data(
         model.index(1, compatibility_column), Qt.ItemDataRole.ForegroundRole
@@ -145,7 +155,6 @@ def test_table_warning_typography_preserves_severity_hierarchy(
 
 def test_unrelated_values_do_not_receive_warning_presentation() -> None:
     unrelated = (
-        ("version_comparison", "Match"),
         ("version_comparison", "Same"),
         ("compatibility_status", "Modern"),
         ("compatibility_status", "Unknown"),
@@ -300,7 +309,7 @@ def test_context_details_dialog_uses_the_same_semantic_label_helper(
                 "compatibility_status": "Legacy target",
             }
         )
-        assert captured["version_comparison"].font().weight() == 600
+        assert captured["version_comparison"].font().weight() == 700
         assert captured["compatibility_status"].font().weight() == 600
     finally:
         window.close()

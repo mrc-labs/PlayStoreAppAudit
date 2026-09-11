@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import threading
 from typing import Any
 
 import playstore_app_audit.services.state as state
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_SHOW_APP_ICONS = True
 ICON_ELIGIBLE_STATUSES = {
@@ -88,6 +91,62 @@ def clear_icon_metadata() -> None:
     with _LOCK:
         _ICON_URLS.clear()
         _DEVELOPERS.clear()
+
+
+def fetch_store_metadata(
+    package_name: str,
+    country: str,
+    language: str,
+    *,
+    cancel_event: threading.Event | None = None,
+) -> dict[str, str]:
+    """Complete icon/developer metadata through the canonical Store boundary."""
+
+    package = str(package_name or "").strip()
+    if not package or (cancel_event is not None and cancel_event.is_set()):
+        return {}
+
+    from playstore_app_audit.services.scraper_transport import (
+        install_scraper_transport_timeout,
+    )
+    from playstore_app_audit.services.store_locale import resolve_store_language
+
+    market = str(country or "us").strip().lower() or "us"
+    locale = resolve_store_language(language, market)
+    try:
+        if not install_scraper_transport_timeout():
+            raise RuntimeError("bounded Store transport unavailable")
+        from google_play_scraper import app as play_app
+
+        store_result = play_app(package, lang=locale, country=market)
+    except Exception as exc:
+        logger.debug(
+            "Store icon metadata backfill failed: package=%s reason=%s",
+            package,
+            " ".join(str(exc).split())[:300] or type(exc).__name__,
+        )
+        return {}
+    if cancel_event is not None and cancel_event.is_set():
+        return {}
+    icon_url = _normalise_https_url(store_result.get("icon"))
+    developer = str(store_result.get("developer") or "").strip()
+    if not icon_url and not developer:
+        logger.debug(
+            "Store icon metadata backfill failed: package=%s reason=metadata-missing", package
+        )
+        return {}
+    logger.debug(
+        "Store icon metadata backfill succeeded: package=%s icon=%s developer=%s",
+        package,
+        bool(icon_url),
+        bool(developer),
+    )
+    result: dict[str, str] = {}
+    if icon_url:
+        result["play_icon_url"] = icon_url
+    if developer:
+        result["developer"] = developer
+    return result
 
 
 def install_app_icon_metadata_capture() -> bool:

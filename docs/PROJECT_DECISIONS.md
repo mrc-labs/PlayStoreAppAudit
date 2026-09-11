@@ -518,9 +518,28 @@ UI evidence and is excluded from remote requests and default exports.
 Installed and Local APK version relationships use the same conservative
 Match/Outdated/Newer/Different/Device-specific/Unknown vocabulary. Outdated is
 inferred only from an unambiguous differing leading numeric component and costs
-15 Maintenance Score points; Different costs 5. Local Unknown costs 15 because
-version verification is core to that source, while optional ADB Unknown is not
-penalized. Exactly one source-relevant version component applies per row.
+10 Maintenance Score points; Different costs 5. Local Unknown costs 15 only
+when the local APK itself lacks usable version evidence while a usable Store
+version exists. Missing or inconclusive Store-side version evidence does not
+double-count that same absence; optional ADB Unknown is not penalized. Exactly
+one source-relevant version component applies per row.
+
+The v2.0 Windows acceptance pass keeps relationship colours and comparison
+semantics unchanged while making Installed vs Store and Local APK vs Store use
+the same Bold 700 table emphasis and centered alignment as Store Status. Store
+Status labels no longer use decorative dots, and the user-facing green state is
+Recent Update; the compatibility-sensitive `green` key, rank and `<=365 days`
+classification remain unchanged. Selected cells suppress the native Windows
+current-cell focus edge while preserving row selection and keyboard navigation.
+
+Store icon URL and developer are first-class optional outputs of the canonical
+scraper/locale/fallback service and persist with healthy Store cache rows. The
+compatibility capture layer remains available to older paths, but Local APK,
+ADB and App List do not depend on its monkey-patching side effects. A healthy
+available live or cached row that still lacks an icon may use the same bounded,
+deduplicated asynchronous metadata completion; unavailable rows remain
+ineligible, and completion cannot alter audit evidence, classification,
+relationship state or Maintenance Score.
 
 ## Release-script maintenance
 

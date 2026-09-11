@@ -532,7 +532,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self, android_locale: store_locale.StoreLocale | None
     ) -> store_locale.StoreCountryResolution:
         resolved = self._store_country_resolution(android_locale)
-        self.country_edit.setText(resolved.country)
+        self.country_edit.setText(resolved.country.upper())
 
         if resolved.source == "manual_override":
             tooltip = (
@@ -559,6 +559,9 @@ class ResultsWindow(menu_ui.MenuWindow):
         value = str(text or "").strip()
         self._store_country_manual_override = len(value) == 2 and value.isalpha()
         if self._store_country_manual_override:
+            cursor = self.country_edit.cursorPosition()
+            self.country_edit.setText(value.upper())
+            self.country_edit.setCursorPosition(cursor)
             self.country_edit.setToolTip(
                 f"Manual Store country override: {value.upper()}. It will be preserved across sources."
             )
@@ -630,7 +633,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             text = self.source_label.text()
             if text.startswith("File selected: "):
                 text = text[len("File selected: ") :]
-            self.source_label.setText(f"{Path(path).name}  •  {text}")
+            self.source_label.setText(f"App List source: {Path(path).name} • {text}")
             self.source_label.setToolTip(path)
         self._sync_action_availability()
 
@@ -659,11 +662,15 @@ class ResultsWindow(menu_ui.MenuWindow):
             summary = {}
         identity = _device_source_identity(summary)
 
+        current = self.source_label.text().strip()
+        details = current.removeprefix("Phone scan:").removeprefix("Phone source:").strip()
         if identity:
-            current = self.source_label.text().strip()
-            details = current.removeprefix("Phone scan:").strip()
             self.source_label.setText(
-                f"Phone scan: {identity} • {details}" if details else f"Phone scan: {identity}"
+                f"Phone source: {identity} • {details}" if details else f"Phone source: {identity}"
+            )
+        else:
+            self.source_label.setText(
+                f"Phone source: {details}" if details else "Phone source: Ready"
             )
 
         tooltip: list[str] = []

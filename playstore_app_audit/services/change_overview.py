@@ -15,7 +15,7 @@ GROUP_DEFINITIONS: tuple[tuple[str, str], ...] = (
     ("reappeared", "Reappeared"),
     ("store_version_changed", "Play Store version changed"),
     ("store_latest_update_changed", "Play Store latest-update changed"),
-    ("maintenance_state_changed", "Current / Aging / Stale changed"),
+    ("maintenance_state_changed", "Recent Update / Aging / Stale changed"),
     ("installer_source_changed", "Installer / source changed"),
 )
 

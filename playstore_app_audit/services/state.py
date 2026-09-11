@@ -27,7 +27,7 @@ _AVAILABLE_PLAY_STATUSES = frozenset(
 _CHECKED_UNAVAILABLE_PLAY_STATUSES = frozenset({"not_found_in_checked_countries"})
 _MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
 _MAINTENANCE_LABELS = {
-    "green": "Current",
+    "green": "Recent Update",
     "yellow": "Aging",
     "orange": "Stale",
 }
@@ -79,7 +79,7 @@ TECHNICAL_COLUMNS = {
 
 def normalise_store_workers(value: object) -> int:
     try:
-        workers = int(value)
+        workers = int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         workers = DEFAULT_STORE_WORKERS
     return max(MIN_STORE_WORKERS, min(MAX_STORE_WORKERS, workers))
@@ -304,6 +304,46 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
     _write_json(cache_path(), data)
 
 
+def update_cached_store_metadata(
+    package_name: str,
+    country: str,
+    language: str,
+    metadata: dict[str, str],
+) -> bool:
+    """Complete metadata in one healthy cache row without refreshing its TTL."""
+
+    package = str(package_name or "").strip()
+    if not package:
+        return False
+    data = _read_json(cache_path(), {})
+    if not isinstance(data, dict):
+        return False
+    entry = data.get(_cache_key(country, language, package))
+    if not isinstance(entry, dict) or not isinstance(entry.get("row"), dict):
+        return False
+    row = dict(entry["row"])
+    if row.get("play_status") != "available" or not row.get("play_last_update"):
+        return False
+
+    changed = False
+    icon_url = str(metadata.get("play_icon_url") or "").strip()
+    if icon_url.lower().startswith("https://") and not str(row.get("play_icon_url") or "").strip():
+        row["play_icon_url"] = icon_url
+        changed = True
+    developer = str(metadata.get("developer") or "").strip()
+    if developer and not str(row.get("developer") or "").strip():
+        row["developer"] = developer
+        changed = True
+    if not changed:
+        return False
+
+    entry = dict(entry)
+    entry["row"] = row
+    data[_cache_key(country, language, package)] = entry
+    _write_json(cache_path(), data)
+    return True
+
+
 def load_history() -> dict[str, dict[str, Any]]:
     data = _read_json(history_path(), {})
     return data if isinstance(data, dict) else {}
@@ -408,8 +448,8 @@ def changes_with_history(
         changes.append(
             {
                 "type": "maintenance_state_changed",
-                "previous": str(previous.get("criticality") or _MAINTENANCE_LABELS[previous_key]),
-                "current": str(row.get("criticality") or _MAINTENANCE_LABELS[current_key]),
+                "previous": _MAINTENANCE_LABELS[previous_key],
+                "current": _MAINTENANCE_LABELS[current_key],
                 "previous_key": previous_key,
                 "current_key": current_key,
             }
