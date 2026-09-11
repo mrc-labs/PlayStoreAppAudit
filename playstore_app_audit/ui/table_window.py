@@ -21,9 +21,15 @@ from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.app_icon_loader import AppIconLoader
 
-TABLE_SCHEMA_VERSION = "v12-schema-2"
+TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
+LOCAL_APK_RELATIONSHIP_STATUS = {
+    "Outdated": "orange",
+    "Different": "yellow",
+    "Unknown": "purple",
+    "Match": "green",
+}
 
 
 class AuditTableModel(base_ui.AppTableModel):
@@ -140,12 +146,26 @@ class AuditTableModel(base_ui.AppTableModel):
         if role == Qt.ItemDataRole.DecorationRole and column == ICON_COLUMN:
             return self.icon_for_row(row)
 
+        local_apk_row = str(row.get("source_mode") or "").startswith("local_apk")
+
         if role == Qt.ItemDataRole.BackgroundRole:
-            return QColor(info["background"])
+            if not local_apk_row:
+                return QColor(info["background"])
+            if column == "criticality":
+                return QColor(info["background"])
+            if column == "local_apk_version_comparison":
+                relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))
+                if relation_key:
+                    return QColor(base_ui.CRITICALITY[relation_key]["background"])
+            return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
             if column == "criticality":
                 return QColor(info["accent"])
+            if local_apk_row and column == "local_apk_version_comparison":
+                relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))
+                if relation_key:
+                    return QColor(base_ui.CRITICALITY[relation_key]["foreground"])
             semantic_colour = base_ui.semantic_foreground_colour(column, row.get(column))
             if semantic_colour:
                 return QColor(semantic_colour)

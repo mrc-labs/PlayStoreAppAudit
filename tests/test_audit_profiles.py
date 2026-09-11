@@ -65,6 +65,14 @@ def test_profile_normalisation_is_bounded_and_excludes_filter_state() -> None:
     assert "technical_columns" not in profile["settings"]
 
 
+def test_legacy_device_view_preset_normalises_to_source_details() -> None:
+    profile = audit_profiles.normalise_profile(
+        {"schema_version": 1, "view_preset": "Device", "settings": {}}
+    )
+    assert profile is not None
+    assert profile["view_preset"] == "Source Details"
+
+
 def test_capture_profile_keeps_audit_execution_settings_only() -> None:
     settings = {
         "store_language": "auto",

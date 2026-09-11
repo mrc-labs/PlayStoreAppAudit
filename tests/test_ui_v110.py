@@ -424,7 +424,7 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     settings = dict(window.user_settings)
     settings.update(
         {
-            "view_preset": "Device",
+            "view_preset": "Source Details",
             "health_score_enabled": True,
             "show_app_icons": False,
             "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
@@ -443,7 +443,8 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     monkeypatch.setattr(compact_ui, "load_settings", load_settings)
     monkeypatch.setattr(compact_ui, "save_settings", save_settings)
     window.user_settings = load_settings()
-    window._sync_view_preset_action("Device")
+    window.source_mode = "device"
+    window._sync_view_preset_action("Source Details")
     window._apply_column_visibility(reset_order=False)
 
     rows = [
@@ -543,7 +544,7 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     settings = dict(window.user_settings)
     settings.update(
         {
-            "view_preset": "Device",
+            "view_preset": "Source Details",
             "health_score_enabled": True,
             "show_app_icons": False,
             "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
@@ -562,7 +563,8 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     monkeypatch.setattr(compact_ui, "load_settings", load_settings)
     monkeypatch.setattr(compact_ui, "save_settings", save_settings)
     window.user_settings = load_settings()
-    window._sync_view_preset_action("Device")
+    window.source_mode = "device"
+    window._sync_view_preset_action("Source Details")
     window._apply_column_visibility(reset_order=False)
     window.current_rows = [
         {
@@ -1215,7 +1217,7 @@ def test_scan_phone_split_control_tracks_current_phone_inventory(
         [{"app_name": "Second", "package_name": "com.example.second"}], set()
     )
     window.search_edit.setText("second")
-    window._set_view_preset("Device")
+    window._set_view_preset("Source Details")
     assert window.scan_phone_package_export_action.isEnabled()
     assert window.file_phone_package_export_action.isEnabled()
 

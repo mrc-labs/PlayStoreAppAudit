@@ -152,7 +152,7 @@ def test_column_preset_naming_and_custom_starts_disabled(
     assert window.view_presets_menu.title() == "Column Preset"
     assert [action.text() for action in window.view_preset_actions] == [
         "Basic",
-        "Device",
+        "Source Details",
         "Technical",
         "Custom",
     ]
@@ -170,7 +170,7 @@ def test_programmatic_builtin_presets_do_not_create_custom(
     settings, create_window = window_store
     window = create_window()
 
-    for preset in ("Basic", "Device", "Technical"):
+    for preset in ("Basic", "Source Details", "Technical"):
         window._set_view_preset(preset)
         app.processEvents()
 
@@ -185,7 +185,7 @@ def test_programmatic_builtin_presets_do_not_create_custom(
             )
 
 
-@pytest.mark.parametrize("preset", ["Basic", "Device", "Technical"])
+@pytest.mark.parametrize("preset", ["Basic", "Source Details", "Technical"])
 def test_builtin_column_presets_remain_immutable_after_manual_resize(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
@@ -270,7 +270,7 @@ def test_restoring_custom_does_not_persist_recursively(
     window.table.setColumnWidth(package, wanted)
     app.processEvents()
     saved_custom = _custom_snapshot(settings)
-    window._set_view_preset("Device")
+    window._set_view_preset("Source Details")
 
     persist_calls: list[bool] = []
     original_persist = window._persist_current_custom_layout
@@ -325,7 +325,7 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     assert expected_widths["package_name"] == 333
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
 
-    window._set_view_preset("Device")
+    window._set_view_preset("Source Details")
     assert _custom_snapshot(settings) == saved_custom
     window._set_view_preset("Custom")
 
@@ -470,13 +470,13 @@ def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
     settings, create_window = window_store
     settings.update(
         {
-            "view_preset": "Device",
+            "view_preset": "Source Details",
             "custom_view_columns": ["criticality", "package_name", "play_title"],
         }
     )
     window = create_window()
 
-    assert settings["view_preset"] == "Device"
+    assert settings["view_preset"] == "Source Details"
     assert settings["custom_view_exists"] is True
     assert _custom_action(window).isEnabled()
     window._set_view_preset("Custom")

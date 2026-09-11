@@ -41,8 +41,12 @@ from playstore_app_audit.platform import runtime
 from playstore_app_audit.platform.file_locations import open_file_location
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
-from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
+from playstore_app_audit.ui.column_presets import (
+    BUILTIN_PRESETS,
+    normalise_view_preset,
+    visible_columns,
+)
 from playstore_app_audit.ui.device_window import RowActionAvailability
 
 logger = logging.getLogger(__name__)
@@ -302,17 +306,23 @@ class MainWindow(results_ui.ResultsWindow):
         self.scan_button.setIcon(main_action_icon("scan_phone", self.palette()))
         self.export_button.setIcon(main_action_icon("export_results", self.palette()))
 
-        row.addWidget(self._source_option("CSV / TSV / TXT File", self._file_source_controls()), 1)
+        # Build dependent controls in lifecycle order, then present them in the
+        # product order below. Phone availability synchronisation expects the
+        # Local APK dropdown to exist already.
+        file_controls = self._file_source_controls()
+        apk_controls = self._apk_source_controls()
+        phone_controls = self._phone_source_controls()
+        row.addWidget(
+            self._source_option("Android Phone (ADB)", phone_controls), 1
+        )
         or_label = QLabel("or")
         or_label.setObjectName("Muted")
         row.addWidget(or_label)
-        row.addWidget(
-            self._source_option("Standalone APK(s)", self._apk_source_controls()), 1
-        )
+        row.addWidget(self._source_option("Local APK(s)", apk_controls), 1)
         apk_or_label = QLabel("or")
         apk_or_label.setObjectName("Muted")
         row.addWidget(apk_or_label)
-        row.addWidget(self._source_option("Android Phone (ADB)", self._phone_source_controls()), 1)
+        row.addWidget(self._source_option("App List File", file_controls), 1)
         row.addSpacing(10)
 
         country_label = QLabel("Store Country")
@@ -364,47 +374,36 @@ class MainWindow(results_ui.ResultsWindow):
         )
 
     def _visible_column_order(self) -> list[str]:
-        preset = str(state.load_settings().get("view_preset") or "Basic")
-        if preset == "Technical":
-            if self.source_mode is None:
-                return list(schema.MODEL_COLUMNS)
-            store_columns = [
-                "criticality",
-                "change",
-                "package_name",
-                "play_title",
-                "play_last_update",
-                "age_days",
-                "notes",
-                "play_status",
-                "updated_source",
-                "play_http_status",
-                "store_url",
-                "play_version",
-                "health_score",
-            ]
-            if not bool(state.load_settings().get("compare_previous", False)):
-                store_columns.remove("change")
-            if self.source_mode == "device":
-                return list(dict.fromkeys(store_columns + list(schema.DEVICE_EXTRA_COLUMNS) + list(schema.INSIGHTS_EXTRA_COLUMNS)))
-            if local_apk_audit.is_local_apk_source(self.source_mode):
-                return list(dict.fromkeys(store_columns + list(schema.LOCAL_APK_EXTRA_COLUMNS)))
-            return store_columns
+        settings = state.load_settings()
+        preset = normalise_view_preset(settings.get("view_preset"))
         if preset == "Custom":
             return super()._visible_column_order()
-        if not local_apk_audit.is_local_apk_source(self.source_mode):
-            return super()._visible_column_order()
-        return [
-            "criticality",
-            "local_apk_file_name",
-            "package_name",
-            "local_apk_label",
-            "local_apk_version_name",
-            "play_version",
-            "local_apk_version_comparison",
-            "play_last_update",
-            "notes",
-        ]
+        selected = settings.get("technical_columns", [])
+        return visible_columns(
+            preset,
+            self.source_mode,
+            compare_previous=bool(settings.get("compare_previous", False)),
+            health_score_enabled=bool(settings.get("health_score_enabled", False)),
+            optional_columns=selected if isinstance(selected, list) else (),
+        )
+
+    def _apply_established_source_defaults(self) -> None:
+        settings = state.load_settings()
+        preset = normalise_view_preset(settings.get("view_preset"))
+        if preset in BUILTIN_PRESETS:
+            self._apply_column_visibility(reset_order=True)
+        self._apply_source_default_sort()
+
+    def _apply_source_default_sort(self) -> None:
+        column = (
+            "local_apk_version_comparison"
+            if local_apk_audit.is_local_apk_source(self.source_mode)
+            else "criticality"
+        )
+        self.table.sortByColumn(
+            self.model.columns.index(column),
+            Qt.SortOrder.AscendingOrder,
+        )
 
     def _choose_local_apks(self) -> None:
         selected, _ = QFileDialog.getOpenFileNames(
@@ -474,7 +473,7 @@ class MainWindow(results_ui.ResultsWindow):
         else:
             self.source_label.setText(f"No standalone APK files {description}")
             self.status_label.setText("No Local APK source was established")
-        self._apply_column_visibility(reset_order=False)
+        self._apply_established_source_defaults()
         self._sync_action_availability()
 
     def _begin_local_apk_folder_discovery(self, root: Path) -> None:
@@ -577,7 +576,7 @@ class MainWindow(results_ui.ResultsWindow):
             if local_apk_audit.is_local_apk_source(previous_mode):
                 self._clear_source_result_rows()
                 self.status_label.setText("File ready. Run the Play Store audit.")
-            self._apply_column_visibility(reset_order=False)
+            self._apply_established_source_defaults()
             self._set_busy(False)
             self._sync_action_availability()
 
@@ -588,6 +587,15 @@ class MainWindow(results_ui.ResultsWindow):
         super()._set_view_preset(name)
         if hasattr(self, "status_label"):
             self.status_label.setText(status_text)
+
+    def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
+        super()._on_adb_scan_done(apps, system_packages)
+        if self.source_mode == "device":
+            self._local_apk_candidates = ()
+            self._apply_established_source_defaults()
+            self._sync_action_availability()
 
     # ---------- Audit progress/finalization ----------
     def _restore_device_source_identity(self) -> None:

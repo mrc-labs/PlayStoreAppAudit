@@ -12,13 +12,15 @@ logger = logging.getLogger(__name__)
 def open_file_location(value: object) -> tuple[bool, str]:
     """Reveal one existing local file using argument-safe platform commands."""
 
+    platform = runtime.platform_key()
     path = Path(str(value or "")).expanduser()
+    logger.debug("Local APK reveal requested: platform=%s path=%s", platform, path)
     if not path.is_file():
-        logger.warning("Local APK reveal skipped because file is missing: path=%s", path)
+        logger.warning(
+            "Local APK reveal failed: platform=%s reason=missing path=%s", platform, path
+        )
         return False, "The local APK file is no longer available at this location."
     path = path.resolve(strict=True)
-    platform = runtime.platform_key()
-    logger.info("Revealing Local APK in file manager: platform=%s path=%s", platform, path)
     try:
         if platform == "windows":
             # Explorer expects /select, as the switch and the quoted path as the
@@ -30,6 +32,7 @@ def open_file_location(value: object) -> tuple[bool, str]:
         else:
             subprocess.Popen(["xdg-open", str(path.parent)], close_fds=True)
     except OSError as exc:
-        logger.exception("Could not reveal Local APK path=%s", path)
+        logger.exception("Local APK reveal failed: platform=%s path=%s", platform, path)
         return False, f"The file location could not be opened: {exc}"
+    logger.info("Local APK reveal succeeded: platform=%s path=%s", platform, path)
     return True, ""

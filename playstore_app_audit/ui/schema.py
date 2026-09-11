@@ -35,6 +35,7 @@ COMPACT_MODEL_COLUMNS = (
 DEVICE_EXTRA_COLUMNS = (
     "play_version",
     "installed_version",
+    "installed_version_code",
     "version_comparison",
     "installer_source",
     "installer_category",

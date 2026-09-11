@@ -23,7 +23,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Read friendly Notes consistently in the table, tooltip, Details Panel and HTML report while raw machine-readable Notes remain available in data exports.
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
 - Filter results with search, status chips and Quick Filters, save one-level All/Any Smart Queries, and restore full result visibility with **View > Clear All Filters**.
-- Switch between Basic, Device, Technical and Custom views without mixing result filters with audit configuration.
+- Switch between source-aware Basic, Source Details and Technical views, or a user-controlled Custom layout, without mixing result filters with audit configuration.
 - Save reusable Audit Presets that affect how the next audit runs without changing result filters or presentation.
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and inspect snapshots/inventory changes under **Tools > Device History**.

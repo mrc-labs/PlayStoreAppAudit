@@ -76,12 +76,17 @@ def test_semantic_defaults_are_bounded_and_do_not_resize_to_body_values(
     _patch_settings(monkeypatch, settings)
     window = MainWindow()
     try:
+        window.source_mode = "device"
+        window._apply_established_source_defaults()
         header = window.table.horizontalHeader()
         for logical, column in enumerate(window.model.columns):
             assert header.sectionResizeMode(logical) is QHeaderView.ResizeMode.Interactive
-            assert window.table.columnWidth(logical) == table_layout.default_column_width(
-                window.table, column
-            )
+            if window.table.isColumnHidden(logical):
+                assert window.table.columnWidth(logical) == 0
+            else:
+                assert window.table.columnWidth(logical) == table_layout.default_column_width(
+                    window.table, column
+                )
 
         for column, preferred in DENSITY_DEFAULTS.items():
             width = window.table.columnWidth(window.model.columns.index(column))
@@ -155,6 +160,8 @@ def test_wrapped_headers_share_one_height_and_preserve_native_sorting(
     _patch_settings(monkeypatch, settings)
     window = MainWindow()
     try:
+        window.source_mode = "device"
+        window._apply_established_source_defaults()
         header = window.table.horizontalHeader()
         chrome = table_layout.header_chrome_width(header)
         wrapped = (

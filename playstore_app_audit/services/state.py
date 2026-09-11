@@ -52,6 +52,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "exclude_system_source": True,
     "collect_full_device_metadata_on_scan": False,
     "details_panel_position": "right",
+    "view_preset": "Basic",
     "technical_columns": [],
     "custom_view_exists": False,
     "qt_header_state": "",
@@ -132,6 +133,12 @@ def load_settings() -> dict[str, Any]:
         raw_language = "auto"
     settings["store_language"] = raw_language or "auto"
     settings[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
+
+    # Device was the v1.x name for the richer source-oriented table layout.
+    # Preserve Custom data verbatim while conservatively migrating only that
+    # retired built-in name.
+    view_preset = str(settings.get("view_preset") or "Basic").strip()
+    settings["view_preset"] = "Source Details" if view_preset == "Device" else view_preset
 
     settings["store_workers"] = normalise_store_workers(settings.get("store_workers"))
     try:

@@ -233,8 +233,8 @@ session-local source. v1.99.0 remains the current published release.
 ### v2.0 Local APK source UX/correctness checkpoint
 
 The dedicated persistent Library manager was removed from the current v2.0 UX.
-The accepted three-card layout instead exposes one `Standalone APK(s)` source:
-`Choose APK(s)` selects physical files and its compact menu selects a folder for
+The three-card layout is ordered `Android Phone (ADB) / Local APK(s) / App List
+File`, retaining the compact decorative `or` separators. `Choose APK(s)` selects physical files and its compact menu selects a folder for
 recursive, case-insensitive `.apk` discovery. Discovery performs no parsing,
 hashing or network work; Run performs bounded parsing and then reuses the
 package-deduplicated Store/provider fan-out.
@@ -245,7 +245,22 @@ one SHA identity internally but remain separate physical rows; package-equal
 files share Store/cache work. Default exports and remote requests exclude the
 Location and other private local evidence.
 
-Store status now uses the conservative `Not Found` wording. Installed and Local
+Basic, Source Details and Technical are source-aware built-in column presets;
+the retired Device preset migrates to Source Details without altering a saved
+Custom layout. Built-ins reapply canonical order and semantic widths when a new
+source is established and always keep Notes last. Local APK defaults to the
+non-lexicographic relationship priority Outdated, Unknown, Different,
+Device-specific, Newer and Match, then Store criticality and APK identity;
+manual sorting remains authoritative until another source is established.
+
+Local APK table rows keep ordinary cells neutral while Local APK vs Store and
+Store Status retain independent semantic cells. Store date presentation uses
+Last Store Update and Store Age (Days) without changing internal/export keys.
+Windows Explorer reveal uses separate argument-safe `/select,` and path
+arguments, and debug sessions retain first-party DEBUG while limiting
+pyaxmlparser and urllib3 to warnings and errors.
+
+Store status uses the conservative `Not Found` wording. Installed and Local
 APK versions share ordered Match/Outdated/Newer/Different/Device-specific/Unknown
 semantics and source-aware scoring. Structured update dates win over localized
 visible text, and `--debug` creates an opt-in per-session app-data log. The

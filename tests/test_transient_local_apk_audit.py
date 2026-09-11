@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 import os
 import threading
 from dataclasses import dataclass, field
@@ -365,9 +366,10 @@ def test_location_model_tooltip_is_full_path(tmp_path: Path) -> None:
 
 
 def test_windows_file_location_uses_argument_list(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    path = tmp_path / "one.apk"
+    path = tmp_path / "folder with spaces" / "one # copy.apk"
+    path.parent.mkdir()
     path.write_bytes(b"x")
     calls: list[list[str]] = []
     monkeypatch.setattr(file_locations.runtime, "platform_key", lambda: "windows")
@@ -376,10 +378,14 @@ def test_windows_file_location_uses_argument_list(
         "Popen",
         lambda args, **_kwargs: calls.append(args),
     )
-    assert file_locations.open_file_location(path) == (True, "")
-    assert calls == [["explorer.exe", f"/select,{path.resolve()}"]]
-    missing = file_locations.open_file_location(tmp_path / "missing.apk")
+    with caplog.at_level(logging.DEBUG, logger=file_locations.__name__):
+        assert file_locations.open_file_location(path) == (True, "")
+    assert calls == [["explorer.exe", "/select,", str(path.resolve())]]
+    missing = file_locations.open_file_location(tmp_path / "missing # file.apk")
     assert not missing[0]
+    assert "reveal requested: platform=windows" in caplog.text
+    assert "reveal succeeded: platform=windows" in caplog.text
+    assert "reveal failed: platform=windows reason=missing" in caplog.text
 
 
 def test_open_file_location_context_action_is_local_and_requires_a_file(

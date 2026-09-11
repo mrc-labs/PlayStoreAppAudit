@@ -77,7 +77,7 @@ V9_TECHNICAL_COLUMNS = {
     "health_score": "Maintenance Score",
 }
 
-VIEW_PRESETS = ("Basic", "Device", "Technical")
+VIEW_PRESETS = ("Basic", "Source Details", "Technical")
 BUILTIN_FILTERS = (
     "All",
     "Problems",
