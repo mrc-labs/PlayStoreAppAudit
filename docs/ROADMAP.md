@@ -162,9 +162,11 @@ Gate 5 is complete locally. Keep the user-facing **Maintenance Score** name and 
 - aging listing, 366-730 days: `-15`
 - legacy target SDK relative to device: `-15`
 - aging target SDK relative to device: `-10`
+- source-relevant Installed/Local APK `Outdated`: `-10`
 - exact Installed-vs-Store `Different`: `-5`
+- Local APK missing usable version evidence while a usable Store version exists: `-15`
 
-F-Droid and Aptoide recovery is cumulative and deduplicated; the present mapping therefore recovers at most +15. Not found, Inconclusive, Unsupported and Not checked states recover nothing. Live and valid cached Available evidence are equivalent. No recovery applies when Google Play is available, and unsupported future providers have no scoring behavior. Regional and inconclusive Play states never receive the definitive `-60`; unknown listing age adds no freshness penalty. Independent components compose and the final score is clamped to 0-100.
+F-Droid and Aptoide recovery is cumulative and deduplicated; the present mapping therefore recovers at most +15. Not found, Inconclusive, Unsupported and Not checked states recover nothing. Live and valid cached Available evidence are equivalent. No recovery applies when Google Play is available, and unsupported future providers have no scoring behavior. Regional and inconclusive Play states never receive the definitive `-60`; unknown listing age adds no freshness penalty. A Local APK Unknown caused only by missing or inconclusive Store-side version evidence adds no version penalty. Independent components compose and the final score is clamped to 0-100.
 
 Details, App Details and HTML reports expose the score components without mutating raw evidence. History does not persist scores/provider evidence, while versioned results preserve the score computed at export time. The internal `health_score` -> `maintenance_score` migration is deferred to v2.0 and will require explicit Smart Query, settings, serialized-data, backward-compatibility and migration coverage.
 

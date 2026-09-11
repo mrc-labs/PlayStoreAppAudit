@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -15,6 +16,7 @@ import playstore_app_audit.services.app_icon_metadata as metadata
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.app_icon_loader as icon_loader_ui
 import playstore_app_audit.ui.table_window as table_ui
+from playstore_app_audit.ui.app_icon_backfill import StoreMetadataRequest
 from playstore_app_audit.ui.app_icon_loader import (
     AppIconLoader,
     _IconRequest,
@@ -121,6 +123,37 @@ def test_existing_https_icon_metadata_is_preserved() -> None:
     metadata._enrich_rows_with_icon_urls(rows)
 
     assert rows[0]["play_icon_url"] == "https://example.invalid/cached.png"
+
+
+def test_metadata_completion_uses_normalized_store_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, str, str]] = []
+
+    def fetch(package: str, *, lang: str, country: str) -> dict[str, str]:
+        calls.append((package, lang, country))
+        return {
+            "icon": "https://example.invalid/backfill.png",
+            "developer": "Example Developer",
+        }
+
+    monkeypatch.setitem(sys.modules, "google_play_scraper", SimpleNamespace(app=fetch))
+    monkeypatch.setattr(
+        "playstore_app_audit.services.scraper_transport.install_scraper_transport_timeout",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "playstore_app_audit.services.store_locale.resolve_store_language",
+        lambda language, _country: "it" if language == "auto" else language,
+    )
+
+    result = metadata.fetch_store_metadata("com.example.app", "IT", "auto")
+
+    assert calls == [("com.example.app", "it", "it")]
+    assert result == {
+        "play_icon_url": "https://example.invalid/backfill.png",
+        "developer": "Example Developer",
+    }
 
 
 def test_loader_url_normalisation_rejects_non_https() -> None:
@@ -544,3 +577,181 @@ def test_icon_ready_updates_only_rows_indexed_for_the_package(
     assert changed_rows == [7777]
     model.deleteLater()
     app.processEvents()
+
+
+def test_legacy_available_cache_rows_schedule_one_metadata_backfill_per_package(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
+    model = table_ui.AuditTableModel()
+    tasks: list[object] = []
+    model._metadata_backfill._pool = SimpleNamespace(  # type: ignore[assignment]
+        start=lambda task: tasks.append(task),
+        clear=lambda: None,
+    )
+    model.set_store_context_provider(lambda: ("it", "en"))
+    model.set_rows(
+        [
+            {
+                "package_name": "com.example.legacy",
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+                "cache_hit": True,
+            },
+            {
+                "package_name": "com.example.legacy",
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+                "cache_hit": True,
+            },
+            {
+                "package_name": "com.example.modern",
+                "play_status": "available",
+                "play_icon_url": "https://example.invalid/modern.png",
+                "cache_hit": True,
+            },
+            {
+                "package_name": "com.example.missing",
+                "play_status": "not_found_in_checked_countries",
+                "cache_hit": True,
+            },
+        ]
+    )
+
+    assert len(tasks) == 1
+    model.deleteLater()
+    app.processEvents()
+
+
+def test_metadata_backfill_manager_deduplicates_without_blocking_ui(
+    app: QApplication,
+) -> None:
+    manager = table_ui.StoreMetadataBackfill()
+    tasks: list[object] = []
+    manager._pool = SimpleNamespace(  # type: ignore[assignment]
+        start=lambda task: tasks.append(task),
+        clear=lambda: None,
+    )
+
+    try:
+        assert manager.schedule("com.example.app", "IT", "auto")
+        assert not manager.schedule("com.example.app", "it", "auto")
+        assert len(tasks) == 1
+        manager.cancel()
+        assert not manager.schedule("com.example.other", "it", "auto")
+    finally:
+        manager.cancel()
+        manager.deleteLater()
+        app.processEvents()
+
+
+def test_successful_metadata_backfill_updates_rows_cache_and_normal_icon_loader(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metadata.clear_icon_metadata()
+    monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
+    persisted: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        state,
+        "update_cached_store_metadata",
+        lambda *args: persisted.append(args) or True,
+    )
+    model = table_ui.AuditTableModel()
+    monkeypatch.setattr(model._metadata_backfill, "schedule", lambda *_args: False)
+    model.set_rows(
+        [
+            {
+                "package_name": "com.example.app",
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+                "cache_hit": True,
+            }
+        ]
+    )
+    model.set_store_context_provider(lambda: ("it", "en"))
+    loaded: list[tuple[object, object, object]] = []
+    expected = QIcon()
+    model._icon_loader = SimpleNamespace(  # type: ignore[assignment]
+        icon_for_row=lambda *args: loaded.append(args) or expected
+    )
+    request = StoreMetadataRequest("com.example.app", "it", "en")
+
+    model._on_metadata_backfilled(
+        request,
+        {
+            "play_icon_url": "https://example.invalid/backfilled.png",
+            "developer": "Example Developer",
+        },
+    )
+
+    assert model.rows[0]["play_icon_url"] == "https://example.invalid/backfilled.png"
+    assert model.rows[0]["developer"] == "Example Developer"
+    assert len(persisted) == 1
+    assert model.icon_for_row(model.rows[0]) is expected
+    assert loaded == [
+        (
+            "com.example.app",
+            "https://example.invalid/backfilled.png",
+            "2026-08-01",
+        )
+    ]
+    model.deleteLater()
+    app.processEvents()
+
+
+def test_failed_metadata_backfill_leaves_audit_row_untouched(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
+    model = table_ui.AuditTableModel()
+    monkeypatch.setattr(model._metadata_backfill, "schedule", lambda *_args: False)
+    row = {
+        "package_name": "com.example.app",
+        "play_status": "available",
+        "play_last_update": "2026-08-01",
+        "cache_hit": True,
+    }
+    model.set_rows([row])
+    model.set_store_context_provider(lambda: ("it", "en"))
+    before = dict(row)
+
+    model._on_metadata_backfilled(StoreMetadataRequest("com.example.app", "it", "en"), {})
+
+    assert row == before
+    model.deleteLater()
+    app.processEvents()
+
+
+def test_targeted_cache_metadata_update_preserves_original_fetched_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_path = tmp_path / "audit_cache.json"
+    monkeypatch.setattr(state, "cache_path", lambda: cache_path)
+    state.update_cache(
+        [
+            {
+                "package_name": "com.example.legacy",
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+            }
+        ],
+        "it",
+        "en",
+    )
+    before = json.loads(cache_path.read_text(encoding="utf-8"))
+    fetched_at = next(iter(before.values()))["fetched_at"]
+
+    assert state.update_cached_store_metadata(
+        "com.example.legacy",
+        "it",
+        "en",
+        {
+            "play_icon_url": "https://example.invalid/backfilled.png",
+            "developer": "Example Developer",
+        },
+    )
+
+    after = json.loads(cache_path.read_text(encoding="utf-8"))
+    entry = next(iter(after.values()))
+    assert entry["fetched_at"] == fetched_at
+    assert entry["row"]["play_icon_url"] == "https://example.invalid/backfilled.png"

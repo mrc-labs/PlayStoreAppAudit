@@ -162,9 +162,9 @@ value is kept within the 0–100 range.</p>
   <li><b>Aging listing, updated 366–730 days ago:</b> −15</li>
   <li><b>Legacy target SDK relative to the connected device:</b> −15</li>
   <li><b>Aging target SDK relative to the connected device:</b> −10</li>
-  <li><b>Source-relevant installed/Local APK version is numerically Outdated:</b> −15</li>
+  <li><b>Source-relevant installed/Local APK version is numerically Outdated:</b> −10</li>
   <li><b>Source-relevant installed/Local APK version is Different but not safely ordered:</b> −5</li>
-  <li><b>Local APK version relationship is Unknown:</b> −15</li>
+  <li><b>Local APK version is missing while a usable Store version exists:</b> −15</li>
 </ul>
 
 <h2>Alternative-distribution recovery</h2>
@@ -191,7 +191,8 @@ treated as unknown and does not add either target-SDK penalty.</p>
       appropriate. Alternative-provider evidence does not make an inconclusive Play result conclusive.</li>
   <li>A missing or unusable update date does not create an aging or stale-listing penalty.</li>
   <li>Only one source-relevant version component applies. Match, Newer and Device-specific have no
-      version penalty. Optional ADB Unknown also has no penalty.</li>
+      version penalty. Optional ADB Unknown also has no penalty. A missing or inconclusive Store-side
+      version does not create a Local APK Unknown penalty.</li>
   <li>Outdated requires safely comparable leading numeric components. It does not guarantee that an
       update is available to a particular device; staged and device-specific rollouts can differ.</li>
   <li>Installer source and requested permissions do <b>not</b> reduce the score.</li>

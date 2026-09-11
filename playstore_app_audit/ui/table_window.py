@@ -1,15 +1,27 @@
 from __future__ import annotations
 
+import logging
 import sys
+from collections.abc import Callable
 
 from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_windows
 
 # Install this before the UI modules start invoking adb.exe or other console tools.
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, QSize, Qt
+from PySide6.QtCore import QModelIndex, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QPalette
-from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTableView,
+    QVBoxLayout,
+)
 
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.presentation as presentation
@@ -19,7 +31,10 @@ import playstore_app_audit.ui.insights_window as insights_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
+from playstore_app_audit.ui.app_icon_backfill import StoreMetadataBackfill, StoreMetadataRequest
 from playstore_app_audit.ui.app_icon_loader import AppIconLoader
+
+logger = logging.getLogger(__name__)
 
 TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
@@ -28,8 +43,46 @@ LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
     "Unknown": "purple",
+    "Device-specific": "blue",
+    "Newer": "green",
     "Match": "green",
 }
+
+
+class SemanticSelectionDelegate(QStyledItemDelegate):
+    """Keep one native row selection while retaining semantic status cells."""
+
+    def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        super().initStyleOption(option, index)
+        if not option.state & QStyle.StateFlag.State_Selected:
+            return
+
+        view = self.parent()
+        if isinstance(view, QTableView) and index != view.currentIndex():
+            # Some Windows styles render State_HasFocus as a blue leading edge.
+            # SelectRows can otherwise repeat that marker in every selected cell.
+            option.state &= ~QStyle.StateFlag.State_HasFocus
+
+        row = index.data(Qt.ItemDataRole.UserRole)
+        model = index.model()
+        source_model = model.sourceModel() if hasattr(model, "sourceModel") else model
+        columns = getattr(source_model, "columns", ())
+        if not isinstance(row, dict) or not 0 <= index.column() < len(columns):
+            return
+        column = columns[index.column()]
+        local_row = str(row.get("source_mode") or "").startswith("local_apk")
+        semantic_cell = column in {"version_comparison", "local_apk_version_comparison"}
+        if local_row and column in {"criticality", "local_apk_version_comparison"}:
+            background = index.data(Qt.ItemDataRole.BackgroundRole)
+            foreground = index.data(Qt.ItemDataRole.ForegroundRole)
+            if isinstance(background, QColor):
+                option.palette.setColor(QPalette.ColorRole.Highlight, background)
+            if isinstance(foreground, QColor):
+                option.palette.setColor(QPalette.ColorRole.HighlightedText, foreground)
+        elif semantic_cell:
+            foreground = index.data(Qt.ItemDataRole.ForegroundRole)
+            if isinstance(foreground, QColor):
+                option.palette.setColor(QPalette.ColorRole.HighlightedText, foreground)
 
 
 class AuditTableModel(base_ui.AppTableModel):
@@ -42,6 +95,8 @@ class AuditTableModel(base_ui.AppTableModel):
     empty/mismatched logical column.
     """
 
+    store_metadata_ready = Signal(str)
+
     def __init__(self) -> None:
         super().__init__()
         self.columns = schema.MODEL_COLUMNS
@@ -53,6 +108,15 @@ class AuditTableModel(base_ui.AppTableModel):
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
+        self._metadata_backfill = StoreMetadataBackfill(self)
+        self._metadata_backfill.completed.connect(self._on_metadata_backfilled)
+        self._store_context_provider: Callable[[], tuple[str, str]] | None = None
+
+    def set_store_context_provider(
+        self, provider: Callable[[], tuple[str, str]] | None
+    ) -> None:
+        self._store_context_provider = provider
+        self._schedule_missing_metadata()
 
     def set_rows(self, rows: list[dict[str, object]]) -> None:
         icon_rows_by_package: dict[str, list[int]] = {}
@@ -70,6 +134,71 @@ class AuditTableModel(base_ui.AppTableModel):
                 icon_rows_by_package.setdefault(package_name, []).append(row_index)
         self._icon_rows_by_package = icon_rows_by_package
         super().set_rows(rows)
+        self._schedule_missing_metadata()
+
+    def _schedule_missing_metadata(self) -> None:
+        if not self._icons_enabled or self._store_context_provider is None:
+            return
+        country, language = self._store_context_provider()
+        present_packages: set[str] = set()
+        for row in self.rows:
+            if str(row.get("play_status") or "") not in ICON_STATUSES:
+                continue
+            if str(row.get("play_icon_url") or "").strip():
+                package_name = str(row.get("package_name") or "").strip()
+                if package_name:
+                    present_packages.add(package_name)
+                continue
+            if not row.get("cache_hit"):
+                continue
+            self._metadata_backfill.schedule(row.get("package_name"), country, language)
+        if present_packages:
+            logger.debug(
+                "Store icon metadata already present: packages=%d", len(present_packages)
+            )
+
+    def _on_metadata_backfilled(self, request: object, metadata: object) -> None:
+        if not isinstance(request, StoreMetadataRequest) or not isinstance(metadata, dict):
+            return
+        if self._store_context_provider is None:
+            return
+        country, language = self._store_context_provider()
+        if (request.country, request.language) != (country.lower(), language.lower()):
+            return
+
+        affected: list[int] = []
+        icon_url = str(metadata.get("play_icon_url") or "").strip()
+        developer = str(metadata.get("developer") or "").strip()
+        for row_index, row in enumerate(self.rows):
+            if str(row.get("package_name") or "").strip() != request.package_name:
+                continue
+            if str(row.get("play_status") or "") not in ICON_STATUSES:
+                continue
+            changed = False
+            if icon_url and not str(row.get("play_icon_url") or "").strip():
+                row["play_icon_url"] = icon_url
+                self._icon_rows_by_package.setdefault(request.package_name, []).append(row_index)
+                changed = True
+            if developer and not str(row.get("developer") or "").strip():
+                row["developer"] = developer
+                changed = True
+            if changed:
+                affected.append(row_index)
+        if not affected:
+            return
+
+        state.update_cached_store_metadata(
+            request.package_name,
+            request.country,
+            request.language,
+            {key: str(value) for key, value in metadata.items()},
+        )
+        if icon_url and ICON_COLUMN in self.columns:
+            column = self.columns.index(ICON_COLUMN)
+            for row_index in affected:
+                index = self.index(row_index, column)
+                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DecorationRole])
+        self.store_metadata_ready.emit(request.package_name)
 
     def icon_for_row(self, row: dict[str, object]) -> QIcon | None:
         if not self._icons_enabled:
@@ -87,6 +216,8 @@ class AuditTableModel(base_ui.AppTableModel):
         if enabled == self._icons_enabled:
             return
         self._icons_enabled = enabled
+        if enabled:
+            self._schedule_missing_metadata()
         if not self.rows or ICON_COLUMN not in self.columns:
             return
         column = self.columns.index(ICON_COLUMN)
@@ -213,8 +344,9 @@ class TableWindow(insights_ui.InsightsWindow):
 
         super().__init__()
 
-        old_proxy = self.proxy
+        old_proxy = self.proxy  # type: ignore[has-type]
         stable_model = AuditTableModel()
+        stable_model.set_store_context_provider(self._store_icon_context)
         stable_model.set_rows(list(self.current_rows))
 
         proxy = insights_ui.AdvancedFilterProxy()
@@ -227,10 +359,27 @@ class TableWindow(insights_ui.InsightsWindow):
         self.model = stable_model
         self.proxy = proxy
         self.table.setModel(proxy)
+        self.table.setItemDelegate(SemanticSelectionDelegate(self.table))
         self.table.setIconSize(QSize(22, 22))
+        if hasattr(self, "_on_details_model_data_changed"):
+            stable_model.store_metadata_ready.connect(self._on_details_model_data_changed)
         old_proxy.deleteLater()
         self._restore_table_layout()
         self._apply_column_visibility(reset_order=False)
+
+    def _store_icon_context(self) -> tuple[str, str]:
+        settings = state.load_settings()
+        country = str(self.country_edit.text() or "us").strip().lower() or "us"
+        language = str(settings.get("store_language") or "en").strip().lower() or "en"
+        return country, language
+
+    def cancel_icon_metadata_backfill(self) -> None:
+        if isinstance(self.model, AuditTableModel):
+            self.model._metadata_backfill.cancel()
+
+    def closeEvent(self, event) -> None:
+        self.cancel_icon_metadata_backfill()
+        super().closeEvent(event)
 
     def _show_about(self) -> None:
         dialog = QDialog(self)

@@ -38,6 +38,10 @@ def app() -> QApplication:
     [
         ("version_comparison", "Outdated", "orange", "strong_warning", 600),
         ("version_comparison", "Different", "yellow", "warning", 600),
+        ("version_comparison", "Unknown", "purple", "warning", 600),
+        ("version_comparison", "Device-specific", "blue", "warning", 600),
+        ("version_comparison", "Newer", "green", "warning", 600),
+        ("version_comparison", "Match", "green", "warning", 600),
         (
             "local_apk_version_comparison",
             "Outdated",
@@ -46,6 +50,16 @@ def app() -> QApplication:
             600,
         ),
         ("local_apk_version_comparison", "Different", "yellow", "warning", 600),
+        ("local_apk_version_comparison", "Unknown", "purple", "warning", 600),
+        (
+            "local_apk_version_comparison",
+            "Device-specific",
+            "blue",
+            "warning",
+            600,
+        ),
+        ("local_apk_version_comparison", "Newer", "green", "warning", 600),
+        ("local_apk_version_comparison", "Match", "green", "warning", 600),
         ("compatibility_status", "Aging target", "yellow", "warning", 600),
         (
             "compatibility_status",
@@ -145,7 +159,6 @@ def test_table_warning_typography_preserves_severity_hierarchy(
 
 def test_unrelated_values_do_not_receive_warning_presentation() -> None:
     unrelated = (
-        ("version_comparison", "Match"),
         ("version_comparison", "Same"),
         ("compatibility_status", "Modern"),
         ("compatibility_status", "Unknown"),

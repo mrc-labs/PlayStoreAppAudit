@@ -225,6 +225,12 @@ class AuditWindow(BaseWindow):
 
         chip_row = QHBoxLayout()
         chip_row.setSpacing(6)
+        self.store_status_filter_label = QLabel("Store Status:")
+        self.store_status_filter_label.setObjectName("StoreStatusFilterLabel")
+        self.store_status_filter_label.setToolTip(
+            "These filters use Store Status only; version relationships remain independent."
+        )
+        chip_row.addWidget(self.store_status_filter_label)
         self.all_chip = QPushButton("All")
         self.all_chip.setObjectName("CriticalityButton")
         self.all_chip.setCheckable(True)

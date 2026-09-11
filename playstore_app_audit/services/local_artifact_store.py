@@ -13,7 +13,7 @@ from playstore_app_audit.domain.local_artifact_store import (
     PackageStoreEvidence,
 )
 from playstore_app_audit.domain.local_artifacts import LocalArtifact
-from playstore_app_audit.services import alternative_distribution, state
+from playstore_app_audit.services import alternative_distribution, app_icon_metadata, state
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.play_store import PlayStoreService
 
@@ -146,6 +146,7 @@ class LocalArtifactStoreService:
             if live_apps
             else []
         )
+        app_icon_metadata.enrich_rows_with_store_metadata(live_rows)
         if cache_enabled and live_rows:
             self._cache_updater(live_rows, config.country, config.language)
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import OrderedDict, deque
 from contextlib import suppress
 from dataclasses import dataclass
@@ -13,6 +14,8 @@ from playstore_app_audit.services.app_icon_disk_cache import (
     load_cached_icon_bytes,
     store_cached_icon_bytes,
 )
+
+logger = logging.getLogger(__name__)
 
 MAX_ICON_BYTES = MAX_CACHED_ICON_BYTES
 DEFAULT_ICON_CACHE_SIZE = 96
@@ -156,10 +159,14 @@ class AppIconLoader(QObject):
         if data:
             pixmap = QPixmap()
             if pixmap.loadFromData(data) and not pixmap.isNull():
+                logger.debug("App icon disk cache hit: package=%s", item.package_name)
                 self._remember_in_memory(item.key, QIcon(pixmap))
                 self._pending.discard(item.key)
                 self.icon_ready.emit(item.package_name)
                 return
+            logger.debug("App icon disk decode failed: package=%s", item.package_name)
+        else:
+            logger.debug("App icon disk cache miss: package=%s", item.package_name)
 
         # Cache miss, unreadable image or disk failure. Keep the request marked
         # pending while it continues asynchronously through the network queue.
@@ -206,6 +213,16 @@ class AppIconLoader(QObject):
                         self._disk_pool.start(_DiskStoreTask(item, data))
                         self.icon_ready.emit(item.package_name)
                         return
+                    logger.debug(
+                        "App icon network decode failed: package=%s bytes=%d",
+                        item.package_name,
+                        len(data),
+                    )
+            logger.debug(
+                "App icon download failed: package=%s error=%s",
+                item.package_name,
+                reply.errorString(),
+            )
             self._failed.add(item.key)
         finally:
             self._pending.discard(item.key)

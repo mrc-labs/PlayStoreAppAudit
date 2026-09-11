@@ -111,6 +111,8 @@ def test_normal_parser_noise_filter_covers_known_recoverable_floods() -> None:
     for message in known_messages:
         record = logging.LogRecord("x", logging.WARNING, "", 0, message, (), None)
         assert not filter_.filter(record)
+    known_error = logging.LogRecord("x", logging.ERROR, "", 0, known_messages[0], (), None)
+    assert filter_.filter(known_error)
     real = logging.LogRecord("x", logging.ERROR, "", 0, "manifest parse failed", (), None)
     assert filter_.filter(real)
 
@@ -124,12 +126,14 @@ def test_debug_parser_noise_filter_keeps_one_representative_and_unknown_warnings
     )
     unknown = logging.LogRecord("x", logging.WARNING, "", 0, "unexpected parser warning", (), None)
     error = logging.LogRecord("x", logging.ERROR, "", 0, "manifest parse failed", (), None)
+    known_error = logging.LogRecord("x", logging.ERROR, "", 0, "res1 is not zero!", (), None)
 
     assert filter_.filter(first)
     assert not filter_.filter(duplicate)
     assert filter_.filter(other_known)
     assert filter_.filter(unknown)
     assert filter_.filter(error)
+    assert filter_.filter(known_error)
 
 
 def test_debug_mode_replaces_only_project_parser_noise_filters() -> None:

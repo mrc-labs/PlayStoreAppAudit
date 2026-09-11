@@ -248,21 +248,31 @@ Location and other private local evidence.
 Basic, Source Details and Technical are source-aware built-in column presets;
 the retired Device preset migrates to Source Details without altering a saved
 Custom layout. Built-ins reapply canonical order and semantic widths when a new
-source is established and always keep Notes last. Local APK defaults to the
+source is established and always keep Notes last. Customize View separates
+Common from Advanced / Technical fields without changing saved visibility,
+order or widths. Local APK defaults to the
 non-lexicographic relationship priority Outdated, Unknown, Different,
 Device-specific, Newer and Match, then Store criticality and APK identity;
 manual sorting remains authoritative until another source is established.
 
 Local APK table rows keep ordinary cells neutral while Local APK vs Store and
-Store Status retain independent semantic cells. Store date presentation uses
+Store Status retain independent semantic cells, including through selection;
+the filter chips are explicitly labelled Store Status. Source summaries name
+Phone, Local APK or App List, while Store Country is uppercase in the UI and
+lowercase in execution/cache contexts. Store date presentation uses
 Last Store Update and Store Age (Days) without changing internal/export keys.
-Windows Explorer reveal uses separate argument-safe `/select,` and path
-arguments, and debug sessions retain first-party DEBUG while limiting
-pyaxmlparser and urllib3 to warnings and errors.
+Windows file reveal uses `SHOpenFolderAndSelectItems`, with a checked native
+parent-folder fallback, and debug sessions retain first-party DEBUG while
+limiting known recoverable pyaxmlparser warning signatures and urllib3 noise.
+Healthy legacy cache rows missing Store icon metadata receive a bounded,
+package-deduplicated asynchronous metadata completion; successful results feed
+the existing icon loader and update only icon/developer cache fields.
 
 Store status uses the conservative `Not Found` wording. Installed and Local
 APK versions share ordered Match/Outdated/Newer/Different/Device-specific/Unknown
-semantics and source-aware scoring. Structured update dates win over localized
+semantics and source-aware scoring. Outdated costs 10 Maintenance Score points;
+Local Unknown costs 15 only when local evidence is missing while a usable Store
+version exists, so Store-side absence is not double-counted. Structured update dates win over localized
 visible text, and `--debug` creates an opt-in per-session app-data log. The
 persistent Library core/data remains intact as future infrastructure. v1.99.0
 remains the current published release.

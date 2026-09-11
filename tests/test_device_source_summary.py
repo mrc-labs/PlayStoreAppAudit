@@ -111,7 +111,7 @@ def test_phone_scan_enriches_app_source_with_connected_device(
     )
 
     text = window.source_label.text()
-    assert text.startswith("Phone scan: Google Pixel 9 Pro • Android 16 (API 36) • ")
+    assert text.startswith("Phone source: Google Pixel 9 Pro • Android 16 (API 36) • ")
     assert "1 third-party packages loaded" in text
     assert "system apps excluded during ADB scan" in text
     assert window.source_label.toolTip() == (

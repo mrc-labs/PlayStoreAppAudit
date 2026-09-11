@@ -345,7 +345,7 @@ def test_apply_window_profile_updates_runtime_controls_without_switching_source(
     audit_profiles_ui.apply_window_profile(window, _profile())
 
     assert window.source_mode == "file"
-    assert window.country_edit.text() == "ch"
+    assert window.country_edit.text() == "CH"
     assert window._store_country_manual_override is True
     assert window.country_resolution_calls == [None]
     assert window.workers_spin.value == 12

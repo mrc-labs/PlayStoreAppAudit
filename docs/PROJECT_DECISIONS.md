@@ -518,9 +518,11 @@ UI evidence and is excluded from remote requests and default exports.
 Installed and Local APK version relationships use the same conservative
 Match/Outdated/Newer/Different/Device-specific/Unknown vocabulary. Outdated is
 inferred only from an unambiguous differing leading numeric component and costs
-15 Maintenance Score points; Different costs 5. Local Unknown costs 15 because
-version verification is core to that source, while optional ADB Unknown is not
-penalized. Exactly one source-relevant version component applies per row.
+10 Maintenance Score points; Different costs 5. Local Unknown costs 15 only
+when the local APK itself lacks usable version evidence while a usable Store
+version exists. Missing or inconclusive Store-side version evidence does not
+double-count that same absence; optional ADB Unknown is not penalized. Exactly
+one source-relevant version component applies per row.
 
 ## Release-script maintenance
 

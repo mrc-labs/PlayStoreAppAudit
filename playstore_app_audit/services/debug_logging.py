@@ -29,6 +29,8 @@ _PARSER_LOGGERS = (
 
 class _NormalParserNoiseFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.ERROR:
+            return True
         message = record.getMessage()
         return not any(noise in message for noise in _NOISY_MESSAGES)
 
@@ -49,6 +51,8 @@ class _DebugParserNoiseFilter(logging.Filter):
         return None
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.ERROR:
+            return True
         signature = self._signature(record.getMessage())
         if signature is None:
             return True

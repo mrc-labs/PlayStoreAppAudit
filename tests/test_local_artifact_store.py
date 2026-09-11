@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+import playstore_app_audit.services.local_artifact_store as local_store_module
 from playstore_app_audit.domain.alternative_distribution import (
     AlternativeDistributionResult,
     AlternativeDistributionState,
@@ -176,6 +177,39 @@ def test_cache_is_applied_once_per_unique_package_and_only_live_rows_are_updated
     assert store.calls[0][0] == ["com.example.live"]
     assert update_calls == [(["com.example.live"], "ch", "it")]
     assert result.associations[0].package_evidence is result.associations[1].package_evidence
+
+
+def test_live_local_apk_rows_receive_captured_icon_metadata_before_cache_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cached_rows: list[dict[str, Any]] = []
+
+    def enrich(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for row in rows:
+            row["play_icon_url"] = "https://example.invalid/icon.png"
+        return rows
+
+    monkeypatch.setattr(
+        local_store_module.app_icon_metadata,
+        "enrich_rows_with_store_metadata",
+        enrich,
+    )
+    service = LocalArtifactStoreService(
+        store_service=FakeStoreService(),
+        cache_updater=lambda rows, _country, _language: cached_rows.extend(rows),
+        alternative_runner=_no_alternatives,
+    )
+
+    result = service.collect(
+        [_artifact("com.example.live", "2" * 64, 1)],
+        AuditConfig(country="it", language="en"),
+        {"cache_enabled": True},
+    )
+
+    assert cached_rows[0]["play_icon_url"] == "https://example.invalid/icon.png"
+    assert result.packages[0].store_result["play_icon_url"] == (
+        "https://example.invalid/icon.png"
+    )
 
 
 def test_different_lookup_contexts_are_not_coalesced() -> None:

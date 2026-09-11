@@ -468,10 +468,12 @@ class MainWindow(results_ui.ResultsWindow):
         self.progress.setRange(0, max(1, len(candidates)))
         self.progress.setValue(0)
         if candidates:
-            self.source_label.setText(f"{len(candidates)} APK file(s) {description}")
+            self.source_label.setText(
+                f"Local APK source: {len(candidates)} APK file(s) {description}"
+            )
             self.status_label.setText("Local APK source ready. Run the Play Store audit.")
         else:
-            self.source_label.setText(f"No standalone APK files {description}")
+            self.source_label.setText(f"Local APK source: No standalone APK files {description}")
             self.status_label.setText("No Local APK source was established")
         self._apply_established_source_defaults()
         self._sync_action_availability()
@@ -488,7 +490,7 @@ class MainWindow(results_ui.ResultsWindow):
         self._set_busy(True)
         self.stop_button.setEnabled(True)
         self.progress.setRange(0, 0)
-        self.source_label.setText(f"Discovering APK files in {root}…")
+        self.source_label.setText(f"Local APK source: Discovering APK files in {root}…")
         self.status_label.setText("Scanning folder names only; APK contents are not being parsed.")
         self._launch_local_apk_discovery_worker(request_id, root, self._local_apk_parse_cancel_event)
 
@@ -536,7 +538,7 @@ class MainWindow(results_ui.ResultsWindow):
         self._set_busy(False)
         self.stop_button.setEnabled(False)
         if not isinstance(value, local_apk_source.LocalApkDiscoveryResult) or value.cancelled:
-            self.source_label.setText("Local APK folder discovery cancelled")
+            self.source_label.setText("Local APK source: Folder discovery cancelled")
             self.status_label.setText("No Local APK source was established")
             self._sync_action_availability()
             return
@@ -550,7 +552,7 @@ class MainWindow(results_ui.ResultsWindow):
         self.source_mode = None
         self._set_busy(False)
         self.stop_button.setEnabled(False)
-        self.source_label.setText("No standalone APK files found")
+        self.source_label.setText("Local APK source: No standalone APK files found")
         self.status_label.setText("Local APK folder discovery failed")
         QMessageBox.critical(self, "Local APK folder discovery failed", message)
 
@@ -562,7 +564,7 @@ class MainWindow(results_ui.ResultsWindow):
             self.stop_button.setEnabled(False)
             self.progress.setRange(0, 100)
             self.progress.setValue(0)
-            self.source_label.setText("Local APK folder discovery cancelled")
+            self.source_label.setText("Local APK source: Folder discovery cancelled")
             self.status_label.setText("No Local APK source was established")
             return
         super()._stop_audit()
@@ -616,7 +618,7 @@ class MainWindow(results_ui.ResultsWindow):
         if current.startswith(identity):
             current = current[len(identity) :].lstrip(" •")
         self.source_label.setText(
-            f"Phone scan: {identity} • {current}" if current else f"Phone scan: {identity}"
+            f"Phone source: {identity} • {current}" if current else f"Phone source: {identity}"
         )
 
     def _start_audit(self) -> None:

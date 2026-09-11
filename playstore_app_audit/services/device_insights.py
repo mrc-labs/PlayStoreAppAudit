@@ -114,12 +114,12 @@ Current components:
 - Aging (366-730 days): -15
 - Legacy target SDK relative to the connected device: -15
 - Aging target SDK relative to the connected device: -10
-- Source-relevant installed/Local APK version is numerically Outdated: -15
+- Source-relevant installed/Local APK version is numerically Outdated: -10
 - Source-relevant installed/Local APK version is Different but not safely ordered: -5
-- Local APK version relationship is Unknown: -15
+- Local APK version is missing while a usable Store version exists: -15
 
 Alternative-provider recovery is cumulative up to +15, but it is never a bonus when Google Play is available and never changes the underlying Play or provider states. Installer source and requested permissions do not reduce the score. The score is optional and disabled by default.
-Only one source-relevant version component is applied. Newer, Match and Device-specific add no penalty; optional ADB Unknown also adds no penalty.
+Only one source-relevant version component is applied. Newer, Match and Device-specific add no penalty; optional ADB Unknown also adds no penalty. Missing or inconclusive Store-side version evidence does not create a Local APK Unknown penalty.
 """
 
 HEALTH_SCORE_BASE = 100
@@ -639,6 +639,11 @@ def _listing_age_score_component(value: object) -> HealthScoreComponent | None:
     return None
 
 
+def _has_usable_version_evidence(value: object) -> bool:
+    text = str(value or "").strip()
+    return bool(text and text.casefold() not in {"none", "null", "n/a", "unknown"})
+
+
 def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdown:
     """Calculate one non-overlapping, raw-state Maintenance Score breakdown."""
 
@@ -699,7 +704,7 @@ def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdow
         version_component = HealthScoreComponent(
             "local_store_version" if local_source else "installed_store_version",
             f"{source_label} vs Store is Outdated",
-            -15,
+            -10,
         )
     elif relationship == "Different":
         version_component = HealthScoreComponent(
@@ -707,9 +712,16 @@ def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdow
             f"{source_label} vs Store is Different",
             -5,
         )
-    elif local_source and relationship == "Unknown":
+    elif (
+        local_source
+        and relationship == "Unknown"
+        and not _has_usable_version_evidence(row.get("local_apk_version_name"))
+        and _has_usable_version_evidence(row.get("play_version"))
+    ):
         version_component = HealthScoreComponent(
-            "local_store_version", "Local APK vs Store is Unknown", -15
+            "local_store_version",
+            "Local APK version is missing while Store version is available",
+            -15,
         )
     version_penalty = version_component.points if version_component is not None else 0
     if version_component is not None:
