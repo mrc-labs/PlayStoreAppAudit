@@ -39,7 +39,10 @@ logger = logging.getLogger(__name__)
 TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
-TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
+TABLE_ITEM_FOCUS_STYLE = (
+    "QTableView::item:focus { outline: none; border: none; }\n"
+    "QTableView::item:selected { border: none; }"
+)
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
@@ -51,7 +54,7 @@ LOCAL_APK_RELATIONSHIP_STATUS = {
 
 
 def _suppress_table_item_focus_outline(table: QTableView) -> None:
-    """Hide the native current-cell focus outline without disabling table focus."""
+    """Hide native selected-cell edges without disabling table focus/navigation."""
 
     current = table.styleSheet().strip()
     if TABLE_ITEM_FOCUS_STYLE in current:
