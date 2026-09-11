@@ -10,7 +10,7 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 install_hidden_subprocess_windows()
 
 from PySide6.QtCore import QModelIndex, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QPalette
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -39,10 +39,9 @@ logger = logging.getLogger(__name__)
 TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
-TABLE_ITEM_FOCUS_STYLE = (
-    "QTableView::item:focus { outline: none; border: none; }\n"
-    "QTableView::item:selected { border: none; }"
-)
+TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
+SELECTED_ROW_BACKGROUND = "#DDEBF7"
+SELECTED_ROW_FOREGROUND = "#18212A"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
@@ -54,7 +53,7 @@ LOCAL_APK_RELATIONSHIP_STATUS = {
 
 
 def _suppress_table_item_focus_outline(table: QTableView) -> None:
-    """Hide native selected-cell edges without disabling table focus/navigation."""
+    """Hide only the native focus outline without changing logical selection."""
 
     current = table.styleSheet().strip()
     if TABLE_ITEM_FOCUS_STYLE in current:
@@ -63,41 +62,36 @@ def _suppress_table_item_focus_outline(table: QTableView) -> None:
 
 
 class SemanticSelectionDelegate(QStyledItemDelegate):
-    """Keep one native row selection while retaining semantic status cells."""
+    """Paint one coherent row selection without Windows per-cell accent bars."""
 
     def initStyleOption(self, option: QStyleOptionViewItem, index: QModelIndex) -> None:
         super().initStyleOption(option, index)
         if not option.state & QStyle.StateFlag.State_Selected:
             return
 
-        # Windows can render a blue current-cell edge from either the ordinary
-        # focus state or the keyboard-focus transition state. Row selection and
-        # keyboard navigation remain owned by the view/selection model, so the
-        # selected item itself does not need either focus-painting hint.
+        # Windows 11 can paint a leading accent bar for every selected table item.
+        # With SelectRows that becomes one blue mark per cell. Keep the selection
+        # model untouched, but paint the selected row ourselves as ordinary items.
         option.state &= ~(
-            QStyle.StateFlag.State_HasFocus | QStyle.StateFlag.State_KeyboardFocusChange
+            QStyle.StateFlag.State_Selected
+            | QStyle.StateFlag.State_HasFocus
+            | QStyle.StateFlag.State_KeyboardFocusChange
         )
 
-        row = index.data(Qt.ItemDataRole.UserRole)
-        model = index.model()
-        source_model = model.sourceModel() if hasattr(model, "sourceModel") else model
-        columns = getattr(source_model, "columns", ())
-        if not isinstance(row, dict) or not 0 <= index.column() < len(columns):
-            return
-        column = columns[index.column()]
-        local_row = str(row.get("source_mode") or "").startswith("local_apk")
-        semantic_cell = column in {"version_comparison", "local_apk_version_comparison"}
-        if local_row and column in {"criticality", "local_apk_version_comparison"}:
-            background = index.data(Qt.ItemDataRole.BackgroundRole)
-            foreground = index.data(Qt.ItemDataRole.ForegroundRole)
-            if isinstance(background, QColor):
-                option.palette.setColor(QPalette.ColorRole.Highlight, background)
-            if isinstance(foreground, QColor):
-                option.palette.setColor(QPalette.ColorRole.HighlightedText, foreground)
-        elif semantic_cell:
-            foreground = index.data(Qt.ItemDataRole.ForegroundRole)
-            if isinstance(foreground, QColor):
-                option.palette.setColor(QPalette.ColorRole.HighlightedText, foreground)
+        background = index.data(Qt.ItemDataRole.BackgroundRole)
+        foreground = index.data(Qt.ItemDataRole.ForegroundRole)
+        if isinstance(background, QColor):
+            # Semantic cells keep their meaning and become only slightly darker
+            # while selected, instead of being replaced by the generic blue tint.
+            selected_background = background.darker(104)
+        else:
+            selected_background = QColor(SELECTED_ROW_BACKGROUND)
+        option.backgroundBrush = QBrush(selected_background)
+
+        if isinstance(foreground, QColor):
+            option.palette.setColor(QPalette.ColorRole.Text, foreground)
+        else:
+            option.palette.setColor(QPalette.ColorRole.Text, QColor(SELECTED_ROW_FOREGROUND))
 
 
 class AuditTableModel(base_ui.AppTableModel):
