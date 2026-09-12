@@ -1338,6 +1338,7 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         "Maintenance Score Methodology…",
         None,
         "Check for Updates…",
+        "Send Feedback / Report an Issue…",
         "Create Diagnostic Bundle…",
         None,
         "About Play Store App Audit",
