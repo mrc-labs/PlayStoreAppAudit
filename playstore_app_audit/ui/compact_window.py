@@ -733,19 +733,6 @@ class CompactWindow(AuditWindow):
         store_form.addRow("", cache_note)
         root.addWidget(store_group)
 
-        history_group = QGroupBox("Audit history")
-        history_layout = QVBoxLayout(history_group)
-        compare = QCheckBox("Compare with previous audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        history_layout.addWidget(compare)
-        history_note = QLabel(
-            "Off by default. When enabled, the first completed audit creates a local baseline; later audits show Change = New / Same / Better / Worse."
-        )
-        history_note.setWordWrap(True)
-        history_note.setStyleSheet("color:#6F7C87;")
-        history_layout.addWidget(history_note)
-        root.addWidget(history_group)
-
         columns_group = QGroupBox("Technical columns")
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
@@ -771,7 +758,6 @@ class CompactWindow(AuditWindow):
             language.setText(str(DEFAULT_SETTINGS["store_language"]))
             cache_enabled.setChecked(bool(DEFAULT_SETTINGS["cache_enabled"]))
             ttl.setValue(int(DEFAULT_SETTINGS["cache_ttl_hours"]))
-            compare.setChecked(bool(DEFAULT_SETTINGS["compare_previous"]))
             for check in technical_checks.values():
                 check.setChecked(False)
 
@@ -786,7 +772,6 @@ class CompactWindow(AuditWindow):
                 "store_language": (language.text().strip() or "en").lower(),
                 "cache_enabled": cache_enabled.isChecked(),
                 "cache_ttl_hours": ttl.value(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )

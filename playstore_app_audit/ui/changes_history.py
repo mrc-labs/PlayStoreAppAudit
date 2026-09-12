@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 @dataclass(frozen=True, slots=True)
 class ChangesHistoryAvailability:
+    automatic_tracking: bool
     store_tracking: bool
     store_review: bool
     store_had_baseline: bool
@@ -36,6 +37,9 @@ class ChangesHistoryDialog(QDialog):
         review_device_changes: Callable[[], None],
         save_snapshot: Callable[[], None],
         compare_snapshot: Callable[[], None],
+        save_tracking_settings: Callable[
+            [bool, bool, bool], ChangesHistoryAvailability
+        ],
     ) -> None:
         super().__init__(parent)
         self.setObjectName("ChangesHistoryDialog")
@@ -51,6 +55,18 @@ class ChangesHistoryDialog(QDialog):
         intro.setObjectName("Muted")
         root.addWidget(intro)
 
+        self.automatic_tracking_check = QCheckBox("Enable automatic change tracking")
+        self.automatic_tracking_check.setObjectName("ChangesHistoryEnabledCheck")
+        self.automatic_tracking_check.setChecked(availability.automatic_tracking)
+        root.addWidget(self.automatic_tracking_check)
+        automatic_note = QLabel(
+            "Automatic tracking stores local comparison baselines after eligible successful audits. "
+            "Turning it off preserves retained history and does not affect manual Device Snapshots."
+        )
+        automatic_note.setWordWrap(True)
+        automatic_note.setObjectName("Muted")
+        root.addWidget(automatic_note)
+
         self.store_group = self._section(
             root,
             "Store changes",
@@ -59,21 +75,11 @@ class ChangesHistoryDialog(QDialog):
         )
         store_layout = self.store_group.layout()
         assert isinstance(store_layout, QVBoxLayout)
-        self.store_tracking_label = self._tracking_label(availability.store_tracking)
-        self.store_tracking_label.setObjectName("StoreChangesTrackingState")
-        store_layout.addWidget(self.store_tracking_label)
-        if not availability.store_tracking:
-            store_message = "Tracking is Off. Enable the Store child option in Advanced Settings."
-        elif availability.store_review:
-            store_message = "Meaningful changes are available from the current comparison."
-        elif availability.store_had_baseline:
-            store_message = "No meaningful Store changes were detected in the current comparison."
-        else:
-            store_message = (
-                "The first successful comparable audit establishes a baseline; "
-                "a later audit can report changes."
-            )
-        self.store_message_label = QLabel(store_message)
+        self.store_tracking_check = QCheckBox("Track Store changes between audits")
+        self.store_tracking_check.setObjectName("ComparePreviousAuditCheck")
+        self.store_tracking_check.setChecked(availability.store_tracking)
+        store_layout.addWidget(self.store_tracking_check)
+        self.store_message_label = QLabel()
         self.store_message_label.setWordWrap(True)
         store_layout.addWidget(self.store_message_label)
         self.review_store_button = QPushButton("Review Store Changes…")
@@ -92,18 +98,11 @@ class ChangesHistoryDialog(QDialog):
         )
         device_layout = self.device_group.layout()
         assert isinstance(device_layout, QVBoxLayout)
-        self.device_tracking_label = self._tracking_label(availability.device_tracking)
-        self.device_tracking_label.setObjectName("DeviceChangesTrackingState")
-        device_layout.addWidget(self.device_tracking_label)
-        device_message = (
-            "Automatic comparison can report added or removed apps, version changes, "
-            "installer changes and enabled-state changes."
-        )
-        if not availability.device_tracking:
-            device_message += " Tracking is Off in Advanced Settings."
-        elif not availability.device_review:
-            device_message += " Two completed audits of the same phone establish a comparison."
-        self.device_message_label = QLabel(device_message)
+        self.device_tracking_check = QCheckBox("Track changes between phone audits")
+        self.device_tracking_check.setObjectName("InventoryHistoryCheck")
+        self.device_tracking_check.setChecked(availability.device_tracking)
+        device_layout.addWidget(self.device_tracking_check)
+        self.device_message_label = QLabel()
         self.device_message_label.setWordWrap(True)
         device_layout.addWidget(self.device_message_label)
         self.review_device_button = QPushButton("Review Device Changes…")
@@ -138,10 +137,77 @@ class ChangesHistoryDialog(QDialog):
         snapshot_actions.addStretch(1)
         snapshots_layout.addLayout(snapshot_actions)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        self.settings_status_label = QLabel()
+        self.settings_status_label.setObjectName("ChangesHistorySettingsStatus")
+        root.addWidget(self.settings_status_label)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Close
+        )
+        self.apply_button = buttons.button(QDialogButtonBox.StandardButton.Apply)
+        assert self.apply_button is not None
+        self.apply_button.clicked.connect(self._apply_tracking_settings)
         buttons.rejected.connect(self.close)
-        buttons.clicked.connect(self.close)
         root.addWidget(buttons)
+
+        self._availability = availability
+        self._save_tracking_settings = save_tracking_settings
+        self.automatic_tracking_check.toggled.connect(self._tracking_setting_changed)
+        self.store_tracking_check.toggled.connect(self._tracking_setting_changed)
+        self.device_tracking_check.toggled.connect(self._tracking_setting_changed)
+        self._refresh_tracking_state()
+
+    def _tracking_setting_changed(self) -> None:
+        self.settings_status_label.clear()
+        self._refresh_tracking_state()
+
+    def _apply_tracking_settings(self) -> None:
+        self._availability = self._save_tracking_settings(
+            self.automatic_tracking_check.isChecked(),
+            self.store_tracking_check.isChecked(),
+            self.device_tracking_check.isChecked(),
+        )
+        self.automatic_tracking_check.setChecked(self._availability.automatic_tracking)
+        self.store_tracking_check.setChecked(self._availability.store_tracking)
+        self.device_tracking_check.setChecked(self._availability.device_tracking)
+        self.settings_status_label.setText("Settings saved.")
+        self._refresh_tracking_state()
+
+    def _refresh_tracking_state(self) -> None:
+        automatic = self.automatic_tracking_check.isChecked()
+        store_tracking = automatic and self.store_tracking_check.isChecked()
+        device_tracking = automatic and self.device_tracking_check.isChecked()
+        self.store_tracking_check.setEnabled(automatic)
+        self.device_tracking_check.setEnabled(automatic)
+
+        if not store_tracking:
+            store_message = "Tracking is Off."
+        elif self._availability.store_review:
+            store_message = "Meaningful changes are available from the current comparison."
+        elif self._availability.store_had_baseline:
+            store_message = "No meaningful Store changes were detected in the current comparison."
+        else:
+            store_message = (
+                "The first successful comparable audit establishes a baseline; "
+                "a later audit can report changes."
+            )
+        self.store_message_label.setText(store_message)
+        self.review_store_button.setVisible(
+            store_tracking and self._availability.store_review
+        )
+
+        device_message = (
+            "Automatic comparison can report added or removed apps, version changes, "
+            "installer changes and enabled-state changes."
+        )
+        if not device_tracking:
+            device_message += " Tracking is Off."
+        elif not self._availability.device_review:
+            device_message += " Two completed audits of the same phone establish a comparison."
+        self.device_message_label.setText(device_message)
+        self.review_device_button.setVisible(
+            device_tracking and self._availability.device_review
+        )
 
     @staticmethod
     def _section(
@@ -155,11 +221,3 @@ class ChangesHistoryDialog(QDialog):
         layout.addWidget(purpose_label)
         root.addWidget(group)
         return group
-
-    @staticmethod
-    def _tracking_label(enabled: bool) -> QLabel:
-        label = QLabel(f"Tracking: {'On' if enabled else 'Off'}")
-        font = QFont(label.font())
-        font.setBold(True)
-        label.setFont(font)
-        return label

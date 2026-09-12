@@ -346,7 +346,6 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
             "Alternative Distribution",
             "Device",
             "Audit",
-            "Changes & History",
             "Data & Storage",
         ]
         assert [pages.widget(index).objectName() for index in range(pages.count())] == [
@@ -354,18 +353,14 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
             "AlternativeDistributionSettingsPage",
             "DeviceSettingsPage",
             "AuditSettingsPage",
-            "ChangesHistorySettingsPage",
             "DataStorageSettingsPage",
         ]
         health = dialog.findChild(QCheckBox, "HealthScoreCheck")
         assert health is not None
         assert health.parentWidget().objectName() == "AuditSettingsPage"
-        master = dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck")
-        compare = dialog.findChild(QCheckBox, "ComparePreviousAuditCheck")
-        inventory = dialog.findChild(QCheckBox, "InventoryHistoryCheck")
-        assert master is not None and not master.isChecked()
-        assert compare is not None and not compare.isEnabled()
-        assert inventory is not None and not inventory.isEnabled()
+        assert dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck") is None
+        assert dialog.findChild(QCheckBox, "ComparePreviousAuditCheck") is None
+        assert dialog.findChild(QCheckBox, "InventoryHistoryCheck") is None
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is not None
         assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is None
         assert dialog.findChild(QComboBox, "DateFormatCombo") is None
@@ -867,10 +862,11 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert not window.clear_button.isEnabled()
     assert _action_structure(window.tools_menu) == [
         "Advanced Settings…",
+        "Changes & History…",
         None,
         "Data Maintenance…",
     ]
-    assert window.changes_history_action is None
+    assert window.changes_history_action.text() == "Changes & History…"
     assert not hasattr(window, "device_history_menu")
     assert not hasattr(window, "snapshots_menu")
     assert not hasattr(window, "device_inventory_changes_action")
@@ -926,7 +922,7 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert window.file_scan_phone_action.isEnabled()
     assert window.advanced_settings_action.isEnabled()
     assert window.audit_profiles_menu.menuAction().isEnabled()
-    assert window.changes_history_action is None
+    assert window.changes_history_action.isEnabled()
     assert not run_action.isEnabled()
     assert not window.force_full_refresh_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)

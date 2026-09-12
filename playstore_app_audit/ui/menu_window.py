@@ -43,7 +43,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             data_maintenance_ui.DataMaintenanceDialog | None
         ) = None
         self._changes_history_dialog: changes_history_ui.ChangesHistoryDialog | None = None
-        self.changes_history_action: QAction | None = None
         super().__init__()
         self._defer_v92_menu_build = False
         self._build_menu_v9()
@@ -162,11 +161,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.changes_history_action = None
-        if state.changes_history_enabled(self.user_settings):
-            self.changes_history_action = self.tools_menu.addAction(
-                "Changes & History…", self._show_changes_history
-            )
+        self.changes_history_action = self.tools_menu.addAction(
+            "Changes & History…", self._show_changes_history
+        )
         self.history_maintenance_separator_action = self.tools_menu.addSeparator()
         self.data_maintenance_action = self.tools_menu.addAction(
             "Data Maintenance…", self._show_data_maintenance
@@ -199,38 +196,17 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
 
-    def _sync_changes_history_action(self) -> None:
-        enabled = state.changes_history_enabled(self.user_settings)
-        action = self.changes_history_action
-        if enabled and action is None:
-            action = QAction("Changes & History…", self)
-            action.triggered.connect(self._show_changes_history)
-            self.tools_menu.insertAction(self.history_maintenance_separator_action, action)
-            self.changes_history_action = action
-        elif not enabled and action is not None:
-            self.tools_menu.removeAction(action)
-            action.deleteLater()
-            self.changes_history_action = None
-            if self._changes_history_dialog is not None:
-                self._changes_history_dialog.close()
-                self._changes_history_dialog = None
-        sync_availability = getattr(self, "_sync_action_availability", None)
-        if callable(sync_availability):
-            sync_availability()
-
-    def _show_changes_history(self) -> None:
-        if not state.changes_history_enabled(self.user_settings):
-            return
+    def _changes_history_availability(
+        self,
+    ) -> changes_history_ui.ChangesHistoryAvailability:
         results_available = bool(self.current_rows) and not bool(
             getattr(self, "_results_incomplete", False)
         )
         device_results_available = self.source_mode == "device" and results_available
         inventory_changes = getattr(self, "_last_inventory_changes", None)
-        review_store_changes = getattr(self, "_show_store_change_overview", None)
-        if not callable(review_store_changes):
-            return
-        availability = changes_history_ui.ChangesHistoryAvailability(
-            store_tracking=state.store_history_enabled(self.user_settings),
+        return changes_history_ui.ChangesHistoryAvailability(
+            automatic_tracking=state.changes_history_enabled(self.user_settings),
+            store_tracking=self.user_settings.get("compare_previous") is True,
             store_review=(
                 state.store_history_enabled(self.user_settings)
                 and results_available
@@ -240,7 +216,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 state.store_history_enabled(self.user_settings)
                 and getattr(self, "_store_comparison_had_baseline", False)
             ),
-            device_tracking=state.device_inventory_history_enabled(self.user_settings),
+            device_tracking=self.user_settings.get("inventory_history_enabled") is True,
             device_review=bool(
                 state.device_inventory_history_enabled(self.user_settings)
                 and device_results_available
@@ -249,15 +225,39 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             ),
             snapshots_available=device_results_available,
         )
+
+    def _save_changes_history_settings(
+        self, automatic_tracking: bool, store_tracking: bool, device_tracking: bool
+    ) -> changes_history_ui.ChangesHistoryAvailability:
+        self.user_settings.update(
+            {
+                state.CHANGES_HISTORY_ENABLED_KEY: automatic_tracking,
+                "compare_previous": store_tracking,
+                "inventory_history_enabled": device_tracking,
+            }
+        )
+        self.user_settings = state.save_settings(self.user_settings)
+        sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
+        if callable(sync_post_audit_views):
+            sync_post_audit_views()
+        self._update_summary()
+        self.status_label.setText("Changes & History settings saved")
+        return self._changes_history_availability()
+
+    def _show_changes_history(self) -> None:
+        review_store_changes = getattr(self, "_show_store_change_overview", None)
+        if not callable(review_store_changes):
+            return
         if self._changes_history_dialog is not None:
             self._changes_history_dialog.close()
         dialog = changes_history_ui.ChangesHistoryDialog(
             self,
-            availability,
+            self._changes_history_availability(),
             review_store_changes=review_store_changes,
             review_device_changes=self._show_inventory_changes,
             save_snapshot=self._save_device_snapshot,
             compare_snapshot=self._compare_device_snapshot,
+            save_tracking_settings=self._save_changes_history_settings,
         )
         self._changes_history_dialog = dialog
         dialog.show()

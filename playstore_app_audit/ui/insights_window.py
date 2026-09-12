@@ -658,13 +658,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         collect_device.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         permissions = QCheckBox("Audit sensitive requested permissions (advanced, slower)")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
-        inventory = QCheckBox("Keep per-device inventory history")
-        inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
         health = QCheckBox("Enable Maintenance Score")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
         d_layout.addWidget(collect_device)
         d_layout.addWidget(permissions)
-        d_layout.addWidget(inventory)
         d_layout.addWidget(health)
         note = QLabel(
             "Permission audit is OFF by default. Maintenance Score is a maintenance heuristic, not a security rating. See Help for methodology."
@@ -672,13 +669,6 @@ class InsightsWindow(device_ui.DeviceWindow):
         note.setWordWrap(True)
         d_layout.addWidget(note)
         content.addWidget(device)
-
-        history = QGroupBox("Audit history")
-        h_layout = QVBoxLayout(history)
-        compare = QCheckBox("Compare with previous Play Store audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        h_layout.addWidget(compare)
-        content.addWidget(history)
 
         storage = QGroupBox("Storage")
         s_layout = QVBoxLayout(storage)
@@ -721,9 +711,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
             permissions.setChecked(False)
-            inventory.setChecked(True)
             health.setChecked(False)
-            compare.setChecked(False)
             portable.setChecked(False)
             for check in checks.values():
                 check.setChecked(False)
@@ -745,9 +733,7 @@ class InsightsWindow(device_ui.DeviceWindow):
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect_device.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
-                "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [k for k, check in checks.items() if check.isChecked()],
             }
         )

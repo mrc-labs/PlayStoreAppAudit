@@ -260,19 +260,6 @@ class DeviceWindow(compact_ui.CompactWindow):
         device_layout.addWidget(device_note)
         root.addWidget(device_group)
 
-        history_group = QGroupBox("Audit history")
-        history_layout = QVBoxLayout(history_group)
-        compare = QCheckBox("Compare with previous audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        history_layout.addWidget(compare)
-        history_note = QLabel(
-            "Off by default. The first completed audit creates a local baseline; later audits can show New / Same / Better / Worse."
-        )
-        history_note.setWordWrap(True)
-        history_note.setStyleSheet("color:#6F7C87;")
-        history_layout.addWidget(history_note)
-        root.addWidget(history_group)
-
         columns_group = QGroupBox("Technical columns")
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
@@ -300,7 +287,6 @@ class DeviceWindow(compact_ui.CompactWindow):
             cache_enabled.setChecked(True)
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
-            compare.setChecked(False)
             for check in technical_checks.values():
                 check.setChecked(False)
 
@@ -319,7 +305,6 @@ class DeviceWindow(compact_ui.CompactWindow):
                 "cache_enabled": cache_enabled.isChecked(),
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect_device.isChecked(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )

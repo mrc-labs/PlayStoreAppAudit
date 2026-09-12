@@ -14,29 +14,29 @@ They remain separate backends, but the ordinary UI must present them as one opti
 
 ## Master feature gate
 
-Add one persisted Advanced setting:
+Keep one persisted automatic-tracking master setting:
 
 `changes_history_enabled`
 
 User-facing label:
 
-**Enable Changes & History features**
+**Enable automatic change tracking**
 
 Fresh-install default: **Off**.
 
 When Off:
-- the final `Tools > Changes & History…` action does not exist in the menu;
+- the final `Tools > Changes & History…` action remains visible as the canonical configuration, review and snapshot surface;
 - no previous-Store-audit comparison is performed or promoted;
 - no per-device inventory-history comparison is performed or promoted;
 - no history-derived row annotations are shown;
 - explicit Device Snapshot files and all retained history files are preserved;
+- manual Device Snapshot actions remain available when their normal current-device/result prerequisites are met;
 - Data Maintenance may still clear retained Previous Audit History or Device Inventory History explicitly;
 - Store cache, alternative-store cache, icon cache, Maintenance Score, Local APK, exports and source behavior are unchanged.
 
 When On:
-- show one `Tools > Changes & History…` action;
 - child tracking settings control automatic Store and device history independently;
-- manual Device Snapshot actions are available through that dialog without another tracking checkbox.
+- manual Device Snapshot actions remain independent from automatic tracking.
 
 Disabling the master gate must never delete history or snapshots.
 
@@ -47,7 +47,7 @@ Keep the established backend keys unless a narrow compatibility wrapper is clear
 - `compare_previous` -> user-facing **Track Store changes between audits**;
 - `inventory_history_enabled` -> user-facing **Track changes between phone audits**.
 
-Both child controls are disabled in Advanced Settings while the master gate is Off.
+The master and both child controls live only in the Changes & History dialog. Both child controls remain visible but disabled while the master gate is Off, without changing their stored values.
 
 The master gate is authoritative at runtime. A legacy child key being true must not bypass a disabled master gate.
 
@@ -59,7 +59,7 @@ Enable the master gate if any of these are true:
 - `compare_previous` is true;
 - meaningful Previous Audit History exists;
 - any per-device inventory baseline exists;
-- any explicit Device Snapshot exists.
+- any safely discoverable Device Snapshot exists in app-owned canonical data.
 
 Otherwise migrate to Off.
 
@@ -69,25 +69,11 @@ Persist the resolved master value so migration is one-time and later user choice
 
 Migration must not delete or rewrite history/snapshot contents.
 
+Legacy snapshots saved to arbitrary user-selected filesystem locations were not registered by the application and are not discoverable for migration. Do not scan the user's filesystem to find them.
+
 ## Advanced Settings
 
-Add one compact **Changes & History** section containing:
-
-- `Enable Changes & History features`
-- `Track Store changes between audits`
-- `Track changes between phone audits`
-
-Child controls visually and functionally depend on the master checkbox.
-
-Recommended explanatory copy:
-
-`Optional longitudinal analysis. Keep this off for the simplest workflow. Enabling it adds one Changes & History entry under Tools.`
-
-Store child copy should explain that the first successful comparable audit establishes a baseline.
-
-Device child copy should explain that comparisons are for the same phone/device association and cover installed-app inventory changes.
-
-Settings apply through the existing Advanced Settings save/apply flow. The final menu must reflect the new master value immediately after settings are accepted, without requiring application restart.
+Advanced Settings contains no Changes & History page, master setting or Store/device child setting. There is no duplicate or hidden configuration path outside the Changes & History dialog.
 
 ## Tools menu
 
@@ -97,24 +83,29 @@ Remove the current final user-facing history tree/actions:
 - `Device Snapshots…` submenu
 - `Device Inventory Changes…`
 
-When the master feature is enabled, replace them with exactly one top-level action:
+Replace them with exactly one always-visible top-level action:
 
 `Changes & History…`
 
-When the master feature is disabled, that action must be absent, not merely disabled.
+The action remains available whether automatic tracking is On or Off so users can discover and configure the feature and use manual snapshots.
 
 Do not move `Data Maintenance…` into this feature. Data deletion remains separate.
 
 ## Changes & History dialog
 
-Use one small native Qt dialog with three clearly separated sections.
+Use one small native Qt dialog as the canonical configuration and review surface. At the top expose:
+
+- `Enable automatic change tracking` for `changes_history_enabled`;
+- native Apply/Save semantics that persist through the normal settings service without deleting retained data.
+
+The Store and device child checkboxes remain visible in their corresponding sections. They are disabled while automatic tracking is Off and enabled independently when it is On. Their stored values survive master Off/On toggles.
 
 ### Store changes
 
 Purpose text: compare current Google Play evidence with the previous successful comparable audit.
 
 Expose:
-- current tracking state (`On` / `Off` or equivalent concise presentation);
+- `Track Store changes between audits` for `compare_previous`;
 - `Review Store Changes…` when current change evidence exists.
 
 If tracking is enabled but no previous baseline/change evidence exists, explain that a successful audit establishes the baseline and do not show a misleading empty report as if changes had been checked.
@@ -126,7 +117,7 @@ Reuse the existing canonical Store-change overview/review path.
 Purpose text: compare the current phone inventory with the previous completed audit of the same device.
 
 Expose:
-- current tracking state;
+- `Track changes between phone audits` for `inventory_history_enabled`;
 - `Review Device Changes…` when current device comparison data exists.
 
 Explain that automatic device history can report installed/removed apps, version changes, installer changes and enabled-state changes.
@@ -141,7 +132,7 @@ Expose:
 - `Save Current Snapshot…`
 - `Compare with Snapshot…`
 
-These actions are enabled only when their existing source/result prerequisites are satisfied.
+These actions are enabled only when their existing source/result prerequisites are satisfied, regardless of the automatic-tracking master or child settings.
 
 Explicit snapshots remain user-created data and are never automatically overwritten or deleted by automatic history maintenance.
 
@@ -187,20 +178,23 @@ Cover at minimum:
 5. an inventory baseline resolves master On;
 6. a Device Snapshot resolves master On;
 7. migration persists once and later explicit Off remains Off even while old data remains;
-8. disabling master hides/removes `Tools > Changes & History…` without deleting data;
-9. enabling master makes the action appear immediately after settings apply;
-10. child checkboxes are disabled while master Off;
-11. final Tools menu has no old Device History tree;
-12. dialog has Store changes, Device changes and Device Snapshots sections;
-13. Store review uses existing canonical change evidence and is unavailable/clear when no baseline exists;
-14. Device review uses existing comparison aggregate and respects source/device prerequisites;
-15. snapshot actions retain existing prerequisites and persistence semantics;
-16. master Off prevents Store history comparison/promotion;
-17. master Off prevents device inventory comparison/promotion;
-18. master On + child Off skips only that child subsystem;
-19. master On + child On preserves successful-audit promotion semantics;
-20. stopped/failed/abandoned audits still do not promote;
-21. Data Maintenance behavior from #144 is unchanged.
+8. `Tools > Changes & History…` exists with master Off and On;
+9. final Tools menu has no old Device History tree;
+10. Advanced Settings exposes none of the three Changes & History controls;
+11. the Changes & History dialog exposes the master and both child controls;
+12. child checkboxes are disabled while master Off and enabled while master On;
+13. stored child values survive master Off/On toggles and dialog changes persist;
+14. dialog has Store changes, Device changes and Device Snapshots sections;
+15. Store review uses existing canonical change evidence and distinguishes no current comparable baseline from a completed comparison with no meaningful changes;
+16. Device review uses existing comparison aggregate and respects source/device prerequisites;
+17. snapshot actions retain existing prerequisites and remain usable with master Off;
+18. snapshot save/load comparison round-trips and Device Inventory History clearing preserves snapshot files;
+19. master Off prevents Store history comparison/promotion;
+20. master Off prevents device inventory comparison/promotion;
+21. master On + child Off skips only that child subsystem;
+22. master On + child On preserves successful-audit promotion semantics;
+23. stopped/failed/abandoned audits still do not promote;
+24. Data Maintenance behavior from #144 is unchanged.
 
 ## Out of scope
 

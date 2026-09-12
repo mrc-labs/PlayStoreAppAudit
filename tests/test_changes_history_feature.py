@@ -8,8 +8,10 @@ import pytest
 from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QGroupBox
 
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.insights_window as insights_ui
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -102,6 +104,48 @@ def test_explicit_master_off_stays_off_and_preserves_all_retained_data(
     assert json.loads(snapshot_path.read_text(encoding="utf-8")) == snapshot
 
 
+def test_device_snapshot_save_load_and_comparison_round_trip(
+    local_state: Path,
+) -> None:
+    snapshot_path = device_insights.snapshots_dir() / "phone.psaa.json"
+    saved_rows = [
+        {
+            "package_name": "com.example.app",
+            "installed_version": "1",
+            "installer_source": "Google Play",
+            "app_enabled": True,
+        },
+        {"package_name": "com.removed.app", "installed_version": "1"},
+    ]
+    device_summary = {"device_id": "phone-a", "model": "Example Phone"}
+
+    assert device_insights.save_snapshot(
+        snapshot_path, saved_rows, device_summary
+    ) == snapshot_path
+    loaded = device_insights.load_snapshot(snapshot_path)
+    comparison = device_insights.compare_snapshots(
+        [
+            {
+                "package_name": "com.example.app",
+                "installed_version": "2",
+                "installer_source": "F-Droid",
+                "app_enabled": False,
+            },
+            {"package_name": "com.new.app", "installed_version": "1"},
+        ],
+        device_summary,
+        loaded,
+    )
+
+    assert loaded["format"] == device_insights.DEVICE_SNAPSHOT_FORMAT
+    assert loaded["device"] == device_summary
+    assert comparison["only_snapshot"] == ["com.removed.app"]
+    assert comparison["only_current"] == ["com.new.app"]
+    assert comparison["version_differences"] == ["com.example.app"]
+    assert comparison["installer_differences"] == ["com.example.app"]
+    assert comparison["state_differences"] == ["com.example.app"]
+
+
 @pytest.fixture
 def ui_settings(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     settings: dict[str, object] = {
@@ -140,70 +184,135 @@ def _tools_text(window: MainWindow) -> list[str]:
     return [action.text() for action in window.tools_menu.actions() if not action.isSeparator()]
 
 
-def test_master_controls_final_tools_menu_without_old_history_tree(
+def test_changes_history_is_always_in_tools_without_old_history_tree(
     window: MainWindow,
 ) -> None:
-    assert _tools_text(window) == ["Advanced Settings…", "Data Maintenance…"]
-    assert window.changes_history_action is None
-    assert not hasattr(window, "device_history_menu")
-    assert not hasattr(window, "snapshots_menu")
-    assert not hasattr(window, "device_inventory_changes_action")
-
-    window.user_settings[state.CHANGES_HISTORY_ENABLED_KEY] = True
-    window._sync_changes_history_action()
-    first_action = window.changes_history_action
-    window._sync_changes_history_action()
-
     assert _tools_text(window) == [
         "Advanced Settings…",
         "Changes & History…",
         "Data Maintenance…",
     ]
-    assert window.changes_history_action is first_action
+    action = window.changes_history_action
+    assert not hasattr(window, "device_history_menu")
+    assert not hasattr(window, "snapshots_menu")
+    assert not hasattr(window, "device_inventory_changes_action")
+
+    window.user_settings[state.CHANGES_HISTORY_ENABLED_KEY] = True
+    assert _tools_text(window) == [
+        "Advanced Settings…",
+        "Changes & History…",
+        "Data Maintenance…",
+    ]
+    assert window.changes_history_action is action
 
 
-def test_advanced_master_disables_children_and_refreshes_menu_immediately(
+def test_advanced_settings_has_no_changes_history_configuration(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def enable_master(dialog: QDialog) -> int:
-        master = dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck")
-        store = dialog.findChild(QCheckBox, "ComparePreviousAuditCheck")
-        device = dialog.findChild(QCheckBox, "InventoryHistoryCheck")
-        assert master is not None and not master.isChecked()
-        assert store is not None and not store.isEnabled() and store.isChecked()
-        assert device is not None and not device.isEnabled() and device.isChecked()
-        master.setChecked(True)
-        assert store.isEnabled() and device.isEnabled()
-        return QDialog.DialogCode.Accepted
+    def inspect(dialog: QDialog) -> int:
+        assert dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck") is None
+        assert dialog.findChild(QCheckBox, "ComparePreviousAuditCheck") is None
+        assert dialog.findChild(QCheckBox, "InventoryHistoryCheck") is None
+        return QDialog.DialogCode.Rejected
 
-    monkeypatch.setattr(QDialog, "exec", enable_master)
-    window._show_advanced_settings()
-
-    assert window.user_settings[state.CHANGES_HISTORY_ENABLED_KEY] is True
-    assert window.changes_history_action is not None
-    assert "Changes & History…" in _tools_text(window)
-
-    def disable_master(dialog: QDialog) -> int:
-        master = dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck")
-        store = dialog.findChild(QCheckBox, "ComparePreviousAuditCheck")
-        device = dialog.findChild(QCheckBox, "InventoryHistoryCheck")
-        assert master is not None and master.isChecked()
-        assert store is not None and store.isEnabled() and store.isChecked()
-        assert device is not None and device.isEnabled() and device.isChecked()
-        master.setChecked(False)
-        assert not store.isEnabled() and store.isChecked()
-        assert not device.isEnabled() and device.isChecked()
-        return QDialog.DialogCode.Accepted
-
-    monkeypatch.setattr(QDialog, "exec", disable_master)
+    monkeypatch.setattr(QDialog, "exec", inspect)
     window._show_advanced_settings()
 
     assert window.user_settings[state.CHANGES_HISTORY_ENABLED_KEY] is False
     assert window.user_settings["compare_previous"] is True
     assert window.user_settings["inventory_history_enabled"] is True
-    assert window.changes_history_action is None
-    assert "Changes & History…" not in _tools_text(window)
+    assert "Changes & History…" in _tools_text(window)
+
+
+def test_dialog_persists_tracking_controls_and_keeps_snapshots_independent(
+    window: MainWindow,
+    app: QApplication,
+    ui_settings: dict[str, object],
+) -> None:
+    window.source_mode = "device"
+    window._results_incomplete = False
+    window.current_rows = [{"package_name": "com.example.app"}]
+    window.model.set_rows(window.current_rows)
+
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    assert not dialog.automatic_tracking_check.isChecked()
+    assert not dialog.store_tracking_check.isEnabled()
+    assert dialog.store_tracking_check.isChecked()
+    assert not dialog.device_tracking_check.isEnabled()
+    assert dialog.device_tracking_check.isChecked()
+    assert dialog.save_snapshot_button.isEnabled()
+    assert dialog.compare_snapshot_button.isEnabled()
+
+    dialog.automatic_tracking_check.setChecked(True)
+    assert dialog.store_tracking_check.isEnabled()
+    assert dialog.device_tracking_check.isEnabled()
+    dialog.store_tracking_check.setChecked(False)
+    dialog.automatic_tracking_check.setChecked(False)
+    assert not dialog.store_tracking_check.isEnabled()
+    assert not dialog.device_tracking_check.isEnabled()
+    dialog.automatic_tracking_check.setChecked(True)
+    assert not dialog.store_tracking_check.isChecked()
+    assert dialog.device_tracking_check.isChecked()
+    dialog.automatic_tracking_check.setChecked(False)
+    dialog.apply_button.click()
+
+    assert ui_settings[state.CHANGES_HISTORY_ENABLED_KEY] is False
+    assert ui_settings["compare_previous"] is False
+    assert ui_settings["inventory_history_enabled"] is True
+    assert dialog.settings_status_label.text() == "Settings saved."
+    assert dialog.save_snapshot_button.isEnabled()
+    assert dialog.compare_snapshot_button.isEnabled()
+
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    assert not dialog.automatic_tracking_check.isChecked()
+    assert not dialog.store_tracking_check.isChecked()
+    assert dialog.device_tracking_check.isChecked()
+    dialog.automatic_tracking_check.setChecked(True)
+    assert dialog.store_tracking_check.isEnabled()
+    assert dialog.device_tracking_check.isEnabled()
+    dialog.apply_button.click()
+    assert ui_settings[state.CHANGES_HISTORY_ENABLED_KEY] is True
+    assert ui_settings["compare_previous"] is False
+    assert ui_settings["inventory_history_enabled"] is True
+
+
+def test_snapshot_save_uses_canonical_default_with_master_off(
+    window: MainWindow,
+    local_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window.user_settings[state.CHANGES_HISTORY_ENABLED_KEY] = False
+    window.source_mode = "device"
+    window.current_rows = [{"package_name": "com.example.app"}]
+    window._device_summary = {"model": "Example Phone"}
+    selected_path = local_state / "chosen.psaa.json"
+    defaults: list[str] = []
+
+    def choose_snapshot(
+        _parent: object, _title: str, default: str, _file_filter: str
+    ) -> tuple[str, str]:
+        defaults.append(default)
+        return str(selected_path), ""
+
+    monkeypatch.setattr(
+        insights_ui.QFileDialog, "getSaveFileName", choose_snapshot
+    )
+    monkeypatch.setattr(insights_ui.QMessageBox, "information", lambda *_args: None)
+
+    window._save_device_snapshot()
+
+    assert Path(defaults[0]).parent == local_state / "device_snapshots"
+    assert Path(defaults[0]).name == "Example_Phone_snapshot.psaa.json"
+    assert device_insights.load_snapshot(selected_path)["apps"][0][
+        "package_name"
+    ] == "com.example.app"
 
 
 def test_dialog_sections_and_current_evidence_prerequisites(
@@ -218,7 +327,6 @@ def test_dialog_sections_and_current_evidence_prerequisites(
             "inventory_history_enabled": True,
         }
     )
-    window._sync_changes_history_action()
     window.source_mode = "device"
     window._results_incomplete = False
     window.current_rows = [
@@ -308,7 +416,6 @@ def test_store_review_reflects_current_comparable_baseline_and_changes(
             "inventory_history_enabled": False,
         }
     )
-    window._sync_changes_history_action()
     window.source_mode = "file"
     monkeypatch.setattr(compact_ui, "load_history", lambda: history)
     monkeypatch.setattr(state, "save_history", lambda _rows: None)
@@ -451,3 +558,40 @@ def test_master_on_children_gate_automatic_promotions_independently(
     window._promote_successful_audit(result)
 
     assert calls == expected
+
+
+def test_local_apk_success_never_promotes_automatic_history(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window.user_settings.update(
+        {
+            state.CHANGES_HISTORY_ENABLED_KEY: True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window.source_mode = local_apk_audit.SOURCE_MODE
+    window.current_rows = [_available_row()]
+    monkeypatch.setattr(
+        state,
+        "save_history",
+        lambda _rows: pytest.fail("Local APK promoted Store history"),
+    )
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: pytest.fail("Local APK promoted device history"),
+    )
+
+    promoted = window._promote_successful_audit(
+        AuditRunResult(
+            session=1,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=list(window.current_rows),
+            total_count=1,
+            metadata={"source_mode": local_apk_audit.SOURCE_MODE},
+        )
+    )
+
+    assert promoted is False
