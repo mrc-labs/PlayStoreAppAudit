@@ -106,7 +106,7 @@ Purpose text: compare current Google Play evidence with the previous successful 
 
 Expose:
 - `Track Play Store listing changes` for `compare_previous`;
-- `Detect availability, Store version and update-status changes between audits.` directly below the checkbox;
+- `Detect availability, Store version and update-status changes between audits. Shown in the Play Store Listing Change column.` directly below the checkbox;
 - `Review Play Store Changes…` when current change evidence exists.
 
 If tracking is enabled but no previous baseline/change evidence exists, explain that a successful audit establishes the baseline and do not show a misleading empty report as if changes had been checked.
@@ -119,7 +119,7 @@ Purpose text: compare the current phone inventory with the previous completed au
 
 Expose:
 - `Track device app inventory changes` for `inventory_history_enabled`;
-- `Detect installed, removed, version, installer and enabled-state changes between scans of the same phone.` directly below the checkbox;
+- `Detect installed, removed, version, installer and enabled-state changes between scans of the same phone. Shown in the Device App Inventory Change column for phone audit results.` directly below the checkbox;
 - `Review Device Changes…` when current device comparison data exists.
 
 Explain that automatic device history can report installed/removed apps, version changes, installer changes and enabled-state changes.
@@ -136,9 +136,13 @@ Built-in column presets apply both history gates symmetrically:
 - show Device App Inventory Change only when `device_inventory_history_enabled(settings)` is true and the active source is a device;
 - in Basic device results, place Store Status, Play Store Listing Change and Device App Inventory Change before Package Name;
 - Source Details and Technical follow the same gates and source applicability;
-- Custom retains the user's saved visibility/order/width configuration, while inapplicable history columns are hidden at presentation time and return when their gate/source becomes applicable again.
+- Custom remains user-controlled: it retains the user's saved visibility/order/width configuration and does not automatically add a history column that is absent from that saved column set. A saved history-column choice is hidden while inapplicable and returns when its gate/source becomes applicable again.
 
 Applying dialog settings must refresh the existing table presentation immediately through the canonical column-visibility path, without rebuilding the model or resetting saved widths/order.
+
+The production phone-source transition sets the canonical `device` source and reapplies column visibility: built-in presets restore their source defaults, while Custom preserves its saved order and widths. Completed phone-audit presentation retains that source and reapplies column visibility during result finalization.
+
+The dialog footer is one permanent native layout containing the initially hidden saved-status label, stretch and Apply/Close button box. Showing `Settings saved.` after a successful Apply must not add a vertical row or change the dialog's required height.
 
 ### Device Snapshots
 
@@ -217,6 +221,10 @@ Cover at minimum:
 28. Custom history-column choices remain stored across feature-gate and source changes;
 29. schema, Customize View, Smart Query and HTML report labels use the canonical column names;
 30. both canonical table headers wrap intentionally and satisfy their bounded width policies.
+31. a real completed phone-scan transition resolves to the canonical device source and applies device-history visibility across every built-in preset;
+32. completed phone-audit result presentation retains the canonical device source and visibility;
+33. Custom does not add a device-history column absent from the saved Custom column set;
+34. the saved-status label and native Apply/Close button box share one permanent footer layout before and after Apply.
 
 ## Out of scope
 

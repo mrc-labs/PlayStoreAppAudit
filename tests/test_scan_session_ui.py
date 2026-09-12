@@ -13,6 +13,8 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.audit_window as audit_ui
 import playstore_app_audit.ui.compact_window as compact_ui
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
+from playstore_app_audit.ui import column_presets
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -119,6 +121,111 @@ def test_completed_phone_scan_selects_one_coherent_session(
     assert window._device_store_locale is locale
     assert store_locale.active_device_store_locale() is locale
     assert "Google Pixel A • Android 16 (API 36)" in window.source_label.text()
+
+
+@pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)
+@pytest.mark.parametrize(
+    ("master_enabled", "device_enabled", "expected_visible"),
+    [(True, True, True), (True, False, False), (False, True, False)],
+)
+def test_real_phone_scan_and_completed_audit_apply_device_history_visibility(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    preset: str,
+    master_enabled: bool,
+    device_enabled: bool,
+    expected_visible: bool,
+) -> None:
+    settings: dict[str, object] = {
+        "view_preset": preset,
+        "recent_sources": [],
+        "changes_history_enabled": master_enabled,
+        "compare_previous": False,
+        "inventory_history_enabled": device_enabled,
+        "health_score_enabled": True,
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(
+        device_insights,
+        "annotate_inventory_changes_and_save",
+        lambda *_args: {"had_previous": False, "counts": {}},
+    )
+    window.user_settings.update(settings)
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+    device_change = window.model.columns.index("device_change")
+    assert window.table.isColumnHidden(device_change)
+    session = _session("Pixel A", "device-a", "com.example.a")
+
+    _select_session(window, session)
+
+    assert session.source_kind == column_presets.SOURCE_DEVICE
+    assert column_presets.normalise_source_mode(window.source_mode) == (
+        column_presets.SOURCE_DEVICE
+    )
+    assert window.table.isColumnHidden(device_change) is (not expected_visible)
+
+    window._audit_session += 1
+    window._set_audit_state(AuditRunState.RUNNING)
+    window._on_controlled_done(
+        AuditRunResult(
+            session=window._audit_session,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=[
+                {
+                    "package_name": "com.example.a",
+                    "play_status": "available",
+                    "play_last_update": "2026-09-01",
+                }
+            ],
+            live_completed_count=1,
+            total_count=1,
+            metadata={"source_mode": "device", "scan_session": session},
+        )
+    )
+    app.processEvents()
+
+    assert window.source_mode == column_presets.SOURCE_DEVICE
+    assert window.current_rows[0]["package_name"] == "com.example.a"
+    assert window.table.isColumnHidden(device_change) is (not expected_visible)
+
+
+@pytest.mark.parametrize("saved_with_device_change", [False, True])
+def test_real_phone_transition_preserves_custom_device_history_choice(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    saved_with_device_change: bool,
+) -> None:
+    custom_columns = ["criticality", "package_name"]
+    if saved_with_device_change:
+        custom_columns.insert(1, "device_change")
+    settings: dict[str, object] = {
+        "view_preset": "Custom",
+        "custom_view_exists": True,
+        "custom_view_columns": list(custom_columns),
+        "custom_view_order": list(custom_columns),
+        "custom_view_widths": {"package_name": 319},
+        "recent_sources": [],
+        "changes_history_enabled": True,
+        "compare_previous": False,
+        "inventory_history_enabled": True,
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
+    window.user_settings.update(settings)
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+    device_change = window.model.columns.index("device_change")
+    assert window.table.isColumnHidden(device_change)
+
+    _select_session(window, _session("Pixel A", "device-a", "com.example.a"))
+
+    assert window.table.isColumnHidden(device_change) is (not saved_with_device_change)
+    assert settings["custom_view_columns"] == custom_columns
+    assert settings["custom_view_order"] == custom_columns
+    assert settings["custom_view_widths"] == {"package_name": 319}
 
 
 def test_phone_a_to_phone_b_replaces_session_without_metadata_bleed(

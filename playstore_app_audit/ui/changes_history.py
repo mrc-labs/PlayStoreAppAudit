@@ -86,7 +86,8 @@ class ChangesHistoryDialog(QDialog):
         self.store_tracking_check.setChecked(availability.store_tracking)
         store_layout.addWidget(self.store_tracking_check)
         store_note = QLabel(
-            "Detect availability, Store version and update-status changes between audits."
+            "Detect availability, Store version and update-status changes between audits. "
+            "Shown in the Play Store Listing Change column."
         )
         store_note.setWordWrap(True)
         store_note.setObjectName("Muted")
@@ -119,7 +120,8 @@ class ChangesHistoryDialog(QDialog):
         device_layout.addWidget(self.device_tracking_check)
         device_note = QLabel(
             "Detect installed, removed, version, installer and enabled-state changes "
-            "between scans of the same phone."
+            "between scans of the same phone. Shown in the Device App Inventory Change "
+            "column for phone audit results."
         )
         device_note.setWordWrap(True)
         device_note.setObjectName("Muted")
@@ -171,17 +173,24 @@ class ChangesHistoryDialog(QDialog):
 
         self.settings_status_label = QLabel()
         self.settings_status_label.setObjectName("ChangesHistorySettingsStatus")
+        self.settings_status_label.setAccessibleName("Changes & History settings status")
         self.settings_status_label.setVisible(False)
-        root.addWidget(self.settings_status_label)
 
-        buttons = QDialogButtonBox(
+        self.button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Close
         )
-        self.apply_button = buttons.button(QDialogButtonBox.StandardButton.Apply)
+        self.button_box.setObjectName("ChangesHistoryButtonBox")
+        self.apply_button = self.button_box.button(QDialogButtonBox.StandardButton.Apply)
         assert self.apply_button is not None
         self.apply_button.clicked.connect(self._apply_tracking_settings)
-        buttons.rejected.connect(self.close)
-        root.addWidget(buttons)
+        self.button_box.rejected.connect(self.close)
+
+        self.footer_layout = QHBoxLayout()
+        self.footer_layout.setObjectName("ChangesHistoryFooter")
+        self.footer_layout.addWidget(self.settings_status_label)
+        self.footer_layout.addStretch(1)
+        self.footer_layout.addWidget(self.button_box)
+        root.addLayout(self.footer_layout)
 
         self._availability = availability
         self._save_tracking_settings = save_tracking_settings

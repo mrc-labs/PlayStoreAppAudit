@@ -408,8 +408,7 @@ class MainWindow(results_ui.ResultsWindow):
     def _apply_established_source_defaults(self) -> None:
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
-        if preset in BUILTIN_PRESETS:
-            self._apply_column_visibility(reset_order=True)
+        self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
         self._apply_source_default_sort()
 
     def _apply_source_default_sort(self) -> None:

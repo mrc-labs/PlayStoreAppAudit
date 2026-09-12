@@ -471,11 +471,13 @@ def test_dialog_sections_and_current_evidence_prerequisites(
         label.property("role"): label.text() for label in dialog.findChildren(QLabel)
     }
     assert descriptions["StoreTrackingDescription"] == (
-        "Detect availability, Store version and update-status changes between audits."
+        "Detect availability, Store version and update-status changes between audits. "
+        "Shown in the Play Store Listing Change column."
     )
     assert descriptions["DeviceTrackingDescription"] == (
         "Detect installed, removed, version, installer and enabled-state changes "
-        "between scans of the same phone."
+        "between scans of the same phone. Shown in the Device App Inventory Change "
+        "column for phone audit results."
     )
     assert dialog.review_store_button.text() == "Review Play Store Changes…"
     assert dialog.settings_status_label.isHidden()
@@ -499,6 +501,42 @@ def test_dialog_sections_and_current_evidence_prerequisites(
     assert dialog.review_device_button.isHidden()
     assert not dialog.save_snapshot_button.isEnabled()
     assert not dialog.compare_snapshot_button.isEnabled()
+
+
+def test_saved_status_shares_one_permanent_footer_with_native_buttons(
+    window: MainWindow,
+    app: QApplication,
+) -> None:
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    root = dialog.layout()
+    footer_item = root.itemAt(root.count() - 1)
+
+    assert footer_item.layout() is dialog.footer_layout
+    assert dialog.footer_layout.indexOf(dialog.settings_status_label) >= 0
+    assert dialog.footer_layout.indexOf(dialog.button_box) >= 0
+    assert dialog.settings_status_label.accessibleName() == (
+        "Changes & History settings status"
+    )
+    assert dialog.settings_status_label.text() == ""
+    assert dialog.settings_status_label.isHidden()
+    root_count = root.count()
+
+    dialog.apply_button.click()
+
+    assert dialog.settings_status_label.text() == "Settings saved."
+    assert not dialog.settings_status_label.isHidden()
+    assert root.count() == root_count
+    assert root.itemAt(root.count() - 1).layout() is dialog.footer_layout
+
+    dialog.automatic_tracking_check.toggle()
+
+    assert dialog.settings_status_label.text() == ""
+    assert dialog.settings_status_label.isHidden()
+    assert root.count() == root_count
+    assert root.itemAt(root.count() - 1).layout() is dialog.footer_layout
 
 
 @pytest.mark.parametrize(
