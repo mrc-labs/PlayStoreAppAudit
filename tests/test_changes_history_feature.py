@@ -265,6 +265,86 @@ def test_dialog_sections_and_current_evidence_prerequisites(
     assert not dialog.compare_snapshot_button.isEnabled()
 
 
+@pytest.mark.parametrize(
+    ("history", "current_version", "expected_baseline", "expected_review", "message"),
+    [
+        (
+            {"com.old.app": {"play_status": "available", "play_version": "1"}},
+            "1",
+            False,
+            False,
+            "first successful comparable audit",
+        ),
+        (
+            {"com.new.app": {"play_status": "available", "play_version": "1"}},
+            "1",
+            True,
+            False,
+            "No meaningful Store changes were detected in the current comparison.",
+        ),
+        (
+            {"com.new.app": {"play_status": "available", "play_version": "1"}},
+            "2",
+            True,
+            True,
+            "Meaningful changes are available from the current comparison.",
+        ),
+    ],
+)
+def test_store_review_reflects_current_comparable_baseline_and_changes(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    history: dict[str, dict[str, object]],
+    current_version: str,
+    expected_baseline: bool,
+    expected_review: bool,
+    message: str,
+) -> None:
+    window.user_settings.update(
+        {
+            state.CHANGES_HISTORY_ENABLED_KEY: True,
+            "compare_previous": True,
+            "inventory_history_enabled": False,
+        }
+    )
+    window._sync_changes_history_action()
+    window.source_mode = "file"
+    monkeypatch.setattr(compact_ui, "load_history", lambda: history)
+    monkeypatch.setattr(state, "save_history", lambda _rows: None)
+    window._audit_session += 1
+    window._set_audit_state(AuditRunState.RUNNING)
+
+    window._on_controlled_done(
+        AuditRunResult(
+            session=window._audit_session,
+            outcome=AuditRunOutcome.SUCCESS,
+            rows=[
+                {
+                    "package_name": "com.new.app",
+                    "play_status": "available",
+                    "play_version": current_version,
+                }
+            ],
+            live_completed_count=1,
+            total_count=1,
+            metadata={"source_mode": "file"},
+        )
+    )
+    app.processEvents()
+
+    assert window._store_comparison_had_baseline is expected_baseline
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    assert (not dialog.review_store_button.isHidden()) is expected_review
+    store_message = dialog.store_message_label.text()
+    assert message in store_message
+    if not expected_baseline:
+        assert "No meaningful Store changes were detected" not in store_message
+
+
 def _available_row() -> dict[str, object]:
     return {
         "package_name": "com.example.app",

@@ -41,6 +41,7 @@ from playstore_app_audit.services.state import (
     TECHNICAL_COLUMNS,
     clear_cache,
     compare_with_history,
+    current_audit_has_store_baseline,
     load_fresh_cache,
     load_history,
     load_settings,
@@ -1312,7 +1313,11 @@ class CompactWindow(AuditWindow):
         local_apk_source = is_local_apk_source(result.metadata.get("source_mode"))
         compare_enabled = store_history_enabled(self.user_settings) and not local_apk_source
         history = load_history() if compare_enabled else {}
-        self._store_comparison_had_baseline = bool(history) if compare_enabled else False
+        self._store_comparison_had_baseline = bool(
+            compare_enabled
+            and result.outcome is AuditRunOutcome.SUCCESS
+            and current_audit_has_store_baseline(typed_rows, history)
+        )
         for row in typed_rows:
             row["is_system"] = (
                 None

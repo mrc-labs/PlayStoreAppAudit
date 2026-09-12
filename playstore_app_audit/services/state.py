@@ -453,6 +453,19 @@ def load_history() -> dict[str, dict[str, Any]]:
     return data if isinstance(data, dict) else {}
 
 
+def current_audit_has_store_baseline(
+    rows: list[dict[str, Any]], history: dict[str, dict[str, Any]]
+) -> bool:
+    """Return whether a current non-provisional row has matching Store history."""
+
+    return any(
+        not bool(row.get("_audit_provisional"))
+        and bool(package_name := str(row.get("package_name") or "").strip())
+        and isinstance(history.get(package_name), dict)
+        for row in rows
+    )
+
+
 def _history_evidence(value: object) -> list[dict[str, Any]]:
     return [dict(item) for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 

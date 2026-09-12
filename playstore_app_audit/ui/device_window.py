@@ -767,7 +767,11 @@ class DeviceWindow(compact_ui.CompactWindow):
         new_rows = list(result.rows)
         compare_enabled = state.store_history_enabled(self.user_settings)
         history = state.load_history() if compare_enabled else {}
-        self._store_comparison_had_baseline = bool(history) if compare_enabled else False
+        self._store_comparison_had_baseline = bool(
+            compare_enabled
+            and result.outcome is AuditRunOutcome.SUCCESS
+            and state.current_audit_has_store_baseline(new_rows, history)
+        )
         previous_by_package = {
             str(row.get("package_name") or ""): row for row in old_rows
         }
