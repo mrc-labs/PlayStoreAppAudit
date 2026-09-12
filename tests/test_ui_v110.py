@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMessageBox,
+    QScrollArea,
     QStackedWidget,
 )
 
@@ -28,6 +29,7 @@ import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
@@ -329,6 +331,18 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert icons.isChecked()
         assert dialog.findChild(QComboBox, "DateFormatCombo") is not None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
+        note = dialog.findChild(QLabel, "CustomColumnsNote")
+        assert note is not None
+        assert note.text() == (
+            "Store Status and Package Name are always included. Click Save to apply "
+            "changes. Changing the column selection activates View > Column Preset > Custom."
+        )
+        scroll = dialog.findChild(QScrollArea, "CustomColumnsScrollArea")
+        assert scroll is not None
+        assert scroll.verticalScrollBarPolicy() is Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        available = dialog.screen().availableGeometry()
+        assert dialog.width() <= available.width() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
+        assert dialog.height() <= available.height() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is None
         return QDialog.DialogCode.Rejected
 
@@ -369,6 +383,31 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
 
     monkeypatch.setattr(QDialog, "exec", inspect_advanced)
     window._show_advanced_settings()
+
+
+def test_customize_view_content_aware_size_fits_or_clamps_for_scrolling() -> None:
+    content = QSize(700, 620)
+    overhead = QSize(60, 180)
+
+    minimum, initial = preferences_ui.customize_view_dialog_sizes(
+        content, overhead, QSize(1920, 1080)
+    )
+
+    assert minimum == preferences_ui.CUSTOMIZE_VIEW_MIN_SIZE
+    assert initial.width() >= content.width() + overhead.width()
+    assert initial.height() == content.height() + overhead.height()
+
+    small_screen = QSize(800, 650)
+    small_minimum, small_initial = preferences_ui.customize_view_dialog_sizes(
+        content, overhead, small_screen
+    )
+    usable_height = (
+        small_screen.height() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
+    )
+
+    assert small_minimum.height() <= usable_height
+    assert small_initial.height() == usable_height
+    assert small_initial.height() < content.height() + overhead.height()
 
 
 def test_display_settings_save_existing_presentation_keys(

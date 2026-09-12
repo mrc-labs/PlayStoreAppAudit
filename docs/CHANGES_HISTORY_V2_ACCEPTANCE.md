@@ -142,6 +142,8 @@ Applying dialog settings must refresh the existing table presentation immediatel
 
 The production phone-source transition sets the canonical `device` source and reapplies column visibility: built-in presets restore their source defaults, while Custom preserves its saved order and widths. Completed phone-audit presentation retains that source and reapplies column visibility during result finalization.
 
+Customize View checkbox selections are authoritative when Save is clicked. Persist the exact normalized selection plus mandatory columns together with the existing live visual order, usable widths and compatibility header state; do not recapture presentation-time visible columns after applying runtime gates. Cancel and window close discard unsaved edits. The dialog opens from its actual column-content size, bounded by the current screen's available geometry, and retains an as-needed vertical scrollbar for smaller displays.
+
 The dialog footer is one permanent native layout containing the initially hidden saved-status label, stretch and Apply/Close button box. Showing `Settings saved.` after a successful Apply must not add a vertical row or change the dialog's required height.
 
 ### Device Snapshots
@@ -225,6 +227,11 @@ Cover at minimum:
 32. completed phone-audit result presentation retains the canonical device source and visibility;
 33. Custom does not add a device-history column absent from the saved Custom column set;
 34. the saved-status label and native Apply/Close button box share one permanent footer layout before and after Apply.
+35. Customize View Save retains a selected but currently inapplicable history column and exposes it after a real phone-source transition;
+36. saving an applicable history column survives reopen and restart, while explicit removal also survives reopen and restart;
+37. Customize View Cancel and window close discard checkbox edits;
+38. a real Changes & History Apply path exposes the device-history column for Basic, Source Details and Technical phone results;
+39. Customize View sizing fits content when screen geometry permits and clamps to preserve as-needed scrolling on small displays.
 
 ## Out of scope
 

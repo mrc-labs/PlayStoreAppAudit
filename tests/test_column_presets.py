@@ -324,9 +324,12 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     expected_widths = _widths(window)
     saved_custom = _custom_snapshot(settings)
     assert settings["view_preset"] == "Custom"
-    assert settings["custom_view_columns"] == expected_visible
+    assert set(settings["custom_view_columns"]) == set(expected_visible)  # type: ignore[arg-type]
     assert settings["custom_view_order"] == expected_order
-    assert settings["custom_view_widths"] == expected_widths
+    saved_widths = settings["custom_view_widths"]
+    assert isinstance(saved_widths, dict)
+    assert all(saved_widths[column] == expected_widths[column] for column in expected_visible)
+    assert saved_widths["notes"] > 0
     assert "notes" not in expected_visible
     assert expected_widths["package_name"] == 333
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()

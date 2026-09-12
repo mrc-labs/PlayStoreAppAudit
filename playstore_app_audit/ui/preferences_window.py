@@ -7,7 +7,7 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QSize, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -41,6 +41,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
 
@@ -60,6 +61,38 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
         "local_apk_sha256",
     }
 )
+
+CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
+CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
+CUSTOMIZE_VIEW_SCREEN_MARGIN = 48
+
+
+def customize_view_dialog_sizes(
+    content_size: QSize,
+    fixed_overhead: QSize,
+    available_size: QSize,
+) -> tuple[QSize, QSize]:
+    """Return screen-bounded minimum and initial sizes for Customize View."""
+
+    usable_width = max(1, available_size.width() - CUSTOMIZE_VIEW_SCREEN_MARGIN)
+    usable_height = max(1, available_size.height() - CUSTOMIZE_VIEW_SCREEN_MARGIN)
+    minimum = QSize(
+        min(CUSTOMIZE_VIEW_MIN_SIZE.width(), usable_width),
+        min(CUSTOMIZE_VIEW_MIN_SIZE.height(), usable_height),
+    )
+    desired_width = max(
+        CUSTOMIZE_VIEW_NORMAL_WIDTH,
+        content_size.width() + fixed_overhead.width(),
+    )
+    desired_height = max(
+        CUSTOMIZE_VIEW_MIN_SIZE.height(),
+        content_size.height() + fixed_overhead.height(),
+    )
+    initial = QSize(
+        max(minimum.width(), min(desired_width, usable_width)),
+        max(minimum.height(), min(desired_height, usable_height)),
+    )
+    return minimum, initial
 
 
 def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -346,8 +379,6 @@ class PreferencesWindow(table_ui.TableWindow):
         dialog = QDialog(self)
         dialog.setObjectName("DisplaySettingsDialog")
         dialog.setWindowTitle("Customize View")
-        dialog.resize(740, 640)
-        dialog.setMinimumSize(620, 500)
         root = QVBoxLayout(dialog)
 
         heading = QLabel("Customize View")
@@ -394,17 +425,18 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_font.setBold(True)
         custom_heading.setFont(custom_font)
         root.addWidget(custom_heading)
-        root.addWidget(
-            self._settings_note(
-                "Store Status and Package Name are always included. Changing this selection "
-                "activates View > Column Preset > Custom."
-            )
+        custom_note = self._settings_note(
+            "Store Status and Package Name are always included. Click Save to apply changes. "
+            "Changing the column selection activates View > Column Preset > Custom."
         )
+        custom_note.setObjectName("CustomColumnsNote")
+        root.addWidget(custom_note)
 
         scroll = QScrollArea()
         scroll.setObjectName("CustomColumnsScrollArea")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         columns_host = QWidget()
         groups_layout = QHBoxLayout(columns_host)
         groups_layout.setContentsMargins(0, 4, 0, 4)
@@ -454,6 +486,24 @@ class PreferencesWindow(table_ui.TableWindow):
         bottom.addWidget(buttons)
         root.addLayout(bottom)
 
+        dialog.ensurePolished()
+        columns_host.ensurePolished()
+        groups_layout.activate()
+        root.activate()
+        layout_hint = root.sizeHint()
+        scroll_hint = scroll.sizeHint()
+        fixed_overhead = QSize(
+            max(0, layout_hint.width() - scroll_hint.width()),
+            max(0, layout_hint.height() - scroll_hint.height()),
+        )
+        minimum_size, initial_size = customize_view_dialog_sizes(
+            columns_host.sizeHint(),
+            fixed_overhead,
+            dialog.screen().availableGeometry().size(),
+        )
+        dialog.setMinimumSize(minimum_size)
+        dialog.resize(initial_size)
+
         def reset_controls() -> None:
             show_icons.setChecked(app_icon_metadata.DEFAULT_SHOW_APP_ICONS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
@@ -470,17 +520,37 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_columns = ["criticality", "package_name"] + [
             key for key, check in custom_checks.items() if check.isChecked()
         ]
-        custom_columns = list(dict.fromkeys(custom_columns))
+        custom_columns = self._normalise_custom_columns(
+            list(dict.fromkeys(custom_columns))
+        ) or ["criticality", "package_name"]
         columns_changed = set(custom_columns) != configured
         updates: dict[str, object] = {
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
         }
         if columns_changed:
+            _visible, live_order, live_widths, encoded = self._current_table_layout()
+            stored_widths = self._normalise_custom_widths(
+                self.user_settings.get("custom_view_widths")
+            )
+            preserved_widths = {
+                column: (
+                    live_widths[column]
+                    if live_widths.get(column, 0) >= 20
+                    else stored_widths.get(
+                        column,
+                        table_layout.default_column_width(self.table, column),
+                    )
+                )
+                for column in self.model.columns
+            }
             updates.update(
                 {
                     "custom_view_columns": custom_columns,
                     "custom_view_exists": True,
+                    "custom_view_order": live_order,
+                    "custom_view_widths": preserved_widths,
+                    "qt_header_state": encoded,
                     "view_preset": "Custom",
                 }
             )
@@ -495,8 +565,9 @@ class PreferencesWindow(table_ui.TableWindow):
                 )
             )
         if columns_changed:
+            self._sync_view_preset_action("Custom")
+            self._sync_custom_preset_availability()
             self._apply_column_visibility(reset_order=False)
-            self._persist_current_custom_layout()
         else:
             self._sync_custom_preset_availability()
         self._refresh_table_presentation()
