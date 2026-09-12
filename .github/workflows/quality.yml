@@ -35,7 +35,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.13"
           - "3.14"
     runs-on: windows-latest
 
@@ -63,7 +62,7 @@ jobs:
         env:
           EXPECTED_PYTHON: ${{ matrix.python-version }}
         run: |
-          python -c "import os, sys, PySide6; expected=tuple(map(int, os.environ['EXPECTED_PYTHON'].split('.'))); print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == expected; assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6,11)"
+          python -c "import os, sys, PySide6; expected=tuple(map(int, os.environ['EXPECTED_PYTHON'].split('.'))); print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == expected; assert PySide6.__version__ == '6.11.2'"
 
       - name: Validate PowerShell helper syntax
         shell: pwsh
