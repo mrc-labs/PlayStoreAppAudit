@@ -397,8 +397,6 @@ class PreferencesWindow(table_ui.TableWindow):
             )
         )
 
-        display_form = QFormLayout()
-        display_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         show_icons = QCheckBox("Show Play Store App Icons")
         show_icons.setObjectName("ShowAppIconsCheck")
         show_icons.setToolTip(
@@ -419,16 +417,7 @@ class PreferencesWindow(table_ui.TableWindow):
         date_format.setCurrentText(
             str(self.user_settings.get("date_format") or presentation.DEFAULT_DATE_FORMAT)
         )
-        display_form.addRow("Date Format", date_format)
-        display_form.addRow("", show_icons)
-        root.addLayout(display_form)
 
-        automatic_heading = QLabel("Automatic Columns")
-        automatic_heading.setObjectName("AutomaticColumnsTitle")
-        automatic_font = automatic_heading.font()
-        automatic_font.setBold(True)
-        automatic_heading.setFont(automatic_font)
-        root.addWidget(automatic_heading)
         automatic_tooltips = {
             "criticality": "Always shown in every view.",
             "package_name": "Always shown in every view.",
@@ -452,6 +441,21 @@ class PreferencesWindow(table_ui.TableWindow):
             and source == SOURCE_DEVICE,
             "local_apk_version_comparison": source == SOURCE_LOCAL_APK,
         }
+
+        top_sections = QHBoxLayout()
+        top_sections.setSpacing(24)
+
+        automatic_pane = QWidget()
+        automatic_pane.setObjectName("AutomaticColumnsPane")
+        automatic_layout = QVBoxLayout(automatic_pane)
+        automatic_layout.setContentsMargins(0, 0, 0, 0)
+        automatic_layout.setSpacing(6)
+        automatic_heading = QLabel("Automatic Columns")
+        automatic_heading.setObjectName("AutomaticColumnsTitle")
+        automatic_font = automatic_heading.font()
+        automatic_font.setBold(True)
+        automatic_heading.setFont(automatic_font)
+        automatic_layout.addWidget(automatic_heading)
         for key in (
             "criticality",
             "package_name",
@@ -464,7 +468,32 @@ class PreferencesWindow(table_ui.TableWindow):
             check.setChecked(automatic_checked[key])
             check.setEnabled(False)
             check.setToolTip(automatic_tooltips[key])
-            root.addWidget(check)
+            automatic_layout.addWidget(check)
+        automatic_layout.addStretch(1)
+
+        display_pane = QWidget()
+        display_pane.setObjectName("DisplayOptionsPane")
+        display_layout = QVBoxLayout(display_pane)
+        display_layout.setContentsMargins(0, 0, 0, 0)
+        display_layout.setSpacing(6)
+        display_heading = QLabel("Display Options")
+        display_heading.setObjectName("DisplayOptionsTitle")
+        display_font = display_heading.font()
+        display_font.setBold(True)
+        display_heading.setFont(display_font)
+        display_layout.addWidget(display_heading)
+        display_form = QFormLayout()
+        display_form.setContentsMargins(0, 0, 0, 0)
+        display_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        display_form.addRow("Date Format", date_format)
+        display_form.addRow("", show_icons)
+        display_layout.addLayout(display_form)
+        display_layout.addStretch(1)
+
+        top_sections.addWidget(automatic_pane, 1)
+        top_sections.addWidget(display_pane, 1)
+        root.addLayout(top_sections)
+        root.addSpacing(14)
 
         custom_heading = QLabel("Custom Columns")
         custom_heading.setObjectName("CustomColumnsTitle")
