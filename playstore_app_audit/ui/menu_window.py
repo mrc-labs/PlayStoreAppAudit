@@ -240,6 +240,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
         if callable(sync_post_audit_views):
             sync_post_audit_views()
+        self._apply_column_visibility(reset_order=False)
         self._update_summary()
         self.status_label.setText("Changes & History settings saved")
         return self._changes_history_availability()

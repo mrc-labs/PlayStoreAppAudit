@@ -283,6 +283,59 @@ def test_dialog_persists_tracking_controls_and_keeps_snapshots_independent(
     assert ui_settings["inventory_history_enabled"] is True
 
 
+@pytest.mark.parametrize(
+    (
+        "initial_master",
+        "initial_store",
+        "updated_master",
+        "updated_store",
+        "initially_hidden",
+        "finally_hidden",
+    ),
+    [
+        (False, True, True, True, True, False),
+        (True, True, False, True, False, True),
+        (True, True, True, False, False, True),
+    ],
+)
+def test_apply_refreshes_change_column_visibility_immediately(
+    window: MainWindow,
+    app: QApplication,
+    ui_settings: dict[str, object],
+    initial_master: bool,
+    initial_store: bool,
+    updated_master: bool,
+    updated_store: bool,
+    initially_hidden: bool,
+    finally_hidden: bool,
+) -> None:
+    ui_settings.update(
+        {
+            state.CHANGES_HISTORY_ENABLED_KEY: initial_master,
+            "compare_previous": initial_store,
+            "view_preset": "Basic",
+        }
+    )
+    window.user_settings.update(ui_settings)
+    window.source_mode = "file"
+    change_column = window.model.columns.index("change")
+    window._apply_column_visibility(reset_order=False)
+    assert window.table.isColumnHidden(change_column) is initially_hidden
+
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    dialog.automatic_tracking_check.setChecked(updated_master)
+    if not dialog.store_tracking_check.isEnabled():
+        dialog.automatic_tracking_check.setChecked(True)
+    dialog.store_tracking_check.setChecked(updated_store)
+    dialog.automatic_tracking_check.setChecked(updated_master)
+    dialog.apply_button.click()
+
+    assert window.table.isColumnHidden(change_column) is finally_hidden
+
+
 def test_snapshot_save_uses_canonical_default_with_master_off(
     window: MainWindow,
     local_state: Path,
