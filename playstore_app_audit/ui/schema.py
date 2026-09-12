@@ -70,7 +70,7 @@ MODEL_COLUMNS = tuple(
 
 COLUMN_LABELS = {
     "criticality": "Store Status",
-    "change": "Change",
+    "change": "Play Store Listing Change",
     "package_name": "Package Name",
     "play_title": "Play Store Title",
     "play_last_update": "Last Store Update",
@@ -97,7 +97,7 @@ COLUMN_LABELS = {
     "app_enabled": "Enabled State",
     "sensitive_permissions_count": "Sensitive Permissions Count",
     "sensitive_permissions": "Sensitive Permissions",
-    "device_change": "Device Inventory Change",
+    "device_change": "Device App Inventory Change",
     "health_score": "Maintenance Score",
     "local_apk_file_name": "APK Filename",
     "local_apk_location": "Location",
@@ -110,6 +110,7 @@ COLUMN_LABELS = {
 
 TABLE_HEADER_LABELS = {
     **COLUMN_LABELS,
+    "change": "Play Store Listing\nChange",
     "play_last_update": "Last Store\nUpdate",
     "age_days": "Store Age\n(Days)",
     "play_http_status": "HTTP\nStatus",
@@ -117,7 +118,7 @@ TABLE_HEADER_LABELS = {
     "version_comparison": "Installed vs\nStore",
     "compatibility_status": "Android\nCompatibility",
     "sensitive_permissions_count": "Sensitive Permissions\nCount",
-    "device_change": "Device Inventory\nChange",
+    "device_change": "Device App Inventory\nChange",
     "health_score": "Maintenance\nScore",
     "local_apk_version_comparison": "Local APK vs\nStore",
     "local_apk_version_code": "Local Version\nCode",
@@ -153,7 +154,7 @@ def _width(
 # bounded while primary identity columns receive useful reading space.
 COLUMN_WIDTH_POLICIES = {
     "criticality": _width(ColumnWidthCategory.MEDIUM, 145, 120, 180),
-    "change": _width(ColumnWidthCategory.COMPACT, 105, 80, 120),
+    "change": _width(ColumnWidthCategory.MEDIUM, 145, 125, 165),
     "package_name": _width(ColumnWidthCategory.PRIMARY, 300, 240, 340),
     "play_title": _width(ColumnWidthCategory.PRIMARY, 280, 220, 340),
     "play_last_update": _width(ColumnWidthCategory.COMPACT, 104, 96, 108),
@@ -180,7 +181,7 @@ COLUMN_WIDTH_POLICIES = {
     "app_enabled": _width(ColumnWidthCategory.COMPACT, 88, 80, 92),
     "sensitive_permissions_count": _width(ColumnWidthCategory.COMPACT, 124, 112, 128),
     "sensitive_permissions": _width(ColumnWidthCategory.LONG_TEXT, 320, 260, 380),
-    "device_change": _width(ColumnWidthCategory.MEDIUM, 130, 118, 134),
+    "device_change": _width(ColumnWidthCategory.MEDIUM, 155, 135, 175),
     "health_score": _width(ColumnWidthCategory.COMPACT, 86, 78, 90),
     "local_apk_file_name": _width(ColumnWidthCategory.PRIMARY, 230, 180, 300),
     "local_apk_location": _width(ColumnWidthCategory.LONG_TEXT, 360, 260, 480),
