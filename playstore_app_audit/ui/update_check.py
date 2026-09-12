@@ -6,7 +6,7 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QCheckBox, QMessageBox, QWidget
+from PySide6.QtWidgets import QCheckBox, QMessageBox
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
