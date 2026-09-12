@@ -4,7 +4,7 @@ import os
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem, QTableView
 
 import playstore_app_audit.ui.base_window as base_ui
@@ -79,6 +79,8 @@ def test_selected_current_cell_uses_custom_row_paint_without_changing_selection(
         view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
         index = model.index(0, model.columns.index("package_name"))
+        base_background = model.data(index, Qt.ItemDataRole.BackgroundRole)
+        assert isinstance(base_background, QColor)
         view.setCurrentIndex(index)
         view.selectRow(0)
         assert view.selectionModel().isSelected(index)
@@ -92,7 +94,7 @@ def test_selected_current_cell_uses_custom_row_paint_without_changing_selection(
         assert not option.state & QStyle.StateFlag.State_Selected
         assert not option.state & QStyle.StateFlag.State_HasFocus
         assert view.selectionModel().isSelected(index)
-        assert option.backgroundBrush.color().name().lower() == table_ui.SELECTED_ROW_BACKGROUND.lower()
+        assert option.backgroundBrush.color() == base_background.darker(104)
     finally:
         view.deleteLater()
         model.deleteLater()

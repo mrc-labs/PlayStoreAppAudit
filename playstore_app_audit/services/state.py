@@ -13,6 +13,8 @@ CACHE_SCHEMA_VERSION = 2
 DEFAULT_STORE_WORKERS = 16
 MIN_STORE_WORKERS = 4
 MAX_STORE_WORKERS = 32
+DEFAULT_CACHE_TTL_HOURS = 24
+CACHE_TTL_DEFAULT_MIGRATION_KEY = "cache_ttl_default_migrated_v2"
 STORE_LANGUAGE_AUTO_MIGRATION_KEY = "store_language_auto_migrated"
 AUDIT_CHANGES_FIELD = "_audit_changes"
 STORE_EVIDENCE_FIELD = "_store_evidence"
@@ -25,6 +27,14 @@ _AVAILABLE_PLAY_STATUSES = frozenset(
     }
 )
 _CHECKED_UNAVAILABLE_PLAY_STATUSES = frozenset({"not_found_in_checked_countries"})
+_CONCLUSIVE_STORE_CACHE_STATUSES = frozenset(
+    {
+        "available",
+        "available_in_other_country",
+        "available_in_fallback_locale_only",
+        "not_found_in_checked_countries",
+    }
+)
 _MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
 _MAINTENANCE_LABELS = {
     "green": "Recent Update",
@@ -47,7 +57,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     STORE_LANGUAGE_AUTO_MIGRATION_KEY: True,
     "store_workers": DEFAULT_STORE_WORKERS,
     "cache_enabled": True,
-    "cache_ttl_hours": 72,
+    "cache_ttl_hours": DEFAULT_CACHE_TTL_HOURS,
+    CACHE_TTL_DEFAULT_MIGRATION_KEY: True,
     "compare_previous": False,
     "exclude_system_source": True,
     "collect_full_device_metadata_on_scan": False,
@@ -134,6 +145,21 @@ def load_settings() -> dict[str, Any]:
     settings["store_language"] = raw_language or "auto"
     settings[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
 
+    # Before v2, 72 hours was written indistinguishably as the application
+    # default. Migrate that legacy value exactly once. The persisted marker
+    # makes a later deliberate user choice of 72 hours stable.
+    cache_default_migrated = bool(
+        isinstance(data, dict) and data.get(CACHE_TTL_DEFAULT_MIGRATION_KEY)
+    )
+    migrate_legacy_cache_default = (
+        isinstance(data, dict)
+        and not cache_default_migrated
+        and data.get("cache_ttl_hours") == 72
+    )
+    if migrate_legacy_cache_default:
+        settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
+    settings[CACHE_TTL_DEFAULT_MIGRATION_KEY] = True
+
     # Device was the v1.x name for the richer source-oriented table layout.
     # Preserve Custom data verbatim while conservatively migrating only that
     # retired built-in name.
@@ -142,9 +168,15 @@ def load_settings() -> dict[str, Any]:
 
     settings["store_workers"] = normalise_store_workers(settings.get("store_workers"))
     try:
-        settings["cache_ttl_hours"] = max(0, min(24 * 30, int(settings.get("cache_ttl_hours", 72))))
+        settings["cache_ttl_hours"] = max(
+            0,
+            min(
+                24 * 30,
+                int(settings.get("cache_ttl_hours", DEFAULT_CACHE_TTL_HOURS)),
+            ),
+        )
     except (TypeError, ValueError):
-        settings["cache_ttl_hours"] = 72
+        settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
@@ -185,6 +217,8 @@ def load_settings() -> dict[str, Any]:
         default_alternative["aptoide"].get("api_key_protected") or ""
     ).strip()
     settings["alternative_distribution"] = default_alternative
+    if migrate_legacy_cache_default:
+        _write_json(settings_path(), settings)
     return settings
 
 
@@ -194,6 +228,7 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     language = str(merged.get("store_language") or "auto").strip().lower()
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
+    merged[CACHE_TTL_DEFAULT_MIGRATION_KEY] = True
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
     merged["collect_full_device_metadata_on_scan"] = (
         merged.get("collect_full_device_metadata_on_scan") is True
@@ -266,15 +301,27 @@ def load_fresh_cache(
 
 
 def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> None:
+    """Reconcile completed live Store rows with the reusable healthy cache.
+
+    Healthy available rows replace their exact entry. Conclusive live evidence
+    that is not healthy-cacheable removes only its exact old entry, while
+    transient or inconclusive evidence leaves any prior healthy entry intact.
+    Callers pass completed live rows only, so uncompleted packages are untouched.
+    """
+
     data = _read_json(cache_path(), {})
     if not isinstance(data, dict):
         data = {}
     now = datetime.now(UTC).isoformat()
     for row in rows:
-        if row.get("play_status") != "available" or not row.get("play_last_update"):
-            continue
         package_name = str(row.get("package_name") or "").strip()
         if not package_name:
+            continue
+        key = _cache_key(country, language, package_name)
+        play_status = str(row.get("play_status") or "").strip()
+        if play_status != "available" or not row.get("play_last_update"):
+            if play_status in _CONCLUSIVE_STORE_CACHE_STATUSES:
+                data.pop(key, None)
             continue
         stored = {
             key: value
@@ -290,13 +337,15 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
                 AUDIT_CHANGES_FIELD,
             }
         }
-        data[_cache_key(country, language, package_name)] = {"fetched_at": now, "row": stored}
+        data[key] = {"fetched_at": now, "row": stored}
 
     cutoff_seconds = 45 * 24 * 3600
     current_time = datetime.now(UTC)
     for key in list(data):
         try:
-            fetched = datetime.fromisoformat(str(data[key]["fetched_at"]).replace("Z", "+00:00"))
+            fetched = datetime.fromisoformat(
+                str(data[key]["fetched_at"]).replace("Z", "+00:00")
+            )
             if (current_time - fetched.astimezone(UTC)).total_seconds() > cutoff_seconds:
                 data.pop(key, None)
         except Exception:

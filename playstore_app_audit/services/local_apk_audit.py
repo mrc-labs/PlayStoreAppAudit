@@ -5,11 +5,13 @@ from datetime import UTC
 from typing import Any
 
 from playstore_app_audit.domain.local_artifact_store import LocalArtifactStoreAssociation
+from playstore_app_audit.domain.local_artifacts import LocalArtifact
 from playstore_app_audit.services import alternative_distribution, device_metadata
 
 SOURCE_MODE = "local_apk"
 LIBRARY_SOURCE_MODE = "local_apk_library"
 LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
+DEFINITIVE_STORE_ABSENCE = "not_found_in_checked_countries"
 
 
 def is_local_apk_source(source_mode: object) -> bool:
@@ -40,12 +42,28 @@ def association_result_row(
     evidence = association.package_evidence
     if evidence is None:
         return None
-    artifact = association.artifact
-    row = _mutable_value(evidence.store_result)
+    row = artifact_result_row(
+        association.artifact,
+        _mutable_value(evidence.store_result),
+        source_mode=source_mode,
+    )
     if evidence.alternative_distribution:
         row[alternative_distribution.ROW_FIELD] = [
             item.to_mapping() for item in evidence.alternative_distribution
         ]
+    return row
+
+
+def artifact_result_row(
+    artifact: LocalArtifact,
+    store_row: Mapping[str, Any] | None = None,
+    *,
+    source_mode: str = SOURCE_MODE,
+    provisional: bool = False,
+) -> dict[str, Any]:
+    """Merge authoritative local evidence with optional package-level Store evidence."""
+
+    row = _mutable_value(store_row or {})
     local_version = artifact.version_name or ""
     row.update(
         {
@@ -71,11 +89,20 @@ def association_result_row(
             "local_apk_permissions": list(artifact.permissions),
             "local_apk_features": list(artifact.features),
             "local_apk_warnings": [warning.value for warning in artifact.warnings],
-            "local_apk_version_comparison": device_metadata.compare_versions(
-                local_version, row.get("play_version")
+            "local_apk_version_comparison": (
+                "N/A"
+                if row.get("play_status") == DEFINITIVE_STORE_ABSENCE
+                else (
+                    device_metadata.compare_versions(local_version, row.get("play_version"))
+                    if row.get("play_version")
+                    else ""
+                )
             ),
         }
     )
+    if provisional:
+        row["_audit_provisional"] = True
+        row["_provisional_key"] = str(artifact.canonical_path)
     return row
 
 

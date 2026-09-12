@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 import playstore_app_audit.services.local_artifact_store as local_store_module
+import playstore_app_audit.services.state as state
 from playstore_app_audit.domain.alternative_distribution import (
     AlternativeDistributionResult,
     AlternativeDistributionState,
@@ -107,6 +108,45 @@ def test_duplicate_packages_are_looked_up_once_and_fanned_out_by_identity() -> N
     ]
     assert result.associations[0].package_evidence is result.associations[1].package_evidence
     assert result.associations[2].package_evidence is result.packages[1]
+
+
+def test_progress_callback_exposes_store_rows_without_sending_local_evidence() -> None:
+    artifact = _artifact("com.example.private", "9" * 64, 1)
+
+    class CallbackStore:
+        def __init__(self) -> None:
+            self.apps: list[dict[str, str]] = []
+
+        def audit(self, apps, config, _progress=None, *, row_completed_callback, **_kwargs):
+            self.apps = [dict(app) for app in apps]
+            row = {
+                "package_name": apps[0]["package_name"],
+                "play_status": "available",
+                "play_version": "2.0",
+                "store_country": config.country,
+            }
+            row_completed_callback(0, row)
+            return [row]
+
+    store = CallbackStore()
+    completed: list[tuple[str, dict[str, Any]]] = []
+    LocalArtifactStoreService(
+        store_service=store,
+        alternative_runner=_no_alternatives,
+    ).collect(
+        [artifact],
+        AuditConfig(),
+        {"cache_enabled": False},
+        row_completed_callback=lambda package, row: completed.append((package, row)),
+    )
+
+    assert store.apps == [
+        {"app_name": "com.example.private", "package_name": "com.example.private"}
+    ]
+    assert completed[0][0] == "com.example.private"
+    remote_payload = repr(store.apps)
+    assert str(artifact.canonical_path) not in remote_payload
+    assert artifact.artifact_sha256 not in remote_payload
 
 
 def test_store_failure_row_is_isolated_and_store_evidence_is_immutable() -> None:
@@ -307,3 +347,135 @@ def test_cancelled_missing_store_rows_keep_artifact_associations() -> None:
     assert result.packages == ()
     assert result.associations[0].artifact is artifact
     assert result.associations[0].package_evidence is None
+
+
+def test_forced_stop_reconciles_completed_store_rows_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_file = tmp_path / "audit_cache.json"
+    monkeypatch.setattr(state, "cache_path", lambda: cache_file)
+    package_a = "com.example.stop-a"
+    package_b = "com.example.stop-b"
+    package_c = "com.example.stop-c"
+    state.update_cache(
+        [
+            {
+                "package_name": package,
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+                "play_title": "Old",
+            }
+            for package in (package_a, package_b, package_c)
+        ],
+        "us",
+        "en",
+    )
+
+    class StoppedStore:
+        def audit(self, apps, config, _progress=None, *, cancel_event, row_completed_callback, **_kwargs):
+            row_a = {
+                "package_name": apps[0]["package_name"],
+                "play_status": "available",
+                "play_last_update": "2026-09-01",
+                "play_title": "New",
+            }
+            row_b = {
+                "package_name": apps[1]["package_name"],
+                "play_status": "not_found_in_checked_countries",
+                "play_last_update": "",
+            }
+            row_completed_callback(0, row_a)
+            row_completed_callback(1, row_b)
+            cancel_event.set()
+            return []
+
+    cancel_event = local_store_module.threading.Event()
+    result = LocalArtifactStoreService(
+        store_service=StoppedStore(),
+        alternative_runner=_no_alternatives,
+    ).collect(
+        [
+            _artifact(package_a, "7" * 64, 1),
+            _artifact(package_b, "8" * 64, 2),
+            _artifact(package_c, "9" * 64, 3),
+        ],
+        AuditConfig(country="us", language="en"),
+        {"cache_enabled": True},
+        force_refresh=True,
+        cancel_event=cancel_event,
+    )
+
+    assert [package.package_lookup_key for package in result.packages] == [
+        package_a,
+        package_b,
+    ]
+    cached = state.load_fresh_cache(
+        [
+            {"package_name": package, "app_name": package}
+            for package in (package_a, package_b, package_c)
+        ],
+        "us",
+        "en",
+        24,
+    )
+    assert set(cached) == {package_a, package_c}
+    assert cached[package_a]["play_title"] == "New"
+    assert cached[package_c]["play_title"] == "Old"
+
+
+def test_forced_failure_reconciles_completed_store_rows_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_file = tmp_path / "audit_cache.json"
+    monkeypatch.setattr(state, "cache_path", lambda: cache_file)
+    completed = "com.example.failure-completed"
+    untouched = "com.example.failure-uncompleted"
+    state.update_cache(
+        [
+            {
+                "package_name": package,
+                "play_status": "available",
+                "play_last_update": "2026-08-01",
+            }
+            for package in (completed, untouched)
+        ],
+        "us",
+        "en",
+    )
+
+    class FailedStore:
+        def audit(self, apps, _config, _progress=None, *, row_completed_callback, **_kwargs):
+            row_completed_callback(
+                0,
+                {
+                    "package_name": apps[0]["package_name"],
+                    "play_status": "not_found_in_checked_countries",
+                    "play_last_update": "",
+                },
+            )
+            raise RuntimeError("synthetic worker failure")
+
+    with pytest.raises(RuntimeError, match="synthetic worker failure"):
+        LocalArtifactStoreService(
+            store_service=FailedStore(),
+            alternative_runner=_no_alternatives,
+        ).collect(
+            [
+                _artifact(completed, "a" * 64, 1),
+                _artifact(untouched, "b" * 64, 2),
+            ],
+            AuditConfig(country="us", language="en"),
+            {"cache_enabled": True},
+            force_refresh=True,
+        )
+
+    cached = state.load_fresh_cache(
+        [
+            {"package_name": package, "app_name": package}
+            for package in (completed, untouched)
+        ],
+        "us",
+        "en",
+        24,
+    )
+    assert set(cached) == {untouched}

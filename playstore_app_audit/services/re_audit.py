@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from playstore_app_audit.services import state
+
 POLICY_ID = "conservative-smart-reaudit-v1"
 CACHE_REUSABLE_STATUS = "available"
 
@@ -38,7 +40,9 @@ def policy_context(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     policy.update(
         {
             "cache_enabled": bool(values.get("cache_enabled", True)),
-            "healthy_cache_ttl_hours": _ttl(values.get("cache_ttl_hours", 72)),
+            "healthy_cache_ttl_hours": _ttl(
+                values.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS)
+            ),
         }
     )
     return policy
@@ -46,9 +50,9 @@ def policy_context(settings: dict[str, Any] | None = None) -> dict[str, Any]:
 
 def _ttl(value: object) -> int:
     try:
-        ttl = int(value)
+        ttl = int(str(value))
     except (TypeError, ValueError):
-        ttl = 72
+        ttl = state.DEFAULT_CACHE_TTL_HOURS
     return max(0, min(720, ttl))
 
 

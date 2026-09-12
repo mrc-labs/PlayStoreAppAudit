@@ -7,6 +7,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+SUPPORTED_LOCAL_PACKAGE_SUFFIXES = frozenset({".apk", ".apks", ".apkm", ".xapk"})
+
 
 @dataclass(frozen=True, slots=True)
 class LocalApkDiscoveryResult:
@@ -16,7 +18,7 @@ class LocalApkDiscoveryResult:
 
 
 def normalise_explicit_apks(paths: Iterable[str | Path]) -> tuple[Path, ...]:
-    """Return existing standalone APK files once, in deterministic path order."""
+    """Return supported local package files once, in deterministic path order."""
 
     by_key: dict[str, Path] = {}
     for supplied in paths:
@@ -24,7 +26,7 @@ def normalise_explicit_apks(paths: Iterable[str | Path]) -> tuple[Path, ...]:
             path = Path(supplied).expanduser().resolve(strict=True)
         except (OSError, RuntimeError):
             continue
-        if not path.is_file() or path.suffix.casefold() != ".apk":
+        if not path.is_file() or path.suffix.casefold() not in SUPPORTED_LOCAL_PACKAGE_SUFFIXES:
             continue
         by_key.setdefault(os.path.normcase(str(path)), path)
     return tuple(by_key[key] for key in sorted(by_key))
@@ -46,7 +48,7 @@ def discover_folder_apks(
     cancel_event: threading.Event | None = None,
     progress_callback: Callable[[int, Path], None] | None = None,
 ) -> LocalApkDiscoveryResult:
-    """Enumerate standalone APKs recursively without following directory links."""
+    """Enumerate supported local packages without following directory links."""
 
     cancelled = cancel_event or threading.Event()
     supplied_root = Path(root).expanduser()
@@ -78,7 +80,11 @@ def discover_folder_apks(
                 if entry.is_dir(follow_symlinks=False):
                     if not _is_directory_link(entry):
                         subdirectories.append(Path(entry.path))
-                elif entry.is_file(follow_symlinks=False) and Path(entry.name).suffix.casefold() == ".apk":
+                elif (
+                    entry.is_file(follow_symlinks=False)
+                    and Path(entry.name).suffix.casefold()
+                    in SUPPORTED_LOCAL_PACKAGE_SUFFIXES
+                ):
                     found.append(Path(entry.path).resolve(strict=True))
                     if progress_callback is not None:
                         progress_callback(len(found), Path(entry.path))

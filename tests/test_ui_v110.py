@@ -128,8 +128,8 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
     ] == ["File", "Audit", "View", "Tools", "Help"]
     assert _action_structure(window.file_menu) == [
         "Choose App List…",
-        "Choose APK file(s)…",
-        "Choose APK Folder…",
+        "Choose Package File(s)…",
+        "Choose Package Folder…",
         "Recent Sources",
         "Scan Phone",
         "Export Phone Package List…",

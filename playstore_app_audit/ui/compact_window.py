@@ -6,7 +6,7 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 
-from PySide6.QtCore import QByteArray, QObject, Qt, QUrl, Signal
+from PySide6.QtCore import QByteArray, QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -35,6 +35,7 @@ from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
 from playstore_app_audit.services.local_apk_audit import is_local_apk_source
 from playstore_app_audit.services.state import (
+    DEFAULT_CACHE_TTL_HOURS,
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
     clear_cache,
@@ -58,6 +59,7 @@ OPERATION_PROGRESS_MAX_WIDTH = 320
 OPERATION_STATUS_LEFT_INSET = 16
 OPERATION_STATUS_RIGHT_INSET = 12
 OPERATION_STATUS_MIN_VERTICAL_PADDING = 2
+PROGRESSIVE_REFRESH_INTERVAL_MS = 75
 
 _original_classify_criticality = base_ui.classify_criticality
 
@@ -95,6 +97,7 @@ def _find_layout_containing(layout, target_widget):
 class ControlledAuditSignals(QObject):
     progress = Signal(int, int, int, str)
     alternative_phase = Signal(int, int)
+    row_available = Signal(int, object)
     done = Signal(object)
 
 
@@ -137,12 +140,25 @@ class CompactWindow(AuditWindow):
         self._audit_cancel_event = threading.Event()
         self._last_progress = (0, 0, "")
         self._alternative_phase_active = False
+        self._results_incomplete = False
+        self._progressive_sorting_was_enabled = False
+        self._provisional_row_indexes: dict[str, int] = {}
+        self._progressive_refresh_session: int | None = None
+        self._progressive_refresh_pending = False
+        self._progressive_payload_count = 0
+        self._progressive_refresh_count = 0
 
         super().__init__()
+
+        self._progressive_refresh_timer = QTimer(self)
+        self._progressive_refresh_timer.setSingleShot(True)
+        self._progressive_refresh_timer.setInterval(PROGRESSIVE_REFRESH_INTERVAL_MS)
+        self._progressive_refresh_timer.timeout.connect(self._flush_progressive_rows)
 
         self.audit_control_signals = ControlledAuditSignals()
         self.audit_control_signals.progress.connect(self._on_controlled_progress)
         self.audit_control_signals.alternative_phase.connect(self._on_alternative_phase)
+        self.audit_control_signals.row_available.connect(self._on_progressive_row)
         self.audit_control_signals.done.connect(self._on_controlled_done)
 
         self.setWindowIcon(QIcon(str(ensure_runtime_icon())))
@@ -698,14 +714,16 @@ class CompactWindow(AuditWindow):
         store_form.addRow("", cache_enabled)
         ttl = QSpinBox()
         ttl.setRange(1, 720)
-        ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
+        ttl.setValue(
+            int(self.user_settings.get("cache_ttl_hours", DEFAULT_CACHE_TTL_HOURS))
+        )
         ttl.setSuffix(" hours")
         ttl.setToolTip(
             "Only healthy available listings are cached. Not Found/anomaly/error results are always checked live."
         )
         store_form.addRow("Healthy-result cache TTL", ttl)
         cache_note = QLabel(
-            "Default: 72 hours. Only normal available apps with a valid update date are reused; risky or uncertain states always bypass the cache."
+            "Default: 24 hours. Only normal available apps with a valid update date are reused; risky or uncertain states always bypass the cache."
         )
         cache_note.setWordWrap(True)
         cache_note.setStyleSheet("color:#6F7C87;")
@@ -980,7 +998,9 @@ class CompactWindow(AuditWindow):
         store_workers = normalise_store_workers(self.user_settings.get("store_workers"))
         self.workers_spin.setValue(store_workers)
         cache_enabled = bool(self.user_settings.get("cache_enabled", True))
-        ttl = int(self.user_settings.get("cache_ttl_hours", 72))
+        ttl = int(
+            self.user_settings.get("cache_ttl_hours", DEFAULT_CACHE_TTL_HOURS)
+        )
         cached = self._load_fresh_cache(apps, country, language, ttl) if cache_enabled else {}
         live_apps = [app for app in apps if app["package_name"] not in cached]
         cached_count = len(cached)
@@ -992,8 +1012,28 @@ class CompactWindow(AuditWindow):
         self.source_label.setText(
             f"{source_label} source: {len(apps)} packages • {len(system_packages)} classified as system • {classification_method}"
         )
-        self.current_rows = []
-        self.model.set_rows([])
+        provisional_rows: list[dict[str, object]] = []
+        for app in apps:
+            package_name = app["package_name"]
+            row = dict(cached.get(package_name, {}))
+            row.update(
+                {
+                    "source_mode": self.source_mode or "",
+                    "app_name": app.get("app_name", package_name),
+                    "package_name": package_name,
+                    "is_system": package_name in system_packages,
+                    "_audit_provisional": True,
+                    "_provisional_key": package_name,
+                }
+            )
+            provisional_rows.append(row)
+        self._progressive_sorting_was_enabled = self.table.isSortingEnabled()
+        if self._progressive_sorting_was_enabled:
+            self.table.setSortingEnabled(False)
+        self.current_rows = provisional_rows
+        self._results_incomplete = True
+        self._begin_icon_result_generation()
+        self.model.set_rows(provisional_rows)
         self.export_button.setEnabled(False)
         self.progress.setRange(0, len(apps))
         self.progress.setValue(cached_count)
@@ -1004,6 +1044,7 @@ class CompactWindow(AuditWindow):
 
         self._audit_session += 1
         session = self._audit_session
+        self._begin_progressive_presentation(session, provisional_rows)
         self._audit_requested_outcome = None
         self._audit_pause_event = threading.Event()
         self._audit_pause_event.set()
@@ -1049,6 +1090,20 @@ class CompactWindow(AuditWindow):
 
         def row_completed(index: int, row: dict[str, object]) -> None:
             completed_live[index] = dict(row)
+            if session == self._audit_session and index < len(live_apps):
+                app = live_apps[index]
+                progressive = dict(row)
+                progressive.update(
+                    {
+                        "source_mode": self.source_mode or "",
+                        "app_name": app.get("app_name", app["package_name"]),
+                        "package_name": app["package_name"],
+                        "is_system": app["package_name"] in self.current_system_packages,
+                        "_audit_provisional": True,
+                        "_provisional_key": app["package_name"],
+                    }
+                )
+                self.audit_control_signals.row_available.emit(session, progressive)
 
         def ordered_live_rows(returned: list[dict[str, object]]) -> list[dict[str, object]]:
             by_package = {
@@ -1156,6 +1211,71 @@ class CompactWindow(AuditWindow):
         else:
             self.status_label.setText(f"Completed {done}/{total}: {package_name}")
 
+    @staticmethod
+    def _provisional_key(row: dict[str, object]) -> str:
+        return str(row.get("_provisional_key") or row.get("package_name") or "")
+
+    def _begin_icon_result_generation(self) -> None:
+        begin = getattr(self.model, "begin_result_generation", None)
+        if callable(begin):
+            begin()
+
+    def _begin_progressive_presentation(
+        self,
+        session: int,
+        rows: list[dict[str, object]],
+    ) -> None:
+        self._invalidate_progressive_presentation(reset_counts=True)
+        self._progressive_refresh_session = session
+        self._provisional_row_indexes = {
+            key: index
+            for index, row in enumerate(rows)
+            if (key := self._provisional_key(row))
+        }
+
+    def _invalidate_progressive_presentation(self, *, reset_counts: bool = False) -> None:
+        if hasattr(self, "_progressive_refresh_timer"):
+            self._progressive_refresh_timer.stop()
+        self._progressive_refresh_pending = False
+        self._progressive_refresh_session = None
+        self._provisional_row_indexes = {}
+        if reset_counts:
+            self._progressive_payload_count = 0
+            self._progressive_refresh_count = 0
+
+    def _flush_progressive_rows(self) -> None:
+        if not self._progressive_refresh_pending:
+            return
+        session = self._progressive_refresh_session
+        self._progressive_refresh_pending = False
+        if session != self._audit_session or not self._audit_active:
+            return
+        self.model.set_rows(list(self.current_rows))
+        self._progressive_refresh_count += 1
+        self.export_button.setEnabled(False)
+        self._update_summary()
+
+    def _on_progressive_row(self, session: int, payload: object) -> None:
+        if session != self._audit_session or not self._audit_active or not isinstance(payload, dict):
+            return
+        if self._progressive_refresh_session != session:
+            self._begin_progressive_presentation(session, self.current_rows)
+        row = dict(payload)
+        key = self._provisional_key(row)
+        if not key:
+            return
+        row_index = self._provisional_row_indexes.get(key)
+        if row_index is None:
+            self._provisional_row_indexes[key] = len(self.current_rows)
+            self.current_rows.append(row)
+        else:
+            self.current_rows[row_index] = row
+        self._progressive_payload_count += 1
+        self.export_button.setEnabled(False)
+        if not self._progressive_refresh_pending:
+            self._progressive_refresh_pending = True
+            self._progressive_refresh_timer.start()
+
     def _on_alternative_phase(self, session: int, eligible_count: int) -> None:
         if session != self._audit_session or not self._audit_active:
             return
@@ -1169,6 +1289,7 @@ class CompactWindow(AuditWindow):
         result = coerce_audit_run_result(payload)
         if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
+        self._invalidate_progressive_presentation()
         # A worker may have queued SUCCESS immediately before the UI processed
         # the user's Stop click. Once Stop is accepted while the run is active,
         # it remains authoritative unless the worker reports a fatal failure.
@@ -1191,14 +1312,27 @@ class CompactWindow(AuditWindow):
                 if local_apk_source
                 else str(row.get("package_name") or "") in self.current_system_packages
             )
+            if row.get("_audit_provisional"):
+                row.pop("criticality", None)
+                row.pop("criticality_key", None)
+                row.pop("criticality_rank", None)
+                row.pop("health_score", None)
+                row["change"] = ""
+                continue
             self._classify_row(row)
             row["change"] = compare_with_history(row, history) if compare_enabled else ""
 
         self.current_rows = typed_rows
+        self._results_incomplete = result.outcome is not AuditRunOutcome.SUCCESS
         self.model.set_rows(typed_rows)
+        if self._progressive_sorting_was_enabled:
+            self.table.setSortingEnabled(True)
+        self._progressive_sorting_was_enabled = False
         self.progress.setRange(0, max(result.total_count, 1))
         self.progress.setValue(result.completed_count)
-        self.export_button.setEnabled(bool(typed_rows))
+        self.export_button.setEnabled(
+            bool(typed_rows) and result.outcome is AuditRunOutcome.SUCCESS
+        )
         cache_summary = (
             f" • {result.cached_count} cached • {result.live_completed_count} live"
             if result.cached_count
@@ -1244,6 +1378,7 @@ class CompactWindow(AuditWindow):
             self.status_label.setText(f"Stopping… {done}/{total} completed")
 
     def _abandon_active_audit(self) -> None:
+        self._invalidate_progressive_presentation()
         if self._audit_state is AuditRunState.IDLE:
             return
         self._audit_requested_outcome = AuditRunOutcome.ABANDONED
@@ -1257,6 +1392,9 @@ class CompactWindow(AuditWindow):
             self._merge_base_rows = None
         if hasattr(self, "_v9_targeted_active"):
             self._v9_targeted_active = False
+        if self._progressive_sorting_was_enabled:
+            self.table.setSortingEnabled(True)
+        self._progressive_sorting_was_enabled = False
         self._set_audit_source_controls_enabled(True)
         self._set_audit_state(AuditRunState.IDLE)
 
@@ -1268,7 +1406,10 @@ class CompactWindow(AuditWindow):
     def _clear_results(self) -> None:
         if self._audit_state is not AuditRunState.IDLE:
             return
+        self._invalidate_progressive_presentation(reset_counts=True)
+        self._begin_icon_result_generation()
         base_ui.BaseWindow._clear_results(self)
+        self._results_incomplete = False
         self._set_audit_state(AuditRunState.IDLE)
 
     def closeEvent(self, event) -> None:

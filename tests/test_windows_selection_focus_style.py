@@ -38,6 +38,8 @@ def test_selected_item_uses_custom_paint_state_without_windows_item_accents(
         )
         view.setModel(model)
         index = model.index(0, model.columns.index("package_name"))
+        base_background = model.data(index, Qt.ItemDataRole.BackgroundRole)
+        assert isinstance(base_background, QColor)
         option = QStyleOptionViewItem()
         option.state |= (
             QStyle.StateFlag.State_Selected
@@ -50,7 +52,7 @@ def test_selected_item_uses_custom_paint_state_without_windows_item_accents(
         assert not option.state & QStyle.StateFlag.State_Selected
         assert not option.state & QStyle.StateFlag.State_HasFocus
         assert not option.state & QStyle.StateFlag.State_KeyboardFocusChange
-        assert option.backgroundBrush.color().name().lower() == table_ui.SELECTED_ROW_BACKGROUND.lower()
+        assert option.backgroundBrush.color() == base_background.darker(104)
     finally:
         view.deleteLater()
         model.deleteLater()

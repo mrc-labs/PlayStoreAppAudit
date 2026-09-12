@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 import pytest
@@ -9,6 +10,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.main_window as main_ui
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -39,12 +41,16 @@ def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
 
 
 def test_successful_audit_logs_stage_timings_without_package_names(
-    window: MainWindow, app: QApplication, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    samples = iter((103.0, 104.0, 105.0, 105.0))
+    samples = iter((103.0, 104.0))
     logged: list[str] = []
     monkeypatch.setattr(main_ui.time, "perf_counter", lambda: next(samples))
     monkeypatch.setattr(device_insights, "log_event", logged.append)
+    caplog.set_level(logging.INFO, logger=main_ui.__name__)
 
     window.source_mode = "file"
     window._audit_session = 12
@@ -55,6 +61,8 @@ def test_successful_audit_logs_stage_timings_without_package_names(
     window.current_system_packages = set()
     window.current_rows = []
     window.model.set_rows([])
+    window._progressive_payload_count = 5
+    window._progressive_refresh_count = 2
 
     row = {
         "package_name": "com.example.privatepackage",
@@ -62,26 +70,66 @@ def test_successful_audit_logs_stage_timings_without_package_names(
         "play_last_update": "2026-08-01",
         "play_title": "Example",
     }
-    window._on_controlled_done((12, [row], "", 2, 1))
+    result = AuditRunResult(
+        session=12,
+        outcome=AuditRunOutcome.SUCCESS,
+        rows=[row],
+        cached_count=2,
+        live_completed_count=1,
+        total_count=1,
+        metadata={
+            "physical_count": 1,
+            "package_count": 1,
+            "parse_ms": 27000,
+            "store_ms": 900,
+        },
+    )
+    window._on_controlled_done(result)
 
     app.processEvents()
 
     assert logged == [
-        "audit_performance result=success total_s=5.000 pre_finalize_s=3.000 "
-        "finalize_s=1.000 packages=1 cached=2 live=1 workers=16 source=file "
-        "statuses=available:1"
+        "audit_performance source=file outcome=success physical=1 packages=1 "
+        "parse_ms=27000 store_ms=900 total_ms=4000 cached=2 live=1 "
+        "progressive_payloads=5 progressive_refreshes=2"
     ]
     assert "com.example.privatepackage" not in logged[0]
+    regular_log = [
+        record.message
+        for record in caplog.records
+        if record.message.startswith("audit_performance ")
+    ]
+    assert regular_log == logged
+    assert all(
+        private not in regular_log[0]
+        for private in (
+            "com.example.privatepackage",
+            "C:\\private\\example.apk",
+            "example.apk",
+            "sha256",
+            "base.apk",
+            "manifest",
+            "device-serial",
+        )
+    )
+
+    window._on_controlled_done(result)
+    app.processEvents()
+    assert logged == regular_log
     assert window._audit_started_at is None
     assert window._audit_pre_finalize_seconds is None
 
 
 def test_failed_audit_logs_pre_finalize_timing(
-    window: MainWindow, app: QApplication, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     logged: list[str] = []
     monkeypatch.setattr(main_ui.time, "perf_counter", lambda: 203.5)
     monkeypatch.setattr(device_insights, "log_event", logged.append)
+    caplog.set_level(logging.INFO, logger=main_ui.__name__)
     monkeypatch.setattr(
         compact_ui.QMessageBox,
         "critical",
@@ -97,7 +145,14 @@ def test_failed_audit_logs_pre_finalize_timing(
     app.processEvents()
 
     assert logged == [
-        "audit_performance result=error pre_finalize_s=3.500 cached=0 live=0 source=device"
+        "audit_performance source=device outcome=failed physical=0 packages=0 "
+        "parse_ms=0 store_ms=0 total_ms=3500 cached=0 live=0 "
+        "progressive_payloads=0 progressive_refreshes=0"
     ]
+    assert [
+        record.message
+        for record in caplog.records
+        if record.message.startswith("audit_performance ")
+    ] == logged
     assert window._audit_started_at is None
     assert window._audit_pre_finalize_seconds is None

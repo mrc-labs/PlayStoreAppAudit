@@ -37,6 +37,7 @@ class _IconRequest:
     package_name: str
     url: str
     play_last_update: str
+    generation: int = 0
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -95,7 +96,7 @@ class AppIconLoader(QObject):
     is used as the conservative fallback invalidation rule.
     """
 
-    icon_ready = Signal(str)
+    icon_ready = Signal(str, int)
 
     def __init__(
         self,
@@ -113,8 +114,11 @@ class AppIconLoader(QObject):
         self._active = 0
         self._queued: deque[_IconRequest] = deque()
         self._pending: set[tuple[str, str, str]] = set()
+        self._request_generations: dict[tuple[str, str, str], int] = {}
         self._failed: set[tuple[str, str, str]] = set()
         self._cache: OrderedDict[tuple[str, str, str], QIcon] = OrderedDict()
+        self._generation = 0
+        self._active_replies: dict[QNetworkReply, _IconRequest] = {}
 
         # A single worker keeps index.json reads/writes serialized while making
         # all persistent-cache file I/O independent from Qt table painting.
@@ -122,6 +126,24 @@ class AppIconLoader(QObject):
         self._disk_pool.setMaxThreadCount(1)
         self._disk_signals = _DiskSignals(self)
         self._disk_signals.loaded.connect(self._on_disk_loaded)
+
+    @property
+    def generation(self) -> int:
+        return self._generation
+
+    def begin_generation(self) -> int:
+        """Retire I/O for an obsolete logical result set while preserving caches."""
+
+        self._generation += 1
+        self._queued.clear()
+        self._pending.clear()
+        self._request_generations.clear()
+        self._failed.clear()
+        self._disk_pool.clear()
+        for reply in tuple(self._active_replies):
+            if reply.isRunning():
+                reply.abort()
+        return self._generation
 
     def icon_for_row(
         self,
@@ -135,7 +157,7 @@ class AppIconLoader(QObject):
         if not package or not url:
             return None
 
-        item = _IconRequest(package, url, update)
+        item = _IconRequest(package, url, update, self._generation)
         icon = self._cache.get(item.key)
         if icon is not None:
             self._cache.move_to_end(item.key)
@@ -149,11 +171,16 @@ class AppIconLoader(QObject):
         # Return immediately so the table can paint and remain interactive.
         # Disk lookup happens asynchronously; only a cache miss reaches network.
         self._pending.add(item.key)
+        self._request_generations[item.key] = item.generation
         self._disk_pool.start(_DiskLoadTask(item, self._disk_signals))
         return None
 
     def _on_disk_loaded(self, item: _IconRequest, data: bytes | None) -> None:
-        if item.key not in self._pending:
+        if (
+            item.generation != self._generation
+            or item.key not in self._pending
+            or self._request_generations.get(item.key, item.generation) != item.generation
+        ):
             return
 
         if data:
@@ -162,7 +189,8 @@ class AppIconLoader(QObject):
                 logger.debug("App icon disk cache hit: package=%s", item.package_name)
                 self._remember_in_memory(item.key, QIcon(pixmap))
                 self._pending.discard(item.key)
-                self.icon_ready.emit(item.package_name)
+                self._request_generations.pop(item.key, None)
+                self.icon_ready.emit(item.package_name, item.generation)
                 return
             logger.debug("App icon disk decode failed: package=%s", item.package_name)
         else:
@@ -182,11 +210,17 @@ class AppIconLoader(QObject):
     def _pump(self) -> None:
         while self._active < self._max_active and self._queued:
             item = self._queued.popleft()
+            if (
+                item.generation != self._generation
+                or self._request_generations.get(item.key) != item.generation
+            ):
+                continue
             request = QNetworkRequest(QUrl(item.url))
             request.setTransferTimeout(ICON_TIMEOUT_MS)
             request.setAttribute(QNetworkRequest.Attribute.CacheSaveControlAttribute, False)
             reply = self._network_manager().get(request)
             self._active += 1
+            self._active_replies[reply] = item
             reply.downloadProgress.connect(
                 lambda received, _total, r=reply: self._abort_oversized(r, received)
             )
@@ -204,14 +238,16 @@ class AppIconLoader(QObject):
 
     def _finish(self, item: _IconRequest, reply: QNetworkReply) -> None:
         try:
+            if item.generation != self._generation:
+                return
             if reply.error() == QNetworkReply.NetworkError.NoError:
-                data = bytes(reply.readAll())
+                data = reply.readAll().data()
                 if data and len(data) <= MAX_ICON_BYTES:
                     pixmap = QPixmap()
                     if pixmap.loadFromData(data) and not pixmap.isNull():
                         self._remember_in_memory(item.key, QIcon(pixmap))
                         self._disk_pool.start(_DiskStoreTask(item, data))
-                        self.icon_ready.emit(item.package_name)
+                        self.icon_ready.emit(item.package_name, item.generation)
                         return
                     logger.debug(
                         "App icon network decode failed: package=%s bytes=%d",
@@ -225,7 +261,10 @@ class AppIconLoader(QObject):
             )
             self._failed.add(item.key)
         finally:
-            self._pending.discard(item.key)
+            if self._request_generations.get(item.key) == item.generation:
+                self._pending.discard(item.key)
+                self._request_generations.pop(item.key, None)
             self._active = max(0, self._active - 1)
+            self._active_replies.pop(reply, None)
             reply.deleteLater()
             self._pump()

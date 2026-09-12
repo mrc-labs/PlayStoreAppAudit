@@ -425,7 +425,8 @@ def test_detected_split_apk_has_typed_unsupported_failure(
         icon_reference=None,
         permissions=(),
         features=(),
-        requires_split_handling=True,
+        is_split_apk=True,
+        requires_split_dependencies=False,
     )
     monkeypatch.setattr(local_apk, "_parse_manifest", lambda _data, _limits: parsed)
 
@@ -436,25 +437,140 @@ def test_detected_split_apk_has_typed_unsupported_failure(
     assert result.failure.artifact_sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def test_standalone_split_dependent_apk_remains_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    path = _write_apk(tmp_path / "split-dependent.apk")
+    parsed = local_apk._ParsedManifest(
+        package_id="org.example.app",
+        application_label_raw=None,
+        version_name_raw=None,
+        version_code_raw=None,
+        version_code_major_raw=None,
+        min_sdk_raw=None,
+        target_sdk_raw=None,
+        compile_sdk_raw=None,
+        debuggable_raw=None,
+        icon_reference=None,
+        permissions=(),
+        features=(),
+        is_split_apk=False,
+        requires_split_dependencies=True,
+    )
+    monkeypatch.setattr(local_apk, "_parse_manifest", lambda _data, _limits: parsed)
+
+    result = local_apk.parse_local_apk(path)
+
+    assert result.failure is not None
+    assert result.failure.kind is LocalArtifactFailureKind.UNSUPPORTED_SPLIT
+
+
+def test_container_base_context_allows_split_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    path = _write_apk(tmp_path / "base.apk")
+    parsed = local_apk._ParsedManifest(
+        package_id="org.example.app",
+        application_label_raw="Example",
+        version_name_raw="1.0",
+        version_code_raw="1",
+        version_code_major_raw=None,
+        min_sdk_raw=None,
+        target_sdk_raw=None,
+        compile_sdk_raw=None,
+        debuggable_raw=None,
+        icon_reference=None,
+        permissions=(),
+        features=(),
+        is_split_apk=False,
+        requires_split_dependencies=True,
+    )
+    monkeypatch.setattr(local_apk, "_parse_manifest", lambda _data, _limits: parsed)
+
+    result = local_apk.parse_local_apk(path, allow_split_dependencies=True)
+
+    assert result.failure is None
+    assert result.artifact is not None
+    assert result.artifact.package_id == "org.example.app"
+
+
+@pytest.mark.parametrize("identity", ["config", "feature"])
+def test_actual_split_is_rejected_even_in_container_base_context(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    identity: str,
+) -> None:
+    path = _write_apk(tmp_path / f"{identity}.apk")
+    parsed = local_apk._ParsedManifest(
+        package_id="org.example.app",
+        application_label_raw=None,
+        version_name_raw=None,
+        version_code_raw=None,
+        version_code_major_raw=None,
+        min_sdk_raw=None,
+        target_sdk_raw=None,
+        compile_sdk_raw=None,
+        debuggable_raw=None,
+        icon_reference=None,
+        permissions=(),
+        features=(),
+        is_split_apk=True,
+        requires_split_dependencies=False,
+    )
+    monkeypatch.setattr(local_apk, "_parse_manifest", lambda _data, _limits: parsed)
+
+    result = local_apk.parse_local_apk(path, allow_split_dependencies=True)
+
+    assert result.failure is not None
+    assert result.failure.kind is LocalArtifactFailureKind.UNSUPPORTED_SPLIT
+
+
 @pytest.mark.parametrize(
-    "manifest_xml",
+    ("manifest_xml", "is_split_apk", "requires_dependencies"),
     [
-        '<manifest package="org.example.app" split="config.en" />',
+        ('<manifest package="org.example.app" split="config.en" />', True, False),
         (
             '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
-            'package="org.example.app"><uses-split android:name="feature" /></manifest>'
+            'package="org.example.app"><uses-split android:name="feature" /></manifest>',
+            False,
+            True,
         ),
         (
             '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
             'package="org.example.app"><application><meta-data '
             'android:name="com.android.vending.splits.required" android:value="true" />'
-            "</application></manifest>"
+            "</application></manifest>",
+            False,
+            True,
+        ),
+        (
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+            'package="org.example.app" android:configForSplit="base" />',
+            True,
+            False,
+        ),
+        (
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+            'package="org.example.app" android:isFeatureSplit="true" />',
+            True,
+            False,
+        ),
+        (
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+            'package="org.example.app" android:requiredSplitTypes="lang" '
+            'android:splitTypes="lang" />',
+            False,
+            True,
         ),
     ],
 )
 def test_manifest_split_markers_are_detected(
     monkeypatch: pytest.MonkeyPatch,
     manifest_xml: str,
+    is_split_apk: bool,
+    requires_dependencies: bool,
 ) -> None:
     root = ElementTree.fromstring(manifest_xml)
 
@@ -475,7 +591,8 @@ def test_manifest_split_markers_are_detected(
         local_apk.DEFAULT_APK_PARSE_LIMITS,
     )
 
-    assert parsed.requires_split_handling is True
+    assert parsed.is_split_apk is is_split_apk
+    assert parsed.requires_split_dependencies is requires_dependencies
 
 
 @pytest.mark.parametrize(

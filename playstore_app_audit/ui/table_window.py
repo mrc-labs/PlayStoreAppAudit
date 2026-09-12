@@ -52,6 +52,16 @@ LOCAL_APK_RELATIONSHIP_STATUS = {
 }
 
 
+def _local_apk_relationship_status(row: dict[str, object]) -> str | None:
+    relationship = str(row.get("local_apk_version_comparison") or "")
+    if (
+        relationship == "N/A"
+        and row.get("play_status") == "not_found_in_checked_countries"
+    ):
+        return "red"
+    return LOCAL_APK_RELATIONSHIP_STATUS.get(relationship)
+
+
 def _suppress_table_item_focus_outline(table: QTableView) -> None:
     """Hide only the native focus outline without changing logical selection."""
 
@@ -117,9 +127,18 @@ class AuditTableModel(base_ui.AppTableModel):
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
+        self._icon_generation = self._icon_loader.generation
         self._metadata_backfill = StoreMetadataBackfill(self)
         self._metadata_backfill.completed.connect(self._on_metadata_backfilled)
         self._store_context_provider: Callable[[], tuple[str, str]] | None = None
+
+    def begin_result_generation(self) -> int:
+        """Retire stale icon work for a replacement logical result set."""
+
+        self._icon_rows_by_package = {}
+        self._metadata_backfill.begin_generation()
+        self._icon_generation = self._icon_loader.begin_generation()
+        return self._icon_generation
 
     def set_store_context_provider(
         self, provider: Callable[[], tuple[str, str]] | None
@@ -237,8 +256,12 @@ class AuditTableModel(base_ui.AppTableModel):
             [Qt.ItemDataRole.DecorationRole],
         )
 
-    def _on_icon_ready(self, package_name: str) -> None:
-        if not self._icons_enabled or ICON_COLUMN not in self.columns:
+    def _on_icon_ready(self, package_name: str, generation: int) -> None:
+        if (
+            generation != self._icon_generation
+            or not self._icons_enabled
+            or ICON_COLUMN not in self.columns
+        ):
             return
         column = self.columns.index(ICON_COLUMN)
         for row_index in self._icon_rows_by_package.get(package_name, []):
@@ -271,6 +294,7 @@ class AuditTableModel(base_ui.AppTableModel):
 
         row = self.rows[index.row()]
         column = self.columns[index.column()]
+        provisional = bool(row.get("_audit_provisional"))
         key = str(row.get("criticality_key") or "purple")
         info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
 
@@ -288,21 +312,22 @@ class AuditTableModel(base_ui.AppTableModel):
         local_apk_row = str(row.get("source_mode") or "").startswith("local_apk")
 
         if role == Qt.ItemDataRole.BackgroundRole:
+            if provisional and not row.get("criticality_key"):
+                return None
             if not local_apk_row:
                 return QColor(info["background"])
             if column == "criticality":
                 return QColor(info["background"])
-            if column == "local_apk_version_comparison":
-                relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))
-                if relation_key:
-                    return QColor(base_ui.CRITICALITY[relation_key]["background"])
+            relation_key = _local_apk_relationship_status(row)
+            if relation_key:
+                return QColor(base_ui.CRITICALITY[relation_key]["background"])
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
-            if column == "criticality":
+            if column == "criticality" and not provisional:
                 return QColor(info["accent"])
             if local_apk_row and column == "local_apk_version_comparison":
-                relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))
+                relation_key = _local_apk_relationship_status(row)
                 if relation_key:
                     return QColor(base_ui.CRITICALITY[relation_key]["foreground"])
             semantic_colour = base_ui.semantic_foreground_colour(column, row.get(column))
@@ -315,12 +340,27 @@ class AuditTableModel(base_ui.AppTableModel):
                 return presentation.friendly_notes(row)
             if column == "local_apk_location":
                 return str(row.get(column) or "")
+            if (
+                column == "local_apk_version_comparison"
+                and row.get(column) == "N/A"
+                and row.get("play_status") == "not_found_in_checked_countries"
+            ):
+                return (
+                    "No listing was found in the successfully checked Store countries, "
+                    "so a version comparison is not applicable. This does not prove "
+                    "global absence."
+                )
 
         if role == Qt.ItemDataRole.FontRole:
             if column == "criticality":
                 font = QFont()
                 font.setBold(True)
                 return font
+            if local_apk_row and column == "local_apk_version_comparison":
+                if _local_apk_relationship_status(row):
+                    font = QFont()
+                    font.setBold(True)
+                    return font
             return base_ui.semantic_value_font(column, row.get(column))
 
         if role == Qt.ItemDataRole.TextAlignmentRole:

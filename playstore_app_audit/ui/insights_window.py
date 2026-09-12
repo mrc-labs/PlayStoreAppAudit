@@ -313,7 +313,9 @@ class InsightsWindow(device_ui.DeviceWindow):
             self._set_busy(False)
         device_insights.add_recent_source(path)
         self._populate_recent_menu()
-        device_insights.log_event(f"Loaded file source: {Path(path).name} ({len(apps)} packages)")
+        device_insights.log_event(
+            f"source_established type=app_list physical_candidates=1 packages={len(apps)}"
+        )
 
     def _choose_input(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -627,7 +629,9 @@ class InsightsWindow(device_ui.DeviceWindow):
         ttl = QSpinBox()
         ttl.setRange(1, 720)
         ttl.setSuffix(" hours")
-        ttl.setValue(int(self.user_settings.get("cache_ttl_hours", 72)))
+        ttl.setValue(
+            int(self.user_settings.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS))
+        )
         form.addRow("Store language", language)
         form.addRow("Fallback Store countries", fallback)
         form.addRow(
@@ -708,7 +712,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             language.setText("en")
             fallback.setText(device_ui.device_metadata.DEFAULT_FALLBACK_COUNTRIES)
             cache.setChecked(True)
-            ttl.setValue(72)
+            ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
             permissions.setChecked(False)
             inventory.setChecked(True)
@@ -772,7 +776,8 @@ class InsightsWindow(device_ui.DeviceWindow):
         self._v9_targeted_active = False
         if self.current_rows:
             for row in self.current_rows:
-                device_insights.apply_health_score(row)
+                if not row.get("_audit_provisional"):
+                    device_insights.apply_health_score(row)
         if self.current_rows:
             self.model.set_rows(self.current_rows)
             self._apply_column_visibility(reset_order=False)

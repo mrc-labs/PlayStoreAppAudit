@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol
@@ -16,6 +18,8 @@ from playstore_app_audit.domain.local_artifacts import LocalArtifact
 from playstore_app_audit.services import alternative_distribution, app_icon_metadata, state
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.play_store import PlayStoreService
+
+logger = logging.getLogger(__name__)
 
 
 class StoreAuditService(Protocol):
@@ -54,9 +58,15 @@ class AlternativeDistributionRunner(Protocol):
 
 def _cache_ttl(settings: Mapping[str, Any]) -> int:
     try:
-        return max(0, min(24 * 30, int(settings.get("cache_ttl_hours", 72))))
+        return max(
+            0,
+            min(
+                24 * 30,
+                int(settings.get("cache_ttl_hours", state.DEFAULT_CACHE_TTL_HOURS)),
+            ),
+        )
     except (TypeError, ValueError):
-        return 72
+        return state.DEFAULT_CACHE_TTL_HOURS
 
 
 def _freeze(value: Any) -> Any:
@@ -105,6 +115,7 @@ class LocalArtifactStoreService:
         provider_cache_file: Path | None = None,
         progress_callback: Callable[[int, int, str], None] | None = None,
         alternative_phase_callback: Callable[[int], None] | None = None,
+        row_completed_callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> LocalArtifactStoreFanoutResult:
         ordered_artifacts = tuple(artifacts)
         unique_apps: list[dict[str, str]] = []
@@ -135,17 +146,68 @@ class LocalArtifactStoreService:
             else {}
         )
         live_apps = [app for app in unique_apps if app["package_name"] not in cached]
-        live_rows = (
-            self._store_service.audit(
-                live_apps,
-                config,
-                progress_callback,
-                pause_event=running,
-                cancel_event=cancelled,
-            )
-            if live_apps
-            else []
+        logger.info(
+            "local_store_plan physical=%d packages=%d healthy_cache=%d live_store=%d",
+            len(ordered_artifacts),
+            len(unique_apps),
+            len(cached),
+            len(live_apps),
         )
+
+        if row_completed_callback is not None:
+            for app in unique_apps:
+                cached_row = cached.get(app["package_name"])
+                if cached_row is not None:
+                    row_completed_callback(app["package_name"], dict(cached_row))
+
+        completed_live_rows: dict[str, dict[str, Any]] = {}
+        callback_packages: set[str] = set()
+
+        def live_row_completed(_index: int, row: dict[str, Any]) -> None:
+            package_name = str(row.get("package_name") or "")
+            if package_name:
+                completed_live_rows[package_name] = dict(row)
+            if row_completed_callback is not None and package_name:
+                row_completed_callback(package_name, dict(row))
+                callback_packages.add(package_name)
+
+        try:
+            returned_live_rows = (
+                self._store_service.audit(
+                    live_apps,
+                    config,
+                    progress_callback,
+                    pause_event=running,
+                    cancel_event=cancelled,
+                    row_completed_callback=live_row_completed,
+                )
+                if live_apps
+                else []
+            )
+        except Exception:
+            completed = list(completed_live_rows.values())
+            if cache_enabled and completed:
+                with suppress(Exception):
+                    app_icon_metadata.enrich_rows_with_store_metadata(completed)
+                with suppress(Exception):
+                    self._cache_updater(completed, config.country, config.language)
+            raise
+
+        for row in returned_live_rows:
+            package_name = str(row.get("package_name") or "")
+            if package_name:
+                completed_live_rows[package_name] = dict(row)
+        live_rows = [
+            completed_live_rows[app["package_name"]]
+            for app in live_apps
+            if app["package_name"] in completed_live_rows
+        ]
+        if row_completed_callback is not None:
+            for row in live_rows:
+                package_name = str(row.get("package_name") or "")
+                if package_name and package_name not in callback_packages:
+                    callback_packages.add(package_name)
+                    row_completed_callback(package_name, dict(row))
         app_icon_metadata.enrich_rows_with_store_metadata(live_rows)
         if cache_enabled and live_rows:
             self._cache_updater(live_rows, config.country, config.language)

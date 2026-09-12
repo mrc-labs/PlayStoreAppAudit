@@ -19,6 +19,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
+import playstore_app_audit.services.local_package_container as local_package_container
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -29,7 +30,7 @@ from playstore_app_audit.domain.local_artifacts import (
     LocalArtifactParseFailure,
     LocalArtifactParseResult,
 )
-from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunState
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui import details_panel, schema
@@ -99,11 +100,14 @@ def test_choose_files_establishes_candidates_without_parsing(
     first = tmp_path / "one.apk"
     first.write_bytes(b"candidate")
     parser_calls: list[Path] = []
+    scheduled: list[bool] = []
     monkeypatch.setattr(local_apk, "parse_local_apk", lambda path: parser_calls.append(path))
+    monkeypatch.setattr(window, "_schedule_first_audit", lambda: scheduled.append(True))
     window._begin_local_apk_parse([first, first, tmp_path / "missing.apk"])
     assert window._local_apk_candidates == (first.resolve(),)
     assert window.source_mode == "local_apk"
     assert parser_calls == []
+    assert scheduled == [True]
     assert window.run_button.isEnabled()
 
 
@@ -115,12 +119,33 @@ def test_folder_discovery_is_recursive_case_insensitive_and_filtered(tmp_path: P
     second = nested / "b.apk"
     first.write_bytes(b"a")
     second.write_bytes(b"b")
-    (nested / "ignored.apks").write_bytes(b"x")
+    third = nested / "bundle.apks"
+    third.write_bytes(b"x")
     (nested / "ignored.aab").write_bytes(b"x")
     result = local_apk_source.discover_folder_apks(root)
-    expected = tuple(sorted((first.resolve(), second.resolve()), key=lambda p: os.path.normcase(str(p))))
+    expected = tuple(
+        sorted(
+            (first.resolve(), second.resolve(), third.resolve()),
+            key=lambda p: os.path.normcase(str(p)),
+        )
+    )
     assert result.paths == expected
     assert not result.cancelled
+
+
+def test_explicit_package_formats_are_case_insensitive_and_deduplicated(
+    tmp_path: Path,
+) -> None:
+    paths = [
+        tmp_path / name
+        for name in ("one.APK", "two.APKS", "three.APKM", "four.XAPK")
+    ]
+    for path in paths:
+        path.write_bytes(b"synthetic")
+
+    selected = local_apk_source.normalise_explicit_apks([*paths, paths[1]])
+
+    assert set(selected) == {path.resolve() for path in paths}
 
 
 def test_folder_discovery_does_not_follow_directory_links(tmp_path: Path) -> None:
@@ -269,8 +294,235 @@ def test_run_parses_candidates_keeps_partial_success_and_physical_rows(
     assert [row["local_apk_sha256"] for row in window.current_rows] == ["1" * 64, "1" * 64]
     assert all(row["local_apk_version_comparison"] == "Outdated" for row in window.current_rows)
     assert len(warnings) == 1
-    assert warnings[0][0] == "Some APK files could not be parsed"
-    assert "2 APK file(s) were rejected" in warnings[0][1]
+    assert warnings[0][0] == "Some package files could not be parsed"
+    assert "2 package file(s) were rejected" in warnings[0][1]
+
+
+def test_stop_during_parse_keeps_source_evidence_and_starts_no_store_work(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.apk"
+    second = tmp_path / "second.apk"
+    first.write_bytes(b"first")
+    second.write_bytes(b"second")
+    cancel_event = threading.Event()
+    store_calls: list[bool] = []
+
+    def parse_candidate(path: Path) -> LocalArtifactParseResult:
+        cancel_event.set()
+        return LocalArtifactParseResult(artifact=_artifact(path, "3" * 64))
+
+    class StoreMustNotRun:
+        def collect(self, *_args, **_kwargs):
+            store_calls.append(True)
+            raise AssertionError("Store collection started after parse cancellation")
+
+    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(window, "_local_artifact_store_service", StoreMustNotRun)
+    window.source_mode = "local_apk"
+    window._audit_session = 21
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (first, second),
+        AuditConfig(),
+        {"cache_enabled": False},
+        21,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    assert store_calls == []
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert len(window.current_rows) == 1
+    assert window.current_rows[0]["local_apk_location"] == str(first.resolve())
+    assert "health_score" not in window.current_rows[0]
+    assert not window.export_button.isEnabled()
+
+
+def test_container_parse_cancellation_is_not_reported_as_rejection(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    cancelled = tmp_path / "cancelled.apkm"
+    cancelled.write_bytes(b"synthetic container")
+    cancel_event = threading.Event()
+    warnings: list[tuple[str, str]] = []
+    results: list[AuditRunResult] = []
+    caplog.set_level(logging.INFO, logger="playstore_app_audit.ui.main_window")
+
+    def parse_candidate(
+        path: Path, *, cancel_event: threading.Event
+    ) -> LocalArtifactParseResult:
+        cancel_event.set()
+        return LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                path,
+                LocalArtifactFailureKind.CANCELLED,
+                "Container inspection was cancelled.",
+            )
+        )
+
+    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    window.audit_control_signals.done.connect(results.append)
+    window.source_mode = "local_apk"
+    window._audit_session = 22
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (cancelled,),
+        AuditConfig(),
+        {"cache_enabled": False},
+        22,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    result = results[-1]
+    assert result.outcome is AuditRunOutcome.STOPPED
+    assert result.metadata["parse_failure_count"] == 0
+    assert result.metadata["parse_failure_summary"] == ""
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert warnings == []
+    assert "local_container_rejected" not in caplog.text
+
+
+def test_genuine_container_failure_before_cancellation_remains_reported(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    malformed = tmp_path / "malformed.apks"
+    cancelled = tmp_path / "cancelled.xapk"
+    malformed.write_bytes(b"malformed")
+    cancelled.write_bytes(b"synthetic container")
+    cancel_event = threading.Event()
+    warnings: list[tuple[str, str]] = []
+    results: list[AuditRunResult] = []
+    caplog.set_level(logging.INFO, logger="playstore_app_audit.ui.main_window")
+
+    def parse_candidate(
+        path: Path, *, cancel_event: threading.Event
+    ) -> LocalArtifactParseResult:
+        if path == malformed:
+            return LocalArtifactParseResult(
+                failure=LocalArtifactParseFailure(
+                    path,
+                    LocalArtifactFailureKind.MALFORMED_ARCHIVE,
+                    "Not a ZIP archive.",
+                )
+            )
+        cancel_event.set()
+        return LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                path,
+                LocalArtifactFailureKind.CANCELLED,
+                "Container inspection was cancelled.",
+            )
+        )
+
+    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    window.audit_control_signals.done.connect(results.append)
+    window.source_mode = "local_apk"
+    window._audit_session = 23
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (malformed, cancelled),
+        AuditConfig(),
+        {"cache_enabled": False},
+        23,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    result = results[-1]
+    assert result.outcome is AuditRunOutcome.STOPPED
+    assert result.metadata["parse_failure_count"] == 1
+    assert result.metadata["parse_failure_summary"] == "malformed.apks: malformed archive"
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert len(warnings) == 1
+    assert warnings[0][0] == "Some package files could not be parsed"
+    assert "1 package file(s) were rejected" in warnings[0][1]
+    assert "malformed.apks: malformed archive" in warnings[0][1]
+    assert "cancelled.xapk" not in warnings[0][1]
+    rejection_logs = [
+        record for record in caplog.records if record.message.startswith("local_container_rejected")
+    ]
+    assert len(rejection_logs) == 1
+    assert "reason=malformed_archive" in rejection_logs[0].message
+
+
+def test_definitive_store_absence_uses_na_local_relationship_everywhere(
+    window: MainWindow,
+    tmp_path: Path,
+) -> None:
+    artifact = _artifact(tmp_path / "missing.apkm", "4" * 64)
+    row = local_apk_audit.artifact_result_row(
+        artifact,
+        {"play_status": "not_found_in_checked_countries"},
+    )
+    row.update(criticality="Not Found", criticality_key="red")
+    window.model.set_rows([row])
+    relationship = window.model.index(
+        0, window.model.columns.index("local_apk_version_comparison")
+    )
+    store_status = window.model.index(0, window.model.columns.index("criticality"))
+
+    assert row["local_apk_version_comparison"] == "N/A"
+    assert relationship.data(Qt.ItemDataRole.DisplayRole) == "N/A"
+    assert store_status.data(Qt.ItemDataRole.DisplayRole) == "Not Found"
+    assert store_status.data(Qt.ItemDataRole.BackgroundRole) == relationship.data(
+        Qt.ItemDataRole.BackgroundRole
+    )
+    assert "comparison is not applicable" in relationship.data(
+        Qt.ItemDataRole.ToolTipRole
+    )
+    assert "does not prove global absence" in relationship.data(
+        Qt.ItemDataRole.ToolTipRole
+    )
+    assert any(
+        "comparison is not applicable" in line
+        for line in details_panel.local_apk_details_lines(row)
+    )
+    assert result_json.build_results_document([row])["results"][0][
+        "local_apk_version_comparison"
+    ] == "N/A"
+    report = device_insights.write_html_report(tmp_path / "missing.html", [row])
+    assert "<td>N/A</td>" in report.read_text(encoding="utf-8")
 
 
 def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:
@@ -345,9 +597,10 @@ def test_custom_view_can_include_location(
 def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: MainWindow) -> None:
     file_actions = [action.text() for action in window.file_menu.actions()]
     assert "Local APK Library…" not in file_actions
-    assert "Choose APK Folder…" in file_actions
+    assert "Choose Package Folder…" in file_actions
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
-        "Choose Folder…"
+        "File(s)…",
+        "Folder…",
     ]
     assert window.table.toolTip() == (
         "Double-click to open Google Play when available. Right-click for more options."

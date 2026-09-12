@@ -8,6 +8,9 @@ from pathlib import Path
 
 class LocalArtifactFormat(StrEnum):
     APK = "apk"
+    APKS = "apks"
+    APKM = "apkm"
+    XAPK = "xapk"
 
 
 class LocalArtifactWarning(StrEnum):
@@ -26,6 +29,9 @@ class LocalArtifactFailureKind(StrEnum):
     MISSING_MANIFEST = "missing_manifest"
     MALFORMED_MANIFEST = "malformed_manifest"
     UNSUPPORTED_SPLIT = "unsupported_split"
+    NO_BASE_APK = "no_base_apk"
+    AMBIGUOUS_BASE_APK = "ambiguous_base_apk"
+    CANCELLED = "cancelled"
 
 
 ManifestScalar = int | str
@@ -33,7 +39,7 @@ ManifestScalar = int | str
 
 @dataclass(frozen=True, slots=True)
 class LocalArtifact:
-    """Immutable metadata for one exact local APK file.
+    """Immutable metadata for one exact local package file.
 
     ``artifact_sha256`` identifies file bytes. ``package_id`` identifies the
     Android package and is deliberately a separate value so later Store work

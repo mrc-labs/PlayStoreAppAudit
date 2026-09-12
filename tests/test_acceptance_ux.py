@@ -96,13 +96,14 @@ def test_source_selector_order_buttons_and_or_separators(
     ]
     assert labels == ["Android Phone (ADB)", "Local APK(s)", "App List File"]
     assert window.scan_button.text() == "Scan Phone"
-    assert window.choose_apk_button.text() == "Choose APK(s)"
+    assert window.choose_apk_button.text() == "Choose APK Source…"
     assert window.choose_button.text() == "Choose File"
     assert len([label for label in window.findChildren(QLabel) if label.text() == "or"]) == 2
     assert window.findChild(QPushButton, "RecentSourcesButton") is None
     assert window.recent_sources_button.accessibleName() == "Recent Sources"
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
-        "Choose Folder…"
+        "File(s)…",
+        "Folder…",
     ]
 
 
@@ -181,7 +182,7 @@ def test_source_status_text_names_the_active_source(
     assert window.source_label.text().startswith("App List source:")
 
     window._establish_local_apk_candidates((apk,), "selected")
-    assert window.source_label.text().startswith("Local APK source:")
+    assert window.source_label.text().startswith("Local package source:")
 
     window.source_mode = "device"
     window._device_summary = {"manufacturer": "Google", "model": "Pixel"}
@@ -420,6 +421,7 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
 @pytest.mark.parametrize(
     ("relationship", "status_key"),
     [
+        ("N/A", "red"),
         ("Outdated", "orange"),
         ("Different", "yellow"),
         ("Unknown", "purple"),
@@ -428,7 +430,7 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
         ("Match", "green"),
     ],
 )
-def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
+def test_local_apk_relationship_colours_ordinary_cells_and_keeps_store_status(
     relationship: str, status_key: str
 ) -> None:
     from playstore_app_audit.ui.base_window import CRITICALITY
@@ -438,6 +440,9 @@ def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
         [{
             "source_mode": "local_apk", "criticality_key": "red",
             "criticality": "Not Found", "local_apk_version_comparison": relationship,
+            "play_status": (
+                "not_found_in_checked_countries" if relationship == "N/A" else "available"
+            ),
             "package_name": "com.example.app",
         }]
     )
@@ -454,13 +459,89 @@ def test_local_apk_dual_status_colours_and_neutral_ordinary_cells(
         CRITICALITY[status_key]["foreground"]
     )
     assert relationship_index.data(Qt.ItemDataRole.FontRole).weight() == 700
-    assert package.data(Qt.ItemDataRole.BackgroundRole) is None
+    assert package.data(Qt.ItemDataRole.BackgroundRole) == QColor(
+        CRITICALITY[status_key]["background"]
+    )
+
+
+def test_local_absence_na_relationship_is_red_while_store_status_stays_independent() -> None:
+    from playstore_app_audit.ui.base_window import CRITICALITY
+
+    model = AuditTableModel()
+    model.set_rows(
+        [
+            {
+                "source_mode": "local_apk",
+                "criticality_key": "yellow",
+                "criticality": "Not Found",
+                "play_status": "not_found_in_checked_countries",
+                "local_apk_version_comparison": "N/A",
+                "package_name": "com.example.app",
+            }
+        ]
+    )
+    status = model.index(0, model.columns.index("criticality"))
+    relationship = model.index(
+        0, model.columns.index("local_apk_version_comparison")
+    )
+    package = model.index(0, model.columns.index("package_name"))
+
+    assert status.data(Qt.ItemDataRole.BackgroundRole) == QColor(
+        CRITICALITY["yellow"]["background"]
+    )
+    assert relationship.data(Qt.ItemDataRole.BackgroundRole) == QColor(
+        CRITICALITY["red"]["background"]
+    )
+    assert package.data(Qt.ItemDataRole.BackgroundRole) == QColor(
+        CRITICALITY["red"]["background"]
+    )
+
+
+def test_generic_local_na_without_definitive_absence_is_not_forced_red() -> None:
+    model = AuditTableModel()
+    model.set_rows(
+        [
+            {
+                "source_mode": "local_apk",
+                "criticality_key": "purple",
+                "criticality": "Unknown",
+                "play_status": "multi_country_check_inconclusive",
+                "local_apk_version_comparison": "N/A",
+                "package_name": "com.example.app",
+            }
+        ]
+    )
+    relationship = model.index(
+        0, model.columns.index("local_apk_version_comparison")
+    )
+
+    assert relationship.data(Qt.ItemDataRole.BackgroundRole) is None
+
+
+def test_unresolved_provisional_local_row_remains_neutral() -> None:
+    model = AuditTableModel()
+    model.set_rows(
+        [
+            {
+                "source_mode": "local_apk",
+                "package_name": "com.example.pending",
+                "local_apk_version_comparison": "",
+                "_audit_provisional": True,
+            }
+        ]
+    )
+
+    for column in ("package_name", "criticality", "local_apk_version_comparison"):
+        index = model.index(0, model.columns.index(column))
+        assert index.data(Qt.ItemDataRole.BackgroundRole) is None
 
 
 def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
 ) -> None:
+    from playstore_app_audit.ui.base_window import CRITICALITY
+
     _settings, create_window = window_store
     window = create_window()
     window.source_mode = "local_apk"
@@ -492,12 +573,15 @@ def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
         delegate.initStyleOption(option, index)
         selected_states += bool(option.state & QStyle.StateFlag.State_Selected)
         focus_cells += bool(option.state & QStyle.StateFlag.State_HasFocus)
-        if name in {"criticality", "local_apk_version_comparison"}:
+        if name in {"criticality", "local_apk_version_comparison", "package_name"}:
             selected_colours[name] = option.backgroundBrush.color()
 
     assert selected_states == 0
     assert focus_cells == 0
     assert selected_colours["criticality"] != selected_colours["local_apk_version_comparison"]
+    expected_row_colour = QColor(CRITICALITY["orange"]["background"]).darker(104)
+    assert selected_colours["package_name"] == expected_row_colour
+    assert selected_colours["local_apk_version_comparison"] == expected_row_colour
 
 
 def test_customize_column_groups_partition_the_existing_schema() -> None:
