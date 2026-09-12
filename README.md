@@ -112,7 +112,7 @@ After a successful full Scan, Run reuses the captured metadata even if the phone
 
 Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and the activity log are processed and stored locally. The application has no first-party telemetry or analytics service.
 
-An audit is not entirely offline: package IDs, the selected country and the Store language are used in requests to public Google Play endpoints through `google-play-scraper` and the HTML fallback. If the optional app-icon setting is enabled, icon images are downloaded from HTTPS URLs returned by Store metadata and cached locally for reuse. A cached icon is retained while the app's Store update marker remains unchanged; when that marker changes, the icon is fetched again. The persistent icon cache is bounded to 512 entries and 64 MiB, while decoded icons use a smaller in-memory LRU for the active session. Disk reads and network downloads populate the already-visible table progressively rather than blocking results display; cached icons remain usable when the network is unavailable. **Check for Updates** contacts the public GitHub Releases API. In v2.0, an automatic update check is enabled by default at startup; it runs asynchronously without blocking the application, remains silent when no newer release is found or the check is unavailable, and can be disabled or re-enabled from the update-result dialog. If you approve a managed ADB installation, the application downloads the official Platform-Tools archive from Google's download host.
+An audit is not entirely offline: package IDs, the selected country and the Store language are used in requests to public Google Play endpoints through `google-play-scraper` and the HTML fallback. If the optional app-icon setting is enabled, icon images are downloaded from HTTPS URLs returned by Store metadata and cached locally for reuse. A cached icon is retained while the app's Store update marker remains unchanged; when that marker changes, the icon is fetched again. The persistent icon cache is bounded to 512 entries and 64 MiB, while decoded icons use a smaller in-memory LRU for the active session. Disk reads and network downloads populate the already-visible table progressively rather than blocking results display; cached icons remain usable when the network is unavailable. **Help > About Play Store App Audit** also owns software-update status and contacts the public GitHub Releases API whenever About is opened. In v2.0, an automatic startup update check is enabled by default and runs asynchronously without blocking the application. It remains silent when the installed version is current or the check is unavailable; if a newer stable release is found, the same About window opens with the update status and release link. The About window contains **Check for updates automatically at startup** to disable or re-enable only the startup check; opening About always performs a fresh update check regardless of that setting. If you approve a managed ADB installation, the application downloads the official Platform-Tools archive from Google's download host.
 
 The activity log is local and records operational events such as startup, a loaded source filename and some failure messages. A diagnostic bundle is created only when you explicitly choose a destination; it is not uploaded automatically. The bundle contains sanitized settings, application/system information, aggregate result counts, available device-summary fields (including a masked serial when present) and the local activity log. Review diagnostic bundles before sharing them.
 
@@ -147,7 +147,7 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 The current source identifies application version `1.99.0`. The latest immutable published release is v1.99.0.
 
-The release-packaging baseline is Python 3.13. Quality CI also exercises Python 3.14 source compatibility.
+The v2.0 development and release-packaging baseline is Python 3.14. The current stable toolchain migration targets Python 3.14.7, PySide6-Essentials 6.11.2 and Nuitka 4.2.1. Python 3.15 pre-releases are intentionally outside the stable release baseline.
 
 Install the development dependencies, run the application and execute the quality checks with:
 
@@ -163,6 +163,7 @@ Developer references:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Building and release workflow](docs/BUILDING.md)
+- [Mandatory release component freshness gate](docs/RELEASE_COMPONENT_FRESHNESS.md)
 - [CI and release maintenance](docs/CI_MAINTENANCE.md)
 - [Durable project decisions](docs/PROJECT_DECISIONS.md)
 - [Current project status](docs/PROJECT_STATUS.md)
@@ -175,6 +176,6 @@ Developer references:
 
 ## Building from source
 
-Release packages use Python 3.13 and Nuitka standalone packaging. The published v1.99.0 profile used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
+The v2.0 release toolchain uses Python 3.14 and Nuitka standalone packaging, with the current migration pinned to Nuitka 4.2.1. The published v1.99.0 profile remains a historical Python 3.13 build: it used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
 
 The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Development and packaged acceptance remain Windows x64-first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
