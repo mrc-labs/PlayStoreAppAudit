@@ -15,6 +15,7 @@ import playstore_app_audit.services.state as state
 
 AUTO_UPDATE_CHECK_KEY = "check_updates_on_startup"
 AUTO_UPDATE_CHECK_LABEL = "Check for updates automatically at startup"
+AUTO_UPDATE_CHECK_STYLE = "QCheckBox { margin-top: 12px; margin-bottom: 2px; }"
 
 # The startup check is an ordinary preference. Existing installs that do not
 # have the key opt in to the v2.0 default and can disable it from update dialogs.
@@ -105,6 +106,7 @@ class UpdateCheckController(QObject):
         checkbox.setToolTip(
             "Disable this to stop background update checks when Play Store App Audit starts."
         )
+        checkbox.setStyleSheet(AUTO_UPDATE_CHECK_STYLE)
         box.setCheckBox(checkbox)
         return checkbox
 
