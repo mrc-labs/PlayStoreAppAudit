@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -164,6 +166,184 @@ def test_loader_url_normalisation_rejects_non_https() -> None:
     assert _normalise_icon_url("") == ""
 
 
+def test_clear_icon_cache_removes_index_orphans_temps_and_resets_pruning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    cache_dir = disk_cache.icon_cache_dir()
+    cache_dir.mkdir()
+    (cache_dir / "index.json").write_text("{}", encoding="utf-8")
+    assert (
+        disk_cache.load_cached_icon_bytes(
+            "com.example.prime",
+            "https://example.invalid/prime.png",
+            "",
+        )
+        is None
+    )
+    for name in ("orphan.img", "orphan.img.tmp", "unexpected.bin"):
+        (cache_dir / name).write_bytes(b"cached")
+
+    assert disk_cache.clear_icon_cache() == 4
+    assert not cache_dir.exists()
+    assert disk_cache.clear_icon_cache() == 0
+
+    cache_dir.mkdir()
+    (cache_dir / "index.json").write_text("{}", encoding="utf-8")
+    recreated_orphan = cache_dir / "recreated.img"
+    recreated_orphan.write_bytes(b"orphan")
+    disk_cache.load_cached_icon_bytes(
+        "com.example.after-clear",
+        "https://example.invalid/after.png",
+        "",
+    )
+    assert not recreated_orphan.exists()
+
+
+def test_loader_clear_retires_state_drains_store_and_allows_future_writes(
+    app: QApplication,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(icon_loader_ui, "clear_icon_cache", disk_cache.clear_icon_cache)
+    original_store = disk_cache.store_cached_icon_bytes
+    started = threading.Event()
+    release = threading.Event()
+
+    def delayed_store(*args: object) -> None:
+        started.set()
+        assert release.wait(2)
+        original_store(*args)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(icon_loader_ui, "store_cached_icon_bytes", delayed_store)
+    loader = AppIconLoader()
+    old = _IconRequest(
+        "com.example.old",
+        "https://example.invalid/old.png",
+        "2026-08-20",
+        loader.generation,
+    )
+    loader._cache[old.key] = QIcon()
+    loader._queued.append(old)
+    loader._pending.add(old.key)
+    loader._request_generations[old.key] = old.generation
+    loader._failed.add(old.key)
+    loader._disk_pool.start(
+        icon_loader_ui._DiskStoreTask(
+            old,
+            b"old-icon",
+            loader._disk_signals,
+            loader._generation_is_current,
+        )
+    )
+    assert started.wait(2)
+    threading.Thread(target=lambda: (time.sleep(0.05), release.set()), daemon=True).start()
+
+    removed = loader.clear_cache(timeout_ms=2_000)
+
+    assert removed >= 1
+    assert loader.generation == 1
+    assert not disk_cache.icon_cache_dir().exists()
+    assert not loader._cache
+    assert not loader._queued
+    assert not loader._pending
+    assert not loader._failed
+
+    current = _IconRequest(
+        "com.example.current",
+        "https://example.invalid/current.png",
+        "2026-08-20",
+        loader.generation,
+    )
+    loader._disk_pool.start(
+        icon_loader_ui._DiskStoreTask(
+            current,
+            b"new-icon",
+            loader._disk_signals,
+            loader._generation_is_current,
+        )
+    )
+    assert loader._disk_pool.waitForDone(2_000)
+    assert disk_cache.cached_icon_metadata(current.package_name)
+    loader.deleteLater()
+    app.processEvents()
+
+
+def test_loader_clear_timeout_surfaces_failure_without_deleting_disk_cache(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loader = AppIconLoader()
+    monkeypatch.setattr(loader._disk_pool, "waitForDone", lambda _timeout: False)
+    deleted: list[bool] = []
+    monkeypatch.setattr(icon_loader_ui, "clear_icon_cache", lambda: deleted.append(True))
+
+    with pytest.raises(TimeoutError, match="cache was not cleared"):
+        loader.clear_cache(timeout_ms=1)
+
+    assert deleted == []
+    loader.deleteLater()
+    app.processEvents()
+
+
+def test_loader_clear_ignores_obsolete_network_completion(
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeReply:
+        def __init__(self) -> None:
+            self.aborted = False
+            self.deleted = False
+
+        def isRunning(self) -> bool:
+            return not self.aborted
+
+        def abort(self) -> None:
+            self.aborted = True
+
+        def error(self) -> QNetworkReply.NetworkError:
+            return QNetworkReply.NetworkError.NoError
+
+        def readAll(self) -> QByteArray:
+            return QByteArray(b"stale")
+
+        def errorString(self) -> str:
+            return ""
+
+        def deleteLater(self) -> None:
+            self.deleted = True
+
+    loader = AppIconLoader()
+    loader._disk_pool = SimpleNamespace(  # type: ignore[assignment]
+        clear=lambda: None,
+        waitForDone=lambda _timeout: True,
+        activeThreadCount=lambda: 0,
+    )
+    monkeypatch.setattr(icon_loader_ui, "clear_icon_cache", lambda: 0)
+    stale = _IconRequest(
+        "com.example.stale",
+        "https://example.invalid/stale.png",
+        "2026-08-20",
+        loader.generation,
+    )
+    reply = FakeReply()
+    loader._pending.add(stale.key)
+    loader._request_generations[stale.key] = stale.generation
+    loader._active = 1
+    loader._active_replies[reply] = stale  # type: ignore[index]
+
+    loader.clear_cache()
+    loader._finish(stale, reply)  # type: ignore[arg-type]
+
+    assert reply.aborted and reply.deleted
+    assert stale.key not in loader._cache
+    assert stale.key not in loader._pending
+    loader.deleteLater()
+    app.processEvents()
+
+
 def test_loader_defers_network_manager_until_a_disk_cache_miss(app: QApplication) -> None:
     loader = AppIconLoader()
     try:
@@ -200,6 +380,39 @@ def test_cached_icon_remains_available_without_creating_networking(app: QApplica
     finally:
         loader.deleteLater()
         app.processEvents()
+
+
+def test_loader_busy_state_returns_idle_after_disk_worker_finishes(
+    app: QApplication,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    package = "com.example.cached"
+    url = "https://example.invalid/icon.png"
+    image = QPixmap(2, 2)
+    image.fill(QColor("blue"))
+    encoded = QByteArray()
+    buffer = QBuffer(encoded)
+    assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    assert image.save(buffer, "PNG")
+    buffer.close()
+    disk_cache.store_cached_icon_bytes(package, url, "2026-08-20", bytes(encoded.data()))
+
+    loader = AppIconLoader()
+    states: list[bool] = []
+    loader.busy_changed.connect(states.append)
+    assert loader.icon_for_row(package, url, "2026-08-20") is None
+    deadline = time.monotonic() + 2
+    while loader.has_active_work() and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.005)
+    app.processEvents()
+
+    assert loader.has_active_work() is False
+    assert states[0] is True and states[-1] is False
+    loader.deleteLater()
+    app.processEvents()
 
 
 def test_loader_bounds_pending_requests_for_large_tables(

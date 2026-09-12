@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+from contextlib import suppress
+from typing import Any
 
 from PySide6.QtGui import QAction, QActionGroup, QFont, QFontMetrics, QIcon
 from PySide6.QtWidgets import (
@@ -16,6 +18,7 @@ import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.data_maintenance as data_maintenance_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 import playstore_app_audit.ui.smart_queries as smart_queries_ui
@@ -34,6 +37,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
     def __init__(self) -> None:
         self._defer_v92_menu_build = True
         self._active_smart_query: smart_queries.SmartQuery | None = None
+        self._data_maintenance_dialog: (
+            data_maintenance_ui.DataMaintenanceDialog | None
+        ) = None
         super().__init__()
         self._defer_v92_menu_build = False
         self._build_menu_v9()
@@ -73,8 +79,14 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             "Recheck Not Found / Anomaly / Other", self._recheck_problematic
         )
         self.force_full_refresh_action = self.audit_menu.addAction(
-            "Force Full Refresh", self._force_full_refresh
+            "Run with Fresh Store Results", self._force_full_refresh
         )
+        fresh_results_help = (
+            "Ignore cached Google Play and alternative-store results for this run. "
+            "No cache files are deleted; app icons may still come from the icon cache."
+        )
+        self.force_full_refresh_action.setToolTip(fresh_results_help)
+        self.force_full_refresh_action.setStatusTip(fresh_results_help)
         self.audit_menu.addSeparator()
         self.audit_profiles_menu = QMenu("Audit Presets", self.audit_menu)
         self.audit_menu.addMenu(self.audit_profiles_menu)
@@ -161,19 +173,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             "Device Inventory Changes…", self._show_inventory_changes
         )
         self.tools_menu.addSeparator()
-        self.data_maintenance_menu = QMenu("Data Maintenance", self.tools_menu)
-        self.tools_menu.addMenu(self.data_maintenance_menu)
-        self.clear_audit_cache_action = self.data_maintenance_menu.addAction(
-            "Clear Audit Cache…", self._clear_audit_cache
-        )
-        self.clear_audit_history_action = self.data_maintenance_menu.addAction(
-            "Clear Previous-Audit History…", self._clear_audit_history
-        )
-        self.clear_device_inventory_history_action = (
-            self.data_maintenance_menu.addAction(
-                "Clear Device Inventory History…",
-                self._clear_device_inventory_history,
-            )
+        self.data_maintenance_action = self.tools_menu.addAction(
+            "Data Maintenance…", self._show_data_maintenance
         )
 
         self.help_menu = QMenu("Help", bar)
@@ -202,6 +203,50 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
+
+    def _show_data_maintenance(self) -> None:
+        model: Any = self.model
+        operation_running = getattr(self, "_operation_running", None)
+        if callable(operation_running) and operation_running():
+            return
+        if model.icon_loader_busy():
+            return
+
+        dialog = data_maintenance_ui.DataMaintenanceDialog(
+            self,
+            {
+                "store_results": self._perform_clear_audit_cache,
+                "app_icons": self._perform_clear_app_icon_cache,
+                "alternative_store": self._perform_clear_alternative_store_cache,
+                "previous_audit_history": self._perform_clear_audit_history,
+                "device_inventory_history": self._perform_clear_device_inventory_history,
+            },
+            self.status_label.setText,
+        )
+        self._data_maintenance_dialog = dialog
+
+        def sync_dialog_availability(_busy: bool = False) -> None:
+            running = bool(callable(operation_running) and operation_running())
+            dialog.set_destructive_enabled(
+                not running and not model.icon_loader_busy()
+            )
+
+        model.icon_loader_busy_changed.connect(sync_dialog_availability)
+        sync_dialog_availability()
+        dialog.exec()
+        with suppress(RuntimeError):
+            model.icon_loader_busy_changed.disconnect(sync_dialog_availability)
+        self._data_maintenance_dialog = None
+
+    def _perform_clear_app_icon_cache(self) -> str:
+        model: Any = self.model
+        model.clear_app_icon_cache()
+        return "App Icon Cache cleared"
+
+    @staticmethod
+    def _perform_clear_alternative_store_cache() -> str:
+        state.clear_alternative_distribution_cache()
+        return "Alternative Store Cache cleared"
 
     def _populate_filter_menu(self) -> None:
         if not hasattr(self, "_filter_menu"):

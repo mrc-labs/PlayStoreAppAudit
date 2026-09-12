@@ -115,6 +115,7 @@ class AuditTableModel(base_ui.AppTableModel):
     """
 
     store_metadata_ready = Signal(str)
+    icon_loader_busy_changed = Signal(bool)
 
     def __init__(self) -> None:
         super().__init__()
@@ -127,6 +128,7 @@ class AuditTableModel(base_ui.AppTableModel):
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
+        self._icon_loader.busy_changed.connect(self.icon_loader_busy_changed)
         self._icon_generation = self._icon_loader.generation
         self._metadata_backfill = StoreMetadataBackfill(self)
         self._metadata_backfill.completed.connect(self._on_metadata_backfilled)
@@ -139,6 +141,23 @@ class AuditTableModel(base_ui.AppTableModel):
         self._metadata_backfill.begin_generation()
         self._icon_generation = self._icon_loader.begin_generation()
         return self._icon_generation
+
+    def icon_loader_busy(self) -> bool:
+        return self._icon_loader.has_active_work()
+
+    def clear_app_icon_cache(self) -> int:
+        """Clear artwork caches without changing the current audit rows."""
+
+        removed = self._icon_loader.clear_cache()
+        self._icon_generation = self._icon_loader.generation
+        if self.rows and ICON_COLUMN in self.columns:
+            column = self.columns.index(ICON_COLUMN)
+            self.dataChanged.emit(
+                self.index(0, column),
+                self.index(len(self.rows) - 1, column),
+                [Qt.ItemDataRole.DecorationRole],
+            )
+        return removed
 
     def set_store_context_provider(
         self, provider: Callable[[], tuple[str, str]] | None

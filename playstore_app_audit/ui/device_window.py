@@ -141,7 +141,11 @@ class DeviceWindow(compact_ui.CompactWindow):
         advanced.triggered.connect(self._show_advanced_settings)
         tools.addAction(advanced)
         tools.addSeparator()
-        force_refresh = QAction("Force Full Refresh (Ignore Cache)", self)
+        force_refresh = QAction("Run with Fresh Store Results", self)
+        force_refresh.setToolTip(
+            "Ignore cached Google Play and alternative-store results for this run. "
+            "No cache files are deleted; app icons may still come from the icon cache."
+        )
         force_refresh.triggered.connect(self._force_full_refresh)
         tools.addAction(force_refresh)
         retry_problematic = QAction("Recheck Not Found / Anomaly / Other", self)
@@ -172,10 +176,14 @@ class DeviceWindow(compact_ui.CompactWindow):
             QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            device_metadata.clear_history()
-            self.status_label.setText(
-                "Previous-audit history cleared; the next comparison run will create a new baseline"
-            )
+            self.status_label.setText(self._perform_clear_audit_history())
+
+    @staticmethod
+    def _perform_clear_audit_history() -> str:
+        device_metadata.clear_history()
+        return (
+            "Previous Audit History cleared; the next comparison run will create a new baseline"
+        )
 
     # ---------- Advanced settings ----------
     def _show_advanced_settings(self) -> None:
@@ -468,7 +476,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             return
         self._force_refresh_next = True
         self._merge_base_rows = None
-        self._subset_label = "Full refresh"
+        self._subset_label = "Fresh Store results"
         self._start_audit()
 
     def _recheck_problematic(self) -> None:

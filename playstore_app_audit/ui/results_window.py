@@ -160,6 +160,8 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._install_numeric_sort_proxy()
         self._setup_details_panel()
         self._setup_export_button_menu()
+        model: Any = self.model
+        model.icon_loader_busy_changed.connect(self._sync_action_availability)
         self._sync_action_availability()
         self._update_summary()
 
@@ -194,6 +196,10 @@ class ResultsWindow(menu_ui.MenuWindow):
 
         running = self._operation_running()
         idle = not running
+        icon_loader_busy = getattr(self.model, "icon_loader_busy", None)
+        maintenance_idle = idle and not bool(
+            callable(icon_loader_busy) and icon_loader_busy()
+        )
         source_available = self._has_loaded_source()
         inventory_available = self.source_mode == "device" and bool(self.device_apps_all)
         rows_available = bool(self.current_rows)
@@ -256,9 +262,7 @@ class ResultsWindow(menu_ui.MenuWindow):
             "save_device_snapshot_action": idle and device_results_available,
             "compare_device_snapshot_action": idle and device_results_available,
             "device_inventory_changes_action": idle and inventory_changes_available,
-            "clear_audit_cache_action": idle,
-            "clear_audit_history_action": idle,
-            "clear_device_inventory_history_action": idle,
+            "data_maintenance_action": maintenance_idle,
         }
         for name, enabled in action_states.items():
             action = getattr(self, name, None)
@@ -270,8 +274,6 @@ class ResultsWindow(menu_ui.MenuWindow):
             self.device_history_menu.menuAction().setEnabled(
                 idle and (device_results_available or inventory_changes_available)
             )
-        if hasattr(self, "data_maintenance_menu"):
-            self.data_maintenance_menu.menuAction().setEnabled(idle)
         if hasattr(self, "audit_profiles_menu"):
             self.audit_profiles_menu.menuAction().setEnabled(idle)
         if hasattr(self, "details_panel"):

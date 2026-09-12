@@ -222,7 +222,7 @@ def friendly_notes(row: Mapping[str, Any]) -> str:
     if status == "multi_country_check_inconclusive":
         return (
             "Store verification was inconclusive because one or more checks could not "
-            "be completed reliably. Recheck later or use Force full refresh."
+            "be completed reliably. Recheck later or use Run with Fresh Store Results."
         )
 
     if any(_text(entry.get("role")) == "metadata_completion" for entry in entries):
