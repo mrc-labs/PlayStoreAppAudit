@@ -164,6 +164,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         self.user_settings = state.save_settings(settings)
         if name == "Custom":
             self._restore_custom_table_layout()
+            self._apply_column_visibility(reset_order=False)
         else:
             self._apply_column_visibility(reset_order=True)
         sync = getattr(self, "_sync_view_preset_action", None)

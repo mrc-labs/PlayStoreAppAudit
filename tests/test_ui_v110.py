@@ -331,11 +331,19 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert icons.isChecked()
         assert dialog.findChild(QComboBox, "DateFormatCombo") is not None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
         note = dialog.findChild(QLabel, "CustomColumnsNote")
         assert note is not None
         assert note.text() == (
             "Store Status and Package Name are always included. Click Save to apply "
             "changes. Changing the column selection activates View > Column Preset > Custom."
+        )
+        history_note = dialog.findChild(QLabel, "CustomHistoryColumnsNote")
+        assert history_note is not None
+        assert history_note.text() == (
+            "History columns are shown automatically when enabled in Tools > Changes & "
+            "History and applicable to the current source."
         )
         scroll = dialog.findChild(QScrollArea, "CustomColumnsScrollArea")
         assert scroll is not None

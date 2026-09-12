@@ -130,9 +130,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         for name in presentation.VIEW_PRESETS:
             action = QAction(name, self, checkable=True)
             action.setChecked(name == current)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
-            action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
+            action.triggered.connect(
+                lambda _checked=False, n=name: self._select_column_preset(n)
+            )
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
             self.view_preset_actions.append(action)
@@ -195,6 +195,18 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
+
+    def _select_column_preset(self, name: str) -> None:
+        if name != "Custom":
+            self._set_view_preset(name)
+            return
+
+        settings = state.load_settings()
+        if self._has_custom_table_layout(settings):
+            self._set_view_preset("Custom")
+        self._show_display_settings()
+        current = str(state.load_settings().get("view_preset") or "Basic")
+        self._sync_view_preset_action(current)
 
     def _changes_history_availability(
         self,

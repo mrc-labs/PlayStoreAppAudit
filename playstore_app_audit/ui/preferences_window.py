@@ -65,6 +65,7 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
 CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
 CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
 CUSTOMIZE_VIEW_SCREEN_MARGIN = 48
+CONTEXTUAL_HISTORY_COLUMNS = frozenset({"change", "device_change"})
 
 
 def customize_view_dialog_sizes(
@@ -99,7 +100,8 @@ def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
     choices = tuple(
         column
         for column in insights_ui.V9_MODEL_COLUMNS
-        if column not in {"criticality", "package_name"}
+        if column
+        not in {"criticality", "package_name", *CONTEXTUAL_HISTORY_COLUMNS}
     )
     common = tuple(column for column in choices if column not in ADVANCED_CUSTOM_COLUMNS)
     advanced = tuple(column for column in choices if column in ADVANCED_CUSTOM_COLUMNS)
@@ -367,12 +369,12 @@ class PreferencesWindow(table_ui.TableWindow):
     def _sync_custom_preset_availability(self) -> None:
         for action in getattr(self, "view_preset_actions", []) or []:
             if action.text() == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+                action.setEnabled(True)
         group = getattr(self, "_view_action_group", None)
         if isinstance(group, QActionGroup):
             for action in group.actions():
                 if action.text() == "Custom":
-                    action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+                    action.setEnabled(True)
 
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
@@ -431,6 +433,12 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         custom_note.setObjectName("CustomColumnsNote")
         root.addWidget(custom_note)
+        history_note = self._settings_note(
+            "History columns are shown automatically when enabled in Tools > Changes & "
+            "History and applicable to the current source."
+        )
+        history_note.setObjectName("CustomHistoryColumnsNote")
+        root.addWidget(history_note)
 
         scroll = QScrollArea()
         scroll.setObjectName("CustomColumnsScrollArea")
@@ -456,9 +464,18 @@ class PreferencesWindow(table_ui.TableWindow):
         stored_custom = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
         ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        ordinary_stored_custom = [
+            column for column in stored_custom if column not in CONTEXTUAL_HISTORY_COLUMNS
+        ]
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
         initial_columns = (
-            list(stored_custom) if current_preset == "Custom" else self._visible_column_order()
+            list(ordinary_stored_custom)
+            if current_preset == "Custom"
+            else [
+                column
+                for column in self._visible_column_order()
+                if column not in CONTEXTUAL_HISTORY_COLUMNS
+            ]
         )
         configured = set(initial_columns)
         custom_checks: dict[str, QCheckBox] = {}
@@ -524,11 +541,16 @@ class PreferencesWindow(table_ui.TableWindow):
             list(dict.fromkeys(custom_columns))
         ) or ["criticality", "package_name"]
         columns_changed = set(custom_columns) != configured
+        custom_exists = self._has_custom_table_layout(self.user_settings)
+        legacy_history_columns = bool(
+            set(stored_custom).intersection(CONTEXTUAL_HISTORY_COLUMNS)
+        )
+        save_custom = columns_changed or not custom_exists or legacy_history_columns
         updates: dict[str, object] = {
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
         }
-        if columns_changed:
+        if save_custom:
             _visible, live_order, live_widths, encoded = self._current_table_layout()
             stored_widths = self._normalise_custom_widths(
                 self.user_settings.get("custom_view_widths")
@@ -564,7 +586,7 @@ class PreferencesWindow(table_ui.TableWindow):
                     )
                 )
             )
-        if columns_changed:
+        if save_custom:
             self._sync_view_preset_action("Custom")
             self._sync_custom_preset_availability()
             self._apply_column_visibility(reset_order=False)

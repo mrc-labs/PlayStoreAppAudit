@@ -634,7 +634,12 @@ def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
 
 def test_customize_column_groups_partition_the_existing_schema() -> None:
     common, advanced = preferences_ui.custom_column_groups()
-    expected = set(schema.MODEL_COLUMNS) - {"criticality", "package_name"}
+    expected = set(schema.MODEL_COLUMNS) - {
+        "criticality",
+        "package_name",
+        "change",
+        "device_change",
+    }
 
     assert set(common).isdisjoint(advanced)
     assert set(common) | set(advanced) == expected

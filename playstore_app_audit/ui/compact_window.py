@@ -475,6 +475,9 @@ class CompactWindow(AuditWindow):
 
     def _persist_current_custom_layout(self, *, activate: bool = True) -> None:
         visible, order, widths, encoded = self._current_table_layout()
+        visible = [
+            column for column in visible if column not in {"change", "device_change"}
+        ]
         settings = load_settings()
         settings.update(
             {

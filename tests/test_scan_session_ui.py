@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QCheckBox, QDialog
+from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.scan_session as scan_sessions
@@ -116,23 +116,6 @@ def _device_change_hidden(window: MainWindow) -> bool:
     return window.table.isColumnHidden(window.model.columns.index("device_change"))
 
 
-def _custom_history_settings(*, include_device_change: bool) -> dict[str, object]:
-    columns = ["criticality", "package_name", "play_title"]
-    if include_device_change:
-        columns.insert(1, "device_change")
-    return {
-        "view_preset": "Custom",
-        "custom_view_exists": True,
-        "custom_view_columns": columns,
-        "custom_view_order": list(columns),
-        "custom_view_widths": {"package_name": 319, "play_title": 281},
-        "recent_sources": [],
-        "changes_history_enabled": True,
-        "compare_previous": False,
-        "inventory_history_enabled": True,
-    }
-
-
 def test_completed_phone_scan_selects_one_coherent_session(
     window: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -234,14 +217,14 @@ def test_real_phone_scan_and_completed_audit_apply_device_history_visibility(
     assert window.table.isColumnHidden(device_change) is (not expected_visible)
 
 
-@pytest.mark.parametrize("saved_with_device_change", [False, True])
-def test_real_phone_transition_preserves_custom_device_history_choice(
+@pytest.mark.parametrize("legacy_contains_device_change", [False, True])
+def test_real_phone_transition_applies_custom_history_overlay_without_rewriting_settings(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
-    saved_with_device_change: bool,
+    legacy_contains_device_change: bool,
 ) -> None:
     custom_columns = ["criticality", "package_name"]
-    if saved_with_device_change:
+    if legacy_contains_device_change:
         custom_columns.insert(1, "device_change")
     settings: dict[str, object] = {
         "view_preset": "Custom",
@@ -254,182 +237,22 @@ def test_real_phone_transition_preserves_custom_device_history_choice(
         "compare_previous": False,
         "inventory_history_enabled": True,
     }
-    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
-    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
-    window.user_settings.update(settings)
+    _use_settings(monkeypatch, window, settings)
     window.source_mode = "file"
     window._apply_established_source_defaults()
     device_change = window.model.columns.index("device_change")
     assert window.table.isColumnHidden(device_change)
+    saved_settings = deepcopy(settings)
 
     _select_session(window, _session("Pixel A", "device-a", "com.example.a"))
 
-    assert window.table.isColumnHidden(device_change) is (not saved_with_device_change)
-    assert settings["custom_view_columns"] == custom_columns
-    assert settings["custom_view_order"] == custom_columns
-    assert settings["custom_view_widths"] == {"package_name": 319}
+    assert not _device_change_hidden(window)
+    assert settings == saved_settings
 
-
-def test_customize_view_saves_inapplicable_device_column_until_real_phone_source(
-    window: MainWindow,
-    app: QApplication,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    settings = _custom_history_settings(include_device_change=False)
-    _use_settings(monkeypatch, window, settings)
     window.source_mode = "file"
     window._apply_established_source_defaults()
-    package_width = window.table.columnWidth(window.model.columns.index("package_name"))
-    header = window.table.horizontalHeader()
-    live_order = [
-        window.model.columns[header.logicalIndex(visual)]
-        for visual in range(header.count())
-    ]
-
-    def select_device_change(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and not check.isChecked()
-        check.setChecked(True)
-        return QDialog.DialogCode.Accepted
-
-    monkeypatch.setattr(QDialog, "exec", select_device_change)
-    window._show_display_settings()
-    app.processEvents()
-
-    assert "device_change" in settings["custom_view_columns"]
     assert _device_change_hidden(window)
-    saved_order = deepcopy(settings["custom_view_order"])
-    saved_widths = deepcopy(settings["custom_view_widths"])
-    assert saved_order == live_order
-    assert settings["custom_view_widths"]["package_name"] == package_width  # type: ignore[index]
-    assert settings["custom_view_widths"]["device_change"] > 0  # type: ignore[index]
-
-    def inspect_saved_selection(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and check.isChecked()
-        return QDialog.DialogCode.Rejected
-
-    monkeypatch.setattr(QDialog, "exec", inspect_saved_selection)
-    window._show_display_settings()
-
-    before_transition = deepcopy(settings)
-    _select_session(window, _session("Pixel A", "device-a", "com.example.a"))
-
-    assert not _device_change_hidden(window)
-    assert settings == before_transition
-    assert settings["custom_view_order"] == saved_order
-    assert settings["custom_view_widths"] == saved_widths
-
-
-def test_customize_view_saves_applicable_device_column_across_restart(
-    window: MainWindow,
-    app: QApplication,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    settings = _custom_history_settings(include_device_change=False)
-    _use_settings(monkeypatch, window, settings)
-    session = _session("Pixel A", "device-a", "com.example.a")
-    _select_session(window, session)
-
-    def select_device_change(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and not check.isChecked()
-        check.setChecked(True)
-        return QDialog.DialogCode.Accepted
-
-    monkeypatch.setattr(QDialog, "exec", select_device_change)
-    window._show_display_settings()
-    app.processEvents()
-
-    assert "device_change" in settings["custom_view_columns"]
-    assert not _device_change_hidden(window)
-
-    def inspect_saved_selection(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and check.isChecked()
-        return QDialog.DialogCode.Rejected
-
-    monkeypatch.setattr(QDialog, "exec", inspect_saved_selection)
-    window._show_display_settings()
-
-    restarted = MainWindow()
-    monkeypatch.setattr(restarted, "_schedule_first_audit", lambda: None)
-    try:
-        _select_session(restarted, session)
-        assert not _device_change_hidden(restarted)
-        restarted._show_display_settings()
-    finally:
-        restarted.close()
-        app.processEvents()
-
-
-def test_customize_view_removes_device_column_across_reopen_and_restart(
-    window: MainWindow,
-    app: QApplication,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    settings = _custom_history_settings(include_device_change=True)
-    _use_settings(monkeypatch, window, settings)
-    session = _session("Pixel A", "device-a", "com.example.a")
-    _select_session(window, session)
-    assert not _device_change_hidden(window)
-
-    def remove_device_change(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and check.isChecked()
-        check.setChecked(False)
-        return QDialog.DialogCode.Accepted
-
-    monkeypatch.setattr(QDialog, "exec", remove_device_change)
-    window._show_display_settings()
-    app.processEvents()
-
-    assert "device_change" not in settings["custom_view_columns"]
-    assert _device_change_hidden(window)
-
-    def inspect_removed_selection(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and not check.isChecked()
-        return QDialog.DialogCode.Rejected
-
-    monkeypatch.setattr(QDialog, "exec", inspect_removed_selection)
-    window._show_display_settings()
-
-    restarted = MainWindow()
-    monkeypatch.setattr(restarted, "_schedule_first_audit", lambda: None)
-    try:
-        _select_session(restarted, session)
-        assert _device_change_hidden(restarted)
-        restarted._show_display_settings()
-    finally:
-        restarted.close()
-        app.processEvents()
-
-
-@pytest.mark.parametrize("dismissal", ["cancel", "close"])
-def test_customize_view_cancel_or_close_discards_column_edits(
-    window: MainWindow,
-    monkeypatch: pytest.MonkeyPatch,
-    dismissal: str,
-) -> None:
-    settings = _custom_history_settings(include_device_change=False)
-    _use_settings(monkeypatch, window, settings)
-    before = deepcopy(settings)
-
-    def edit_then_dismiss(dialog: QDialog) -> int:
-        check = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
-        assert check is not None and not check.isChecked()
-        check.setChecked(True)
-        if dismissal == "close":
-            dialog.close()
-        else:
-            dialog.reject()
-        return dialog.result()
-
-    monkeypatch.setattr(QDialog, "exec", edit_then_dismiss)
-    window._show_display_settings()
-
-    assert settings == before
+    assert settings == saved_settings
 
 
 @pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)

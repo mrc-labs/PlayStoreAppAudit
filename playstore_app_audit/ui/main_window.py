@@ -386,15 +386,21 @@ class MainWindow(results_ui.ResultsWindow):
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
         if preset == "Custom":
-            columns = super()._visible_column_order()
-            if not state.store_history_enabled(settings):
-                columns = [column for column in columns if column != "change"]
-            if (
-                not state.device_inventory_history_enabled(settings)
-                or normalise_source_mode(self.source_mode) != SOURCE_DEVICE
+            columns = [
+                column
+                for column in super()._visible_column_order()
+                if column not in {"change", "device_change"}
+            ]
+            if state.store_history_enabled(settings) and not local_apk_audit.is_local_apk_source(
+                self.source_mode
             ):
-                columns = [column for column in columns if column != "device_change"]
-            return columns
+                columns.append("change")
+            if (
+                state.device_inventory_history_enabled(settings)
+                and normalise_source_mode(self.source_mode) == SOURCE_DEVICE
+            ):
+                columns.append("device_change")
+            return list(dict.fromkeys(columns))
         selected = settings.get("technical_columns", [])
         return visible_columns(
             preset,

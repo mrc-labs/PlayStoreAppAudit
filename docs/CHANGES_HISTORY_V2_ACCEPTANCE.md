@@ -136,13 +136,15 @@ Built-in column presets apply both history gates symmetrically:
 - show Device App Inventory Change only when `device_inventory_history_enabled(settings)` is true and the active source is a device;
 - in Basic device results, place Store Status, Play Store Listing Change and Device App Inventory Change before Package Name;
 - Source Details and Technical follow the same gates and source applicability;
-- Custom remains user-controlled: it retains the user's saved visibility/order/width configuration and does not automatically add a history column that is absent from that saved column set. A saved history-column choice is hidden while inapplicable and returns when its gate/source becomes applicable again.
+- Custom retains the user's ordinary saved visibility/order/width configuration, while Play Store Listing Change and Device App Inventory Change are contextual overlays controlled only by Changes & History settings and source applicability. The Store overlay is never shown for Local APK results; the device overlay is shown only for phone results. Legacy Custom selections containing either history field load safely and are normalized only by an explicit Customize View Save or later layout edit.
 
 Applying dialog settings must refresh the existing table presentation immediately through the canonical column-visibility path, without rebuilding the model or resetting saved widths/order.
 
 The production phone-source transition sets the canonical `device` source and reapplies column visibility: built-in presets restore their source defaults, while Custom preserves its saved order and widths. Completed phone-audit presentation retains that source and reapplies column visibility during result finalization.
 
-Customize View checkbox selections are authoritative when Save is clicked. Persist the exact normalized selection plus mandatory columns together with the existing live visual order, usable widths and compatibility header state; do not recapture presentation-time visible columns after applying runtime gates. Cancel and window close discard unsaved edits. The dialog opens from its actual column-content size, bounded by the current screen's available geometry, and retains an as-needed vertical scrollbar for smaller displays.
+Customize View offers only ordinary user-owned columns; history columns have no selectable checkboxes and explanatory copy points to Tools > Changes & History. Checkbox selections are authoritative when Save is clicked and are compared without contextual overlays currently visible in the table. Persist the exact normalized ordinary selection plus mandatory columns together with the existing live visual order, usable widths and compatibility header state; do not recapture presentation-time visible columns after applying runtime gates. Cancel and window close discard unsaved edits. The dialog opens from its actual column-content size, bounded by the current screen's available geometry, and retains an as-needed vertical scrollbar for smaller displays.
+
+View > Column Preset > Custom is always enabled. With an existing Custom layout it restores the layout, reapplies contextual visibility and opens Customize View. Without one it opens Customize View from the active built-in layout; Save creates and activates Custom, while Cancel or window close leaves the built-in preset and settings unchanged. View > Customize View… remains available as the standalone entry point.
 
 The dialog footer is one permanent native layout containing the initially hidden saved-status label, stretch and Apply/Close button box. Showing `Settings saved.` after a successful Apply must not add a vertical row or change the dialog's required height.
 
@@ -220,18 +222,21 @@ Cover at minimum:
 25. Apply immediately updates Play Store Listing Change visibility for master Off/On and Store-child Off/On transitions;
 26. Apply immediately updates Device App Inventory Change visibility for master Off/On and device-child Off/On transitions;
 27. Basic, Source Details and Technical apply both canonical history gates and device-source applicability;
-28. Custom history-column choices remain stored across feature-gate and source changes;
+28. Custom stores only ordinary columns while contextual history overlays follow feature gates and source changes without rewriting settings;
 29. schema, Customize View, Smart Query and HTML report labels use the canonical column names;
 30. both canonical table headers wrap intentionally and satisfy their bounded width policies.
 31. a real completed phone-scan transition resolves to the canonical device source and applies device-history visibility across every built-in preset;
 32. completed phone-audit result presentation retains the canonical device source and visibility;
-33. Custom does not add a device-history column absent from the saved Custom column set;
+33. Custom applies both history overlays regardless of legacy presence or absence in its saved ordinary column set;
 34. the saved-status label and native Apply/Close button box share one permanent footer layout before and after Apply.
-35. Customize View Save retains a selected but currently inapplicable history column and exposes it after a real phone-source transition;
-36. saving an applicable history column survives reopen and restart, while explicit removal also survives reopen and restart;
+35. Customize View omits both history-column checkboxes and explains their automatic behavior;
+36. legacy saved Custom history fields load without a startup rewrite and normalize out on explicit Save;
 37. Customize View Cancel and window close discard checkbox edits;
 38. a real Changes & History Apply path exposes the device-history column for Basic, Source Details and Technical phone results;
 39. Customize View sizing fits content when screen geometry permits and clamps to preserve as-needed scrolling on small displays.
+40. Basic, Source Details, Technical and Custom produce the same contextual outcomes for Store-only, device-only, both and master-Off settings across file, phone and Local APK sources.
+41. activating Custom before or after establishing phone/history state produces identical history visibility.
+42. the always-enabled Custom action opens the editor; without an existing layout, Save creates Custom while Cancel/window close preserves the active built-in preset.
 
 ## Out of scope
 
