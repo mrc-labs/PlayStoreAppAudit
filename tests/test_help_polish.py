@@ -98,7 +98,7 @@ def test_startup_check_starts_daemon_worker_without_running_network_inline(
     window, settings = window_store
     settings[update_ui.AUTO_UPDATE_CHECK_KEY] = True
     controller = update_ui.UpdateCheckController(window)
-    started: list[FakeThread] = []
+    started: list[Any] = []
 
     class FakeThread:
         def __init__(self, *, target: Any, name: str, daemon: bool) -> None:
@@ -176,7 +176,7 @@ def test_install_rebinds_manual_help_check_to_same_async_controller(
 ) -> None:
     window, settings = window_store
     settings[update_ui.AUTO_UPDATE_CHECK_KEY] = False
-    started: list[FakeThread] = []
+    started: list[Any] = []
 
     class FakeThread:
         def __init__(self, *, target: Any, name: str, daemon: bool) -> None:
@@ -274,7 +274,7 @@ def test_manual_request_reuses_inflight_startup_worker(
     window, settings = window_store
     settings[update_ui.AUTO_UPDATE_CHECK_KEY] = True
     controller = update_ui.UpdateCheckController(window)
-    started: list[FakeThread] = []
+    started: list[Any] = []
 
     class FakeThread:
         def __init__(self, *, target: Any, name: str, daemon: bool) -> None:
