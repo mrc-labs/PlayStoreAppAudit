@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pytest
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -196,7 +197,7 @@ def test_install_rebinds_manual_help_check_to_same_async_controller(
     controller = update_ui.install_update_check_controller(window)
     window.check_updates_action.trigger()
 
-    assert getattr(window, "_update_check_controller") is controller
+    assert window._update_check_controller is controller
     assert controller._manual_requested is True
     assert len(started) == 1
     assert started[0].daemon is True
