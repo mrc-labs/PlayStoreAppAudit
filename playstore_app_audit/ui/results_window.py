@@ -83,12 +83,13 @@ def _device_source_identity(summary: dict[str, Any]) -> str:
 
 class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
     LOCAL_APK_RELATIONSHIP_RANK = {
-        "Outdated": 0,
-        "Unknown": 1,
-        "Different": 2,
-        "Device-specific": 3,
-        "Newer": 4,
-        "Match": 5,
+        "Not Found": 0,
+        "Outdated": 1,
+        "Unknown": 2,
+        "Different": 3,
+        "Device-specific": 4,
+        "Newer": 5,
+        "Match": 6,
     }
     NUMERIC_SORT_COLUMNS = frozenset(
         {

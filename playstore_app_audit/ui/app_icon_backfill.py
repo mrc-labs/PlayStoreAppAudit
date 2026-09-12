@@ -18,6 +18,7 @@ class StoreMetadataRequest:
     package_name: str
     country: str
     language: str
+    generation: int = 0
 
 
 class _BackfillSignals(QObject):
@@ -64,6 +65,7 @@ class StoreMetadataBackfill(QObject):
         self._signals.completed.connect(self._on_completed)
         self._attempted: set[StoreMetadataRequest] = set()
         self._cancel_event = threading.Event()
+        self._generation = 0
 
     def schedule(self, package_name: object, country: object, language: object) -> bool:
         if self._cancel_event.is_set():
@@ -72,6 +74,7 @@ class StoreMetadataBackfill(QObject):
             str(package_name or "").strip(),
             str(country or "us").strip().lower() or "us",
             str(language or "en").strip().lower() or "en",
+            self._generation,
         )
         if not request.package_name or request in self._attempted:
             return False
@@ -85,6 +88,14 @@ class StoreMetadataBackfill(QObject):
         self._pool.start(_BackfillTask(request, self._signals, self._cancel_event))
         return True
 
+    def begin_generation(self) -> int:
+        self._cancel_event.set()
+        self._pool.clear()
+        self._generation += 1
+        self._cancel_event = threading.Event()
+        self._attempted.clear()
+        return self._generation
+
     def cancel(self) -> None:
         self._cancel_event.set()
         self._pool.clear()
@@ -92,5 +103,9 @@ class StoreMetadataBackfill(QObject):
     def _on_completed(self, request: object, metadata: object) -> None:
         if self._cancel_event.is_set():
             return
-        if isinstance(request, StoreMetadataRequest) and isinstance(metadata, dict):
+        if (
+            isinstance(request, StoreMetadataRequest)
+            and request.generation == self._generation
+            and isinstance(metadata, dict)
+        ):
             self.completed.emit(request, metadata)

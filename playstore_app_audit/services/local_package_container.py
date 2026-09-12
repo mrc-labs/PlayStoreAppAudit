@@ -31,6 +31,21 @@ _EOCD = struct.Struct("<4s4H2LH")
 _ZIP64_SENTINEL_16 = 0xFFFF
 _ZIP64_SENTINEL_32 = 0xFFFFFFFF
 _DRIVE_PREFIX = re.compile(r"^[A-Za-z]:")
+_PACKAGE_APK_STEM = re.compile(
+    r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$"
+)
+_SPLIT_NAME_PREFIXES = (
+    "config.",
+    "config_",
+    "split.",
+    "split_",
+    "split-config.",
+    "split-config_",
+    "split_config.",
+    "split_config_",
+    "feature.",
+    "feature_",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +140,10 @@ def parse_local_package(
                     extracted = Path(temp_dir) / "base.apk"
                     _extract_member(archive, base_info, extracted, limits, cancelled)
                     _check_cancelled(cancelled)
-                    parsed = parse_local_apk(extracted)
+                    parsed = parse_local_apk(
+                        extracted,
+                        allow_split_dependencies=True,
+                    )
                     _check_cancelled(cancelled)
 
             final_sha256 = _hash_stream(
@@ -434,7 +452,7 @@ def _select_base_apk(
             LocalArtifactFailureKind.NO_BASE_APK,
             "The package container contains no APK entry.",
         )
-    if len(apk_infos) == 1:
+    if len(apk_infos) == 1 and artifact_format is not LocalArtifactFormat.XAPK:
         return apk_infos[0]
 
     metadata_names = (
@@ -467,9 +485,31 @@ def _select_base_apk(
         )
         if selected is not None:
             return selected
+
+    if artifact_format is LocalArtifactFormat.XAPK:
+        package_named = [
+            info
+            for info in apk_infos
+            if _is_package_named_base_candidate(PurePosixPath(info.filename).stem)
+        ]
+        selected = _select_unique(package_named)
+        if selected is not None:
+            return selected
+        if not package_named:
+            raise _ContainerFailure(
+                LocalArtifactFailureKind.NO_BASE_APK,
+                "No credible base APK could be identified in the package container.",
+            )
     raise _ContainerFailure(
         LocalArtifactFailureKind.AMBIGUOUS_BASE_APK,
         "No single credible base APK could be identified in the package container.",
+    )
+
+
+def _is_package_named_base_candidate(stem: str) -> bool:
+    normalized = stem.casefold()
+    return not normalized.startswith(_SPLIT_NAME_PREFIXES) and bool(
+        _PACKAGE_APK_STEM.fullmatch(stem)
     )
 
 

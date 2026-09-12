@@ -329,6 +329,23 @@ def test_local_unknown_from_missing_store_counterpart_has_no_version_penalty(
     assert all(component.key != "local_store_version" for component in breakdown.components)
 
 
+def test_local_not_found_relationship_does_not_double_count_store_absence() -> None:
+    row = _row(play_status="not_found_in_checked_countries")
+    row.update(
+        source_mode="local_apk",
+        local_apk_version_comparison="Not Found",
+        local_apk_version_name="1.0",
+        play_version="",
+    )
+
+    breakdown = device_insights.calculate_health_score_breakdown(row)
+
+    assert breakdown.play_availability_penalty == -60
+    assert breakdown.version_comparison_penalty == 0
+    assert breakdown.score == 40
+    assert all(component.key != "local_store_version" for component in breakdown.components)
+
+
 def test_independent_penalties_compose_and_score_is_clamped_to_zero() -> None:
     breakdown = _breakdown(
         play_status="not_found_in_checked_countries",

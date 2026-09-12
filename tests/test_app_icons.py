@@ -5,10 +5,12 @@ import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt
 from PySide6.QtGui import QColor, QIcon, QPixmap
+from PySide6.QtNetwork import QNetworkReply
 from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.app_icon_disk_cache as disk_cache
@@ -185,8 +187,8 @@ def test_cached_icon_remains_available_without_creating_networking(app: QApplica
     assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     assert image.save(buffer, "PNG")
     buffer.close()
-    ready: list[str] = []
-    loader.icon_ready.connect(ready.append)
+    ready: list[tuple[str, int]] = []
+    loader.icon_ready.connect(lambda package, generation: ready.append((package, generation)))
     loader._pending.add(item.key)
 
     try:
@@ -194,7 +196,7 @@ def test_cached_icon_remains_available_without_creating_networking(app: QApplica
 
         assert loader._manager is None
         assert loader._cache[item.key].isNull() is False
-        assert ready == ["com.example.offline"]
+        assert ready == [("com.example.offline", 0)]
     finally:
         loader.deleteLater()
         app.processEvents()
@@ -571,10 +573,178 @@ def test_icon_ready_updates_only_rows_indexed_for_the_package(
     changed_rows: list[int] = []
     model.dataChanged.connect(lambda top, _bottom, _roles: changed_rows.append(top.row()))
 
-    model._on_icon_ready("com.example.7777")
+    model._on_icon_ready("com.example.7777", model._icon_generation - 1)
+    assert changed_rows == []
+    model._on_icon_ready("com.example.7777", model._icon_generation)
 
     assert rows.iterations == 0
     assert changed_rows == [7777]
+    model.deleteLater()
+    app.processEvents()
+
+
+def test_icon_generation_retires_stale_queue_and_ignores_disk_completion(
+    app: QApplication,
+) -> None:
+    loader = AppIconLoader()
+    cleared: list[bool] = []
+    loader._disk_pool = SimpleNamespace(  # type: ignore[assignment]
+        start=lambda _task: None,
+        clear=lambda: cleared.append(True),
+    )
+    old = _IconRequest(
+        "com.example.old",
+        "https://example.invalid/old.png",
+        "2026-08-20",
+        loader.generation,
+    )
+    loader._queued.append(old)
+    loader._pending.add(old.key)
+    loader._request_generations[old.key] = old.generation
+    image = QPixmap(2, 2)
+    image.fill(QColor("red"))
+    encoded = QByteArray()
+    buffer = QBuffer(encoded)
+    assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    assert image.save(buffer, "PNG")
+    buffer.close()
+    ready: list[tuple[str, int]] = []
+    loader.icon_ready.connect(lambda package, generation: ready.append((package, generation)))
+
+    generation = loader.begin_generation()
+    loader._on_disk_loaded(old, bytes(encoded))
+
+    assert generation == 1
+    assert cleared == [True]
+    assert not loader._queued
+    assert not loader._pending
+    assert old.key not in loader._cache
+    assert ready == []
+    loader.deleteLater()
+    app.processEvents()
+
+
+def test_icon_generation_aborts_and_ignores_stale_network_but_current_completes(
+    app: QApplication,
+) -> None:
+    class FakeReply:
+        def __init__(self, data: bytes) -> None:
+            self.data = data
+            self.aborted = False
+            self.deleted = False
+
+        def isRunning(self) -> bool:
+            return not self.aborted
+
+        def abort(self) -> None:
+            self.aborted = True
+
+        def error(self) -> QNetworkReply.NetworkError:
+            return QNetworkReply.NetworkError.NoError
+
+        def readAll(self) -> QByteArray:
+            return QByteArray(self.data)
+
+        def errorString(self) -> str:
+            return ""
+
+        def deleteLater(self) -> None:
+            self.deleted = True
+
+    image = QPixmap(2, 2)
+    image.fill(QColor("green"))
+    encoded = QByteArray()
+    buffer = QBuffer(encoded)
+    assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    assert image.save(buffer, "PNG")
+    buffer.close()
+
+    loader = AppIconLoader()
+    stored: list[object] = []
+    loader._disk_pool = SimpleNamespace(  # type: ignore[assignment]
+        start=stored.append,
+        clear=lambda: None,
+    )
+    ready: list[tuple[str, int]] = []
+    loader.icon_ready.connect(lambda package, generation: ready.append((package, generation)))
+    old = _IconRequest(
+        "com.example.old",
+        "https://example.invalid/old.png",
+        "2026-08-20",
+        loader.generation,
+    )
+    old_reply = FakeReply(bytes(encoded))
+    loader._pending.add(old.key)
+    loader._request_generations[old.key] = old.generation
+    loader._active = 1
+    loader._active_replies[old_reply] = old  # type: ignore[index]
+
+    generation = loader.begin_generation()
+    assert old_reply.aborted
+    loader._finish(old, old_reply)  # type: ignore[arg-type]
+
+    current = _IconRequest(
+        "com.example.current",
+        "https://example.invalid/current.png",
+        "2026-08-20",
+        generation,
+    )
+    current_reply = FakeReply(bytes(encoded))
+    loader._pending.add(current.key)
+    loader._request_generations[current.key] = generation
+    loader._active = 1
+    loader._active_replies[current_reply] = current  # type: ignore[index]
+    loader._finish(current, current_reply)  # type: ignore[arg-type]
+
+    assert old.key not in loader._cache
+    assert current.key in loader._cache
+    assert ready == [("com.example.current", generation)]
+    assert len(stored) == 1
+    loader.deleteLater()
+    app.processEvents()
+
+
+def test_result_generation_preserves_icon_caches_and_is_not_reset_by_set_rows(
+    app: QApplication,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(state, "load_settings", lambda: {"show_app_icons": True})
+    monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
+    package = "com.example.cached"
+    url = "https://example.invalid/cached.png"
+    update = "2026-08-20"
+    disk_cache.store_cached_icon_bytes(package, url, update, b"persistent")
+    model = table_ui.AuditTableModel()
+    metadata_tasks: list[Any] = []
+    model._metadata_backfill._pool = SimpleNamespace(  # type: ignore[assignment]
+        start=metadata_tasks.append,
+        clear=lambda: None,
+    )
+    model.set_store_context_provider(lambda: ("it", "en"))
+    memory_key = (package, url, update)
+    pixmap = QPixmap(2, 2)
+    pixmap.fill(QColor("blue"))
+    model._icon_loader._remember_in_memory(memory_key, QIcon(pixmap))
+
+    generation = model.begin_result_generation()
+    model.set_rows([{"package_name": "one"}])
+    model.set_rows(
+        [
+            {
+                "package_name": "com.example.current-generation",
+                "play_status": "available",
+            }
+        ]
+    )
+
+    assert model._icon_generation == generation
+    assert model._icon_loader.generation == generation
+    assert memory_key in model._icon_loader._cache
+    assert not model._icon_loader._cache[memory_key].isNull()
+    assert disk_cache.load_cached_icon_bytes(package, url, update) == b"persistent"
+    assert len(metadata_tasks) == 1
+    assert metadata_tasks[0]._request.generation == model._metadata_backfill._generation
     model.deleteLater()
     app.processEvents()
 

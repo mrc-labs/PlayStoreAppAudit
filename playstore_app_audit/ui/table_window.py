@@ -43,6 +43,7 @@ TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
 SELECTED_ROW_BACKGROUND = "#DDEBF7"
 SELECTED_ROW_FOREGROUND = "#18212A"
 LOCAL_APK_RELATIONSHIP_STATUS = {
+    "Not Found": "red",
     "Outdated": "orange",
     "Different": "yellow",
     "Unknown": "purple",
@@ -117,9 +118,18 @@ class AuditTableModel(base_ui.AppTableModel):
         self._icon_rows_by_package: dict[str, list[int]] = {}
         self._icon_loader = AppIconLoader(self)
         self._icon_loader.icon_ready.connect(self._on_icon_ready)
+        self._icon_generation = self._icon_loader.generation
         self._metadata_backfill = StoreMetadataBackfill(self)
         self._metadata_backfill.completed.connect(self._on_metadata_backfilled)
         self._store_context_provider: Callable[[], tuple[str, str]] | None = None
+
+    def begin_result_generation(self) -> int:
+        """Retire stale icon work for a replacement logical result set."""
+
+        self._icon_rows_by_package = {}
+        self._metadata_backfill.begin_generation()
+        self._icon_generation = self._icon_loader.begin_generation()
+        return self._icon_generation
 
     def set_store_context_provider(
         self, provider: Callable[[], tuple[str, str]] | None
@@ -237,8 +247,12 @@ class AuditTableModel(base_ui.AppTableModel):
             [Qt.ItemDataRole.DecorationRole],
         )
 
-    def _on_icon_ready(self, package_name: str) -> None:
-        if not self._icons_enabled or ICON_COLUMN not in self.columns:
+    def _on_icon_ready(self, package_name: str, generation: int) -> None:
+        if (
+            generation != self._icon_generation
+            or not self._icons_enabled
+            or ICON_COLUMN not in self.columns
+        ):
             return
         column = self.columns.index(ICON_COLUMN)
         for row_index in self._icon_rows_by_package.get(package_name, []):
@@ -295,10 +309,11 @@ class AuditTableModel(base_ui.AppTableModel):
                 return QColor(info["background"])
             if column == "criticality":
                 return QColor(info["background"])
-            if column == "local_apk_version_comparison":
-                relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(str(row.get(column) or ""))
-                if relation_key:
-                    return QColor(base_ui.CRITICALITY[relation_key]["background"])
+            relation_key = LOCAL_APK_RELATIONSHIP_STATUS.get(
+                str(row.get("local_apk_version_comparison") or "")
+            )
+            if relation_key:
+                return QColor(base_ui.CRITICALITY[relation_key]["background"])
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
@@ -318,6 +333,14 @@ class AuditTableModel(base_ui.AppTableModel):
                 return presentation.friendly_notes(row)
             if column == "local_apk_location":
                 return str(row.get(column) or "")
+            if (
+                column == "local_apk_version_comparison"
+                and row.get(column) == "Not Found"
+            ):
+                return (
+                    "No listing was found in the configured successfully checked "
+                    "Store countries. This does not prove global absence."
+                )
 
         if role == Qt.ItemDataRole.FontRole:
             if column == "criticality":

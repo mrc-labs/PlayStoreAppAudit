@@ -87,6 +87,8 @@ class MainWindow(results_ui.ResultsWindow):
         self._audit_live_count = 0
         self._audit_started_at: float | None = None
         self._audit_pre_finalize_seconds: float | None = None
+        self._audit_source_at_start: str | None = None
+        self._audit_performance_logged_session: int | None = None
         self._finalizing_session: int | None = None
         super().__init__()
         self.local_apk_source_signals = LocalApkSourceSignals(self)
@@ -435,6 +437,8 @@ class MainWindow(results_ui.ResultsWindow):
             self._local_apk_candidates = ()
 
     def _clear_source_result_rows(self) -> None:
+        self._invalidate_progressive_presentation(reset_counts=True)
+        self._begin_icon_result_generation()
         self.current_rows = []
         self._results_incomplete = False
         self.current_system_packages = set()
@@ -610,9 +614,12 @@ class MainWindow(results_ui.ResultsWindow):
             and self.file_apps is not previous_apps
         )
         if established_now:
+            self._invalidate_progressive_presentation(reset_counts=True)
             self._local_apk_candidates = ()
             if local_apk_audit.is_local_apk_source(previous_mode):
                 self._clear_source_result_rows()
+            else:
+                self._begin_icon_result_generation()
             self.status_label.setText("File ready. Run the Play Store audit.")
             self._apply_established_source_defaults()
             self._set_busy(False)
@@ -681,6 +688,8 @@ class MainWindow(results_ui.ResultsWindow):
         self._update_summary()
         self._audit_started_at = started_at
         self._audit_pre_finalize_seconds = None
+        self._audit_source_at_start = str(self.source_mode or "unknown")
+        self._audit_performance_logged_session = None
         self._audit_cached_count = max(0, self.progress.value())
         total = max(0, self.progress.maximum())
         self._audit_live_count = max(0, total - self._audit_cached_count)
@@ -729,12 +738,14 @@ class MainWindow(results_ui.ResultsWindow):
         self._progressive_sorting_was_enabled = self.table.isSortingEnabled()
         if self._progressive_sorting_was_enabled:
             self.table.setSortingEnabled(False)
+        self._begin_icon_result_generation()
         self.model.set_rows([])
         self.export_button.setEnabled(False)
         self.progress.setRange(0, len(candidates))
         self.progress.setValue(0)
         self._audit_session += 1
         session = self._audit_session
+        self._begin_progressive_presentation(session, self.current_rows)
         self._audit_requested_outcome = None
         self._audit_pause_event = threading.Event()
         self._audit_pause_event.set()
@@ -772,6 +783,7 @@ class MainWindow(results_ui.ResultsWindow):
         force_refresh: bool,
         source_mode: str = local_apk_audit.SOURCE_MODE,
     ) -> None:
+        parse_started = time.perf_counter()
         artifacts: list[LocalArtifact] = []
         failures: list[LocalArtifactParseFailure] = []
         unexpected_failures: list[str] = []
@@ -835,6 +847,7 @@ class MainWindow(results_ui.ResultsWindow):
             len(failures) + len(unexpected_failures),
             cancel_event.is_set(),
         )
+        parse_ms = round(max(0.0, time.perf_counter() - parse_started) * 1000)
         failure_lines = [
             f"{failure.path.name}: {failure.kind.value.replace('_', ' ')}"
             for failure in failures[:5]
@@ -856,6 +869,10 @@ class MainWindow(results_ui.ResultsWindow):
                     else "",
                     metadata={
                         "source_mode": source_mode,
+                        "physical_count": len(candidates),
+                        "package_count": 0,
+                        "parse_ms": parse_ms,
+                        "store_ms": 0,
                         "parse_failure_count": len(failures) + len(unexpected_failures),
                         "parse_failure_summary": "\n".join(failure_lines),
                     },
@@ -879,6 +896,12 @@ class MainWindow(results_ui.ResultsWindow):
                     total_count=len(candidates),
                     metadata={
                         "source_mode": source_mode,
+                        "physical_count": len(candidates),
+                        "package_count": len(
+                            {artifact.package_lookup_key for artifact in artifacts}
+                        ),
+                        "parse_ms": parse_ms,
+                        "store_ms": 0,
                         "parse_failure_count": len(failures) + len(unexpected_failures),
                         "parse_failure_summary": "\n".join(failure_lines),
                     },
@@ -925,6 +948,7 @@ class MainWindow(results_ui.ResultsWindow):
                 package_name,
             )
 
+        store_started = time.perf_counter()
         try:
             result = self._local_artifact_store_service().collect(
                 tuple(artifacts),
@@ -964,6 +988,12 @@ class MainWindow(results_ui.ResultsWindow):
                         total_count=len(candidates),
                         metadata={
                             "source_mode": source_mode,
+                            "physical_count": len(candidates),
+                            "package_count": len(artifacts_by_package),
+                            "parse_ms": parse_ms,
+                            "store_ms": round(
+                                max(0.0, time.perf_counter() - store_started) * 1000
+                            ),
                             "issues": list(result.issues),
                             "parse_failure_count": len(failures) + len(unexpected_failures),
                             "parse_failure_summary": "\n".join(failure_lines),
@@ -998,7 +1028,18 @@ class MainWindow(results_ui.ResultsWindow):
                         ),
                         total_count=len(candidates),
                         error=str(exc),
-                        metadata={"source_mode": source_mode},
+                        metadata={
+                            "source_mode": source_mode,
+                            "physical_count": len(candidates),
+                            "package_count": len(artifacts_by_package),
+                            "parse_ms": parse_ms,
+                            "store_ms": round(
+                                max(0.0, time.perf_counter() - store_started) * 1000
+                            ),
+                            "parse_failure_count": len(failures)
+                            + len(unexpected_failures),
+                            "parse_failure_summary": "\n".join(failure_lines),
+                        },
                     )
                 )
 
@@ -1057,6 +1098,7 @@ class MainWindow(results_ui.ResultsWindow):
         result = compact_ui.coerce_audit_run_result(payload)
         if result.session != self._audit_session or result.outcome is AuditRunOutcome.ABANDONED:
             return
+        self._invalidate_progressive_presentation()
         parse_failure_count = int(result.metadata.get("parse_failure_count") or 0)
         if parse_failure_count:
             summary = str(result.metadata.get("parse_failure_summary") or "").strip()
@@ -1068,16 +1110,6 @@ class MainWindow(results_ui.ResultsWindow):
             )
         if self._audit_started_at is not None:
             self._audit_pre_finalize_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
-        if (
-            result.outcome is AuditRunOutcome.FAILED
-            and self._audit_pre_finalize_seconds is not None
-        ):
-            device_insights.log_event(
-                "audit_performance "
-                f"result=error pre_finalize_s={self._audit_pre_finalize_seconds:.3f} "
-                f"cached={result.cached_count} live={result.live_completed_count} "
-                f"source={self.source_mode or 'unknown'}"
-            )
 
         self._finalizing_session = result.session
         self._audit_pause_event.set()
@@ -1104,9 +1136,6 @@ class MainWindow(results_ui.ResultsWindow):
             or result.outcome is AuditRunOutcome.ABANDONED
         ):
             return
-        finalize_started = time.perf_counter()
-        finalize_seconds = 0.0
-        initial_outcome = result.outcome
         result_finalized = False
         try:
             try:
@@ -1122,10 +1151,8 @@ class MainWindow(results_ui.ResultsWindow):
                 result.error = str(exc)
                 self._last_audit_outcome = AuditRunOutcome.FAILED
                 self.status_label.setText("Audit failed during finalization")
-                self.export_button.setEnabled(bool(self.current_rows))
+                self.export_button.setEnabled(False)
                 QMessageBox.critical(self, "Audit failed", str(exc))
-            finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
-
             if result_finalized and result.outcome is AuditRunOutcome.SUCCESS:
                 inventory_changed = False
                 try:
@@ -1149,46 +1176,50 @@ class MainWindow(results_ui.ResultsWindow):
                             f"error={' '.join(str(exc).split())[:500] or type(exc).__name__}"
                         )
         finally:
-            if not result_finalized:
-                finalize_seconds = max(0.0, time.perf_counter() - finalize_started)
             self._finalizing_session = None
             self._set_audit_source_controls_enabled(True)
             self._set_audit_state(AuditRunState.IDLE)
             self._restore_device_source_identity()
 
-        if self._audit_started_at is not None:
+        if (
+            self._audit_started_at is not None
+            and self._audit_performance_logged_session != result.session
+        ):
             total_seconds = max(0.0, time.perf_counter() - self._audit_started_at)
-            pre_finalize_seconds = self._audit_pre_finalize_seconds or 0.0
-            status_counts: dict[str, int] = {}
-            for row in self.current_rows:
-                status = str(row.get("play_status") or "unknown")
-                status_counts[status] = status_counts.get(status, 0) + 1
-            statuses = ",".join(
-                f"{status}:{count}" for status, count in sorted(status_counts.items())
-            ) or "none"
-            if initial_outcome is not AuditRunOutcome.FAILED:
-                device_insights.log_event(
-                    "audit_performance "
-                    f"result={result.outcome.value} total_s={total_seconds:.3f} "
-                    f"pre_finalize_s={pre_finalize_seconds:.3f} "
-                    f"finalize_s={finalize_seconds:.3f} packages={len(self.current_rows)} "
-                    f"cached={result.cached_count} live={result.live_completed_count} "
-                    f"workers={self.workers_spin.value()} "
-                    f"source={self.source_mode or 'unknown'} statuses={statuses}"
-                )
+            physical_count = int(result.metadata.get("physical_count") or 0)
+            package_count = int(
+                result.metadata.get("package_count", result.total_count)
+            )
+            device_insights.log_event(
+                "audit_performance "
+                f"source={self._audit_source_at_start or self.source_mode or 'unknown'} "
+                f"outcome={result.outcome.value} physical={physical_count} "
+                f"packages={package_count} "
+                f"parse_ms={int(result.metadata.get('parse_ms') or 0)} "
+                f"store_ms={int(result.metadata.get('store_ms') or 0)} "
+                f"total_ms={round(total_seconds * 1000)} "
+                f"cached={result.cached_count} live={result.live_completed_count} "
+                f"progressive_payloads={self._progressive_payload_count} "
+                f"progressive_refreshes={self._progressive_refresh_count}"
+            )
+            self._audit_performance_logged_session = result.session
         self._audit_started_at = None
         self._audit_pre_finalize_seconds = None
+        self._audit_source_at_start = None
 
     # ---------- Cross-platform ADB ----------
     def _find_adb(self) -> str | None:
         return find_adb()
 
     def _scan_phone(self) -> None:
+        self._invalidate_progressive_presentation(reset_counts=True)
         self._invalidate_local_apk_parse(clear_artifacts=True)
         if local_apk_audit.is_local_apk_source(self.source_mode):
             self.source_mode = None
             self._clear_source_result_rows()
             self._apply_column_visibility(reset_order=False)
+        else:
+            self._begin_icon_result_generation()
         request_id = self._begin_phone_scan_request()
         self._set_busy(True)
         self.progress.setRange(0, 0)

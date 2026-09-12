@@ -136,6 +136,166 @@ def test_progressive_rows_replace_by_physical_key_and_remain_unexportable(
     assert all(button.text().endswith("0") for button in window.criticality_buttons.values())
 
 
+def test_progressive_rows_use_key_index_and_coalesce_model_refreshes(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class TrackingRows(list[dict[str, object]]):
+        iterations = 0
+
+        def __iter__(self):
+            self.iterations += 1
+            return super().__iter__()
+
+    rows = TrackingRows(
+        [
+            {
+                "source_mode": "file",
+                "package_name": "com.example.one",
+                "_audit_provisional": True,
+                "_provisional_key": "com.example.one",
+            }
+        ]
+    )
+    window._audit_session = 30
+    window._set_audit_state(AuditRunState.RUNNING)
+    window.current_rows = rows
+    window._begin_progressive_presentation(30, rows)
+    icon_generation = window.model._icon_generation
+    rows.iterations = 0
+    refreshes: list[list[dict[str, object]]] = []
+    monkeypatch.setattr(window.model, "set_rows", lambda value: refreshes.append(value))
+
+    window._on_progressive_row(
+        30,
+        {
+            "source_mode": "file",
+            "package_name": "com.example.one",
+            "play_version": "2",
+            "_audit_provisional": True,
+            "_provisional_key": "com.example.one",
+        },
+    )
+    window._on_progressive_row(
+        30,
+        {
+            "source_mode": "file",
+            "package_name": "com.example.two",
+            "_audit_provisional": True,
+            "_provisional_key": "com.example.two",
+        },
+    )
+    window._on_progressive_row(
+        30,
+        {
+            "source_mode": "file",
+            "package_name": "com.example.one",
+            "play_version": "3",
+            "_audit_provisional": True,
+            "_provisional_key": "com.example.one",
+        },
+    )
+
+    assert rows.iterations == 0
+    assert len(window.current_rows) == 2
+    assert window.current_rows[0]["play_version"] == "3"
+    assert window._provisional_row_indexes == {
+        "com.example.one": 0,
+        "com.example.two": 1,
+    }
+    assert window._progressive_payload_count == 3
+    assert window._progressive_refresh_count == 0
+    assert 50 <= window._progressive_refresh_timer.interval() <= 100
+    assert refreshes == []
+
+    window._flush_progressive_rows()
+
+    assert len(refreshes) == 1
+    assert window._progressive_refresh_count == 1
+    assert window._progressive_payload_count > window._progressive_refresh_count
+    assert window.model._icon_generation == icon_generation
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [AuditRunOutcome.SUCCESS, AuditRunOutcome.STOPPED, AuditRunOutcome.FAILED],
+)
+def test_final_outcome_invalidates_pending_progressive_refresh(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: AuditRunOutcome,
+) -> None:
+    from playstore_app_audit.ui.compact_window import CompactWindow
+
+    monkeypatch.setattr(QMessageBox, "critical", lambda *_args, **_kwargs: None)
+    window._audit_session = 31
+    window._set_audit_state(AuditRunState.RUNNING)
+    window.current_rows = []
+    window._begin_progressive_presentation(31, [])
+    window._on_progressive_row(
+        31,
+        {
+            "source_mode": "file",
+            "package_name": "com.example.provisional",
+            "_audit_provisional": True,
+            "_provisional_key": "com.example.provisional",
+        },
+    )
+    authoritative = {
+        "source_mode": "file",
+        "package_name": "com.example.final",
+        "play_status": "available",
+        "play_last_update": "2026-08-01",
+    }
+
+    CompactWindow._on_controlled_done(
+        window,
+        AuditRunResult(
+            session=31,
+            outcome=outcome,
+            rows=[authoritative],
+            live_completed_count=1,
+            total_count=1,
+            error="synthetic failure" if outcome is AuditRunOutcome.FAILED else "",
+        ),
+    )
+    window._flush_progressive_rows()
+
+    assert not window._progressive_refresh_pending
+    assert window._progressive_refresh_session is None
+    assert [row["package_name"] for row in window.current_rows] == ["com.example.final"]
+    assert window.model.rowCount() == 1
+    assert window.export_button.isEnabled() is (outcome is AuditRunOutcome.SUCCESS)
+
+
+def test_abandon_and_source_replacement_invalidate_pending_refresh(
+    window: MainWindow,
+) -> None:
+    window._audit_session = 32
+    window._set_audit_state(AuditRunState.RUNNING)
+    window.current_rows = []
+    window._begin_progressive_presentation(32, [])
+    window._on_progressive_row(
+        32,
+        {
+            "source_mode": "device",
+            "package_name": "com.example.old",
+            "_audit_provisional": True,
+            "_provisional_key": "com.example.old",
+        },
+    )
+
+    window._abandon_active_audit()
+    window._clear_source_result_rows()
+    window._flush_progressive_rows()
+
+    assert window._last_audit_outcome is AuditRunOutcome.ABANDONED
+    assert not window._progressive_refresh_pending
+    assert window._progressive_refresh_session is None
+    assert window.current_rows == []
+    assert window.model.rowCount() == 0
+
+
 def test_successful_final_rows_replace_provisional_rows_without_duplicates(
     window: MainWindow,
 ) -> None:

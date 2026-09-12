@@ -66,8 +66,13 @@ def parse_local_apk(
     path: str | Path,
     *,
     limits: ApkParseLimits = DEFAULT_APK_PARSE_LIMITS,
+    allow_split_dependencies: bool = False,
 ) -> LocalArtifactParseResult:
-    """Parse one standalone APK through a bounded untrusted-input boundary."""
+    """Parse one APK through a bounded untrusted-input boundary.
+
+    Container callers may allow a genuine base APK to declare companion split
+    dependencies. An APK that identifies itself as a split is always rejected.
+    """
 
     supplied_path = Path(path)
     try:
@@ -136,6 +141,7 @@ def parse_local_apk(
                 initial_stat=initial_stat,
                 artifact_sha256=artifact_sha256,
                 limits=limits,
+                allow_split_dependencies=allow_split_dependencies,
             )
             final_sha256, final_size = _sha256_stream(
                 source,
@@ -317,6 +323,7 @@ def _parse_open_apk(
     initial_stat: os.stat_result,
     artifact_sha256: str,
     limits: ApkParseLimits,
+    allow_split_dependencies: bool,
 ) -> LocalArtifact:
     stream.seek(0)
     with zipfile.ZipFile(stream, mode="r", allowZip64=False) as archive:
@@ -359,10 +366,15 @@ def _parse_open_apk(
         )
         parsed = _parse_manifest(manifest_bytes, limits)
 
-        if parsed.requires_split_handling:
+        if parsed.is_split_apk:
             raise _ParseFailure(
                 LocalArtifactFailureKind.UNSUPPORTED_SPLIT,
-                "Split or split-dependent APK files are not supported as standalone artifacts.",
+                "The selected APK identifies itself as a config or feature split.",
+            )
+        if parsed.requires_split_dependencies and not allow_split_dependencies:
+            raise _ParseFailure(
+                LocalArtifactFailureKind.UNSUPPORTED_SPLIT,
+                "The standalone APK requires companion split APKs for installation.",
             )
 
         warnings: set[LocalArtifactWarning] = set()
@@ -493,7 +505,8 @@ class _ParsedManifest:
     icon_reference: str | None
     permissions: tuple[str, ...]
     features: tuple[str, ...]
-    requires_split_handling: bool
+    is_split_apk: bool
+    requires_split_dependencies: bool
 
 
 def _parse_manifest(data: bytes, limits: ApkParseLimits) -> _ParsedManifest:
@@ -530,21 +543,20 @@ def _parse_manifest(data: bytes, limits: ApkParseLimits) -> _ParsedManifest:
     features = _manifest_names(root, ("uses-feature",), limits)
     application = root.find("application")
     uses_sdk = root.find("uses-sdk")
-    split_markers = (
+    split_identity_markers = (
         _metadata_text(root.get("split"), limits),
-        _metadata_text(root.get("configForSplit"), limits),
-        _metadata_text(root.get(_android_attribute("configForSplit")), limits),
-        _metadata_text(root.get("requiredSplitTypes"), limits),
-        _metadata_text(root.get(_android_attribute("requiredSplitTypes")), limits),
-        _metadata_text(root.get("splitTypes"), limits),
-        _metadata_text(root.get(_android_attribute("splitTypes")), limits),
+        _element_android_value(root, "configForSplit", limits),
     )
-    split_flags = (
+    split_dependency_markers = (
+        _element_android_value(root, "requiredSplitTypes", limits),
+        _element_android_value(root, "splitTypes", limits),
+    )
+    feature_split = _manifest_bool(
+        _element_android_value(root, "isFeatureSplit", limits)
+    )
+    split_dependency_flags = (
         _manifest_bool(
-            _metadata_text(root.get(_android_attribute("isFeatureSplit")), limits)
-        ),
-        _manifest_bool(
-            _metadata_text(root.get(_android_attribute("isSplitRequired")), limits)
+            _element_android_value(root, "isSplitRequired", limits)
         ),
         _required_split_metadata(application, limits),
     )
@@ -563,9 +575,13 @@ def _parse_manifest(data: bytes, limits: ApkParseLimits) -> _ParsedManifest:
         icon_reference=_element_android_value(application, "icon", limits),
         permissions=permissions,
         features=features,
-        requires_split_handling=(
-            any(split_markers)
-            or any(flag is True for flag in split_flags)
+        is_split_apk=(
+            any(split_identity_markers)
+            or feature_split is True
+        ),
+        requires_split_dependencies=(
+            any(split_dependency_markers)
+            or any(flag is True for flag in split_dependency_flags)
             or root.find("uses-split") is not None
         ),
     )

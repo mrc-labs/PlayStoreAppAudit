@@ -120,6 +120,9 @@ SEMANTIC_VALUE_PRESENTATIONS = {
     ("local_apk_version_comparison", "Outdated"): SemanticValuePresentation(
         status_key="orange", emphasis="strong_warning", font_weight=700
     ),
+    ("local_apk_version_comparison", "Not Found"): SemanticValuePresentation(
+        status_key="red", emphasis="strong_warning", font_weight=700
+    ),
     ("local_apk_version_comparison", "Different"): SemanticValuePresentation(
         status_key="yellow", emphasis="warning", font_weight=700
     ),

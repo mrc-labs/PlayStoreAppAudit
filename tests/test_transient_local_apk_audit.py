@@ -486,6 +486,32 @@ def test_genuine_container_failure_before_cancellation_remains_reported(
     assert "reason=malformed_archive" in rejection_logs[0].message
 
 
+def test_definitive_store_absence_uses_not_found_local_relationship_everywhere(
+    window: MainWindow,
+    tmp_path: Path,
+) -> None:
+    artifact = _artifact(tmp_path / "missing.apkm", "4" * 64)
+    row = local_apk_audit.artifact_result_row(
+        artifact,
+        {"play_status": "not_found_in_checked_countries"},
+    )
+    row.update(criticality="Not Found", criticality_key="red")
+    window.model.set_rows([row])
+    relationship = window.model.index(
+        0, window.model.columns.index("local_apk_version_comparison")
+    )
+
+    assert row["local_apk_version_comparison"] == "Not Found"
+    assert relationship.data(Qt.ItemDataRole.DisplayRole) == "Not Found"
+    assert "does not prove global absence" in relationship.data(
+        Qt.ItemDataRole.ToolTipRole
+    )
+    assert any(
+        "does not prove global absence" in line
+        for line in details_panel.local_apk_details_lines(row)
+    )
+
+
 def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:
     path = tmp_path / "private" / "one.apk"
     path.parent.mkdir()

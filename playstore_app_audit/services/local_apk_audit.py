@@ -11,6 +11,7 @@ from playstore_app_audit.services import alternative_distribution, device_metada
 SOURCE_MODE = "local_apk"
 LIBRARY_SOURCE_MODE = "local_apk_library"
 LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
+DEFINITIVE_STORE_ABSENCE = "not_found_in_checked_countries"
 
 
 def is_local_apk_source(source_mode: object) -> bool:
@@ -89,9 +90,13 @@ def artifact_result_row(
             "local_apk_features": list(artifact.features),
             "local_apk_warnings": [warning.value for warning in artifact.warnings],
             "local_apk_version_comparison": (
-                device_metadata.compare_versions(local_version, row.get("play_version"))
-                if row.get("play_version")
-                else ""
+                "Not Found"
+                if row.get("play_status") == DEFINITIVE_STORE_ABSENCE
+                else (
+                    device_metadata.compare_versions(local_version, row.get("play_version"))
+                    if row.get("play_version")
+                    else ""
+                )
             ),
         }
     )

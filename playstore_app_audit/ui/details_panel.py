@@ -385,6 +385,11 @@ def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
         value = row.get(key)
         if value is not None and str(value) != "":
             lines.append(f"{label}: {value}")
+    if row.get("local_apk_version_comparison") == "Not Found":
+        lines.append(
+            "Store evidence: No listing was found in the configured successfully "
+            "checked Store countries; this does not prove global absence."
+        )
     debuggable = row.get("local_apk_debuggable")
     if isinstance(debuggable, bool):
         lines.append(f"Debuggable: {'Yes' if debuggable else 'No'}")

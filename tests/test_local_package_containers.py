@@ -74,8 +74,11 @@ def test_container_selects_base_and_retains_physical_identity(
     container = _write_container(tmp_path / f"sample{suffix}", entries)
     extracted_paths: list[Path] = []
 
-    def parse(extracted: Path) -> LocalArtifactParseResult:
+    def parse(
+        extracted: Path, *, allow_split_dependencies: bool
+    ) -> LocalArtifactParseResult:
         extracted_paths.append(extracted)
+        assert allow_split_dependencies
         assert extracted.read_bytes() == b"base"
         return LocalArtifactParseResult(artifact=_artifact(extracted))
 
@@ -121,6 +124,72 @@ def test_container_rejects_ambiguous_base(tmp_path: Path) -> None:
 
     assert result.failure is not None
     assert result.failure.kind is LocalArtifactFailureKind.AMBIGUOUS_BASE_APK
+
+
+def test_xapk_selects_single_package_named_base_without_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    container = _write_container(
+        tmp_path / "real-world.xapk",
+        {
+            "config.arm64_v8a.apk": b"architecture split",
+            "config.en.apk": b"language split",
+            "com.example.realapp.apk": b"base",
+            "config.xxhdpi.apk": b"density split",
+        },
+    )
+    selected: list[Path] = []
+
+    def parse(
+        extracted: Path, *, allow_split_dependencies: bool
+    ) -> LocalArtifactParseResult:
+        selected.append(extracted)
+        assert allow_split_dependencies
+        assert extracted.read_bytes() == b"base"
+        return LocalArtifactParseResult(artifact=_artifact(extracted))
+
+    monkeypatch.setattr(local_package_container, "parse_local_apk", parse)
+
+    result = local_package_container.parse_local_package(container)
+
+    assert result.failure is None
+    assert result.artifact is not None
+    assert result.artifact.artifact_format is LocalArtifactFormat.XAPK
+    assert selected and not selected[0].exists()
+
+
+def test_xapk_multiple_package_named_candidates_remain_ambiguous(tmp_path: Path) -> None:
+    container = _write_container(
+        tmp_path / "multiple-packages.xapk",
+        {
+            "com.example.first.apk": b"first",
+            "com.example.second.apk": b"second",
+            "config.en.apk": b"language split",
+        },
+    )
+
+    result = local_package_container.parse_local_package(container)
+
+    assert result.failure is not None
+    assert result.failure.kind is LocalArtifactFailureKind.AMBIGUOUS_BASE_APK
+
+
+def test_xapk_with_only_config_and_split_entries_has_no_credible_base(
+    tmp_path: Path,
+) -> None:
+    container = _write_container(
+        tmp_path / "only-splits.xapk",
+        {
+            "config.arm64_v8a.apk": b"architecture split",
+            "config.en.apk": b"language split",
+            "split_config.xxhdpi.apk": b"density split",
+        },
+    )
+
+    result = local_package_container.parse_local_package(container)
+
+    assert result.failure is not None
+    assert result.failure.kind is LocalArtifactFailureKind.NO_BASE_APK
 
 
 def test_container_enforces_count_size_and_ratio_limits(tmp_path: Path) -> None:
@@ -188,8 +257,11 @@ def test_container_temp_cleanup_after_parser_failure(
     container = _write_container(tmp_path / "failure.apkm", {"base.apk": b"apk"})
     extracted_paths: list[Path] = []
 
-    def fail(extracted: Path) -> LocalArtifactParseResult:
+    def fail(
+        extracted: Path, *, allow_split_dependencies: bool
+    ) -> LocalArtifactParseResult:
         extracted_paths.append(extracted)
+        assert allow_split_dependencies
         return LocalArtifactParseResult(
             failure=LocalArtifactParseFailure(
                 extracted,
@@ -213,8 +285,11 @@ def test_container_temp_cleanup_after_cancellation(
     cancel_event = threading.Event()
     extracted_paths: list[Path] = []
 
-    def cancel(extracted: Path) -> LocalArtifactParseResult:
+    def cancel(
+        extracted: Path, *, allow_split_dependencies: bool
+    ) -> LocalArtifactParseResult:
         extracted_paths.append(extracted)
+        assert allow_split_dependencies
         cancel_event.set()
         return LocalArtifactParseResult(artifact=_artifact(extracted))
 
@@ -234,8 +309,9 @@ def test_container_temp_cleanup_after_unexpected_parser_exception(
     container = _write_container(tmp_path / "unexpected.apkm", {"base.apk": b"apk"})
     extracted_paths: list[Path] = []
 
-    def crash(extracted: Path) -> LocalArtifactParseResult:
+    def crash(extracted: Path, *, allow_split_dependencies: bool) -> LocalArtifactParseResult:
         extracted_paths.append(extracted)
+        assert allow_split_dependencies
         raise RuntimeError("synthetic crash")
 
     monkeypatch.setattr(local_package_container, "parse_local_apk", crash)
