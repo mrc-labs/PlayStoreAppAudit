@@ -1,6 +1,6 @@
 pyaxmlparser==0.3.31
 google-play-scraper==1.2.7
-requests>=2.34.2
-beautifulsoup4>=4.15.0
+requests==2.34.2
+beautifulsoup4==4.15.0
 cryptography==50.0.1
 PySide6-Essentials==6.11.2
