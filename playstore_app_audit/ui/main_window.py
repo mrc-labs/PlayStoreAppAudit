@@ -34,6 +34,7 @@ import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
+    LocalArtifactFailureKind,
     LocalArtifactParseFailure,
 )
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
@@ -818,12 +819,13 @@ class MainWindow(results_ui.ResultsWindow):
                             len(artifacts),
                         )
                 elif parsed.failure is not None:
-                    logger.info(
-                        "local_container_rejected format=%s reason=%s",
-                        path.suffix.casefold().lstrip("."),
-                        parsed.failure.kind.value,
-                    )
-                    failures.append(parsed.failure)
+                    if parsed.failure.kind is not LocalArtifactFailureKind.CANCELLED:
+                        logger.info(
+                            "local_container_rejected format=%s reason=%s",
+                            path.suffix.casefold().lstrip("."),
+                            parsed.failure.kind.value,
+                        )
+                        failures.append(parsed.failure)
             self.audit_control_signals.progress.emit(
                 session, index, len(candidates), f"Parsing package • {path.name}"
             )

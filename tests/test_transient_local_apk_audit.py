@@ -19,6 +19,7 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
+import playstore_app_audit.services.local_package_container as local_package_container
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -29,7 +30,7 @@ from playstore_app_audit.domain.local_artifacts import (
     LocalArtifactParseFailure,
     LocalArtifactParseResult,
 )
-from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunState
+from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui import details_panel, schema
@@ -345,6 +346,144 @@ def test_stop_during_parse_keeps_source_evidence_and_starts_no_store_work(
     assert window.current_rows[0]["local_apk_location"] == str(first.resolve())
     assert "health_score" not in window.current_rows[0]
     assert not window.export_button.isEnabled()
+
+
+def test_container_parse_cancellation_is_not_reported_as_rejection(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    cancelled = tmp_path / "cancelled.apkm"
+    cancelled.write_bytes(b"synthetic container")
+    cancel_event = threading.Event()
+    warnings: list[tuple[str, str]] = []
+    results: list[AuditRunResult] = []
+    caplog.set_level(logging.INFO, logger="playstore_app_audit.ui.main_window")
+
+    def parse_candidate(
+        path: Path, *, cancel_event: threading.Event
+    ) -> LocalArtifactParseResult:
+        cancel_event.set()
+        return LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                path,
+                LocalArtifactFailureKind.CANCELLED,
+                "Container inspection was cancelled.",
+            )
+        )
+
+    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    window.audit_control_signals.done.connect(results.append)
+    window.source_mode = "local_apk"
+    window._audit_session = 22
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (cancelled,),
+        AuditConfig(),
+        {"cache_enabled": False},
+        22,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    result = results[-1]
+    assert result.outcome is AuditRunOutcome.STOPPED
+    assert result.metadata["parse_failure_count"] == 0
+    assert result.metadata["parse_failure_summary"] == ""
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert warnings == []
+    assert "local_container_rejected" not in caplog.text
+
+
+def test_genuine_container_failure_before_cancellation_remains_reported(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+) -> None:
+    malformed = tmp_path / "malformed.apks"
+    cancelled = tmp_path / "cancelled.xapk"
+    malformed.write_bytes(b"malformed")
+    cancelled.write_bytes(b"synthetic container")
+    cancel_event = threading.Event()
+    warnings: list[tuple[str, str]] = []
+    results: list[AuditRunResult] = []
+    caplog.set_level(logging.INFO, logger="playstore_app_audit.ui.main_window")
+
+    def parse_candidate(
+        path: Path, *, cancel_event: threading.Event
+    ) -> LocalArtifactParseResult:
+        if path == malformed:
+            return LocalArtifactParseResult(
+                failure=LocalArtifactParseFailure(
+                    path,
+                    LocalArtifactFailureKind.MALFORMED_ARCHIVE,
+                    "Not a ZIP archive.",
+                )
+            )
+        cancel_event.set()
+        return LocalArtifactParseResult(
+            failure=LocalArtifactParseFailure(
+                path,
+                LocalArtifactFailureKind.CANCELLED,
+                "Container inspection was cancelled.",
+            )
+        )
+
+    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(
+        compact_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    window.audit_control_signals.done.connect(results.append)
+    window.source_mode = "local_apk"
+    window._audit_session = 23
+    window._set_audit_state(AuditRunState.RUNNING)
+    running = threading.Event()
+    running.set()
+
+    window._local_apk_audit_worker(
+        (malformed, cancelled),
+        AuditConfig(),
+        {"cache_enabled": False},
+        23,
+        running,
+        cancel_event,
+        False,
+    )
+    app.processEvents()
+    app.processEvents()
+
+    result = results[-1]
+    assert result.outcome is AuditRunOutcome.STOPPED
+    assert result.metadata["parse_failure_count"] == 1
+    assert result.metadata["parse_failure_summary"] == "malformed.apks: malformed archive"
+    assert window._last_audit_outcome is AuditRunOutcome.STOPPED
+    assert len(warnings) == 1
+    assert warnings[0][0] == "Some package files could not be parsed"
+    assert "1 package file(s) were rejected" in warnings[0][1]
+    assert "malformed.apks: malformed archive" in warnings[0][1]
+    assert "cancelled.xapk" not in warnings[0][1]
+    rejection_logs = [
+        record for record in caplog.records if record.message.startswith("local_container_rejected")
+    ]
+    assert len(rejection_logs) == 1
+    assert "reason=malformed_archive" in rejection_logs[0].message
 
 
 def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:
