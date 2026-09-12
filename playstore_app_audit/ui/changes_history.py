@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -44,12 +44,15 @@ class ChangesHistoryDialog(QDialog):
         super().__init__(parent)
         self.setObjectName("ChangesHistoryDialog")
         self.setWindowTitle("Changes & History")
-        self.setMinimumWidth(580)
+        self.setMinimumWidth(680)
 
         root = QVBoxLayout(self)
+        root.setContentsMargins(20, 18, 20, 18)
+        root.setSpacing(12)
+
         intro = QLabel(
-            "Optional longitudinal analysis of Store evidence and phone inventories. "
-            "Manual Device Snapshots remain separate from automatic history."
+            "Track changes across audits or save manual device snapshots. "
+            "Disabling automatic tracking never deletes retained data."
         )
         intro.setWordWrap(True)
         intro.setObjectName("Muted")
@@ -58,69 +61,96 @@ class ChangesHistoryDialog(QDialog):
         self.automatic_tracking_check = QCheckBox("Enable automatic change tracking")
         self.automatic_tracking_check.setObjectName("ChangesHistoryEnabledCheck")
         self.automatic_tracking_check.setChecked(availability.automatic_tracking)
+        master_font = self.automatic_tracking_check.font()
+        master_font.setBold(True)
+        self.automatic_tracking_check.setFont(master_font)
         root.addWidget(self.automatic_tracking_check)
+
         automatic_note = QLabel(
-            "Automatic tracking stores local comparison baselines after eligible successful audits. "
-            "Turning it off preserves retained history and does not affect manual Device Snapshots."
+            "Automatic tracking saves local comparison baselines after eligible successful audits. "
+            "Manual Device Snapshots remain independent."
         )
         automatic_note.setWordWrap(True)
         automatic_note.setObjectName("Muted")
         root.addWidget(automatic_note)
 
-        self.store_group = self._section(
+        self._add_separator(root)
+
+        self.store_section, store_layout = self._section(
             root,
-            "Store changes",
+            "Play Store changes",
             "StoreChangesSection",
-            "Compare current Google Play evidence with the previous successful comparable audit.",
         )
-        store_layout = self.store_group.layout()
-        assert isinstance(store_layout, QVBoxLayout)
-        self.store_tracking_check = QCheckBox("Track Store changes between audits")
+        self.store_tracking_check = QCheckBox("Track Play Store listing changes")
         self.store_tracking_check.setObjectName("ComparePreviousAuditCheck")
         self.store_tracking_check.setChecked(availability.store_tracking)
         store_layout.addWidget(self.store_tracking_check)
+        store_note = QLabel(
+            "Detect availability, Store version and update-status changes between audits."
+        )
+        store_note.setWordWrap(True)
+        store_note.setObjectName("Muted")
+        store_layout.addWidget(store_note)
         self.store_message_label = QLabel()
         self.store_message_label.setWordWrap(True)
         store_layout.addWidget(self.store_message_label)
-        self.review_store_button = QPushButton("Review Store Changes…")
+        store_actions = QHBoxLayout()
+        store_actions.addStretch(1)
+        self.review_store_button = QPushButton("Review Play Store Changes…")
         self.review_store_button.setObjectName("ReviewStoreChangesButton")
         self.review_store_button.setVisible(availability.store_review)
         self.review_store_button.clicked.connect(
             lambda _checked=False: review_store_changes()
         )
-        store_layout.addWidget(self.review_store_button)
+        store_actions.addWidget(self.review_store_button)
+        store_layout.addLayout(store_actions)
 
-        self.device_group = self._section(
+        self._add_separator(root)
+
+        self.device_section, device_layout = self._section(
             root,
             "Device changes",
             "DeviceChangesSection",
-            "Compare the current phone inventory with the previous completed audit of the same device.",
         )
-        device_layout = self.device_group.layout()
-        assert isinstance(device_layout, QVBoxLayout)
-        self.device_tracking_check = QCheckBox("Track changes between phone audits")
+        self.device_tracking_check = QCheckBox("Track device app inventory changes")
         self.device_tracking_check.setObjectName("InventoryHistoryCheck")
         self.device_tracking_check.setChecked(availability.device_tracking)
         device_layout.addWidget(self.device_tracking_check)
+        device_note = QLabel(
+            "Detect installed, removed, version, installer and enabled-state changes "
+            "between scans of the same phone."
+        )
+        device_note.setWordWrap(True)
+        device_note.setObjectName("Muted")
+        device_layout.addWidget(device_note)
         self.device_message_label = QLabel()
         self.device_message_label.setWordWrap(True)
         device_layout.addWidget(self.device_message_label)
+        device_actions = QHBoxLayout()
+        device_actions.addStretch(1)
         self.review_device_button = QPushButton("Review Device Changes…")
         self.review_device_button.setObjectName("ReviewDeviceChangesButton")
         self.review_device_button.setVisible(availability.device_review)
         self.review_device_button.clicked.connect(
             lambda _checked=False: review_device_changes()
         )
-        device_layout.addWidget(self.review_device_button)
+        device_actions.addWidget(self.review_device_button)
+        device_layout.addLayout(device_actions)
 
-        self.snapshots_group = self._section(
+        self._add_separator(root)
+
+        self.snapshots_section, snapshots_layout = self._section(
             root,
             "Device Snapshots",
             "DeviceSnapshotsSection",
-            "Save or compare a manual point-in-time snapshot. Automatic history never overwrites snapshots.",
         )
-        snapshots_layout = self.snapshots_group.layout()
-        assert isinstance(snapshots_layout, QVBoxLayout)
+        snapshots_note = QLabel(
+            "Save or compare a manual point-in-time snapshot. Automatic history never "
+            "overwrites snapshots."
+        )
+        snapshots_note.setWordWrap(True)
+        snapshots_note.setObjectName("Muted")
+        snapshots_layout.addWidget(snapshots_note)
         snapshot_actions = QHBoxLayout()
         self.save_snapshot_button = QPushButton("Save Current Snapshot…")
         self.save_snapshot_button.setObjectName("SaveCurrentSnapshotButton")
@@ -139,6 +169,7 @@ class ChangesHistoryDialog(QDialog):
 
         self.settings_status_label = QLabel()
         self.settings_status_label.setObjectName("ChangesHistorySettingsStatus")
+        self.settings_status_label.setVisible(False)
         root.addWidget(self.settings_status_label)
 
         buttons = QDialogButtonBox(
@@ -159,6 +190,7 @@ class ChangesHistoryDialog(QDialog):
 
     def _tracking_setting_changed(self) -> None:
         self.settings_status_label.clear()
+        self.settings_status_label.setVisible(False)
         self._refresh_tracking_state()
 
     def _apply_tracking_settings(self) -> None:
@@ -171,6 +203,7 @@ class ChangesHistoryDialog(QDialog):
         self.store_tracking_check.setChecked(self._availability.store_tracking)
         self.device_tracking_check.setChecked(self._availability.device_tracking)
         self.settings_status_label.setText("Settings saved.")
+        self.settings_status_label.setVisible(True)
         self._refresh_tracking_state()
 
     def _refresh_tracking_state(self) -> None:
@@ -181,11 +214,11 @@ class ChangesHistoryDialog(QDialog):
         self.device_tracking_check.setEnabled(automatic)
 
         if not store_tracking:
-            store_message = "Tracking is Off."
+            store_message = "Automatic Play Store tracking is Off."
         elif self._availability.store_review:
-            store_message = "Meaningful changes are available from the current comparison."
+            store_message = "Meaningful Play Store changes are available from the current comparison."
         elif self._availability.store_had_baseline:
-            store_message = "No meaningful Store changes were detected in the current comparison."
+            store_message = "No meaningful Play Store changes were detected in the current comparison."
         else:
             store_message = (
                 "The first successful comparable audit establishes a baseline; "
@@ -196,28 +229,40 @@ class ChangesHistoryDialog(QDialog):
             store_tracking and self._availability.store_review
         )
 
-        device_message = (
-            "Automatic comparison can report added or removed apps, version changes, "
-            "installer changes and enabled-state changes."
-        )
         if not device_tracking:
-            device_message += " Tracking is Off."
-        elif not self._availability.device_review:
-            device_message += " Two completed audits of the same phone establish a comparison."
+            device_message = "Automatic device app inventory tracking is Off."
+        elif self._availability.device_review:
+            device_message = "Device inventory changes are available from the current comparison."
+        else:
+            device_message = "Two completed audits of the same phone establish a comparison."
         self.device_message_label.setText(device_message)
         self.review_device_button.setVisible(
             device_tracking and self._availability.device_review
         )
 
     @staticmethod
+    def _add_separator(root: QVBoxLayout) -> None:
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Plain)
+        root.addWidget(separator)
+
+    @staticmethod
     def _section(
-        root: QVBoxLayout, title: str, object_name: str, purpose: str
-    ) -> QGroupBox:
-        group = QGroupBox(title)
-        group.setObjectName(object_name)
-        layout = QVBoxLayout(group)
-        purpose_label = QLabel(purpose)
-        purpose_label.setWordWrap(True)
-        layout.addWidget(purpose_label)
-        root.addWidget(group)
-        return group
+        root: QVBoxLayout, title: str, object_name: str
+    ) -> tuple[QWidget, QVBoxLayout]:
+        section = QWidget()
+        section.setObjectName(object_name)
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        heading = QLabel(title)
+        heading.setObjectName(f"{object_name}Title")
+        heading_font = heading.font()
+        heading_font.setBold(True)
+        heading.setFont(heading_font)
+        layout.addWidget(heading)
+
+        root.addWidget(section)
+        return section, layout
