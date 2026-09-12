@@ -16,6 +16,7 @@ MAX_STORE_WORKERS = 32
 DEFAULT_CACHE_TTL_HOURS = 24
 CACHE_TTL_DEFAULT_MIGRATION_KEY = "cache_ttl_default_migrated_v2"
 STORE_LANGUAGE_AUTO_MIGRATION_KEY = "store_language_auto_migrated"
+CHANGES_HISTORY_ENABLED_KEY = "changes_history_enabled"
 AUDIT_CHANGES_FIELD = "_audit_changes"
 STORE_EVIDENCE_FIELD = "_store_evidence"
 
@@ -59,6 +60,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "cache_enabled": True,
     "cache_ttl_hours": DEFAULT_CACHE_TTL_HOURS,
     CACHE_TTL_DEFAULT_MIGRATION_KEY: True,
+    CHANGES_HISTORY_ENABLED_KEY: False,
     "compare_previous": False,
     "exclude_system_source": True,
     "collect_full_device_metadata_on_scan": False,
@@ -128,11 +130,58 @@ def alternative_distribution_cache_path() -> Path:
     return app_data_dir() / "alternative_distribution_cache.json"
 
 
+def has_meaningful_previous_audit_history() -> bool:
+    data = _read_json(history_path(), {})
+    return bool(
+        isinstance(data, dict)
+        and any(
+            str(package_name).strip() and isinstance(snapshot, dict)
+            for package_name, snapshot in data.items()
+        )
+    )
+
+
+def changes_history_enabled(settings: dict[str, Any]) -> bool:
+    return settings.get(CHANGES_HISTORY_ENABLED_KEY) is True
+
+
+def store_history_enabled(settings: dict[str, Any]) -> bool:
+    return changes_history_enabled(settings) and settings.get("compare_previous") is True
+
+
+def device_inventory_history_enabled(settings: dict[str, Any]) -> bool:
+    return (
+        changes_history_enabled(settings)
+        and settings.get("inventory_history_enabled") is True
+    )
+
+
+def _resolve_initial_changes_history_setting(data: dict[str, Any]) -> bool:
+    if data.get("compare_previous") is True or has_meaningful_previous_audit_history():
+        return True
+
+    # Imported lazily to keep state as the low-level settings/history service.
+    # The device service owns the canonical baseline and snapshot formats.
+    from playstore_app_audit.services import device_insights
+
+    data_root = settings_path().parent
+    return device_insights.has_device_inventory_history(
+        data_root
+    ) or device_insights.has_device_snapshots(data_root)
+
+
 def load_settings() -> dict[str, Any]:
     data = _read_json(settings_path(), {})
+    raw_settings = data if isinstance(data, dict) else {}
     settings = deepcopy(DEFAULT_SETTINGS)
     if isinstance(data, dict):
         settings.update(data)
+
+    migrate_changes_history = CHANGES_HISTORY_ENABLED_KEY not in raw_settings
+    if migrate_changes_history:
+        settings[CHANGES_HISTORY_ENABLED_KEY] = _resolve_initial_changes_history_setting(
+            raw_settings
+        )
 
     # v1.5 stored `en` as an unconditional default. On the first v1.6 read,
     # migrate that legacy default to Auto so upgraded users receive device/
@@ -178,6 +227,9 @@ def load_settings() -> dict[str, Any]:
     except (TypeError, ValueError):
         settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
+    settings[CHANGES_HISTORY_ENABLED_KEY] = (
+        settings.get(CHANGES_HISTORY_ENABLED_KEY) is True
+    )
     settings["compare_previous"] = bool(settings.get("compare_previous", False))
     settings["exclude_system_source"] = bool(settings.get("exclude_system_source", True))
     settings["collect_full_device_metadata_on_scan"] = (
@@ -217,7 +269,7 @@ def load_settings() -> dict[str, Any]:
         default_alternative["aptoide"].get("api_key_protected") or ""
     ).strip()
     settings["alternative_distribution"] = default_alternative
-    if migrate_legacy_cache_default:
+    if migrate_legacy_cache_default or migrate_changes_history:
         _write_json(settings_path(), settings)
     return settings
 
@@ -229,6 +281,9 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
     merged[CACHE_TTL_DEFAULT_MIGRATION_KEY] = True
+    merged[CHANGES_HISTORY_ENABLED_KEY] = (
+        merged.get(CHANGES_HISTORY_ENABLED_KEY) is True
+    )
     merged["store_workers"] = normalise_store_workers(merged.get("store_workers"))
     merged["collect_full_device_metadata_on_scan"] = (
         merged.get("collect_full_device_metadata_on_scan") is True

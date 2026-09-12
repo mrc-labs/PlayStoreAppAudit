@@ -146,7 +146,7 @@ class PreferencesWindow(table_ui.TableWindow):
     def _visible_column_order(self) -> list[str]:
         settings = state.load_settings()
         preset = str(settings.get("view_preset") or "Basic")
-        compare = bool(settings.get("compare_previous", False))
+        compare = state.store_history_enabled(settings)
         health = bool(settings.get("health_score_enabled", False))
 
         if preset == "Technical":
@@ -633,31 +633,62 @@ class PreferencesWindow(table_ui.TableWindow):
         device_layout.addStretch(1)
 
         _audit_page, audit_layout = add_page(
-            "AuditHistorySettingsPage",
-            "Audit & History",
-            "Configure optional audit enrichment and comparisons with previously collected data.",
+            "AuditSettingsPage",
+            "Audit",
+            "Configure optional audit enrichment and result scoring.",
         )
         permissions = QCheckBox("Audit sensitive requested permissions (advanced)")
         permissions.setObjectName("PermissionsAuditCheck")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
-        inventory = QCheckBox("Keep per-device inventory history")
-        inventory.setObjectName("InventoryHistoryCheck")
-        inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
         health = QCheckBox("Enable Maintenance Score")
         health.setObjectName("HealthScoreCheck")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
-        compare = QCheckBox("Compare with previous Play Store audit")
-        compare.setObjectName("ComparePreviousAuditCheck")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
         audit_layout.addWidget(permissions)
         p_note = self._settings_note(
             "Permission audit checks a curated list of sensitive permissions declared/requested by each package (camera, microphone, location, contacts, SMS, phone, media, all-files access, overlays, etc.). It does not decide whether a permission is granted, justified or malicious. The same package dump is already collected for device metadata, so enabling this mainly adds parsing rather than extra per-app ADB calls."
         )
         audit_layout.addWidget(p_note)
-        audit_layout.addWidget(inventory)
         audit_layout.addWidget(health)
-        audit_layout.addWidget(compare)
         audit_layout.addStretch(1)
+
+        _history_page, history_layout = add_page(
+            "ChangesHistorySettingsPage",
+            "Changes & History",
+            "Optional longitudinal analysis. Keep this off for the simplest workflow. "
+            "Enabling it adds one Changes & History entry under Tools.",
+        )
+        changes_history = QCheckBox("Enable Changes & History features")
+        changes_history.setObjectName("ChangesHistoryEnabledCheck")
+        changes_history.setChecked(state.changes_history_enabled(self.user_settings))
+        history_layout.addWidget(changes_history)
+        compare = QCheckBox("Track Store changes between audits")
+        compare.setObjectName("ComparePreviousAuditCheck")
+        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
+        history_layout.addWidget(compare)
+        history_layout.addWidget(
+            self._settings_note(
+                "The first successful comparable audit establishes a baseline. "
+                "Later audits can report meaningful Google Play evidence changes."
+            )
+        )
+        inventory = QCheckBox("Track changes between phone audits")
+        inventory.setObjectName("InventoryHistoryCheck")
+        inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
+        history_layout.addWidget(inventory)
+        history_layout.addWidget(
+            self._settings_note(
+                "Compares completed installed-app inventories for the same phone/device "
+                "association, including additions, removals, versions, installers and enabled state."
+            )
+        )
+        history_layout.addStretch(1)
+
+        def sync_history_children(enabled: bool) -> None:
+            compare.setEnabled(enabled)
+            inventory.setEnabled(enabled)
+
+        changes_history.toggled.connect(sync_history_children)
+        sync_history_children(changes_history.isChecked())
 
         _storage_page, storage_layout = add_page(
             "DataStorageSettingsPage",
@@ -697,6 +728,7 @@ class PreferencesWindow(table_ui.TableWindow):
             collect.setChecked(True)
             full_scan.setChecked(False)
             permissions.setChecked(False)
+            changes_history.setChecked(False)
             inventory.setChecked(True)
             health.setChecked(False)
             compare.setChecked(False)
@@ -724,6 +756,7 @@ class PreferencesWindow(table_ui.TableWindow):
                 "collect_device_metadata": collect.isChecked(),
                 "collect_full_device_metadata_on_scan": full_scan.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
+                state.CHANGES_HISTORY_ENABLED_KEY: changes_history.isChecked(),
                 "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
                 "compare_previous": compare.isChecked(),
@@ -742,6 +775,12 @@ class PreferencesWindow(table_ui.TableWindow):
             ok, portable_msg = device_insights.migrate_portable_mode(portable.isChecked())
             if not ok:
                 QMessageBox.warning(self, "Portable mode", portable_msg)
+        sync_changes_history_action = getattr(self, "_sync_changes_history_action", None)
+        if callable(sync_changes_history_action):
+            sync_changes_history_action()
+        sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
+        if callable(sync_post_audit_views):
+            sync_post_audit_views()
         self._apply_column_visibility(reset_order=False)
         self._update_summary()
         msg = "Advanced settings saved"

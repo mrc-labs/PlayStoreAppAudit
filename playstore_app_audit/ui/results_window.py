@@ -149,6 +149,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._device_store_locale: store_locale.StoreLocale | None = None
         self._store_country_manual_override = False
         self._change_overview_dialog: change_ui.ChangeOverviewDialog | None = None
+        self._store_comparison_had_baseline = False
         self._details_panel_position = "right"
         self._details_panel_resolved_position: str | None = None
         self._source_operation_active = False
@@ -207,10 +208,6 @@ class ResultsWindow(menu_ui.MenuWindow):
             getattr(self, "_results_incomplete", False)
         )
         visible_results_available = results_available and self.proxy.rowCount() > 0
-        device_results_available = self.source_mode == "device" and results_available
-        inventory_changes_available = device_results_available and bool(
-            getattr(self, "_last_inventory_changes", None)
-        )
         problematic_available = any(
             device_metadata.is_problematic(row) for row in self.current_rows
         )
@@ -259,25 +256,23 @@ class ResultsWindow(menu_ui.MenuWindow):
             "advanced_settings_action": idle,
             "force_full_refresh_action": idle and source_available,
             "recheck_problematic_action": idle and problematic_available,
-            "save_device_snapshot_action": idle and device_results_available,
-            "compare_device_snapshot_action": idle and device_results_available,
-            "device_inventory_changes_action": idle and inventory_changes_available,
+            "changes_history_action": idle,
             "data_maintenance_action": maintenance_idle,
         }
         for name, enabled in action_states.items():
             action = getattr(self, name, None)
             if action is not None:
                 action.setEnabled(enabled)
-        if hasattr(self, "snapshots_menu"):
-            self.snapshots_menu.menuAction().setEnabled(idle and device_results_available)
-        if hasattr(self, "device_history_menu"):
-            self.device_history_menu.menuAction().setEnabled(
-                idle and (device_results_available or inventory_changes_available)
-            )
         if hasattr(self, "audit_profiles_menu"):
             self.audit_profiles_menu.menuAction().setEnabled(idle)
         if hasattr(self, "details_panel"):
-            self.details_panel.review_changes_button.setEnabled(idle and results_available)
+            self.details_panel.review_changes_button.setEnabled(
+                idle and results_available and bool(self._current_change_groups())
+            )
+        changes_history_dialog = getattr(self, "_changes_history_dialog", None)
+        if running and changes_history_dialog is not None:
+            changes_history_dialog.close()
+            self._changes_history_dialog = None
         smart_queries_ui.sync_smart_query_action_availability(self)
 
     def _set_busy(self, busy: bool) -> None:
@@ -460,11 +455,17 @@ class ResultsWindow(menu_ui.MenuWindow):
         )
 
     def _show_change_overview(self) -> None:
+        self._show_change_groups(self._current_change_groups())
+
+    def _show_store_change_overview(self) -> None:
+        self._show_change_groups(change_service.build_store_change_groups(self.current_rows))
+
+    def _show_change_groups(self, groups: list[dict[str, Any]]) -> None:
         if self._change_overview_dialog is None:
             dialog = change_ui.ChangeOverviewDialog(self)
             dialog.package_selected.connect(self._select_package_from_change_overview)
             self._change_overview_dialog = dialog
-        self._change_overview_dialog.set_groups(self._current_change_groups())
+        self._change_overview_dialog.set_groups(groups)
         self._change_overview_dialog.show()
         self._change_overview_dialog.raise_()
         self._change_overview_dialog.activateWindow()
@@ -494,13 +495,32 @@ class ResultsWindow(menu_ui.MenuWindow):
         self._sync_post_audit_views()
 
     def _sync_post_audit_views(self) -> None:
+        store_tracking = state.store_history_enabled(self.user_settings)
+        device_tracking = state.device_inventory_history_enabled(self.user_settings)
+        annotations_cleared = False
+        if not store_tracking:
+            self._store_comparison_had_baseline = False
+            for row in self.current_rows:
+                row.pop(state.AUDIT_CHANGES_FIELD, None)
+                row["change"] = ""
+            annotations_cleared = bool(self.current_rows)
+        if not device_tracking:
+            self._last_inventory_changes = dict[str, Any]()
+            for row in self.current_rows:
+                row.pop(change_service.DEVICE_HISTORY_FLAG, None)
+                row.pop("device_change", None)
+            annotations_cleared = annotations_cleared or bool(self.current_rows)
         had_previous_inventory = bool(
-            self.source_mode == "device"
+            device_tracking
+            and self.source_mode == "device"
             and isinstance(getattr(self, "_last_inventory_changes", None), dict)
             and self._last_inventory_changes.get("had_previous")
         )
-        for row in self.current_rows:
-            row[change_service.DEVICE_HISTORY_FLAG] = had_previous_inventory
+        if device_tracking:
+            for row in self.current_rows:
+                row[change_service.DEVICE_HISTORY_FLAG] = had_previous_inventory
+        if annotations_cleared:
+            self.model.set_rows(self.current_rows)
         # Successful promotion annotates rows and installs the aggregate after
         # the initial result refresh. All views must consume that same comparison.
         self._update_summary()

@@ -117,7 +117,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _visible_column_order(self) -> list[str]:
         self.user_settings = state.load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
-        compare = bool(self.user_settings.get("compare_previous", False))
+        compare = state.store_history_enabled(self.user_settings)
         health = bool(self.user_settings.get("health_score_enabled", False))
 
         if preset == "Technical":
@@ -402,7 +402,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         if not self.current_rows or self.source_mode != "device":
             QMessageBox.information(self, "No device audit", "Run an ADB-based audit first.")
             return
-        default = f"{self._device_summary.get('model', 'android')}_snapshot.psaa.json".replace(" ", "_")
+        filename = f"{self._device_summary.get('model', 'android')}_snapshot.psaa.json".replace(
+            " ", "_"
+        )
+        default = str(device_insights.snapshots_dir() / filename)
         selected, _ = QFileDialog.getSaveFileName(
             self,
             "Save device snapshot",
@@ -425,7 +428,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         selected, _ = QFileDialog.getOpenFileName(
             self,
             "Choose device snapshot",
-            "",
+            str(device_insights.snapshots_dir()),
             "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
         )
         if not selected:
@@ -837,12 +840,12 @@ class InsightsWindow(device_ui.DeviceWindow):
             if source_scan_session is not None
             else self._device_summary
         )
-        history_requested = bool(self.user_settings.get("compare_previous", False))
+        history_requested = state.store_history_enabled(self.user_settings)
         inventory_requested = bool(
             not targeted
             and (source_scan_session is not None or self.source_mode == "device")
             and self.current_rows
-            and bool(self.user_settings.get("inventory_history_enabled", True))
+            and state.device_inventory_history_enabled(self.user_settings)
             and inventory_device_summary
         )
         history_status = "not_requested"

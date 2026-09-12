@@ -345,19 +345,27 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
             "Store & Cache",
             "Alternative Distribution",
             "Device",
-            "Audit & History",
+            "Audit",
+            "Changes & History",
             "Data & Storage",
         ]
         assert [pages.widget(index).objectName() for index in range(pages.count())] == [
             "StoreCacheSettingsPage",
             "AlternativeDistributionSettingsPage",
             "DeviceSettingsPage",
-            "AuditHistorySettingsPage",
+            "AuditSettingsPage",
+            "ChangesHistorySettingsPage",
             "DataStorageSettingsPage",
         ]
         health = dialog.findChild(QCheckBox, "HealthScoreCheck")
         assert health is not None
-        assert health.parentWidget().objectName() == "AuditHistorySettingsPage"
+        assert health.parentWidget().objectName() == "AuditSettingsPage"
+        master = dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck")
+        compare = dialog.findChild(QCheckBox, "ComparePreviousAuditCheck")
+        inventory = dialog.findChild(QCheckBox, "InventoryHistoryCheck")
+        assert master is not None and not master.isChecked()
+        assert compare is not None and not compare.isEnabled()
+        assert inventory is not None and not inventory.isEnabled()
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is not None
         assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is None
         assert dialog.findChild(QComboBox, "DateFormatCombo") is None
@@ -860,18 +868,12 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert _action_structure(window.tools_menu) == [
         "Advanced Settings…",
         None,
-        "Device History",
-        None,
         "Data Maintenance…",
     ]
-    assert _action_texts(window.device_history_menu) == [
-        "Device Snapshots…",
-        "Device Inventory Changes…",
-    ]
-    assert _action_texts(window.snapshots_menu) == [
-        "Save Current Device Snapshot…",
-        "Compare Current Device with Snapshot…",
-    ]
+    assert window.changes_history_action is None
+    assert not hasattr(window, "device_history_menu")
+    assert not hasattr(window, "snapshots_menu")
+    assert not hasattr(window, "device_inventory_changes_action")
     assert window.data_maintenance_action.text() == "Data Maintenance…"
     assert window.data_maintenance_action.menu() is None
     assert not hasattr(window, "data_maintenance_menu")
@@ -924,7 +926,7 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert window.file_scan_phone_action.isEnabled()
     assert window.advanced_settings_action.isEnabled()
     assert window.audit_profiles_menu.menuAction().isEnabled()
-    assert not window.device_history_menu.menuAction().isEnabled()
+    assert window.changes_history_action is None
     assert not run_action.isEnabled()
     assert not window.force_full_refresh_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
@@ -967,13 +969,8 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     window._sync_action_availability()
     assert window.file_phone_package_export_action.isEnabled()
     assert window.scan_phone_package_export_action.isEnabled()
-    assert window.snapshots_menu.menuAction().isEnabled()
-    assert window.device_history_menu.menuAction().isEnabled()
-    assert not window.device_inventory_changes_action.isEnabled()
-
     window._last_inventory_changes = {"had_previous": True}
     window._sync_action_availability()
-    assert window.device_inventory_changes_action.isEnabled()
 
     window._source_operation_active = True
     window._sync_action_availability()
@@ -984,7 +981,6 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert not window.clear_button.isEnabled()
     assert not window.advanced_settings_action.isEnabled()
     assert not window.audit_profiles_menu.menuAction().isEnabled()
-    assert not window.device_history_menu.menuAction().isEnabled()
     assert not window.data_maintenance_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
 
@@ -1138,6 +1134,9 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    window.user_settings.update(
+        {"changes_history_enabled": True, "inventory_history_enabled": True}
+    )
     row = {
         "package_name": "com.example.app",
         "criticality_key": "green",
@@ -1193,7 +1192,7 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
     assert "device_change" not in row
     assert row[change_service.DEVICE_HISTORY_FLAG] is False
     assert window._last_inventory_changes == {}
-    assert not window.device_inventory_changes_action.isEnabled()
+    assert not hasattr(window, "device_inventory_changes_action")
     assert window.status_label.text() == (
         "Device Inventory History cleared • 2 baselines removed"
     )

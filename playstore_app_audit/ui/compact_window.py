@@ -35,6 +35,7 @@ from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
 from playstore_app_audit.services.local_apk_audit import is_local_apk_source
 from playstore_app_audit.services.state import (
+    AUDIT_CHANGES_FIELD,
     DEFAULT_CACHE_TTL_HOURS,
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
@@ -45,6 +46,7 @@ from playstore_app_audit.services.state import (
     load_settings,
     normalise_store_workers,
     save_settings,
+    store_history_enabled,
     update_cache,
 )
 from playstore_app_audit.ui import schema, table_layout
@@ -365,7 +367,7 @@ class CompactWindow(AuditWindow):
 
     def _visible_column_order(self) -> list[str]:
         columns = ["criticality"]
-        if self.user_settings.get("compare_previous"):
+        if store_history_enabled(self.user_settings):
             columns.append("change")
         columns.extend(PRIMARY_COLUMNS[1:])
         selected = self.user_settings.get("technical_columns", [])
@@ -1308,8 +1310,9 @@ class CompactWindow(AuditWindow):
 
         typed_rows = list(result.rows)
         local_apk_source = is_local_apk_source(result.metadata.get("source_mode"))
-        compare_enabled = bool(self.user_settings.get("compare_previous", False)) and not local_apk_source
+        compare_enabled = store_history_enabled(self.user_settings) and not local_apk_source
         history = load_history() if compare_enabled else {}
+        self._store_comparison_had_baseline = bool(history) if compare_enabled else False
         for row in typed_rows:
             row["is_system"] = (
                 None
@@ -1324,7 +1327,11 @@ class CompactWindow(AuditWindow):
                 row["change"] = ""
                 continue
             self._classify_row(row)
-            row["change"] = compare_with_history(row, history) if compare_enabled else ""
+            if compare_enabled:
+                row["change"] = compare_with_history(row, history)
+            else:
+                row.pop(AUDIT_CHANGES_FIELD, None)
+                row["change"] = ""
 
         self.current_rows = typed_rows
         self._results_incomplete = result.outcome is not AuditRunOutcome.SUCCESS

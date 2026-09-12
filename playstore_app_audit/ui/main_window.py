@@ -384,12 +384,17 @@ class MainWindow(results_ui.ResultsWindow):
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
         if preset == "Custom":
-            return super()._visible_column_order()
+            columns = super()._visible_column_order()
+            return (
+                columns
+                if state.store_history_enabled(settings)
+                else [column for column in columns if column != "change"]
+            )
         selected = settings.get("technical_columns", [])
         return visible_columns(
             preset,
             self.source_mode,
-            compare_previous=bool(settings.get("compare_previous", False)),
+            compare_previous=state.store_history_enabled(settings),
             health_score_enabled=bool(settings.get("health_score_enabled", False)),
             optional_columns=selected if isinstance(selected, list) else (),
         )

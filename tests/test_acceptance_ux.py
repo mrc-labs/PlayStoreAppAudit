@@ -288,7 +288,14 @@ def test_file_apk_adb_switching_reapplies_builtin_order_and_widths_without_custo
     preset: str,
 ) -> None:
     settings, create_window = window_store
-    settings.update({"view_preset": preset, "compare_previous": True, "health_score_enabled": True})
+    settings.update(
+        {
+            "view_preset": preset,
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "health_score_enabled": True,
+        }
+    )
     window = create_window()
 
     for source in ("file", "local_apk", "device"):

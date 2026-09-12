@@ -264,6 +264,7 @@ def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
         "view_preset": "Basic",
         "recent_sources": [],
         "exclude_system_source": True,
+        "changes_history_enabled": True,
         "compare_previous": False,
         "collect_device_metadata": True,
         "inventory_history_enabled": False,

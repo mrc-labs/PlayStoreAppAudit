@@ -12,12 +12,14 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.changes_history as changes_history_ui
 import playstore_app_audit.ui.data_maintenance as data_maintenance_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
@@ -40,6 +42,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._data_maintenance_dialog: (
             data_maintenance_ui.DataMaintenanceDialog | None
         ) = None
+        self._changes_history_dialog: changes_history_ui.ChangesHistoryDialog | None = None
+        self.changes_history_action: QAction | None = None
         super().__init__()
         self._defer_v92_menu_build = False
         self._build_menu_v9()
@@ -158,21 +162,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.tools_menu.addSeparator()
-        self.device_history_menu = QMenu("Device History", self.tools_menu)
-        self.tools_menu.addMenu(self.device_history_menu)
-        self.snapshots_menu = QMenu("Device Snapshots…", self.device_history_menu)
-        self.device_history_menu.addMenu(self.snapshots_menu)
-        self.save_device_snapshot_action = self.snapshots_menu.addAction(
-            "Save Current Device Snapshot…", self._save_device_snapshot
-        )
-        self.compare_device_snapshot_action = self.snapshots_menu.addAction(
-            "Compare Current Device with Snapshot…", self._compare_device_snapshot
-        )
-        self.device_inventory_changes_action = self.device_history_menu.addAction(
-            "Device Inventory Changes…", self._show_inventory_changes
-        )
-        self.tools_menu.addSeparator()
+        self.changes_history_action = None
+        if state.changes_history_enabled(self.user_settings):
+            self.changes_history_action = self.tools_menu.addAction(
+                "Changes & History…", self._show_changes_history
+            )
+        self.history_maintenance_separator_action = self.tools_menu.addSeparator()
         self.data_maintenance_action = self.tools_menu.addAction(
             "Data Maintenance…", self._show_data_maintenance
         )
@@ -203,6 +198,71 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
+
+    def _sync_changes_history_action(self) -> None:
+        enabled = state.changes_history_enabled(self.user_settings)
+        action = self.changes_history_action
+        if enabled and action is None:
+            action = QAction("Changes & History…", self)
+            action.triggered.connect(self._show_changes_history)
+            self.tools_menu.insertAction(self.history_maintenance_separator_action, action)
+            self.changes_history_action = action
+        elif not enabled and action is not None:
+            self.tools_menu.removeAction(action)
+            action.deleteLater()
+            self.changes_history_action = None
+            if self._changes_history_dialog is not None:
+                self._changes_history_dialog.close()
+                self._changes_history_dialog = None
+        sync_availability = getattr(self, "_sync_action_availability", None)
+        if callable(sync_availability):
+            sync_availability()
+
+    def _show_changes_history(self) -> None:
+        if not state.changes_history_enabled(self.user_settings):
+            return
+        results_available = bool(self.current_rows) and not bool(
+            getattr(self, "_results_incomplete", False)
+        )
+        device_results_available = self.source_mode == "device" and results_available
+        inventory_changes = getattr(self, "_last_inventory_changes", None)
+        review_store_changes = getattr(self, "_show_store_change_overview", None)
+        if not callable(review_store_changes):
+            return
+        availability = changes_history_ui.ChangesHistoryAvailability(
+            store_tracking=state.store_history_enabled(self.user_settings),
+            store_review=(
+                state.store_history_enabled(self.user_settings)
+                and results_available
+                and change_service.has_store_change_evidence(self.current_rows)
+            ),
+            store_had_baseline=bool(
+                state.store_history_enabled(self.user_settings)
+                and getattr(self, "_store_comparison_had_baseline", False)
+            ),
+            device_tracking=state.device_inventory_history_enabled(self.user_settings),
+            device_review=bool(
+                state.device_inventory_history_enabled(self.user_settings)
+                and device_results_available
+                and isinstance(inventory_changes, dict)
+                and inventory_changes.get("had_previous")
+            ),
+            snapshots_available=device_results_available,
+        )
+        if self._changes_history_dialog is not None:
+            self._changes_history_dialog.close()
+        dialog = changes_history_ui.ChangesHistoryDialog(
+            self,
+            availability,
+            review_store_changes=review_store_changes,
+            review_device_changes=self._show_inventory_changes,
+            save_snapshot=self._save_device_snapshot,
+            compare_snapshot=self._compare_device_snapshot,
+        )
+        self._changes_history_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
     def _show_data_maintenance(self) -> None:
         model: Any = self.model

@@ -63,6 +63,17 @@ def _row_item(row: Mapping[str, Any], detail: str = "") -> dict[str, str]:
     }
 
 
+def has_store_change_evidence(rows: list[dict[str, Any]]) -> bool:
+    return any(
+        isinstance(raw := row.get(state.AUDIT_CHANGES_FIELD), list)
+        and any(
+            isinstance(event, dict) and _text(event.get("type")) in _EVENT_GROUPS
+            for event in raw
+        )
+        for row in rows
+    )
+
+
 def build_change_groups(
     rows: list[dict[str, Any]], inventory_changes: Mapping[str, Any] | None = None
 ) -> list[dict[str, Any]]:
@@ -134,6 +145,13 @@ def build_change_groups(
         if items:
             result.append({"key": key, "label": label, "items": items, "count": len(items)})
     return result
+
+
+def build_store_change_groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build the canonical overview while excluding device-inventory-only groups."""
+
+    store_rows = [{**row, DEVICE_HISTORY_FLAG: False} for row in rows]
+    return build_change_groups(store_rows)
 
 
 def total_change_count(groups: list[dict[str, Any]]) -> int:
