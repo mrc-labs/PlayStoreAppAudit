@@ -242,7 +242,7 @@ FIELD_DEFINITIONS = (
     ),
     FieldDefinition(
         "device_change",
-        "Device Inventory Change",
+        "Device App Inventory Change",
         FieldType.CHOICE,
         _choices(
             ("New on device", "New on Device"),

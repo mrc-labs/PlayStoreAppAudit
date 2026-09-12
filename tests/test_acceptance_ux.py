@@ -206,7 +206,7 @@ def test_source_status_text_names_the_active_source(
             "Basic",
             "device",
             [
-                "criticality", "change", "package_name", "play_title",
+                "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "health_score", "notes",
             ],
@@ -259,6 +259,7 @@ def test_basic_and_source_details_layouts(
         preset,
         source,
         compare_previous=True,
+        device_inventory_history=True,
         health_score_enabled=True,
     ) == expected
 
@@ -266,7 +267,11 @@ def test_basic_and_source_details_layouts(
 @pytest.mark.parametrize("source", ["file", "local_apk", "device"])
 def test_technical_is_source_aware_and_notes_last(source: str) -> None:
     columns = column_presets.visible_columns(
-        "Technical", source, compare_previous=True, health_score_enabled=True
+        "Technical",
+        source,
+        compare_previous=True,
+        device_inventory_history=True,
+        health_score_enabled=True,
     )
     assert columns[-1] == "notes"
     if source == "device":
@@ -283,6 +288,37 @@ def test_technical_is_source_aware_and_notes_last(source: str) -> None:
 
 
 @pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)
+@pytest.mark.parametrize("source", ["file", "local_apk", "device"])
+@pytest.mark.parametrize(
+    ("store_history", "device_history"),
+    [(False, False), (True, False), (False, True), (True, True)],
+)
+def test_builtin_history_columns_follow_independent_feature_and_source_gates(
+    preset: str,
+    source: str,
+    store_history: bool,
+    device_history: bool,
+) -> None:
+    columns = column_presets.visible_columns(
+        preset,
+        source,
+        compare_previous=store_history,
+        device_inventory_history=device_history,
+        health_score_enabled=True,
+    )
+
+    assert ("change" in columns) is (store_history and source != "local_apk")
+    assert ("device_change" in columns) is (device_history and source == "device")
+    if preset == "Basic" and source == "device" and store_history and device_history:
+        assert columns[:4] == [
+            "criticality",
+            "change",
+            "device_change",
+            "package_name",
+        ]
+
+
+@pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)
 def test_file_apk_adb_switching_reapplies_builtin_order_and_widths_without_custom(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     preset: str,
@@ -293,6 +329,7 @@ def test_file_apk_adb_switching_reapplies_builtin_order_and_widths_without_custo
             "view_preset": preset,
             "changes_history_enabled": True,
             "compare_previous": True,
+            "inventory_history_enabled": True,
             "health_score_enabled": True,
         }
     )
@@ -302,7 +339,11 @@ def test_file_apk_adb_switching_reapplies_builtin_order_and_widths_without_custo
         window.source_mode = source
         window._apply_established_source_defaults()
         expected = column_presets.visible_columns(
-            preset, source, compare_previous=True, health_score_enabled=True
+            preset,
+            source,
+            compare_previous=True,
+            device_inventory_history=True,
+            health_score_enabled=True,
         )
         assert _visible_order(window) == expected
         assert settings["view_preset"] == preset

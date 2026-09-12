@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QGroupBox
+from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLabel
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
@@ -336,6 +336,59 @@ def test_apply_refreshes_change_column_visibility_immediately(
     assert window.table.isColumnHidden(change_column) is finally_hidden
 
 
+@pytest.mark.parametrize(
+    (
+        "initial_master",
+        "initial_device",
+        "updated_master",
+        "updated_device",
+        "initially_hidden",
+        "finally_hidden",
+    ),
+    [
+        (False, True, True, True, True, False),
+        (True, True, False, True, False, True),
+        (True, True, True, False, False, True),
+    ],
+)
+def test_apply_refreshes_device_change_column_visibility_immediately(
+    window: MainWindow,
+    app: QApplication,
+    ui_settings: dict[str, object],
+    initial_master: bool,
+    initial_device: bool,
+    updated_master: bool,
+    updated_device: bool,
+    initially_hidden: bool,
+    finally_hidden: bool,
+) -> None:
+    ui_settings.update(
+        {
+            state.CHANGES_HISTORY_ENABLED_KEY: initial_master,
+            "inventory_history_enabled": initial_device,
+            "view_preset": "Basic",
+        }
+    )
+    window.user_settings.update(ui_settings)
+    window.source_mode = "device"
+    device_change_column = window.model.columns.index("device_change")
+    window._apply_column_visibility(reset_order=False)
+    assert window.table.isColumnHidden(device_change_column) is initially_hidden
+
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+    dialog.automatic_tracking_check.setChecked(updated_master)
+    if not dialog.device_tracking_check.isEnabled():
+        dialog.automatic_tracking_check.setChecked(True)
+    dialog.device_tracking_check.setChecked(updated_device)
+    dialog.automatic_tracking_check.setChecked(updated_master)
+    dialog.apply_button.click()
+
+    assert window.table.isColumnHidden(device_change_column) is finally_hidden
+
+
 def test_snapshot_save_uses_canonical_default_with_master_off(
     window: MainWindow,
     local_state: Path,
@@ -398,12 +451,34 @@ def test_dialog_sections_and_current_evidence_prerequisites(
     app.processEvents()
     dialog = window._changes_history_dialog
     assert dialog is not None
-    groups = {group.objectName(): group.title() for group in dialog.findChildren(QGroupBox)}
-    assert groups == {
-        "StoreChangesSection": "Store changes",
-        "DeviceChangesSection": "Device changes",
+    section_titles = {
+        name: dialog.findChild(QLabel, f"{name}Title").text()
+        for name in (
+            "StoreChangesSection",
+            "DeviceChangesSection",
+            "DeviceSnapshotsSection",
+        )
+    }
+    assert section_titles == {
+        "StoreChangesSection": "Play Store listing changes",
+        "DeviceChangesSection": "Device app inventory changes",
         "DeviceSnapshotsSection": "Device Snapshots",
     }
+    assert dialog.automatic_tracking_check.text() == "Enable automatic change tracking"
+    assert dialog.store_tracking_check.text() == "Track Play Store listing changes"
+    assert dialog.device_tracking_check.text() == "Track device app inventory changes"
+    descriptions = {
+        label.property("role"): label.text() for label in dialog.findChildren(QLabel)
+    }
+    assert descriptions["StoreTrackingDescription"] == (
+        "Detect availability, Store version and update-status changes between audits."
+    )
+    assert descriptions["DeviceTrackingDescription"] == (
+        "Detect installed, removed, version, installer and enabled-state changes "
+        "between scans of the same phone."
+    )
+    assert dialog.review_store_button.text() == "Review Play Store Changes…"
+    assert dialog.settings_status_label.isHidden()
     assert not dialog.review_store_button.isHidden()
     assert not dialog.review_device_button.isHidden()
     assert dialog.save_snapshot_button.isEnabled()
@@ -441,14 +516,14 @@ def test_dialog_sections_and_current_evidence_prerequisites(
             "1",
             True,
             False,
-            "No meaningful Store changes were detected in the current comparison.",
+            "No meaningful Play Store changes were detected in the current comparison.",
         ),
         (
             {"com.new.app": {"play_status": "available", "play_version": "1"}},
             "2",
             True,
             True,
-            "Meaningful changes are available from the current comparison.",
+            "Meaningful Play Store changes are available from the current comparison.",
         ),
     ],
 )

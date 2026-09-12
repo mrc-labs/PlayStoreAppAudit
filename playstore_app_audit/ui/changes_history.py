@@ -78,7 +78,7 @@ class ChangesHistoryDialog(QDialog):
 
         self.store_section, store_layout = self._section(
             root,
-            "Play Store changes",
+            "Play Store listing changes",
             "StoreChangesSection",
         )
         self.store_tracking_check = QCheckBox("Track Play Store listing changes")
@@ -90,6 +90,7 @@ class ChangesHistoryDialog(QDialog):
         )
         store_note.setWordWrap(True)
         store_note.setObjectName("Muted")
+        store_note.setProperty("role", "StoreTrackingDescription")
         store_layout.addWidget(store_note)
         self.store_message_label = QLabel()
         self.store_message_label.setWordWrap(True)
@@ -109,7 +110,7 @@ class ChangesHistoryDialog(QDialog):
 
         self.device_section, device_layout = self._section(
             root,
-            "Device changes",
+            "Device app inventory changes",
             "DeviceChangesSection",
         )
         self.device_tracking_check = QCheckBox("Track device app inventory changes")
@@ -122,6 +123,7 @@ class ChangesHistoryDialog(QDialog):
         )
         device_note.setWordWrap(True)
         device_note.setObjectName("Muted")
+        device_note.setProperty("role", "DeviceTrackingDescription")
         device_layout.addWidget(device_note)
         self.device_message_label = QLabel()
         self.device_message_label.setWordWrap(True)

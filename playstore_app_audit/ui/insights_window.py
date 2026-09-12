@@ -891,7 +891,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         fields = [
             ("Store Status", "criticality"),
             ("Maintenance Score", "health_score"),
-            ("Change", "change"),
+            ("Play Store Listing Change", "change"),
             ("Package Name", "package_name"),
             ("Play Store Title", "play_title"),
             ("Last update", "play_last_update"),
@@ -906,7 +906,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             ("First installed", "first_install_time"),
             ("Last local update", "last_local_update"),
             ("Enabled state", "app_enabled"),
-            ("Device inventory change", "device_change"),
+            ("Device App Inventory Change", "device_change"),
             ("Sensitive permissions", "sensitive_permissions"),
             ("Play status", "play_status"),
             ("Update source", "updated_source"),

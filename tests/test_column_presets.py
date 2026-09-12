@@ -243,7 +243,13 @@ def test_customize_view_visibility_change_creates_custom(
 
     def hide_notes(dialog: QDialog) -> int:
         notes = dialog.findChild(QCheckBox, "CustomColumnCheck_notes")
+        store_change = dialog.findChild(QCheckBox, "CustomColumnCheck_change")
+        device_change = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
         assert notes is not None and notes.isChecked()
+        assert store_change is not None
+        assert store_change.text() == "Play Store Listing Change"
+        assert device_change is not None
+        assert device_change.text() == "Device App Inventory Change"
         notes.setChecked(False)
         return QDialog.DialogCode.Accepted
 
@@ -481,6 +487,65 @@ def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
     assert _custom_action(window).isEnabled()
     window._set_view_preset("Custom")
     assert _visible_order(window) == ["criticality", "package_name", "play_title"]
+
+
+def test_custom_history_choices_survive_runtime_gates_and_source_changes(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": [
+                "criticality",
+                "change",
+                "device_change",
+                "package_name",
+            ],
+            "custom_view_order": [
+                "criticality",
+                "change",
+                "device_change",
+                "package_name",
+            ],
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    saved_custom = _custom_snapshot(settings)
+
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    assert _visible_order(window) == [
+        "criticality",
+        "change",
+        "device_change",
+        "package_name",
+    ]
+
+    settings["changes_history_enabled"] = False
+    window._apply_column_visibility(reset_order=False)
+    assert _visible_order(window) == ["criticality", "package_name"]
+    assert _custom_snapshot(settings) == saved_custom
+
+    settings["changes_history_enabled"] = True
+    window.source_mode = "file"
+    window._apply_column_visibility(reset_order=False)
+    assert _visible_order(window) == ["criticality", "change", "package_name"]
+    assert _custom_snapshot(settings) == saved_custom
+
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    assert _visible_order(window) == [
+        "criticality",
+        "change",
+        "device_change",
+        "package_name",
+    ]
+    assert _custom_snapshot(settings) == saved_custom
 
 
 def test_legacy_custom_preset_with_default_columns_migrates(

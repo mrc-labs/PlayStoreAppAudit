@@ -44,8 +44,8 @@ Disabling the master gate must never delete history or snapshots.
 
 Keep the established backend keys unless a narrow compatibility wrapper is clearly safer:
 
-- `compare_previous` -> user-facing **Track Store changes between audits**;
-- `inventory_history_enabled` -> user-facing **Track changes between phone audits**.
+- `compare_previous` -> user-facing **Track Play Store listing changes**;
+- `inventory_history_enabled` -> user-facing **Track device app inventory changes**.
 
 The master and both child controls live only in the Changes & History dialog. Both child controls remain visible but disabled while the master gate is Off, without changing their stored values.
 
@@ -100,29 +100,45 @@ Use one small native Qt dialog as the canonical configuration and review surface
 
 The Store and device child checkboxes remain visible in their corresponding sections. They are disabled while automatic tracking is Off and enabled independently when it is On. Their stored values survive master Off/On toggles.
 
-### Store changes
+### Play Store listing changes
 
 Purpose text: compare current Google Play evidence with the previous successful comparable audit.
 
 Expose:
-- `Track Store changes between audits` for `compare_previous`;
-- `Review Store Changes…` when current change evidence exists.
+- `Track Play Store listing changes` for `compare_previous`;
+- `Detect availability, Store version and update-status changes between audits.` directly below the checkbox;
+- `Review Play Store Changes…` when current change evidence exists.
 
 If tracking is enabled but no previous baseline/change evidence exists, explain that a successful audit establishes the baseline and do not show a misleading empty report as if changes had been checked.
 
 Reuse the existing canonical Store-change overview/review path.
 
-### Device changes
+### Device app inventory changes
 
 Purpose text: compare the current phone inventory with the previous completed audit of the same device.
 
 Expose:
-- `Track changes between phone audits` for `inventory_history_enabled`;
+- `Track device app inventory changes` for `inventory_history_enabled`;
+- `Detect installed, removed, version, installer and enabled-state changes between scans of the same phone.` directly below the checkbox;
 - `Review Device Changes…` when current device comparison data exists.
 
 Explain that automatic device history can report installed/removed apps, version changes, installer changes and enabled-state changes.
 
 Reuse the existing canonical Device Inventory Changes path and device-association/privacy rules.
+
+## Result-table columns
+
+Keep the persisted row/export identifiers `change` and `device_change`. Their canonical user-facing names are **Play Store Listing Change** and **Device App Inventory Change**, with intentional multiline table headers.
+
+Built-in column presets apply both history gates symmetrically:
+
+- show Play Store Listing Change only when `store_history_enabled(settings)` is true (and never for Local APK sources);
+- show Device App Inventory Change only when `device_inventory_history_enabled(settings)` is true and the active source is a device;
+- in Basic device results, place Store Status, Play Store Listing Change and Device App Inventory Change before Package Name;
+- Source Details and Technical follow the same gates and source applicability;
+- Custom retains the user's saved visibility/order/width configuration, while inapplicable history columns are hidden at presentation time and return when their gate/source becomes applicable again.
+
+Applying dialog settings must refresh the existing table presentation immediately through the canonical column-visibility path, without rebuilding the model or resetting saved widths/order.
 
 ### Device Snapshots
 
@@ -184,7 +200,7 @@ Cover at minimum:
 11. the Changes & History dialog exposes the master and both child controls;
 12. child checkboxes are disabled while master Off and enabled while master On;
 13. stored child values survive master Off/On toggles and dialog changes persist;
-14. dialog has Store changes, Device changes and Device Snapshots sections;
+14. dialog has Play Store listing changes, Device app inventory changes and Device Snapshots sections with the canonical checkbox labels and descriptions;
 15. Store review uses existing canonical change evidence and distinguishes no current comparable baseline from a completed comparison with no meaningful changes;
 16. Device review uses existing comparison aggregate and respects source/device prerequisites;
 17. snapshot actions retain existing prerequisites and remain usable with master Off;
@@ -195,6 +211,12 @@ Cover at minimum:
 22. master On + child On preserves successful-audit promotion semantics;
 23. stopped/failed/abandoned audits still do not promote;
 24. Data Maintenance behavior from #144 is unchanged.
+25. Apply immediately updates Play Store Listing Change visibility for master Off/On and Store-child Off/On transitions;
+26. Apply immediately updates Device App Inventory Change visibility for master Off/On and device-child Off/On transitions;
+27. Basic, Source Details and Technical apply both canonical history gates and device-source applicability;
+28. Custom history-column choices remain stored across feature-gate and source changes;
+29. schema, Customize View, Smart Query and HTML report labels use the canonical column names;
+30. both canonical table headers wrap intentionally and satisfy their bounded width policies.
 
 ## Out of scope
 

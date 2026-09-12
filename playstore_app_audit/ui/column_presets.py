@@ -26,6 +26,7 @@ _BASIC = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "package_name",
         "play_title",
         "version_comparison",
@@ -208,6 +209,7 @@ def visible_columns(
     source_mode: object,
     *,
     compare_previous: bool,
+    device_inventory_history: bool,
     health_score_enabled: bool,
     optional_columns: Iterable[str] = (),
 ) -> list[str]:
@@ -221,6 +223,8 @@ def visible_columns(
 
     if not compare_previous or source == SOURCE_LOCAL_APK:
         columns = [column for column in columns if column != "change"]
+    if not device_inventory_history or source != SOURCE_DEVICE:
+        columns = [column for column in columns if column != "device_change"]
     if canonical_preset != "Technical" and not health_score_enabled:
         columns = [column for column in columns if column != "health_score"]
 

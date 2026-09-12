@@ -486,6 +486,10 @@ def test_dialog_is_native_accessible_and_responsive(
         row = dialog._condition_rows[0]
         assert row.accessibleName() == "Condition 1"
         assert row.field_combo.accessibleName() == "Condition Field"
+        device_change_index = row.field_combo.findData("device_change")
+        assert row.field_combo.itemText(device_change_index) == (
+            "Device App Inventory Change"
+        )
         assert row.operator_combo.accessibleName() == "Condition Operator"
         assert row.remove_button.accessibleName() == "Remove Condition"
         assert row.remove_button.toolTip() == "Remove condition"

@@ -45,6 +45,8 @@ from playstore_app_audit.services.local_artifact_store import LocalArtifactStore
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.column_presets import (
     BUILTIN_PRESETS,
+    SOURCE_DEVICE,
+    normalise_source_mode,
     normalise_view_preset,
     visible_columns,
 )
@@ -385,16 +387,20 @@ class MainWindow(results_ui.ResultsWindow):
         preset = normalise_view_preset(settings.get("view_preset"))
         if preset == "Custom":
             columns = super()._visible_column_order()
-            return (
-                columns
-                if state.store_history_enabled(settings)
-                else [column for column in columns if column != "change"]
-            )
+            if not state.store_history_enabled(settings):
+                columns = [column for column in columns if column != "change"]
+            if (
+                not state.device_inventory_history_enabled(settings)
+                or normalise_source_mode(self.source_mode) != SOURCE_DEVICE
+            ):
+                columns = [column for column in columns if column != "device_change"]
+            return columns
         selected = settings.get("technical_columns", [])
         return visible_columns(
             preset,
             self.source_mode,
             compare_previous=state.store_history_enabled(settings),
+            device_inventory_history=state.device_inventory_history_enabled(settings),
             health_score_enabled=bool(settings.get("health_score_enabled", False)),
             optional_columns=selected if isinstance(selected, list) else (),
         )

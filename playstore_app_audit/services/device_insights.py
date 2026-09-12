@@ -73,7 +73,7 @@ V9_TECHNICAL_COLUMNS = {
     "app_enabled": "Enabled state",
     "sensitive_permissions_count": "Sensitive permissions count",
     "sensitive_permissions": "Sensitive permissions",
-    "device_change": "Device inventory change",
+    "device_change": "Device App Inventory Change",
     "health_score": "Maintenance Score",
 }
 
@@ -1151,7 +1151,7 @@ def write_html_report(
         if local_apk_report
         else "<th>Store Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
         "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
-        "<th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
+        "<th>Device App Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
     )
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>
