@@ -40,11 +40,9 @@ def test_quality_runs_on_pull_requests_and_relevant_main_pushes() -> None:
     assert "github.event.pull_request.number || github.ref" in workflow
     assert "cancel-in-progress: true" in workflow
 
-    assert "python-version:" in workflow
-    assert '- "3.13"' in workflow
-    assert '- "3.14"' in workflow
-    assert "python-version: ${{ matrix.python-version }}" in workflow
-    assert "EXPECTED_PYTHON: ${{ matrix.python-version }}" in workflow
+    assert "python-version: \"3.14\"" in workflow
+    assert "3.13" not in workflow
+    assert "EXPECTED_PYTHON: 3.14" in workflow
 
 
 def test_ui_style_audit_is_a_deliberate_manual_milestone() -> None:
@@ -108,7 +106,7 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
         workflow = _workflow(name)
 
         assert (
-            'pip install -r requirements-dev.txt "Nuitka==4.1.3"'
+            'pip install -r requirements-dev.txt "Nuitka==4.2.1"'
             in workflow
         )
         assert "--report=compilation-report.xml" in workflow
