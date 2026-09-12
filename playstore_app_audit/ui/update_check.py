@@ -8,13 +8,16 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QWidget
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
-from playstore_app_audit.ui.about_updates import AboutUpdatesDialog
+from playstore_app_audit.ui.about_updates import (
+    AUTO_UPDATE_CHECK_LABEL,
+    AboutUpdatesDialog,
+)
 
 AUTO_UPDATE_CHECK_KEY = "check_updates_on_startup"
-AUTO_UPDATE_CHECK_LABEL = "Check for updates automatically at startup"
 
 # Existing installs without this key opt in to the v2.0 default. The About
 # dialog always allows the user to change the preference immediately.
@@ -77,7 +80,8 @@ class UpdateCheckController(QObject):
         dialog = self._about_dialog
         if dialog is not None:
             return dialog
-        dialog = AboutUpdatesDialog(self._window if isinstance(self._window, QObject) else None)
+        parent = self._window if isinstance(self._window, QWidget) else None
+        dialog = AboutUpdatesDialog(parent)
         dialog.check_requested.connect(self._check_again_from_about)
         dialog.startup_check_changed.connect(self.set_startup_check_enabled)
         dialog.release_requested.connect(self._open_release_page)
