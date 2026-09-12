@@ -338,6 +338,18 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
             }
         }
         data[key] = {"fetched_at": now, "row": stored}
+
+    cutoff_seconds = 45 * 24 * 3600
+    current_time = datetime.now(UTC)
+    for key in list(data):
+        try:
+            fetched = datetime.fromisoformat(
+                str(data[key]["fetched_at"]).replace("Z", "+00:00")
+            )
+            if (current_time - fetched.astimezone(UTC)).total_seconds() > cutoff_seconds:
+                data.pop(key, None)
+        except Exception:
+            data.pop(key, None)
     _write_json(cache_path(), data)
 
 
