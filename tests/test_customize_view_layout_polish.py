@@ -54,9 +54,10 @@ def test_customize_view_uses_two_column_top_section_with_custom_spacing(
         assert icons is not None and icons.parentWidget() is display_pane
         assert date_format is not None and date_format.parentWidget() is display_pane
 
-        automatic_checks = dialog.findChildren(QCheckBox, "", options=Qt.FindChildOption.FindChildrenRecursively)
         automatic_checks = [
-            check for check in automatic_checks if check.objectName().startswith("AutomaticColumnCheck_")
+            check
+            for check in dialog.findChildren(QCheckBox)
+            if check.objectName().startswith("AutomaticColumnCheck_")
         ]
         assert len(automatic_checks) == 5
         assert all(check.parentWidget() is automatic_pane for check in automatic_checks)
@@ -72,8 +73,6 @@ def test_customize_view_uses_two_column_top_section_with_custom_spacing(
         assert spacer is not None
         assert spacer.sizeHint().height() >= 14
         return QDialog.DialogCode.Rejected
-
-    from PySide6.QtCore import Qt
 
     monkeypatch.setattr(QDialog, "exec", inspect)
     window._show_display_settings()
