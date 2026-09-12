@@ -71,11 +71,9 @@ class UpdateCheckController(QObject):
 
     def _run_check(self) -> None:
         result = device_insights.check_for_updates()
-        try:
+        # The application may have closed while the network request was in flight.
+        with suppress(RuntimeError):
             self._result_ready.emit(result)
-        except RuntimeError:
-            # The application may have closed while the network request was in flight.
-            pass
 
     def _handle_result(self, raw_result: object) -> None:
         self._thread = None
@@ -156,7 +154,7 @@ def install_update_check_controller(
         with suppress(TypeError, RuntimeError):
             action.triggered.disconnect()
         action.triggered.connect(controller.check_now)
-    setattr(window, "_update_check_controller", controller)
+    window._update_check_controller = controller
     if schedule_startup:
         controller.schedule_startup_check()
     return controller
