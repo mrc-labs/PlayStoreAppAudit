@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=84", "wheel>=0.48.0"]
+requires = ["setuptools==84.0.0", "wheel==0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,8 +14,8 @@ keywords = ["android", "google-play", "adb", "pyside6", "qt6", "desktop-app"]
 dependencies = [
     "pyaxmlparser==0.3.31",
     "google-play-scraper==1.2.7",
-    "requests>=2.34.2",
-    "beautifulsoup4>=4.15.0",
+    "requests==2.34.2",
+    "beautifulsoup4==4.15.0",
     "cryptography==50.0.1",
     "PySide6-Essentials==6.11.2",
 ]
