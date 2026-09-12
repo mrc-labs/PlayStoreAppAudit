@@ -1,3 +1,5 @@
+"""Asynchronous GitHub Release update checks for the Qt application."""
+
 from __future__ import annotations
 
 from contextlib import suppress
