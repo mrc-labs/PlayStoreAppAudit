@@ -16,6 +16,7 @@ from playstore_app_audit.services.performance_diagnostics import install_perform
 from playstore_app_audit.services.play_store import install_play_store_service
 from playstore_app_audit.services.scraper_transport import install_scraper_transport_timeout
 from playstore_app_audit.ui.main_window import MainWindow
+from playstore_app_audit.ui.update_check import install_update_check_controller
 
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
 
@@ -46,6 +47,7 @@ def main() -> int:
     app.setOrganizationName("MRC")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = MainWindow()
+    install_update_check_controller(window)
     window.show()
 
     smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {"1", "true", "yes"}
