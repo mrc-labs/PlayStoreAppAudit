@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QFont, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -78,7 +78,7 @@ class AboutUpdatesDialog(QDialog):
 
         version = QLabel(f"Version {__version__}")
         version.setObjectName("AboutVersion")
-        version.setForegroundRole(QLabel().foregroundRole())
+        version.setForegroundRole(QPalette.ColorRole.PlaceholderText)
         identity.addWidget(version)
         header.addLayout(identity, 1)
         root.addLayout(header)
