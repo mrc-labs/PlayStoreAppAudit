@@ -24,8 +24,9 @@ class UpdateCheckController(QObject):
 
     _result_ready = Signal(object)
 
-    def __init__(self, parent: QWidget) -> None:
-        super().__init__(parent)
+    def __init__(self, parent: Any) -> None:
+        qt_parent = parent if isinstance(parent, QObject) else None
+        super().__init__(qt_parent)
         self._window = parent
         self._thread: Thread | None = None
         self._manual_requested = False
@@ -45,7 +46,7 @@ class UpdateCheckController(QObject):
         settings[AUTO_UPDATE_CHECK_KEY] = bool(enabled)
         saved = state.save_settings(settings)
         if hasattr(self._window, "user_settings") and isinstance(saved, dict):
-            self._window.user_settings = saved  # type: ignore[attr-defined]
+            self._window.user_settings = saved
 
     def start_startup_check(self) -> None:
         if self.startup_check_enabled():
@@ -145,7 +146,7 @@ class UpdateCheckController(QObject):
 
 
 def install_update_check_controller(
-    window: QWidget, *, schedule_startup: bool = True
+    window: Any, *, schedule_startup: bool = True
 ) -> UpdateCheckController:
     """Attach the canonical async update checker to the production window."""
 
