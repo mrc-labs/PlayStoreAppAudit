@@ -123,9 +123,9 @@ class UpdateCheckController(QObject):
         )
         box.setDefaultButton(QMessageBox.StandardButton.Yes)
         checkbox = self._preference_checkbox(box)
-        answer = QMessageBox.StandardButton(box.exec())
+        answer = box.exec()
         self._persist_checkbox(checkbox)
-        if answer == QMessageBox.StandardButton.Yes:
+        if answer == int(QMessageBox.StandardButton.Yes):
             QDesktopServices.openUrl(
                 QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE))
             )
@@ -144,7 +144,9 @@ class UpdateCheckController(QObject):
         self._persist_checkbox(checkbox)
 
 
-def install_update_check_controller(window: QWidget) -> UpdateCheckController:
+def install_update_check_controller(
+    window: QWidget, *, schedule_startup: bool = True
+) -> UpdateCheckController:
     """Attach the canonical async update checker to the production window."""
 
     controller = UpdateCheckController(window)
@@ -154,5 +156,6 @@ def install_update_check_controller(window: QWidget) -> UpdateCheckController:
             action.triggered.disconnect()
         action.triggered.connect(controller.check_now)
     setattr(window, "_update_check_controller", controller)
-    controller.schedule_startup_check()
+    if schedule_startup:
+        controller.schedule_startup_check()
     return controller
