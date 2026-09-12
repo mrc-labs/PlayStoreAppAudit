@@ -274,15 +274,14 @@ class PreferencesWindow(table_ui.TableWindow):
         group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             presets.addAction(action)
         self._view_action_group = group
-        view_menu.addAction("Customize View…", self._show_display_settings)
         view_menu.addSeparator()
         view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
@@ -364,16 +363,16 @@ class PreferencesWindow(table_ui.TableWindow):
         if not isinstance(group, QActionGroup):
             return
         for action in group.actions():
-            action.setChecked(action.text() == name)
+            action.setChecked(action.data() == name)
 
     def _sync_custom_preset_availability(self) -> None:
         for action in getattr(self, "view_preset_actions", []) or []:
-            if action.text() == "Custom":
+            if action.data() == "Custom":
                 action.setEnabled(True)
         group = getattr(self, "_view_action_group", None)
         if isinstance(group, QActionGroup):
             for action in group.actions():
-                if action.text() == "Custom":
+                if action.data() == "Custom":
                     action.setEnabled(True)
 
     def _show_display_settings(self) -> None:
@@ -552,6 +551,11 @@ class PreferencesWindow(table_ui.TableWindow):
         }
         if save_custom:
             _visible, live_order, live_widths, encoded = self._current_table_layout()
+            live_order = [
+                column
+                for column in live_order
+                if column not in CONTEXTUAL_HISTORY_COLUMNS
+            ]
             stored_widths = self._normalise_custom_widths(
                 self.user_settings.get("custom_view_widths")
             )

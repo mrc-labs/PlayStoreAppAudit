@@ -186,7 +186,7 @@ def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
     assert window._active_smart_query is query
     assert window.proxy.smart_query is query
     assert next(
-        action for action in window.view_preset_actions if action.text() == "Custom"
+        action for action in window.view_preset_actions if action.data() == "Custom"
     ).isChecked()
 
     monkeypatch.setattr(

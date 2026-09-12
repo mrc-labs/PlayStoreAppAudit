@@ -210,10 +210,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current_view)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
             view_presets.addAction(action)

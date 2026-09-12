@@ -116,6 +116,10 @@ def _device_change_hidden(window: MainWindow) -> bool:
     return window.table.isColumnHidden(window.model.columns.index("device_change"))
 
 
+def _visual_index(window: MainWindow, column: str) -> int:
+    return window.table.horizontalHeader().visualIndex(window.model.columns.index(column))
+
+
 def test_completed_phone_scan_selects_one_coherent_session(
     window: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -265,7 +269,7 @@ def test_real_phone_changes_history_apply_persists_and_shows_device_column(
     settings: dict[str, object] = {
         "view_preset": preset,
         "recent_sources": [],
-        "changes_history_enabled": False,
+        "changes_history_enabled": True,
         "compare_previous": False,
         "inventory_history_enabled": False,
         "health_score_enabled": True,
@@ -278,13 +282,13 @@ def test_real_phone_changes_history_apply_persists_and_shows_device_column(
     app.processEvents()
     dialog = window._changes_history_dialog
     assert dialog is not None
-    dialog.automatic_tracking_check.setChecked(True)
     dialog.device_tracking_check.setChecked(True)
     dialog.apply_button.click()
 
     assert settings["changes_history_enabled"] is True
     assert settings["inventory_history_enabled"] is True
     assert not _device_change_hidden(window)
+    assert _visual_index(window, "device_change") == 1
 
     dialog.close()
     window._show_changes_history()
@@ -294,6 +298,59 @@ def test_real_phone_changes_history_apply_persists_and_shows_device_column(
     assert reopened.automatic_tracking_check.isChecked()
     assert reopened.device_tracking_check.isChecked()
     assert not _device_change_hidden(window)
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        [(True, False)],
+        [(False, True)],
+        [(True, True)],
+        [(False, False), (True, True), (False, False), (True, True)],
+    ],
+    ids=["store-only", "device-only", "both", "repeated-off-on"],
+)
+def test_basic_real_history_apply_positions_columns_near_front(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    sequence: list[tuple[bool, bool]],
+) -> None:
+    settings: dict[str, object] = {
+        "view_preset": "Basic",
+        "recent_sources": [],
+        "changes_history_enabled": True,
+        "compare_previous": False,
+        "inventory_history_enabled": False,
+        "health_score_enabled": True,
+    }
+    _use_settings(monkeypatch, window, settings)
+    _select_session(window, _session("Pixel A", "device-a", "com.example.a"))
+    window._show_changes_history()
+    app.processEvents()
+    dialog = window._changes_history_dialog
+    assert dialog is not None
+
+    for store_enabled, device_enabled in sequence:
+        dialog.store_tracking_check.setChecked(store_enabled)
+        dialog.device_tracking_check.setChecked(device_enabled)
+        dialog.apply_button.click()
+
+        change = window.model.columns.index("change")
+        device_change = window.model.columns.index("device_change")
+        assert window.table.isColumnHidden(change) is (not store_enabled)
+        assert window.table.isColumnHidden(device_change) is (not device_enabled)
+        expected = [
+            column
+            for column, enabled in (
+                ("change", store_enabled),
+                ("device_change", device_enabled),
+            )
+            if enabled
+        ]
+        assert [_visual_index(window, column) for column in expected] == list(
+            range(1, len(expected) + 1)
+        )
 
 
 def test_phone_a_to_phone_b_replaces_session_without_metadata_bleed(

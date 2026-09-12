@@ -233,11 +233,11 @@ def test_source_status_text_names_the_active_source(
             "Source Details",
             "device",
             [
-                "criticality", "change", "package_name", "play_title",
+                "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
                 "installer_source", "installer_category", "app_enabled", "first_install_time",
-                "last_local_update", "device_change", "health_score", "notes",
+                "last_local_update", "health_score", "notes",
             ],
         ),
         (
@@ -309,12 +309,11 @@ def test_builtin_history_columns_follow_independent_feature_and_source_gates(
 
     assert ("change" in columns) is (store_history and source != "local_apk")
     assert ("device_change" in columns) is (device_history and source == "device")
-    if preset == "Basic" and source == "device" and store_history and device_history:
-        assert columns[:4] == [
+    if source == "device" and store_history and device_history:
+        assert columns[:3] == [
             "criticality",
             "change",
             "device_change",
-            "package_name",
         ]
 
 

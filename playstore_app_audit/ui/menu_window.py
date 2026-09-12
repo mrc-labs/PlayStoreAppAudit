@@ -27,6 +27,7 @@ import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
+from playstore_app_audit.ui.column_presets import BUILTIN_PRESETS, normalise_view_preset
 from playstore_app_audit.ui.file_menu import (
     ResultActions,
     populate_result_export_menu,
@@ -128,19 +129,18 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         current = str(state.load_settings().get("view_preset") or "Basic")
         self.view_preset_actions = []
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current)
             action.triggered.connect(
-                lambda _checked=False, n=name: self._select_column_preset(n)
+                lambda _checked=False, a=action: self._select_column_preset(str(a.data()))
             )
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
             self.view_preset_actions.append(action)
         self._view_action_group = self.view_action_group
 
-        self.display_settings_action = self.view_menu.addAction(
-            "Customize View…", self._show_display_settings
-        )
         self.reset_layout_action = self.view_menu.addAction(
             "Reset Table Layout", self._reset_table_layout
         )
@@ -252,7 +252,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
         if callable(sync_post_audit_views):
             sync_post_audit_views()
-        self._apply_column_visibility(reset_order=False)
+        preset = normalise_view_preset(self.user_settings.get("view_preset"))
+        self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
         self._update_summary()
         self.status_label.setText("Changes & History settings saved")
         return self._changes_history_availability()

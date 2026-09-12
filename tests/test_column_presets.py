@@ -79,6 +79,14 @@ def _visual_order(window: MainWindow) -> list[str]:
     return [window.model.columns[header.logicalIndex(visual)] for visual in range(header.count())]
 
 
+def _ordinary_visual_order(window: MainWindow) -> list[str]:
+    return [
+        column
+        for column in _visual_order(window)
+        if column not in {"change", "device_change"}
+    ]
+
+
 def _visible_order(window: MainWindow) -> list[str]:
     return [
         column
@@ -99,7 +107,7 @@ def _custom_snapshot(settings: dict[str, object]) -> dict[str, object]:
 
 
 def _custom_action(window: MainWindow):
-    return next(action for action in window.view_preset_actions if action.text() == "Custom")
+    return next(action for action in window.view_preset_actions if action.data() == "Custom")
 
 
 def test_pristine_settings_remain_basic_without_custom_across_restart(
@@ -154,9 +162,10 @@ def test_column_preset_naming_and_custom_starts_enabled(
         "Basic",
         "Source Details",
         "Technical",
-        "Custom",
+        "Custom…",
     ]
-    assert window.display_settings_action.text() == "Customize View…"
+    assert _custom_action(window).data() == "Custom"
+    assert all(action.text() != "Customize View…" for action in window.view_menu.actions())
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
     assert _custom_action(window).isEnabled()
@@ -342,6 +351,9 @@ def test_manual_layout_capture_keeps_history_out_of_custom_base(
     assert not {"change", "device_change"}.intersection(
         settings["custom_view_columns"]  # type: ignore[arg-type]
     )
+    assert not {"change", "device_change"}.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
 
@@ -435,7 +447,11 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     saved_custom = _custom_snapshot(settings)
     assert settings["view_preset"] == "Custom"
     assert set(settings["custom_view_columns"]) == set(expected_visible)  # type: ignore[arg-type]
-    assert settings["custom_view_order"] == expected_order
+    assert settings["custom_view_order"] == [
+        column
+        for column in expected_order
+        if column not in {"change", "device_change"}
+    ]
     saved_widths = settings["custom_view_widths"]
     assert isinstance(saved_widths, dict)
     assert all(saved_widths[column] == expected_widths[column] for column in expected_visible)
@@ -497,7 +513,11 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
 
     assert _custom_snapshot(settings) == expected
     assert _visible_order(first) == expected_visible
-    assert _visual_order(first) == expected_order
+    assert _ordinary_visual_order(first) == [
+        column
+        for column in expected_order
+        if column not in {"change", "device_change"}
+    ]
     assert _widths(first) == expected_widths
     first.close()
     app.processEvents()
@@ -506,7 +526,11 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     assert settings["view_preset"] == "Custom"
     assert _custom_action(restarted).isEnabled() and _custom_action(restarted).isChecked()
     assert _visible_order(restarted) == expected_visible
-    assert _visual_order(restarted) == expected_order
+    assert _ordinary_visual_order(restarted) == [
+        column
+        for column in expected_order
+        if column not in {"change", "device_change"}
+    ]
     assert _widths(restarted) == expected_widths
     assert restarted.table.columnWidth(score) == 140
 
@@ -545,7 +569,11 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert settings["view_preset"] == "Custom"
     assert settings["custom_view_exists"] is True
     assert migrated.table.columnWidth(package) == 361
-    assert _visual_order(migrated) == legacy_order
+    assert _ordinary_visual_order(migrated) == [
+        column
+        for column in legacy_order
+        if column not in {"change", "device_change"}
+    ]
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
 
@@ -682,6 +710,93 @@ def test_custom_visibility_is_independent_of_activation_event_order(
     assert {"change", "device_change"}.issubset(first_visibility)
 
 
+def test_custom_overlay_positioning_preserves_user_order_widths_and_settings(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": [
+                "criticality",
+                "package_name",
+                "play_title",
+                "notes",
+            ],
+            "custom_view_order": [
+                "play_title",
+                "criticality",
+                "package_name",
+                "notes",
+            ],
+            "custom_view_widths": {
+                "play_title": 287,
+                "criticality": 173,
+                "package_name": 331,
+                "notes": 245,
+            },
+            "changes_history_enabled": True,
+            "compare_previous": False,
+            "inventory_history_enabled": False,
+        }
+    )
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    ordinary_columns = {"play_title", "criticality", "package_name", "notes"}
+    ordinary_order = [
+        column for column in _visible_order(window) if column in ordinary_columns
+    ]
+    ordinary_widths = {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    }
+    custom_state = _custom_snapshot(settings)
+
+    window._save_changes_history_settings(True, True, True)
+
+    visible = _visible_order(window)
+    store_status = visible.index("criticality")
+    assert visible[store_status + 1 : store_status + 3] == ["change", "device_change"]
+    assert [column for column in visible if column in ordinary_columns] == ordinary_order
+    assert {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    } == ordinary_widths
+    assert _custom_snapshot(settings) == custom_state
+
+    window._save_changes_history_settings(True, False, True)
+    visible = _visible_order(window)
+    assert visible[visible.index("criticality") + 1] == "device_change"
+    assert "change" not in visible
+    window._save_changes_history_settings(False, True, True)
+    assert not {"change", "device_change"}.intersection(_visible_order(window))
+    window._save_changes_history_settings(True, True, True)
+
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+    visible = _visible_order(window)
+    assert visible[visible.index("criticality") + 1] == "change"
+    assert "device_change" not in visible
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+    positioned = _visual_order(window)
+    window._apply_column_visibility(reset_order=False)
+    assert _visual_order(window) == positioned
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+
+    assert _custom_snapshot(settings) == custom_state
+    assert [
+        column for column in _visible_order(window) if column in ordinary_columns
+    ] == ordinary_order
+    assert {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    } == ordinary_widths
+
+
 def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     monkeypatch: pytest.MonkeyPatch,
@@ -724,6 +839,9 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
         "package_name",
         "play_title",
     ]
+    assert not {"change", "device_change"}.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
 

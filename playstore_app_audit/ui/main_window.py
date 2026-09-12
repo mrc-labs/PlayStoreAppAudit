@@ -411,6 +411,46 @@ class MainWindow(results_ui.ResultsWindow):
             optional_columns=selected if isinstance(selected, list) else (),
         )
 
+    def _apply_column_visibility(self, reset_order: bool = False) -> None:
+        super()._apply_column_visibility(reset_order=reset_order)
+        settings = state.load_settings()
+        if normalise_view_preset(settings.get("view_preset")) == "Custom":
+            self._position_contextual_history_columns()
+
+    def _position_contextual_history_columns(self) -> None:
+        """Place visible history overlays after Store Status without moving user columns."""
+
+        header = self.table.horizontalHeader()
+        contextual = [
+            compact_ui.MODEL_COLUMNS.index(column)
+            for column in ("change", "device_change")
+            if column in compact_ui.MODEL_COLUMNS
+        ]
+        visible_contextual = [
+            logical for logical in contextual if not self.table.isColumnHidden(logical)
+        ]
+        hidden_contextual = [
+            logical for logical in contextual if self.table.isColumnHidden(logical)
+        ]
+        ordinary = [
+            header.logicalIndex(visual)
+            for visual in range(header.count())
+            if header.logicalIndex(visual) not in contextual
+        ]
+        store_status = compact_ui.MODEL_COLUMNS.index("criticality")
+        insertion = ordinary.index(store_status) + 1
+        desired = (
+            ordinary[:insertion]
+            + visible_contextual
+            + ordinary[insertion:]
+            + hidden_contextual
+        )
+        with self._suspend_table_layout_tracking():
+            for visual, logical in enumerate(desired):
+                current_visual = header.visualIndex(logical)
+                if current_visual != visual:
+                    header.moveSection(current_visual, visual)
+
     def _apply_established_source_defaults(self) -> None:
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))

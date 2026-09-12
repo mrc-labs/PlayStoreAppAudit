@@ -280,7 +280,6 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
 def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert _action_structure(window.view_menu) == [
         "Column Preset",
-        "Customize View…",
         "Details Panel",
         "Reset Table Layout",
         None,
@@ -570,7 +569,9 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     app.processEvents()
 
     assert settings["view_preset"] == "Custom"
-    assert next(action for action in window.view_preset_actions if action.text() == "Custom").isChecked()
+    assert next(
+        action for action in window.view_preset_actions if action.data() == "Custom"
+    ).isChecked()
     assert all(window.table.isColumnHidden(window.model.columns.index(key)) for key in fields)
     assert window.proxy.rowCount() == 2
     assert window.search_edit.text() == "com.example"
@@ -661,7 +662,7 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     restarted = MainWindow()
     try:
         custom_action = next(
-            action for action in restarted.view_preset_actions if action.text() == "Custom"
+            action for action in restarted.view_preset_actions if action.data() == "Custom"
         )
         assert settings["view_preset"] == "Custom"
         assert custom_action.isChecked()

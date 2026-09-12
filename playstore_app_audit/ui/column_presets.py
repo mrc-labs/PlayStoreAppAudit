@@ -71,6 +71,7 @@ _SOURCE_DETAILS = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "package_name",
         "play_title",
         "version_comparison",
@@ -84,7 +85,6 @@ _SOURCE_DETAILS = {
         "app_enabled",
         "first_install_time",
         "last_local_update",
-        "device_change",
         "health_score",
         "notes",
     ),
@@ -128,9 +128,9 @@ _TECHNICAL = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "version_comparison",
         "compatibility_status",
-        "device_change",
         "package_name",
         "play_title",
         "installed_version",

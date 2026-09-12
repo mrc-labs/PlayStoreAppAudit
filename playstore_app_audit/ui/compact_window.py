@@ -478,6 +478,9 @@ class CompactWindow(AuditWindow):
         visible = [
             column for column in visible if column not in {"change", "device_change"}
         ]
+        order = [
+            column for column in order if column not in {"change", "device_change"}
+        ]
         settings = load_settings()
         settings.update(
             {
