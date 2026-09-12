@@ -1,4 +1,4 @@
-"""Asynchronous GitHub Release update checks for the Qt application."""
+"""Asynchronous GitHub Release checks integrated with the About surface."""
 
 from __future__ import annotations
 
@@ -8,22 +8,24 @@ from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QCheckBox, QMessageBox
+from PySide6.QtWidgets import QWidget
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
+from playstore_app_audit.ui.about_updates import (
+    AUTO_UPDATE_CHECK_LABEL,
+    AboutUpdatesDialog,
+)
 
 AUTO_UPDATE_CHECK_KEY = "check_updates_on_startup"
-AUTO_UPDATE_CHECK_LABEL = "Check for updates automatically at startup"
-AUTO_UPDATE_CHECK_STYLE = "QCheckBox { margin-top: 12px; margin-bottom: 2px; }"
 
-# The startup check is an ordinary preference. Existing installs that do not
-# have the key opt in to the v2.0 default and can disable it from update dialogs.
+# Existing installs without this key opt in to the v2.0 default. The About
+# dialog always allows the user to change the preference immediately.
 state.DEFAULT_SETTINGS.setdefault(AUTO_UPDATE_CHECK_KEY, True)
 
 
 class UpdateCheckController(QObject):
-    """Coordinate manual and non-blocking startup release checks."""
+    """Coordinate About-triggered and non-blocking startup release checks."""
 
     _result_ready = Signal(object)
 
@@ -32,7 +34,8 @@ class UpdateCheckController(QObject):
         super().__init__(qt_parent)
         self._window = parent
         self._thread: Thread | None = None
-        self._manual_requested = False
+        self._about_requested = False
+        self._about_dialog: AboutUpdatesDialog | None = None
         self._result_ready.connect(self._handle_result)
 
     def schedule_startup_check(self) -> None:
@@ -52,17 +55,47 @@ class UpdateCheckController(QObject):
             self._window.user_settings = saved
 
     def start_startup_check(self) -> None:
+        """Check silently at startup when the preference is enabled."""
+
         if self.startup_check_enabled():
-            self._request_check(manual=False)
+            self._request_check(about=False)
+
+    def show_about(self) -> None:
+        """Open About and always trigger or join a fresh latest-release check."""
+
+        dialog = self._ensure_about_dialog()
+        dialog.set_startup_check_enabled(self.startup_check_enabled())
+        dialog.set_checking()
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        self._request_check(about=True)
 
     def check_now(self) -> None:
-        """Run the Help-menu check without blocking the Qt GUI thread."""
+        """Compatibility alias: update checks now live inside About."""
 
-        self._request_check(manual=True)
+        self.show_about()
 
-    def _request_check(self, *, manual: bool) -> None:
-        if manual:
-            self._manual_requested = True
+    def _ensure_about_dialog(self) -> AboutUpdatesDialog:
+        dialog = self._about_dialog
+        if dialog is not None:
+            return dialog
+        parent = self._window if isinstance(self._window, QWidget) else None
+        dialog = AboutUpdatesDialog(parent)
+        dialog.check_requested.connect(self._check_again_from_about)
+        dialog.startup_check_changed.connect(self.set_startup_check_enabled)
+        dialog.release_requested.connect(self._open_release_page)
+        self._about_dialog = dialog
+        return dialog
+
+    def _check_again_from_about(self) -> None:
+        dialog = self._ensure_about_dialog()
+        dialog.set_checking()
+        self._request_check(about=True)
+
+    def _request_check(self, *, about: bool) -> None:
+        if about:
+            self._about_requested = True
         if self._thread is not None and self._thread.is_alive():
             return
         self._thread = Thread(
@@ -80,85 +113,82 @@ class UpdateCheckController(QObject):
 
     def _handle_result(self, raw_result: object) -> None:
         self._thread = None
-        manual = self._manual_requested
-        self._manual_requested = False
+        about_requested = self._about_requested
+        self._about_requested = False
         result = raw_result if isinstance(raw_result, dict) else {}
 
         if result.get("status") != "ok":
-            if manual:
-                QMessageBox.information(
-                    self._window,
-                    "Update check",
-                    str(result.get("message") or "Update check unavailable."),
+            if about_requested:
+                self._ensure_about_dialog().set_unavailable(
+                    str(result.get("message") or "Update check unavailable.")
                 )
             return
 
         if result.get("newer"):
-            self._show_update_available(result)
+            tag = str(result.get("tag") or "New version")
+            url = str(result.get("url") or device_insights.LATEST_RELEASE_PAGE)
+            dialog = self._ensure_about_dialog()
+            dialog.set_startup_check_enabled(self.startup_check_enabled())
+            dialog.set_update_available(tag, url)
+            if not about_requested:
+                # A newer version discovered by the silent startup check uses the
+                # same About surface rather than a second update-only message box.
+                dialog.show()
+                dialog.raise_()
+                dialog.activateWindow()
             return
 
-        if manual:
-            self._show_up_to_date()
+        if about_requested:
+            self._ensure_about_dialog().set_up_to_date()
 
-    def _preference_checkbox(self, box: QMessageBox) -> QCheckBox:
-        checkbox = QCheckBox(AUTO_UPDATE_CHECK_LABEL, box)
-        checkbox.setChecked(self.startup_check_enabled())
-        checkbox.setToolTip(
-            "Disable this to stop background update checks when Play Store App Audit starts."
-        )
-        checkbox.setStyleSheet(AUTO_UPDATE_CHECK_STYLE)
-        box.setCheckBox(checkbox)
-        return checkbox
+    @staticmethod
+    def _open_release_page(url: str) -> None:
+        QDesktopServices.openUrl(QUrl(url or device_insights.LATEST_RELEASE_PAGE))
 
-    def _persist_checkbox(self, checkbox: QCheckBox) -> None:
-        enabled = checkbox.isChecked()
-        if enabled != self.startup_check_enabled():
-            self.set_startup_check_enabled(enabled)
 
-    def _show_update_available(self, result: dict[str, Any]) -> None:
-        box = QMessageBox(self._window)
-        box.setIcon(QMessageBox.Icon.Information)
-        box.setWindowTitle("Update available")
-        box.setText(f"Version {result.get('tag')} is available.")
-        box.setInformativeText("Open the release page?")
-        box.setStandardButtons(
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        box.setDefaultButton(QMessageBox.StandardButton.Yes)
-        checkbox = self._preference_checkbox(box)
-        answer = box.exec()
-        self._persist_checkbox(checkbox)
-        if answer == int(QMessageBox.StandardButton.Yes):
-            QDesktopServices.openUrl(
-                QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE))
-            )
+def _about_action(window: Any):
+    help_menu = getattr(window, "help_menu", None)
+    if help_menu is None:
+        return None
+    for action in help_menu.actions():
+        if action.text().replace("…", "").startswith("About Play Store App Audit"):
+            return action
+    return None
 
-    def _show_up_to_date(self) -> None:
-        box = QMessageBox(self._window)
-        box.setIcon(QMessageBox.Icon.Information)
-        box.setWindowTitle("Up to date")
-        box.setText(
-            f"You're running Play Store App Audit {device_insights.APP_VERSION}. "
-            "This is the latest available version."
-        )
-        box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        checkbox = self._preference_checkbox(box)
-        box.exec()
-        self._persist_checkbox(checkbox)
+
+def _bind_about_surface(window: Any, controller: UpdateCheckController) -> None:
+    legacy_check = getattr(window, "check_updates_action", None)
+    if legacy_check is not None:
+        legacy_check.setVisible(False)
+        with suppress(TypeError, RuntimeError):
+            legacy_check.triggered.disconnect()
+
+    about = _about_action(window)
+    if about is None:
+        return
+    about.setText("About Play Store App Audit…")
+    about.setToolTip("About, current version and software updates")
+    with suppress(TypeError, RuntimeError):
+        about.triggered.disconnect()
+    about.triggered.connect(controller.show_about)
+    window.about_action = about
 
 
 def install_update_check_controller(
     window: Any, *, schedule_startup: bool = True
 ) -> UpdateCheckController:
-    """Attach the canonical async update checker to the production window."""
+    """Attach the canonical async About/update controller to the window."""
+
+    existing = getattr(window, "_update_check_controller", None)
+    if isinstance(existing, UpdateCheckController):
+        _bind_about_surface(window, existing)
+        if schedule_startup:
+            existing.schedule_startup_check()
+        return existing
 
     controller = UpdateCheckController(window)
-    action = getattr(window, "check_updates_action", None)
-    if action is not None:
-        with suppress(TypeError, RuntimeError):
-            action.triggered.disconnect()
-        action.triggered.connect(controller.check_now)
     window._update_check_controller = controller
+    _bind_about_surface(window, controller)
     if schedule_startup:
         controller.schedule_startup_check()
     return controller
