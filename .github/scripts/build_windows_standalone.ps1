@@ -88,9 +88,9 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Could not read platform.machine() from the selected Python."
 }
 
-& $Python -c "import struct, sys; print(sys.version); print(struct.calcsize('P') * 8); assert sys.version_info[:2] == (3, 13); assert struct.calcsize('P') * 8 == 64"
+& $Python -c "import struct, sys; print(sys.version); print(struct.calcsize('P') * 8); assert sys.version_info[:2] == (3, 14); assert struct.calcsize('P') * 8 == 64"
 if ($LASTEXITCODE -ne 0) {
-    Fail "Windows packaging requires standard 64-bit Python 3.13."
+    Fail "Windows packaging requires standard 64-bit Python 3.14."
 }
 
 $ExpectedMachineNormalized = $ExpectedPlatformMachine.ToUpperInvariant()
@@ -107,9 +107,9 @@ if (-not $MachineMatches) {
 
 Write-Host "Reported machine: $ReportedMachine"
 
-& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6, 11)"
+& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.11.2'"
 if ($LASTEXITCODE -ne 0) {
-    Fail "PySide6 6.11+ verification failed."
+    Fail "PySide6 6.11.2 verification failed."
 }
 
 & $Python -m nuitka --version
@@ -172,7 +172,7 @@ $NuitkaArgs = @(
     "--product-name=PlayStoreAppAudit",
     "--file-description=PlayStoreAppAudit",
     "--output-filename=PlayStoreAppAudit.exe",
-    "--output-dir=$NuitkaOutput"
+    "--output-dir=$NuitkaOutput",
     "--report=$NuitkaReport"
 )
 
@@ -190,7 +190,6 @@ if ($LASTEXITCODE -ne 0) {
 if (-not (Test-Path -LiteralPath $NuitkaReport -PathType Leaf)) {
     Fail "Nuitka compilation report was not produced: $NuitkaReport"
 }
-
 
 $DistDir = Get-ChildItem -LiteralPath $NuitkaOutput -Directory |
     Where-Object { $_.Name -like "*.dist" } |
