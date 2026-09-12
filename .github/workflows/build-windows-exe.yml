@@ -70,7 +70,7 @@ jobs:
       - name: Set up native Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
           architecture: ${{ matrix.arch }}
           cache: "pip"
           cache-dependency-path: |
@@ -84,8 +84,8 @@ jobs:
           $reportedMachine = python -c "import platform; print(platform.machine().upper())"
           $pointerBits = python -c "import struct; print(struct.calcsize('P') * 8)"
           $pythonPlatform = python -c "import sysconfig; print(sysconfig.get_platform())"
-          python -c "import sys, sysconfig; print(sys.version); assert sys.version_info[:2] == (3, 13); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
-          if ($LASTEXITCODE -ne 0) { throw 'Standard Python 3.13 verification failed.' }
+          python -c "import sys, sysconfig; print(sys.version); assert sys.version_info[:2] == (3, 14); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Standard Python 3.14 verification failed.' }
           if ($env:RUNNER_ARCH -ne $env:EXPECTED_RUNNER_ARCH) {
             throw "Expected runner architecture $env:EXPECTED_RUNNER_ARCH, but RUNNER_ARCH is $env:RUNNER_ARCH."
           }
@@ -122,13 +122,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
-          python -m pip install -r requirements-dev.txt "Nuitka==4.1.3"
+          python -m pip install -r requirements-dev.txt "Nuitka==4.2.1"
           if ($LASTEXITCODE -ne 0) { throw 'Could not install project/build dependencies.' }
 
       - name: Verify native PySide6 runtime
         shell: pwsh
         run: |
-          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 13); assert tuple(map(int, PySide6.__version__.split('.')[:2])) >= (6, 11)"
+          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
           if ($LASTEXITCODE -ne 0) { throw 'PySide6 import or version verification failed.' }
 
           $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6-Essentials').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
@@ -149,7 +149,7 @@ jobs:
       - name: Preflight release legal material
         shell: pwsh
         run: |
-          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.1.3"
+          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.2.1"
           if ($LASTEXITCODE -ne 0) { throw 'Release legal-material preflight failed.' }
 
       - name: Static checks and regression tests
