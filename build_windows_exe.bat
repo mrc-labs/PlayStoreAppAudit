@@ -77,7 +77,7 @@ if errorlevel 1 exit /b 1
 echo.
 echo === Qt source smoke tests ===
 set "QT_QPA_PLATFORM=offscreen"
-"%PYTHON%" -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose File'; assert w.scan_button.text()=='Scan Phone'; old='Audit completed - 10 cached - 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
+"%PYTHON%" -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose File'; assert w.scan_button.text()=='Scan Phone'; old='Audit completed - 10 cached - 2 live'; w.status_label.setText(old); w._set_view_preset('Source Details'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
 if errorlevel 1 exit /b 1
 set "PLAYSTORE_APP_AUDIT_SMOKE_TEST=1"
 "%PYTHON%" main.py
