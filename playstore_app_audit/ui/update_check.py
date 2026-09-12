@@ -12,12 +12,10 @@ from PySide6.QtWidgets import QWidget
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
-from playstore_app_audit.ui.about_updates import (
-    AUTO_UPDATE_CHECK_LABEL,
-    AboutUpdatesDialog,
-)
+from playstore_app_audit.ui.about_updates import AboutUpdatesDialog
 
 AUTO_UPDATE_CHECK_KEY = "check_updates_on_startup"
+AUTO_UPDATE_CHECK_LABEL = "Check for updates automatically at startup"
 
 # Existing installs without this key opt in to the v2.0 default. The About
 # dialog always allows the user to change the preference immediately.
