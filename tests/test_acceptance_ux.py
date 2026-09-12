@@ -369,12 +369,33 @@ def test_custom_notes_position_and_layout_survive_source_switch_and_restart(
         }
     )
     first = create_window()
-    expected = _visible_order(first)
+    expected = ["criticality", "notes", "package_name"]
+    custom_settings = {
+        key: deepcopy(settings[key])
+        for key in (
+            "custom_view_columns",
+            "custom_view_order",
+            "custom_view_widths",
+        )
+    }
     for source in ("file", "local_apk", "device"):
         first.source_mode = source
         first._apply_established_source_defaults()
-        assert _visible_order(first) == expected
+        visible = _visible_order(first)
+        assert visible == (
+            ["local_apk_version_comparison", *expected]
+            if source == "local_apk"
+            else expected
+        )
         assert first.table.columnWidth(first.model.columns.index("notes")) == 311
+        assert {
+            key: settings[key]
+            for key in (
+                "custom_view_columns",
+                "custom_view_order",
+                "custom_view_widths",
+            )
+        } == custom_settings
     first.close()
 
     restarted = create_window()
@@ -638,6 +659,7 @@ def test_customize_column_groups_partition_the_existing_schema() -> None:
         "package_name",
         "change",
         "device_change",
+        "local_apk_version_comparison",
     }
 
     assert set(common).isdisjoint(advanced)

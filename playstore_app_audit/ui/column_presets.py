@@ -9,6 +9,11 @@ SOURCE_DEVICE = "device"
 SOURCE_LOCAL_APK = "local_apk"
 
 BUILTIN_PRESETS = ("Basic", "Source Details", "Technical")
+CUSTOM_FIXED_COLUMNS = frozenset({"criticality", "package_name"})
+CUSTOM_CONTEXTUAL_COLUMNS = frozenset(
+    {"change", "device_change", "local_apk_version_comparison"}
+)
+CUSTOM_AUTOMATIC_COLUMNS = CUSTOM_FIXED_COLUMNS | CUSTOM_CONTEXTUAL_COLUMNS
 
 
 _BASIC = {

@@ -332,17 +332,51 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
+        assert (
+            dialog.findChild(QCheckBox, "CustomColumnCheck_local_apk_version_comparison")
+            is None
+        )
         note = dialog.findChild(QLabel, "CustomColumnsNote")
         assert note is not None
-        assert note.text() == (
-            "Store Status and Package Name are always included. Click Save to apply "
-            "changes. Changing the column selection activates View > Column Preset > Custom."
+        assert note.text() == "Choose the additional columns to include in this Custom view."
+        automatic = {
+            key: dialog.findChild(QCheckBox, f"AutomaticColumnCheck_{key}")
+            for key in (
+                "criticality",
+                "package_name",
+                "change",
+                "device_change",
+                "local_apk_version_comparison",
+            )
+        }
+        automatic_title = dialog.findChild(QLabel, "AutomaticColumnsTitle")
+        assert automatic_title is not None
+        assert automatic_title.text() == "Automatic Columns"
+        assert all(check is not None and not check.isEnabled() for check in automatic.values())
+        assert {
+            key: check.text()  # type: ignore[union-attr]
+            for key, check in automatic.items()
+        } == {
+            "criticality": "Store Status",
+            "package_name": "Package Name",
+            "change": "Play Store Listing Change",
+            "device_change": "Device App Inventory Change",
+            "local_apk_version_comparison": "Local APK vs Store",
+        }
+        assert automatic["criticality"].isChecked()  # type: ignore[union-attr]
+        assert automatic["package_name"].isChecked()  # type: ignore[union-attr]
+        assert automatic["criticality"].toolTip() == "Always shown in every view."  # type: ignore[union-attr]
+        assert automatic["package_name"].toolTip() == "Always shown in every view."  # type: ignore[union-attr]
+        assert automatic["change"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically when Play Store listing change tracking is enabled in "
+            "Tools > Changes & History."
         )
-        history_note = dialog.findChild(QLabel, "CustomHistoryColumnsNote")
-        assert history_note is not None
-        assert history_note.text() == (
-            "History columns are shown automatically when enabled in Tools > Changes & "
-            "History and applicable to the current source."
+        assert automatic["device_change"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically for phone results when device inventory change tracking "
+            "is enabled in Tools > Changes & History."
+        )
+        assert automatic["local_apk_version_comparison"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically for Local APK results."
         )
         scroll = dialog.findChild(QScrollArea, "CustomColumnsScrollArea")
         assert scroll is not None

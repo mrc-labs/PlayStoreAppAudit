@@ -45,6 +45,7 @@ from playstore_app_audit.services.local_artifact_store import LocalArtifactStore
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.column_presets import (
     BUILTIN_PRESETS,
+    CUSTOM_CONTEXTUAL_COLUMNS,
     SOURCE_DEVICE,
     normalise_source_mode,
     normalise_view_preset,
@@ -389,14 +390,16 @@ class MainWindow(results_ui.ResultsWindow):
             columns = [
                 column
                 for column in super()._visible_column_order()
-                if column not in {"change", "device_change"}
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
             ]
-            if state.store_history_enabled(settings) and not local_apk_audit.is_local_apk_source(
-                self.source_mode
-            ):
+            local_apk_source = local_apk_audit.is_local_apk_source(self.source_mode)
+            if local_apk_source:
+                columns.append("local_apk_version_comparison")
+            elif state.store_history_enabled(settings):
                 columns.append("change")
             if (
-                state.device_inventory_history_enabled(settings)
+                not local_apk_source
+                and state.device_inventory_history_enabled(settings)
                 and normalise_source_mode(self.source_mode) == SOURCE_DEVICE
             ):
                 columns.append("device_change")
@@ -418,33 +421,39 @@ class MainWindow(results_ui.ResultsWindow):
             self._position_contextual_history_columns()
 
     def _position_contextual_history_columns(self) -> None:
-        """Place visible history overlays after Store Status without moving user columns."""
+        """Place visible contextual overlays without moving user-owned columns."""
 
         header = self.table.horizontalHeader()
         contextual = [
             compact_ui.MODEL_COLUMNS.index(column)
-            for column in ("change", "device_change")
-            if column in compact_ui.MODEL_COLUMNS
+            for column in compact_ui.MODEL_COLUMNS
+            if column in CUSTOM_CONTEXTUAL_COLUMNS
         ]
+        contextual_order = (
+            ("local_apk_version_comparison",)
+            if local_apk_audit.is_local_apk_source(self.source_mode)
+            else ("change", "device_change")
+        )
         visible_contextual = [
-            logical for logical in contextual if not self.table.isColumnHidden(logical)
+            compact_ui.MODEL_COLUMNS.index(column)
+            for column in contextual_order
+            if not self.table.isColumnHidden(compact_ui.MODEL_COLUMNS.index(column))
         ]
         hidden_contextual = [
             logical for logical in contextual if self.table.isColumnHidden(logical)
         ]
+        store_status = compact_ui.MODEL_COLUMNS.index("criticality")
         ordinary = [
             header.logicalIndex(visual)
             for visual in range(header.count())
-            if header.logicalIndex(visual) not in contextual
+            if header.logicalIndex(visual) not in {*contextual, store_status}
         ]
-        store_status = compact_ui.MODEL_COLUMNS.index("criticality")
-        insertion = ordinary.index(store_status) + 1
-        desired = (
-            ordinary[:insertion]
-            + visible_contextual
-            + ordinary[insertion:]
-            + hidden_contextual
+        leading = (
+            visible_contextual + [store_status]
+            if local_apk_audit.is_local_apk_source(self.source_mode)
+            else [store_status] + visible_contextual
         )
+        desired = leading + ordinary + hidden_contextual
         with self._suspend_table_layout_tracking():
             for visual, logical in enumerate(desired):
                 current_visual = header.visualIndex(logical)

@@ -44,6 +44,13 @@ import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.ui.column_presets import (
+    CUSTOM_AUTOMATIC_COLUMNS,
+    CUSTOM_CONTEXTUAL_COLUMNS,
+    SOURCE_DEVICE,
+    SOURCE_LOCAL_APK,
+    normalise_source_mode,
+)
 
 ADVANCED_CUSTOM_COLUMNS = frozenset(
     {
@@ -65,9 +72,6 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
 CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
 CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
 CUSTOMIZE_VIEW_SCREEN_MARGIN = 48
-CONTEXTUAL_HISTORY_COLUMNS = frozenset({"change", "device_change"})
-
-
 def customize_view_dialog_sizes(
     content_size: QSize,
     fixed_overhead: QSize,
@@ -100,8 +104,7 @@ def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
     choices = tuple(
         column
         for column in insights_ui.V9_MODEL_COLUMNS
-        if column
-        not in {"criticality", "package_name", *CONTEXTUAL_HISTORY_COLUMNS}
+        if column not in CUSTOM_AUTOMATIC_COLUMNS
     )
     common = tuple(column for column in choices if column not in ADVANCED_CUSTOM_COLUMNS)
     advanced = tuple(column for column in choices if column in ADVANCED_CUSTOM_COLUMNS)
@@ -420,24 +423,60 @@ class PreferencesWindow(table_ui.TableWindow):
         display_form.addRow("", show_icons)
         root.addLayout(display_form)
 
+        automatic_heading = QLabel("Automatic Columns")
+        automatic_heading.setObjectName("AutomaticColumnsTitle")
+        automatic_font = automatic_heading.font()
+        automatic_font.setBold(True)
+        automatic_heading.setFont(automatic_font)
+        root.addWidget(automatic_heading)
+        automatic_tooltips = {
+            "criticality": "Always shown in every view.",
+            "package_name": "Always shown in every view.",
+            "change": (
+                "Shown automatically when Play Store listing change tracking is enabled "
+                "in Tools > Changes & History."
+            ),
+            "device_change": (
+                "Shown automatically for phone results when device inventory change "
+                "tracking is enabled in Tools > Changes & History."
+            ),
+            "local_apk_version_comparison": "Shown automatically for Local APK results.",
+        }
+        source = normalise_source_mode(self.source_mode)
+        automatic_checked = {
+            "criticality": True,
+            "package_name": True,
+            "change": state.store_history_enabled(self.user_settings)
+            and source != SOURCE_LOCAL_APK,
+            "device_change": state.device_inventory_history_enabled(self.user_settings)
+            and source == SOURCE_DEVICE,
+            "local_apk_version_comparison": source == SOURCE_LOCAL_APK,
+        }
+        for key in (
+            "criticality",
+            "package_name",
+            "change",
+            "device_change",
+            "local_apk_version_comparison",
+        ):
+            check = QCheckBox(base_ui.COLUMN_LABELS.get(key, key))
+            check.setObjectName(f"AutomaticColumnCheck_{key}")
+            check.setChecked(automatic_checked[key])
+            check.setEnabled(False)
+            check.setToolTip(automatic_tooltips[key])
+            root.addWidget(check)
+
         custom_heading = QLabel("Custom Columns")
-        custom_heading.setObjectName("SettingsSectionTitle")
+        custom_heading.setObjectName("CustomColumnsTitle")
         custom_font = custom_heading.font()
         custom_font.setBold(True)
         custom_heading.setFont(custom_font)
         root.addWidget(custom_heading)
         custom_note = self._settings_note(
-            "Store Status and Package Name are always included. Click Save to apply changes. "
-            "Changing the column selection activates View > Column Preset > Custom."
+            "Choose the additional columns to include in this Custom view."
         )
         custom_note.setObjectName("CustomColumnsNote")
         root.addWidget(custom_note)
-        history_note = self._settings_note(
-            "History columns are shown automatically when enabled in Tools > Changes & "
-            "History and applicable to the current source."
-        )
-        history_note.setObjectName("CustomHistoryColumnsNote")
-        root.addWidget(history_note)
 
         scroll = QScrollArea()
         scroll.setObjectName("CustomColumnsScrollArea")
@@ -464,7 +503,7 @@ class PreferencesWindow(table_ui.TableWindow):
             self.user_settings.get("custom_view_columns")
         ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
         ordinary_stored_custom = [
-            column for column in stored_custom if column not in CONTEXTUAL_HISTORY_COLUMNS
+            column for column in stored_custom if column not in CUSTOM_CONTEXTUAL_COLUMNS
         ]
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
         initial_columns = (
@@ -473,7 +512,7 @@ class PreferencesWindow(table_ui.TableWindow):
             else [
                 column
                 for column in self._visible_column_order()
-                if column not in CONTEXTUAL_HISTORY_COLUMNS
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
             ]
         )
         configured = set(initial_columns)
@@ -541,10 +580,10 @@ class PreferencesWindow(table_ui.TableWindow):
         ) or ["criticality", "package_name"]
         columns_changed = set(custom_columns) != configured
         custom_exists = self._has_custom_table_layout(self.user_settings)
-        legacy_history_columns = bool(
-            set(stored_custom).intersection(CONTEXTUAL_HISTORY_COLUMNS)
+        legacy_contextual_columns = bool(
+            set(stored_custom).intersection(CUSTOM_CONTEXTUAL_COLUMNS)
         )
-        save_custom = columns_changed or not custom_exists or legacy_history_columns
+        save_custom = columns_changed or not custom_exists or legacy_contextual_columns
         updates: dict[str, object] = {
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
@@ -554,7 +593,7 @@ class PreferencesWindow(table_ui.TableWindow):
             live_order = [
                 column
                 for column in live_order
-                if column not in CONTEXTUAL_HISTORY_COLUMNS
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
             ]
             stored_widths = self._normalise_custom_widths(
                 self.user_settings.get("custom_view_widths")

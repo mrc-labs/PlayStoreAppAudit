@@ -52,6 +52,7 @@ from playstore_app_audit.services.state import (
 )
 from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.audit_window import AuditWindow
+from playstore_app_audit.ui.column_presets import CUSTOM_CONTEXTUAL_COLUMNS
 
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
@@ -475,12 +476,8 @@ class CompactWindow(AuditWindow):
 
     def _persist_current_custom_layout(self, *, activate: bool = True) -> None:
         visible, order, widths, encoded = self._current_table_layout()
-        visible = [
-            column for column in visible if column not in {"change", "device_change"}
-        ]
-        order = [
-            column for column in order if column not in {"change", "device_change"}
-        ]
+        visible = [column for column in visible if column not in CUSTOM_CONTEXTUAL_COLUMNS]
+        order = [column for column in order if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         settings = load_settings()
         settings.update(
             {

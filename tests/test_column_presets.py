@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import table_layout
+from playstore_app_audit.ui import column_presets, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION
 
@@ -83,7 +83,7 @@ def _ordinary_visual_order(window: MainWindow) -> list[str]:
     return [
         column
         for column in _visual_order(window)
-        if column not in {"change", "device_change"}
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
     ]
 
 
@@ -253,7 +253,7 @@ def test_new_custom_action_save_creates_and_activates_ordinary_custom_base(
     assert settings["custom_view_exists"] is True
     assert _custom_action(window).isChecked()
     assert set(settings["custom_view_columns"]) == expected_ordinary  # type: ignore[arg-type]
-    assert not {"change", "device_change"}.intersection(
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
         settings["custom_view_columns"]  # type: ignore[arg-type]
     )
 
@@ -348,10 +348,10 @@ def test_manual_layout_capture_keeps_history_out_of_custom_base(
     app.processEvents()
 
     assert settings["view_preset"] == "Custom"
-    assert not {"change", "device_change"}.intersection(
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
         settings["custom_view_columns"]  # type: ignore[arg-type]
     )
-    assert not {"change", "device_change"}.intersection(
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
         settings["custom_view_order"]  # type: ignore[arg-type]
     )
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
@@ -384,6 +384,112 @@ def test_customize_view_visibility_change_creates_custom(
     assert "notes" not in settings["custom_view_columns"]  # type: ignore[operator]
     assert window.table.isColumnHidden(window.model.columns.index("notes"))
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
+
+
+@pytest.mark.parametrize(
+    ("source_mode", "master", "store", "device", "expected"),
+    [
+        ("file", True, True, True, {"criticality", "package_name", "change"}),
+        (
+            "device",
+            True,
+            True,
+            True,
+            {"criticality", "package_name", "change", "device_change"},
+        ),
+        (
+            "local_apk",
+            True,
+            True,
+            True,
+            {"criticality", "package_name", "local_apk_version_comparison"},
+        ),
+        ("device", False, True, True, {"criticality", "package_name"}),
+    ],
+)
+def test_customize_view_automatic_columns_reflect_current_context(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: str,
+    master: bool,
+    store: bool,
+    device: bool,
+    expected: set[str],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "changes_history_enabled": master,
+            "compare_previous": store,
+            "inventory_history_enabled": device,
+        }
+    )
+    window = create_window()
+    window.source_mode = source_mode
+
+    def inspect(dialog: QDialog) -> int:
+        checked: set[str] = set()
+        for key in (
+            "criticality",
+            "package_name",
+            "change",
+            "device_change",
+            "local_apk_version_comparison",
+        ):
+            check = dialog.findChild(QCheckBox, f"AutomaticColumnCheck_{key}")
+            assert check is not None
+            assert not check.isEnabled()
+            if check.isChecked():
+                checked.add(key)
+        assert checked == expected
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_display_settings()
+
+
+@pytest.mark.parametrize("source_mode", ["device", "local_apk"])
+def test_customize_view_save_cannot_remove_applicable_automatic_columns(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: str,
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "custom_view_order": ["criticality", "package_name", "play_title"],
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    window.source_mode = source_mode
+
+    def clear_every_checkbox(dialog: QDialog) -> int:
+        for check in dialog.findChildren(QCheckBox):
+            check.setChecked(False)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", clear_every_checkbox)
+    window._show_display_settings()
+
+    visible = set(_visible_order(window))
+    expected = (
+        {"criticality", "package_name", "local_apk_version_comparison"}
+        if source_mode == "local_apk"
+        else {"criticality", "package_name", "change", "device_change"}
+    )
+    assert visible == expected
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
 
 
 def test_restoring_custom_does_not_persist_recursively(
@@ -429,6 +535,11 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     header = window.table.horizontalHeader()
     header.moveSection(header.visualIndex(title), 0)
     app.processEvents()
+    persisted_order = [
+        column
+        for column in _visual_order(window)
+        if column not in column_presets.CUSTOM_CONTEXTUAL_COLUMNS
+    ]
 
     def hide_notes(dialog: QDialog) -> int:
         assert dialog.windowTitle() == "Customize View"
@@ -447,11 +558,7 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     saved_custom = _custom_snapshot(settings)
     assert settings["view_preset"] == "Custom"
     assert set(settings["custom_view_columns"]) == set(expected_visible)  # type: ignore[arg-type]
-    assert settings["custom_view_order"] == [
-        column
-        for column in expected_order
-        if column not in {"change", "device_change"}
-    ]
+    assert settings["custom_view_order"] == persisted_order
     saved_widths = settings["custom_view_widths"]
     assert isinstance(saved_widths, dict)
     assert all(saved_widths[column] == expected_widths[column] for column in expected_visible)
@@ -487,6 +594,11 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     app.processEvents()
     expected = _custom_snapshot(settings)
     expected_visible = _visible_order(first)
+    expected_user_visible = [
+        column
+        for column in expected_visible
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
     expected_order = _visual_order(first)
     expected_widths = _widths(first)
 
@@ -512,11 +624,15 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     app.processEvents()
 
     assert _custom_snapshot(settings) == expected
-    assert _visible_order(first) == expected_visible
+    assert [
+        column
+        for column in _visible_order(first)
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ] == expected_user_visible
     assert _ordinary_visual_order(first) == [
         column
         for column in expected_order
-        if column not in {"change", "device_change"}
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
     ]
     assert _widths(first) == expected_widths
     first.close()
@@ -525,11 +641,15 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     restarted = create_window()
     assert settings["view_preset"] == "Custom"
     assert _custom_action(restarted).isEnabled() and _custom_action(restarted).isChecked()
-    assert _visible_order(restarted) == expected_visible
+    assert [
+        column
+        for column in _visible_order(restarted)
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ] == expected_user_visible
     assert _ordinary_visual_order(restarted) == [
         column
         for column in expected_order
-        if column not in {"change", "device_change"}
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
     ]
     assert _widths(restarted) == expected_widths
     assert restarted.table.columnWidth(score) == 140
@@ -572,7 +692,7 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert _ordinary_visual_order(migrated) == [
         column
         for column in legacy_order
-        if column not in {"change", "device_change"}
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
     ]
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
@@ -784,10 +904,25 @@ def test_custom_overlay_positioning_preserves_user_order_widths_and_settings(
     positioned = _visual_order(window)
     window._apply_column_visibility(reset_order=False)
     assert _visual_order(window) == positioned
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+    visible = _visible_order(window)
+    assert visible[:2] == ["local_apk_version_comparison", "criticality"]
+    assert not {"change", "device_change"}.intersection(visible)
+    positioned = _visual_order(window)
+    window._apply_column_visibility(reset_order=False)
+    assert _visual_order(window) == positioned
     window.source_mode = "file"
     window._apply_established_source_defaults()
 
     assert _custom_snapshot(settings) == custom_state
+    assert "local_apk_version_comparison" not in _visible_order(window)
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
     assert [
         column for column in _visible_order(window) if column in ordinary_columns
     ] == ordinary_order
@@ -806,6 +941,7 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
         "criticality",
         "change",
         "device_change",
+        "local_apk_version_comparison",
         "package_name",
         "play_title",
     ]
@@ -829,6 +965,10 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
     def accept_without_history_checks(dialog: QDialog) -> int:
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
+        assert (
+            dialog.findChild(QCheckBox, "CustomColumnCheck_local_apk_version_comparison")
+            is None
+        )
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", accept_without_history_checks)
@@ -839,7 +979,7 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
         "package_name",
         "play_title",
     ]
-    assert not {"change", "device_change"}.intersection(
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
         settings["custom_view_order"]  # type: ignore[arg-type]
     )
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
