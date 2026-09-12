@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from threading import Thread
 from typing import Any
 
@@ -141,3 +142,17 @@ class UpdateCheckController(QObject):
         checkbox = self._preference_checkbox(box)
         box.exec()
         self._persist_checkbox(checkbox)
+
+
+def install_update_check_controller(window: QWidget) -> UpdateCheckController:
+    """Attach the canonical async update checker to the production window."""
+
+    controller = UpdateCheckController(window)
+    action = getattr(window, "check_updates_action", None)
+    if action is not None:
+        with suppress(TypeError, RuntimeError):
+            action.triggered.disconnect()
+        action.triggered.connect(controller.check_now)
+    setattr(window, "_update_check_controller", controller)
+    controller.schedule_startup_check()
+    return controller
