@@ -283,6 +283,30 @@ def test_cache_ttl_force_refresh_and_store_namespace_isolation(tmp_path) -> None
     assert "synthetic" not in json.dumps(json.loads(cache_file.read_text(encoding="utf-8")))
 
 
+def test_force_refresh_replaces_old_provider_positive_with_live_negative(tmp_path) -> None:
+    cache_file = tmp_path / "cache.json"
+    available = FakeProvider("fdroid_main", "F-Droid")
+    _run(_rows()[:1], [available], cache_file)
+
+    not_found = FakeProvider(
+        "fdroid_main",
+        "F-Droid",
+        state=AlternativeDistributionState.NOT_FOUND,
+    )
+    refreshed_row = _rows()[:1]
+    _run(refreshed_row, [not_found], cache_file, force_refresh=True)
+
+    cached = FakeProvider("fdroid_main", "F-Droid")
+    later_row = _rows()[:1]
+    _run(later_row, [cached], cache_file)
+
+    assert not_found.calls == 1
+    assert cached.calls == 0
+    assert refreshed_row[0][alternative.ROW_FIELD][0]["state"] == "not_found"
+    assert later_row[0][alternative.ROW_FIELD][0]["state"] == "not_found"
+    assert later_row[0][alternative.ROW_FIELD][0]["provenance"] == "cache"
+
+
 def test_cache_rejects_mismatched_embedded_package_and_provider(tmp_path) -> None:
     cache_file = tmp_path / "mismatched.json"
     original = FakeProvider("fdroid_main", "F-Droid")

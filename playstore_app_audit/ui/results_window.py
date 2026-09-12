@@ -83,7 +83,7 @@ def _device_source_identity(summary: dict[str, Any]) -> str:
 
 class NumericAuditFilterProxy(preferences_ui.AuditFilterProxy):
     LOCAL_APK_RELATIONSHIP_RANK = {
-        "Not Found": 0,
+        "N/A": 0,
         "Outdated": 1,
         "Unknown": 2,
         "Different": 3,

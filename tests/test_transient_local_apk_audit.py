@@ -486,7 +486,7 @@ def test_genuine_container_failure_before_cancellation_remains_reported(
     assert "reason=malformed_archive" in rejection_logs[0].message
 
 
-def test_definitive_store_absence_uses_not_found_local_relationship_everywhere(
+def test_definitive_store_absence_uses_na_local_relationship_everywhere(
     window: MainWindow,
     tmp_path: Path,
 ) -> None:
@@ -500,16 +500,29 @@ def test_definitive_store_absence_uses_not_found_local_relationship_everywhere(
     relationship = window.model.index(
         0, window.model.columns.index("local_apk_version_comparison")
     )
+    store_status = window.model.index(0, window.model.columns.index("criticality"))
 
-    assert row["local_apk_version_comparison"] == "Not Found"
-    assert relationship.data(Qt.ItemDataRole.DisplayRole) == "Not Found"
+    assert row["local_apk_version_comparison"] == "N/A"
+    assert relationship.data(Qt.ItemDataRole.DisplayRole) == "N/A"
+    assert store_status.data(Qt.ItemDataRole.DisplayRole) == "Not Found"
+    assert store_status.data(Qt.ItemDataRole.BackgroundRole) == relationship.data(
+        Qt.ItemDataRole.BackgroundRole
+    )
+    assert "comparison is not applicable" in relationship.data(
+        Qt.ItemDataRole.ToolTipRole
+    )
     assert "does not prove global absence" in relationship.data(
         Qt.ItemDataRole.ToolTipRole
     )
     assert any(
-        "does not prove global absence" in line
+        "comparison is not applicable" in line
         for line in details_panel.local_apk_details_lines(row)
     )
+    assert result_json.build_results_document([row])["results"][0][
+        "local_apk_version_comparison"
+    ] == "N/A"
+    report = device_insights.write_html_report(tmp_path / "missing.html", [row])
+    assert "<td>N/A</td>" in report.read_text(encoding="utf-8")
 
 
 def test_location_schema_details_tooltip_and_private_exports(tmp_path: Path) -> None:

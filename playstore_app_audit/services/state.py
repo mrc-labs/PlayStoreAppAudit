@@ -27,6 +27,14 @@ _AVAILABLE_PLAY_STATUSES = frozenset(
     }
 )
 _CHECKED_UNAVAILABLE_PLAY_STATUSES = frozenset({"not_found_in_checked_countries"})
+_CONCLUSIVE_STORE_CACHE_STATUSES = frozenset(
+    {
+        "available",
+        "available_in_other_country",
+        "available_in_fallback_locale_only",
+        "not_found_in_checked_countries",
+    }
+)
 _MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
 _MAINTENANCE_LABELS = {
     "green": "Recent Update",
@@ -293,15 +301,27 @@ def load_fresh_cache(
 
 
 def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> None:
+    """Reconcile completed live Store rows with the reusable healthy cache.
+
+    Healthy available rows replace their exact entry. Conclusive live evidence
+    that is not healthy-cacheable removes only its exact old entry, while
+    transient or inconclusive evidence leaves any prior healthy entry intact.
+    Callers pass completed live rows only, so uncompleted packages are untouched.
+    """
+
     data = _read_json(cache_path(), {})
     if not isinstance(data, dict):
         data = {}
     now = datetime.now(UTC).isoformat()
     for row in rows:
-        if row.get("play_status") != "available" or not row.get("play_last_update"):
-            continue
         package_name = str(row.get("package_name") or "").strip()
         if not package_name:
+            continue
+        key = _cache_key(country, language, package_name)
+        play_status = str(row.get("play_status") or "").strip()
+        if play_status != "available" or not row.get("play_last_update"):
+            if play_status in _CONCLUSIVE_STORE_CACHE_STATUSES:
+                data.pop(key, None)
             continue
         stored = {
             key: value
@@ -317,17 +337,7 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
                 AUDIT_CHANGES_FIELD,
             }
         }
-        data[_cache_key(country, language, package_name)] = {"fetched_at": now, "row": stored}
-
-    cutoff_seconds = 45 * 24 * 3600
-    current_time = datetime.now(UTC)
-    for key in list(data):
-        try:
-            fetched = datetime.fromisoformat(str(data[key]["fetched_at"]).replace("Z", "+00:00"))
-            if (current_time - fetched.astimezone(UTC)).total_seconds() > cutoff_seconds:
-                data.pop(key, None)
-        except Exception:
-            data.pop(key, None)
+        data[key] = {"fetched_at": now, "row": stored}
     _write_json(cache_path(), data)
 
 

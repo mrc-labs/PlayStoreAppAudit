@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 import pytest
@@ -40,12 +41,16 @@ def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
 
 
 def test_successful_audit_logs_stage_timings_without_package_names(
-    window: MainWindow, app: QApplication, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     samples = iter((103.0, 104.0))
     logged: list[str] = []
     monkeypatch.setattr(main_ui.time, "perf_counter", lambda: next(samples))
     monkeypatch.setattr(device_insights, "log_event", logged.append)
+    caplog.set_level(logging.INFO, logger=main_ui.__name__)
 
     window.source_mode = "file"
     window._audit_session = 12
@@ -89,16 +94,42 @@ def test_successful_audit_logs_stage_timings_without_package_names(
         "progressive_payloads=5 progressive_refreshes=2"
     ]
     assert "com.example.privatepackage" not in logged[0]
+    regular_log = [
+        record.message
+        for record in caplog.records
+        if record.message.startswith("audit_performance ")
+    ]
+    assert regular_log == logged
+    assert all(
+        private not in regular_log[0]
+        for private in (
+            "com.example.privatepackage",
+            "C:\\private\\example.apk",
+            "example.apk",
+            "sha256",
+            "base.apk",
+            "manifest",
+            "device-serial",
+        )
+    )
+
+    window._on_controlled_done(result)
+    app.processEvents()
+    assert logged == regular_log
     assert window._audit_started_at is None
     assert window._audit_pre_finalize_seconds is None
 
 
 def test_failed_audit_logs_pre_finalize_timing(
-    window: MainWindow, app: QApplication, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     logged: list[str] = []
     monkeypatch.setattr(main_ui.time, "perf_counter", lambda: 203.5)
     monkeypatch.setattr(device_insights, "log_event", logged.append)
+    caplog.set_level(logging.INFO, logger=main_ui.__name__)
     monkeypatch.setattr(
         compact_ui.QMessageBox,
         "critical",
@@ -118,5 +149,10 @@ def test_failed_audit_logs_pre_finalize_timing(
         "parse_ms=0 store_ms=0 total_ms=3500 cached=0 live=0 "
         "progressive_payloads=0 progressive_refreshes=0"
     ]
+    assert [
+        record.message
+        for record in caplog.records
+        if record.message.startswith("audit_performance ")
+    ] == logged
     assert window._audit_started_at is None
     assert window._audit_pre_finalize_seconds is None

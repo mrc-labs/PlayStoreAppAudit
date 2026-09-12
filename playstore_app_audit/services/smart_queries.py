@@ -202,7 +202,7 @@ FIELD_DEFINITIONS = (
         "Local APK vs Store",
         FieldType.CHOICE,
         _choices(
-            ("Not Found", "Not Found"),
+            ("N/A", "N/A"),
             ("Match", "Match"),
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),

@@ -58,6 +58,9 @@ def test_curated_fields_exclude_technical_internals() -> None:
     assert not {"play_http_status", "store_url", "_store_evidence"}.intersection(
         smart_queries.FIELDS_BY_ID
     )
+    relationship = smart_queries.FIELDS_BY_ID["local_apk_version_comparison"]
+    assert relationship.choices[0].value == "N/A"
+    assert all(choice.value != "Not Found" for choice in relationship.choices)
 
 
 @pytest.mark.parametrize(

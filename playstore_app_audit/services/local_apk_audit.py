@@ -90,7 +90,7 @@ def artifact_result_row(
             "local_apk_features": list(artifact.features),
             "local_apk_warnings": [warning.value for warning in artifact.warnings],
             "local_apk_version_comparison": (
-                "Not Found"
+                "N/A"
                 if row.get("play_status") == DEFINITIVE_STORE_ABSENCE
                 else (
                     device_metadata.compare_versions(local_version, row.get("play_version"))

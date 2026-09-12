@@ -49,13 +49,6 @@ def app() -> QApplication:
             "strong_warning",
             700,
         ),
-        (
-            "local_apk_version_comparison",
-            "Not Found",
-            "red",
-            "strong_warning",
-            700,
-        ),
         ("local_apk_version_comparison", "Different", "yellow", "warning", 700),
         ("local_apk_version_comparison", "Unknown", "purple", "warning", 700),
         (

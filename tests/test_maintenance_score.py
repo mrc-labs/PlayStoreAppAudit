@@ -329,11 +329,11 @@ def test_local_unknown_from_missing_store_counterpart_has_no_version_penalty(
     assert all(component.key != "local_store_version" for component in breakdown.components)
 
 
-def test_local_not_found_relationship_does_not_double_count_store_absence() -> None:
+def test_local_na_relationship_does_not_double_count_store_absence() -> None:
     row = _row(play_status="not_found_in_checked_countries")
     row.update(
         source_mode="local_apk",
-        local_apk_version_comparison="Not Found",
+        local_apk_version_comparison="N/A",
         local_apk_version_name="1.0",
         play_version="",
     )

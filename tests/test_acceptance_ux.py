@@ -421,7 +421,7 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
 @pytest.mark.parametrize(
     ("relationship", "status_key"),
     [
-        ("Not Found", "red"),
+        ("N/A", "red"),
         ("Outdated", "orange"),
         ("Different", "yellow"),
         ("Unknown", "purple"),
@@ -440,6 +440,9 @@ def test_local_apk_relationship_colours_ordinary_cells_and_keeps_store_status(
         [{
             "source_mode": "local_apk", "criticality_key": "red",
             "criticality": "Not Found", "local_apk_version_comparison": relationship,
+            "play_status": (
+                "not_found_in_checked_countries" if relationship == "N/A" else "available"
+            ),
             "package_name": "com.example.app",
         }]
     )
@@ -461,7 +464,7 @@ def test_local_apk_relationship_colours_ordinary_cells_and_keeps_store_status(
     )
 
 
-def test_local_not_found_relationship_is_red_while_store_status_stays_independent() -> None:
+def test_local_absence_na_relationship_is_red_while_store_status_stays_independent() -> None:
     from playstore_app_audit.ui.base_window import CRITICALITY
 
     model = AuditTableModel()
@@ -470,8 +473,9 @@ def test_local_not_found_relationship_is_red_while_store_status_stays_independen
             {
                 "source_mode": "local_apk",
                 "criticality_key": "yellow",
-                "criticality": "Aging",
-                "local_apk_version_comparison": "Not Found",
+                "criticality": "Not Found",
+                "play_status": "not_found_in_checked_countries",
+                "local_apk_version_comparison": "N/A",
                 "package_name": "com.example.app",
             }
         ]
@@ -491,6 +495,27 @@ def test_local_not_found_relationship_is_red_while_store_status_stays_independen
     assert package.data(Qt.ItemDataRole.BackgroundRole) == QColor(
         CRITICALITY["red"]["background"]
     )
+
+
+def test_generic_local_na_without_definitive_absence_is_not_forced_red() -> None:
+    model = AuditTableModel()
+    model.set_rows(
+        [
+            {
+                "source_mode": "local_apk",
+                "criticality_key": "purple",
+                "criticality": "Unknown",
+                "play_status": "multi_country_check_inconclusive",
+                "local_apk_version_comparison": "N/A",
+                "package_name": "com.example.app",
+            }
+        ]
+    )
+    relationship = model.index(
+        0, model.columns.index("local_apk_version_comparison")
+    )
+
+    assert relationship.data(Qt.ItemDataRole.BackgroundRole) is None
 
 
 def test_unresolved_provisional_local_row_remains_neutral() -> None:

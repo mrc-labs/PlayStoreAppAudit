@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol
@@ -159,26 +160,48 @@ class LocalArtifactStoreService:
                 if cached_row is not None:
                     row_completed_callback(app["package_name"], dict(cached_row))
 
+        completed_live_rows: dict[str, dict[str, Any]] = {}
         callback_packages: set[str] = set()
 
         def live_row_completed(_index: int, row: dict[str, Any]) -> None:
             package_name = str(row.get("package_name") or "")
+            if package_name:
+                completed_live_rows[package_name] = dict(row)
             if row_completed_callback is not None and package_name:
-                callback_packages.add(package_name)
                 row_completed_callback(package_name, dict(row))
+                callback_packages.add(package_name)
 
-        live_rows = (
-            self._store_service.audit(
-                live_apps,
-                config,
-                progress_callback,
-                pause_event=running,
-                cancel_event=cancelled,
-                row_completed_callback=live_row_completed,
+        try:
+            returned_live_rows = (
+                self._store_service.audit(
+                    live_apps,
+                    config,
+                    progress_callback,
+                    pause_event=running,
+                    cancel_event=cancelled,
+                    row_completed_callback=live_row_completed,
+                )
+                if live_apps
+                else []
             )
-            if live_apps
-            else []
-        )
+        except Exception:
+            completed = list(completed_live_rows.values())
+            if cache_enabled and completed:
+                with suppress(Exception):
+                    app_icon_metadata.enrich_rows_with_store_metadata(completed)
+                with suppress(Exception):
+                    self._cache_updater(completed, config.country, config.language)
+            raise
+
+        for row in returned_live_rows:
+            package_name = str(row.get("package_name") or "")
+            if package_name:
+                completed_live_rows[package_name] = dict(row)
+        live_rows = [
+            completed_live_rows[app["package_name"]]
+            for app in live_apps
+            if app["package_name"] in completed_live_rows
+        ]
         if row_completed_callback is not None:
             for row in live_rows:
                 package_name = str(row.get("package_name") or "")

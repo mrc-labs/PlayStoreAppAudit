@@ -1190,7 +1190,7 @@ class MainWindow(results_ui.ResultsWindow):
             package_count = int(
                 result.metadata.get("package_count", result.total_count)
             )
-            device_insights.log_event(
+            message = (
                 "audit_performance "
                 f"source={self._audit_source_at_start or self.source_mode or 'unknown'} "
                 f"outcome={result.outcome.value} physical={physical_count} "
@@ -1202,6 +1202,8 @@ class MainWindow(results_ui.ResultsWindow):
                 f"progressive_payloads={self._progressive_payload_count} "
                 f"progressive_refreshes={self._progressive_refresh_count}"
             )
+            device_insights.log_event(message)
+            logger.info(message)
             self._audit_performance_logged_session = result.session
         self._audit_started_at = None
         self._audit_pre_finalize_seconds = None
