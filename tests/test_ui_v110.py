@@ -139,7 +139,7 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
     assert _action_structure(window.audit_menu) == [
         "Run Audit",
         "Recheck Not Found / Anomaly / Other",
-        "Force Full Refresh",
+        "Run with Fresh Store Results",
         None,
         "Audit Presets",
         None,
@@ -862,7 +862,7 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
         None,
         "Device History",
         None,
-        "Data Maintenance",
+        "Data Maintenance…",
     ]
     assert _action_texts(window.device_history_menu) == [
         "Device Snapshots…",
@@ -872,14 +872,12 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
         "Save Current Device Snapshot…",
         "Compare Current Device with Snapshot…",
     ]
-    assert _action_texts(window.data_maintenance_menu) == [
-        "Clear Audit Cache…",
-        "Clear Previous-Audit History…",
-        "Clear Device Inventory History…",
-    ]
-    assert "Force Full Refresh" not in _action_texts(
-        window.data_maintenance_menu
-    )
+    assert window.data_maintenance_action.text() == "Data Maintenance…"
+    assert window.data_maintenance_action.menu() is None
+    assert not hasattr(window, "data_maintenance_menu")
+    assert not hasattr(window, "clear_audit_cache_action")
+    assert not hasattr(window, "clear_audit_history_action")
+    assert not hasattr(window, "clear_device_inventory_history_action")
     assert window.audit_profiles_menu.menuAction() in window.audit_menu.actions()
     assert window.audit_profiles_menu.menuAction() not in window.tools_menu.actions()
     assert window.audit_result_actions.run is window.run_audit_action
@@ -987,7 +985,7 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert not window.advanced_settings_action.isEnabled()
     assert not window.audit_profiles_menu.menuAction().isEnabled()
     assert not window.device_history_menu.menuAction().isEnabled()
-    assert not window.data_maintenance_menu.menuAction().isEnabled()
+    assert not window.data_maintenance_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
 
     window._source_operation_active = False
@@ -1178,11 +1176,11 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
         lambda: calls.append(None) or 2,
     )
 
-    window.clear_device_inventory_history_action.trigger()
+    window._clear_device_inventory_history()
     assert calls == []
     assert row["device_change"] == "Version changed"
 
-    window.clear_device_inventory_history_action.trigger()
+    window._clear_device_inventory_history()
 
     assert calls == [None]
     assert prompts[0] == prompts[1]
@@ -1197,7 +1195,7 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
     assert window._last_inventory_changes == {}
     assert not window.device_inventory_changes_action.isEnabled()
     assert window.status_label.text() == (
-        "Device inventory history cleared • 2 baselines removed"
+        "Device Inventory History cleared • 2 baselines removed"
     )
 
 

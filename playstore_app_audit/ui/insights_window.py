@@ -228,7 +228,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools = bar.addMenu("Tools")
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
-        tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
+        tools.addAction("Run with Fresh Store Results", self._force_full_refresh)
         tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
@@ -499,7 +499,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             return
 
         try:
-            deleted = device_insights.clear_device_inventory_history()
+            status = self._perform_clear_device_inventory_history()
         except OSError as exc:
             QMessageBox.critical(
                 self,
@@ -507,7 +507,10 @@ class InsightsWindow(device_ui.DeviceWindow):
                 str(exc),
             )
             return
+        self.status_label.setText(status)
 
+    def _perform_clear_device_inventory_history(self) -> str:
+        deleted = device_insights.clear_device_inventory_history()
         self._last_inventory_changes = {}
         for row in self.current_rows:
             row.pop("device_change", None)
@@ -519,8 +522,8 @@ class InsightsWindow(device_ui.DeviceWindow):
         if callable(sync_post_audit_views):
             sync_post_audit_views()
         baseline_label = "baseline" if deleted == 1 else "baselines"
-        self.status_label.setText(
-            f"Device inventory history cleared • {deleted} {baseline_label} removed"
+        return (
+            f"Device Inventory History cleared • {deleted} {baseline_label} removed"
         )
 
     # ---------- Filters ----------

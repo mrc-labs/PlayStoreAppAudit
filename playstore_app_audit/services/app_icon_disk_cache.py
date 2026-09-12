@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import threading
 from contextlib import suppress
 from pathlib import Path
@@ -34,6 +35,41 @@ def _ensure_icon_cache_dir() -> Path | None:
 
 def icon_index_path() -> Path:
     return icon_cache_dir() / ICON_INDEX_FILENAME
+
+
+def clear_icon_cache() -> int:
+    """Remove only downloaded app-icon cache state.
+
+    The loader serializes this operation with its dedicated disk worker. This
+    primitive deliberately removes the whole icon-cache directory so malformed
+    indexes, orphan images and interrupted-write temporary files cannot survive
+    a user-requested clear.
+
+    Returns the number of cache files that were present. Filesystem failures are
+    raised so the UI cannot incorrectly report a successful clear.
+    """
+
+    cache_dir = icon_cache_dir()
+    if not cache_dir.exists():
+        with _PRUNE_LOCK:
+            _PRUNED_CACHE_DIRS.discard(cache_dir)
+        return 0
+
+    try:
+        if cache_dir.is_symlink() or cache_dir.is_file():
+            cache_dir.unlink()
+            return 1
+        file_count = sum(1 for path in cache_dir.rglob("*") if path.is_file())
+        try:
+            shutil.rmtree(cache_dir)
+        except FileNotFoundError:
+            return 0
+    finally:
+        # A later cache recreated at this location must receive normal startup
+        # validation even when this attempt failed after partially deleting it.
+        with _PRUNE_LOCK:
+            _PRUNED_CACHE_DIRS.discard(cache_dir)
+    return file_count
 
 
 def _read_index() -> tuple[dict[str, dict[str, Any]], bool]:

@@ -254,7 +254,7 @@ class PreferencesWindow(table_ui.TableWindow):
         tools = bar.addMenu("Tools")
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
-        tools.addAction("Force Full Refresh (Ignore Cache)", self._force_full_refresh)
+        tools.addAction("Run with Fresh Store Results", self._force_full_refresh)
         tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")

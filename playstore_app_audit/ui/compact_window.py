@@ -800,8 +800,12 @@ class CompactWindow(AuditWindow):
             QMessageBox.StandardButton.No,
         )
         if answer == QMessageBox.StandardButton.Yes:
-            clear_cache()
-            self.status_label.setText("Audit cache cleared")
+            self.status_label.setText(self._perform_clear_audit_cache())
+
+    @staticmethod
+    def _perform_clear_audit_cache() -> str:
+        clear_cache()
+        return "Store Results Cache cleared"
 
     def _show_about(self) -> None:
         dialog = QDialog(self)

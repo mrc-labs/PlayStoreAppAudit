@@ -126,4 +126,4 @@ def test_tooltip_explains_live_uncertain_checks_and_full_refresh() -> None:
     assert "48h" in text
     assert "regional-only" in text
     assert "failed checks run live" in text
-    assert "Force full refresh" in text
+    assert "Run with Fresh Store Results" in text

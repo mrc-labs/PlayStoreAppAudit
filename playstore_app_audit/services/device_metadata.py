@@ -79,10 +79,9 @@ def get_fallback_countries(selected_country: str = "") -> tuple[str, ...]:
 
 
 def clear_history() -> None:
-    try:
-        state.history_path().write_text("{}", encoding="utf-8")
-    except Exception:
-        pass
+    path = state.history_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("{}", encoding="utf-8")
 
 
 def save_history_merged(rows: list[dict[str, Any]]) -> None:

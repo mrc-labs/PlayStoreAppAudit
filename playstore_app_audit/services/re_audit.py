@@ -66,5 +66,5 @@ def smart_audit_tooltip(settings: dict[str, Any] | None = None) -> str:
         "Smart audit: "
         + cache
         + "; removed, regional-only, anomalous, incomplete and failed checks run live. "
-        "Use Force full refresh to ignore cache for every app."
+        "Use Run with Fresh Store Results to ignore result caches for every app."
     )
