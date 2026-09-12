@@ -9,6 +9,11 @@ SOURCE_DEVICE = "device"
 SOURCE_LOCAL_APK = "local_apk"
 
 BUILTIN_PRESETS = ("Basic", "Source Details", "Technical")
+CUSTOM_FIXED_COLUMNS = frozenset({"criticality", "package_name"})
+CUSTOM_CONTEXTUAL_COLUMNS = frozenset(
+    {"change", "device_change", "local_apk_version_comparison"}
+)
+CUSTOM_AUTOMATIC_COLUMNS = CUSTOM_FIXED_COLUMNS | CUSTOM_CONTEXTUAL_COLUMNS
 
 
 _BASIC = {
@@ -26,6 +31,7 @@ _BASIC = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "package_name",
         "play_title",
         "version_comparison",
@@ -70,6 +76,7 @@ _SOURCE_DETAILS = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "package_name",
         "play_title",
         "version_comparison",
@@ -83,7 +90,6 @@ _SOURCE_DETAILS = {
         "app_enabled",
         "first_install_time",
         "last_local_update",
-        "device_change",
         "health_score",
         "notes",
     ),
@@ -127,9 +133,9 @@ _TECHNICAL = {
     SOURCE_DEVICE: (
         "criticality",
         "change",
+        "device_change",
         "version_comparison",
         "compatibility_status",
-        "device_change",
         "package_name",
         "play_title",
         "installed_version",
@@ -208,6 +214,7 @@ def visible_columns(
     source_mode: object,
     *,
     compare_previous: bool,
+    device_inventory_history: bool,
     health_score_enabled: bool,
     optional_columns: Iterable[str] = (),
 ) -> list[str]:
@@ -221,6 +228,8 @@ def visible_columns(
 
     if not compare_previous or source == SOURCE_LOCAL_APK:
         columns = [column for column in columns if column != "change"]
+    if not device_inventory_history or source != SOURCE_DEVICE:
+        columns = [column for column in columns if column != "device_change"]
     if canonical_preset != "Technical" and not health_score_enabled:
         columns = [column for column in columns if column != "health_score"]
 

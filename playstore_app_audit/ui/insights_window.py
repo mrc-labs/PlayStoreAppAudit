@@ -117,7 +117,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _visible_column_order(self) -> list[str]:
         self.user_settings = state.load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
-        compare = bool(self.user_settings.get("compare_previous", False))
+        compare = state.store_history_enabled(self.user_settings)
         health = bool(self.user_settings.get("health_score_enabled", False))
 
         if preset == "Technical":
@@ -164,6 +164,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         self.user_settings = state.save_settings(settings)
         if name == "Custom":
             self._restore_custom_table_layout()
+            self._apply_column_visibility(reset_order=False)
         else:
             self._apply_column_visibility(reset_order=True)
         sync = getattr(self, "_sync_view_preset_action", None)
@@ -209,10 +210,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         group.setExclusive(True)
         current_view = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current_view)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
             view_presets.addAction(action)
@@ -402,7 +403,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         if not self.current_rows or self.source_mode != "device":
             QMessageBox.information(self, "No device audit", "Run an ADB-based audit first.")
             return
-        default = f"{self._device_summary.get('model', 'android')}_snapshot.psaa.json".replace(" ", "_")
+        filename = f"{self._device_summary.get('model', 'android')}_snapshot.psaa.json".replace(
+            " ", "_"
+        )
+        default = str(device_insights.snapshots_dir() / filename)
         selected, _ = QFileDialog.getSaveFileName(
             self,
             "Save device snapshot",
@@ -425,7 +429,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         selected, _ = QFileDialog.getOpenFileName(
             self,
             "Choose device snapshot",
-            "",
+            str(device_insights.snapshots_dir()),
             "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
         )
         if not selected:
@@ -655,13 +659,10 @@ class InsightsWindow(device_ui.DeviceWindow):
         collect_device.setChecked(bool(self.user_settings.get("collect_device_metadata", True)))
         permissions = QCheckBox("Audit sensitive requested permissions (advanced, slower)")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
-        inventory = QCheckBox("Keep per-device inventory history")
-        inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
         health = QCheckBox("Enable Maintenance Score")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
         d_layout.addWidget(collect_device)
         d_layout.addWidget(permissions)
-        d_layout.addWidget(inventory)
         d_layout.addWidget(health)
         note = QLabel(
             "Permission audit is OFF by default. Maintenance Score is a maintenance heuristic, not a security rating. See Help for methodology."
@@ -669,13 +670,6 @@ class InsightsWindow(device_ui.DeviceWindow):
         note.setWordWrap(True)
         d_layout.addWidget(note)
         content.addWidget(device)
-
-        history = QGroupBox("Audit history")
-        h_layout = QVBoxLayout(history)
-        compare = QCheckBox("Compare with previous Play Store audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        h_layout.addWidget(compare)
-        content.addWidget(history)
 
         storage = QGroupBox("Storage")
         s_layout = QVBoxLayout(storage)
@@ -718,9 +712,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
             permissions.setChecked(False)
-            inventory.setChecked(True)
             health.setChecked(False)
-            compare.setChecked(False)
             portable.setChecked(False)
             for check in checks.values():
                 check.setChecked(False)
@@ -742,9 +734,7 @@ class InsightsWindow(device_ui.DeviceWindow):
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect_device.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
-                "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [k for k, check in checks.items() if check.isChecked()],
             }
         )
@@ -837,12 +827,12 @@ class InsightsWindow(device_ui.DeviceWindow):
             if source_scan_session is not None
             else self._device_summary
         )
-        history_requested = bool(self.user_settings.get("compare_previous", False))
+        history_requested = state.store_history_enabled(self.user_settings)
         inventory_requested = bool(
             not targeted
             and (source_scan_session is not None or self.source_mode == "device")
             and self.current_rows
-            and bool(self.user_settings.get("inventory_history_enabled", True))
+            and state.device_inventory_history_enabled(self.user_settings)
             and inventory_device_summary
         )
         history_status = "not_requested"
@@ -902,7 +892,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         fields = [
             ("Store Status", "criticality"),
             ("Maintenance Score", "health_score"),
-            ("Change", "change"),
+            ("Play Store Listing Change", "change"),
             ("Package Name", "package_name"),
             ("Play Store Title", "play_title"),
             ("Last update", "play_last_update"),
@@ -917,7 +907,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             ("First installed", "first_install_time"),
             ("Last local update", "last_local_update"),
             ("Enabled state", "app_enabled"),
-            ("Device inventory change", "device_change"),
+            ("Device App Inventory Change", "device_change"),
             ("Sensitive permissions", "sensitive_permissions"),
             ("Play status", "play_status"),
             ("Update source", "updated_source"),

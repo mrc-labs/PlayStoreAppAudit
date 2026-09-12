@@ -78,7 +78,7 @@ def test_html_exports_device_inventory_change(
 
     exported = _html_table(target)
 
-    assert exported[0]["Device Inventory Change"] == expected
+    assert exported[0]["Device App Inventory Change"] == expected
 
 
 def test_html_escapes_device_inventory_change(tmp_path: Path) -> None:
@@ -91,7 +91,7 @@ def test_html_escapes_device_inventory_change(tmp_path: Path) -> None:
 
     assert unsafe not in rendered
     assert "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; checked" in rendered
-    assert _html_table(target)[0]["Device Inventory Change"] == unsafe
+    assert _html_table(target)[0]["Device App Inventory Change"] == unsafe
 
 
 def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
@@ -152,7 +152,7 @@ def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
     expected_changes = ["Same", "Installer changed", "Version changed"]
     assert [row["device_change"] for row in csv_rows] == expected_changes
     assert [row["device_change"] for row in json_rows] == expected_changes
-    assert [row["Device Inventory Change"] for row in html_rows] == expected_changes
+    assert [row["Device App Inventory Change"] for row in html_rows] == expected_changes
 
     assert [int(row["health_score"]) for row in csv_rows] == [100, 50, 85]
     assert [row["health_score"] for row in json_rows] == [100, 50, 85]

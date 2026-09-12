@@ -7,7 +7,7 @@ from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_
 
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QSize, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -41,8 +41,16 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.ui.column_presets import (
+    CUSTOM_AUTOMATIC_COLUMNS,
+    CUSTOM_CONTEXTUAL_COLUMNS,
+    SOURCE_DEVICE,
+    SOURCE_LOCAL_APK,
+    normalise_source_mode,
+)
 
 ADVANCED_CUSTOM_COLUMNS = frozenset(
     {
@@ -61,12 +69,42 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
     }
 )
 
+CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
+CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
+CUSTOMIZE_VIEW_SCREEN_MARGIN = 48
+def customize_view_dialog_sizes(
+    content_size: QSize,
+    fixed_overhead: QSize,
+    available_size: QSize,
+) -> tuple[QSize, QSize]:
+    """Return screen-bounded minimum and initial sizes for Customize View."""
+
+    usable_width = max(1, available_size.width() - CUSTOMIZE_VIEW_SCREEN_MARGIN)
+    usable_height = max(1, available_size.height() - CUSTOMIZE_VIEW_SCREEN_MARGIN)
+    minimum = QSize(
+        min(CUSTOMIZE_VIEW_MIN_SIZE.width(), usable_width),
+        min(CUSTOMIZE_VIEW_MIN_SIZE.height(), usable_height),
+    )
+    desired_width = max(
+        CUSTOMIZE_VIEW_NORMAL_WIDTH,
+        content_size.width() + fixed_overhead.width(),
+    )
+    desired_height = max(
+        CUSTOMIZE_VIEW_MIN_SIZE.height(),
+        content_size.height() + fixed_overhead.height(),
+    )
+    initial = QSize(
+        max(minimum.width(), min(desired_width, usable_width)),
+        max(minimum.height(), min(desired_height, usable_height)),
+    )
+    return minimum, initial
+
 
 def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
     choices = tuple(
         column
         for column in insights_ui.V9_MODEL_COLUMNS
-        if column not in {"criticality", "package_name"}
+        if column not in CUSTOM_AUTOMATIC_COLUMNS
     )
     common = tuple(column for column in choices if column not in ADVANCED_CUSTOM_COLUMNS)
     advanced = tuple(column for column in choices if column in ADVANCED_CUSTOM_COLUMNS)
@@ -146,7 +184,7 @@ class PreferencesWindow(table_ui.TableWindow):
     def _visible_column_order(self) -> list[str]:
         settings = state.load_settings()
         preset = str(settings.get("view_preset") or "Basic")
-        compare = bool(settings.get("compare_previous", False))
+        compare = state.store_history_enabled(settings)
         health = bool(settings.get("health_score_enabled", False))
 
         if preset == "Technical":
@@ -239,15 +277,14 @@ class PreferencesWindow(table_ui.TableWindow):
         group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current)
             action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
             group.addAction(action)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
             presets.addAction(action)
         self._view_action_group = group
-        view_menu.addAction("Customize View…", self._show_display_settings)
         view_menu.addSeparator()
         view_menu.addAction("Reset Table Layout", self._reset_table_layout)
 
@@ -329,25 +366,23 @@ class PreferencesWindow(table_ui.TableWindow):
         if not isinstance(group, QActionGroup):
             return
         for action in group.actions():
-            action.setChecked(action.text() == name)
+            action.setChecked(action.data() == name)
 
     def _sync_custom_preset_availability(self) -> None:
         for action in getattr(self, "view_preset_actions", []) or []:
-            if action.text() == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+            if action.data() == "Custom":
+                action.setEnabled(True)
         group = getattr(self, "_view_action_group", None)
         if isinstance(group, QActionGroup):
             for action in group.actions():
-                if action.text() == "Custom":
-                    action.setEnabled(self._has_custom_table_layout(state.load_settings()))
+                if action.data() == "Custom":
+                    action.setEnabled(True)
 
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
         dialog = QDialog(self)
         dialog.setObjectName("DisplaySettingsDialog")
         dialog.setWindowTitle("Customize View")
-        dialog.resize(740, 640)
-        dialog.setMinimumSize(620, 500)
         root = QVBoxLayout(dialog)
 
         heading = QLabel("Customize View")
@@ -388,23 +423,66 @@ class PreferencesWindow(table_ui.TableWindow):
         display_form.addRow("", show_icons)
         root.addLayout(display_form)
 
+        automatic_heading = QLabel("Automatic Columns")
+        automatic_heading.setObjectName("AutomaticColumnsTitle")
+        automatic_font = automatic_heading.font()
+        automatic_font.setBold(True)
+        automatic_heading.setFont(automatic_font)
+        root.addWidget(automatic_heading)
+        automatic_tooltips = {
+            "criticality": "Always shown in every view.",
+            "package_name": "Always shown in every view.",
+            "change": (
+                "Shown automatically when Play Store listing change tracking is enabled "
+                "in Tools > Changes & History."
+            ),
+            "device_change": (
+                "Shown automatically for phone results when device inventory change "
+                "tracking is enabled in Tools > Changes & History."
+            ),
+            "local_apk_version_comparison": "Shown automatically for Local APK results.",
+        }
+        source = normalise_source_mode(self.source_mode)
+        automatic_checked = {
+            "criticality": True,
+            "package_name": True,
+            "change": state.store_history_enabled(self.user_settings)
+            and source != SOURCE_LOCAL_APK,
+            "device_change": state.device_inventory_history_enabled(self.user_settings)
+            and source == SOURCE_DEVICE,
+            "local_apk_version_comparison": source == SOURCE_LOCAL_APK,
+        }
+        for key in (
+            "criticality",
+            "package_name",
+            "change",
+            "device_change",
+            "local_apk_version_comparison",
+        ):
+            check = QCheckBox(base_ui.COLUMN_LABELS.get(key, key))
+            check.setObjectName(f"AutomaticColumnCheck_{key}")
+            check.setChecked(automatic_checked[key])
+            check.setEnabled(False)
+            check.setToolTip(automatic_tooltips[key])
+            root.addWidget(check)
+
         custom_heading = QLabel("Custom Columns")
-        custom_heading.setObjectName("SettingsSectionTitle")
+        custom_heading.setObjectName("CustomColumnsTitle")
         custom_font = custom_heading.font()
         custom_font.setBold(True)
         custom_heading.setFont(custom_font)
         root.addWidget(custom_heading)
-        root.addWidget(
-            self._settings_note(
-                "Store Status and Package Name are always included. Changing this selection "
-                "activates View > Column Preset > Custom."
-            )
+        custom_note = self._settings_note(
+            "Choose the additional columns to include in this Custom view."
         )
+        custom_note.setObjectName("CustomColumnsNote")
+        root.addWidget(custom_note)
 
         scroll = QScrollArea()
         scroll.setObjectName("CustomColumnsScrollArea")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         columns_host = QWidget()
         groups_layout = QHBoxLayout(columns_host)
         groups_layout.setContentsMargins(0, 4, 0, 4)
@@ -424,9 +502,18 @@ class PreferencesWindow(table_ui.TableWindow):
         stored_custom = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
         ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        ordinary_stored_custom = [
+            column for column in stored_custom if column not in CUSTOM_CONTEXTUAL_COLUMNS
+        ]
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
         initial_columns = (
-            list(stored_custom) if current_preset == "Custom" else self._visible_column_order()
+            list(ordinary_stored_custom)
+            if current_preset == "Custom"
+            else [
+                column
+                for column in self._visible_column_order()
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
+            ]
         )
         configured = set(initial_columns)
         custom_checks: dict[str, QCheckBox] = {}
@@ -454,6 +541,24 @@ class PreferencesWindow(table_ui.TableWindow):
         bottom.addWidget(buttons)
         root.addLayout(bottom)
 
+        dialog.ensurePolished()
+        columns_host.ensurePolished()
+        groups_layout.activate()
+        root.activate()
+        layout_hint = root.sizeHint()
+        scroll_hint = scroll.sizeHint()
+        fixed_overhead = QSize(
+            max(0, layout_hint.width() - scroll_hint.width()),
+            max(0, layout_hint.height() - scroll_hint.height()),
+        )
+        minimum_size, initial_size = customize_view_dialog_sizes(
+            columns_host.sizeHint(),
+            fixed_overhead,
+            dialog.screen().availableGeometry().size(),
+        )
+        dialog.setMinimumSize(minimum_size)
+        dialog.resize(initial_size)
+
         def reset_controls() -> None:
             show_icons.setChecked(app_icon_metadata.DEFAULT_SHOW_APP_ICONS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
@@ -470,17 +575,47 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_columns = ["criticality", "package_name"] + [
             key for key, check in custom_checks.items() if check.isChecked()
         ]
-        custom_columns = list(dict.fromkeys(custom_columns))
+        custom_columns = self._normalise_custom_columns(
+            list(dict.fromkeys(custom_columns))
+        ) or ["criticality", "package_name"]
         columns_changed = set(custom_columns) != configured
+        custom_exists = self._has_custom_table_layout(self.user_settings)
+        legacy_contextual_columns = bool(
+            set(stored_custom).intersection(CUSTOM_CONTEXTUAL_COLUMNS)
+        )
+        save_custom = columns_changed or not custom_exists or legacy_contextual_columns
         updates: dict[str, object] = {
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
         }
-        if columns_changed:
+        if save_custom:
+            _visible, live_order, live_widths, encoded = self._current_table_layout()
+            live_order = [
+                column
+                for column in live_order
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
+            ]
+            stored_widths = self._normalise_custom_widths(
+                self.user_settings.get("custom_view_widths")
+            )
+            preserved_widths = {
+                column: (
+                    live_widths[column]
+                    if live_widths.get(column, 0) >= 20
+                    else stored_widths.get(
+                        column,
+                        table_layout.default_column_width(self.table, column),
+                    )
+                )
+                for column in self.model.columns
+            }
             updates.update(
                 {
                     "custom_view_columns": custom_columns,
                     "custom_view_exists": True,
+                    "custom_view_order": live_order,
+                    "custom_view_widths": preserved_widths,
+                    "qt_header_state": encoded,
                     "view_preset": "Custom",
                 }
             )
@@ -494,9 +629,10 @@ class PreferencesWindow(table_ui.TableWindow):
                     )
                 )
             )
-        if columns_changed:
+        if save_custom:
+            self._sync_view_preset_action("Custom")
+            self._sync_custom_preset_availability()
             self._apply_column_visibility(reset_order=False)
-            self._persist_current_custom_layout()
         else:
             self._sync_custom_preset_availability()
         self._refresh_table_presentation()
@@ -633,30 +769,22 @@ class PreferencesWindow(table_ui.TableWindow):
         device_layout.addStretch(1)
 
         _audit_page, audit_layout = add_page(
-            "AuditHistorySettingsPage",
-            "Audit & History",
-            "Configure optional audit enrichment and comparisons with previously collected data.",
+            "AuditSettingsPage",
+            "Audit",
+            "Configure optional audit enrichment and result scoring.",
         )
         permissions = QCheckBox("Audit sensitive requested permissions (advanced)")
         permissions.setObjectName("PermissionsAuditCheck")
         permissions.setChecked(bool(self.user_settings.get("permissions_audit_enabled", False)))
-        inventory = QCheckBox("Keep per-device inventory history")
-        inventory.setObjectName("InventoryHistoryCheck")
-        inventory.setChecked(bool(self.user_settings.get("inventory_history_enabled", True)))
         health = QCheckBox("Enable Maintenance Score")
         health.setObjectName("HealthScoreCheck")
         health.setChecked(bool(self.user_settings.get("health_score_enabled", False)))
-        compare = QCheckBox("Compare with previous Play Store audit")
-        compare.setObjectName("ComparePreviousAuditCheck")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
         audit_layout.addWidget(permissions)
         p_note = self._settings_note(
             "Permission audit checks a curated list of sensitive permissions declared/requested by each package (camera, microphone, location, contacts, SMS, phone, media, all-files access, overlays, etc.). It does not decide whether a permission is granted, justified or malicious. The same package dump is already collected for device metadata, so enabling this mainly adds parsing rather than extra per-app ADB calls."
         )
         audit_layout.addWidget(p_note)
-        audit_layout.addWidget(inventory)
         audit_layout.addWidget(health)
-        audit_layout.addWidget(compare)
         audit_layout.addStretch(1)
 
         _storage_page, storage_layout = add_page(
@@ -697,9 +825,7 @@ class PreferencesWindow(table_ui.TableWindow):
             collect.setChecked(True)
             full_scan.setChecked(False)
             permissions.setChecked(False)
-            inventory.setChecked(True)
             health.setChecked(False)
-            compare.setChecked(False)
             portable.setChecked(False)
             provider_settings.reset_to_defaults()
 
@@ -724,9 +850,7 @@ class PreferencesWindow(table_ui.TableWindow):
                 "collect_device_metadata": collect.isChecked(),
                 "collect_full_device_metadata_on_scan": full_scan.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
-                "inventory_history_enabled": inventory.isChecked(),
                 "health_score_enabled": health.isChecked(),
-                "compare_previous": compare.isChecked(),
                 "alternative_distribution": provider_settings.configuration(),
             }
         )

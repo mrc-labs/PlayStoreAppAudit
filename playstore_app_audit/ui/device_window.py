@@ -260,19 +260,6 @@ class DeviceWindow(compact_ui.CompactWindow):
         device_layout.addWidget(device_note)
         root.addWidget(device_group)
 
-        history_group = QGroupBox("Audit history")
-        history_layout = QVBoxLayout(history_group)
-        compare = QCheckBox("Compare with previous audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        history_layout.addWidget(compare)
-        history_note = QLabel(
-            "Off by default. The first completed audit creates a local baseline; later audits can show New / Same / Better / Worse."
-        )
-        history_note.setWordWrap(True)
-        history_note.setStyleSheet("color:#6F7C87;")
-        history_layout.addWidget(history_note)
-        root.addWidget(history_group)
-
         columns_group = QGroupBox("Technical columns")
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
@@ -300,7 +287,6 @@ class DeviceWindow(compact_ui.CompactWindow):
             cache_enabled.setChecked(True)
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             collect_device.setChecked(True)
-            compare.setChecked(False)
             for check in technical_checks.values():
                 check.setChecked(False)
 
@@ -319,7 +305,6 @@ class DeviceWindow(compact_ui.CompactWindow):
                 "cache_enabled": cache_enabled.isChecked(),
                 "cache_ttl_hours": ttl.value(),
                 "collect_device_metadata": collect_device.isChecked(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )
@@ -765,8 +750,13 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._last_audit_outcome = result.outcome
 
         new_rows = list(result.rows)
-        compare_enabled = bool(self.user_settings.get("compare_previous", False))
+        compare_enabled = state.store_history_enabled(self.user_settings)
         history = state.load_history() if compare_enabled else {}
+        self._store_comparison_had_baseline = bool(
+            compare_enabled
+            and result.outcome is AuditRunOutcome.SUCCESS
+            and state.current_audit_has_store_baseline(new_rows, history)
+        )
         previous_by_package = {
             str(row.get("package_name") or ""): row for row in old_rows
         }
@@ -777,10 +767,19 @@ class DeviceWindow(compact_ui.CompactWindow):
                     row[field] = previous[field]
             row["is_system"] = str(row.get("package_name") or "") in self.current_system_packages
             self._classify_row(row)
-            row["change"] = state.compare_with_history(row, history) if compare_enabled else ""
+            if compare_enabled:
+                row["change"] = state.compare_with_history(row, history)
+            else:
+                row.pop(state.AUDIT_CHANGES_FIELD, None)
+                row["change"] = ""
 
         replacements = {str(row.get("package_name") or ""): row for row in new_rows}
         merged = [replacements.get(str(row.get("package_name") or ""), row) for row in old_rows]
+
+        if not compare_enabled:
+            for row in merged:
+                row.pop(state.AUDIT_CHANGES_FIELD, None)
+                row["change"] = ""
 
         self.current_rows = merged
         self.model.set_rows(merged)

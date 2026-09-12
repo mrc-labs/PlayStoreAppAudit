@@ -138,6 +138,26 @@ def test_installer_change_from_store_history_and_device_inventory_is_deduplicate
     assert group["items"][0]["detail"] == "Google Play → Galaxy Store"
 
 
+def test_store_only_overview_excludes_device_inventory_groups() -> None:
+    row = _row(
+        device_change="New on device",
+        **{
+            changes.DEVICE_HISTORY_FLAG: True,
+            state.AUDIT_CHANGES_FIELD: [
+                {
+                    "type": "store_version_changed",
+                    "previous": "1",
+                    "current": "2",
+                }
+            ],
+        },
+    )
+
+    groups = changes.build_store_change_groups([row])
+
+    assert [group["key"] for group in groups] == ["store_version_changed"]
+
+
 def test_dialog_groups_items_and_emits_selected_package(app: QApplication) -> None:
     dialog = change_ui.ChangeOverviewDialog()
     groups = [

@@ -12,12 +12,14 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
+import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.base_window as base_ui
+import playstore_app_audit.ui.changes_history as changes_history_ui
 import playstore_app_audit.ui.data_maintenance as data_maintenance_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
@@ -25,6 +27,7 @@ import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
+from playstore_app_audit.ui.column_presets import BUILTIN_PRESETS, normalise_view_preset
 from playstore_app_audit.ui.file_menu import (
     ResultActions,
     populate_result_export_menu,
@@ -40,6 +43,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self._data_maintenance_dialog: (
             data_maintenance_ui.DataMaintenanceDialog | None
         ) = None
+        self._changes_history_dialog: changes_history_ui.ChangesHistoryDialog | None = None
         super().__init__()
         self._defer_v92_menu_build = False
         self._build_menu_v9()
@@ -125,19 +129,18 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         current = str(state.load_settings().get("view_preset") or "Basic")
         self.view_preset_actions = []
         for name in presentation.VIEW_PRESETS:
-            action = QAction(name, self, checkable=True)
+            label = "Custom…" if name == "Custom" else name
+            action = QAction(label, self, checkable=True)
+            action.setData(name)
             action.setChecked(name == current)
-            if name == "Custom":
-                action.setEnabled(self._has_custom_table_layout(state.load_settings()))
-            action.triggered.connect(lambda _checked=False, n=name: self._set_view_preset(n))
+            action.triggered.connect(
+                lambda _checked=False, a=action: self._select_column_preset(str(a.data()))
+            )
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
             self.view_preset_actions.append(action)
         self._view_action_group = self.view_action_group
 
-        self.display_settings_action = self.view_menu.addAction(
-            "Customize View…", self._show_display_settings
-        )
         self.reset_layout_action = self.view_menu.addAction(
             "Reset Table Layout", self._reset_table_layout
         )
@@ -158,21 +161,10 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.advanced_settings_action = self.tools_menu.addAction(
             "Advanced Settings…", self._show_advanced_settings
         )
-        self.tools_menu.addSeparator()
-        self.device_history_menu = QMenu("Device History", self.tools_menu)
-        self.tools_menu.addMenu(self.device_history_menu)
-        self.snapshots_menu = QMenu("Device Snapshots…", self.device_history_menu)
-        self.device_history_menu.addMenu(self.snapshots_menu)
-        self.save_device_snapshot_action = self.snapshots_menu.addAction(
-            "Save Current Device Snapshot…", self._save_device_snapshot
+        self.changes_history_action = self.tools_menu.addAction(
+            "Changes & History…", self._show_changes_history
         )
-        self.compare_device_snapshot_action = self.snapshots_menu.addAction(
-            "Compare Current Device with Snapshot…", self._compare_device_snapshot
-        )
-        self.device_inventory_changes_action = self.device_history_menu.addAction(
-            "Device Inventory Changes…", self._show_inventory_changes
-        )
-        self.tools_menu.addSeparator()
+        self.history_maintenance_separator_action = self.tools_menu.addSeparator()
         self.data_maintenance_action = self.tools_menu.addAction(
             "Data Maintenance…", self._show_data_maintenance
         )
@@ -203,6 +195,88 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
+
+    def _select_column_preset(self, name: str) -> None:
+        if name != "Custom":
+            self._set_view_preset(name)
+            return
+
+        settings = state.load_settings()
+        if self._has_custom_table_layout(settings):
+            self._set_view_preset("Custom")
+        self._show_display_settings()
+        current = str(state.load_settings().get("view_preset") or "Basic")
+        self._sync_view_preset_action(current)
+
+    def _changes_history_availability(
+        self,
+    ) -> changes_history_ui.ChangesHistoryAvailability:
+        results_available = bool(self.current_rows) and not bool(
+            getattr(self, "_results_incomplete", False)
+        )
+        device_results_available = self.source_mode == "device" and results_available
+        inventory_changes = getattr(self, "_last_inventory_changes", None)
+        return changes_history_ui.ChangesHistoryAvailability(
+            automatic_tracking=state.changes_history_enabled(self.user_settings),
+            store_tracking=self.user_settings.get("compare_previous") is True,
+            store_review=(
+                state.store_history_enabled(self.user_settings)
+                and results_available
+                and change_service.has_store_change_evidence(self.current_rows)
+            ),
+            store_had_baseline=bool(
+                state.store_history_enabled(self.user_settings)
+                and getattr(self, "_store_comparison_had_baseline", False)
+            ),
+            device_tracking=self.user_settings.get("inventory_history_enabled") is True,
+            device_review=bool(
+                state.device_inventory_history_enabled(self.user_settings)
+                and device_results_available
+                and isinstance(inventory_changes, dict)
+                and inventory_changes.get("had_previous")
+            ),
+            snapshots_available=device_results_available,
+        )
+
+    def _save_changes_history_settings(
+        self, automatic_tracking: bool, store_tracking: bool, device_tracking: bool
+    ) -> changes_history_ui.ChangesHistoryAvailability:
+        self.user_settings.update(
+            {
+                state.CHANGES_HISTORY_ENABLED_KEY: automatic_tracking,
+                "compare_previous": store_tracking,
+                "inventory_history_enabled": device_tracking,
+            }
+        )
+        self.user_settings = state.save_settings(self.user_settings)
+        sync_post_audit_views = getattr(self, "_sync_post_audit_views", None)
+        if callable(sync_post_audit_views):
+            sync_post_audit_views()
+        preset = normalise_view_preset(self.user_settings.get("view_preset"))
+        self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
+        self._update_summary()
+        self.status_label.setText("Changes & History settings saved")
+        return self._changes_history_availability()
+
+    def _show_changes_history(self) -> None:
+        review_store_changes = getattr(self, "_show_store_change_overview", None)
+        if not callable(review_store_changes):
+            return
+        if self._changes_history_dialog is not None:
+            self._changes_history_dialog.close()
+        dialog = changes_history_ui.ChangesHistoryDialog(
+            self,
+            self._changes_history_availability(),
+            review_store_changes=review_store_changes,
+            review_device_changes=self._show_inventory_changes,
+            save_snapshot=self._save_device_snapshot,
+            compare_snapshot=self._compare_device_snapshot,
+            save_tracking_settings=self._save_changes_history_settings,
+        )
+        self._changes_history_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
     def _show_data_maintenance(self) -> None:
         model: Any = self.model

@@ -54,7 +54,8 @@ def local_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 @pytest.fixture
 def window(app: QApplication, local_settings: Path) -> MainWindow:
     state.save_settings({
-        "view_preset": "Basic", "inventory_history_enabled": False,
+        "view_preset": "Basic", "changes_history_enabled": True,
+        "inventory_history_enabled": False,
         "alternative_distribution": {"fdroid_main": {"enabled": False}},
     })
     created = MainWindow()

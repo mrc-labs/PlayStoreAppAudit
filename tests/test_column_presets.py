@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import table_layout
+from playstore_app_audit.ui import column_presets, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION
 
@@ -79,6 +79,14 @@ def _visual_order(window: MainWindow) -> list[str]:
     return [window.model.columns[header.logicalIndex(visual)] for visual in range(header.count())]
 
 
+def _ordinary_visual_order(window: MainWindow) -> list[str]:
+    return [
+        column
+        for column in _visual_order(window)
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
+
+
 def _visible_order(window: MainWindow) -> list[str]:
     return [
         column
@@ -99,7 +107,7 @@ def _custom_snapshot(settings: dict[str, object]) -> dict[str, object]:
 
 
 def _custom_action(window: MainWindow):
-    return next(action for action in window.view_preset_actions if action.text() == "Custom")
+    return next(action for action in window.view_preset_actions if action.data() == "Custom")
 
 
 def test_pristine_settings_remain_basic_without_custom_across_restart(
@@ -121,7 +129,7 @@ def test_pristine_settings_remain_basic_without_custom_across_restart(
         assert fresh["view_preset"] == "Basic"
         assert fresh["custom_view_exists"] is False
         assert basic.isChecked()
-        assert not _custom_action(first).isEnabled()
+        assert _custom_action(first).isEnabled()
     finally:
         first.close()
         app.processEvents()
@@ -137,13 +145,13 @@ def test_pristine_settings_remain_basic_without_custom_across_restart(
         assert second["view_preset"] == "Basic"
         assert second["custom_view_exists"] is False
         assert basic.isChecked()
-        assert not _custom_action(restarted).isEnabled()
+        assert _custom_action(restarted).isEnabled()
     finally:
         restarted.close()
         app.processEvents()
 
 
-def test_column_preset_naming_and_custom_starts_disabled(
+def test_column_preset_naming_and_custom_starts_enabled(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
 ) -> None:
     settings, create_window = window_store
@@ -154,13 +162,100 @@ def test_column_preset_naming_and_custom_starts_disabled(
         "Basic",
         "Source Details",
         "Technical",
-        "Custom",
+        "Custom…",
     ]
-    assert window.display_settings_action.text() == "Customize View…"
+    assert _custom_action(window).data() == "Custom"
+    assert all(action.text() != "Customize View…" for action in window.view_menu.actions())
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
-    assert not _custom_action(window).isEnabled()
+    assert _custom_action(window).isEnabled()
     assert window.model._icons_enabled is True
+
+
+def test_existing_custom_action_restores_gates_and_opens_editor(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Basic",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    window.source_mode = "device"
+    opened: list[None] = []
+    monkeypatch.setattr(window, "_show_display_settings", lambda: opened.append(None))
+
+    _custom_action(window).trigger()
+
+    assert opened == [None]
+    assert settings["view_preset"] == "Custom"
+    assert _custom_action(window).isChecked()
+    assert {"change", "device_change"}.issubset(set(_visible_order(window)))
+
+
+@pytest.mark.parametrize("dismissal", ["cancel", "close"])
+def test_new_custom_action_cancel_or_close_keeps_builtin_and_creates_nothing(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    dismissal: str,
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+
+    def dismiss(dialog: QDialog) -> int:
+        if dismissal == "close":
+            dialog.close()
+            return dialog.result()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", dismiss)
+
+    _custom_action(window).trigger()
+
+    assert settings["view_preset"] == "Basic"
+    assert settings["custom_view_exists"] is False
+    assert next(
+        action for action in window.view_preset_actions if action.text() == "Basic"
+    ).isChecked()
+    assert not _custom_action(window).isChecked()
+
+
+def test_new_custom_action_save_creates_and_activates_ordinary_custom_base(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    settings["view_preset"] = "Source Details"
+    window = create_window()
+    expected_ordinary = set(_visible_order(window)) - {"change", "device_change"}
+
+    def accept_starting_columns(dialog: QDialog) -> int:
+        checked = {
+            check.objectName().removeprefix("CustomColumnCheck_")
+            for check in dialog.findChildren(QCheckBox)
+            if check.objectName().startswith("CustomColumnCheck_") and check.isChecked()
+        }
+        assert checked == expected_ordinary - {"criticality", "package_name"}
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", accept_starting_columns)
+
+    _custom_action(window).trigger()
+
+    assert settings["view_preset"] == "Custom"
+    assert settings["custom_view_exists"] is True
+    assert _custom_action(window).isChecked()
+    assert set(settings["custom_view_columns"]) == expected_ordinary  # type: ignore[arg-type]
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
 
 
 def test_programmatic_builtin_presets_do_not_create_custom(
@@ -176,7 +271,7 @@ def test_programmatic_builtin_presets_do_not_create_custom(
 
         assert settings["view_preset"] == preset
         assert settings["custom_view_exists"] is False
-        assert not _custom_action(window).isEnabled()
+        assert _custom_action(window).isEnabled()
         for logical, column in enumerate(window.model.columns):
             if window.table.isColumnHidden(logical):
                 continue
@@ -233,6 +328,35 @@ def test_manual_reorder_creates_custom(
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
 
 
+def test_manual_layout_capture_keeps_history_out_of_custom_base(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    package = window.model.columns.index("package_name")
+    window.table.setColumnWidth(package, window.table.columnWidth(package) + 17)
+    app.processEvents()
+
+    assert settings["view_preset"] == "Custom"
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
+    assert {"change", "device_change"}.issubset(set(_visible_order(window)))
+
+
 def test_customize_view_visibility_change_creates_custom(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
@@ -243,7 +367,11 @@ def test_customize_view_visibility_change_creates_custom(
 
     def hide_notes(dialog: QDialog) -> int:
         notes = dialog.findChild(QCheckBox, "CustomColumnCheck_notes")
+        store_change = dialog.findChild(QCheckBox, "CustomColumnCheck_change")
+        device_change = dialog.findChild(QCheckBox, "CustomColumnCheck_device_change")
         assert notes is not None and notes.isChecked()
+        assert store_change is None
+        assert device_change is None
         notes.setChecked(False)
         return QDialog.DialogCode.Accepted
 
@@ -256,6 +384,112 @@ def test_customize_view_visibility_change_creates_custom(
     assert "notes" not in settings["custom_view_columns"]  # type: ignore[operator]
     assert window.table.isColumnHidden(window.model.columns.index("notes"))
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
+
+
+@pytest.mark.parametrize(
+    ("source_mode", "master", "store", "device", "expected"),
+    [
+        ("file", True, True, True, {"criticality", "package_name", "change"}),
+        (
+            "device",
+            True,
+            True,
+            True,
+            {"criticality", "package_name", "change", "device_change"},
+        ),
+        (
+            "local_apk",
+            True,
+            True,
+            True,
+            {"criticality", "package_name", "local_apk_version_comparison"},
+        ),
+        ("device", False, True, True, {"criticality", "package_name"}),
+    ],
+)
+def test_customize_view_automatic_columns_reflect_current_context(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: str,
+    master: bool,
+    store: bool,
+    device: bool,
+    expected: set[str],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "changes_history_enabled": master,
+            "compare_previous": store,
+            "inventory_history_enabled": device,
+        }
+    )
+    window = create_window()
+    window.source_mode = source_mode
+
+    def inspect(dialog: QDialog) -> int:
+        checked: set[str] = set()
+        for key in (
+            "criticality",
+            "package_name",
+            "change",
+            "device_change",
+            "local_apk_version_comparison",
+        ):
+            check = dialog.findChild(QCheckBox, f"AutomaticColumnCheck_{key}")
+            assert check is not None
+            assert not check.isEnabled()
+            if check.isChecked():
+                checked.add(key)
+        assert checked == expected
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_display_settings()
+
+
+@pytest.mark.parametrize("source_mode", ["device", "local_apk"])
+def test_customize_view_save_cannot_remove_applicable_automatic_columns(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: str,
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "custom_view_order": ["criticality", "package_name", "play_title"],
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    window.source_mode = source_mode
+
+    def clear_every_checkbox(dialog: QDialog) -> int:
+        for check in dialog.findChildren(QCheckBox):
+            check.setChecked(False)
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", clear_every_checkbox)
+    window._show_display_settings()
+
+    visible = set(_visible_order(window))
+    expected = (
+        {"criticality", "package_name", "local_apk_version_comparison"}
+        if source_mode == "local_apk"
+        else {"criticality", "package_name", "change", "device_change"}
+    )
+    assert visible == expected
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
 
 
 def test_restoring_custom_does_not_persist_recursively(
@@ -301,6 +535,11 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     header = window.table.horizontalHeader()
     header.moveSection(header.visualIndex(title), 0)
     app.processEvents()
+    persisted_order = [
+        column
+        for column in _visual_order(window)
+        if column not in column_presets.CUSTOM_CONTEXTUAL_COLUMNS
+    ]
 
     def hide_notes(dialog: QDialog) -> int:
         assert dialog.windowTitle() == "Customize View"
@@ -318,9 +557,12 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     expected_widths = _widths(window)
     saved_custom = _custom_snapshot(settings)
     assert settings["view_preset"] == "Custom"
-    assert settings["custom_view_columns"] == expected_visible
-    assert settings["custom_view_order"] == expected_order
-    assert settings["custom_view_widths"] == expected_widths
+    assert set(settings["custom_view_columns"]) == set(expected_visible)  # type: ignore[arg-type]
+    assert settings["custom_view_order"] == persisted_order
+    saved_widths = settings["custom_view_widths"]
+    assert isinstance(saved_widths, dict)
+    assert all(saved_widths[column] == expected_widths[column] for column in expected_visible)
+    assert saved_widths["notes"] > 0
     assert "notes" not in expected_visible
     assert expected_widths["package_name"] == 333
     assert _custom_action(window).isEnabled() and _custom_action(window).isChecked()
@@ -352,6 +594,11 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     app.processEvents()
     expected = _custom_snapshot(settings)
     expected_visible = _visible_order(first)
+    expected_user_visible = [
+        column
+        for column in expected_visible
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
     expected_order = _visual_order(first)
     expected_widths = _widths(first)
 
@@ -377,8 +624,16 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     app.processEvents()
 
     assert _custom_snapshot(settings) == expected
-    assert _visible_order(first) == expected_visible
-    assert _visual_order(first) == expected_order
+    assert [
+        column
+        for column in _visible_order(first)
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ] == expected_user_visible
+    assert _ordinary_visual_order(first) == [
+        column
+        for column in expected_order
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
     assert _widths(first) == expected_widths
     first.close()
     app.processEvents()
@@ -386,8 +641,16 @@ def test_custom_layout_survives_refresh_sort_filter_and_restart(
     restarted = create_window()
     assert settings["view_preset"] == "Custom"
     assert _custom_action(restarted).isEnabled() and _custom_action(restarted).isChecked()
-    assert _visible_order(restarted) == expected_visible
-    assert _visual_order(restarted) == expected_order
+    assert [
+        column
+        for column in _visible_order(restarted)
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ] == expected_user_visible
+    assert _ordinary_visual_order(restarted) == [
+        column
+        for column in expected_order
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
     assert _widths(restarted) == expected_widths
     assert restarted.table.columnWidth(score) == 140
 
@@ -426,7 +689,11 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert settings["view_preset"] == "Custom"
     assert settings["custom_view_exists"] is True
     assert migrated.table.columnWidth(package) == 361
-    assert _visual_order(migrated) == legacy_order
+    assert _ordinary_visual_order(migrated) == [
+        column
+        for column in legacy_order
+        if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+    ]
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
 
@@ -458,7 +725,7 @@ def test_default_legacy_header_state_does_not_imply_custom(
 
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
-    assert not _custom_action(restarted).isEnabled()
+    assert _custom_action(restarted).isEnabled()
     assert _visible_order(restarted) == expected_visible
     assert _visual_order(restarted) == expected_order
     assert _widths(restarted) == expected_widths
@@ -481,6 +748,241 @@ def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
     assert _custom_action(window).isEnabled()
     window._set_view_preset("Custom")
     assert _visible_order(window) == ["criticality", "package_name", "play_title"]
+
+
+@pytest.mark.parametrize("preset", ["Basic", "Source Details", "Technical", "Custom"])
+@pytest.mark.parametrize("source_mode", ["file", "device", "local_apk"])
+@pytest.mark.parametrize(
+    ("master", "store", "device"),
+    [
+        (True, True, False),
+        (True, False, True),
+        (True, True, True),
+        (False, True, True),
+    ],
+)
+def test_history_columns_are_contextual_across_presets_sources_and_gates(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    preset: str,
+    source_mode: str,
+    master: bool,
+    store: bool,
+    device: bool,
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": preset,
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "custom_view_order": ["criticality", "package_name", "play_title"],
+            "changes_history_enabled": master,
+            "compare_previous": store,
+            "inventory_history_enabled": device,
+        }
+    )
+    window = create_window()
+    window.source_mode = source_mode
+    window._apply_column_visibility(reset_order=False)
+    visible = set(_visible_order(window))
+
+    assert ("change" in visible) is (master and store and source_mode != "local_apk")
+    assert ("device_change" in visible) is (
+        master and device and source_mode == "device"
+    )
+    if preset == "Custom":
+        assert settings["custom_view_columns"] == [
+            "criticality",
+            "package_name",
+            "play_title",
+        ]
+
+
+def test_custom_visibility_is_independent_of_activation_event_order(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Basic",
+            "custom_view_exists": True,
+            "custom_view_columns": ["criticality", "package_name", "play_title"],
+            "custom_view_order": ["criticality", "package_name", "play_title"],
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    state_then_custom = create_window()
+    state_then_custom.source_mode = "device"
+    state_then_custom._apply_column_visibility(reset_order=False)
+    state_then_custom._set_view_preset("Custom")
+    first_visibility = set(_visible_order(state_then_custom))
+
+    settings["view_preset"] = "Basic"
+    custom_then_state = create_window()
+    custom_then_state._set_view_preset("Custom")
+    custom_then_state.source_mode = "device"
+    custom_then_state._apply_column_visibility(reset_order=False)
+    second_visibility = set(_visible_order(custom_then_state))
+
+    assert first_visibility == second_visibility
+    assert {"change", "device_change"}.issubset(first_visibility)
+
+
+def test_custom_overlay_positioning_preserves_user_order_widths_and_settings(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": [
+                "criticality",
+                "package_name",
+                "play_title",
+                "notes",
+            ],
+            "custom_view_order": [
+                "play_title",
+                "criticality",
+                "package_name",
+                "notes",
+            ],
+            "custom_view_widths": {
+                "play_title": 287,
+                "criticality": 173,
+                "package_name": 331,
+                "notes": 245,
+            },
+            "changes_history_enabled": True,
+            "compare_previous": False,
+            "inventory_history_enabled": False,
+        }
+    )
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    ordinary_columns = {"play_title", "criticality", "package_name", "notes"}
+    ordinary_order = [
+        column for column in _visible_order(window) if column in ordinary_columns
+    ]
+    ordinary_widths = {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    }
+    custom_state = _custom_snapshot(settings)
+
+    window._save_changes_history_settings(True, True, True)
+
+    visible = _visible_order(window)
+    store_status = visible.index("criticality")
+    assert visible[store_status + 1 : store_status + 3] == ["change", "device_change"]
+    assert [column for column in visible if column in ordinary_columns] == ordinary_order
+    assert {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    } == ordinary_widths
+    assert _custom_snapshot(settings) == custom_state
+
+    window._save_changes_history_settings(True, False, True)
+    visible = _visible_order(window)
+    assert visible[visible.index("criticality") + 1] == "device_change"
+    assert "change" not in visible
+    window._save_changes_history_settings(False, True, True)
+    assert not {"change", "device_change"}.intersection(_visible_order(window))
+    window._save_changes_history_settings(True, True, True)
+
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+    visible = _visible_order(window)
+    assert visible[visible.index("criticality") + 1] == "change"
+    assert "device_change" not in visible
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+    positioned = _visual_order(window)
+    window._apply_column_visibility(reset_order=False)
+    assert _visual_order(window) == positioned
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+    visible = _visible_order(window)
+    assert visible[:2] == ["local_apk_version_comparison", "criticality"]
+    assert not {"change", "device_change"}.intersection(visible)
+    positioned = _visual_order(window)
+    window._apply_column_visibility(reset_order=False)
+    assert _visual_order(window) == positioned
+    window.source_mode = "file"
+    window._apply_established_source_defaults()
+
+    assert _custom_snapshot(settings) == custom_state
+    assert "local_apk_version_comparison" not in _visible_order(window)
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_columns"]  # type: ignore[arg-type]
+    )
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
+    assert [
+        column for column in _visible_order(window) if column in ordinary_columns
+    ] == ordinary_order
+    assert {
+        column: window.table.columnWidth(window.model.columns.index(column))
+        for column in ordinary_columns
+    } == ordinary_widths
+
+
+def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    legacy_columns = [
+        "criticality",
+        "change",
+        "device_change",
+        "local_apk_version_comparison",
+        "package_name",
+        "play_title",
+    ]
+    settings.update(
+        {
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": list(legacy_columns),
+            "custom_view_order": list(legacy_columns),
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+        }
+    )
+    window = create_window()
+    assert settings["custom_view_columns"] == legacy_columns
+    window.source_mode = "device"
+    window._apply_column_visibility(reset_order=False)
+    assert {"change", "device_change"}.issubset(set(_visible_order(window)))
+
+    def accept_without_history_checks(dialog: QDialog) -> int:
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
+        assert (
+            dialog.findChild(QCheckBox, "CustomColumnCheck_local_apk_version_comparison")
+            is None
+        )
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", accept_without_history_checks)
+    window._show_display_settings()
+
+    assert settings["custom_view_columns"] == [
+        "criticality",
+        "package_name",
+        "play_title",
+    ]
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        settings["custom_view_order"]  # type: ignore[arg-type]
+    )
+    assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
 
 def test_legacy_custom_preset_with_default_columns_migrates(
@@ -521,7 +1023,7 @@ def test_malformed_custom_state_falls_back_safely_to_basic(
     window = create_window()
 
     assert settings["view_preset"] == "Basic"
-    assert not _custom_action(window).isEnabled()
+    assert _custom_action(window).isEnabled()
     assert window.model._icons_enabled is False
 
 

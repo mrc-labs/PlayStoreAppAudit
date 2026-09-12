@@ -35,20 +35,24 @@ from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
 from playstore_app_audit.services.local_apk_audit import is_local_apk_source
 from playstore_app_audit.services.state import (
+    AUDIT_CHANGES_FIELD,
     DEFAULT_CACHE_TTL_HOURS,
     DEFAULT_SETTINGS,
     TECHNICAL_COLUMNS,
     clear_cache,
     compare_with_history,
+    current_audit_has_store_baseline,
     load_fresh_cache,
     load_history,
     load_settings,
     normalise_store_workers,
     save_settings,
+    store_history_enabled,
     update_cache,
 )
 from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.audit_window import AuditWindow
+from playstore_app_audit.ui.column_presets import CUSTOM_CONTEXTUAL_COLUMNS
 
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
@@ -365,7 +369,7 @@ class CompactWindow(AuditWindow):
 
     def _visible_column_order(self) -> list[str]:
         columns = ["criticality"]
-        if self.user_settings.get("compare_previous"):
+        if store_history_enabled(self.user_settings):
             columns.append("change")
         columns.extend(PRIMARY_COLUMNS[1:])
         selected = self.user_settings.get("technical_columns", [])
@@ -472,6 +476,8 @@ class CompactWindow(AuditWindow):
 
     def _persist_current_custom_layout(self, *, activate: bool = True) -> None:
         visible, order, widths, encoded = self._current_table_layout()
+        visible = [column for column in visible if column not in CUSTOM_CONTEXTUAL_COLUMNS]
+        order = [column for column in order if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         settings = load_settings()
         settings.update(
             {
@@ -730,19 +736,6 @@ class CompactWindow(AuditWindow):
         store_form.addRow("", cache_note)
         root.addWidget(store_group)
 
-        history_group = QGroupBox("Audit history")
-        history_layout = QVBoxLayout(history_group)
-        compare = QCheckBox("Compare with previous audit")
-        compare.setChecked(bool(self.user_settings.get("compare_previous", False)))
-        history_layout.addWidget(compare)
-        history_note = QLabel(
-            "Off by default. When enabled, the first completed audit creates a local baseline; later audits show Change = New / Same / Better / Worse."
-        )
-        history_note.setWordWrap(True)
-        history_note.setStyleSheet("color:#6F7C87;")
-        history_layout.addWidget(history_note)
-        root.addWidget(history_group)
-
         columns_group = QGroupBox("Technical columns")
         columns_layout = QVBoxLayout(columns_group)
         technical_checks: dict[str, QCheckBox] = {}
@@ -768,7 +761,6 @@ class CompactWindow(AuditWindow):
             language.setText(str(DEFAULT_SETTINGS["store_language"]))
             cache_enabled.setChecked(bool(DEFAULT_SETTINGS["cache_enabled"]))
             ttl.setValue(int(DEFAULT_SETTINGS["cache_ttl_hours"]))
-            compare.setChecked(bool(DEFAULT_SETTINGS["compare_previous"]))
             for check in technical_checks.values():
                 check.setChecked(False)
 
@@ -783,7 +775,6 @@ class CompactWindow(AuditWindow):
                 "store_language": (language.text().strip() or "en").lower(),
                 "cache_enabled": cache_enabled.isChecked(),
                 "cache_ttl_hours": ttl.value(),
-                "compare_previous": compare.isChecked(),
                 "technical_columns": [key for key, check in technical_checks.items() if check.isChecked()],
             }
         )
@@ -1308,8 +1299,13 @@ class CompactWindow(AuditWindow):
 
         typed_rows = list(result.rows)
         local_apk_source = is_local_apk_source(result.metadata.get("source_mode"))
-        compare_enabled = bool(self.user_settings.get("compare_previous", False)) and not local_apk_source
+        compare_enabled = store_history_enabled(self.user_settings) and not local_apk_source
         history = load_history() if compare_enabled else {}
+        self._store_comparison_had_baseline = bool(
+            compare_enabled
+            and result.outcome is AuditRunOutcome.SUCCESS
+            and current_audit_has_store_baseline(typed_rows, history)
+        )
         for row in typed_rows:
             row["is_system"] = (
                 None
@@ -1324,7 +1320,11 @@ class CompactWindow(AuditWindow):
                 row["change"] = ""
                 continue
             self._classify_row(row)
-            row["change"] = compare_with_history(row, history) if compare_enabled else ""
+            if compare_enabled:
+                row["change"] = compare_with_history(row, history)
+            else:
+                row.pop(AUDIT_CHANGES_FIELD, None)
+                row["change"] = ""
 
         self.current_rows = typed_rows
         self._results_incomplete = result.outcome is not AuditRunOutcome.SUCCESS

@@ -8,7 +8,6 @@ DENSITY_DEFAULTS = {
     "compatibility_status": 120,
     "version_comparison": 116,
     "app_enabled": 88,
-    "device_change": 130,
     "health_score": 86,
     "target_sdk": 74,
     "min_sdk": 70,
@@ -62,11 +61,23 @@ def test_v199_density_defaults_are_exact_and_tightly_bounded() -> None:
         assert schema.semantic_default_width(column) == preferred
 
 
+def test_explicit_history_labels_have_bounded_wider_policies() -> None:
+    expected = {
+        "change": (145, 125, 165),
+        "device_change": (155, 135, 175),
+    }
+    for column, bounds in expected.items():
+        policy = schema.COLUMN_WIDTH_POLICIES[column]
+        assert (policy.preferred, policy.minimum, policy.maximum) == bounds
+        assert schema.semantic_default_width(column) == policy.preferred
+
+
 def test_selected_table_headers_have_explicit_two_line_titles() -> None:
+    assert schema.TABLE_HEADER_LABELS["change"] == "Play Store Listing\nChange"
     assert schema.TABLE_HEADER_LABELS["health_score"] == "Maintenance\nScore"
     assert schema.TABLE_HEADER_LABELS["version_comparison"] == "Installed vs\nStore"
     assert schema.TABLE_HEADER_LABELS["compatibility_status"] == "Android\nCompatibility"
-    assert schema.TABLE_HEADER_LABELS["device_change"] == "Device Inventory\nChange"
+    assert schema.TABLE_HEADER_LABELS["device_change"] == "Device App Inventory\nChange"
     assert schema.TABLE_HEADER_LABELS["sensitive_permissions_count"] == (
         "Sensitive Permissions\nCount"
     )

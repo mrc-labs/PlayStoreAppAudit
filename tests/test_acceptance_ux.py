@@ -206,7 +206,7 @@ def test_source_status_text_names_the_active_source(
             "Basic",
             "device",
             [
-                "criticality", "change", "package_name", "play_title",
+                "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "health_score", "notes",
             ],
@@ -233,11 +233,11 @@ def test_source_status_text_names_the_active_source(
             "Source Details",
             "device",
             [
-                "criticality", "change", "package_name", "play_title",
+                "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
                 "installer_source", "installer_category", "app_enabled", "first_install_time",
-                "last_local_update", "device_change", "health_score", "notes",
+                "last_local_update", "health_score", "notes",
             ],
         ),
         (
@@ -259,6 +259,7 @@ def test_basic_and_source_details_layouts(
         preset,
         source,
         compare_previous=True,
+        device_inventory_history=True,
         health_score_enabled=True,
     ) == expected
 
@@ -266,7 +267,11 @@ def test_basic_and_source_details_layouts(
 @pytest.mark.parametrize("source", ["file", "local_apk", "device"])
 def test_technical_is_source_aware_and_notes_last(source: str) -> None:
     columns = column_presets.visible_columns(
-        "Technical", source, compare_previous=True, health_score_enabled=True
+        "Technical",
+        source,
+        compare_previous=True,
+        device_inventory_history=True,
+        health_score_enabled=True,
     )
     assert columns[-1] == "notes"
     if source == "device":
@@ -283,19 +288,61 @@ def test_technical_is_source_aware_and_notes_last(source: str) -> None:
 
 
 @pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)
+@pytest.mark.parametrize("source", ["file", "local_apk", "device"])
+@pytest.mark.parametrize(
+    ("store_history", "device_history"),
+    [(False, False), (True, False), (False, True), (True, True)],
+)
+def test_builtin_history_columns_follow_independent_feature_and_source_gates(
+    preset: str,
+    source: str,
+    store_history: bool,
+    device_history: bool,
+) -> None:
+    columns = column_presets.visible_columns(
+        preset,
+        source,
+        compare_previous=store_history,
+        device_inventory_history=device_history,
+        health_score_enabled=True,
+    )
+
+    assert ("change" in columns) is (store_history and source != "local_apk")
+    assert ("device_change" in columns) is (device_history and source == "device")
+    if source == "device" and store_history and device_history:
+        assert columns[:3] == [
+            "criticality",
+            "change",
+            "device_change",
+        ]
+
+
+@pytest.mark.parametrize("preset", column_presets.BUILTIN_PRESETS)
 def test_file_apk_adb_switching_reapplies_builtin_order_and_widths_without_custom(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     preset: str,
 ) -> None:
     settings, create_window = window_store
-    settings.update({"view_preset": preset, "compare_previous": True, "health_score_enabled": True})
+    settings.update(
+        {
+            "view_preset": preset,
+            "changes_history_enabled": True,
+            "compare_previous": True,
+            "inventory_history_enabled": True,
+            "health_score_enabled": True,
+        }
+    )
     window = create_window()
 
     for source in ("file", "local_apk", "device"):
         window.source_mode = source
         window._apply_established_source_defaults()
         expected = column_presets.visible_columns(
-            preset, source, compare_previous=True, health_score_enabled=True
+            preset,
+            source,
+            compare_previous=True,
+            device_inventory_history=True,
+            health_score_enabled=True,
         )
         assert _visible_order(window) == expected
         assert settings["view_preset"] == preset
@@ -322,12 +369,33 @@ def test_custom_notes_position_and_layout_survive_source_switch_and_restart(
         }
     )
     first = create_window()
-    expected = _visible_order(first)
+    expected = ["criticality", "notes", "package_name"]
+    custom_settings = {
+        key: deepcopy(settings[key])
+        for key in (
+            "custom_view_columns",
+            "custom_view_order",
+            "custom_view_widths",
+        )
+    }
     for source in ("file", "local_apk", "device"):
         first.source_mode = source
         first._apply_established_source_defaults()
-        assert _visible_order(first) == expected
+        visible = _visible_order(first)
+        assert visible == (
+            ["local_apk_version_comparison", *expected]
+            if source == "local_apk"
+            else expected
+        )
         assert first.table.columnWidth(first.model.columns.index("notes")) == 311
+        assert {
+            key: settings[key]
+            for key in (
+                "custom_view_columns",
+                "custom_view_order",
+                "custom_view_widths",
+            )
+        } == custom_settings
     first.close()
 
     restarted = create_window()
@@ -586,7 +654,13 @@ def test_selected_local_row_has_no_focus_marker_and_keeps_both_semantics(
 
 def test_customize_column_groups_partition_the_existing_schema() -> None:
     common, advanced = preferences_ui.custom_column_groups()
-    expected = set(schema.MODEL_COLUMNS) - {"criticality", "package_name"}
+    expected = set(schema.MODEL_COLUMNS) - {
+        "criticality",
+        "package_name",
+        "change",
+        "device_change",
+        "local_apk_version_comparison",
+    }
 
     assert set(common).isdisjoint(advanced)
     assert set(common) | set(advanced) == expected

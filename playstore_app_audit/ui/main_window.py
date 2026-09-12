@@ -45,6 +45,9 @@ from playstore_app_audit.services.local_artifact_store import LocalArtifactStore
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.column_presets import (
     BUILTIN_PRESETS,
+    CUSTOM_CONTEXTUAL_COLUMNS,
+    SOURCE_DEVICE,
+    normalise_source_mode,
     normalise_view_preset,
     visible_columns,
 )
@@ -384,21 +387,83 @@ class MainWindow(results_ui.ResultsWindow):
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
         if preset == "Custom":
-            return super()._visible_column_order()
+            columns = [
+                column
+                for column in super()._visible_column_order()
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
+            ]
+            local_apk_source = local_apk_audit.is_local_apk_source(self.source_mode)
+            if local_apk_source:
+                columns.append("local_apk_version_comparison")
+            elif state.store_history_enabled(settings):
+                columns.append("change")
+            if (
+                not local_apk_source
+                and state.device_inventory_history_enabled(settings)
+                and normalise_source_mode(self.source_mode) == SOURCE_DEVICE
+            ):
+                columns.append("device_change")
+            return list(dict.fromkeys(columns))
         selected = settings.get("technical_columns", [])
         return visible_columns(
             preset,
             self.source_mode,
-            compare_previous=bool(settings.get("compare_previous", False)),
+            compare_previous=state.store_history_enabled(settings),
+            device_inventory_history=state.device_inventory_history_enabled(settings),
             health_score_enabled=bool(settings.get("health_score_enabled", False)),
             optional_columns=selected if isinstance(selected, list) else (),
         )
 
+    def _apply_column_visibility(self, reset_order: bool = False) -> None:
+        super()._apply_column_visibility(reset_order=reset_order)
+        settings = state.load_settings()
+        if normalise_view_preset(settings.get("view_preset")) == "Custom":
+            self._position_contextual_history_columns()
+
+    def _position_contextual_history_columns(self) -> None:
+        """Place visible contextual overlays without moving user-owned columns."""
+
+        header = self.table.horizontalHeader()
+        contextual = [
+            compact_ui.MODEL_COLUMNS.index(column)
+            for column in compact_ui.MODEL_COLUMNS
+            if column in CUSTOM_CONTEXTUAL_COLUMNS
+        ]
+        contextual_order = (
+            ("local_apk_version_comparison",)
+            if local_apk_audit.is_local_apk_source(self.source_mode)
+            else ("change", "device_change")
+        )
+        visible_contextual = [
+            compact_ui.MODEL_COLUMNS.index(column)
+            for column in contextual_order
+            if not self.table.isColumnHidden(compact_ui.MODEL_COLUMNS.index(column))
+        ]
+        hidden_contextual = [
+            logical for logical in contextual if self.table.isColumnHidden(logical)
+        ]
+        store_status = compact_ui.MODEL_COLUMNS.index("criticality")
+        ordinary = [
+            header.logicalIndex(visual)
+            for visual in range(header.count())
+            if header.logicalIndex(visual) not in {*contextual, store_status}
+        ]
+        leading = (
+            visible_contextual + [store_status]
+            if local_apk_audit.is_local_apk_source(self.source_mode)
+            else [store_status] + visible_contextual
+        )
+        desired = leading + ordinary + hidden_contextual
+        with self._suspend_table_layout_tracking():
+            for visual, logical in enumerate(desired):
+                current_visual = header.visualIndex(logical)
+                if current_visual != visual:
+                    header.moveSection(current_visual, visual)
+
     def _apply_established_source_defaults(self) -> None:
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
-        if preset in BUILTIN_PRESETS:
-            self._apply_column_visibility(reset_order=True)
+        self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
         self._apply_source_default_sort()
 
     def _apply_source_default_sort(self) -> None:

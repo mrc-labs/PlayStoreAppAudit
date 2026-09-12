@@ -73,7 +73,7 @@ V9_TECHNICAL_COLUMNS = {
     "app_enabled": "Enabled state",
     "sensitive_permissions_count": "Sensitive permissions count",
     "sensitive_permissions": "Sensitive permissions",
-    "device_change": "Device inventory change",
+    "device_change": "Device App Inventory Change",
     "health_score": "Maintenance Score",
 }
 
@@ -849,6 +849,52 @@ def inventory_path(device_id: str) -> Path:
     return app_data_dir_v9() / f"inventory_{safe}.json"
 
 
+def has_device_inventory_history(data_root: Path | None = None) -> bool:
+    root = data_root if data_root is not None else app_data_dir_v9()
+    try:
+        candidates = tuple(root.glob("inventory_*.json"))
+    except OSError:
+        return False
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            stored = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(stored, dict)
+            and stored.get("format") != DEVICE_SNAPSHOT_FORMAT
+            and isinstance(stored.get("apps"), dict)
+        ):
+            return True
+    return False
+
+
+def has_device_snapshots(data_root: Path | None = None) -> bool:
+    root = data_root if data_root is not None else app_data_dir_v9()
+    if not root.is_dir():
+        return False
+    try:
+        candidates = tuple(root.rglob("*.json"))
+    except OSError:
+        return False
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            snapshot = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(snapshot, dict)
+            and snapshot.get("format") == DEVICE_SNAPSHOT_FORMAT
+            and isinstance(snapshot.get("apps"), list)
+        ):
+            return True
+    return False
+
+
 def clear_device_inventory_history() -> int:
     """Delete only per-device baselines used by Device Inventory Change."""
 
@@ -1105,7 +1151,7 @@ def write_html_report(
         if local_apk_report
         else "<th>Store Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
         "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
-        "<th>Device Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
+        "<th>Device App Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
     )
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
 <style>

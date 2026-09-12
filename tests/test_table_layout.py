@@ -19,7 +19,7 @@ DENSITY_DEFAULTS = {
     "compatibility_status": 120,
     "version_comparison": 116,
     "app_enabled": 88,
-    "device_change": 130,
+    "device_change": 175,
     "health_score": 86,
     "target_sdk": 74,
     "min_sdk": 70,
@@ -61,7 +61,8 @@ def _technical_settings() -> dict[str, object]:
         "view_preset": "Technical",
         "recent_sources": [],
         "exclude_system_source": True,
-        "inventory_history_enabled": False,
+        "changes_history_enabled": True,
+        "inventory_history_enabled": True,
         "compare_previous": True,
         "health_score_enabled": True,
         "qt_header_schema_version": TABLE_SCHEMA_VERSION,
@@ -165,6 +166,7 @@ def test_wrapped_headers_share_one_height_and_preserve_native_sorting(
         header = window.table.horizontalHeader()
         chrome = table_layout.header_chrome_width(header)
         wrapped = (
+            "change",
             "health_score",
             "version_comparison",
             "compatibility_status",
@@ -184,6 +186,9 @@ def test_wrapped_headers_share_one_height_and_preserve_native_sorting(
             assert window.table.columnWidth(logical) >= min(
                 widest_line + chrome, policy.maximum
             )
+
+        assert schema.COLUMN_LABELS["change"] == "Play Store Listing Change"
+        assert schema.COLUMN_LABELS["device_change"] == "Device App Inventory Change"
 
         store_url = window.model.columns.index("store_url")
         assert window.model.headerData(store_url, Qt.Orientation.Horizontal) == "Store URL"

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMessageBox,
+    QScrollArea,
     QStackedWidget,
 )
 
@@ -28,6 +29,7 @@ import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
@@ -278,7 +280,6 @@ def test_status_chips_are_sized_for_selected_bold_text(window: MainWindow) -> No
 def test_operational_naming_density_and_icon_policy(window: MainWindow) -> None:
     assert _action_structure(window.view_menu) == [
         "Column Preset",
-        "Customize View…",
         "Details Panel",
         "Reset Table Layout",
         None,
@@ -329,6 +330,60 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert icons.isChecked()
         assert dialog.findChild(QComboBox, "DateFormatCombo") is not None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_play_title") is not None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
+        assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
+        assert (
+            dialog.findChild(QCheckBox, "CustomColumnCheck_local_apk_version_comparison")
+            is None
+        )
+        note = dialog.findChild(QLabel, "CustomColumnsNote")
+        assert note is not None
+        assert note.text() == "Choose the additional columns to include in this Custom view."
+        automatic = {
+            key: dialog.findChild(QCheckBox, f"AutomaticColumnCheck_{key}")
+            for key in (
+                "criticality",
+                "package_name",
+                "change",
+                "device_change",
+                "local_apk_version_comparison",
+            )
+        }
+        automatic_title = dialog.findChild(QLabel, "AutomaticColumnsTitle")
+        assert automatic_title is not None
+        assert automatic_title.text() == "Automatic Columns"
+        assert all(check is not None and not check.isEnabled() for check in automatic.values())
+        assert {
+            key: check.text()  # type: ignore[union-attr]
+            for key, check in automatic.items()
+        } == {
+            "criticality": "Store Status",
+            "package_name": "Package Name",
+            "change": "Play Store Listing Change",
+            "device_change": "Device App Inventory Change",
+            "local_apk_version_comparison": "Local APK vs Store",
+        }
+        assert automatic["criticality"].isChecked()  # type: ignore[union-attr]
+        assert automatic["package_name"].isChecked()  # type: ignore[union-attr]
+        assert automatic["criticality"].toolTip() == "Always shown in every view."  # type: ignore[union-attr]
+        assert automatic["package_name"].toolTip() == "Always shown in every view."  # type: ignore[union-attr]
+        assert automatic["change"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically when Play Store listing change tracking is enabled in "
+            "Tools > Changes & History."
+        )
+        assert automatic["device_change"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically for phone results when device inventory change tracking "
+            "is enabled in Tools > Changes & History."
+        )
+        assert automatic["local_apk_version_comparison"].toolTip() == (  # type: ignore[union-attr]
+            "Shown automatically for Local APK results."
+        )
+        scroll = dialog.findChild(QScrollArea, "CustomColumnsScrollArea")
+        assert scroll is not None
+        assert scroll.verticalScrollBarPolicy() is Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        available = dialog.screen().availableGeometry()
+        assert dialog.width() <= available.width() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
+        assert dialog.height() <= available.height() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is None
         return QDialog.DialogCode.Rejected
 
@@ -345,19 +400,22 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
             "Store & Cache",
             "Alternative Distribution",
             "Device",
-            "Audit & History",
+            "Audit",
             "Data & Storage",
         ]
         assert [pages.widget(index).objectName() for index in range(pages.count())] == [
             "StoreCacheSettingsPage",
             "AlternativeDistributionSettingsPage",
             "DeviceSettingsPage",
-            "AuditHistorySettingsPage",
+            "AuditSettingsPage",
             "DataStorageSettingsPage",
         ]
         health = dialog.findChild(QCheckBox, "HealthScoreCheck")
         assert health is not None
-        assert health.parentWidget().objectName() == "AuditHistorySettingsPage"
+        assert health.parentWidget().objectName() == "AuditSettingsPage"
+        assert dialog.findChild(QCheckBox, "ChangesHistoryEnabledCheck") is None
+        assert dialog.findChild(QCheckBox, "ComparePreviousAuditCheck") is None
+        assert dialog.findChild(QCheckBox, "InventoryHistoryCheck") is None
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is not None
         assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is None
         assert dialog.findChild(QComboBox, "DateFormatCombo") is None
@@ -366,6 +424,31 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
 
     monkeypatch.setattr(QDialog, "exec", inspect_advanced)
     window._show_advanced_settings()
+
+
+def test_customize_view_content_aware_size_fits_or_clamps_for_scrolling() -> None:
+    content = QSize(700, 620)
+    overhead = QSize(60, 180)
+
+    minimum, initial = preferences_ui.customize_view_dialog_sizes(
+        content, overhead, QSize(1920, 1080)
+    )
+
+    assert minimum == preferences_ui.CUSTOMIZE_VIEW_MIN_SIZE
+    assert initial.width() >= content.width() + overhead.width()
+    assert initial.height() == content.height() + overhead.height()
+
+    small_screen = QSize(800, 650)
+    small_minimum, small_initial = preferences_ui.customize_view_dialog_sizes(
+        content, overhead, small_screen
+    )
+    usable_height = (
+        small_screen.height() - preferences_ui.CUSTOMIZE_VIEW_SCREEN_MARGIN
+    )
+
+    assert small_minimum.height() <= usable_height
+    assert small_initial.height() == usable_height
+    assert small_initial.height() < content.height() + overhead.height()
 
 
 def test_display_settings_save_existing_presentation_keys(
@@ -520,7 +603,9 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     app.processEvents()
 
     assert settings["view_preset"] == "Custom"
-    assert next(action for action in window.view_preset_actions if action.text() == "Custom").isChecked()
+    assert next(
+        action for action in window.view_preset_actions if action.data() == "Custom"
+    ).isChecked()
     assert all(window.table.isColumnHidden(window.model.columns.index(key)) for key in fields)
     assert window.proxy.rowCount() == 2
     assert window.search_edit.text() == "com.example"
@@ -611,7 +696,7 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     restarted = MainWindow()
     try:
         custom_action = next(
-            action for action in restarted.view_preset_actions if action.text() == "Custom"
+            action for action in restarted.view_preset_actions if action.data() == "Custom"
         )
         assert settings["view_preset"] == "Custom"
         assert custom_action.isChecked()
@@ -859,19 +944,14 @@ def test_main_export_button_exposes_canonical_menu_and_starts_disabled(
     assert not window.clear_button.isEnabled()
     assert _action_structure(window.tools_menu) == [
         "Advanced Settings…",
-        None,
-        "Device History",
+        "Changes & History…",
         None,
         "Data Maintenance…",
     ]
-    assert _action_texts(window.device_history_menu) == [
-        "Device Snapshots…",
-        "Device Inventory Changes…",
-    ]
-    assert _action_texts(window.snapshots_menu) == [
-        "Save Current Device Snapshot…",
-        "Compare Current Device with Snapshot…",
-    ]
+    assert window.changes_history_action.text() == "Changes & History…"
+    assert not hasattr(window, "device_history_menu")
+    assert not hasattr(window, "snapshots_menu")
+    assert not hasattr(window, "device_inventory_changes_action")
     assert window.data_maintenance_action.text() == "Data Maintenance…"
     assert window.data_maintenance_action.menu() is None
     assert not hasattr(window, "data_maintenance_menu")
@@ -924,7 +1004,7 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert window.file_scan_phone_action.isEnabled()
     assert window.advanced_settings_action.isEnabled()
     assert window.audit_profiles_menu.menuAction().isEnabled()
-    assert not window.device_history_menu.menuAction().isEnabled()
+    assert window.changes_history_action.isEnabled()
     assert not run_action.isEnabled()
     assert not window.force_full_refresh_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
@@ -967,13 +1047,8 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     window._sync_action_availability()
     assert window.file_phone_package_export_action.isEnabled()
     assert window.scan_phone_package_export_action.isEnabled()
-    assert window.snapshots_menu.menuAction().isEnabled()
-    assert window.device_history_menu.menuAction().isEnabled()
-    assert not window.device_inventory_changes_action.isEnabled()
-
     window._last_inventory_changes = {"had_previous": True}
     window._sync_action_availability()
-    assert window.device_inventory_changes_action.isEnabled()
 
     window._source_operation_active = True
     window._sync_action_availability()
@@ -984,7 +1059,6 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert not window.clear_button.isEnabled()
     assert not window.advanced_settings_action.isEnabled()
     assert not window.audit_profiles_menu.menuAction().isEnabled()
-    assert not window.device_history_menu.menuAction().isEnabled()
     assert not window.data_maintenance_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
 
@@ -1138,6 +1212,9 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    window.user_settings.update(
+        {"changes_history_enabled": True, "inventory_history_enabled": True}
+    )
     row = {
         "package_name": "com.example.app",
         "criticality_key": "green",
@@ -1193,7 +1270,7 @@ def test_clear_device_inventory_history_requires_confirmation_and_refreshes_ui(
     assert "device_change" not in row
     assert row[change_service.DEVICE_HISTORY_FLAG] is False
     assert window._last_inventory_changes == {}
-    assert not window.device_inventory_changes_action.isEnabled()
+    assert not hasattr(window, "device_inventory_changes_action")
     assert window.status_label.text() == (
         "Device Inventory History cleared • 2 baselines removed"
     )
