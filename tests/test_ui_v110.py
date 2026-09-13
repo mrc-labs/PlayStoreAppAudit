@@ -1016,7 +1016,7 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert window.file_choose_source_action.isEnabled()
     assert window.file_scan_phone_action.isEnabled()
     assert window.advanced_settings_action.isEnabled()
-    assert window.audit_profiles_menu.menuAction().isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isVisible()
     assert window.changes_history_action.isEnabled()
     assert not run_action.isEnabled()
     assert not window.force_full_refresh_action.isEnabled()
@@ -1071,14 +1071,14 @@ def test_action_availability_tracks_source_results_visibility_device_and_busy_st
     assert not window.export_button.isEnabled()
     assert not window.clear_button.isEnabled()
     assert not window.advanced_settings_action.isEnabled()
-    assert not window.audit_profiles_menu.menuAction().isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isVisible()
     assert not window.data_maintenance_action.isEnabled()
     assert not any(action.isEnabled() for action in all_exports + visible_exports)
 
     window._source_operation_active = False
     window._sync_action_availability()
     assert window.advanced_settings_action.isEnabled()
-    assert window.audit_profiles_menu.menuAction().isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isVisible()
 
 
 def test_presentation_actions_preserve_running_operation_status(
@@ -1117,7 +1117,7 @@ def test_technical_settings_are_disabled_for_every_running_operation_state(
     window._sync_action_availability()
 
     assert not window.advanced_settings_action.isEnabled()
-    assert not window.audit_profiles_menu.menuAction().isEnabled()
+    assert not window.audit_profiles_menu.menuAction().isVisible()
 
 
 def test_row_context_actions_require_their_fields_and_idle_state(window: MainWindow) -> None:
