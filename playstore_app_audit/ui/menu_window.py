@@ -36,6 +36,26 @@ from playstore_app_audit.ui.file_menu import (
 )
 
 FEEDBACK_ISSUE_URL = "https://github.com/mrc-labs/PlayStoreAppAudit/issues/new/choose"
+LOCAL_APK_FILE_ACTION_TEXTS = frozenset(
+    {"Choose Package File(s)…", "Choose Package Folder…"}
+)
+
+
+class SourceFileMenu(QMenu):
+    """File menu that keeps late-bound Local APK actions in their source group."""
+
+    def __init__(self, title: str, parent) -> None:
+        super().__init__(title, parent)
+        self.local_apk_menu: QMenu | None = None
+
+    def route_local_apk_actions_to(self, menu: QMenu) -> None:
+        self.local_apk_menu = menu
+
+    def insertAction(self, before: QAction | None, action: QAction) -> QAction | None:
+        if self.local_apk_menu is not None and action.text() in LOCAL_APK_FILE_ACTION_TEXTS:
+            self.local_apk_menu.addAction(action)
+            return action
+        return super().insertAction(before, action)
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -59,24 +79,35 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar = self.menuBar()
         bar.clear()
 
-        # Construct QMenu objects explicitly with a persistent parent. This is
-        # more robust across PySide ownership transitions than the addMenu(str)
-        # convenience overload when an inheritance chain rebuilt the menu bar.
-        self.file_menu = QMenu("File", bar)
+        # File mirrors the App Source order in the main window: phone, Local APK,
+        # then app-list file. Source-specific secondary actions stay with their
+        # source instead of being mixed into one flat list.
+        self.file_menu = SourceFileMenu("File", bar)
         bar.addMenu(self.file_menu)
-        self.file_choose_source_action = self.file_menu.addAction(
-            "Choose App List…", self._choose_input
-        )
-        self.recent_menu = QMenu("Recent Sources", self.file_menu)
-        self.file_menu.addMenu(self.recent_menu)
-        self._recent_menu = self.recent_menu
-        self._populate_recent_menu()
-        self.file_scan_phone_action = self.file_menu.addAction(
+
+        self.file_phone_menu = QMenu("Android Phone (ADB)", self.file_menu)
+        self.file_menu.addMenu(self.file_phone_menu)
+        self.file_scan_phone_action = self.file_phone_menu.addAction(
             "Scan Phone", self._scan_phone
         )
-        self.file_phone_package_export_action = self.file_menu.addAction(
-            "Export Phone Package List…", self._export_phone_packages_csv
+        self.file_phone_package_export_action = self.file_phone_menu.addAction(
+            "Export Current Phone Package List as CSV…", self._export_phone_packages_csv
         )
+
+        self.file_local_apk_menu = QMenu("Local APK(s)", self.file_menu)
+        self.file_menu.addMenu(self.file_local_apk_menu)
+        self.file_menu.route_local_apk_actions_to(self.file_local_apk_menu)
+
+        self.file_app_list_menu = QMenu("App List File", self.file_menu)
+        self.file_menu.addMenu(self.file_app_list_menu)
+        self.file_choose_source_action = self.file_app_list_menu.addAction(
+            "Choose App List…", self._choose_input
+        )
+        self.recent_menu = QMenu("Recent Sources", self.file_app_list_menu)
+        self.file_app_list_menu.addMenu(self.recent_menu)
+        self._recent_menu = self.recent_menu
+        self._populate_recent_menu()
+
         self.file_menu.addSeparator()
         self.file_menu.addAction("Exit", self.close)
 
