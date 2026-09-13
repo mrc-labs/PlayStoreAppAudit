@@ -26,6 +26,12 @@ from playstore_app_audit import __version__
 from playstore_app_audit.domain.alternative_distribution import AlternativeDistributionState
 from playstore_app_audit.help_texts import ADB_SETUP_GUIDE as ADB_SETUP_GUIDE
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.services.store_freshness import (
+    StoreFreshnessThresholds,
+)
+from playstore_app_audit.services.store_freshness import (
+    from_settings as freshness_from_settings,
+)
 from playstore_app_audit.services.version_relationship import VERSION_MISMATCH_STATES
 
 if TYPE_CHECKING:
@@ -109,9 +115,9 @@ Current components:
 - F-Droid main availability recovery while that -60 penalty is active: +10
 - Aptoide availability recovery while that -60 penalty is active: +5
 - Store anomaly: -20
-- Other/inconclusive Store state: -15
-- Stale (>730 days since update): -25
-- Aging (366-730 days): -15
+- Inconclusive Store evidence: -15
+- Stale (after the configured Store freshness threshold): -25
+- Aging (between the configured Recent and Stale thresholds): -15
 - Legacy target SDK relative to the connected device: -15
 - Aging target SDK relative to the connected device: -10
 - Source-relevant installed/Local APK version is numerically Outdated: -10
@@ -623,19 +629,25 @@ def _play_availability_score_component(play_status: str) -> HealthScoreComponent
     if play_status == "available":
         return None
     return HealthScoreComponent(
-        "play_availability", "Other/inconclusive Google Play state", -15
+        "play_availability", "Inconclusive Google Play state", -15
     )
 
 
-def _listing_age_score_component(value: object) -> HealthScoreComponent | None:
+def _listing_age_score_component(
+    value: object, thresholds: StoreFreshnessThresholds
+) -> HealthScoreComponent | None:
     try:
         age_days = int(str(value))
     except (TypeError, ValueError):
         return None
-    if age_days > 730:
-        return HealthScoreComponent("listing_age", "Listing age (>730 days)", -25)
-    if age_days >= 366:
-        return HealthScoreComponent("listing_age", "Listing age (366-730 days)", -15)
+    if age_days > thresholds.stale_after_days:
+        return HealthScoreComponent(
+            "listing_age", f"Listing age (>{thresholds.stale_after_days} days)", -25
+        )
+    if age_days > thresholds.recent_max_days:
+        return HealthScoreComponent(
+            "listing_age", f"Listing age ({thresholds.aging_range})", -15
+        )
     return None
 
 
@@ -674,7 +686,8 @@ def calculate_health_score_breakdown(row: dict[str, Any]) -> HealthScoreBreakdow
             )
             recovery += points
 
-    age_component = _listing_age_score_component(row.get("age_days"))
+    thresholds = freshness_from_settings(row)
+    age_component = _listing_age_score_component(row.get("age_days"), thresholds)
     age_penalty = age_component.points if age_component is not None else 0
     if age_component is not None:
         components.append(age_component)
@@ -762,7 +775,13 @@ def calculate_health_score(row: dict[str, Any]) -> int:
     return calculate_health_score_breakdown(row).score
 
 
-def apply_health_score(row: dict[str, Any]) -> None:
+def apply_health_score(
+    row: dict[str, Any], settings: dict[str, Any] | None = None
+) -> None:
+    if settings is not None:
+        thresholds = freshness_from_settings(settings)
+        row["store_recent_max_days"] = thresholds.recent_max_days
+        row["store_stale_after_days"] = thresholds.stale_after_days
     row["health_score"] = calculate_health_score(row)
 
 
@@ -1023,7 +1042,16 @@ def annotate_inventory_changes_and_save(
 
 
 def _status_class(row: dict[str, Any]) -> str:
-    return str(row.get("criticality_key") or "purple")
+    key = str(row.get("criticality_key") or "blue")
+    return "blue" if key == "purple" else key
+
+
+def _visible_status(row: dict[str, Any]) -> str:
+    if _status_class(row) == "blue":
+        return "Anomaly"
+    if _status_class(row) == "green":
+        return "Recent"
+    return str(row.get("criticality") or "")
 
 
 def write_html_report(
@@ -1035,17 +1063,16 @@ def write_html_report(
     )
     counts = {
         key: sum(1 for row in rows if _status_class(row) == key)
-        for key in ("green", "yellow", "orange", "red", "blue", "purple")
+        for key in ("green", "yellow", "orange", "red", "blue")
     }
     cards = "".join(
         f'<div class="card {key}"><b>{label}</b><span>{counts[key]}</span></div>'
         for key, label in (
-            ("green", "Recent Update"),
+            ("green", "Recent"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
             ("red", "Not Found"),
             ("blue", "Anomaly"),
-            ("purple", "Other"),
         )
     )
     device_html = ""
@@ -1080,7 +1107,7 @@ def write_html_report(
         if local_apk_report:
             table_rows.append(
                 f'<tr class="{_status_class(row)}">'
-                f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
+                f"<td>{html.escape(_visible_status(row))}</td>"
                 f"<td>{html.escape(str(row.get('local_apk_file_name') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('local_apk_version_name') or ''))}</td>"
@@ -1096,7 +1123,7 @@ def write_html_report(
         else:
             table_rows.append(
                 f'<tr class="{_status_class(row)}">'
-                f"<td>{html.escape(str(row.get('criticality') or ''))}</td>"
+                f"<td>{html.escape(_visible_status(row))}</td>"
                 f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
@@ -1229,8 +1256,8 @@ def create_diagnostic_bundle(
         "portable_mode": portable_mode_active(),
         "result_count": len(rows),
         "status_counts": {
-            key: sum(1 for row in rows if str(row.get("criticality_key") or "") == key)
-            for key in ("green", "yellow", "orange", "red", "blue", "purple")
+            key: sum(1 for row in rows if _status_class(row) == key)
+            for key in ("green", "yellow", "orange", "red", "blue")
         },
         "device": {k: v for k, v in (device_summary or {}).items() if k not in {"device_id"}},
     }

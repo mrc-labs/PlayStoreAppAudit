@@ -288,7 +288,7 @@ def test_real_phone_changes_history_apply_persists_and_shows_device_column(
     assert settings["changes_history_enabled"] is True
     assert settings["inventory_history_enabled"] is True
     assert not _device_change_hidden(window)
-    assert _visual_index(window, "device_change") == 1
+    assert _visual_index(window, "device_change") == 2
 
     dialog.close()
     window._show_changes_history()
@@ -349,7 +349,7 @@ def test_basic_real_history_apply_positions_columns_near_front(
             if enabled
         ]
         assert [_visual_index(window, column) for column in expected] == list(
-            range(1, len(expected) + 1)
+            range(2, len(expected) + 2)
         )
 
 

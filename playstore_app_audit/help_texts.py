@@ -157,9 +157,9 @@ value is kept within the 0–100 range.</p>
   <li><b>F-Droid main availability recovery:</b> +10, only while that −60 penalty is active</li>
   <li><b>Aptoide availability recovery:</b> +5, only while that −60 penalty is active</li>
   <li><b>Store anomaly:</b> −20</li>
-  <li><b>Other or inconclusive Store state:</b> −15</li>
-  <li><b>Stale listing, updated more than 730 days ago:</b> −25</li>
-  <li><b>Aging listing, updated 366–730 days ago:</b> −15</li>
+  <li><b>Inconclusive Store evidence:</b> −15</li>
+  <li><b>Stale listing (after the configured Store freshness threshold):</b> −25</li>
+  <li><b>Aging listing (between the configured Recent and Stale thresholds):</b> −15</li>
   <li><b>Legacy target SDK relative to the connected device:</b> −15</li>
   <li><b>Aging target SDK relative to the connected device:</b> −10</li>
   <li><b>Source-relevant installed/Local APK version is numerically Outdated:</b> −10</li>

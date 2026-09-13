@@ -111,7 +111,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     def _classify_row(self, row: dict[str, Any]) -> None:
         super()._classify_row(row)
-        device_insights.apply_health_score(row)
+        device_insights.apply_health_score(row, self.user_settings)
 
     # ---------- Column/view presets ----------
     def _visible_column_order(self) -> list[str]:
@@ -230,7 +230,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
         tools.addAction("Run with Fresh Store Results", self._force_full_refresh)
-        tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
+        tools.addAction("Recheck Not Found / Anomaly", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
@@ -770,7 +770,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         if self.current_rows:
             for row in self.current_rows:
                 if not row.get("_audit_provisional"):
-                    device_insights.apply_health_score(row)
+                    device_insights.apply_health_score(row, self.user_settings)
         if self.current_rows:
             self.model.set_rows(self.current_rows)
             self._apply_column_visibility(reset_order=False)

@@ -115,7 +115,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar.addMenu(self.audit_menu)
         self.run_audit_action = self.audit_menu.addAction("Run Audit", self._start_audit)
         self.recheck_problematic_action = self.audit_menu.addAction(
-            "Recheck Not Found / Anomaly / Other", self._recheck_problematic
+            "Recheck Not Found / Anomaly", self._recheck_problematic
         )
         self.force_full_refresh_action = self.audit_menu.addAction(
             "Run with Fresh Store Results", self._force_full_refresh
@@ -370,10 +370,16 @@ class MenuWindow(preferences_ui.PreferencesWindow):
                 "store_results": self._perform_clear_audit_cache,
                 "app_icons": self._perform_clear_app_icon_cache,
                 "alternative_store": self._perform_clear_alternative_store_cache,
+                "local_package_metadata": self._perform_clear_local_package_metadata_cache,
                 "previous_audit_history": self._perform_clear_audit_history,
                 "device_inventory_history": self._perform_clear_device_inventory_history,
             },
             self.status_label.setText,
+            history_availability=lambda: {
+                "previous_audit_history": state.has_meaningful_previous_audit_history(),
+                "device_inventory_history": device_insights.has_device_inventory_history(),
+            },
+            automatic_tracking=state.changes_history_enabled(self.user_settings),
         )
         self._data_maintenance_dialog = dialog
 
@@ -399,6 +405,13 @@ class MenuWindow(preferences_ui.PreferencesWindow):
     def _perform_clear_alternative_store_cache() -> str:
         state.clear_alternative_distribution_cache()
         return "Alternative Store Cache cleared"
+
+    @staticmethod
+    def _perform_clear_local_package_metadata_cache() -> str:
+        from playstore_app_audit.services.local_package_metadata_cache import clear_cache
+
+        clear_cache()
+        return "Local Package Metadata Cache cleared"
 
     def _populate_filter_menu(self) -> None:
         if not hasattr(self, "_filter_menu"):
@@ -448,6 +461,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         """Reset only session-level controls that can hide current result rows."""
         self.search_edit.clear()
         self._set_criticality_filter(None)
+        self._set_apk_relationship_filter("All")
         self._apply_filter_preset("All")
         self._clear_smart_query()
         self.hide_system_check.setChecked(False)
@@ -498,7 +512,10 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         base_rows = self._rows_before_criticality_filter()
         criticality = base_ui.CRITICALITY
         counts = {
-            key: sum(1 for row in base_rows if str(row.get("criticality_key") or "") == key)
+            key: sum(
+                1 for row in base_rows
+                if ("blue" if row.get("criticality_key") == "purple" else row.get("criticality_key")) == key
+            )
             for key in criticality
         }
         if hasattr(self, "criticality_buttons"):
@@ -511,10 +528,13 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
     def _clear_results(self) -> None:
         self._status_filters.clear()
+        self._apk_relationship_filters.clear()
         super()._clear_results()
         if isinstance(self.proxy, preferences_ui.AuditFilterProxy):
             self.proxy.set_status_filters(set())
+            self.proxy.set_relationship_filters(set())
         self._sync_status_filter_buttons()
+        self._sync_apk_relationship_buttons()
         self._update_summary()
 
 

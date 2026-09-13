@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -44,6 +46,7 @@ class AuditWindow(BaseWindow):
     """
 
     def __init__(self) -> None:
+        self._apk_relationship_filters: set[str] = set()
         self._scan_request_sequence = 0
         self._active_scan_request_id: int | None = None
         self._scan_session: scan_sessions.ScanSession | None = None
@@ -73,6 +76,34 @@ class AuditWindow(BaseWindow):
         except (TypeError, ValueError):
             return False
         return request_id == self._active_scan_request_id
+
+    def _set_apk_relationship_filter(self, relationship: str) -> None:
+        if relationship == "All":
+            self._apk_relationship_filters.clear()
+        elif relationship in self._apk_relationship_filters:
+            self._apk_relationship_filters.remove(relationship)
+        else:
+            self._apk_relationship_filters.add(relationship)
+        setter = getattr(self.proxy, "set_relationship_filters", None)
+        if callable(setter):
+            setter(self._apk_relationship_filters)
+        self._sync_apk_relationship_buttons()
+        self._update_summary()
+
+    def _sync_apk_relationship_buttons(self) -> None:
+        for relationship, button in self.apk_relationship_buttons.items():
+            button.setChecked(
+                not self._apk_relationship_filters
+                if relationship == "All"
+                else relationship in self._apk_relationship_filters
+            )
+        hidden = self._apk_relationship_filters & {"Different", "Unknown"}
+        self.apk_relationship_more.setChecked(bool(hidden))
+        self.apk_relationship_more.setText(
+            f"More ({len(hidden)}) ▾" if hidden else "More ▾"
+        )
+        for relationship, action in self.apk_relationship_more_actions.items():
+            action.setChecked(relationship in hidden)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -240,7 +271,7 @@ class AuditWindow(BaseWindow):
         chip_row.addWidget(self.all_chip)
 
         self.criticality_buttons: dict[str, QPushButton] = {}
-        for key in ("red", "orange", "yellow", "blue", "purple", "green"):
+        for key in ("red", "orange", "yellow", "blue", "green"):
             info = CRITICALITY[key]
             button = QPushButton(f"{info['button']} 0")
             button.setObjectName("CriticalityButton")
@@ -257,6 +288,56 @@ class AuditWindow(BaseWindow):
             chip_row.addWidget(button)
         chip_row.addStretch(1)
         results_layout.addLayout(chip_row)
+
+        self.apk_relationship_filter_row = QWidget()
+        self.apk_relationship_filter_row.setObjectName("ApkRelationshipFilterRow")
+        relationship_row = QHBoxLayout(self.apk_relationship_filter_row)
+        relationship_row.setContentsMargins(0, 0, 0, 0)
+        relationship_row.setSpacing(6)
+        relationship_row.addWidget(QLabel("APK vs Store:"))
+        self.apk_relationship_buttons: dict[str, QPushButton] = {}
+        for value, label in (
+            ("All", "All"), ("Outdated", "Outdated"), ("Newer", "Newer"),
+            ("Match", "Match"), ("Device-specific", "Device"), ("N/A", "N/A"),
+        ):
+            button = QPushButton(label)
+            button.setObjectName(f"ApkRelationship{value.replace('-', '').replace('/', '')}Button")
+            button.setCheckable(True)
+            button.setToolTip(
+                "The Store version varies by device; a direct order is unsafe."
+                if value == "Device-specific" else f"Show Local APK results with {value} relationship."
+            )
+            button.clicked.connect(
+                lambda _checked=False, relationship=value: self._set_apk_relationship_filter(relationship)
+            )
+            self.apk_relationship_buttons[value] = button
+            relationship_row.addWidget(button)
+        self.apk_relationship_more = QPushButton("More ▾")
+        self.apk_relationship_more.setObjectName("ApkRelationshipMoreButton")
+        self.apk_relationship_more.setCheckable(True)
+        more_menu = QMenu(self.apk_relationship_more)
+        self.apk_relationship_more_actions: dict[str, QAction] = {}
+        for value in ("Different", "Unknown"):
+            action = more_menu.addAction(value)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda _checked=False, relationship=value: self._set_apk_relationship_filter(relationship)
+            )
+            self.apk_relationship_more_actions[value] = action
+        def show_more_menu() -> None:
+            self._sync_apk_relationship_buttons()
+            more_menu.popup(
+                self.apk_relationship_more.mapToGlobal(
+                    self.apk_relationship_more.rect().bottomLeft()
+                )
+            )
+
+        self.apk_relationship_more.clicked.connect(show_more_menu)
+        relationship_row.addWidget(self.apk_relationship_more)
+        relationship_row.addStretch(1)
+        self.apk_relationship_filter_row.setVisible(False)
+        results_layout.addWidget(self.apk_relationship_filter_row)
+        self._sync_apk_relationship_buttons()
 
         self.table = QTableView()
         self.table.setModel(self.proxy)

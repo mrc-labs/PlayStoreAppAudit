@@ -86,9 +86,10 @@ def test_warning_values_map_to_existing_status_semantics(
     assert presentation.semantic_foreground_colour(field, value) == (
         presentation.STATUS_FOREGROUND_COLOURS[status_key]
     )
-    assert base_ui.CRITICALITY[status_key]["foreground"] == (
-        presentation.STATUS_FOREGROUND_COLOURS[status_key]
-    )
+    if status_key in base_ui.CRITICALITY:
+        assert base_ui.CRITICALITY[status_key]["foreground"] == (
+            presentation.STATUS_FOREGROUND_COLOURS[status_key]
+        )
 
 
 def test_table_warning_typography_preserves_severity_hierarchy(

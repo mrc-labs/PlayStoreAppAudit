@@ -25,10 +25,10 @@ DATE_FIELDS = {"play_last_update", "first_install_time", "last_local_update"}
 VIEW_PRESETS = ("Basic", "Source Details", "Technical", "Custom")
 DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "criticality",
+    "age_days",
     "package_name",
     "play_title",
     "play_last_update",
-    "age_days",
     "notes",
 ]
 

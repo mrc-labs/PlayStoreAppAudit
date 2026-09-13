@@ -45,7 +45,7 @@ SELECTED_ROW_FOREGROUND = "#18212A"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
-    "Unknown": "purple",
+    "Unknown": "blue",
     "Device-specific": "blue",
     "Newer": "green",
     "Match": "green",
@@ -314,10 +314,12 @@ class AuditTableModel(base_ui.AppTableModel):
         row = self.rows[index.row()]
         column = self.columns[index.column()]
         provisional = bool(row.get("_audit_provisional"))
-        key = str(row.get("criticality_key") or "purple")
-        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
+        key = str(row.get("criticality_key") or "blue")
+        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["blue"])
 
         if role == Qt.ItemDataRole.DisplayRole:
+            if column == "criticality" and key in {"purple", "green"}:
+                return "Anomaly" if key == "purple" else "Recent"
             if column == "notes":
                 return presentation.friendly_notes(row)
             value = row.get(column, "")

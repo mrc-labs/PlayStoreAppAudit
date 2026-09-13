@@ -79,7 +79,7 @@ COLUMN_LABELS = {
     "play_status": "Play Status",
     "updated_source": "Update Source",
     "play_http_status": "HTTP Status",
-    "app_name": "Input Name",
+    "app_name": "Source Name",
     "store_url": "Store URL",
     "is_system": "System App",
     "play_version": "Play Store Version",
@@ -153,7 +153,7 @@ def _width(
 # They deliberately do not inspect body values: long URLs and notes remain
 # bounded while primary identity columns receive useful reading space.
 COLUMN_WIDTH_POLICIES = {
-    "criticality": _width(ColumnWidthCategory.MEDIUM, 145, 120, 180),
+    "criticality": _width(ColumnWidthCategory.MEDIUM, 128, 108, 156),
     "change": _width(ColumnWidthCategory.MEDIUM, 145, 125, 165),
     "package_name": _width(ColumnWidthCategory.PRIMARY, 300, 240, 340),
     "play_title": _width(ColumnWidthCategory.PRIMARY, 280, 220, 340),

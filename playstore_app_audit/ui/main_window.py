@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -27,6 +29,7 @@ import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.local_package_container as local_package_container
+import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -36,6 +39,7 @@ from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
     LocalArtifactFailureKind,
     LocalArtifactParseFailure,
+    LocalArtifactParseResult,
 )
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.platform import runtime
@@ -54,6 +58,7 @@ from playstore_app_audit.ui.column_presets import (
 from playstore_app_audit.ui.device_window import RowActionAvailability
 
 logger = logging.getLogger(__name__)
+LOCAL_PARSE_WORKERS = 3
 
 
 def _detach_layout(layout, keep: set[object]) -> None:
@@ -356,10 +361,18 @@ class MainWindow(results_ui.ResultsWindow):
 
     def _sync_action_availability(self) -> None:
         super()._sync_action_availability()
+        local_source = local_apk_audit.is_local_apk_source(self.source_mode)
+        if hasattr(self, "apk_relationship_filter_row"):
+            self.apk_relationship_filter_row.setVisible(local_source)
+            if not local_source and self._apk_relationship_filters:
+                self._apk_relationship_filters.clear()
+                setter = getattr(self.proxy, "set_relationship_filters", None)
+                if callable(setter):
+                    setter(set())
+                self._sync_apk_relationship_buttons()
         if not hasattr(self, "choose_apk_button"):
             return
         idle = not self._operation_running()
-        local_source = local_apk_audit.is_local_apk_source(self.source_mode)
         self.choose_apk_button.setEnabled(idle)
         self.file_choose_apk_action.setEnabled(idle)
         self.file_choose_apk_folder_action.setEnabled(idle)
@@ -852,67 +865,105 @@ class MainWindow(results_ui.ResultsWindow):
         artifacts: list[LocalArtifact] = []
         failures: list[LocalArtifactParseFailure] = []
         unexpected_failures: list[str] = []
-        for index, path in enumerate(candidates, start=1):
-            if cancel_event.is_set():
-                break
+        cache_hits = 0
+
+        def parse_candidate(path: Path) -> tuple[LocalArtifactParseResult, bool] | None:
             pause_event.wait()
             if cancel_event.is_set():
-                break
-            try:
-                parsed = (
-                    local_apk.parse_local_apk(path)
+                return None
+            return local_metadata_cache.parse_cached_local_package(
+                path,
+                cancel_event=cancel_event,
+                parser=lambda candidate: (
+                    local_apk.parse_local_apk(candidate)
                     if path.suffix.casefold() == ".apk"
                     else local_package_container.parse_local_package(
-                        path, cancel_event=cancel_event
+                        candidate, cancel_event=cancel_event
                     )
-                )
-            except Exception as exc:
-                logger.exception(
-                    "Unexpected local package parser failure: format=%s",
-                    path.suffix.casefold().lstrip("."),
-                )
-                unexpected_failures.append(f"{path.name}: {type(exc).__name__}")
-            else:
-                if parsed.artifact is not None:
-                    artifacts.append(parsed.artifact)
-                    if path.suffix.casefold() != ".apk":
-                        logger.info(
-                            "local_container_accepted format=%s",
-                            path.suffix.casefold().lstrip("."),
-                        )
-                    self.audit_control_signals.row_available.emit(
-                        session,
-                        local_apk_audit.artifact_result_row(
-                            parsed.artifact,
-                            source_mode=source_mode,
-                            provisional=True,
-                        ),
-                    )
-                    if index == 1 or index == len(candidates) or index % 25 == 0:
-                        logger.info(
-                            "local_parse_progress parsed=%d total=%d provisional_rows=%d",
-                            index,
-                            len(candidates),
-                            len(artifacts),
-                        )
-                elif parsed.failure is not None:
-                    if parsed.failure.kind is not LocalArtifactFailureKind.CANCELLED:
-                        logger.info(
-                            "local_container_rejected format=%s reason=%s",
-                            path.suffix.casefold().lstrip("."),
-                            parsed.failure.kind.value,
-                        )
-                        failures.append(parsed.failure)
-            self.audit_control_signals.progress.emit(
-                session, index, len(candidates), f"Parsing package • {path.name}"
+                ),
             )
+
+        worker_count = min(LOCAL_PARSE_WORKERS, max(1, len(candidates)))
+        pending: deque[tuple[int, Path, Future[tuple[LocalArtifactParseResult, bool] | None]]] = deque()
+        next_index = 0
+        with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="local-package") as executor:
+            while next_index < len(candidates) and len(pending) < worker_count and not cancel_event.is_set():
+                path = candidates[next_index]
+                pending.append((next_index + 1, path, executor.submit(parse_candidate, path)))
+                next_index += 1
+
+            while pending:
+                index, path, future = pending.popleft()
+                if cancel_event.is_set():
+                    future.cancel()
+                    break
+                pause_event.wait()
+                if cancel_event.is_set():
+                    future.cancel()
+                    break
+                try:
+                    parse_outcome = future.result()
+                    if parse_outcome is None:
+                        break
+                    parsed, hit = parse_outcome
+                    cache_hits += int(hit)
+                except Exception as exc:
+                    logger.exception(
+                        "Unexpected local package parser failure: format=%s",
+                        path.suffix.casefold().lstrip("."),
+                    )
+                    unexpected_failures.append(f"{path.name}: {type(exc).__name__}")
+                else:
+                    if parsed.artifact is not None:
+                        artifacts.append(parsed.artifact)
+                        if path.suffix.casefold() != ".apk":
+                            logger.info(
+                                "local_container_accepted format=%s",
+                                path.suffix.casefold().lstrip("."),
+                            )
+                        self.audit_control_signals.row_available.emit(
+                            session,
+                            local_apk_audit.artifact_result_row(
+                                parsed.artifact,
+                                source_mode=source_mode,
+                                provisional=True,
+                            ),
+                        )
+                        if index == 1 or index == len(candidates) or index % 25 == 0:
+                            logger.info(
+                                "local_parse_progress parsed=%d total=%d provisional_rows=%d",
+                                index,
+                                len(candidates),
+                                len(artifacts),
+                            )
+                    elif parsed.failure is not None:
+                        if parsed.failure.kind is not LocalArtifactFailureKind.CANCELLED:
+                            logger.info(
+                                "local_container_rejected format=%s reason=%s",
+                                path.suffix.casefold().lstrip("."),
+                                parsed.failure.kind.value,
+                            )
+                            failures.append(parsed.failure)
+                self.audit_control_signals.progress.emit(
+                    session, index, len(candidates), f"Parsing package • {path.name}"
+                )
+                if next_index < len(candidates) and not cancel_event.is_set():
+                    next_path = candidates[next_index]
+                    pending.append((next_index + 1, next_path, executor.submit(parse_candidate, next_path)))
+                    next_index += 1
+            if cancel_event.is_set():
+                for _, _, future in pending:
+                    future.cancel()
+        parse_ms = round(max(0.0, time.perf_counter() - parse_started) * 1000)
         logger.info(
-            "local_parse_complete valid=%d rejected=%d cancelled=%s",
+            "local_parse_complete valid=%d rejected=%d cache_hits=%d workers=%d parse_ms=%d cancelled=%s",
             len(artifacts),
             len(failures) + len(unexpected_failures),
+            cache_hits,
+            worker_count,
+            parse_ms,
             cancel_event.is_set(),
         )
-        parse_ms = round(max(0.0, time.perf_counter() - parse_started) * 1000)
         failure_lines = [
             f"{failure.path.name}: {failure.kind.value.replace('_', ' ')}"
             for failure in failures[:5]

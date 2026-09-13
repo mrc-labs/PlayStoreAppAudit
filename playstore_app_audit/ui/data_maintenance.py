@@ -58,6 +58,15 @@ CACHE_ACTIONS = (
         "and settings will not be deleted.",
         "Alternative Store Cache cleared",
     ),
+    MaintenanceAction(
+        "local_package_metadata",
+        "Local Package Metadata Cache",
+        "Parsed metadata from local APK and package-container files; no Store results.",
+        "Clear Local Package Metadata Cache?",
+        "Delete cached local package metadata? Source files, Store results, history "
+        "and current results will not be deleted.",
+        "Local Package Metadata Cache cleared",
+    ),
 )
 
 HISTORY_ACTIONS = (
@@ -84,7 +93,7 @@ HISTORY_ACTIONS = (
 )
 
 CLEAR_ALL_CONFIRMATION = (
-    "Delete Store results, app icons and alternative-store caches? History, Device "
+    "Delete Store results, app icons, alternative-store and local package metadata caches? History, Device "
     "Snapshots, settings and current results will not be deleted."
 )
 
@@ -97,6 +106,9 @@ class DataMaintenanceDialog(QDialog):
         parent: QWidget,
         callbacks: Mapping[str, MaintenanceCallback],
         status_callback: StatusCallback,
+        *,
+        history_availability: Callable[[], Mapping[str, bool]] | None = None,
+        automatic_tracking: bool = True,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("DataMaintenanceDialog")
@@ -105,6 +117,8 @@ class DataMaintenanceDialog(QDialog):
         self.setModal(True)
         self._callbacks = dict(callbacks)
         self._status_callback = status_callback
+        self._history_availability = history_availability
+        self._destructive_enabled = True
         self.action_buttons: dict[str, QPushButton] = {}
 
         root = QVBoxLayout(self)
@@ -140,10 +154,19 @@ class DataMaintenanceDialog(QDialog):
         history_layout = QGridLayout(self.history_group)
         self._add_rows(history_layout, HISTORY_ACTIONS)
         root.addWidget(self.history_group)
+        if not automatic_tracking:
+            retained = QLabel(
+                "Automatic change tracking is off. Existing comparison history is "
+                "retained until you explicitly clear it here."
+            )
+            retained.setObjectName("RetainedHistoryNote")
+            retained.setWordWrap(True)
+            root.addWidget(retained)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
         root.addWidget(buttons)
+        self._refresh_availability()
 
     def _add_rows(
         self,
@@ -170,8 +193,17 @@ class DataMaintenanceDialog(QDialog):
             layout.addWidget(button, row, 2, alignment=Qt.AlignmentFlag.AlignRight)
 
     def set_destructive_enabled(self, enabled: bool) -> None:
-        for button in self.action_buttons.values():
-            button.setEnabled(enabled)
+        self._destructive_enabled = enabled
+        self._refresh_availability()
+
+    def _refresh_availability(self) -> None:
+        available = self._history_availability() if self._history_availability else {}
+        for key, button in self.action_buttons.items():
+            button.setEnabled(
+                self._destructive_enabled
+                and (key not in {"previous_audit_history", "device_inventory_history"}
+                     or available.get(key, True))
+            )
 
     def _confirmed(self, title: str, message: str) -> bool:
         answer = QMessageBox.question(
@@ -197,6 +229,7 @@ class DataMaintenanceDialog(QDialog):
             )
             return
         self._status_callback(status)
+        self._refresh_availability()
 
     def _clear_all_caches(self) -> None:
         if not self._confirmed("Clear All Caches?", CLEAR_ALL_CONFIRMATION):
@@ -228,5 +261,5 @@ class DataMaintenanceDialog(QDialog):
             return
 
         self._status_callback(
-            "Store Results Cache, App Icon Cache and Alternative Store Cache cleared"
+            "Store Results Cache, App Icon Cache, Alternative Store Cache and Local Package Metadata Cache cleared"
         )

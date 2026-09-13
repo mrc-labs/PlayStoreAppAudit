@@ -160,7 +160,7 @@ def test_store_metadata_maintenance_and_installer_changes_are_structured() -> No
         },
         {
             "type": "maintenance_state_changed",
-            "previous": "Recent Update",
+            "previous": "Recent",
             "current": "Aging",
             "previous_key": "green",
             "current_key": "yellow",

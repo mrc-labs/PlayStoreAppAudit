@@ -164,7 +164,7 @@ def test_store_status_text_is_symbol_free_for_every_source_type(source_mode: str
     )
     index = model.index(0, model.columns.index("criticality"))
 
-    assert index.data(Qt.ItemDataRole.DisplayRole) == "Recent Update"
+    assert index.data(Qt.ItemDataRole.DisplayRole) == "Recent"
 
 
 def test_source_status_text_names_the_active_source(
@@ -255,6 +255,8 @@ def test_source_status_text_names_the_active_source(
 def test_basic_and_source_details_layouts(
     preset: str, source: str, expected: list[str]
 ) -> None:
+    expected.remove("age_days")
+    expected.insert(expected.index("criticality") + 1, "age_days")
     assert column_presets.visible_columns(
         preset,
         source,
@@ -310,8 +312,9 @@ def test_builtin_history_columns_follow_independent_feature_and_source_gates(
     assert ("change" in columns) is (store_history and source != "local_apk")
     assert ("device_change" in columns) is (device_history and source == "device")
     if source == "device" and store_history and device_history:
-        assert columns[:3] == [
+        assert columns[:4] == [
             "criticality",
+            "age_days",
             "change",
             "device_change",
         ]
@@ -492,7 +495,7 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
         ("N/A", "red"),
         ("Outdated", "orange"),
         ("Different", "yellow"),
-        ("Unknown", "purple"),
+        ("Unknown", "blue"),
         ("Device-specific", "blue"),
         ("Newer", "green"),
         ("Match", "green"),

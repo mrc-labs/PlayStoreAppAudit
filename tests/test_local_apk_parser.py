@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tomllib
 import warnings
 import zipfile
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC
 from pathlib import Path
@@ -23,7 +26,7 @@ from playstore_app_audit.domain.local_artifacts import (
     LocalArtifactParseResult,
     LocalArtifactWarning,
 )
-from playstore_app_audit.services import local_apk
+from playstore_app_audit.services import local_apk, local_package_metadata_cache
 
 # Apache-2.0 test asset from androguard/axml commit
 # 5fdb362964fb98ff33631d5181c584121fa9b1b1. Its upstream filename is
@@ -99,6 +102,58 @@ def _artifact(result: LocalArtifactParseResult) -> LocalArtifact:
     assert result.failure is None
     assert result.artifact is not None
     return result.artifact
+
+
+def test_local_metadata_cache_fast_hit_invalidation_schema_and_clear(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(local_package_metadata_cache, "app_data_dir", lambda: tmp_path)
+    apk = _write_apk(tmp_path / "cached.apk")
+    calls = 0
+
+    def parse(path: str | Path) -> LocalArtifactParseResult:
+        nonlocal calls
+        calls += 1
+        return local_apk.parse_local_apk(path)
+
+    first, hit = local_package_metadata_cache.parse_cached_local_package(apk, parser=parse)
+    assert not hit and first.artifact is not None
+    assert local_package_metadata_cache.entry_count() == 1
+    with closing(sqlite3.connect(local_package_metadata_cache.cache_path())) as connection:
+        stored = json.loads(connection.execute("SELECT metadata FROM artifacts").fetchone()[0])
+    assert stored["package_id"] == first.artifact.package_id
+    assert stored["artifact_sha256"] == first.artifact.artifact_sha256
+    assert not any(key.startswith("play_") or key.startswith("alternative_") for key in stored)
+    second, hit = local_package_metadata_cache.parse_cached_local_package(apk, parser=parse)
+    assert hit and second.artifact == first.artifact and calls == 1
+
+    stat = apk.stat()
+    os.utime(apk, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    _, hit = local_package_metadata_cache.parse_cached_local_package(apk, parser=parse)
+    assert not hit and calls == 2
+
+    _write_apk(apk, extra_entry=b"changed size")
+    _, hit = local_package_metadata_cache.parse_cached_local_package(apk, parser=parse)
+    assert not hit and calls == 3
+
+    with closing(sqlite3.connect(local_package_metadata_cache.cache_path())) as connection:
+        connection.execute("PRAGMA user_version = 0")
+    _, hit = local_package_metadata_cache.parse_cached_local_package(apk, parser=parse)
+    assert not hit and calls == 4
+    local_package_metadata_cache.clear_cache()
+    assert local_package_metadata_cache.entry_count() == 0
+
+
+def test_local_metadata_cache_retention_is_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(local_package_metadata_cache, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(local_package_metadata_cache, "MAX_ENTRIES", 2)
+    for index in range(3):
+        apk = _write_apk(tmp_path / f"bounded-{index}.apk")
+        result, hit = local_package_metadata_cache.parse_cached_local_package(apk)
+        assert result.artifact is not None and not hit
+    assert local_package_metadata_cache.entry_count() == 2
 
 
 def test_parses_bounded_standalone_apk_metadata(tmp_path: Path) -> None:

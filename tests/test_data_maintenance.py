@@ -5,10 +5,11 @@ import os
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QLabel, QMessageBox
 
 import playstore_app_audit.services.app_icon_disk_cache as disk_cache
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 from playstore_app_audit.ui.data_maintenance import (
@@ -47,6 +48,7 @@ def window(
     monkeypatch.setattr(state, "app_data_dir", lambda: tmp_path)
     monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
     monkeypatch.setattr(device_insights, "app_data_dir_v9", lambda: tmp_path)
+    monkeypatch.setattr(local_metadata_cache, "app_data_dir", lambda: tmp_path)
     created = MainWindow()
     yield created
     created.close()
@@ -58,6 +60,7 @@ def _callbacks(window: MainWindow):
         "store_results": window._perform_clear_audit_cache,
         "app_icons": window._perform_clear_app_icon_cache,
         "alternative_store": window._perform_clear_alternative_store_cache,
+        "local_package_metadata": window._perform_clear_local_package_metadata_cache,
         "previous_audit_history": window._perform_clear_audit_history,
         "device_inventory_history": window._perform_clear_device_inventory_history,
     }
@@ -69,6 +72,7 @@ def _seed_data(tmp_path: Path) -> dict[str, Path]:
         "store": tmp_path / "audit_cache.json",
         "history": tmp_path / "audit_history.json",
         "alternative": tmp_path / "alternative_distribution_cache.json",
+        "local_metadata": tmp_path / "local_package_metadata.sqlite3",
         "inventory": tmp_path / "inventory_phone.json",
         "snapshot": tmp_path / "device_snapshots" / "saved.psaa.json",
     }
@@ -96,6 +100,7 @@ def test_dialog_has_two_sections_exact_actions_and_no_combined_data_clear(
             "Store Results Cache",
             "App Icon Cache",
             "Alternative Store Cache",
+            "Local Package Metadata Cache",
         )
         assert tuple(action.title for action in HISTORY_ACTIONS) == (
             "Previous Audit History",
@@ -105,6 +110,7 @@ def test_dialog_has_two_sections_exact_actions_and_no_combined_data_clear(
             "store_results",
             "app_icons",
             "alternative_store",
+            "local_package_metadata",
             "all_caches",
             "previous_audit_history",
             "device_inventory_history",
@@ -113,6 +119,45 @@ def test_dialog_has_two_sections_exact_actions_and_no_combined_data_clear(
         assert all("Everything" not in button.text() for button in dialog.action_buttons.values())
     finally:
         dialog.deleteLater()
+
+
+def test_tracking_off_retains_history_and_clear_buttons_follow_each_store(
+    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    history = state.history_path()
+    history.write_text(
+        json.dumps({"com.example.app": {"play_status": "available"}}), encoding="utf-8"
+    )
+    inventory = tmp_path / "inventory_phone.json"
+    inventory.write_text(
+        json.dumps({"apps": {"com.example.app": {"version": "1"}}}), encoding="utf-8"
+    )
+    before = (history.read_bytes(), inventory.read_bytes())
+    window._save_changes_history_settings(False, True, True)
+    assert (history.read_bytes(), inventory.read_bytes()) == before
+
+    def availability() -> dict[str, bool]:
+        return {
+            "previous_audit_history": state.has_meaningful_previous_audit_history(),
+            "device_inventory_history": device_insights.has_device_inventory_history(),
+        }
+    dialog = DataMaintenanceDialog(
+        window, _callbacks(window), lambda _message: None,
+        history_availability=availability, automatic_tracking=False,
+    )
+    note = dialog.findChild(QLabel, "RetainedHistoryNote")
+    assert note is not None and "retained until you explicitly clear" in note.text()
+    assert dialog.action_buttons["previous_audit_history"].isEnabled()
+    assert dialog.action_buttons["device_inventory_history"].isEnabled()
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes
+    )
+    dialog._run(HISTORY_ACTIONS[0])
+    assert not dialog.action_buttons["previous_audit_history"].isEnabled()
+    assert dialog.action_buttons["device_inventory_history"].isEnabled()
+    dialog._run(HISTORY_ACTIONS[1])
+    assert not dialog.action_buttons["device_inventory_history"].isEnabled()
+    dialog.deleteLater()
 
 
 def test_every_confirmation_defaults_to_no_and_names_preserved_scope(
@@ -168,8 +213,15 @@ def test_individual_cache_and_history_operations_preserve_other_stores(
     paths = _seed_data(tmp_path)
     window._perform_clear_alternative_store_cache()
     assert json.loads(paths["alternative"].read_text(encoding="utf-8")) == {}
+    assert paths["local_metadata"].exists()
     assert paths["store"].read_text(encoding="utf-8") != "{}"
     assert paths["history"].is_file() and paths["settings"].is_file()
+
+    paths = _seed_data(tmp_path)
+    window._perform_clear_local_package_metadata_cache()
+    assert not paths["local_metadata"].exists()
+    assert paths["store"].is_file() and paths["alternative"].is_file()
+    assert paths["history"].is_file() and paths["inventory"].is_file()
 
     paths = _seed_data(tmp_path)
     window._perform_clear_app_icon_cache()
@@ -196,7 +248,7 @@ def test_individual_cache_and_history_operations_preserve_other_stores(
     assert paths["settings"].is_file()
 
 
-def test_clear_all_caches_clears_exactly_three_caches(
+def test_clear_all_caches_clears_exactly_four_caches(
     window: MainWindow,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -218,6 +270,7 @@ def test_clear_all_caches_clears_exactly_three_caches(
 
     assert json.loads(paths["store"].read_text(encoding="utf-8")) == {}
     assert json.loads(paths["alternative"].read_text(encoding="utf-8")) == {}
+    assert not paths["local_metadata"].exists()
     assert not paths["icons"].exists()
     assert paths["history"].is_file() and paths["inventory"].is_file()
     assert paths["snapshot"].is_file() and paths["settings"].is_file()
@@ -225,7 +278,7 @@ def test_clear_all_caches_clears_exactly_three_caches(
     assert window.source_mode == source_mode
     assert "saved_smart_queries" in window.user_settings
     assert status == [
-        "Store Results Cache, App Icon Cache and Alternative Store Cache cleared"
+        "Store Results Cache, App Icon Cache, Alternative Store Cache and Local Package Metadata Cache cleared"
     ]
 
 
@@ -247,6 +300,7 @@ def test_clear_all_reports_partial_failure_without_claiming_success(
             "store_results": lambda: calls.append("store"),
             "app_icons": fail_icons,
             "alternative_store": lambda: calls.append("alternative"),
+            "local_package_metadata": lambda: calls.append("local"),
             "previous_audit_history": lambda: None,
             "device_inventory_history": lambda: None,
         },
@@ -265,7 +319,7 @@ def test_clear_all_reports_partial_failure_without_claiming_success(
 
     dialog._clear_all_caches()
 
-    assert calls == ["store", "icons", "alternative"]
+    assert calls == ["store", "icons", "alternative", "local"]
     assert statuses and "incomplete" in statuses[0]
     assert "App Icon Cache" in statuses[0]
     assert errors and "locked" in errors[0][1]

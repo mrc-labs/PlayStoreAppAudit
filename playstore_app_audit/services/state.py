@@ -7,6 +7,14 @@ from pathlib import Path
 from typing import Any
 
 from playstore_app_audit.platform.runtime import app_data_dir
+from playstore_app_audit.services.store_freshness import (
+    DEFAULT_RECENT_MAX_DAYS,
+    DEFAULT_STALE_AFTER_DAYS,
+    StoreFreshnessThresholds,
+)
+from playstore_app_audit.services.store_freshness import (
+    from_settings as freshness_from_settings,
+)
 from playstore_app_audit.services.store_locale import resolve_store_language
 
 CACHE_SCHEMA_VERSION = 2
@@ -38,7 +46,7 @@ _CONCLUSIVE_STORE_CACHE_STATUSES = frozenset(
 )
 _MAINTENANCE_KEYS = frozenset({"green", "yellow", "orange"})
 _MAINTENANCE_LABELS = {
-    "green": "Recent Update",
+    "green": "Recent",
     "yellow": "Aging",
     "orange": "Stale",
 }
@@ -59,6 +67,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "store_workers": DEFAULT_STORE_WORKERS,
     "cache_enabled": True,
     "cache_ttl_hours": DEFAULT_CACHE_TTL_HOURS,
+    "store_recent_max_days": DEFAULT_RECENT_MAX_DAYS,
+    "store_stale_after_days": DEFAULT_STALE_AFTER_DAYS,
     CACHE_TTL_DEFAULT_MIGRATION_KEY: True,
     CHANGES_HISTORY_ENABLED_KEY: False,
     "compare_previous": False,
@@ -84,7 +94,7 @@ TECHNICAL_COLUMNS = {
     "play_status": "Play status",
     "updated_source": "Update source",
     "play_http_status": "HTTP status",
-    "app_name": "Input name",
+    "app_name": "Source Name",
     "store_url": "Store URL",
     "is_system": "System app",
 }
@@ -135,7 +145,7 @@ def has_meaningful_previous_audit_history() -> bool:
     return bool(
         isinstance(data, dict)
         and any(
-            str(package_name).strip() and isinstance(snapshot, dict)
+            str(package_name).strip() and isinstance(snapshot, dict) and bool(snapshot)
             for package_name, snapshot in data.items()
         )
     )
@@ -227,6 +237,9 @@ def load_settings() -> dict[str, Any]:
     except (TypeError, ValueError):
         settings["cache_ttl_hours"] = DEFAULT_CACHE_TTL_HOURS
     settings["cache_enabled"] = bool(settings.get("cache_enabled", True))
+    freshness = freshness_from_settings(settings)
+    settings["store_recent_max_days"] = freshness.recent_max_days
+    settings["store_stale_after_days"] = freshness.stale_after_days
     settings[CHANGES_HISTORY_ENABLED_KEY] = (
         settings.get(CHANGES_HISTORY_ENABLED_KEY) is True
     )
@@ -277,6 +290,11 @@ def load_settings() -> dict[str, Any]:
 def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged = load_settings()
     merged.update(settings)
+    thresholds = StoreFreshnessThresholds(
+        int(merged["store_recent_max_days"]), int(merged["store_stale_after_days"])
+    )
+    merged["store_recent_max_days"] = thresholds.recent_max_days
+    merged["store_stale_after_days"] = thresholds.stale_after_days
     language = str(merged.get("store_language") or "auto").strip().lower()
     merged["store_language"] = language or "auto"
     merged[STORE_LANGUAGE_AUTO_MIGRATION_KEY] = True
@@ -596,6 +614,10 @@ def compare_with_history(row: dict[str, Any], history: dict[str, dict[str, Any]]
         return "New"
     previous_key = str(previous.get("criticality_key") or "")
     current_key = str(row.get("criticality_key") or "")
+    if previous_key == "purple":
+        previous_key = "blue"
+    if current_key == "purple":
+        current_key = "blue"
     if previous_key == current_key:
         return "Same"
     try:

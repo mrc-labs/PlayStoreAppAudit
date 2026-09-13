@@ -15,7 +15,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Fall back across configurable countries without treating one regional absence as global removal.
 - Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
 - Show live progress while regional fallback countries are being verified.
-- Classify Store listings as Current, Aging, Stale, Not Found, Store anomaly or Other.
+- Classify Store listings as Recent, Aging, Stale, Not Found or Anomaly, with configurable freshness thresholds.
 - Inspect the selected result in a dedicated Details Panel with Store/device metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
 - Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
 - Optionally show Play Store app icons beside Store titles.
@@ -69,12 +69,11 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 
 ## Understanding the results
 
-- **Current:** the listing was updated within the last 365 days.
-- **Aging:** the last update was more than 365 and no more than 730 days ago.
-- **Stale:** the last update was more than 730 days ago.
+- **Recent:** the listing age is at most the configured Recent maximum (365 days by default).
+- **Aging:** the listing age falls between the two configured thresholds (366–730 days by default).
+- **Stale:** the listing age is above the configured Stale threshold (730 days by default).
 - **Not Found:** no listing was found in the configured countries that were successfully checked; this does not prove global removal.
-- **Store anomaly:** Store responses were inconsistent or otherwise unusual.
-- **Other:** the check was incomplete, failed or could not be classified confidently.
+- **Anomaly:** Store responses were unusual, incomplete or could not be classified confidently. Raw Play Status and Notes retain the evidence distinction.
 
 The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Maintenance Score Methodology**.
 

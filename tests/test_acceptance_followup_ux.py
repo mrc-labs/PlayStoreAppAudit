@@ -23,8 +23,8 @@ def test_store_status_labels_are_symbol_free_and_recent_update_is_explicit() -> 
     for info in base_ui.CRITICALITY.values():
         assert "●" not in str(info["label"])
         assert "●" not in str(info["button"])
-    assert base_ui.CRITICALITY["green"]["label"] == "Recent Update"
-    assert base_ui.CRITICALITY["green"]["button"] == "Recent Update"
+    assert base_ui.CRITICALITY["green"]["label"] == "Recent"
+    assert base_ui.CRITICALITY["green"]["button"] == "Recent"
 
 
 @pytest.mark.parametrize("column", ["local_apk_version_comparison", "version_comparison"])

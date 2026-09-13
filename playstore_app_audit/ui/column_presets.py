@@ -246,6 +246,9 @@ def visible_columns(
         columns[insertion:insertion] = additions
 
     columns = list(dict.fromkeys(column for column in columns if column in schema.MODEL_COLUMNS))
+    if "criticality" in columns and "age_days" in columns:
+        columns.remove("age_days")
+        columns.insert(columns.index("criticality") + 1, "age_days")
     if "notes" in columns:
         columns.remove("notes")
     columns.append("notes")

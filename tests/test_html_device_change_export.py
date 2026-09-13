@@ -20,7 +20,7 @@ def _row(
     *,
     device_change: str | None,
     play_status: str = "available",
-    criticality: str = "Recent Update",
+    criticality: str = "Recent",
     criticality_key: str = "green",
     health_score: int = 100,
 ) -> dict[str, object]:
@@ -122,8 +122,8 @@ def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
             "com.example.other",
             device_change="Version changed",
             play_status="multi_country_check_inconclusive",
-            criticality="Other",
-            criticality_key="purple",
+            criticality="Anomaly",
+            criticality_key="blue",
             health_score=85,
         ),
     ]
@@ -170,9 +170,9 @@ def test_csv_json_html_exports_have_semantic_parity(tmp_path: Path) -> None:
     assert [row["play_status"] for row in csv_rows] == expected_store_statuses
     assert [row["play_status"] for row in json_rows] == expected_store_statuses
     assert [row["Store Status"] for row in html_rows] == [
-        "Recent Update",
+        "Recent",
         "Not Found",
-        "Other",
+        "Anomaly",
     ]
 
     assert alternative_distribution.ROW_FIELD not in base_window.EXPORT_FIELDS

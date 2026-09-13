@@ -646,8 +646,11 @@ def dashboard_summary(rows: list[dict[str, Any]], visible_count: int | None = No
     if not total:
         return "No Results Yet"
     counts = {
-        key: sum(1 for row in rows if str(row.get("criticality_key") or "") == key)
-        for key in ("green", "yellow", "orange", "red", "blue", "purple")
+        key: sum(
+            1 for row in rows
+            if ("blue" if row.get("criticality_key") == "purple" else row.get("criticality_key")) == key
+        )
+        for key in ("green", "yellow", "orange", "red", "blue")
     }
     parts = []
     if visible_count is not None and visible_count != total:
@@ -656,12 +659,11 @@ def dashboard_summary(rows: list[dict[str, Any]], visible_count: int | None = No
         parts.append(f"{total} apps")
     parts.extend(
         [
-            f"Recent Update {counts['green']}",
+            f"Recent {counts['green']}",
             f"Aging {counts['yellow']}",
             f"Stale {counts['orange']}",
             f"Not Found {counts['red']}",
             f"Anomaly {counts['blue']}",
-            f"Other {counts['purple']}",
         ]
     )
     aged = []

@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -13,12 +14,15 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QGroupBox,
     QLabel,
     QLineEdit,
     QListWidget,
     QMessageBox,
+    QPushButton,
     QScrollArea,
+    QSpinBox,
     QStackedWidget,
 )
 
@@ -153,7 +157,7 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
     ]
     assert _action_structure(window.audit_menu) == [
         "Run Audit",
-        "Recheck Not Found / Anomaly / Other",
+        "Recheck Not Found / Anomaly",
         "Run with Fresh Store Results",
         None,
         "Audit Presets",
@@ -432,11 +436,77 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert dialog.findChild(QLineEdit, "StoreLanguageEdit") is not None
         assert dialog.findChild(QCheckBox, "ShowAppIconsCheck") is None
         assert dialog.findChild(QComboBox, "DateFormatCombo") is None
-        assert not dialog.findChildren(QGroupBox)
+        assert [group.objectName() for group in dialog.findChildren(QGroupBox)] == [
+            "StoreFreshnessGroup"
+        ]
         return QDialog.DialogCode.Rejected
 
     monkeypatch.setattr(QDialog, "exec", inspect_advanced)
     window._show_advanced_settings()
+
+
+def test_store_freshness_settings_validate_derive_and_reclassify_loaded_rows(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row: dict[str, object] = {
+        "package_name": "com.example.freshness",
+        "play_status": "available",
+        "play_last_update": (date.today() - timedelta(days=400)).isoformat(),
+    }
+    window.current_rows = [row]
+    window._classify_row(row)
+    window.model.set_rows([row])
+    monkeypatch.setattr(window, "_start_audit", lambda: pytest.fail("threshold save started an audit"))
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        QMessageBox, "warning", lambda _parent, _title, message: warnings.append(message)
+    )
+
+    def inspect_invalid(dialog: QDialog) -> int:
+        recent = dialog.findChild(QSpinBox, "StoreRecentMaxDays")
+        stale = dialog.findChild(QSpinBox, "StoreStaleAfterDays")
+        aging = dialog.findChild(QLabel, "StoreAgingDerivedRange")
+        assert recent is not None and stale is not None and aging is not None
+        assert (recent.value(), stale.value()) == (365, 730)
+        assert aging.text() == "366 to 730 days (automatic)"
+        recent.setValue(750)
+        assert aging.text() == "751 to 730 days (automatic)"
+        buttons = dialog.findChild(QDialogButtonBox)
+        assert buttons is not None
+        buttons.button(QDialogButtonBox.StandardButton.Save).click()
+        assert dialog.result() != QDialog.DialogCode.Accepted
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_invalid)
+    window._show_advanced_settings()
+    assert warnings == ["Recent must be strictly lower than Stale."]
+    assert row["criticality"] == "Aging"
+
+    def save_valid(dialog: QDialog) -> int:
+        recent = dialog.findChild(QSpinBox, "StoreRecentMaxDays")
+        stale = dialog.findChild(QSpinBox, "StoreStaleAfterDays")
+        aging = dialog.findChild(QLabel, "StoreAgingDerivedRange")
+        assert recent is not None and stale is not None and aging is not None
+        recent.setValue(500)
+        stale.setValue(600)
+        assert aging.text() == "501 to 600 days (automatic)"
+        reset = dialog.findChild(QPushButton, "ResetStoreFreshnessDefaults")
+        assert reset is not None
+        reset.click()
+        assert (recent.value(), stale.value()) == (365, 730)
+        recent.setValue(500)
+        stale.setValue(600)
+        buttons = dialog.findChild(QDialogButtonBox)
+        assert buttons is not None
+        buttons.button(QDialogButtonBox.StandardButton.Save).click()
+        return dialog.result()
+
+    monkeypatch.setattr(QDialog, "exec", save_valid)
+    window._show_advanced_settings()
+    assert row["criticality"] == "Recent"
+    assert row["health_score"] == 100
+    assert window.user_settings["store_recent_max_days"] == 500
+    assert "500 days" in window.criticality_buttons["green"].toolTip()
 
 
 def test_customize_view_content_aware_size_fits_or_clamps_for_scrolling() -> None:

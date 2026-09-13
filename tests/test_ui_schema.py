@@ -72,6 +72,13 @@ def test_explicit_history_labels_have_bounded_wider_policies() -> None:
         assert schema.semantic_default_width(column) == policy.preferred
 
 
+def test_store_status_width_and_source_name_label() -> None:
+    policy = schema.COLUMN_WIDTH_POLICIES["criticality"]
+    assert (policy.preferred, policy.minimum, policy.maximum) == (128, 108, 156)
+    assert schema.COLUMN_LABELS["app_name"] == "Source Name"
+    assert schema.TABLE_HEADER_LABELS["app_name"] == "Source Name"
+
+
 def test_selected_table_headers_have_explicit_two_line_titles() -> None:
     assert schema.TABLE_HEADER_LABELS["change"] == "Play Store Listing\nChange"
     assert schema.TABLE_HEADER_LABELS["health_score"] == "Maintenance\nScore"

@@ -158,12 +158,11 @@ FIELD_DEFINITIONS = (
         "Store Status",
         FieldType.CHOICE,
         _choices(
-            ("green", "Recent Update"),
+            ("green", "Recent"),
             ("yellow", "Aging"),
             ("orange", "Stale"),
             ("red", "Not Found"),
-            ("blue", "Store Anomaly"),
-            ("purple", "Other / Inconclusive"),
+            ("blue", "Anomaly"),
         ),
     ),
     FieldDefinition(

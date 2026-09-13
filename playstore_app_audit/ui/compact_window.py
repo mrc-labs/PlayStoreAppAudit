@@ -68,16 +68,16 @@ PROGRESSIVE_REFRESH_INTERVAL_MS = 75
 _original_classify_criticality = base_ui.classify_criticality
 
 
-def _classify_criticality_multicountry(row: dict[str, object]) -> None:
+def _classify_criticality_multicountry(
+    row: dict[str, object], settings: dict[str, object] | None = None
+) -> None:
     status = str(row.get("play_status") or "").strip()
     if status == "not_found_in_checked_countries":
         key = "red"
-    elif status == "available_in_other_country":
+    elif status == "available_in_other_country" or status == "multi_country_check_inconclusive":
         key = "blue"
-    elif status == "multi_country_check_inconclusive":
-        key = "purple"
     else:
-        _original_classify_criticality(row)
+        _original_classify_criticality(row, settings)
         return
     row["criticality_key"] = key
     row["criticality"] = base_ui.CRITICALITY[key]["label"]
@@ -209,7 +209,7 @@ class CompactWindow(AuditWindow):
 
     # ---------- Behaviour hooks ----------
     def _classify_row(self, row: dict[str, object]) -> None:
-        _classify_criticality_multicountry(row)
+        _classify_criticality_multicountry(row, self.user_settings)
 
     def _load_fresh_cache(
         self,

@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.local_package_container as local_package_container
+import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -72,7 +74,10 @@ def app() -> QApplication:
 
 
 @pytest.fixture
-def window(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
+def window(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> MainWindow:
+    monkeypatch.setattr(local_metadata_cache, "app_data_dir", lambda: tmp_path)
     settings: dict[str, object] = {
         "view_preset": "Basic",
         "recent_sources": [],
@@ -296,6 +301,64 @@ def test_run_parses_candidates_keeps_partial_success_and_physical_rows(
     assert len(warnings) == 1
     assert warnings[0][0] == "Some package files could not be parsed"
     assert "2 package file(s) were rejected" in warnings[0][1]
+
+
+def test_bounded_local_parse_concurrency_preserves_candidate_order_and_pause(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    candidates = tuple(tmp_path / f"order-{index}.apk" for index in range(4))
+    for path in candidates:
+        path.write_bytes(path.name.encode())
+    lock = threading.Lock()
+    active = 0
+    maximum = 0
+    calls: list[Path] = []
+
+    def parse_candidate(path: Path) -> LocalArtifactParseResult:
+        nonlocal active, maximum
+        with lock:
+            calls.append(path)
+            active += 1
+            maximum = max(maximum, active)
+        time.sleep(0.08 if path == candidates[0] else 0.02)
+        with lock:
+            active -= 1
+        return LocalArtifactParseResult(
+            artifact=_artifact(path, f"{candidates.index(path) + 1:064x}")
+        )
+
+    store = FakeStore()
+    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(
+        window, "_local_artifact_store_service",
+        lambda: LocalArtifactStoreService(
+            store_service=store, alternative_runner=_no_alternatives
+        ),
+    )
+    window.source_mode = "local_apk"
+    window._local_apk_candidates = candidates
+    window._audit_session = 21
+    window._set_audit_state(AuditRunState.RUNNING)
+    pause = threading.Event()
+    thread = threading.Thread(
+        target=window._local_apk_audit_worker,
+        args=(candidates, AuditConfig(), {"cache_enabled": False}, 21,
+              pause, threading.Event(), False),
+    )
+    thread.start()
+    time.sleep(0.04)
+    assert calls == []
+    pause.set()
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    app.processEvents()
+    assert 1 < maximum <= 3
+    assert [row["local_apk_location"] for row in window.current_rows] == [
+        str(path.resolve()) for path in candidates
+    ]
 
 
 def test_stop_during_parse_keeps_source_evidence_and_starts_no_store_work(

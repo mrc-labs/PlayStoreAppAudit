@@ -51,6 +51,7 @@ from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.services import presentation
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
+from playstore_app_audit.services.store_freshness import StoreFreshnessThresholds
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
 
@@ -190,7 +191,7 @@ CRITICALITY = {
         "background": "#FFF7EE",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["orange"],
         "accent": "#D77A23",
-        "tooltip": "Show apps last updated more than 730 days ago.",
+        "tooltip": f"Show apps last updated more than {StoreFreshnessThresholds().stale_after_days} days ago.",
     },
     "yellow": {
         "label": "Aging",
@@ -199,10 +200,10 @@ CRITICALITY = {
         "background": "#FFFCEF",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["yellow"],
         "accent": "#C6A919",
-        "tooltip": "Show apps last updated 366 to 730 days ago.",
+        "tooltip": f"Show apps last updated {StoreFreshnessThresholds().aging_range} ago.",
     },
     "blue": {
-        "label": "Store anomaly",
+        "label": "Anomaly",
         "button": "Anomaly",
         "rank": 3,
         "background": "#F0F7FC",
@@ -210,25 +211,27 @@ CRITICALITY = {
         "accent": "#3A84B8",
         "tooltip": "Show apps with unusual or inconclusive Store availability.",
     },
-    "purple": {
-        "label": "Other",
-        "button": "Other",
-        "rank": 4,
-        "background": "#F8F2FA",
-        "foreground": presentation.STATUS_FOREGROUND_COLOURS["purple"],
-        "accent": "#8E5BA6",
-        "tooltip": "Show apps with unknown results or audit errors.",
-    },
     "green": {
-        "label": "Recent Update",
-        "button": "Recent Update",
-        "rank": 5,
+        "label": "Recent",
+        "button": "Recent",
+        "rank": 4,
         "background": "#F2F9F3",
         "foreground": presentation.STATUS_FOREGROUND_COLOURS["green"],
         "accent": "#4D9560",
-        "tooltip": "Show apps updated within the last 365 days.",
+        "tooltip": f"Show apps updated within the last {StoreFreshnessThresholds().recent_max_days} days.",
     },
 }
+
+
+def store_status_tooltips(settings: dict[str, object]) -> dict[str, str]:
+    from playstore_app_audit.services.store_freshness import from_settings
+
+    thresholds = from_settings(settings)
+    return {
+        "green": f"Show apps updated within the last {thresholds.recent_max_days} days.",
+        "yellow": f"Show apps last updated {thresholds.aging_range} ago.",
+        "orange": f"Show apps last updated more than {thresholds.stale_after_days} days ago.",
+    }
 
 def semantic_foreground_colour(column: str, value: object) -> str | None:
     return presentation.semantic_foreground_colour(column, value)
@@ -325,27 +328,23 @@ def parse_update_date(value: object) -> date | None:
     return None
 
 
-def classify_criticality(row: dict[str, object]) -> None:
+def classify_criticality(
+    row: dict[str, object], settings: dict[str, object] | None = None
+) -> None:
+    from playstore_app_audit.services.store_freshness import from_settings
+
+    thresholds = from_settings(settings or {})
     status = str(row.get("play_status") or "").strip()
     update_date = parse_update_date(row.get("play_last_update"))
     age_days: int | None = None
 
     if status == "not_found_or_unavailable":
         key = "red"
-    elif status == "available_in_fallback_locale_only":
-        key = "blue"
     elif status != "available" or update_date is None:
-        key = "purple"
+        key = "blue"
     else:
         age_days = (date.today() - update_date).days
-        if age_days < 0:
-            key = "purple"
-        elif age_days <= 365:
-            key = "green"
-        elif age_days <= 730:
-            key = "yellow"
-        else:
-            key = "orange"
+        key = "blue" if age_days < 0 else thresholds.classify_age(age_days)
 
     row["criticality_key"] = key
     row["criticality"] = CRITICALITY[key]["label"]
@@ -405,8 +404,8 @@ class AppTableModel(QAbstractTableModel):
 
         row = self.rows[index.row()]
         column = COLUMNS[index.column()]
-        key = str(row.get("criticality_key") or "purple")
-        info = CRITICALITY.get(key, CRITICALITY["purple"])
+        key = str(row.get("criticality_key") or "blue")
+        info = CRITICALITY.get(key, CRITICALITY["blue"])
 
         if role == Qt.ItemDataRole.DisplayRole:
             value = row.get(column, "")
@@ -852,7 +851,7 @@ class BaseWindow(QMainWindow):
         chip_row.addWidget(self.all_chip)
 
         self.criticality_buttons: dict[str, QPushButton] = {}
-        for key in ("red", "orange", "yellow", "blue", "purple", "green"):
+        for key in ("red", "orange", "yellow", "blue", "green"):
             info = CRITICALITY[key]
             button = QPushButton(f"{info['button']} 0")
             button.setObjectName("CriticalityButton")

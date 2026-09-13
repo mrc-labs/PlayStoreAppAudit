@@ -148,7 +148,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         )
         force_refresh.triggered.connect(self._force_full_refresh)
         tools.addAction(force_refresh)
-        retry_problematic = QAction("Recheck Not Found / Anomaly / Other", self)
+        retry_problematic = QAction("Recheck Not Found / Anomaly", self)
         retry_problematic.triggered.connect(self._recheck_problematic)
         tools.addAction(retry_problematic)
         tools.addSeparator()
@@ -474,7 +474,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             QMessageBox.information(
                 self,
                 "No problematic apps",
-                "There are no Not Found, Store anomaly or Other results to recheck.",
+                "There are no Not Found or Anomaly results to recheck.",
             )
             return
         self._start_subset_refresh(packages, "Problematic-app recheck")
