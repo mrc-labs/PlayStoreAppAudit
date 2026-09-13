@@ -24,7 +24,6 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 - Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
 - Filter results with search, status chips and Quick Filters, save one-level All/Any Smart Queries, and restore full result visibility with **View > Clear All Filters**.
 - Switch between source-aware Basic, Source Details and Technical views, or a user-controlled Custom layout, without mixing result filters with audit configuration.
-- Save reusable Audit Presets that affect how the next audit runs without changing result filters or presentation.
 - Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
 - Compare with a previous audit and inspect snapshots/inventory changes under **Tools > Changes & History**.
 - Export all or visible results as CSV, HTML or versioned JSON from **Audit > Export Results**.
@@ -32,9 +31,9 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 ## Road to v2.0
 
-v2.0 is the next planned major release and the return to a full multi-platform distribution. Development, correction, stabilization and packaged acceptance are Windows x64-first. After that implementation is functionally complete and accepted, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
+v2.0 is in final release preparation for a return to full multi-platform distribution. Windows x64 packaged acceptance comes first. After that acceptance, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
 
-A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The v2 development source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
+A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The current source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
 
 The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Play Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
@@ -52,7 +51,7 @@ Download the Windows x64 ZIP, extract it to a normal folder, then start the appl
 
 The Windows v1.99.0 package is intentionally unsigned. v2.0 is the first planned return to multi-platform distribution; production signing is the preferred target but remains contingent on successful credential/provider validation. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the current package. That warning reflects signing and reputation status, not an application error or a finding that the application is unsafe.
 
-Only Windows x64 is currently published as a v1.99.0 prebuilt. Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages are planned to return with v2.0. They are intentionally not built in parallel during normal feature development: Windows x64 is completed and stabilized first, then the other five targets are validated in the final v2.0 cross-platform production gate.
+Only Windows x64 is currently published as a v1.99.0 prebuilt. Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages are planned to return with v2.0. Windows x64 packaged acceptance must pass first, then the other five targets are validated in the final v2.0 cross-platform production gate.
 
 The v1.99.0 release includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` alongside the Windows x64 ZIP. All three project-defined assets were validated from frozen source SHA `1065744488e548663e3ba365566a9932837f5fb5` before publication and reverified after download from the [published release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0).
 
@@ -145,9 +144,9 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening
 
 ## Development
 
-The current source identifies application version `1.99.0`. The latest immutable published release is v1.99.0.
+The current source identifies application version `2.0.0`. The latest immutable published release is v1.99.0.
 
-The v2.0 development and release-packaging baseline is Python 3.14. The current stable toolchain migration targets Python 3.14.7, PySide6-Essentials 6.11.2 and Nuitka 4.2.1. Python 3.15 pre-releases are intentionally outside the stable release baseline.
+The v2.0 development and release-packaging baseline is Python 3.14, with CPython 3.14.7, PySide6-Essentials 6.11.2 and Nuitka 4.2.1 selected for release preparation. Python 3.15 pre-releases are intentionally outside the stable release baseline.
 
 Install the development dependencies, run the application and execute the quality checks with:
 
@@ -176,6 +175,6 @@ Developer references:
 
 ## Building from source
 
-The v2.0 release toolchain uses Python 3.14 and Nuitka standalone packaging, with the current migration pinned to Nuitka 4.2.1. The published v1.99.0 profile remains a historical Python 3.13 build: it used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
+The v2.0 release toolchain uses Python 3.14 and Nuitka 4.2.1 standalone packaging. The published v1.99.0 profile remains a historical Python 3.13 build: it used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
 
-The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Development and packaged acceptance remain Windows x64-first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
+The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Windows x64 packaged acceptance comes first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Play Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).

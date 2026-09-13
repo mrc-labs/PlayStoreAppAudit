@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-09
+Last updated: 2026-09-13
 
 ## Published v1.99.0 release
 
@@ -60,12 +60,13 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 
 ## Current development baseline
 
-- Current source application version: `1.99.0`; derived Windows File/Product version: `1.99.0.0`.
+- Current source application version: `2.0.0`; derived Windows File/Product version: `2.0.0.0`.
 - Latest published release: immutable v1.99.0 at release SHA `1065744488e548663e3ba365566a9932837f5fb5`.
-- v1.99 product and release work is complete; active forward planning moves to v2.0.
-- Python packaging baseline: 3.13; Quality CI: Python 3.13 and 3.14.
-- `PySide6-Essentials`: 6.11.1; Nuitka: 4.1.3.
+- Active v2.0 release-preparation PR: `#151` on `v2/release-prep-2.0.0`; the exact final release SHA is not frozen yet.
+- Python release-packaging and Quality baseline: 3.14.
+- `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
+- Windows x64 packaged acceptance must pass before the final six-platform production gate.
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers: 16; Store transport timeout: 25 seconds.

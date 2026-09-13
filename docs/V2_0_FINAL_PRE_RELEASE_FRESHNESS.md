@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-13 CEST
 
-Status: **IN PROGRESS.** The authoritative upstream recheck of the selected stable direct/toolchain baseline is current. The gate is not PASS and no exact release SHA may be frozen until the clean Python 3.14 release environment is re-resolved, the transitive/outdated check is completed, exact-head Quality is green after all release-preparation edits, and the remaining runner/signing release paths are confirmed.
+Status: **IN PROGRESS.** The authoritative upstream recheck of the selected stable direct/toolchain baseline and the clean CPython 3.14.7 dependency audit are current. The gate is not PASS and no exact release SHA may be frozen until exact-head Quality is green after all release-preparation edits and the remaining workflow/runner/signing release paths are confirmed.
 
 This is the second mandatory gate defined in `RELEASE_COMPONENT_FRESHNESS.md`. It is intentionally separate from `V2_0_RELEASE_ENTRY_FRESHNESS.md` and must describe the exact dependency/workflow state immediately before the v2.0 production SHA is frozen.
 
@@ -29,33 +29,32 @@ This is the second mandatory gate defined in `RELEASE_COMPONENT_FRESHNESS.md`. I
 
 Python 3.15 is not selected because the current v2.0 release contract is CPython 3.14 and the stable Python download line remains 3.14.7 for that series. No pre-release interpreter is adopted by this gate.
 
-## Transitive release/tooling baseline to re-resolve
+## Clean-environment Python release/tooling audit
 
-The release-entry gate resolved the following versions on a clean Python 3.14.7 environment. Authoritative PyPI rechecks performed during this final gate have not identified a newer stable release for the listed baseline, but the clean final release environment still must be re-resolved and checked before this document can become PASS:
+On 2026-09-13 CEST, a fresh virtual environment outside the repository was created from **CPython 3.14.7**. It received upgraded `pip`, `setuptools==84.0.0`, `wheel==0.48.0`, `Nuitka==4.2.1` and every dependency in `requirements-dev.txt` (including `requirements.txt`). The resolved `python -m pip list` versions were:
 
-- `lxml 6.1.3`
-- `click 8.5.0`
-- `asn1crypto 1.5.1`
-- `charset-normalizer 3.5.1`
-- `idna 3.19`
-- `urllib3 2.7.0`
-- `certifi 2026.7.22`
-- `soupsieve 2.9.2`
-- `typing-extensions 4.16.0`
-- `cffi 2.1.1`
-- `shiboken6 6.11.2`
-- `colorama 0.4.6`
-- `iniconfig 2.3.0`
-- `packaging 26.3`
-- `pluggy 1.6.0`
-- `Pygments 2.21.0`
-- `mypy-extensions 1.1.0`
-- `pathspec 1.1.1`
-- `librt 0.15.0`
-- `ast-serialize 0.11.1`
-- `pycparser 3.0`
+| Package | Resolved version | Package | Resolved version |
+| --- | --- | --- | --- |
+| asn1crypto | 1.5.1 | ast-serialize | 0.11.1 |
+| beautifulsoup4 | 4.15.0 | certifi | 2026.7.22 |
+| cffi | 2.1.1 | charset-normalizer | 3.5.1 |
+| click | 8.5.0 | colorama | 0.4.6 |
+| cryptography | 50.0.1 | google-play-scraper | 1.2.7 |
+| idna | 3.19 | iniconfig | 2.3.0 |
+| librt | 0.15.0 | lxml | 6.1.3 |
+| mypy | 2.3.1 | mypy-extensions | 1.1.0 |
+| Nuitka | 4.2.1 | packaging | 26.3 |
+| pathspec | 1.1.1 | Pillow | 12.3.0 |
+| pip | 26.2.1 | pluggy | 1.6.0 |
+| pyaxmlparser | 0.3.31 | pycparser | 3.0 |
+| Pygments | 2.21.0 | PySide6-Essentials | 6.11.2 |
+| pytest | 9.1.1 | requests | 2.34.2 |
+| ruff | 0.16.7 | setuptools | 84.0.0 |
+| shiboken6 | 6.11.2 | soupsieve | 2.9.2 |
+| typing-extensions | 4.16.0 | urllib3 | 2.7.0 |
+| wheel | 0.48.0 | | |
 
-Required before PASS: install the exact release dependency set in a clean Python 3.14 environment, record the resolved versions, run `python -m pip list --outdated`, investigate every release/runtime/tooling-path result, and confirm no newer stable package remains unapplied.
+`python -m pip check` returned `No broken requirements found.` The complete `python -m pip list --outdated --format=json` result was `[]`; no installed release-path component was reported outdated. The existing upstream rechecks remain the version-source evidence for this gate.
 
 ## GitHub Actions and provider actions
 
@@ -89,14 +88,14 @@ Completed before this final gate:
 - PR #150 and all final v2 product/UX changes merged to `main`.
 - Post-merge Quality passed on `main` at `d2a00f8e7f1ca3d2bbe7c9e69b312f911f98e61d`.
 - The release-preparation branch moved canonical application/package metadata to `2.0.0`.
+- Release-preparation documentation and changelog now reflect the v2.0 source and selected release sequence without product-behavior changes.
 - The earlier Python 3.14 migration package demonstrated the toolchain on native Windows x64, but that `1.99.0` artifact is migration evidence only and is not a v2.0 release candidate.
+- The final clean CPython 3.14.7 dependency audit above passed `pip check` with no outdated packages.
 
 Still required before PASS:
 
-1. finalize release-preparation documentation/changelog without changing product behavior;
-2. complete the clean Python 3.14 transitive/outdated inspection;
-3. confirm every maintained release workflow/action/runner/signing path against the final branch state;
-4. obtain exact-head Quality green on the final release-preparation head;
-5. update this document to **PASS**, recording the exact branch head that is eligible to become the Windows x64 v2.0.0 package candidate.
+1. confirm every maintained release workflow/action/runner/signing path against the final branch state;
+2. obtain exact-head Quality green on the final release-preparation head;
+3. update this document to **PASS**, recording the exact branch head that is eligible to become the Windows x64 v2.0.0 package candidate.
 
 A successful final freshness PASS permits the Windows x64 candidate build. It does not itself publish or tag v2.0.0, and it does not permit the final six-platform production gate until Windows x64 packaged human acceptance has passed.

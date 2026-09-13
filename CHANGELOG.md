@@ -2,6 +2,34 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [2.0.0] - 2026-09-13
+
+### Added
+
+- Added a Local APK source for explicit files and recursive folder discovery, accepting `.apk`, `.apks`, `.apkm` and `.xapk` inputs with conservative split-container handling and Local APK vs Store comparison.
+- Consolidated change and inventory snapshots under **Tools > Changes & History**.
+- Added About-owned update status with an asynchronous startup check for a stable release.
+
+### Changed
+
+- Grouped the File menu sources in Android Phone (ADB), Local APK(s), App List File order and made automatic Customize View columns source-aware.
+- Clarified checked-country Play Store absence and applied its Maintenance Score treatment without double counting; the internal `health_score` identifier is unchanged.
+- Hid Audit Presets from the v2.0 menu while retaining their internal implementation.
+- Moved the release toolchain to Python 3.14, `PySide6-Essentials==6.11.2` and `Nuitka==4.2.1`.
+- Prepared a six-platform production distribution after Windows x64 packaged acceptance.
+
+### Fixed
+
+- Stabilized the About update-card geometry.
+- Updated Windows source/package smoke to use Source Details instead of the retired Device view preset.
+
+### Compatibility
+
+- Application version is `2.0.0`; Windows File/Product version is `2.0.0.0`; the Python baseline is 3.14.
+- Final targets are Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64, all from one exact frozen SHA after Windows x64 acceptance. No public RC tags are planned.
+- The internal `health_score` compatibility identifier and read-only managed ADB behavior remain unchanged.
+- Production Windows signing and Apple signing/notarization have not yet been validated.
+
 ## [1.99.0] - 2026-09-09
 
 ### Added
