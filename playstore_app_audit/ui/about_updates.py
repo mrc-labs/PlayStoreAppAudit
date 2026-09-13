@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from playstore_app_audit import __version__
+from playstore_app_audit.product_identity import ABOUT_TITLE, DISPLAY_NAME
 from playstore_app_audit.resources import ensure_runtime_icon
 
 AUTO_UPDATE_CHECK_LABEL = "Check for updates automatically at startup"
@@ -33,7 +34,7 @@ class AboutUpdatesDialog(QDialog):
         super().__init__(parent)
         self._release_url = ""
         self.setObjectName("AboutUpdatesDialog")
-        self.setWindowTitle("About Play Store App Audit")
+        self.setWindowTitle(ABOUT_TITLE)
         self.setMinimumWidth(560)
         self.resize(620, 500)
 
@@ -60,7 +61,7 @@ class AboutUpdatesDialog(QDialog):
 
         identity = QVBoxLayout()
         identity.setSpacing(3)
-        title = QLabel("Play Store App Audit")
+        title = QLabel(DISPLAY_NAME)
         title.setObjectName("AboutTitle")
         title_font = QFont(title.font())
         title_font.setPointSizeF(title_font.pointSizeF() + 5)
@@ -127,7 +128,7 @@ class AboutUpdatesDialog(QDialog):
         self.startup_check = QCheckBox(AUTO_UPDATE_CHECK_LABEL)
         self.startup_check.setObjectName("AboutStartupUpdateCheck")
         self.startup_check.setToolTip(
-            "Disable this to stop background update checks when Play Store App Audit starts. "
+            f"Disable this to stop background update checks when {DISPLAY_NAME} starts. "
             "Opening About still checks for updates every time."
         )
         self.startup_check.toggled.connect(self.startup_check_changed)
@@ -135,7 +136,7 @@ class AboutUpdatesDialog(QDialog):
 
         about_text = QLabel(
             "<b>Created by MRC</b><br><br>"
-            "Play Store App Audit checks Android package identities against public Google Play "
+            f"{DISPLAY_NAME} checks Android package identities against public Google Play "
             "listings and can combine Store, connected-device and local APK evidence.<br><br>"
             "Unofficial utility. Not affiliated with or endorsed by Google."
         )
@@ -166,7 +167,7 @@ class AboutUpdatesDialog(QDialog):
         self._release_url = ""
         self.update_title.setText("You're up to date")
         self.update_detail.setText(
-            f"You're running Play Store App Audit {__version__}. "
+            f"You're running {DISPLAY_NAME} {__version__}. "
             "This is the latest available version."
         )
         self.update_action.setText("Check Again")
