@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-echo === Play Store App Audit Windows x64 standalone build ===
+echo === Store App Audit Windows x64 standalone build ===
 echo.
 
 set "PYTHON="

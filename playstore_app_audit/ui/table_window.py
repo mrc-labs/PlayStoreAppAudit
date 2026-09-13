@@ -45,7 +45,7 @@ SELECTED_ROW_FOREGROUND = "#18212A"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
-    "Unknown": "purple",
+    "Unknown": "blue",
     "Device-specific": "blue",
     "Newer": "green",
     "Match": "green",
@@ -314,16 +314,18 @@ class AuditTableModel(base_ui.AppTableModel):
         row = self.rows[index.row()]
         column = self.columns[index.column()]
         provisional = bool(row.get("_audit_provisional"))
-        key = str(row.get("criticality_key") or "purple")
-        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["purple"])
+        key = str(row.get("criticality_key") or "blue")
+        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["blue"])
 
         if role == Qt.ItemDataRole.DisplayRole:
+            if column == "criticality" and key in {"purple", "green"}:
+                return "Anomaly" if key == "purple" else "Recent"
             if column == "notes":
                 return presentation.friendly_notes(row)
             value = row.get(column, "")
             if isinstance(value, bool):
                 return "Yes" if value else "No"
-            return "" if value is None else str(value)
+            return presentation.display_relationship_value(column, value)
 
         if role == Qt.ItemDataRole.DecorationRole and column == ICON_COLUMN:
             return self.icon_for_row(row)
@@ -453,11 +455,11 @@ class TableWindow(insights_ui.InsightsWindow):
 
     def _show_about(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("About Play Store App Audit")
+        dialog.setWindowTitle("About Store App Audit")
         dialog.setMinimumWidth(480)
         layout = QVBoxLayout(dialog)
 
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         title.setObjectName("AboutTitle")
         font = QFont(title.font())
         font.setPointSizeF(16)

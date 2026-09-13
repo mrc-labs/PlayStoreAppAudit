@@ -191,7 +191,7 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     app = QApplication([])
-    app.setApplicationName("Play Store App Audit UI Style Audit")
+    app.setApplicationName("Store App Audit UI Style Audit")
 
     default_style = app.style().objectName()
     if args.style == "fusion":

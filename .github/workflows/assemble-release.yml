@@ -289,7 +289,7 @@ jobs:
           MACOS_RUN_ID: ${{ inputs.macos_run_id }}
         run: |
           {
-            echo "### Play Store App Audit v${VERSION} release assembly"
+            echo "### Store App Audit v${VERSION} release assembly"
             echo
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
             echo "- Windows signed RC run: \`${WINDOWS_RUN_ID}\`"

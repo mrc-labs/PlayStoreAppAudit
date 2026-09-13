@@ -1,6 +1,6 @@
 # Release component freshness gate
 
-This is a mandatory release invariant for Play Store App Audit. It applies to every release, including patch releases.
+This is a mandatory release invariant for Store App Audit. It applies to every release, including patch releases.
 
 ## Two mandatory gates
 

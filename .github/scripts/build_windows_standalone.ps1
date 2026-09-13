@@ -169,8 +169,8 @@ $NuitkaArgs = @(
     "--windows-icon-from-ico=$IconPath",
     "--file-version=$AppVersion",
     "--product-version=$AppVersion",
-    "--product-name=PlayStoreAppAudit",
-    "--file-description=PlayStoreAppAudit",
+    "--product-name=Store App Audit",
+    "--file-description=Store App Audit",
     "--output-filename=PlayStoreAppAudit.exe",
     "--output-dir=$NuitkaOutput",
     "--report=$NuitkaReport"
@@ -203,7 +203,7 @@ if (-not $DistDir) {
 Write-Host ""
 Write-Host "Raw standalone directory: $($DistDir.FullName)"
 
-# qpdf.dll is not required by Play Store App Audit.
+# qpdf.dll is not required by Store App Audit.
 $QPdfFiles = @(
     Get-ChildItem -LiteralPath $DistDir.FullName -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -ieq "qpdf.dll" }

@@ -3,14 +3,14 @@
 Version 1.0
 
 This Contributor License Agreement ("Agreement") applies to contributions to
-Play Store App Audit.
+Store App Audit.
 
 ## 1. Parties
 
 "You" means the individual or legal entity making a Contribution.
 
 "Project Owner" means MRC, the copyright holder and maintainer of
-Play Store App Audit.
+Store App Audit.
 
 "Contribution" means any source code, documentation, tests, build scripts,
 designs or other material that You intentionally submit for inclusion in the
@@ -78,7 +78,7 @@ warranty and without an obligation to provide support.
 Until an automated CLA system is introduced, acceptance is recorded by adding
 the following statement to the relevant pull request:
 
-`I have read and agree to the Play Store App Audit Contributor License Agreement (CLA.md) for this contribution.`
+`I have read and agree to the Store App Audit Contributor License Agreement (CLA.md) for this contribution.`
 
 The maintainer may require additional confirmation where a Contribution is
 made on behalf of a company or other legal entity.

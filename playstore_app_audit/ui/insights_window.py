@@ -111,7 +111,7 @@ class InsightsWindow(device_ui.DeviceWindow):
 
     def _classify_row(self, row: dict[str, Any]) -> None:
         super()._classify_row(row)
-        device_insights.apply_health_score(row)
+        device_insights.apply_health_score(row, self.user_settings)
 
     # ---------- Column/view presets ----------
     def _visible_column_order(self) -> list[str]:
@@ -230,7 +230,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
         tools.addAction("Run with Fresh Store Results", self._force_full_refresh)
-        tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
+        tools.addAction("Recheck Not Found / Anomaly", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
@@ -259,7 +259,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         help_menu.addAction("Check for Updates…", self._check_for_updates)
         help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
-        help_menu.addAction("About Play Store App Audit", self._show_about)
+        help_menu.addAction("About Store App Audit", self._show_about)
 
     def _populate_recent_menu(self) -> None:
         self._recent_menu.clear()
@@ -411,7 +411,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             self,
             "Save device snapshot",
             default,
-            "Play Store App Audit snapshot (*.psaa.json);;JSON (*.json)",
+            "Store App Audit snapshot (*.psaa.json);;JSON (*.json)",
         )
         if not selected:
             return
@@ -430,7 +430,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             self,
             "Choose device snapshot",
             str(device_insights.snapshots_dir()),
-            "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
+            "Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
         )
         if not selected:
             return
@@ -770,7 +770,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         if self.current_rows:
             for row in self.current_rows:
                 if not row.get("_audit_provisional"):
-                    device_insights.apply_health_score(row)
+                    device_insights.apply_health_score(row, self.user_settings)
         if self.current_rows:
             self.model.set_rows(self.current_rows)
             self._apply_column_visibility(reset_order=False)
@@ -923,7 +923,11 @@ class InsightsWindow(device_ui.DeviceWindow):
             )
             if not value and key not in {"notes", "change"}:
                 continue
-            display_value = f"{value}/100" if key == "health_score" else value
+            display_value = (
+                f"{value}/100"
+                if key == "health_score"
+                else presentation.display_relationship_value(key, value)
+            )
             label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -1120,7 +1124,7 @@ class InsightsWindow(device_ui.DeviceWindow):
                 QDesktopServices.openUrl(QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE)))
         else:
             QMessageBox.information(
-                self, "Up to date", f"You are running Play Store App Audit {device_insights.APP_VERSION}."
+                self, "Up to date", f"You are running Store App Audit {device_insights.APP_VERSION}."
             )
 
     def _create_diagnostic_bundle(self) -> None:
@@ -1141,7 +1145,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Play Store App Audit",
+            "About Store App Audit",
         )
 
 

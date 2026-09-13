@@ -36,7 +36,7 @@ import certifi
 from legal_payload_store import store_canonical_legal_payload
 from release_asset_layout import build_third_party_source_bundle
 
-APP_NAME = "Play Store App Audit"
+APP_NAME = "Store App Audit"
 PROJECT_REPOSITORY = "https://github.com/mrc-labs/PlayStoreAppAudit"
 PROJECT_LICENSE = "GPL-3.0-only"
 MANIFEST_SCHEMA_VERSION = 3
@@ -1739,7 +1739,7 @@ def _write_third_party_notices(
             "",
             "Android Platform-Tools are not bundled in this release. When managed ADB setup is",
             "requested, the application downloads Google's Platform-Tools archive directly.",
-            "Google and Android are not affiliated with or endorsers of Play Store App Audit.",
+            "Google and Android are not affiliated with or endorsers of Store App Audit.",
             "",
             "## Trademarks",
             "",

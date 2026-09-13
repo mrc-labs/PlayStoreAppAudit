@@ -17,11 +17,13 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.details_panel as details_ui
 import playstore_app_audit.ui.table_window as table_ui
+from playstore_app_audit.services.version_relationship import compare_versions
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -86,9 +88,10 @@ def test_warning_values_map_to_existing_status_semantics(
     assert presentation.semantic_foreground_colour(field, value) == (
         presentation.STATUS_FOREGROUND_COLOURS[status_key]
     )
-    assert base_ui.CRITICALITY[status_key]["foreground"] == (
-        presentation.STATUS_FOREGROUND_COLOURS[status_key]
-    )
+    if status_key in base_ui.CRITICALITY:
+        assert base_ui.CRITICALITY[status_key]["foreground"] == (
+            presentation.STATUS_FOREGROUND_COLOURS[status_key]
+        )
 
 
 def test_table_warning_typography_preserves_severity_hierarchy(
@@ -354,3 +357,54 @@ def test_html_report_uses_semantic_spans_without_changing_values(
     assert '<span class="semantic-strong-warning"' in report
     assert rows[0]["version_comparison"] == "Different"
     assert rows[1]["compatibility_status"] == "Legacy target"
+
+
+def test_device_specific_display_keeps_canonical_relationship(
+    app: QApplication, tmp_path: Path
+) -> None:
+    canonical = compare_versions("1.2.3", "Varies with device")
+    assert canonical == "Device-specific"
+    assert presentation.display_relationship_value("version_comparison", canonical) == "Device Specific"
+    assert presentation.display_relationship_value("local_apk_version_comparison", canonical) == "Device Specific"
+    assert presentation.display_value("version_comparison", canonical) == "Device Specific"
+    assert presentation.semantic_foreground_colour("version_comparison", canonical) == (
+        presentation.STATUS_FOREGROUND_COLOURS["blue"]
+    )
+
+    device_row = {"package_name": "com.example.device", "version_comparison": canonical}
+    local_row = {
+        "package_name": "com.example.apk",
+        "source_mode": "local_apk",
+        "local_apk_version_comparison": canonical,
+    }
+    model = table_ui.AuditTableModel()
+    model.set_rows([device_row, local_row])
+    for row_number, field in ((0, "version_comparison"), (1, "local_apk_version_comparison")):
+        index = model.index(row_number, model.columns.index(field))
+        assert model.data(index, Qt.ItemDataRole.DisplayRole) == "Device Specific"
+        assert model.data(index, Qt.ItemDataRole.UserRole)[field] == canonical
+
+    panel = details_ui.AppDetailsPanel()
+    panel.set_row(device_row)
+    assert "Device Specific" in panel.device_label.text()
+    panel.set_row(local_row)
+    assert "Device Specific" in panel.local_apk_label.text()
+
+    for row, name in ((device_row, "device.html"), (local_row, "local.html")):
+        report = device_insights.write_html_report(tmp_path / name, [row])
+        report_text = report.read_text(encoding="utf-8")
+        assert "Device Specific" in report_text
+        assert "Device-specific" not in report_text
+
+    for field in ("version_comparison", "local_apk_version_comparison"):
+        choice = next(
+            choice for choice in smart_queries.FIELDS_BY_ID[field].choices
+            if choice.value == canonical
+        )
+        assert choice.label == "Device Specific"
+    assert presentation.rows_for_output([local_row])[0]["local_apk_version_comparison"] == canonical
+    assert local_row["local_apk_version_comparison"] == canonical
+
+    panel.deleteLater()
+    model.deleteLater()
+    app.processEvents()

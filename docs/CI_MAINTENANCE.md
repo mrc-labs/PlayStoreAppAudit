@@ -80,7 +80,7 @@ Do not use **Engineering Test Build** or **ETB** in public GitHub Release titles
 For a Windows x64-only public release:
 
 - GitHub Release title suffix: `(Win x64 Only)`
-- optional release-body heading: `## Play Store App Audit vX.Y.Z (Windows x64 Only)`
+- optional release-body heading: `## Store App Audit vX.Y.Z (Windows x64 Only)`
 - compatibility wording: `Windows x64 only.`
 - if unsigned, state separately and explicitly that the Windows package is unsigned.
 

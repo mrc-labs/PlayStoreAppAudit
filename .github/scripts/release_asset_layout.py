@@ -102,7 +102,7 @@ def build_third_party_source_bundle(
     readme_lines = [
         "# Third-party corresponding sources",
         "",
-        f"Play Store App Audit v{version}",
+        f"Store App Audit v{version}",
         "",
         "Exact upstream source archives are stored under `sources/`.",
         "",

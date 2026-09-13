@@ -25,10 +25,10 @@ DATE_FIELDS = {"play_last_update", "first_install_time", "last_local_update"}
 VIEW_PRESETS = ("Basic", "Source Details", "Technical", "Custom")
 DEFAULT_CUSTOM_VIEW_COLUMNS = [
     "criticality",
+    "age_days",
     "package_name",
     "play_title",
     "play_last_update",
-    "age_days",
     "notes",
 ]
 
@@ -89,6 +89,17 @@ STATUS_FOREGROUND_COLOURS = {
 }
 
 SemanticEmphasis = Literal["warning", "strong_warning"]
+VERSION_RELATIONSHIP_FIELDS = frozenset(
+    {"version_comparison", "local_apk_version_comparison"}
+)
+VERSION_RELATIONSHIP_LABELS = {"Device-specific": "Device Specific"}
+
+
+def display_relationship_value(field: str, value: object) -> str:
+    text = "" if value is None else str(value)
+    if field in VERSION_RELATIONSHIP_FIELDS:
+        return VERSION_RELATIONSHIP_LABELS.get(text, text)
+    return text
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +169,7 @@ def semantic_foreground_colour(field: str, value: object) -> str | None:
 
 
 def semantic_html_value(field: str, value: object) -> str:
-    text = html.escape(str(value or ""))
+    text = html.escape(display_relationship_value(field, value))
     value_presentation = semantic_value_presentation(field, value)
     if value_presentation is None:
         return text
@@ -233,7 +244,7 @@ def friendly_notes(row: Mapping[str, Any]) -> str:
 
     return "No additional notes."
 
-CSV_EXPORT_GUIDE = """Export a package list for Play Store App Audit
+CSV_EXPORT_GUIDE = """Export a package list for Store App Audit
 
 PC / ADB method
 1. Connect the Android phone with USB debugging enabled and authorised.
@@ -248,7 +259,7 @@ Remove '-3' if you also want system apps. The resulting CSV can be loaded with C
 Phone-only methods
 Android itself does not provide a standard built-in button that exports all package IDs to CSV. You have two practical options:
 
-A. Use an app/package-manager on the phone that can export or share the installed-app list including Android package IDs. Save one package ID per line, or use a CSV column named 'package_name'. Play Store App Audit accepts either format.
+A. Use an app/package-manager on the phone that can export or share the installed-app list including Android package IDs. Save one package ID per line, or use a CSV column named 'package_name'. Store App Audit accepts either format.
 
 B. Advanced: use a local shell/package-manager with shell-level access, for example a Shizuku/local-ADB capable environment. From a shell that has permission to run 'pm', you can create a file in Downloads with:
 
@@ -356,7 +367,7 @@ def display_value(column: str, value: object, style: str | None = None) -> str:
         return format_date_value(value, style or configured_date_format())
     if isinstance(value, bool):
         return "Yes" if value else "No"
-    return "" if value is None else str(value)
+    return display_relationship_value(column, value)
 
 
 def rows_for_output(rows: list[dict[str, Any]], style: str | None = None) -> list[dict[str, Any]]:

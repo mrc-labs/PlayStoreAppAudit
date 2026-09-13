@@ -37,8 +37,8 @@ def test_project_and_update_checker_use_canonical_github_repository() -> None:
     assert f"{repository_url}/releases/latest" == device_insights.LATEST_RELEASE_PAGE
 
 
-def test_v199_release_version() -> None:
-    assert __version__ == "1.99.0"
+def test_v200_release_version() -> None:
+    assert __version__ == "2.0.0"
 
 
 def test_release_qt_baseline_is_pinned() -> None:
@@ -116,6 +116,9 @@ def test_qt_application_version_comes_from_the_canonical_version(
             return 0
 
     class FakeWindow:
+        def setWindowTitle(self, _title: str) -> None:
+            pass
+
         def show(self) -> None:
             pass
 

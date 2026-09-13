@@ -1,10 +1,10 @@
 # Product Roadmap
 
-Last updated: 2026-09-10
+Last updated: 2026-09-13
 
 ## Purpose
 
-This file is the canonical forward-looking product roadmap for Play Store App Audit. `PROJECT_STATUS.md` records current shipped state, `PROJECT_DECISIONS.md` records durable engineering/release policy, and this document assigns future product work.
+This file is the canonical forward-looking product roadmap for Store App Audit. `PROJECT_STATUS.md` records current shipped state, `PROJECT_DECISIONS.md` records durable engineering/release policy, and this document assigns future product work.
 
 ## Planning rules
 
@@ -214,7 +214,8 @@ A Local APK Library is a major v2.0 product pillar. The transient Local APK Audi
 Recommended technical sequence:
 
 1. parser/verifier foundation with malformed-input and legal assessment
-   (source implementation complete; Windows x64 package evidence remains later);
+   (source implementation complete; pyaxmlparser packaged and standalone-validated
+   in a private Windows x64 candidate; final release gates remain);
 2. typed `LocalArtifact` model with SHA-256 artifact identity (complete at the
    source boundary);
 3. package-deduplicated Store/provider lookup and artifact fan-out (source/service complete);
@@ -262,7 +263,33 @@ CLI/headless support is assigned to v2.1. It must reuse service/domain boundarie
 
 ## Later v2.x Local APK backlog
 
-After the core is stable, consider metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements. These are later 2.x candidates, not mandatory v2.0 scope.
+After the core is stable, restore Local APK/package-file management in later v2.x:
+
+- **Single Rename** and **Single Remove** for a selected file.
+- **Mass Rename** is the highest-priority restoration. Preserve metadata-based
+  filename templates, including the historical tokens `{packagename}`, `{appname}`,
+  `{playname}`, `{category}` and `{localversion}`. Preview each current -> proposed
+  filename, validate before any filesystem mutation, handle collisions safely,
+  report skipped or conflicting files clearly and never overwrite accidentally.
+- **Mass Remove** must at least restore the historical **Remove all outdated** and
+  **Remove all unknown** selections, while allowing future expansion to other
+  useful relationship or status selections. Make each removal explicit and
+  confirmation-driven, show a preview and count where practical, and guard
+  against accidental broad deletion.
+
+Scope every rename and removal operation to Local APK/package files only.
+Duplicate APK detection/management, custom commands/integrations and Windows
+Explorer integration remain later library-management candidates. None of this
+file-management work is part of v2.0.
+
+An optional **Device Specific resolver** is also post-v2.0 / v2.1-or-later work.
+Invoke it only when the normal Store lookup returns `Varies with device`. It may
+use Android 10-17 reference profiles and a cached **Your Device** profile from
+ADB; tooltips and Details should show the real reference device/profile
+metadata. Support an optional anonymous/Aurora-compatible mode and an optional
+Google-account authenticated mode, with a safe fallback to the current
+**Device Specific** state. Resolving metadata or a version must not require an
+APK download when that evidence is sufficient.
 
 ## Explicitly removed / not planned
 

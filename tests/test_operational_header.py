@@ -86,6 +86,56 @@ def _geometry_snapshot(window: MainWindow) -> dict[str, tuple[int, int, int, int
     }
 
 
+def test_local_apk_relationship_filters_combine_with_store_status_and_clear(
+    app: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    window = _create_window(app, monkeypatch)
+    try:
+        rows = [
+            {"package_name": f"com.example.{index}", "source_mode": "local_apk",
+             "criticality_key": status, "criticality": (
+                 "Other" if status == "purple" else "Recent" if status == "green" else "Anomaly"
+             ),
+             "local_apk_version_comparison": relationship}
+            for index, (status, relationship) in enumerate(
+                (("blue", "Different"), ("blue", "Unknown"),
+                 ("green", "Different"), ("blue", "Outdated"),
+                 ("purple", "Different"))
+            )
+        ]
+        window.current_rows = rows
+        window.model.set_rows(rows)
+        window.source_mode = "local_apk"
+        window._sync_action_availability()
+        assert window.apk_relationship_filter_row.isVisible()
+        window._update_summary()
+        assert window.criticality_buttons["blue"].text() == "Anomaly 4"
+        assert set(window.apk_relationship_buttons) == {
+            "All", "Outdated", "Newer", "Match", "Device-specific", "N/A"
+        }
+        window._set_criticality_filter("blue")
+        assert window.proxy.rowCount() == 4
+        window._set_apk_relationship_filter("Different")
+        assert window.proxy.rowCount() == 2
+        assert window.apk_relationship_more.isChecked()
+        assert window.apk_relationship_more_actions["Different"].isChecked()
+        window._set_apk_relationship_filter("Unknown")
+        assert window.proxy.rowCount() == 3
+        assert "(2)" in window.apk_relationship_more.text()
+        window._clear_all_filters()
+        assert window.proxy.rowCount() == 5
+        assert not window._status_filters and not window._apk_relationship_filters
+        assert window.apk_relationship_buttons["All"].isChecked()
+        window.source_mode = "device"
+        window._sync_action_availability()
+        assert not window.apk_relationship_filter_row.isVisible()
+        window.source_mode = "file"
+        window._sync_action_availability()
+        assert not window.apk_relationship_filter_row.isVisible()
+    finally:
+        window.close()
+
+
 def test_c2_is_the_canonical_results_header_without_duplicate_controls(
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,

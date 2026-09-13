@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import logging
 import os
 import stat
 import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 SUPPORTED_LOCAL_PACKAGE_SUFFIXES = frozenset({".apk", ".apks", ".apkm", ".xapk"})
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +53,7 @@ def discover_folder_apks(
 ) -> LocalApkDiscoveryResult:
     """Enumerate supported local packages without following directory links."""
 
+    started = perf_counter()
     cancelled = cancel_event or threading.Event()
     supplied_root = Path(root).expanduser()
     root_path = supplied_root.absolute()
@@ -58,15 +62,30 @@ def discover_folder_apks(
         or root_path.is_symlink()
         or root_path.is_junction()
     ):
+        _LOGGER.debug(
+            "Local package discovery profile root=%s files=0 cancelled=false walk_ms=%.2f",
+            root_path,
+            (perf_counter() - started) * 1000,
+        )
         return LocalApkDiscoveryResult((), root_path)
     root_path = root_path.resolve(strict=True)
 
     found: list[Path] = []
     pending = [root_path]
+    directories_scanned = 0
     while pending:
         if cancelled.is_set():
+            _LOGGER.debug(
+                "Local package discovery profile root=%s files=%d directories=%d "
+                "cancelled=true walk_ms=%.2f",
+                root_path,
+                len(found),
+                directories_scanned,
+                (perf_counter() - started) * 1000,
+            )
             return LocalApkDiscoveryResult(tuple(found), root_path, True)
         directory = pending.pop()
+        directories_scanned += 1
         try:
             with os.scandir(directory) as iterator:
                 entries = sorted(iterator, key=lambda item: os.path.normcase(item.name))
@@ -75,6 +94,14 @@ def discover_folder_apks(
         subdirectories: list[Path] = []
         for entry in entries:
             if cancelled.is_set():
+                _LOGGER.debug(
+                    "Local package discovery profile root=%s files=%d directories=%d "
+                    "cancelled=true walk_ms=%.2f",
+                    root_path,
+                    len(found),
+                    directories_scanned,
+                    (perf_counter() - started) * 1000,
+                )
                 return LocalApkDiscoveryResult(tuple(found), root_path, True)
             try:
                 if entry.is_dir(follow_symlinks=False):
@@ -92,4 +119,12 @@ def discover_folder_apks(
                 continue
         pending.extend(reversed(subdirectories))
     found.sort(key=lambda path: os.path.normcase(str(path)))
+    _LOGGER.debug(
+        "Local package discovery profile root=%s files=%d directories=%d "
+        "cancelled=false walk_ms=%.2f",
+        root_path,
+        len(found),
+        directories_scanned,
+        (perf_counter() - started) * 1000,
+    )
     return LocalApkDiscoveryResult(tuple(found), root_path)

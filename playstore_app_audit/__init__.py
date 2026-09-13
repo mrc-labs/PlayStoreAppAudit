@@ -1,7 +1,7 @@
-"""Play Store App Audit application package."""
+"""Store App Audit application package."""
 
 from __future__ import annotations
 
 __all__ = ["__version__"]
 
-__version__ = "1.99.0"
+__version__ = "2.0.0"
