@@ -266,6 +266,7 @@ def parse_cached_local_package(
     *,
     cancel_event: threading.Event | None = None,
     parser: Callable[[str | Path], LocalArtifactParseResult] | None = None,
+    allow_content_reuse: bool = True,
 ) -> tuple[LocalArtifactParseResult, bool]:
     started = perf_counter()
     initial_identity = _identity(Path(path))
@@ -278,9 +279,9 @@ def parse_cached_local_package(
         )
         return LocalArtifactParseResult(artifact=cached), True
 
-    # Custom parsers are test seams. Keep their historical contract and avoid
-    # introducing a hidden content-hash read that the caller did not request.
-    if parser is not None or initial_identity is None:
+    # Tests or diagnostics that need to assert exact parser invocation can opt
+    # out explicitly. Production parser adapters still participate in Tier 2.
+    if initial_identity is None or not allow_content_reuse:
         parse_started = perf_counter()
         parsed = (
             parser(path)
@@ -335,7 +336,11 @@ def parse_cached_local_package(
                     return LocalArtifactParseResult(artifact=content_cached), True
 
         parse_started = perf_counter()
-        parsed = parse_local_package(path, cancel_event=cancel_event)
+        parsed = (
+            parser(path)
+            if parser is not None
+            else parse_local_package(path, cancel_event=cancel_event)
+        )
         if (
             parsed.artifact is not None
             and initial_identity == _identity(Path(path))
