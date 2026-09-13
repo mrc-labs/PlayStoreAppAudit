@@ -4,10 +4,12 @@ import sys
 from contextlib import suppress
 from typing import Any
 
-from PySide6.QtGui import QAction, QActionGroup, QFont, QFontMetrics, QIcon
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QFont, QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QMenu,
+    QMessageBox,
     QPushButton,
     QStyle,
 )
@@ -32,6 +34,8 @@ from playstore_app_audit.ui.file_menu import (
     ResultActions,
     populate_result_export_menu,
 )
+
+FEEDBACK_ISSUE_URL = "https://github.com/mrc-labs/PlayStoreAppAudit/issues/new/choose"
 
 
 class MenuWindow(preferences_ui.PreferencesWindow):
@@ -191,10 +195,53 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             ),
         )
         self.help_menu.addSeparator()
-        self.help_menu.addAction("Check for Updates…", self._check_for_updates)
-        self.help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
+        self.check_updates_action = self.help_menu.addAction(
+            "Check for Updates…", self._check_for_updates
+        )
+        self.feedback_action = self.help_menu.addAction(
+            "Send Feedback / Report an Issue…", self._send_feedback
+        )
+        self.diagnostic_bundle_action = self.help_menu.addAction(
+            "Create Diagnostic Bundle…", self._create_diagnostic_bundle
+        )
         self.help_menu.addSeparator()
         self.help_menu.addAction("About Play Store App Audit", self._show_about)
+
+    def _send_feedback(self) -> None:
+        QDesktopServices.openUrl(QUrl(FEEDBACK_ISSUE_URL))
+
+    def _check_for_updates(self) -> None:
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            result = device_insights.check_for_updates()
+        finally:
+            QApplication.restoreOverrideCursor()
+        if result.get("status") != "ok":
+            QMessageBox.information(
+                self,
+                "Update check",
+                str(result.get("message") or "Update check unavailable."),
+            )
+            return
+        if result.get("newer"):
+            answer = QMessageBox.question(
+                self,
+                "Update available",
+                f"Version {result.get('tag')} is available. Open the release page?",
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                QDesktopServices.openUrl(
+                    QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE))
+                )
+            return
+        QMessageBox.information(
+            self,
+            "Up to date",
+            (
+                f"You're running Play Store App Audit {device_insights.APP_VERSION}. "
+                "This is the latest available version."
+            ),
+        )
 
     def _select_column_preset(self, name: str) -> None:
         if name != "Custom":

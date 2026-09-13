@@ -16,6 +16,7 @@ from playstore_app_audit.services.performance_diagnostics import install_perform
 from playstore_app_audit.services.play_store import install_play_store_service
 from playstore_app_audit.services.scraper_transport import install_scraper_transport_timeout
 from playstore_app_audit.ui.main_window import MainWindow
+from playstore_app_audit.ui.update_check import install_update_check_controller
 
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
 
@@ -40,19 +41,22 @@ def main() -> int:
     install_performance_diagnostics()
     install_app_icon_metadata_capture()
 
+    smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {"1", "true", "yes"}
+
     app = QApplication(sys.argv)
     app.setApplicationName("Play Store App Audit")
     app.setApplicationVersion(__version__)
     app.setOrganizationName("MRC")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = MainWindow()
+    install_update_check_controller(window, schedule_startup=not smoke_test)
     window.show()
 
-    smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {"1", "true", "yes"}
     if smoke_test:
         # CI uses this to prove that a packaged binary can create the real main
-        # window, enter Qt's event loop and exit cleanly. Normal launches never
-        # set this environment variable, so user-facing behaviour is unchanged.
+        # window, enter Qt's event loop and exit cleanly. Startup update checks
+        # are intentionally skipped so this deterministic smoke does not depend
+        # on external network availability.
         QTimer.singleShot(750, app.quit)
 
     exit_code = app.exec()
