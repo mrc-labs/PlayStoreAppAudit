@@ -433,7 +433,7 @@ class AuditWindow(BaseWindow):
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),
             ("Match", "Match"),
-            ("Device-specific", "Device Spec"),
+            ("Device-specific", "Device Spec."),
             ("N/A", "N/A"),
         ):
             button = QPushButton(label)

@@ -1,6 +1,6 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The release-packaging Python baseline is 3.13.
+Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.0 release-packaging Python baseline is 3.14.
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-Python 3.13 is the release-packaging baseline. Python 3.14 is a Quality CI compatibility target. Move the packaging baseline only through a deliberate toolchain change with successful package validation.
+Python 3.14 is the current v2.0 release-packaging and Quality CI baseline. Future toolchain changes require the release component freshness gate and affected package validation.
 
 ## Run from source
 
@@ -52,21 +52,21 @@ python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.
 Remove-Item Env:QT_QPA_PLATFORM
 ```
 
-`.github/workflows/quality.yml` runs the cheap pull-request and `main` validation on Python 3.13 and 3.14. It is the normal pre-release correctness gate; it is not a package release workflow.
+`.github/workflows/quality.yml` runs the cheap pull-request and `main` validation on Python 3.14. It is the normal pre-release correctness gate; it is not a package release workflow.
 
 ## Release toolchain baseline
 
-For the Windows x64 ETB profiles through v1.99 and the preserved future production profile:
+For current v2.0 development and the future production profile:
 
-- Packaging Python: 3.13
-- Quality CI: Python 3.13 and 3.14
-- `PySide6-Essentials==6.11.1`
+- Packaging Python: 3.14
+- Quality CI: Python 3.14
+- `PySide6-Essentials==6.11.2`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
-- `Nuitka==4.1.3`
+- `Nuitka==4.2.1`
 - Qt Widgets
 - official JavaScript GitHub Actions at their currently supported majors
 
-Do not change these as incidental cleanup. Toolchain migration requires a dedicated PR and package evidence.
+Keep these current pins aligned with the mandatory release component freshness gate and package evidence.
 
 `pyaxmlparser` is Apache-2.0 and currently declares `lxml` (BSD-3-Clause),
 `click>=6.7` (BSD-3-Clause) and `asn1crypto>=0.24.0` (MIT). `lxml` is a compiled
@@ -74,10 +74,11 @@ native dependency; its wheel's own bundled legal material must be inventoried.
 The release legal tooling must retain its fail-closed runtime-evidence behavior:
 inventory and copy license/notice files for the exact transitive components that
 Nuitka actually ships. These permissive dependencies do not change the required
-Qt corresponding-source set or release asset count. The parser foundation has
-Python 3.13/3.14 source evidence but no Nuitka evidence yet; validate actual
-Windows x64 standalone inclusion and legal inventory before the v2.0 release
-freeze, without triggering the other five targets during primary development.
+Qt corresponding-source set or release asset count. A real private Windows x64
+standalone candidate has successfully packaged pyaxmlparser and passed standalone
+validation. This is not final public-release or legal acceptance; complete the
+required exact-SHA package and legal gates before the v2.0 release freeze,
+without triggering the other five targets during primary development.
 
 ## Release profiles
 
@@ -163,7 +164,7 @@ This housekeeping never alters GitHub Release assets, tags or source commits.
 
 `build_windows_exe.bat` is the supported local Windows x64 helper. It:
 
-- requires native x64 Python 3.13 through the Windows Python launcher;
+- requires native x64 Python 3.14 through the Windows Python launcher;
 - creates or reuses `.venv` and installs `requirements-dev.txt`;
 - runs compileall, pytest, Ruff and Qt source smoke checks;
 - derives package and Windows version metadata from `playstore_app_audit.__version__`;
