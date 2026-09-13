@@ -20,13 +20,11 @@ _ICON_HASH = hashlib.sha256(_ICON_BYTES).hexdigest()[:12]
 
 
 def canonical_svg_source_bytes(source: Path = ICON_SOURCE) -> bytes:
-    """Return checkout-EOL-independent bytes for SVG source identity hashing."""
+    """Return checkout-EOL-independent LF bytes for SVG source identity hashing."""
     data = source.read_bytes()
-    # The generated source identity was established from a native Windows
-    # checkout. Canonicalise every checkout to CRLF so LF/CRLF conversion by Git
-    # cannot make the same vector artwork appear stale on another platform.
-    data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
-    return data.replace(b"\n", b"\r\n")
+    # Git may materialise text files with platform-specific line endings. Keep
+    # generated source identity stable by hashing the repository-style LF form.
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
 
 
 def render_svg_png(size: int, source: Path = ICON_SOURCE) -> bytes:
