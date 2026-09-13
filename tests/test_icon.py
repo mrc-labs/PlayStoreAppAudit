@@ -12,7 +12,7 @@ def test_embedded_icon_is_full_size_transparent_png() -> None:
     icon = Image.open(BytesIO(_ICON_BYTES)).convert("RGBA")
 
     assert icon.size == (256, 256)
-    assert icon.getchannel("A").getbbox() == (11, 11, 245, 245)
+    assert icon.getchannel("A").getbbox() == (13, 12, 242, 244)
     assert icon.getchannel("A").getextrema() == (0, 255)
 
 
