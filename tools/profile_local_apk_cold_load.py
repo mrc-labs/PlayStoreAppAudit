@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import statistics
+import sys
 import tempfile
 from collections import defaultdict
 from contextlib import contextmanager
@@ -21,9 +22,13 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable, Iterator
 
-import playstore_app_audit.services.local_apk as local_apk
-import playstore_app_audit.services.local_package_metadata_cache as metadata_cache
-from playstore_app_audit.services.local_apk_source import discover_folder_apks
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+import playstore_app_audit.services.local_apk as local_apk  # noqa: E402
+import playstore_app_audit.services.local_package_metadata_cache as metadata_cache  # noqa: E402
+from playstore_app_audit.services.local_apk_source import discover_folder_apks  # noqa: E402
 
 
 class PhaseTimings:
