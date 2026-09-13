@@ -1,22 +1,23 @@
-# Play Store App Audit
+# Store App Package Audit
 
 *Android App Inventory, Store Analysis & Maintenance Toolkit*
 
-Play Store App Audit is a desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for an imported app list or the packages installed on an Android phone.
+Store App Package Audit is a desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for an imported app list, local Android package files or the packages installed on an Android phone.
 
-The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google.
+The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. For v2.0 compatibility, the repository, release/update identifiers, executable filename and technical paths remain under the established `PlayStoreAppAudit` slug while the visible product name moves to **Store App Package Audit**.
 
 ## Key features
 
 - Import package lists from CSV, TSV or TXT files.
 - Scan a connected Android phone through ADB and export its current package inventory.
+- Select local `.apk`, `.apks`, `.apkm` and `.xapk` package files directly or discover them recursively in a folder.
 - Check Google Play availability and update information in a selected Store country.
 - Use the connected Android device's active system language automatically for Store metadata, while file/list audits can use the primary language of the selected country.
 - Fall back across configurable countries without treating one regional absence as global removal.
 - Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
 - Show live progress while regional fallback countries are being verified.
 - Classify Store listings as Recent, Aging, Stale, Not Found or Anomaly, with configurable freshness thresholds.
-- Inspect the selected result in a dedicated Details Panel with Store/device metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
+- Inspect the selected result in a dedicated Details Panel with Store/device/local-package metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
 - Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
 - Optionally show Play Store app icons beside Store titles.
 - Optionally calculate a transparent Maintenance Score heuristic.
@@ -33,9 +34,9 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 v2.0 is in final release preparation for a return to full multi-platform distribution. Windows x64 packaged acceptance comes first. After that acceptance, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
 
-A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files from local storage, keeping exact APK artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The current source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
+A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files and supported package containers from local storage, keeping exact package-artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The current source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. A persistent local metadata cache reuses safe parse results while preserving filesystem/content identity checks. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
 
-The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Play Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
+The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Store App Package Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
 CLI/headless support is planned separately for v2.1 rather than v2.0. See the [Product roadmap](docs/ROADMAP.md) for the current release plan.
 
@@ -62,7 +63,7 @@ The v1.99.0 release includes one consolidated third-party source archive and a r
 3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
 4. Select the header **Run** button or **Audit > Run Audit**.
 5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
-6. Select a row to inspect Store/device evidence in the details panel or open the grouped audit-change overview.
+6. Select a row to inspect Store/device/local-package evidence in the details panel or open the grouped audit-change overview.
 7. Export the complete or currently visible results from **Audit > Export Results**.
 
 A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. The included `sample_packages.csv` shows the simplest supported CSV format.
@@ -87,11 +88,19 @@ Start an explicit source-development debug session with:
 python main.py --debug
 ```
 
-The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. A future packaged executable can use the same `PlayStoreAppAudit.exe --debug` argument. Debug logs are never uploaded automatically. They may contain local filesystem paths and filenames, so review them before sharing.
+The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. The packaged Windows executable keeps the compatibility filename `PlayStoreAppAudit.exe`, so the equivalent command is `PlayStoreAppAudit.exe --debug`. Debug logs are never uploaded automatically. They may contain local filesystem paths and filenames, so review them before sharing.
+
+For cold Local APK performance analysis on a representative folder, the source tree also includes a diagnostic profiler:
+
+```bash
+python tools/profile_local_apk_cold_load.py PATH_TO_APK_FOLDER
+```
+
+It uses a temporary empty metadata cache and reports directory discovery, cache lookup, initial snapshot/SHA, ZIP preflight, manifest read/parse, resource-table read/parse and the second full-file SHA verification. It does not clear the application's normal cache and does not disable the second integrity verification.
 
 ## Android phone and ADB support
 
-ADB access is read-only in the current application. Play Store App Audit can list packages, inspect device and package metadata, and open Android's own app-details settings screen. It does not install, uninstall, enable, disable or modify Android apps.
+ADB access is read-only in the current application. Store App Package Audit can list packages, inspect device and package metadata, and open Android's own app-details settings screen. It does not install, uninstall, enable, disable or modify Android apps.
 
 The application can use an existing ADB executable from `PATH`, common Android SDK locations, `ANDROID_SDK_ROOT` or `ANDROID_HOME`. When no compatible ADB is found, it can offer to download the official Android Platform-Tools archive into the application's local data directory:
 
@@ -110,7 +119,7 @@ After a successful full Scan, Run reuses the captured metadata even if the phone
 
 Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and the activity log are processed and stored locally. The application has no first-party telemetry or analytics service.
 
-An audit is not entirely offline: package IDs, the selected country and the Store language are used in requests to public Google Play endpoints through `google-play-scraper` and the HTML fallback. If the optional app-icon setting is enabled, icon images are downloaded from HTTPS URLs returned by Store metadata and cached locally for reuse. A cached icon is retained while the app's Store update marker remains unchanged; when that marker changes, the icon is fetched again. The persistent icon cache is bounded to 512 entries and 64 MiB, while decoded icons use a smaller in-memory LRU for the active session. Disk reads and network downloads populate the already-visible table progressively rather than blocking results display; cached icons remain usable when the network is unavailable. **Help > About Play Store App Audit** also owns software-update status and contacts the public GitHub Releases API whenever About is opened. In v2.0, an automatic startup update check is enabled by default and runs asynchronously without blocking the application. It remains silent when the installed version is current or the check is unavailable; if a newer stable release is found, the same About window opens with the update status and release link. The About window contains **Check for updates automatically at startup** to disable or re-enable only the startup check; opening About always performs a fresh update check regardless of that setting. If you approve a managed ADB installation, the application downloads the official Platform-Tools archive from Google's download host.
+An audit is not entirely offline: package IDs, the selected country and the Store language are used in requests to public Google Play endpoints through `google-play-scraper` and the HTML fallback. If the optional app-icon setting is enabled, icon images are downloaded from HTTPS URLs returned by Store metadata and cached locally for reuse. A cached icon is retained while the app's Store update marker remains unchanged; when that marker changes, the icon is fetched again. The persistent icon cache is bounded to 512 entries and 64 MiB, while decoded icons use a smaller in-memory LRU for the active session. Disk reads and network downloads populate the already-visible table progressively rather than blocking results display; cached icons remain usable when the network is unavailable. **Help > About Store App Package Audit** also owns software-update status and contacts the public GitHub Releases API whenever About is opened. In v2.0, an automatic startup update check is enabled by default and runs asynchronously without blocking the application. It remains silent when the installed version is current or the check is unavailable; if a newer stable release is found, the same About window opens with the update status and release link. The About window contains **Check for updates automatically at startup** to disable or re-enable only the startup check; opening About always performs a fresh update check regardless of that setting. If you approve a managed ADB installation, the application downloads the official Platform-Tools archive from Google's download host.
 
 The activity log is local and records operational events such as startup, a loaded source filename and some failure messages. A diagnostic bundle is created only when you explicitly choose a destination; it is not uploaded automatically. The bundle contains sanitized settings, application/system information, aggregate result counts, available device-summary fields (including a masked serial when present) and the local activity log. Review diagnostic bundles before sharing them.
 
@@ -131,7 +140,7 @@ The published v1.99.0 Windows x64 package was produced from exact commit `106574
 
 ## License
 
-Play Store App Audit's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (GPL-3.0-only).
+The application's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (GPL-3.0-only).
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
