@@ -72,7 +72,7 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
             assert str(info["accent"]) in stylesheet
 
         device_button = window.apk_relationship_buttons["Device-specific"]
-        assert device_button.text() == "Device Spec"
+        assert device_button.text() == "Device Spec."
         assert device_button.accessibleName() == "Device Specific"
         assert device_button.toolTip() == (
             "The Store version varies by device; a direct comparison may not be available."
