@@ -43,14 +43,24 @@ APK_RELATIONSHIP_STATUS = {
     "Device-specific": "blue",
     "N/A": "red",
 }
+# Together with the Store row's 5 px layout spacing, this leaves a 12 px gap.
+APK_FILTER_GROUP_INDENT = 7
+APK_FILTER_REFLOW_RESERVE = 8
+
+_NEUTRAL_FILTER_BUTTON_STYLE = (
+    "QPushButton {min-height:29px; padding:1px 9px; background:#FFFFFF; "
+    "border:2px solid #CCD4DC;}"
+    "QPushButton:checked {border:2px solid #657786; font-weight:650;}"
+)
 
 
 def _semantic_filter_button_style(status_key: str) -> str:
     info = CRITICALITY[status_key]
     return (
-        f"QPushButton {{background:{info['background']}; color:{info['foreground']}; "
-        f"border:1px solid {info['background']};}}"
-        f"QPushButton:hover {{border:1px solid {info['accent']};}}"
+        f"QPushButton {{min-height:29px; padding:1px 9px; "
+        f"background:{info['background']}; color:{info['foreground']}; "
+        f"border:2px solid {info['background']};}}"
+        f"QPushButton:hover {{border:2px solid {info['accent']};}}"
         f"QPushButton:checked {{border:2px solid {info['accent']}; font-weight:650;}}"
     )
 
@@ -133,19 +143,37 @@ class AuditWindow(BaseWindow):
         QTimer.singleShot(0, self._sync_apk_relationship_layout)
 
     def _filter_layout_required_width(self) -> int:
-        layout = self._store_filter_layout
-        group = self.apk_relationship_filter_row
-        widths: list[int] = []
-        for index in range(layout.count()):
-            item = layout.itemAt(index)
-            widget = item.widget()
-            if widget is None or widget is group or not widget.isVisible():
-                continue
-            widths.append(max(widget.minimumSizeHint().width(), widget.sizeHint().width()))
-        spacing = max(0, layout.spacing())
-        relationship_width = max(group.minimumSizeHint().width(), group.sizeHint().width())
-        item_count = len(widths) + 1
-        return sum(widths) + relationship_width + spacing * max(0, item_count - 1)
+        def natural_width(widget: QWidget) -> int:
+            return max(widget.minimumWidth(), widget.minimumSizeHint().width(), widget.sizeHint().width())
+
+        store_layout = self._store_filter_layout
+        store_widgets = [
+            widget
+            for index in range(store_layout.count())
+            if (widget := store_layout.itemAt(index).widget()) is not None
+            and widget is not self.apk_relationship_filter_row
+            and widget.isVisible()
+        ]
+        relationship_layout = self.apk_relationship_filter_row.layout()
+        relationship_widgets = [
+            widget
+            for index in range(relationship_layout.count())
+            if (widget := relationship_layout.itemAt(index).widget()) is not None
+            and widget.isVisible()
+        ]
+        store_margins = store_layout.contentsMargins()
+        relationship_margins = relationship_layout.contentsMargins()
+        return (
+            store_margins.left()
+            + store_margins.right()
+            + sum(natural_width(widget) for widget in store_widgets)
+            + sum(natural_width(widget) for widget in relationship_widgets)
+            + max(0, store_layout.spacing()) * len(store_widgets)
+            + max(0, relationship_layout.spacing()) * max(0, len(relationship_widgets) - 1)
+            + relationship_margins.right()
+            + APK_FILTER_GROUP_INDENT
+            + APK_FILTER_REFLOW_RESERVE
+        )
 
     def _store_filter_insert_index(self) -> int:
         layout = self._store_filter_layout
@@ -173,9 +201,11 @@ class AuditWindow(BaseWindow):
         self._results_layout.removeWidget(group)
         if same_row:
             group.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            group.layout().setContentsMargins(APK_FILTER_GROUP_INDENT, 0, 0, 0)
             self._store_filter_layout.insertWidget(self._store_filter_insert_index(), group)
         else:
             group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            group.layout().setContentsMargins(0, 0, 0, 0)
             # The current Results window wraps the table in a splitter. Insert
             # after Store Status and before that table container.
             table_index = next(
@@ -409,10 +439,11 @@ class AuditWindow(BaseWindow):
             button = QPushButton(label)
             button.setObjectName(f"ApkRelationship{value.replace('-', '').replace('/', '')}Button")
             button.setCheckable(True)
-            button.setFixedHeight(28)
             status_key = APK_RELATIONSHIP_STATUS.get(value)
             if status_key is not None:
                 button.setStyleSheet(_semantic_filter_button_style(status_key))
+            else:
+                button.setStyleSheet(_NEUTRAL_FILTER_BUTTON_STYLE)
             button.setToolTip(
                 "The Store version varies by device; a direct order is unsafe."
                 if value == "Device-specific"
@@ -426,7 +457,7 @@ class AuditWindow(BaseWindow):
         self.apk_relationship_more = QPushButton("More ▾")
         self.apk_relationship_more.setObjectName("ApkRelationshipMoreButton")
         self.apk_relationship_more.setCheckable(True)
-        self.apk_relationship_more.setFixedHeight(28)
+        self.apk_relationship_more.setStyleSheet(_NEUTRAL_FILTER_BUTTON_STYLE)
         more_menu = QMenu(self.apk_relationship_more)
         self.apk_relationship_more_actions: dict[str, QAction] = {}
         for value in ("Different", "Unknown"):

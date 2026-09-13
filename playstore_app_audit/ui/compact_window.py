@@ -363,9 +363,6 @@ class CompactWindow(AuditWindow):
         summary_font.setBold(True)
         self.summary_label.setFont(summary_font)
         self.search_edit.setFixedHeight(32)
-        self.all_chip.setFixedHeight(28)
-        for button in self.criticality_buttons.values():
-            button.setFixedHeight(28)
 
     def _visible_column_order(self) -> list[str]:
         columns = ["criticality"]

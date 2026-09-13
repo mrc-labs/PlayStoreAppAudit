@@ -1,92 +1,135 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
 <defs>
-  <linearGradient id="phoneFrame" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#0b65d9"/>
-    <stop offset=".45" stop-color="#45c8ff"/>
-    <stop offset="1" stop-color="#0060e8"/>
+  <linearGradient id="robotHead" x1="0%" y1="0%" x2="90%" y2="100%">
+    <stop offset="0%" stop-color="#c8ff4a"/>
+    <stop offset="48%" stop-color="#83ed28"/>
+    <stop offset="100%" stop-color="#26bd31"/>
   </linearGradient>
-  <linearGradient id="phoneScreen" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#0877f2"/>
-    <stop offset=".5" stop-color="#0554c7"/>
-    <stop offset="1" stop-color="#073a9f"/>
+  <linearGradient id="robotBody" x1="0%" y1="0%" x2="100%" y2="85%">
+    <stop offset="0%" stop-color="#9df032"/>
+    <stop offset="60%" stop-color="#55d72d"/>
+    <stop offset="100%" stop-color="#17a83b"/>
   </linearGradient>
-  <linearGradient id="android" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#b5ff31"/>
-    <stop offset=".5" stop-color="#6be21d"/>
-    <stop offset="1" stop-color="#19b83a"/>
+  <linearGradient id="phoneOuter" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#0b397d"/>
+    <stop offset="28%" stop-color="#117ce7"/>
+    <stop offset="62%" stop-color="#0260ce"/>
+    <stop offset="100%" stop-color="#092f8c"/>
   </linearGradient>
-  <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#21a9ff"/>
-    <stop offset=".55" stop-color="#0869e9"/>
-    <stop offset="1" stop-color="#0349bd"/>
+  <linearGradient id="phoneBezel" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#f5ffff"/>
+    <stop offset="25%" stop-color="#9cecff"/>
+    <stop offset="66%" stop-color="#36b9fa"/>
+    <stop offset="100%" stop-color="#c3f7ff"/>
   </linearGradient>
-  <linearGradient id="handle" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#20c5ff"/>
-    <stop offset=".55" stop-color="#0875ef"/>
-    <stop offset="1" stop-color="#0646c9"/>
+  <linearGradient id="phoneScreen" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#0964c7"/>
+    <stop offset="47%" stop-color="#0753b9"/>
+    <stop offset="100%" stop-color="#082d81"/>
   </linearGradient>
-  <linearGradient id="boxTop" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#fff23a"/>
-    <stop offset="1" stop-color="#ffb52a"/>
+  <linearGradient id="boxTop" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#fff960"/>
+    <stop offset="55%" stop-color="#ffdb28"/>
+    <stop offset="100%" stop-color="#ffad1e"/>
   </linearGradient>
-  <linearGradient id="boxLeft" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#ff8c22"/>
-    <stop offset="1" stop-color="#ff3d35"/>
+  <linearGradient id="boxLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#ff9a23"/>
+    <stop offset="57%" stop-color="#ff6330"/>
+    <stop offset="100%" stop-color="#e63735"/>
   </linearGradient>
-  <linearGradient id="boxRight" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#1ec4ff"/>
-    <stop offset="1" stop-color="#0a7ae8"/>
+  <linearGradient id="boxRight" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#39d6ff"/>
+    <stop offset="55%" stop-color="#16a5f2"/>
+    <stop offset="100%" stop-color="#0871d6"/>
   </linearGradient>
-  <linearGradient id="tape" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#9bff35"/>
-    <stop offset="1" stop-color="#16be46"/>
+  <linearGradient id="boxTape" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#c6ff54"/>
+    <stop offset="55%" stop-color="#67e832"/>
+    <stop offset="100%" stop-color="#10af44"/>
   </linearGradient>
-  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-    <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#062b6d" flood-opacity=".28"/>
-  </filter>
+  <linearGradient id="glassRim" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#ffffff"/>
+    <stop offset="34%" stop-color="#d7faff"/>
+    <stop offset="72%" stop-color="#71d3ff"/>
+    <stop offset="100%" stop-color="#1579e0"/>
+  </linearGradient>
+  <radialGradient id="glassLens" cx="32%" cy="26%" r="78%">
+    <stop offset="0%" stop-color="#36b9ff"/>
+    <stop offset="42%" stop-color="#147ee9"/>
+    <stop offset="100%" stop-color="#0642b2"/>
+  </radialGradient>
+  <linearGradient id="glassHandle" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#50d9ff"/>
+    <stop offset="48%" stop-color="#1487ef"/>
+    <stop offset="100%" stop-color="#0448bd"/>
+  </linearGradient>
 </defs>
 
-<!-- Android mascot, peeking behind phone -->
-<g transform="rotate(-11 52 147)" filter="url(#shadow)">
-  <line x1="40" y1="94" x2="32" y2="80" stroke="#72e31d" stroke-width="6" stroke-linecap="round"/>
-  <line x1="63" y1="91" x2="68" y2="75" stroke="#72e31d" stroke-width="6" stroke-linecap="round"/>
-  <path d="M22 132 C22 108 35 94 52 94 C69 94 82 108 82 132 Z" fill="url(#android)"/>
-  <path d="M22 133 H82 V179 C82 194 70 204 53 204 C36 204 22 194 22 179 Z" fill="url(#android)"/>
-  <rect x="13" y="139" width="14" height="43" rx="7" fill="url(#android)"/>
-  <rect x="77" y="139" width="14" height="43" rx="7" fill="url(#android)"/>
-  <circle cx="39" cy="118" r="4.2" fill="#fff"/>
-  <circle cx="64" cy="118" r="4.2" fill="#fff"/>
-  <path d="M23 132 H81" stroke="#0d9f42" stroke-width="4" opacity=".85"/>
+<!-- The tilted robot is drawn first so the phone hides its right side. -->
+<g transform="rotate(-11 47 148)">
+  <path d="M12 141 C12 116 27 96 49 94 C71 94 83 112 84 142 L84 187 C84 207 69 216 49 216 C26 216 12 204 12 184 Z" fill="#073b82" opacity=".18" transform="translate(3 4)"/>
+  <path d="M32 100 L22 79" stroke="#168e36" stroke-width="8" stroke-linecap="round"/>
+  <path d="M32 100 L22 79" stroke="#9bf333" stroke-width="5" stroke-linecap="round"/>
+  <path d="M53 99 L70 77" stroke="#168e36" stroke-width="8" stroke-linecap="round"/>
+  <path d="M53 99 L70 77" stroke="#a4f537" stroke-width="5" stroke-linecap="round"/>
+  <path d="M13 143 C13 115 28 96 49 94 C70 94 83 113 84 143 Z" fill="url(#robotHead)" stroke="#22aa36" stroke-width="1.5"/>
+  <path d="M15 143 H83 V185 C83 203 69 211 49 211 C29 211 15 202 15 185 Z" fill="url(#robotBody)" stroke="#1bab38" stroke-width="1.5"/>
+  <path d="M18 147 C22 168 22 192 28 202 C19 197 15 188 15 176 V147 Z" fill="#caff67" opacity=".45"/>
+  <path d="M81 149 V186 C81 195 76 201 70 205 C76 189 75 167 73 149 Z" fill="#079b3e" opacity=".22"/>
+  <rect x="6" y="149" width="15" height="42" rx="7.5" fill="url(#robotBody)" stroke="#25b238" stroke-width="1.3"/>
+  <path d="M9 154 V184" stroke="#c7ff5e" stroke-width="2" stroke-linecap="round" opacity=".65"/>
+  <circle cx="30" cy="124" r="4.5" fill="#ffffff"/>
+  <circle cx="52" cy="124" r="4.5" fill="#ffffff"/>
+  <circle cx="29" cy="123" r="1" fill="#e6ffff"/>
+  <circle cx="51" cy="123" r="1" fill="#e6ffff"/>
+  <path d="M15 143 H83" fill="none" stroke="#19a43c" stroke-width="2" opacity=".75"/>
 </g>
 
-<!-- Phone -->
-<g filter="url(#shadow)">
-  <rect x="59" y="16" width="142" height="224" rx="28" fill="url(#phoneFrame)"/>
-  <rect x="64" y="21" width="132" height="214" rx="24" fill="#d8f6ff"/>
-  <rect x="69" y="26" width="122" height="204" rx="20" fill="url(#phoneScreen)"/>
-  <path d="M69 57 C93 30 132 26 181 26 L69 150 Z" fill="#35b6ff" opacity=".18"/>
-  <rect x="112" y="33" width="36" height="6" rx="3" fill="#4fd0ff" opacity=".95"/>
-  <circle cx="130" cy="220" r="4.4" fill="#1aa1ff"/>
-</g>
+<!-- Deep outer edge, layered cyan bezel, glossy screen and hardware details. -->
+<rect x="63" y="17" width="143" height="224" rx="29" fill="#072f73" opacity=".24"/>
+<rect x="58" y="11" width="145" height="229" rx="29" fill="url(#phoneOuter)" stroke="#07377c" stroke-width="2"/>
+<rect x="62" y="15" width="137" height="221" rx="26" fill="url(#phoneBezel)"/>
+<rect x="66" y="19" width="129" height="213" rx="23" fill="#e3faff"/>
+<rect x="69" y="22" width="123" height="206" rx="20" fill="url(#phoneScreen)"/>
+<path d="M70 79 C75 51 87 29 111 23 H160 L70 137 Z" fill="#8bdfff" opacity=".17"/>
+<path d="M183 31 C187 38 190 48 190 61 V194 C189 209 185 219 178 225" fill="none" stroke="#51b9ff" stroke-width="3" opacity=".3"/>
+<path d="M65 47 V207 C65 221 75 233 90 235" fill="none" stroke="#ffffff" stroke-width="2" opacity=".7"/>
+<path d="M176 17 C189 19 198 31 199 45 V205" fill="none" stroke="#dbffff" stroke-width="2" opacity=".6"/>
+<rect x="111" y="30" width="39" height="7" rx="3.5" fill="#0b428e" opacity=".75"/>
+<rect x="115" y="31" width="31" height="3" rx="1.5" fill="#82ddff"/>
+<circle cx="130" cy="216" r="7.5" fill="#052c72" opacity=".55"/>
+<circle cx="130" cy="216" r="5.5" fill="#4dc6ff"/>
+<circle cx="129" cy="214.5" r="2" fill="#ccfaff" opacity=".85"/>
 
-<!-- Parcel -->
-<g filter="url(#shadow)">
-  <polygon points="95,92 129,73 164,92 130,111" fill="url(#boxTop)"/>
-  <polygon points="95,92 130,111 130,151 95,132" fill="url(#boxLeft)"/>
-  <polygon points="130,111 164,92 164,132 130,151" fill="url(#boxRight)"/>
-  <polygon points="116,80 126,75 161,94 151,100" fill="url(#tape)"/>
-  <polygon points="151,100 161,94 161,116 151,122" fill="#0cad50"/>
-  <polygon points="130,111 137,107 137,147 130,151" fill="#84f235"/>
-</g>
+<!-- Parcel: three lit faces, folded edges and a green sealing tape. -->
+<path d="M91 96 L131 71 L171 94 L132 119 Z" fill="#032e7a" opacity=".26" transform="translate(0 4)"/>
+<path d="M93 95 L130 73 L168 94 L131 116 Z" fill="url(#boxTop)" stroke="#ed9c19" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M93 95 L131 116 V157 L93 135 Z" fill="url(#boxLeft)" stroke="#d94b30" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M131 116 L168 94 V135 L131 157 Z" fill="url(#boxRight)" stroke="#0774ce" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M95 99 L128 118 V153 L95 134 Z" fill="#ffc04c" opacity=".14"/>
+<path d="M166 99 V133 L136 151 V118 Z" fill="#e2ffff" opacity=".1"/>
+<path d="M112 84 L123 78 L161 99 L151 105 Z" fill="url(#boxTape)" stroke="#29b84a" stroke-width=".8"/>
+<path d="M151 105 L161 99 V122 L151 128 Z" fill="#1ab84d"/>
+<path d="M126 113 L134 116 V155 L126 150 Z" fill="url(#boxTape)"/>
+<path d="M97 94 L130 75" fill="none" stroke="#fffbd0" stroke-width="2" opacity=".7"/>
+<path d="M132 117 L166 97" fill="none" stroke="#b5f3ff" stroke-width="1.5" opacity=".72"/>
+<path d="M93 135 L130 157 L168 135" fill="none" stroke="#063a88" stroke-width="1.2" opacity=".45"/>
 
-<!-- Magnifying glass -->
-<g filter="url(#shadow)">
-  <line x1="205" y1="206" x2="238" y2="239" stroke="#073d9f" stroke-width="18" stroke-linecap="round"/>
-  <line x1="205" y1="206" x2="238" y2="239" stroke="url(#handle)" stroke-width="14" stroke-linecap="round"/>
-  <circle cx="177" cy="176" r="48" fill="#dff7ff"/>
-  <circle cx="177" cy="176" r="42" fill="#0b57d0"/>
-  <circle cx="177" cy="176" r="36" fill="url(#lens)"/>
-  <path d="M153 177 L169 193 L201 158" fill="none" stroke="#91ff30" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <ellipse cx="163" cy="157" rx="16" ry="7" transform="rotate(-35 163 157)" fill="#6fddff" opacity=".55"/>
-</g>
+<!-- Magnifier and handle are in the foreground; drawn highlights replace
+     unsupported raster-style drop shadows in Qt's SVG renderer. -->
+<path d="M205 207 L237 239" fill="none" stroke="#08276d" stroke-width="23" stroke-linecap="round" opacity=".28" transform="translate(2 3)"/>
+<path d="M204 204 L238 238" fill="none" stroke="#083782" stroke-width="21" stroke-linecap="round"/>
+<path d="M204 204 L238 238" fill="none" stroke="url(#glassHandle)" stroke-width="17" stroke-linecap="round"/>
+<path d="M212 209 L237 234" fill="none" stroke="#8ce9ff" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>
+<circle cx="178" cy="176" r="52" fill="#032b75" opacity=".22" transform="translate(3 4)"/>
+<circle cx="178" cy="176" r="50" fill="#074397"/>
+<circle cx="178" cy="176" r="46" fill="url(#glassRim)"/>
+<circle cx="178" cy="176" r="40" fill="#d8f7ff"/>
+<circle cx="178" cy="176" r="36" fill="url(#glassLens)"/>
+<path d="M145 158 C152 141 169 133 186 136 C194 138 201 142 207 149" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".63"/>
+<path d="M154 151 C168 142 184 143 195 150 L168 178 Z" fill="#b7f1ff" opacity=".19"/>
+<ellipse cx="164" cy="153" rx="14" ry="6" transform="rotate(-32 164 153)" fill="#d1f7ff" opacity=".52"/>
+<path d="M153 177 L169 193 L202 158" fill="none" stroke="#06448d" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" opacity=".38" transform="translate(0 2)"/>
+<path d="M153 177 L169 193 L202 158" fill="none" stroke="#91f72c" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M155 174 L169 188 L199 156" fill="none" stroke="#caff60" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".72"/>
 </svg>
