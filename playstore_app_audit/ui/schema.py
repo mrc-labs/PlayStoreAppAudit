@@ -153,7 +153,7 @@ def _width(
 # They deliberately do not inspect body values: long URLs and notes remain
 # bounded while primary identity columns receive useful reading space.
 COLUMN_WIDTH_POLICIES = {
-    "criticality": _width(ColumnWidthCategory.MEDIUM, 128, 108, 156),
+    "criticality": _width(ColumnWidthCategory.MEDIUM, 116, 100, 136),
     "change": _width(ColumnWidthCategory.MEDIUM, 145, 125, 165),
     "package_name": _width(ColumnWidthCategory.PRIMARY, 300, 240, 340),
     "play_title": _width(ColumnWidthCategory.PRIMARY, 280, 220, 340),

@@ -74,7 +74,7 @@ def test_explicit_history_labels_have_bounded_wider_policies() -> None:
 
 def test_store_status_width_and_source_name_label() -> None:
     policy = schema.COLUMN_WIDTH_POLICIES["criticality"]
-    assert (policy.preferred, policy.minimum, policy.maximum) == (128, 108, 156)
+    assert (policy.preferred, policy.minimum, policy.maximum) == (116, 100, 136)
     assert schema.COLUMN_LABELS["app_name"] == "Source Name"
     assert schema.TABLE_HEADER_LABELS["app_name"] == "Source Name"
 
