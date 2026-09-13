@@ -14,6 +14,7 @@ import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.update_check as update_ui
 from playstore_app_audit import __version__
+from playstore_app_audit.product_identity import DISPLAY_NAME
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -145,7 +146,7 @@ def test_install_turns_about_into_the_only_update_surface(
 
     assert window._update_check_controller is controller
     assert not window.check_updates_action.isVisible()
-    assert window.about_action.text() == "About Play Store App Audit…"
+    assert window.about_action.text() == f"About {DISPLAY_NAME}…"
 
     window.about_action.trigger()
 
@@ -200,7 +201,7 @@ def test_manual_about_current_result_updates_same_dialog(
 
     assert dialog.update_title.text() == "You're up to date"
     assert dialog.update_detail.text() == (
-        f"You're running Play Store App Audit {__version__}. "
+        f"You're running {DISPLAY_NAME} {__version__}. "
         "This is the latest available version."
     )
     assert dialog.update_action.text() == "Check Again"
