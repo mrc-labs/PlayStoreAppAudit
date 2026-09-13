@@ -6,7 +6,7 @@ Play Store App Audit is a Python desktop application that audits Android package
 
 The production UI is Qt 6 / PySide6 Qt Widgets. The former CustomTkinter implementation is retired and preserved only as the historical Git tag `legacy-customtkinter-v9.3`.
 
-Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current shipped/development state lives in `docs/PROJECT_STATUS.md`. Forward-looking release/feature planning lives in `docs/ROADMAP.md`. The detailed release procedures live in `docs/BUILDING.md`. Permanent release-closure and local VS Code synchronization requirements live in `docs/RELEASE_CLOSURE.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
+Durable engineering decisions live in `docs/PROJECT_DECISIONS.md`. Current shipped/development state lives in `docs/PROJECT_STATUS.md`. Forward-looking release/feature planning lives in `docs/ROADMAP.md`. The detailed release procedures live in `docs/BUILDING.md`. Permanent release-closure and local VS Code synchronization requirements live in `docs/RELEASE_CLOSURE.md`. Mandatory twice-per-release latest-stable component verification lives in `docs/RELEASE_COMPONENT_FRESHNESS.md`. GitHub Actions retention and post-release housekeeping live in `docs/CI_MAINTENANCE.md`. The canonical GitHub Release body structure and historical normalized release-note wording live in `docs/RELEASE_NOTES.md`.
 
 When old version-specific scheduling language in an operational document conflicts with the current roadmap, preserve the operational procedure but follow `PROJECT_DECISIONS.md` and `ROADMAP.md` for the current milestone assignment. Historical release wording in `CHANGELOG.md` and `RELEASE_NOTES.md` is not rewritten to match later roadmap changes.
 
@@ -31,10 +31,12 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Release packaging baseline: Python 3.13 until a deliberate, validated toolchain migration.
-- Quality CI: Python 3.13 and 3.14.
-- Current PySide6 baseline: `PySide6-Essentials==6.11.1`.
-- Current release compiler pin: `Nuitka==4.1.3`.
+- v2.0 development and release-packaging baseline: stable Python 3.14.
+- Quality CI: Python 3.14.
+- Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
+- Current release compiler pin: `Nuitka==4.2.1`.
+- Runtime, development and build dependency pins must reflect the latest stable versions verified by the mandatory release freshness gate.
+- Python pre-releases, including Python 3.15 release candidates, are not stable release baselines unless a deliberate engineering decision changes the policy.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
 - Keep `google-play-scraper` behind a service boundary because it is unofficial and replaceable.
 - HTTP fallback uses `requests` + BeautifulSoup with Python's built-in `html.parser`; do not re-add `lxml` without a measured need.
@@ -79,6 +81,8 @@ These are hard constraints unless deliberately changed through a dedicated engin
 
 - `main` is the only permanent branch. Use short-lived branches and normal PR merge commits.
 - Published release history is immutable. Do not squash, rewrite, retag or replace published release assets.
+- Every release must run the complete component freshness gate twice: once at release-phase entry and again immediately before the final exact-SHA freeze. Verify Python, all runtime/dev/build dependencies, transitive release-path packages, PySide/Qt/Shiboken, Nuitka, packaging tools, GitHub Actions, Android Platform-Tools/ADB, signing/notarization tooling, runner/build prerequisites and every other maintained third-party release component against the latest stable upstream version. The canonical procedure and evidence requirements are in `docs/RELEASE_COMPONENT_FRESHNESS.md`.
+- If either freshness gate finds a newer stable component, update it and repeat every affected source, package, legal, signing and platform validation before release work continues. Do not silently ship a known older stable component under this policy.
 - A release profile freezes one exact full `main` SHA after Quality CI passes.
 - Build workflows must reject mismatches between expected SHA, dispatch SHA and checked-out SHA.
 - Do not create public RC tags.
@@ -174,9 +178,9 @@ v1.99 is feature complete, published and immutable as the final planned Windows 
 - Preserve the semantic warning hierarchy across the table, Details surfaces and HTML report: `Different` and `Aging target` reuse the status palette's dark-yellow foreground with DemiBold 600 emphasis; `Legacy target` reuses dark orange with DemiBold 600 emphasis; `Modern` remains Regular 400 and the Status column remains Bold 700. The selection background remains Qt-managed, with warning colours chosen for both selected and unselected readability, and machine-readable values remain unchanged.
 - Alternative Distribution Discovery is informational exact-package-ID evidence, not endorsement or an automatic equivalent-app association. v1.99 automatic checks are limited to F-Droid main and optional authorized Aptoide, require conclusive eligible Google Play evidence and must not run for transient, scraper or ambiguous failures. The remaining providers in the limitations panel are not implemented.
 - The v1.99 Maintenance Score update applies `-60` only for raw `play_status == "not_found_in_checked_countries"`, then recovers `+10` for current conclusive F-Droid main availability and `+5` for current conclusive Aptoide availability. Recovery is cumulative, deduplicated, limited to the current `+15` provider mapping and disabled unless the `-60` component is active; it is never an unconditional multi-store bonus. Store anomaly is `-20`; Other/inconclusive is `-15`; stale/aging freshness is `-25`/`-15`; legacy/aging target SDK is `-15`/`-10`; installed/store difference is `-5`. Regional unavailability is not definitive absence. Scores remain clamped to 0-100 and `health_score` remains the compatibility identifier.
-- Defer the internal `health_score` rename to v2.0. It is a separate compatibility migration and is not implied by the scoring update.
+- Defer the internal `health_score` rename to v2.1. It is a separate compatibility migration and is not implied by the scoring update.
 - `QDockWidget` is rejected and not planned. Retain the Details Panel's Auto/Right/Below/Hidden placement and narrow/wide/extra-wide responsiveness.
-- Do not add Local APK Audit functionality in v1.99. Begin v2.0 with a parser/verifier spike, then a typed `LocalArtifact` model with SHA-256 artifact identity and package-deduplicated Store/provider fan-out before implementing Local APK Audit and the persistent Local APK Library.
+- Do not add Local APK Audit functionality in v1.99. Begin v2.0 with a parser/verifier spike, then a typed `LocalArtifact` model with SHA-256 artifact identity and package-deduplicated Store/provider fan-out before implementing Local APK Audit and the persistent Local APK Library core.
 - A richer dashboard is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when multiple mature sources and longitudinal/history workflows justify it.
 
 ### v2.0-or-later production profile
@@ -189,7 +193,7 @@ v2.0 is the first planned return to a full multi-platform release. Production si
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
 - The full production public asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
-- A Local APK Library is a major v2.0 product pillar: recursively scan local APK directories, parse package/version and useful SDK/icon/file metadata, and compare the local library through the existing Store/evidence/filter/report architecture. Later library-management features such as mass rename, duplicate management and cleanup belong to the v2.x backlog.
+- Local APK analysis is a major v2.0 product pillar. The v2.0 source supports explicit local APK/container files and recursive folder discovery with safe package/version parsing and Store comparison. A separate persistent library-management UI, mass rename, duplicate management and cleanup remain later v2.x work rather than a v2.0 release blocker.
 
 v1.3.0 at commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` is already published and immutable. Do not rebuild, retag or replace its artifacts.
 

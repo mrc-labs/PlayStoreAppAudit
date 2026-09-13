@@ -33,10 +33,10 @@ jobs:
         with:
           ref: main
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Compile retention policy
         run: python -m py_compile .github/scripts/cleanup_actions_retention.py

@@ -16,7 +16,7 @@ def test_linux_legal_preflight_runs_before_nuitka_packaging() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) == 1
-    assert '--expected-nuitka-version "4.1.3"' in workflow
+    assert '--expected-nuitka-version "4.2.1"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     configure = workflow.index("Configure Qt deployment")
@@ -31,7 +31,7 @@ def test_macos_legal_preflight_runs_before_nuitka_packaging() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) == 1
-    assert '--expected-nuitka-version "4.1.3"' in workflow
+    assert '--expected-nuitka-version "4.2.1"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     configure = workflow.index("Configure Qt deployment")
@@ -46,7 +46,7 @@ def test_windows_legal_preflight_runs_before_heavy_build() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) >= 3
-    assert '--expected-nuitka-version "4.1.3"' in workflow
+    assert '--expected-nuitka-version "4.2.1"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     tests = workflow.index("Static checks and regression tests")

@@ -50,7 +50,7 @@ def test_release_qt_baseline_is_pinned() -> None:
         root / "requirements.txt"
     ).read_text(encoding="utf-8").splitlines()
 
-    qt_requirement = "PySide6-Essentials==6.11.1"
+    qt_requirement = "PySide6-Essentials==6.11.2"
     assert qt_requirement in project["project"]["dependencies"]
     assert qt_requirement in requirements
 

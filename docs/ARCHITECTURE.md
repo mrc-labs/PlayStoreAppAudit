@@ -2,7 +2,7 @@
 
 Play Store App Audit is a Qt 6 / PySide6 desktop application with one shared source tree for Windows, macOS and Linux.
 
-Durable engineering constraints are recorded in `PROJECT_DECISIONS.md`. Current release state and the active maintenance queue are recorded in `PROJECT_STATUS.md`.
+Durable engineering constraints are recorded in `PROJECT_DECISIONS.md`. Current release state and the active maintenance queue are recorded in `PROJECT_STATUS.md`. Mandatory release component freshness verification is defined in `RELEASE_COMPONENT_FRESHNESS.md`.
 
 ## Entry points and package layout
 
@@ -131,7 +131,7 @@ There are no permanent operating-system branches.
 
 ## Deployment and release architecture
 
-Release packaging uses Python 3.13, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`.
+The v2.0 development and release toolchain uses stable Python 3.14, `PySide6-Essentials==6.11.2` and `Nuitka==4.2.1`. Every release verifies the complete maintained component set against the latest stable upstream versions at release-phase entry and again immediately before the final exact-SHA freeze, as defined in `RELEASE_COMPONENT_FRESHNESS.md`.
 
 Every public release is an exact-SHA assembly rather than a collection of independently built packages:
 
@@ -168,15 +168,15 @@ v1.5.0 keeps the same reduced public profile as v1.4: one unsigned Windows x64 p
 - `.github/workflows/assemble-windows-engineering-release.yml` validates the Windows x64 candidate and emits exactly three public assets: `PlayStoreAppAudit-v1.5.0-windows-x64.zip`, `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`, and `SHA256SUMS.txt`.
 - The GitHub Release uses title suffix `(ETB Win x64)` and the Windows x64-only ETB body heading.
 
-### v1.6-v1.9 Windows x64 Engineering Test Build profiles
+### v1.6-v1.99 Windows x64 Engineering Test Build profiles
 
-v1.6.0, v1.7.0 and v1.8.0 were published as unsigned Windows x64-only Engineering Test Builds. v1.9 retains the same distribution profile:
+v1.6.0, v1.7.0, v1.8.0, v1.9.0 and v1.99.0 were published as unsigned Windows x64-only Engineering Test Builds:
 
-- one Windows x64 candidate is built from the frozen SHA with `.github/workflows/build-windows-exe.yml`;
-- Windows signing, Windows ARM64, Linux and macOS release candidates are not invoked;
-- `.github/workflows/assemble-windows-engineering-release.yml` validates exact-SHA provenance and emits exactly three public assets: the Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
+- one Windows x64 candidate was built from the frozen SHA with `.github/workflows/build-windows-exe.yml`;
+- Windows signing, Windows ARM64, Linux and macOS release candidates were not invoked;
+- `.github/workflows/assemble-windows-engineering-release.yml` validated exact-SHA provenance and emitted exactly three public assets: the Windows x64 ZIP, one consolidated third-party source archive and one `SHA256SUMS.txt`.
 
-The full six-platform production path remains maintained for the v2.0-or-later milestone. It requires Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 candidates from one frozen SHA, with production signing/notarization only after provider, credential, cost and end-to-end validation succeed.
+The full six-platform production path is the v2.0 release target. It requires Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 candidates from one frozen SHA, with production signing/notarization remaining conditional on provider, credential, cost and end-to-end validation.
 
 ### Platform package forms
 
@@ -186,8 +186,8 @@ The full six-platform production path remains maintained for the v2.0-or-later m
 
 Windows package validation covers native Python/PySide inputs, PE architecture, version metadata, runtime content, startup and legal material. Linux validates ELF architecture, runtime content and startup. macOS validates Mach-O architecture, bundle metadata, runtime content, signature state and startup.
 
-At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. The v1.4-v1.9 release line deliberately uses unsigned Windows x64 Engineering Test Builds. Production signing and the full six-platform release are deferred to v2.0 or later and remain conditional on real validation.
+At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. The v1.4-v1.99 release line deliberately used unsigned Windows x64 Engineering Test Builds. Production signing and the full six-platform release are part of the v2.0 final release path and remain conditional on real validation.
 
 Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
 
-The detailed Windows x64 ETB and future v2.0 production procedures and current workflow names are documented in `BUILDING.md`.
+The detailed Windows x64 ETB and v2.0 production procedures and current workflow names are documented in `BUILDING.md`.

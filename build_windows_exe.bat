@@ -17,50 +17,50 @@ if defined PLAYSTORE_RELEASE_PYTHON (
   )
 )
 
-if not defined PYTHON if exist "dist\release313env\Scripts\python.exe" (
-  set "PYTHON=%CD%\dist\release313env\Scripts\python.exe"
+if not defined PYTHON if exist "dist\release314env\Scripts\python.exe" (
+  set "PYTHON=%CD%\dist\release314env\Scripts\python.exe"
 )
 
 if not defined PYTHON if exist ".venv\Scripts\python.exe" (
-  ".venv\Scripts\python.exe" -c "import platform, sys; assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
+  ".venv\Scripts\python.exe" -c "import platform, sys; assert sys.version_info[:2] == (3, 14); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
   if not errorlevel 1 set "PYTHON=%CD%\.venv\Scripts\python.exe"
 )
 
 if not defined PYTHON (
   where py >nul 2>nul
   if errorlevel 1 (
-    echo Native Windows x64 Python 3.13 is required.
-    echo Install Python 3.13 with the Windows Python launcher.
+    echo Native Windows x64 Python 3.14 is required.
+    echo Install Python 3.14 with the Windows Python launcher.
     exit /b 1
   )
 
-  py -3.13 -c "import platform, sys; assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
+  py -3.14 -c "import platform, sys; assert sys.version_info[:2] == (3, 14); assert platform.machine().upper() in {'AMD64','X86_64'}" >nul 2>nul
   if errorlevel 1 (
-    echo Native Windows x64 Python 3.13 is required.
+    echo Native Windows x64 Python 3.14 is required.
     exit /b 1
   )
 
   if exist ".venv" (
-    echo The existing .venv is not a native Windows x64 Python 3.13 environment.
-    echo Remove or rename it, or set PLAYSTORE_RELEASE_PYTHON to a valid Python 3.13 x64 executable.
+    echo The existing .venv is not a native Windows x64 Python 3.14 environment.
+    echo Remove or rename it, or set PLAYSTORE_RELEASE_PYTHON to a valid Python 3.14 x64 executable.
     exit /b 1
   )
 
-  py -3.13 -m venv .venv
+  py -3.14 -m venv .venv
   if errorlevel 1 exit /b 1
   set "PYTHON=%CD%\.venv\Scripts\python.exe"
 )
 
 echo Release Python:
 echo %PYTHON%
-"%PYTHON%" -c "import platform, sys; print(sys.version); print(platform.machine()); assert sys.version_info[:2] == (3, 13); assert platform.machine().upper() in {'AMD64','X86_64'}"
+"%PYTHON%" -c "import platform, sys; print(sys.version); print(platform.machine()); assert sys.version_info[:2] == (3, 14); assert platform.machine().upper() in {'AMD64','X86_64'}"
 if errorlevel 1 exit /b 1
 
 echo.
 echo === Install/update build dependencies ===
 "%PYTHON%" -m pip install --upgrade pip
 if errorlevel 1 exit /b 1
-"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.1.3"
+"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.2.1"
 if errorlevel 1 exit /b 1
 
 echo.
@@ -77,7 +77,7 @@ if errorlevel 1 exit /b 1
 echo.
 echo === Qt source smoke tests ===
 set "QT_QPA_PLATFORM=offscreen"
-"%PYTHON%" -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose File'; assert w.scan_button.text()=='Scan Phone'; old='Audit completed - 10 cached - 2 live'; w.status_label.setText(old); w._set_view_preset('Device'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
+"%PYTHON%" -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.ui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); assert w.path_edit.isHidden(); assert w.choose_button.text()=='Choose File'; assert w.scan_button.text()=='Scan Phone'; old='Audit completed - 10 cached - 2 live'; w.status_label.setText(old); w._set_view_preset('Source Details'); assert w.status_label.text()==old; assert w.country_edit.text(); print('Qt source smoke test OK'); w.close()"
 if errorlevel 1 exit /b 1
 set "PLAYSTORE_APP_AUDIT_SMOKE_TEST=1"
 "%PYTHON%" main.py

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=80", "wheel"]
+requires = ["setuptools==84.0.0", "wheel==0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,16 +8,16 @@ version = "1.99.0"
 license = "GPL-3.0-only"
 description = "Desktop utility for auditing Android package IDs against public Google Play listings."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 authors = [{name = "MRC"}]
 keywords = ["android", "google-play", "adb", "pyside6", "qt6", "desktop-app"]
 dependencies = [
     "pyaxmlparser==0.3.31",
     "google-play-scraper==1.2.7",
-    "requests>=2.31",
-    "beautifulsoup4>=4.12",
+    "requests==2.34.2",
+    "beautifulsoup4==4.15.0",
     "cryptography==50.0.1",
-    "PySide6-Essentials==6.11.1",
+    "PySide6-Essentials==6.11.2",
 ]
 
 [project.urls]
@@ -36,7 +36,7 @@ testpaths = ["tests"]
 addopts = "-q"
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 line-length = 110
 
 [tool.ruff.lint]
@@ -53,7 +53,7 @@ ignore = ["E501"]
 "playstore_app_audit/ui/table_window.py" = ["E402", "B008", "SIM102"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_unused_configs = true
 check_untyped_defs = true
 ignore_missing_imports = true

@@ -110,11 +110,11 @@ try {
     $pythonVersion = "python command unavailable: $($_.Exception.Message)"
 }
 
-$py313Version = ''
+$py314Version = ''
 try {
-    $py313Version = (& py -3.13 --version 2>&1 | Out-String).Trim()
+    $py314Version = (& py -3.14 --version 2>&1 | Out-String).Trim()
 } catch {
-    $py313Version = "py -3.13 unavailable: $($_.Exception.Message)"
+    $py314Version = "py -3.14 unavailable: $($_.Exception.Message)"
 }
 
 $ghSection = @()
@@ -170,7 +170,7 @@ $snapshot = @(
     "- Current handoff: docs/$($currentHandoff.File.Name)",
     "- Handoff version: $($currentHandoff.DisplayVersion)",
     "- Python: $pythonVersion",
-    "- Python 3.13 launcher: $py313Version",
+    "- Python 3.14 launcher: $py314Version",
     '',
     '## Recent commits',
     '',

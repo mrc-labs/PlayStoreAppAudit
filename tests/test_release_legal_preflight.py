@@ -39,8 +39,8 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     versions = {
-        "PySide6-Essentials": "6.11.1",
-        "shiboken6": "6.11.1",
+        "PySide6-Essentials": "6.11.2",
+        "shiboken6": "6.11.2",
         "certifi": "2026.8.3",
     }
 
@@ -68,7 +68,7 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
         legal,
         "_copy_nuitka_legal_files",
         lambda _root: (
-            "4.1.3",
+            "4.2.1",
             [
                 "licenses/nuitka/LICENSE-runtime.txt",
                 "licenses/nuitka/LICENSE.txt",
@@ -79,13 +79,13 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
 
     result = preflight.run_preflight(
         ROOT,
-        expected_nuitka_version="4.1.3",
+        expected_nuitka_version="4.2.1",
     )
 
     assert result["project_version"] == "1.99.0"
-    assert result["pyside6_essentials_version"] == "6.11.1"
-    assert result["shiboken6_version"] == "6.11.1"
-    assert result["nuitka_version"] == "4.1.3"
+    assert result["pyside6_essentials_version"] == "6.11.2"
+    assert result["shiboken6_version"] == "6.11.2"
+    assert result["nuitka_version"] == "4.2.1"
     assert result["cpython_license"] == "resolved"
 
     components = {
@@ -105,8 +105,8 @@ def test_preflight_rejects_pyside_shiboken_mismatch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     versions = {
-        "PySide6-Essentials": "6.11.1",
-        "shiboken6": "6.11.0",
+        "PySide6-Essentials": "6.11.2",
+        "shiboken6": "6.11.1",
     }
     monkeypatch.setattr(
         preflight.metadata,
@@ -120,7 +120,7 @@ def test_preflight_rejects_pyside_shiboken_mismatch(
     ):
         preflight.run_preflight(
             ROOT,
-            expected_nuitka_version="4.1.3",
+            expected_nuitka_version="4.2.1",
         )
 
 
@@ -128,8 +128,8 @@ def test_preflight_rejects_wrong_nuitka_pin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     versions = {
-        "PySide6-Essentials": "6.11.1",
-        "shiboken6": "6.11.1",
+        "PySide6-Essentials": "6.11.2",
+        "shiboken6": "6.11.2",
         "certifi": "2026.8.3",
     }
 
@@ -157,7 +157,7 @@ def test_preflight_rejects_wrong_nuitka_pin(
         legal,
         "_copy_nuitka_legal_files",
         lambda _root: (
-            "4.1.2",
+            "4.2.0",
             ["one", "two", "three"],
         ),
     )
@@ -168,7 +168,7 @@ def test_preflight_rejects_wrong_nuitka_pin(
     ):
         preflight.run_preflight(
             ROOT,
-            expected_nuitka_version="4.1.3",
+            expected_nuitka_version="4.2.1",
         )
 
 
