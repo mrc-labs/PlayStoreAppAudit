@@ -455,11 +455,11 @@ class TableWindow(insights_ui.InsightsWindow):
 
     def _show_about(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("About Play Store App Audit")
+        dialog.setWindowTitle("About Store App Audit")
         dialog.setMinimumWidth(480)
         layout = QVBoxLayout(dialog)
 
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         title.setObjectName("AboutTitle")
         font = QFont(title.font())
         font.setPointSizeF(16)

@@ -344,7 +344,7 @@ class PreferencesWindow(table_ui.TableWindow):
         help_menu.addAction("Check for Updates…", self._check_for_updates)
         help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
-        help_menu.addAction("About Play Store App Audit", self._show_about)
+        help_menu.addAction("About Store App Audit", self._show_about)
 
     # ---------- Settings ----------
     @staticmethod

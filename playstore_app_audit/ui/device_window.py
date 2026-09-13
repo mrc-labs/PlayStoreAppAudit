@@ -163,7 +163,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         tools.addAction(reset_layout)
 
         help_menu = menu.addMenu("Help")
-        about = QAction("About Play Store App Audit", self)
+        about = QAction("About Store App Audit", self)
         about.triggered.connect(self._show_about)
         help_menu.addAction(about)
 

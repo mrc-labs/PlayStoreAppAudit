@@ -259,7 +259,7 @@ class InsightsWindow(device_ui.DeviceWindow):
         help_menu.addAction("Check for Updates…", self._check_for_updates)
         help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
-        help_menu.addAction("About Play Store App Audit", self._show_about)
+        help_menu.addAction("About Store App Audit", self._show_about)
 
     def _populate_recent_menu(self) -> None:
         self._recent_menu.clear()
@@ -411,7 +411,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             self,
             "Save device snapshot",
             default,
-            "Play Store App Audit snapshot (*.psaa.json);;JSON (*.json)",
+            "Store App Audit snapshot (*.psaa.json);;JSON (*.json)",
         )
         if not selected:
             return
@@ -430,7 +430,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             self,
             "Choose device snapshot",
             str(device_insights.snapshots_dir()),
-            "Play Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
+            "Store App Audit snapshot (*.psaa.json *.json);;JSON (*.json)",
         )
         if not selected:
             return
@@ -1120,7 +1120,7 @@ class InsightsWindow(device_ui.DeviceWindow):
                 QDesktopServices.openUrl(QUrl(str(result.get("url") or device_insights.LATEST_RELEASE_PAGE)))
         else:
             QMessageBox.information(
-                self, "Up to date", f"You are running Play Store App Audit {device_insights.APP_VERSION}."
+                self, "Up to date", f"You are running Store App Audit {device_insights.APP_VERSION}."
             )
 
     def _create_diagnostic_bundle(self) -> None:
@@ -1141,7 +1141,7 @@ class InsightsWindow(device_ui.DeviceWindow):
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Play Store App Audit",
+            "About Store App Audit",
         )
 
 

@@ -236,7 +236,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             "Create Diagnostic Bundle…", self._create_diagnostic_bundle
         )
         self.help_menu.addSeparator()
-        self.help_menu.addAction("About Play Store App Audit", self._show_about)
+        self.help_menu.addAction("About Store App Audit", self._show_about)
 
     def _send_feedback(self) -> None:
         QDesktopServices.openUrl(QUrl(FEEDBACK_ISSUE_URL))
@@ -269,7 +269,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self,
             "Up to date",
             (
-                f"You're running Play Store App Audit {device_insights.APP_VERSION}. "
+                f"You're running Store App Audit {device_insights.APP_VERSION}. "
                 "This is the latest available version."
             ),
         )

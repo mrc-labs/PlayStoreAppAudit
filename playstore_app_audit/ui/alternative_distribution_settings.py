@@ -61,7 +61,7 @@ class AlternativeDistributionSettingsPage(QWidget):
         aptoide_note = QLabel(
             "Requires authorized access to the Aptoide API. Configure credentials associated "
             "with your permitted Aptoide account/store and ensure your use complies with "
-            "Aptoide's applicable terms. Play Store App Audit does not grant or verify access."
+            "Aptoide's applicable terms. Store App Audit does not grant or verify access."
         )
         aptoide_note.setWordWrap(True)
         aptoide_note.setObjectName("Muted")

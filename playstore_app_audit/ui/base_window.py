@@ -49,13 +49,14 @@ from PySide6.QtWidgets import (
 
 from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
+from playstore_app_audit.product_identity import DISPLAY_NAME, TECHNICAL_NAME
 from playstore_app_audit.services import presentation
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 from playstore_app_audit.services.store_freshness import StoreFreshnessThresholds
 from playstore_app_audit.ui import schema
 from playstore_app_audit.ui.action_icons import main_action_icon
 
-APP_NAME = "PlayStoreAppAudit"
+APP_NAME = DISPLAY_NAME
 PLATFORM_TOOLS_URL = runtime.platform_tools_url()
 PLATFORM_TOOLS_PAGE = runtime.PLATFORM_TOOLS_PAGE
 SDK_LICENSE_PAGE = "https://developer.android.com/studio/terms"
@@ -532,7 +533,7 @@ class WorkerSignals(QObject):
 class BaseWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Play Store App Audit")
+        self.setWindowTitle("Store App Audit")
         self.resize(1500, 900)
         self.setMinimumSize(1100, 700)
 
@@ -684,7 +685,7 @@ class BaseWindow(QMainWindow):
         root.setContentsMargins(18, 16, 18, 16)
         root.setSpacing(12)
 
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         title.setObjectName("Title")
         subtitle = QLabel(
             "Check Android packages against Google Play, classify update risk and inspect everything in one table."
@@ -1041,7 +1042,7 @@ class BaseWindow(QMainWindow):
                 self,
                 "Install Android Platform-Tools?",
                 "ADB is not installed on this PC.\n\n"
-                "PlayStoreAppAudit can download the latest Windows Platform-Tools directly "
+                "Store App Audit can download the latest Windows Platform-Tools directly "
                 "from Google's official fixed download endpoint and install them only for this app.\n\n"
                 "Continue?\n\n"
                 "By continuing, you confirm that you have reviewed and accept the Android SDK terms.",
@@ -1071,7 +1072,8 @@ class BaseWindow(QMainWindow):
                 temp_root = Path(temp_dir)
                 archive_path = temp_root / "platform-tools.zip"
                 request = urllib.request.Request(
-                    PLATFORM_TOOLS_URL, headers={"User-Agent": f"{APP_NAME}/{__version__}"}
+                    PLATFORM_TOOLS_URL,
+                    headers={"User-Agent": f"{TECHNICAL_NAME}/{__version__}"},
                 )
                 with (
                     urllib.request.urlopen(request, timeout=90) as response,

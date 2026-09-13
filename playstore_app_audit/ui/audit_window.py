@@ -176,8 +176,18 @@ class AuditWindow(BaseWindow):
             self._store_filter_layout.insertWidget(self._store_filter_insert_index(), group)
         else:
             group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            table_index = self._results_layout.indexOf(self.table)
-            self._results_layout.insertWidget(max(0, table_index), group)
+            # The current Results window wraps the table in a splitter. Insert
+            # after Store Status and before that table container.
+            table_index = next(
+                (
+                    index
+                    for index in range(self._results_layout.count())
+                    if (widget := self._results_layout.itemAt(index).widget()) is not None
+                    and (widget is self.table or widget.isAncestorOf(self.table))
+                ),
+                self._results_layout.count(),
+            )
+            self._results_layout.insertWidget(table_index, group)
         self._apk_relationship_on_store_row = same_row
         self._results_layout.invalidate()
         self._store_filter_layout.invalidate()
@@ -203,7 +213,7 @@ class AuditWindow(BaseWindow):
         root.setContentsMargins(18, 16, 18, 16)
         root.setSpacing(12)
 
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         title.setObjectName("Title")
         subtitle = QLabel(
             "Check Android packages against Google Play, classify update risk and inspect everything in one table."

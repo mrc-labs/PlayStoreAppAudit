@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file records durable engineering decisions for Play Store App Audit. It is not a task list and must not contain temporary workflow run IDs, one-off failures or chat-specific notes.
+This file records durable engineering decisions for Store App Audit. It is not a task list and must not contain temporary workflow run IDs, one-off failures or chat-specific notes.
 
 Changing a decision here should be deliberate and should normally happen in the same PR that changes the corresponding implementation or release policy.
 

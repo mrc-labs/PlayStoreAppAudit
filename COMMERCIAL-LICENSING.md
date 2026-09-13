@@ -1,6 +1,6 @@
 # Commercial licensing
 
-Play Store App Audit is available under the GNU General Public License
+Store App Audit is available under the GNU General Public License
 version 3 only (`GPL-3.0-only`).
 
 The GPL permits commercial use, including use by companies and the sale or
@@ -19,7 +19,7 @@ project.
 
 ## Third-party software
 
-A commercial license for Play Store App Audit's own code does not replace,
+A commercial license for Store App Audit's own code does not replace,
 override or sublicense third-party software included with or used by the
 application. Third-party components remain subject to their own licenses and
 notices.

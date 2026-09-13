@@ -96,7 +96,7 @@ BUILTIN_FILTERS = (
 
 CSV_EXPORT_GUIDE = """Export a package CSV directly from an Android phone
 
-The easiest method is simply to use 'Scan phone with ADB' inside Play Store App Audit. If you want a reusable CSV instead, open PowerShell in the folder containing adb.exe and run:
+The easiest method is simply to use 'Scan phone with ADB' inside Store App Audit. If you want a reusable CSV instead, open PowerShell in the folder containing adb.exe and run:
 
   "package_name" | Set-Content packages.csv
   .\\adb.exe shell pm list packages -3 | ForEach-Object { $_ -replace "^package:", "" } | Sort-Object -Unique | Add-Content packages.csv
@@ -827,7 +827,7 @@ def save_snapshot(path: str | Path, rows: list[dict[str, Any]], device_summary: 
 def load_snapshot(path: str | Path) -> dict[str, Any]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("apps"), list):
-        raise ValueError("Not a valid Play Store App Audit device snapshot.")
+        raise ValueError("Not a valid Store App Audit device snapshot.")
     return data
 
 
@@ -1180,10 +1180,10 @@ def write_html_report(
         "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
         "<th>Device App Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
     )
-    doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Play Store App Audit report</title>
+    doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Store App Audit report</title>
 <style>
 .score-breakdown {{ margin-top: 0.3rem; font-size: 0.82em; line-height: 1.35; }}
-</style></head><body><div class="wrap"><h1>Play Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr>{table_header}</tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
+</style></head><body><div class="wrap"><h1>Store App Audit</h1><p class="muted">Generated {html.escape(generated)} · App version {APP_VERSION}</p>{device_html}<div class="cards">{cards}</div><table><thead><tr>{table_header}</tr></thead><tbody>{"".join(table_rows)}</tbody></table>{alternative_html}</div></body></html>"""
     target.write_text(doc, encoding="utf-8")
     return target
 

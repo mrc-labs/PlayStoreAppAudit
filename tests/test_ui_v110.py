@@ -470,7 +470,7 @@ def test_store_freshness_settings_validate_derive_and_reclassify_loaded_rows(
         assert (recent.value(), stale.value()) == (365, 730)
         assert aging.text() == "366 to 730 days (automatic)"
         recent.setValue(750)
-        assert aging.text() == "751 to 730 days (automatic)"
+        assert aging.text() == "Invalid range: Recent must be lower than Stale."
         buttons = dialog.findChild(QDialogButtonBox)
         assert buttons is not None
         buttons.button(QDialogButtonBox.StandardButton.Save).click()
@@ -1424,7 +1424,7 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         "Send Feedback / Report an Issue…",
         "Create Diagnostic Bundle…",
         None,
-        "About Play Store App Audit",
+        "About Store App Audit",
     ]
     actions = {action.text(): action for action in window.help_menu.actions()}
     actions["ADB Setup Guide…"].trigger()
@@ -1469,7 +1469,7 @@ def test_about_dialog_displays_the_canonical_version(
     monkeypatch.setattr(QDialog, "exec", inspect_dialog)
     window._show_about()
 
-    assert captured["title"] == "About Play Store App Audit"
+    assert captured["title"] == "About Store App Audit"
     assert captured["labels"]["AboutVersion"] == f"Version {__version__}"  # type: ignore[index]
     assert captured["labels"]["AboutTagline"] == (  # type: ignore[index]
         "Android App Inventory, Store Analysis & Maintenance Toolkit"

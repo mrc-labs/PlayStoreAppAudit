@@ -4,7 +4,7 @@ Last updated: 2026-09-10
 
 ## Purpose
 
-This file is the canonical forward-looking product roadmap for Play Store App Audit. `PROJECT_STATUS.md` records current shipped state, `PROJECT_DECISIONS.md` records durable engineering/release policy, and this document assigns future product work.
+This file is the canonical forward-looking product roadmap for Store App Audit. `PROJECT_STATUS.md` records current shipped state, `PROJECT_DECISIONS.md` records durable engineering/release policy, and this document assigns future product work.
 
 ## Planning rules
 

@@ -42,6 +42,7 @@ from playstore_app_audit.domain.local_artifacts import (
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.platform.file_locations import open_file_location
+from playstore_app_audit.product_identity import is_known_display_name
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui.action_icons import main_action_icon
@@ -131,7 +132,9 @@ class MainWindow(results_ui.ResultsWindow):
         if root is None:
             return
         for label in central.findChildren(QLabel):
-            if label.objectName() == "Title" and label.text().strip() == "Play Store App Audit":
+            # The inherited title can carry either previous label during the
+            # layered UI transition; this final window removes all of them.
+            if label.objectName() == "Title" and is_known_display_name(label.text().strip()):
                 root.removeWidget(label)
                 label.setParent(None)
                 label.deleteLater()
@@ -1367,7 +1370,7 @@ class MainWindow(results_ui.ResultsWindow):
             self,
             "Install Android Platform-Tools?",
             f"ADB is not installed on this {runtime.platform_label()} computer.\n\n"
-            "Play Store App Audit can download the latest Android Platform-Tools "
+            "Store App Audit can download the latest Android Platform-Tools "
             "directly from Google's official download endpoint for this operating system.\n\n"
             "Continue?\n\n"
             "By continuing, you confirm that you have reviewed and accept the Android SDK terms.",

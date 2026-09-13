@@ -1,6 +1,6 @@
 # Architecture
 
-Play Store App Audit is a Qt 6 / PySide6 desktop application with one shared source tree for Windows, macOS and Linux.
+Store App Audit is a Qt 6 / PySide6 desktop application with one shared source tree for Windows, macOS and Linux.
 
 Durable engineering constraints are recorded in `PROJECT_DECISIONS.md`. Current release state and the active maintenance queue are recorded in `PROJECT_STATUS.md`. Mandatory release component freshness verification is defined in `RELEASE_COMPONENT_FRESHNESS.md`.
 
@@ -188,6 +188,6 @@ Windows package validation covers native Python/PySide inputs, PE architecture, 
 
 At the immutable v1.3 baseline, Windows/Linux packages are unsigned and macOS uses an ad-hoc signature without Apple notarization. The v1.4-v1.99 release line deliberately used unsigned Windows x64 Engineering Test Builds. Production signing and the full six-platform release are part of the v2.0 final release path and remain conditional on real validation.
 
-Generated binaries, deployment directories and generated icon files are build outputs, not source files, and remain ignored by Git.
+`assets/store_app_audit_icon.svg` is the committed vector source of truth for the app icon. `app_icon.py` renders each requested PNG and Windows ICO size directly from it with Qt SVG, while `tools/generate_app_icon_data.py` refreshes the embedded runtime 256 px PNG. The packaged UI does not need a loose SVG or Pillow. Generated binaries, deployment directories and raster icon files are build outputs, not source files, and remain ignored by Git.
 
 The detailed Windows x64 ETB and v2.0 production procedures and current workflow names are documented in `BUILDING.md`.

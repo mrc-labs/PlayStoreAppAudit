@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser, QVBoxLayout, QWidget
 
-from playstore_app_audit.product_identity import DISPLAY_NAME, LEGACY_DISPLAY_NAME
+from playstore_app_audit.product_identity import DISPLAY_NAME, PREVIOUS_DISPLAY_NAMES
 
 
 class RichHelpDialog(QDialog):
@@ -46,7 +46,9 @@ class RichHelpDialog(QDialog):
         )
         # Keep authored guides compatible while the source/docs terminology is
         # migrated gradually. Technical identifiers and URLs are unaffected.
-        self.browser.setHtml(content.replace(LEGACY_DISPLAY_NAME, DISPLAY_NAME))
+        for previous_name in PREVIOUS_DISPLAY_NAMES:
+            content = content.replace(previous_name, DISPLAY_NAME)
+        self.browser.setHtml(content)
         layout.addWidget(self.browser, 1)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)

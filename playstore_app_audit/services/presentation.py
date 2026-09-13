@@ -233,7 +233,7 @@ def friendly_notes(row: Mapping[str, Any]) -> str:
 
     return "No additional notes."
 
-CSV_EXPORT_GUIDE = """Export a package list for Play Store App Audit
+CSV_EXPORT_GUIDE = """Export a package list for Store App Audit
 
 PC / ADB method
 1. Connect the Android phone with USB debugging enabled and authorised.
@@ -248,7 +248,7 @@ Remove '-3' if you also want system apps. The resulting CSV can be loaded with C
 Phone-only methods
 Android itself does not provide a standard built-in button that exports all package IDs to CSV. You have two practical options:
 
-A. Use an app/package-manager on the phone that can export or share the installed-app list including Android package IDs. Save one package ID per line, or use a CSV column named 'package_name'. Play Store App Audit accepts either format.
+A. Use an app/package-manager on the phone that can export or share the installed-app list including Android package IDs. Save one package ID per line, or use a CSV column named 'package_name'. Store App Audit accepts either format.
 
 B. Advanced: use a local shell/package-manager with shell-level access, for example a Shizuku/local-ADB capable environment. From a shell that has permission to run 'pm', you can create a file in Downloads with:
 

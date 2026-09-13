@@ -4,7 +4,7 @@ This document locks the owner acceptance contract for issue #145 and the post-#1
 
 ## Product goal
 
-Play Store App Audit has three distinct longitudinal features:
+Store App Audit has three distinct longitudinal features:
 
 1. previous Play Store audit comparison;
 2. per-device inventory comparison;

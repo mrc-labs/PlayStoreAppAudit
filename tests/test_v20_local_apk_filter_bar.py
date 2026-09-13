@@ -87,6 +87,10 @@ def test_apk_vs_store_reflows_beside_store_status_then_below_when_needed(
         store_button = window.all_chip
         apk_button = window.apk_relationship_buttons["All"]
 
+        # This deliberately tests the wide path without tightening Store Status.
+        wide_width = max(1900, window._filter_layout_required_width() + 200)
+        window.resize(wide_width, 760)
+        app.processEvents()
         app.processEvents()
         wide_store_y = store_button.mapToGlobal(store_button.rect().topLeft()).y()
         wide_apk_y = apk_button.mapToGlobal(apk_button.rect().topLeft()).y()
@@ -94,11 +98,13 @@ def test_apk_vs_store_reflows_beside_store_status_then_below_when_needed(
 
         window.resize(1100, 760)
         app.processEvents()
+        app.processEvents()
         narrow_store_y = store_button.mapToGlobal(store_button.rect().topLeft()).y()
         narrow_apk_y = apk_button.mapToGlobal(apk_button.rect().topLeft()).y()
         assert narrow_apk_y > narrow_store_y
 
-        window.resize(1900, 760)
+        window.resize(wide_width, 760)
+        app.processEvents()
         app.processEvents()
         restored_store_y = store_button.mapToGlobal(store_button.rect().topLeft()).y()
         restored_apk_y = apk_button.mapToGlobal(apk_button.rect().topLeft()).y()

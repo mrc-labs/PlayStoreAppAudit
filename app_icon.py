@@ -1,64 +1,77 @@
+"""Build raster app icons directly from the canonical vector artwork.
+
+The committed SVG is the source of truth. The generated 256 px PNG bytes stay
+embedded for packaged runtime use, without a loose SVG or Pillow dependency.
+"""
+
 from __future__ import annotations
 
-import base64
 import hashlib
+import struct
 import tempfile
-from io import BytesIO
 from pathlib import Path
 
-# Store App Package Audit icon derived from the established pre-v2 visual family:
-# phone + Android robot + magnifying glass. The Play-style glyph inside the phone
-# is replaced by a colorful package/parcel mark, without adding an outer badge or
-# circle. The PNG stays embedded so packaged runtime needs no loose image asset.
-_ICON_PNG_BASE64 = "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"
+from playstore_app_audit._icon_data import ICON_PNG_BYTES as _ICON_BYTES
 
-_ICON_BYTES = base64.b64decode(_ICON_PNG_BASE64)
+ICON_SOURCE = Path(__file__).resolve().parent / "assets" / "store_app_audit_icon.svg"
+RUNTIME_ICON_SIZE = 256
+WINDOWS_ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 _ICON_HASH = hashlib.sha256(_ICON_BYTES).hexdigest()[:12]
 
 
-def generate_app_icon(output: str | Path, size: int = 256) -> Path:
-    """Write the project-owned icon as a transparent PNG at the requested size."""
-    from PIL import Image
+def render_svg_png(size: int, source: Path = ICON_SOURCE) -> bytes:
+    """Render a size-specific transparent PNG straight from the vector source."""
+    from PySide6.QtCore import QBuffer, QIODevice
+    from PySide6.QtGui import QImage, QPainter
+    from PySide6.QtSvg import QSvgRenderer
 
+    if size <= 0:
+        raise ValueError("Icon size must be positive")
+    renderer = QSvgRenderer(str(source))
+    if not renderer.isValid():
+        raise ValueError(f"Invalid SVG icon source: {source}")
+    image = QImage(size, size, QImage.Format.Format_ARGB32)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        renderer.render(painter)
+    finally:
+        painter.end()
+    buffer = QBuffer()
+    if not buffer.open(QIODevice.OpenModeFlag.WriteOnly) or not image.save(buffer, "PNG"):  # type: ignore[call-overload]
+        raise OSError("Could not encode rendered app icon")
+    return bytes(buffer.data().data())
+
+
+def generate_app_icon(output: str | Path, size: int = RUNTIME_ICON_SIZE) -> Path:
+    """Write a transparent PNG rendered directly from the canonical SVG."""
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    image = Image.open(BytesIO(_ICON_BYTES)).convert("RGBA")
-    if image.size != (size, size):
-        image = image.resize((size, size), Image.Resampling.LANCZOS)
-    image.save(output, optimize=True)
+    output.write_bytes(render_svg_png(size))
     return output
 
 
 def ensure_runtime_icon() -> Path:
-    # Keep the existing technical cache namespace stable across the visible rebrand.
-    target = (
-        Path(tempfile.gettempdir())
-        / "PlayStoreAppAudit"
-        / f"app_icon_{_ICON_HASH}.png"
-    )
+    """Materialise the embedded runtime PNG in the stable technical cache path."""
+    target = Path(tempfile.gettempdir()) / "PlayStoreAppAudit" / f"app_icon_{_ICON_HASH}.png"
     if not target.exists():
-        generate_app_icon(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(_ICON_BYTES)
     return target
 
 
 def generate_windows_ico(directory: str | Path = ".") -> Path:
-    from PIL import Image
-
+    """Assemble PNG-backed ICO entries, each rendered at its native size."""
     directory = Path(directory)
-    png = generate_app_icon(directory / "app_icon.png")
+    directory.mkdir(parents=True, exist_ok=True)
+    images = [render_svg_png(size) for size in WINDOWS_ICON_SIZES]
+    header = struct.pack("<HHH", 0, 1, len(images))
+    entries = bytearray()
+    offset = len(header) + 16 * len(images)
+    for size, png in zip(WINDOWS_ICON_SIZES, images, strict=True):
+        entries.extend(struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(png), offset))
+        offset += len(png)
     ico = directory / "app_icon.ico"
-    image = Image.open(png).convert("RGBA")
-    image.save(
-        ico,
-        format="ICO",
-        sizes=[
-            (16, 16),
-            (24, 24),
-            (32, 32),
-            (48, 48),
-            (64, 64),
-            (128, 128),
-            (256, 256),
-        ],
-    )
+    ico.write_bytes(header + entries + b"".join(images))
     return ico

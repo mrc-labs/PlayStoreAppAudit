@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
-from playstore_app_audit.product_identity import DISPLAY_NAME, LEGACY_DISPLAY_NAME
+from playstore_app_audit.product_identity import DISPLAY_NAME, PREVIOUS_DISPLAY_NAMES
 from playstore_app_audit.ui.about_updates import AboutUpdatesDialog
 
 AUTO_UPDATE_CHECK_KEY = "check_updates_on_startup"
@@ -149,9 +149,8 @@ def _about_action(window: Any):
     help_menu = getattr(window, "help_menu", None)
     if help_menu is None:
         return None
-    accepted_prefixes = (
-        f"About {DISPLAY_NAME}",
-        f"About {LEGACY_DISPLAY_NAME}",
+    accepted_prefixes = tuple(
+        f"About {name}" for name in (DISPLAY_NAME, *PREVIOUS_DISPLAY_NAMES)
     )
     for action in help_menu.actions():
         text = action.text().replace("…", "")

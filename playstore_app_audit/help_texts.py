@@ -4,7 +4,7 @@ ADB_SETUP_GUIDE = """ADB setup guide
 
 1. On the Android phone, enable Developer options and USB debugging.
 2. Connect the phone with a data-capable USB cable.
-3. In Play Store App Audit choose Scan phone.
+3. In Store App Audit choose Scan phone.
 4. If ADB is missing, managed Platform-Tools availability depends on the desktop:
    - Windows: managed Platform-Tools are available where supported by the app.
    - macOS: managed Platform-Tools are available where supported by the app.
@@ -24,13 +24,13 @@ Platform notes
 You can also install Android Platform-Tools yourself and put 'adb' on PATH, or point
 ANDROID_SDK_ROOT / ANDROID_HOME to an Android SDK installation.
 
-Play Store App Audit uses ADB read-only for inventory and metadata inspection.
+Store App Audit uses ADB read-only for inventory and metadata inspection.
 It does not uninstall or disable apps.
 """
 
 ADB_SETUP_GUIDE_HTML = r"""
 <h1>Connect an Android phone with ADB</h1>
-<p class="lead">Set up Android Debug Bridge once, then Play Store App Audit can read the
+<p class="lead">Set up Android Debug Bridge once, then Store App Audit can read the
 installed-package inventory and optional device metadata directly from your phone.</p>
 
 <h2>1. Prepare the phone</h2>
@@ -43,7 +43,7 @@ installed-package inventory and optional device metadata directly from your phon
       <b>Allow USB debugging?</b>. “Always allow from this computer” is optional.</li>
 </ol>
 
-<h2>2. Scan in Play Store App Audit</h2>
+<h2>2. Scan in Store App Audit</h2>
 <ol>
   <li>Choose <b>Scan phone</b> in the source card or <b>File → Scan phone with ADB</b>.</li>
   <li>If ADB is already on <code>PATH</code>, or installed under an Android SDK named by
@@ -78,7 +78,7 @@ source builds on those platforms.</div>
 <p>An <code>unauthorized</code> device needs approval on the unlocked phone. An <code>offline</code> device
 usually needs reconnecting. Linux may also require a suitable udev rule or USB-device permission.</p>
 
-<div class="warning"><b>Read-only use:</b> Play Store App Audit uses ADB only for inventory and metadata
+<div class="warning"><b>Read-only use:</b> Store App Audit uses ADB only for inventory and metadata
 inspection. It does not install, uninstall, disable, enable or modify apps on the phone.</div>
 """
 
@@ -92,7 +92,7 @@ source, or scan a connected phone directly.</p>
 also collect optional device metadata. See the ADB setup guide if the phone is not detected.</p>
 
 <h2>Supported files</h2>
-<p>Play Store App Audit accepts <b>CSV, TSV and TXT</b>. The simplest format is one Android package ID
+<p>Store App Audit accepts <b>CSV, TSV and TXT</b>. The simplest format is one Android package ID
 per line:</p>
 <pre><code>com.example.firstapp
 com.example.secondapp

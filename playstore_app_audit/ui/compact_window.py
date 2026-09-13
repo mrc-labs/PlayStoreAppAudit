@@ -687,7 +687,7 @@ class CompactWindow(AuditWindow):
         tools.addAction(reset_layout)
 
         help_menu = menu.addMenu("Help")
-        about = QAction("About Play Store App Audit", self)
+        about = QAction("About Store App Audit", self)
         about.triggered.connect(self._show_about)
         help_menu.addAction(about)
 
@@ -800,10 +800,10 @@ class CompactWindow(AuditWindow):
 
     def _show_about(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("About Play Store App Audit")
+        dialog.setWindowTitle("About Store App Audit")
         dialog.setMinimumWidth(480)
         layout = QVBoxLayout(dialog)
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         font = QFont(title.font())
         font.setPointSizeF(16)
         font.setBold(True)

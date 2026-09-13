@@ -1,4 +1,4 @@
-# Building Play Store App Audit
+# Building Store App Audit
 
 Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The release-packaging Python baseline is 3.13.
 
@@ -177,7 +177,7 @@ Run it from a normal Command Prompt:
 build_windows_exe.bat
 ```
 
-The packaged output is placed under `artifact/windows-x64-local`; temporary environment/build output remains under ignored local directories. Generated icons, deployment configuration and all local package/build output must not be committed.
+The packaged output is placed under `artifact/windows-x64-local`; temporary environment/build output remains under ignored local directories. The committed `assets/store_app_audit_icon.svg` is canonical; regenerate embedded runtime bytes with `python -m tools.generate_app_icon_data` after changing it. Generated raster icons, deployment configuration and all local package/build output must not be committed.
 
 This helper is for local x64 engineering. Public release artifacts use the GitHub Actions exact-SHA workflows described below.
 

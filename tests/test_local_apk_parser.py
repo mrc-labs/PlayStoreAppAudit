@@ -150,7 +150,7 @@ def test_local_metadata_cache_retention_is_bounded(
     monkeypatch.setattr(local_package_metadata_cache, "app_data_dir", lambda: tmp_path)
     monkeypatch.setattr(local_package_metadata_cache, "MAX_ENTRIES", 2)
     for index in range(3):
-        apk = _write_apk(tmp_path / f"bounded-{index}.apk")
+        apk = _write_apk(tmp_path / f"bounded-{index}.apk", extra_entry=str(index).encode())
         result, hit = local_package_metadata_cache.parse_cached_local_package(apk)
         assert result.artifact is not None and not hit
     assert local_package_metadata_cache.entry_count() == 2

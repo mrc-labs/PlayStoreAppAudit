@@ -20,7 +20,6 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
-import playstore_app_audit.services.local_package_container as local_package_container
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
@@ -268,7 +267,11 @@ def test_run_parses_candidates_keeps_partial_success_and_physical_rows(
             raise RuntimeError("synthetic parser crash")
         return outcomes[path]
 
-    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(
+        local_metadata_cache,
+        "parse_local_package",
+        lambda path, *, cancel_event: parse_candidate(Path(path)),
+    )
     monkeypatch.setattr(
         window,
         "_local_artifact_store_service",
@@ -310,8 +313,9 @@ def test_bounded_local_parse_concurrency_preserves_candidate_order_and_pause(
     tmp_path: Path,
 ) -> None:
     candidates = tuple(tmp_path / f"order-{index}.apk" for index in range(4))
-    for path in candidates:
-        path.write_bytes(path.name.encode())
+    for index, path in enumerate(candidates):
+        # Different sizes exercise distinct content-cache reservations in parallel.
+        path.write_bytes(b"x" * (index + 1))
     lock = threading.Lock()
     active = 0
     maximum = 0
@@ -331,7 +335,11 @@ def test_bounded_local_parse_concurrency_preserves_candidate_order_and_pause(
         )
 
     store = FakeStore()
-    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(
+        local_metadata_cache,
+        "parse_local_package",
+        lambda path, *, cancel_event: parse_candidate(Path(path)),
+    )
     monkeypatch.setattr(
         window, "_local_artifact_store_service",
         lambda: LocalArtifactStoreService(
@@ -383,7 +391,11 @@ def test_stop_during_parse_keeps_source_evidence_and_starts_no_store_work(
             store_calls.append(True)
             raise AssertionError("Store collection started after parse cancellation")
 
-    monkeypatch.setattr(local_apk, "parse_local_apk", parse_candidate)
+    monkeypatch.setattr(
+        local_metadata_cache,
+        "parse_local_package",
+        lambda path, *, cancel_event: parse_candidate(Path(path)),
+    )
     monkeypatch.setattr(window, "_local_artifact_store_service", StoreMustNotRun)
     window.source_mode = "local_apk"
     window._audit_session = 21
@@ -437,7 +449,7 @@ def test_container_parse_cancellation_is_not_reported_as_rejection(
             )
         )
 
-    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(local_metadata_cache, "parse_local_package", parse_candidate)
     monkeypatch.setattr(
         compact_ui.QMessageBox,
         "warning",
@@ -507,7 +519,7 @@ def test_genuine_container_failure_before_cancellation_remains_reported(
             )
         )
 
-    monkeypatch.setattr(local_package_container, "parse_local_package", parse_candidate)
+    monkeypatch.setattr(local_metadata_cache, "parse_local_package", parse_candidate)
     monkeypatch.setattr(
         compact_ui.QMessageBox,
         "warning",
