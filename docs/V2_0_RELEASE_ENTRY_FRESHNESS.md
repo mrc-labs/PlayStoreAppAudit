@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-13 CEST
 
-Status: **PASS for release-phase entry**, subject to completion of the Python 3.14 native package validation on the candidate branch. This record is not the final pre-release freshness gate and does not freeze a release SHA.
+Status: **PASS for release-phase entry**. Exact-head Quality and the native Windows x64 Python 3.14 standalone-package gate have completed successfully on the candidate branch. This record is not the final pre-release freshness gate and does not freeze a release SHA.
 
 This is the first of the two mandatory freshness gates defined in `RELEASE_COMPONENT_FRESHNESS.md`. The complete audit must be repeated immediately before the final v2.0 exact-SHA freeze. Any newer stable component available at that later gate must be adopted and the affected validation repeated before release publication can continue.
 
@@ -86,19 +86,19 @@ At this gate:
 
 ## Validation completed at this gate
 
-The migration branch has already established the following source evidence:
+The migration branch has established the following evidence:
 
-- GitHub Actions installs and runs CPython 3.14.7 successfully.
+- Exact-head Quality run #413 passed on CPython 3.14.7 with PySide6-Essentials/Shiboken6 6.11.2, 1140 tests, Ruff and Qt offscreen smoke.
 - The selected direct and development dependency set resolves on Python 3.14.
-- PySide6-Essentials/Shiboken6 6.11.2 import successfully on the Python 3.14 Quality runner.
 - The Quality workflow, release workflows, local Windows helper and standalone builder have been migrated from the old Python 3.13 baseline to Python 3.14.
 - The release legal preflight expectations and Qt baseline regressions have been migrated to PySide6 6.11.2 / Nuitka 4.2.1.
+- Native Windows x64 workflow run #128 (`34725989013`) validated exact source SHA `326cceb7e15ca413ee8a608b52f91d940c9dc4f7` and completed successfully.
+- That Windows gate used CPython 3.14.7 x64, PySide6-Essentials/Shiboken6 6.11.2, Nuitka 4.2.1 and MSVC 14.5.
+- The native package gate passed source tests, Ruff, Qt source smoke, managed Platform-Tools/ADB validation, Nuitka standalone compilation, PE x64 verification, standalone content validation, packaged smoke and strict public legal/source validation.
+- The generated Windows x64 package ZIP SHA-256 was `36aceac5a9dc73eaed8e2700a936086bff9a04276332982ae333b779718c4cdd`.
+- GitHub Actions uploaded artifact `PlayStoreAppAudit-v1.99.0-windows-x64` as artifact ID `10307619924`; the `1.99.0` version is intentional because the v2.0 version bump is deferred until the RC/release stage.
 
-Still required before the toolchain migration PR can leave draft status:
-
-1. exact-head Quality must pass after the final migrated regression expectations;
-2. a real native Windows x64 standalone package must validate on Python 3.14 with the new toolchain;
-3. any failure caused by the migration must be corrected and the affected gate repeated.
+The automated release-entry freshness and Windows x64 toolchain gates are therefore complete. Human Windows acceptance of the candidate UI/behaviour remains a product acceptance step before the stacked toolchain PR leaves draft status; it is not a substitute for the final pre-release freshness gate.
 
 ## Final pre-release gate reminder
 
