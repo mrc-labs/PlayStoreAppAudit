@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 import pytest
@@ -69,10 +70,10 @@ def test_load_queries_migrates_schema_v1_purple_storage_in_place(
         return stored
 
     def save(values: dict[str, Any]) -> dict[str, Any]:
-        snapshot = dict(values)
+        snapshot = deepcopy(values)
         save_calls.append(snapshot)
         stored.clear()
-        stored.update(values)
+        stored.update(snapshot)
         return stored
 
     monkeypatch.setattr(state, "load_settings", load)
