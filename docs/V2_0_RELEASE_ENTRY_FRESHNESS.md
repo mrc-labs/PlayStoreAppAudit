@@ -98,7 +98,7 @@ The migration branch has established the following evidence:
 - The generated Windows x64 package ZIP SHA-256 was `36aceac5a9dc73eaed8e2700a936086bff9a04276332982ae333b779718c4cdd`.
 - GitHub Actions uploaded artifact `PlayStoreAppAudit-v1.99.0-windows-x64` as artifact ID `10307619924`; the `1.99.0` version is intentional because the v2.0 version bump is deferred until the RC/release stage.
 
-The automated release-entry freshness and Windows x64 toolchain gates are therefore complete. Human Windows acceptance of the candidate UI/behaviour remains a product acceptance step before the stacked toolchain PR leaves draft status; it is not a substitute for the final pre-release freshness gate.
+The automated release-entry freshness and Windows x64 toolchain gates are therefore complete. Subsequent commits that only record this evidence in documentation do not alter the validated product/runtime/package inputs; exact-head Quality must still remain green before merge. Human Windows acceptance of the candidate UI/behaviour remains a product acceptance step before the stacked toolchain PR leaves draft status; it is not a substitute for the final pre-release freshness gate.
 
 ## Final pre-release gate reminder
 
