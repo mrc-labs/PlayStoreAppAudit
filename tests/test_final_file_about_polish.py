@@ -6,6 +6,7 @@ import pytest
 from PySide6.QtWidgets import QApplication, QFrame
 
 from playstore_app_audit.ui.about_updates import AboutUpdatesDialog
+from playstore_app_audit.ui.main_window import MainWindow
 
 
 @pytest.fixture(scope="module")
@@ -43,4 +44,14 @@ def test_about_update_card_reserves_stable_status_space(app: QApplication) -> No
         assert checking_height == current_height == update_height
     finally:
         dialog.close()
+        app.processEvents()
+
+
+def test_audit_presets_stay_implemented_but_hidden_for_v2(app: QApplication) -> None:
+    window = MainWindow()
+    try:
+        assert window.audit_profiles_menu.title() == "Audit Presets"
+        assert not window.audit_profiles_menu.menuAction().isVisible()
+    finally:
+        window.close()
         app.processEvents()
