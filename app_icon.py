@@ -19,6 +19,16 @@ WINDOWS_ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 _ICON_HASH = hashlib.sha256(_ICON_BYTES).hexdigest()[:12]
 
 
+def canonical_svg_source_bytes(source: Path = ICON_SOURCE) -> bytes:
+    """Return checkout-EOL-independent bytes for SVG source identity hashing."""
+    data = source.read_bytes()
+    # The generated source identity was established from a native Windows
+    # checkout. Canonicalise every checkout to CRLF so LF/CRLF conversion by Git
+    # cannot make the same vector artwork appear stale on another platform.
+    data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return data.replace(b"\n", b"\r\n")
+
+
 def render_svg_png(size: int, source: Path = ICON_SOURCE) -> bytes:
     """Render a size-specific transparent PNG straight from the vector source."""
     from PySide6.QtCore import QBuffer, QIODevice

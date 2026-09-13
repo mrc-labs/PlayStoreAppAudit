@@ -12,6 +12,7 @@ from app_icon import (
     ICON_SOURCE,
     RUNTIME_ICON_SIZE,
     WINDOWS_ICON_SIZES,
+    canonical_svg_source_bytes,
     generate_app_icon,
     generate_windows_ico,
 )
@@ -25,10 +26,23 @@ def test_canonical_icon_is_true_vector_source() -> None:
 
     assert root.tag == "{http://www.w3.org/2000/svg}svg"
     assert root.attrib["viewBox"] == "0 0 256 256"
-    assert hashlib.sha256(source).hexdigest() == ICON_SVG_SHA256
+    assert hashlib.sha256(canonical_svg_source_bytes()).hexdigest() == ICON_SVG_SHA256
     assert not any(element.tag.rsplit("}", 1)[-1] == "image" for element in root.iter())
     assert b"data:image/" not in source.lower()
     assert any(element.tag.rsplit("}", 1)[-1] == "path" for element in root.iter())
+
+
+def test_canonical_icon_source_hash_is_eol_stable(tmp_path) -> None:
+    source = ICON_SOURCE.read_bytes()
+    lf = source.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    crlf = lf.replace(b"\n", b"\r\n")
+    lf_source = tmp_path / "lf.svg"
+    crlf_source = tmp_path / "crlf.svg"
+    lf_source.write_bytes(lf)
+    crlf_source.write_bytes(crlf)
+
+    assert canonical_svg_source_bytes(lf_source) == canonical_svg_source_bytes(crlf_source)
+    assert hashlib.sha256(canonical_svg_source_bytes(lf_source)).hexdigest() == ICON_SVG_SHA256
 
 
 def test_runtime_png_is_embedded_transparent_and_full_size(tmp_path) -> None:

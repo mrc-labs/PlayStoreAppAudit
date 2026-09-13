@@ -6,7 +6,12 @@ import base64
 import hashlib
 from pathlib import Path
 
-from app_icon import ICON_SOURCE, RUNTIME_ICON_SIZE, render_svg_png
+from app_icon import (
+    ICON_SOURCE,
+    RUNTIME_ICON_SIZE,
+    canonical_svg_source_bytes,
+    render_svg_png,
+)
 
 OUTPUT = Path(__file__).resolve().parents[1] / "playstore_app_audit" / "_icon_data.py"
 
@@ -15,7 +20,7 @@ def main() -> None:
     png = render_svg_png(RUNTIME_ICON_SIZE)
     encoded = base64.b64encode(png).decode("ascii")
     lines = [encoded[index : index + 100] for index in range(0, len(encoded), 100)]
-    source_hash = hashlib.sha256(ICON_SOURCE.read_bytes()).hexdigest()
+    source_hash = hashlib.sha256(canonical_svg_source_bytes()).hexdigest()
     body = (
         '"""Generated runtime icon data from assets/store_app_audit_icon.svg.\n\n'
         'Regenerate with: python -m tools.generate_app_icon_data\n"""\n\n'
