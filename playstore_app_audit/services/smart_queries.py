@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import playstore_app_audit.services.state as state
+from playstore_app_audit.services.presentation import display_relationship_value
 
 SCHEMA_VERSION = 1
 SETTINGS_KEY = "smart_queries"
@@ -192,7 +193,10 @@ FIELD_DEFINITIONS = (
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),
             ("Different", "Different"),
-            ("Device-specific", "Device-specific"),
+            (
+                "Device-specific",
+                display_relationship_value("version_comparison", "Device-specific"),
+            ),
             ("Unknown", "Unknown"),
         ),
     ),
@@ -206,7 +210,12 @@ FIELD_DEFINITIONS = (
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),
             ("Different", "Different"),
-            ("Device-specific", "Device-specific"),
+            (
+                "Device-specific",
+                display_relationship_value(
+                    "local_apk_version_comparison", "Device-specific"
+                ),
+            ),
             ("Unknown", "Unknown"),
         ),
     ),

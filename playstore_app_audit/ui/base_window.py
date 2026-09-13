@@ -412,7 +412,7 @@ class AppTableModel(QAbstractTableModel):
             value = row.get(column, "")
             if isinstance(value, bool):
                 return "Yes" if value else "No"
-            return "" if value is None else str(value)
+            return presentation.display_relationship_value(column, value)
 
         if role == Qt.ItemDataRole.BackgroundRole:
             return QColor(info["background"])

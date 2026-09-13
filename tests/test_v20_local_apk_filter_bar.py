@@ -71,6 +71,37 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
             assert str(info["foreground"]) in stylesheet
             assert str(info["accent"]) in stylesheet
 
+        device_button = window.apk_relationship_buttons["Device-specific"]
+        assert device_button.text() == "Device Spec"
+        assert device_button.accessibleName() == "Device Specific"
+        assert device_button.toolTip() == (
+            "The Store version varies by device; a direct comparison may not be available."
+        )
+
+        rows = [
+            {
+                "package_name": "com.example.device",
+                "source_mode": "local_apk",
+                "local_apk_version_comparison": "Device-specific",
+            },
+            {
+                "package_name": "com.example.match",
+                "source_mode": "local_apk",
+                "local_apk_version_comparison": "Match",
+            },
+        ]
+        window.current_rows = rows
+        window.model.set_rows(rows)
+        window._set_apk_relationship_filter("Device-specific")
+        assert window._apk_relationship_filters == {"Device-specific"}
+        assert window.proxy.rowCount() == 1
+        assert (
+            window.proxy.index(0, window.model.columns.index("package_name")).data()
+            == "com.example.device"
+        )
+        assert device_button.isChecked()
+        window._clear_all_filters()
+
         # All and More remain neutral, with a visible checked border.
         all_button = window.apk_relationship_buttons["All"]
         assert all_button.isChecked()

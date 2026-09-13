@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
@@ -252,7 +253,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         device_note = QLabel(
             "Enabled by default. This reads package metadata locally through ADB. "
             "Version comparison reports Match / Outdated / Newer / Different / "
-            "Device-specific / Unknown and infers ordering only from safely comparable "
+            "Device Specific / Unknown and infers ordering only from safely comparable "
             "leading numeric components."
         )
         device_note.setWordWrap(True)
@@ -359,7 +360,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             value = str(row.get(key, "") or "")
             if not value and key not in {"notes", "change"}:
                 continue
-            label = QLabel(html.escape(value))
+            label = QLabel(html.escape(presentation.display_relationship_value(key, value)))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             form.addRow(label_text, label)

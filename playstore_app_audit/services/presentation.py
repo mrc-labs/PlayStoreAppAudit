@@ -89,6 +89,17 @@ STATUS_FOREGROUND_COLOURS = {
 }
 
 SemanticEmphasis = Literal["warning", "strong_warning"]
+VERSION_RELATIONSHIP_FIELDS = frozenset(
+    {"version_comparison", "local_apk_version_comparison"}
+)
+VERSION_RELATIONSHIP_LABELS = {"Device-specific": "Device Specific"}
+
+
+def display_relationship_value(field: str, value: object) -> str:
+    text = "" if value is None else str(value)
+    if field in VERSION_RELATIONSHIP_FIELDS:
+        return VERSION_RELATIONSHIP_LABELS.get(text, text)
+    return text
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +169,7 @@ def semantic_foreground_colour(field: str, value: object) -> str | None:
 
 
 def semantic_html_value(field: str, value: object) -> str:
-    text = html.escape(str(value or ""))
+    text = html.escape(display_relationship_value(field, value))
     value_presentation = semantic_value_presentation(field, value)
     if value_presentation is None:
         return text
@@ -356,7 +367,7 @@ def display_value(column: str, value: object, style: str | None = None) -> str:
         return format_date_value(value, style or configured_date_format())
     if isinstance(value, bool):
         return "Yes" if value else "No"
-    return "" if value is None else str(value)
+    return display_relationship_value(column, value)
 
 
 def rows_for_output(rows: list[dict[str, Any]], style: str | None = None) -> list[dict[str, Any]]:

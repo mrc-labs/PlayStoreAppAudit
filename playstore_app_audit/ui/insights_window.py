@@ -923,7 +923,11 @@ class InsightsWindow(device_ui.DeviceWindow):
             )
             if not value and key not in {"notes", "change"}:
                 continue
-            display_value = f"{value}/100" if key == "health_score" else value
+            display_value = (
+                f"{value}/100"
+                if key == "health_score"
+                else presentation.display_relationship_value(key, value)
+            )
             label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)

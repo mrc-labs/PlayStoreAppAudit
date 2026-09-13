@@ -190,7 +190,7 @@ treated as unknown and does not add either target-SDK penalty.</p>
       configured multi-country checks and preserves regional, anomaly or inconclusive states when
       appropriate. Alternative-provider evidence does not make an inconclusive Play result conclusive.</li>
   <li>A missing or unusable update date does not create an aging or stale-listing penalty.</li>
-  <li>Only one source-relevant version component applies. Match, Newer and Device-specific have no
+  <li>Only one source-relevant version component applies. Match, Newer and Device Specific have no
       version penalty. Optional ADB Unknown also has no penalty. A missing or inconclusive Store-side
       version does not create a Local APK Unknown penalty.</li>
   <li>Outdated requires safely comparable leading numeric components. It does not guarantee that an

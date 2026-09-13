@@ -125,7 +125,7 @@ Current components:
 - Local APK version is missing while a usable Store version exists: -15
 
 Alternative-provider recovery is cumulative up to +15, but it is never a bonus when Google Play is available and never changes the underlying Play or provider states. Installer source and requested permissions do not reduce the score. The score is optional and disabled by default.
-Only one source-relevant version component is applied. Newer, Match and Device-specific add no penalty; optional ADB Unknown also adds no penalty. Missing or inconclusive Store-side version evidence does not create a Local APK Unknown penalty.
+Only one source-relevant version component is applied. Newer, Match and Device Specific add no penalty; optional ADB Unknown also adds no penalty. Missing or inconclusive Store-side version evidence does not create a Local APK Unknown penalty.
 """
 
 HEALTH_SCORE_BASE = 100
@@ -1105,6 +1105,12 @@ def write_html_report(
                 f'<div class="score-breakdown">{breakdown_html}</div>'
             )
         if local_apk_report:
+            local_comparison = html.escape(
+                presentation.display_relationship_value(
+                    "local_apk_version_comparison",
+                    row.get("local_apk_version_comparison"),
+                )
+            )
             table_rows.append(
                 f'<tr class="{_status_class(row)}">'
                 f"<td>{html.escape(_visible_status(row))}</td>"
@@ -1113,7 +1119,7 @@ def write_html_report(
                 f"<td>{html.escape(str(row.get('local_apk_version_name') or ''))}</td>"
                 f"<td>{html.escape('' if row.get('local_apk_version_code') is None else str(row.get('local_apk_version_code')))}</td>"
                 f"<td>{html.escape(str(row.get('play_version') or ''))}</td>"
-                f"<td>{html.escape(str(row.get('local_apk_version_comparison') or ''))}</td>"
+                f"<td>{local_comparison}</td>"
                 f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('local_apk_sha256') or ''))}</td>"

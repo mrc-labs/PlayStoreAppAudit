@@ -384,7 +384,7 @@ def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
     for label, key in fields:
         value = row.get(key)
         if value is not None and str(value) != "":
-            lines.append(f"{label}: {value}")
+            lines.append(f"{label}: {presentation.display_relationship_value(key, value)}")
     if (
         row.get("local_apk_version_comparison") == "N/A"
         and row.get("play_status") == "not_found_in_checked_countries"

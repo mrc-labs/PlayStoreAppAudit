@@ -433,11 +433,13 @@ class AuditWindow(BaseWindow):
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),
             ("Match", "Match"),
-            ("Device-specific", "Device"),
+            ("Device-specific", "Device Spec"),
             ("N/A", "N/A"),
         ):
             button = QPushButton(label)
             button.setObjectName(f"ApkRelationship{value.replace('-', '').replace('/', '')}Button")
+            if value == "Device-specific":
+                button.setAccessibleName("Device Specific")
             button.setCheckable(True)
             status_key = APK_RELATIONSHIP_STATUS.get(value)
             if status_key is not None:
@@ -445,7 +447,7 @@ class AuditWindow(BaseWindow):
             else:
                 button.setStyleSheet(_NEUTRAL_FILTER_BUTTON_STYLE)
             button.setToolTip(
-                "The Store version varies by device; a direct order is unsafe."
+                "The Store version varies by device; a direct comparison may not be available."
                 if value == "Device-specific"
                 else f"Show Local APK results with {value} relationship."
             )

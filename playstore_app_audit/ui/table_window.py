@@ -325,7 +325,7 @@ class AuditTableModel(base_ui.AppTableModel):
             value = row.get(column, "")
             if isinstance(value, bool):
                 return "Yes" if value else "No"
-            return "" if value is None else str(value)
+            return presentation.display_relationship_value(column, value)
 
         if role == Qt.ItemDataRole.DecorationRole and column == ICON_COLUMN:
             return self.icon_for_row(row)
