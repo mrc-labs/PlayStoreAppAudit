@@ -306,6 +306,41 @@ def _normalise_number(value: object) -> int | float | None:
     return int(number) if number.is_integer() else number
 
 
+def _normalise_criticality_key(value: object) -> str:
+    key = str(value or "").strip().casefold()
+    return "blue" if key == "purple" else key
+
+
+def _migrate_legacy_criticality_item(value: object) -> tuple[object, bool]:
+    if not isinstance(value, Mapping):
+        return value, False
+    conditions = value.get("conditions")
+    if not isinstance(conditions, (list, tuple)):
+        return value, False
+
+    changed = False
+    migrated_conditions: list[object] = []
+    for condition in conditions:
+        if (
+            isinstance(condition, Mapping)
+            and str(condition.get("field") or "").strip() == "criticality_key"
+            and _normalise_criticality_key(condition.get("value")) == "blue"
+            and str(condition.get("value") or "").strip().casefold() == "purple"
+        ):
+            migrated_condition = dict(condition)
+            migrated_condition["value"] = "blue"
+            migrated_conditions.append(migrated_condition)
+            changed = True
+        else:
+            migrated_conditions.append(condition)
+
+    if not changed:
+        return value, False
+    migrated_item = dict(value)
+    migrated_item["conditions"] = migrated_conditions
+    return migrated_item, True
+
+
 def parse_date(value: object) -> date | None:
     if isinstance(value, datetime):
         return value.date()
@@ -356,6 +391,8 @@ def normalise_condition(value: object) -> SmartCondition | None:
             return None
     elif definition.field_type == FieldType.CHOICE:
         wanted = str(raw_value or "").strip().casefold()
+        if definition.field_id == "criticality_key":
+            wanted = _normalise_criticality_key(wanted)
         choice_values = {choice.value.casefold(): choice.value for choice in definition.choices}
         normalised_value = choice_values.get(wanted)
         if normalised_value is None:
@@ -473,7 +510,8 @@ def _settings_payload(queries: list[SmartQuery]) -> dict[str, Any]:
 
 
 def load_queries() -> list[SmartQuery]:
-    stored = state.load_settings().get(SETTINGS_KEY)
+    settings = state.load_settings()
+    stored = settings.get(SETTINGS_KEY)
     if not isinstance(stored, Mapping) or stored.get("schema_version") != SCHEMA_VERSION:
         return []
     items = stored.get("items")
@@ -483,13 +521,25 @@ def load_queries() -> list[SmartQuery]:
     queries: list[SmartQuery] = []
     names: set[str] = set()
     ids: set[str] = set()
-    for item in items:
+    migrated_items: list[object] = []
+    migration_needed = False
+    for raw_item in items:
+        item, migrated = _migrate_legacy_criticality_item(raw_item)
+        migrated_items.append(item)
+        migration_needed = migration_needed or migrated
         query = normalise_query(item)
         if query is None or query.query_id in ids or query.name.casefold() in names:
             continue
         queries.append(query)
         ids.add(query.query_id)
         names.add(query.name.casefold())
+
+    if migration_needed:
+        migrated_storage = dict(stored)
+        migrated_storage["items"] = migrated_items
+        settings[SETTINGS_KEY] = migrated_storage
+        state.save_settings(settings)
+
     return sorted(queries, key=lambda query: query.name.casefold())
 
 
@@ -592,6 +642,9 @@ def condition_matches(
     if definition.field_type in {FieldType.TEXT, FieldType.CHOICE}:
         actual = str(raw).strip().casefold()
         wanted = str(condition.value or "").strip().casefold()
+        if definition.field_id == "criticality_key":
+            actual = _normalise_criticality_key(actual)
+            wanted = _normalise_criticality_key(wanted)
         if operator == Operator.CONTAINS:
             return wanted in actual
         if operator == Operator.DOES_NOT_CONTAIN:
