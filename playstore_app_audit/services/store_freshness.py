@@ -35,6 +35,13 @@ class StoreFreshnessThresholds:
         return "orange"
 
 
+def aging_range_presentation(recent_max_days: int, stale_after_days: int) -> tuple[str, bool]:
+    """Return the derived Aging label and whether the edited thresholds are valid."""
+    if recent_max_days >= stale_after_days:
+        return "Invalid range: Recent must be lower than Stale.", False
+    return f"{recent_max_days + 1} to {stale_after_days} days (automatic)", True
+
+
 def from_settings(settings: Mapping[str, object]) -> StoreFreshnessThresholds:
     try:
         recent = int(str(settings.get("store_recent_max_days", DEFAULT_RECENT_MAX_DAYS)))

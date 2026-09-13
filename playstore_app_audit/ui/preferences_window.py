@@ -47,6 +47,7 @@ from app_icon import ensure_runtime_icon
 from playstore_app_audit.services.store_freshness import (
     MAX_THRESHOLD_DAYS,
     StoreFreshnessThresholds,
+    aging_range_presentation,
 )
 from playstore_app_audit.services.store_freshness import (
     from_settings as freshness_from_settings,
@@ -798,8 +799,15 @@ class PreferencesWindow(table_ui.TableWindow):
         aging_range.setObjectName("StoreAgingDerivedRange")
 
         def sync_aging_range() -> None:
-            aging_range.setText(
-                f"{recent_days.value() + 1} to {stale_days.value()} days (automatic)"
+            text, valid = aging_range_presentation(
+                recent_days.value(), stale_days.value()
+            )
+            aging_range.setText(text)
+            aging_range.setStyleSheet("" if valid else "color:#B42318;font-weight:650;")
+            aging_range.setToolTip(
+                ""
+                if valid
+                else "Choose a Recent maximum strictly lower than the Stale threshold."
             )
 
         recent_days.valueChanged.connect(sync_aging_range)
