@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 
+from PySide6.QtCore import QEvent, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -35,6 +36,24 @@ from playstore_app_audit.ui.base_window import (
     detect_windows_country,
 )
 
+APK_RELATIONSHIP_STATUS = {
+    "Outdated": "orange",
+    "Newer": "green",
+    "Match": "green",
+    "Device-specific": "blue",
+    "N/A": "red",
+}
+
+
+def _semantic_filter_button_style(status_key: str) -> str:
+    info = CRITICALITY[status_key]
+    return (
+        f"QPushButton {{background:{info['background']}; color:{info['foreground']}; "
+        f"border:1px solid {info['background']};}}"
+        f"QPushButton:hover {{border:1px solid {info['accent']};}}"
+        f"QPushButton:checked {{border:2px solid {info['accent']}; font-weight:650;}}"
+    )
+
 
 class AuditWindow(BaseWindow):
     """Qt 6 UI branch.
@@ -47,6 +66,8 @@ class AuditWindow(BaseWindow):
 
     def __init__(self) -> None:
         self._apk_relationship_filters: set[str] = set()
+        self._apk_relationship_on_store_row = False
+        self._apk_relationship_reflow_pending = False
         self._scan_request_sequence = 0
         self._active_scan_request_id: int | None = None
         self._scan_session: scan_sessions.ScanSession | None = None
@@ -104,6 +125,74 @@ class AuditWindow(BaseWindow):
         )
         for relationship, action in self.apk_relationship_more_actions.items():
             action.setChecked(relationship in hidden)
+
+    def _schedule_apk_relationship_reflow(self) -> None:
+        if self._apk_relationship_reflow_pending:
+            return
+        self._apk_relationship_reflow_pending = True
+        QTimer.singleShot(0, self._sync_apk_relationship_layout)
+
+    def _filter_layout_required_width(self) -> int:
+        layout = self._store_filter_layout
+        group = self.apk_relationship_filter_row
+        widths: list[int] = []
+        for index in range(layout.count()):
+            item = layout.itemAt(index)
+            widget = item.widget()
+            if widget is None or widget is group or not widget.isVisible():
+                continue
+            widths.append(max(widget.minimumSizeHint().width(), widget.sizeHint().width()))
+        spacing = max(0, layout.spacing())
+        relationship_width = max(group.minimumSizeHint().width(), group.sizeHint().width())
+        item_count = len(widths) + 1
+        return sum(widths) + relationship_width + spacing * max(0, item_count - 1)
+
+    def _store_filter_insert_index(self) -> int:
+        layout = self._store_filter_layout
+        for index in range(layout.count()):
+            if layout.itemAt(index).spacerItem() is not None:
+                return index
+        return layout.count()
+
+    def _sync_apk_relationship_layout(self) -> None:
+        self._apk_relationship_reflow_pending = False
+        if not hasattr(self, "apk_relationship_filter_row"):
+            return
+        group = self.apk_relationship_filter_row
+        if not group.isVisible():
+            return
+
+        left, _top, right, _bottom = self._results_layout.getContentsMargins()
+        available_width = max(0, self._results_card.contentsRect().width() - left - right)
+        same_row = available_width >= self._filter_layout_required_width()
+
+        if same_row == self._apk_relationship_on_store_row:
+            return
+
+        self._store_filter_layout.removeWidget(group)
+        self._results_layout.removeWidget(group)
+        if same_row:
+            group.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            self._store_filter_layout.insertWidget(self._store_filter_insert_index(), group)
+        else:
+            group.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            table_index = self._results_layout.indexOf(self.table)
+            self._results_layout.insertWidget(max(0, table_index), group)
+        self._apk_relationship_on_store_row = same_row
+        self._results_layout.invalidate()
+        self._store_filter_layout.invalidate()
+
+    def eventFilter(self, watched: object, event: QEvent) -> bool:
+        if event.type() in {
+            QEvent.Type.Resize,
+            QEvent.Type.Show,
+            QEvent.Type.LayoutRequest,
+        } and watched in {
+            getattr(self, "_results_card", None),
+            getattr(self, "apk_relationship_filter_row", None),
+        }:
+            self._schedule_apk_relationship_reflow()
+        return super().eventFilter(watched, event)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -234,6 +323,9 @@ class AuditWindow(BaseWindow):
 
         results_card, results_layout = self._card()
         root.addWidget(results_card, 1)
+        self._results_card = results_card
+        self._results_layout = results_layout
+        results_card.installEventFilter(self)
 
         toolbar = QHBoxLayout()
         self.summary_label = QLabel("No Results Yet")
@@ -256,6 +348,7 @@ class AuditWindow(BaseWindow):
 
         chip_row = QHBoxLayout()
         chip_row.setSpacing(6)
+        self._store_filter_layout = chip_row
         self.store_status_filter_label = QLabel("Store Status:")
         self.store_status_filter_label.setObjectName("StoreStatusFilterLabel")
         self.store_status_filter_label.setToolTip(
@@ -277,12 +370,7 @@ class AuditWindow(BaseWindow):
             button.setObjectName("CriticalityButton")
             button.setCheckable(True)
             button.setToolTip(str(info["tooltip"]))
-            button.setStyleSheet(
-                f"QPushButton {{background:{info['background']}; color:{info['foreground']}; "
-                f"border:1px solid {info['background']};}}"
-                f"QPushButton:hover {{border:1px solid {info['accent']};}}"
-                f"QPushButton:checked {{border:2px solid {info['accent']}; font-weight:650;}}"
-            )
+            button.setStyleSheet(_semantic_filter_button_style(key))
             button.clicked.connect(lambda checked=False, k=key: self._set_criticality_filter(k))
             self.criticality_buttons[key] = button
             chip_row.addWidget(button)
@@ -291,21 +379,34 @@ class AuditWindow(BaseWindow):
 
         self.apk_relationship_filter_row = QWidget()
         self.apk_relationship_filter_row.setObjectName("ApkRelationshipFilterRow")
+        self.apk_relationship_filter_row.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.apk_relationship_filter_row.installEventFilter(self)
         relationship_row = QHBoxLayout(self.apk_relationship_filter_row)
         relationship_row.setContentsMargins(0, 0, 0, 0)
         relationship_row.setSpacing(6)
         relationship_row.addWidget(QLabel("APK vs Store:"))
         self.apk_relationship_buttons: dict[str, QPushButton] = {}
         for value, label in (
-            ("All", "All"), ("Outdated", "Outdated"), ("Newer", "Newer"),
-            ("Match", "Match"), ("Device-specific", "Device"), ("N/A", "N/A"),
+            ("All", "All"),
+            ("Outdated", "Outdated"),
+            ("Newer", "Newer"),
+            ("Match", "Match"),
+            ("Device-specific", "Device"),
+            ("N/A", "N/A"),
         ):
             button = QPushButton(label)
             button.setObjectName(f"ApkRelationship{value.replace('-', '').replace('/', '')}Button")
             button.setCheckable(True)
+            button.setFixedHeight(28)
+            status_key = APK_RELATIONSHIP_STATUS.get(value)
+            if status_key is not None:
+                button.setStyleSheet(_semantic_filter_button_style(status_key))
             button.setToolTip(
                 "The Store version varies by device; a direct order is unsafe."
-                if value == "Device-specific" else f"Show Local APK results with {value} relationship."
+                if value == "Device-specific"
+                else f"Show Local APK results with {value} relationship."
             )
             button.clicked.connect(
                 lambda _checked=False, relationship=value: self._set_apk_relationship_filter(relationship)
@@ -315,6 +416,7 @@ class AuditWindow(BaseWindow):
         self.apk_relationship_more = QPushButton("More ▾")
         self.apk_relationship_more.setObjectName("ApkRelationshipMoreButton")
         self.apk_relationship_more.setCheckable(True)
+        self.apk_relationship_more.setFixedHeight(28)
         more_menu = QMenu(self.apk_relationship_more)
         self.apk_relationship_more_actions: dict[str, QAction] = {}
         for value in ("Different", "Unknown"):
@@ -324,6 +426,7 @@ class AuditWindow(BaseWindow):
                 lambda _checked=False, relationship=value: self._set_apk_relationship_filter(relationship)
             )
             self.apk_relationship_more_actions[value] = action
+
         def show_more_menu() -> None:
             self._sync_apk_relationship_buttons()
             more_menu.popup(
