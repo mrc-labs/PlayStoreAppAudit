@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Play Store App Audit
+description: Report a reproducible problem in Store App Audit
 title: "[Bug]: "
 labels:
   - bug
@@ -7,12 +7,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Play Store App Audit. Please avoid sharing sensitive local paths, device identifiers, API keys, or other private data.
+        Thanks for helping improve Store App Audit. Please avoid sharing sensitive local paths, device identifiers, API keys, or other private data.
   - type: input
     id: version
     attributes:
       label: App version
-      description: The version shown in Help > About Play Store App Audit.
+      description: The version shown in Help > About Store App Audit.
       placeholder: e.g. 2.0.0
     validations:
       required: true

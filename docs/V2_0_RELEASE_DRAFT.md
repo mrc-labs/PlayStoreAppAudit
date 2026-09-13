@@ -1,8 +1,8 @@
-# Play Store App Audit v2.0.0 release draft
+# Store App Audit v2.0.0 release draft
 
 Status: **DRAFT - not published.** Replace every verification/signing placeholder only with evidence from the final frozen SHA and final public assets.
 
-Proposed GitHub Release title: `Play Store App Audit v2.0.0`.
+Proposed GitHub Release title: `Store App Audit v2.0.0`.
 
 ```markdown
 ## What's New / Highlights

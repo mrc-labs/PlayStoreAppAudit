@@ -44,6 +44,14 @@ import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.services.store_freshness import (
+    MAX_THRESHOLD_DAYS,
+    StoreFreshnessThresholds,
+    aging_range_presentation,
+)
+from playstore_app_audit.services.store_freshness import (
+    from_settings as freshness_from_settings,
+)
 from playstore_app_audit.ui.column_presets import (
     CUSTOM_AUTOMATIC_COLUMNS,
     CUSTOM_CONTEXTUAL_COLUMNS,
@@ -129,6 +137,7 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
     def __init__(self) -> None:
         super().__init__()
         self.status_filters: set[str] = set()
+        self.relationship_filters: set[str] = set()
         self.smart_query: smart_queries.SmartQuery | None = None
         self.set_v9_preset("All")
         self.set_criticality_filter(None)
@@ -136,6 +145,11 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
     def set_status_filters(self, filters: set[str]) -> None:
         self.beginFilterChange()
         self.status_filters = set(filters)
+        self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
+
+    def set_relationship_filters(self, filters: set[str]) -> None:
+        self.beginFilterChange()
+        self.relationship_filters = set(filters)
         self.endFilterChange(QSortFilterProxyModel.Direction.Rows)
 
     def set_smart_query(self, query: smart_queries.SmartQuery | None) -> None:
@@ -150,7 +164,12 @@ class AuditFilterProxy(insights_ui.AdvancedFilterProxy):
         if not isinstance(model, table_ui.AuditTableModel):
             return True
         row = model.row_dict(source_row)
-        if self.status_filters and str(row.get("criticality_key") or "") not in self.status_filters:
+        status_key = str(row.get("criticality_key") or "")
+        if status_key == "purple":
+            status_key = "blue"
+        if self.status_filters and status_key not in self.status_filters:
+            return False
+        if self.relationship_filters and str(row.get("local_apk_version_comparison") or "") not in self.relationship_filters:
             return False
         return smart_queries.query_matches(row, self.smart_query)
 
@@ -171,6 +190,7 @@ class PreferencesWindow(table_ui.TableWindow):
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
         proxy.set_status_filters(self._status_filters)
+        proxy.set_relationship_filters(self._apk_relationship_filters)
         self.model = model
         self.proxy = proxy
         self.table.setModel(proxy)
@@ -178,6 +198,9 @@ class PreferencesWindow(table_ui.TableWindow):
         self._restore_table_layout()
         self._apply_column_visibility(reset_order=False)
         self._sync_status_filter_buttons()
+        for key, tooltip in base_ui.store_status_tooltips(self.user_settings).items():
+            if key in self.criticality_buttons:
+                self.criticality_buttons[key].setToolTip(tooltip)
         self._update_summary()
 
     # ---------- Views ----------
@@ -292,7 +315,7 @@ class PreferencesWindow(table_ui.TableWindow):
         tools.addAction("Advanced Settings…", self._show_advanced_settings)
         tools.addSeparator()
         tools.addAction("Run with Fresh Store Results", self._force_full_refresh)
-        tools.addAction("Recheck Not Found / Anomaly / Other", self._recheck_problematic)
+        tools.addAction("Recheck Not Found / Anomaly", self._recheck_problematic)
         tools.addSeparator()
         snapshots = tools.addMenu("Device Snapshots")
         snapshots.addAction("Save Current Device Snapshot…", self._save_device_snapshot)
@@ -321,7 +344,7 @@ class PreferencesWindow(table_ui.TableWindow):
         help_menu.addAction("Check for Updates…", self._check_for_updates)
         help_menu.addAction("Create Diagnostic Bundle…", self._create_diagnostic_bundle)
         help_menu.addSeparator()
-        help_menu.addAction("About Play Store App Audit", self._show_about)
+        help_menu.addAction("About Store App Audit", self._show_about)
 
     # ---------- Settings ----------
     @staticmethod
@@ -758,6 +781,51 @@ class PreferencesWindow(table_ui.TableWindow):
         form.addRow("", cache)
         form.addRow("Healthy Result Cache TTL", ttl)
         store_layout.addLayout(form)
+        freshness_group = QGroupBox("Store freshness")
+        freshness_group.setObjectName("StoreFreshnessGroup")
+        freshness_form = QFormLayout(freshness_group)
+        thresholds = freshness_from_settings(self.user_settings)
+        recent_days = QSpinBox()
+        recent_days.setObjectName("StoreRecentMaxDays")
+        recent_days.setRange(0, MAX_THRESHOLD_DAYS - 1)
+        recent_days.setValue(thresholds.recent_max_days)
+        recent_days.setSuffix(" days")
+        stale_days = QSpinBox()
+        stale_days.setObjectName("StoreStaleAfterDays")
+        stale_days.setRange(1, MAX_THRESHOLD_DAYS)
+        stale_days.setValue(thresholds.stale_after_days)
+        stale_days.setSuffix(" days")
+        aging_range = QLabel()
+        aging_range.setObjectName("StoreAgingDerivedRange")
+
+        def sync_aging_range() -> None:
+            text, valid = aging_range_presentation(
+                recent_days.value(), stale_days.value()
+            )
+            aging_range.setText(text)
+            aging_range.setStyleSheet("" if valid else "color:#B42318;font-weight:650;")
+            aging_range.setToolTip(
+                ""
+                if valid
+                else "Choose a Recent maximum strictly lower than the Stale threshold."
+            )
+
+        recent_days.valueChanged.connect(sync_aging_range)
+        stale_days.valueChanged.connect(sync_aging_range)
+        sync_aging_range()
+        freshness_form.addRow("Recent • Up to", recent_days)
+        freshness_form.addRow("Aging", aging_range)
+        freshness_form.addRow("Stale • After", stale_days)
+        reset_freshness = QPushButton("Reset Defaults")
+        reset_freshness.setObjectName("ResetStoreFreshnessDefaults")
+        def reset_freshness_controls() -> None:
+            defaults = StoreFreshnessThresholds()
+            recent_days.setValue(defaults.recent_max_days)
+            stale_days.setValue(defaults.stale_after_days)
+
+        reset_freshness.clicked.connect(reset_freshness_controls)
+        freshness_form.addRow("", reset_freshness)
+        store_layout.addWidget(freshness_group)
         store_layout.addStretch(1)
 
         _alternative_page, alternative_layout = add_page(
@@ -851,6 +919,8 @@ class PreferencesWindow(table_ui.TableWindow):
             workers.setValue(state.DEFAULT_STORE_WORKERS)
             cache.setChecked(True)
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
+            recent_days.setValue(StoreFreshnessThresholds().recent_max_days)
+            stale_days.setValue(StoreFreshnessThresholds().stale_after_days)
             collect.setChecked(True)
             full_scan.setChecked(False)
             permissions.setChecked(False)
@@ -860,7 +930,17 @@ class PreferencesWindow(table_ui.TableWindow):
 
         reset.clicked.connect(reset_controls)
         buttons.rejected.connect(dialog.reject)
-        buttons.accepted.connect(dialog.accept)
+        def accept_valid_settings() -> None:
+            if recent_days.value() >= stale_days.value():
+                QMessageBox.warning(
+                    dialog,
+                    "Store freshness thresholds",
+                    "Recent must be strictly lower than Stale.",
+                )
+                return
+            dialog.accept()
+
+        buttons.accepted.connect(accept_valid_settings)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
@@ -876,6 +956,8 @@ class PreferencesWindow(table_ui.TableWindow):
                 "store_workers": workers.value(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
+                "store_recent_max_days": recent_days.value(),
+                "store_stale_after_days": stale_days.value(),
                 "collect_device_metadata": collect.isChecked(),
                 "collect_full_device_metadata_on_scan": full_scan.isChecked(),
                 "permissions_audit_enabled": permissions.isChecked(),
@@ -884,6 +966,13 @@ class PreferencesWindow(table_ui.TableWindow):
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
+        for row in self.current_rows:
+            self._classify_row(row)
+        if self.current_rows:
+            self.model.set_rows(self.current_rows)
+        for key, tooltip in base_ui.store_status_tooltips(self.user_settings).items():
+            if key in self.criticality_buttons:
+                self.criticality_buttons[key].setToolTip(tooltip)
         self.workers_spin.setValue(
             state.normalise_store_workers(self.user_settings.get("store_workers"))
         )

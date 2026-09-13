@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Play Store App Audit legal-release material against a standalone package."""
+"""Validate Store App Audit legal-release material against a standalone package."""
 
 from __future__ import annotations
 

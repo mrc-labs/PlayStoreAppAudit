@@ -68,16 +68,16 @@ PROGRESSIVE_REFRESH_INTERVAL_MS = 75
 _original_classify_criticality = base_ui.classify_criticality
 
 
-def _classify_criticality_multicountry(row: dict[str, object]) -> None:
+def _classify_criticality_multicountry(
+    row: dict[str, object], settings: dict[str, object] | None = None
+) -> None:
     status = str(row.get("play_status") or "").strip()
     if status == "not_found_in_checked_countries":
         key = "red"
-    elif status == "available_in_other_country":
+    elif status == "available_in_other_country" or status == "multi_country_check_inconclusive":
         key = "blue"
-    elif status == "multi_country_check_inconclusive":
-        key = "purple"
     else:
-        _original_classify_criticality(row)
+        _original_classify_criticality(row, settings)
         return
     row["criticality_key"] = key
     row["criticality"] = base_ui.CRITICALITY[key]["label"]
@@ -209,7 +209,7 @@ class CompactWindow(AuditWindow):
 
     # ---------- Behaviour hooks ----------
     def _classify_row(self, row: dict[str, object]) -> None:
-        _classify_criticality_multicountry(row)
+        _classify_criticality_multicountry(row, self.user_settings)
 
     def _load_fresh_cache(
         self,
@@ -363,9 +363,6 @@ class CompactWindow(AuditWindow):
         summary_font.setBold(True)
         self.summary_label.setFont(summary_font)
         self.search_edit.setFixedHeight(32)
-        self.all_chip.setFixedHeight(28)
-        for button in self.criticality_buttons.values():
-            button.setFixedHeight(28)
 
     def _visible_column_order(self) -> list[str]:
         columns = ["criticality"]
@@ -687,7 +684,7 @@ class CompactWindow(AuditWindow):
         tools.addAction(reset_layout)
 
         help_menu = menu.addMenu("Help")
-        about = QAction("About Play Store App Audit", self)
+        about = QAction("About Store App Audit", self)
         about.triggered.connect(self._show_about)
         help_menu.addAction(about)
 
@@ -800,10 +797,10 @@ class CompactWindow(AuditWindow):
 
     def _show_about(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("About Play Store App Audit")
+        dialog.setWindowTitle("About Store App Audit")
         dialog.setMinimumWidth(480)
         layout = QVBoxLayout(dialog)
-        title = QLabel("Play Store App Audit")
+        title = QLabel("Store App Audit")
         font = QFont(title.font())
         font.setPointSizeF(16)
         font.setBold(True)

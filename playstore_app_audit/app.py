@@ -9,6 +9,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from playstore_app_audit import __version__
+from playstore_app_audit.product_identity import DISPLAY_NAME
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.services import debug_logging
 from playstore_app_audit.services.app_icon_metadata import install_app_icon_metadata_capture
@@ -44,11 +45,12 @@ def main() -> int:
     smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {"1", "true", "yes"}
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Play Store App Audit")
+    app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
     app.setOrganizationName("MRC")
     app.setWindowIcon(QIcon(str(ensure_runtime_icon())))
     window = MainWindow()
+    window.setWindowTitle(DISPLAY_NAME)
     install_update_check_controller(window, schedule_startup=not smoke_test)
     window.show()
 
@@ -61,7 +63,7 @@ def main() -> int:
 
     exit_code = app.exec()
     if smoke_test:
-        print("Play Store App Audit packaged smoke test completed", flush=True)
+        print(f"{DISPLAY_NAME} packaged smoke test completed", flush=True)
     return exit_code
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMenu
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
@@ -14,7 +14,9 @@ import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.update_check as update_ui
 from playstore_app_audit import __version__
+from playstore_app_audit.product_identity import DISPLAY_NAME, PREVIOUS_DISPLAY_NAMES
 from playstore_app_audit.ui.main_window import MainWindow
+from playstore_app_audit.ui.rich_help import RichHelpDialog
 
 
 @pytest.fixture(scope="module")
@@ -94,6 +96,28 @@ def test_startup_update_check_defaults_on() -> None:
     assert state.DEFAULT_SETTINGS[update_ui.AUTO_UPDATE_CHECK_KEY] is True
 
 
+@pytest.mark.parametrize("name", (DISPLAY_NAME, *PREVIOUS_DISPLAY_NAMES))
+def test_about_action_discovers_current_and_previous_visible_names(app: QApplication, name: str) -> None:
+    class Window:
+        help_menu = QMenu()
+
+    action = Window.help_menu.addAction(f"About {name}")
+    assert update_ui._about_action(Window()) is action
+
+
+@pytest.mark.parametrize("previous_name", PREVIOUS_DISPLAY_NAMES)
+def test_rich_help_rewrites_previous_visible_names(
+    app: QApplication, previous_name: str
+) -> None:
+    dialog = RichHelpDialog(None, "Guide", f"<p>{previous_name} guide</p>")
+    try:
+        text = dialog.browser.toPlainText()
+        assert f"{DISPLAY_NAME} guide" in text
+        assert previous_name not in text
+    finally:
+        dialog.close()
+
+
 def test_disabled_startup_check_does_not_start_worker(
     window_store: tuple[MainWindow, dict[str, object]],
     monkeypatch: pytest.MonkeyPatch,
@@ -145,7 +169,7 @@ def test_install_turns_about_into_the_only_update_surface(
 
     assert window._update_check_controller is controller
     assert not window.check_updates_action.isVisible()
-    assert window.about_action.text() == "About Play Store App Audit…"
+    assert window.about_action.text() == f"About {DISPLAY_NAME}…"
 
     window.about_action.trigger()
 
@@ -200,7 +224,7 @@ def test_manual_about_current_result_updates_same_dialog(
 
     assert dialog.update_title.text() == "You're up to date"
     assert dialog.update_detail.text() == (
-        f"You're running Play Store App Audit {__version__}. "
+        f"You're running {DISPLAY_NAME} {__version__}. "
         "This is the latest available version."
     )
     assert dialog.update_action.text() == "Check Again"

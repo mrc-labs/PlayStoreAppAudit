@@ -1,8 +1,8 @@
-# Contributing to Play Store App Audit
+# Contributing to Store App Audit
 
 Thanks for considering a contribution.
 
-Play Store App Audit is developed in public under `GPL-3.0-only` and also
+Store App Audit is developed in public under `GPL-3.0-only` and also
 supports alternative commercial licensing by the project owner. The
 contribution process is designed to preserve both models.
 
@@ -25,7 +25,7 @@ require acceptance of [CLA.md](CLA.md) before they can be merged.
 Until CLA acceptance is automated, include this exact statement in the pull
 request description:
 
-`I have read and agree to the Play Store App Audit Contributor License Agreement (CLA.md) for this contribution.`
+`I have read and agree to the Store App Audit Contributor License Agreement (CLA.md) for this contribution.`
 
 Very small corrections that are not copyright-significant may be accepted
 without a CLA at the maintainer's discretion.

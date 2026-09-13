@@ -116,6 +116,9 @@ def test_qt_application_version_comes_from_the_canonical_version(
             return 0
 
     class FakeWindow:
+        def setWindowTitle(self, _title: str) -> None:
+            pass
+
         def show(self) -> None:
             pass
 

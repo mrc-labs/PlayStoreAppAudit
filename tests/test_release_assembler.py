@@ -144,7 +144,7 @@ def _write_rc(
     manifest = {
         "schema_version": 3,
         "application": {
-            "name": "Play Store App Audit",
+            "name": "Store App Audit",
             "version": VERSION,
             "project_license": "GPL-3.0-only",
             "release_tag": f"v{VERSION}",

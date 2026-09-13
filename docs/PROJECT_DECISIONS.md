@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file records durable engineering decisions for Play Store App Audit. It is not a task list and must not contain temporary workflow run IDs, one-off failures or chat-specific notes.
+This file records durable engineering decisions for Store App Audit. It is not a task list and must not contain temporary workflow run IDs, one-off failures or chat-specific notes.
 
 Changing a decision here should be deliberate and should normally happen in the same PR that changes the corresponding implementation or release policy.
 
@@ -531,6 +531,16 @@ Status labels no longer use decorative dots, and the user-facing green state is
 Recent Update; the compatibility-sensitive `green` key, rank and `<=365 days`
 classification remain unchanged. Selected cells suppress the native Windows
 current-cell focus edge while preserving row selection and keyboard navigation.
+
+The final v2.0 polish changes the visible Store Status vocabulary to Not Found,
+Stale, Aging, Anomaly and Recent. Previously separate Other/inconclusive rows
+are displayed as Anomaly without changing raw Play Status or the distinct
+Maintenance Score penalties. Recent and Stale boundaries are the two persisted
+Advanced Settings values (defaults 365 and 730 days); Aging is derived between
+them. The same boundaries govern both row classification and the existing
+−15/−25 age deductions. Local package metadata is cached only on disk by
+canonical path, size, nanosecond timestamps, format and parser schema, retaining
+SHA-256 as artifact identity. Store/provider results never enter that cache.
 
 Store icon URL and developer are first-class optional outputs of the canonical
 scraper/locale/fallback service and persist with healthy Store cache rows. The

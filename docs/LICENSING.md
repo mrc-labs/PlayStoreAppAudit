@@ -2,7 +2,7 @@
 
 ## Project code
 
-Play Store App Audit's own code is licensed to the public under the GNU
+Store App Audit's own code is licensed to the public under the GNU
 General Public License version 3 only (`GPL-3.0-only`).
 
 The complete GPLv3 text is in the repository root [LICENSE](../LICENSE).
@@ -13,7 +13,7 @@ apply when GPL-covered copies or modified versions are conveyed.
 
 ## Alternative commercial licensing
 
-The project owner may also offer Play Store App Audit's own code under
+The project owner may also offer Store App Audit's own code under
 separate proprietary or commercial terms.
 
 The commercial option is intended for organisations or products that need
@@ -32,7 +32,7 @@ See [CLA.md](../CLA.md) and [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Third-party software
 
-Third-party components are not relicensed under Play Store App Audit's GPL or
+Third-party components are not relicensed under Store App Audit's GPL or
 commercial license. They remain under their respective licenses.
 
 The Windows standalone package can include LGPL-, GPL-, MPL-, Apache-, MIT-,
@@ -53,7 +53,7 @@ artifact.
 
 ## Commercial license boundaries
 
-An alternative commercial license from the Play Store App Audit copyright
+An alternative commercial license from the Store App Audit copyright
 holder applies only to rights that the copyright holder can grant. It does not
 grant alternative rights to Qt, PySide6, Shiboken6, CPython, OpenSSL or any
 other third-party component.

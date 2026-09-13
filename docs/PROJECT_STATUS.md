@@ -262,9 +262,11 @@ the filter chips are explicitly labelled Store Status. Selected cells suppress
 the Windows current-cell focus edge without changing row selection or keyboard
 navigation. Installed vs Store and Local APK vs Store values use their existing
 semantic colours with the same Bold 700 typography and centered alignment as
-Store Status. Status text is symbol-free, and the green `<=365 days` state is
-named Recent Update while its internal `green` key, rank and semantics remain
-unchanged. Source summaries name
+Store Status. Status text is symbol-free, and the green freshness state is
+named Recent in final v2.0 polish; the internal `green` key remains, while the
+Recent/Stale age boundaries now follow Advanced Settings (365/730 by default).
+Other/inconclusive Store evidence shares the visible Anomaly category without
+losing raw Play Status or its separate score penalty. Source summaries name
 Phone, Local APK or App List, while Store Country is uppercase in the UI and
 lowercase in execution/cache contexts. Store date presentation uses
 Last Store Update and Store Age (Days) without changing internal/export keys.

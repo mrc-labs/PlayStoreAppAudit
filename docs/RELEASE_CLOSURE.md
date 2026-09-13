@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the permanent release-closure procedure for Play Store App Audit. It applies to every release line and every future release unless a later explicit engineering decision replaces it.
+This document defines the permanent release-closure procedure for Store App Audit. It applies to every release line and every future release unless a later explicit engineering decision replaces it.
 
 A release is not operationally complete when the GitHub Release is merely published. Release closure is complete only when the remote repository, the local VS Code checkout, and the maintained project-context documentation all describe the same canonical state.
 

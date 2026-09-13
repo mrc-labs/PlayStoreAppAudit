@@ -105,7 +105,7 @@ PROVIDER_INFORMATION = (
         "status": "Not supported",
         "explanation": (
             "No suitable official public catalogue API was established. HTML scraping is "
-            "not used by Play Store App Audit."
+            "not used by Store App Audit."
         ),
         "links": (("APKMirror FAQ", "https://www.apkmirror.com/faq/"),),
     },
@@ -122,7 +122,7 @@ PROVIDER_INFORMATION = (
         "name": "Uptodown",
         "status": "Not supported",
         "explanation": (
-            "Automated robot or script access requires authorization; Play Store App Audit "
+            "Automated robot or script access requires authorization; Store App Audit "
             "does not scrape the site."
         ),
         "links": (("Uptodown terms", "https://en.uptodown.com/aboutus/terms"),),

@@ -156,7 +156,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
 }
 
 $snapshot = @(
-    '# Play Store App Audit Repository Snapshot',
+    '# Store App Audit Repository Snapshot',
     '',
     "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')",
     '',

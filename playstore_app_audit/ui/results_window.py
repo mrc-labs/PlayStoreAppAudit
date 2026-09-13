@@ -299,6 +299,7 @@ class ResultsWindow(menu_ui.MenuWindow):
         proxy.set_query(self.search_edit.text())
         proxy.set_hide_system(self.hide_system_check.isChecked())
         proxy.set_status_filters(self._status_filters)
+        proxy.set_relationship_filters(self._apk_relationship_filters)
         proxy.set_smart_query(self._active_smart_query)
         self.proxy = proxy
         self.table.setModel(proxy)
