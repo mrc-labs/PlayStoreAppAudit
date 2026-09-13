@@ -25,10 +25,8 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
-import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
-import playstore_app_audit.services.local_package_container as local_package_container
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
@@ -874,13 +872,6 @@ class MainWindow(results_ui.ResultsWindow):
             return local_metadata_cache.parse_cached_local_package(
                 path,
                 cancel_event=cancel_event,
-                parser=lambda candidate: (
-                    local_apk.parse_local_apk(candidate)
-                    if path.suffix.casefold() == ".apk"
-                    else local_package_container.parse_local_package(
-                        candidate, cancel_event=cancel_event
-                    )
-                ),
             )
 
         worker_count = min(LOCAL_PARSE_WORKERS, max(1, len(candidates)))
