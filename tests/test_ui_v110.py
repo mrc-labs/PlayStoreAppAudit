@@ -129,14 +129,27 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
         action.text() for action in window.menuBar().actions() if action.menu() is not None
     ] == ["File", "Audit", "View", "Tools", "Help"]
     assert _action_structure(window.file_menu) == [
-        "Choose App List…",
-        "Choose Package File(s)…",
-        "Choose Package Folder…",
-        "Recent Sources",
-        "Scan Phone",
-        "Export Phone Package List…",
+        "Android Phone (ADB)",
+        "Local APK(s)",
+        "App List File",
         None,
         "Exit",
+    ]
+    assert _action_structure(window.file_phone_menu) == [
+        "Scan Phone",
+        "Export Current Phone Package List as CSV…",
+    ]
+    assert _action_structure(window.file_local_apk_menu) == [
+        "Choose Package File(s)…",
+        "Choose Package Folder…",
+    ]
+    assert _action_structure(window.file_app_list_menu) == [
+        "Choose App List…",
+        "Recent Sources",
+    ]
+    assert window.file_local_apk_menu.actions() == [
+        window.file_choose_apk_action,
+        window.file_choose_apk_folder_action,
     ]
     assert _action_structure(window.audit_menu) == [
         "Run Audit",
@@ -159,7 +172,7 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
         "Visible HTML",
     ]
     assert "Export Results" not in _action_texts(window.file_menu)
-    assert "Export Phone Package List…" not in _action_texts(
+    assert "Export Current Phone Package List as CSV…" not in _action_texts(
         window.audit_export_results_menu
     )
 
