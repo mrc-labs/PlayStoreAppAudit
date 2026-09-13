@@ -597,7 +597,11 @@ def test_custom_view_can_include_location(
 def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: MainWindow) -> None:
     file_actions = [action.text() for action in window.file_menu.actions()]
     assert "Local APK Library…" not in file_actions
-    assert "Choose Package Folder…" in file_actions
+    assert "Local APK(s)" in file_actions
+    assert [action.text() for action in window.file_local_apk_menu.actions()] == [
+        "Choose Package File(s)…",
+        "Choose Package Folder…",
+    ]
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
         "File(s)…",
         "Folder…",

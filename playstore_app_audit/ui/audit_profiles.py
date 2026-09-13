@@ -14,6 +14,11 @@ _SOURCE_LABELS = {
     "device": "Android phone",
 }
 
+# Keep the implementation available for possible post-2.0 use, but do not
+# expose Audit Presets in the v2.0 menu surface. The feature adds configuration
+# complexity without enough value in the initial v2 release.
+AUDIT_PRESETS_VISIBLE = False
+
 
 def _current_country(window: object) -> str:
     edit = getattr(window, "country_edit", None)
@@ -146,6 +151,7 @@ def _profile_tooltip(profile: dict[str, Any]) -> str:
 
 
 def populate_audit_profiles_menu(window: object, menu: QMenu) -> None:
+    menu.menuAction().setVisible(AUDIT_PRESETS_VISIBLE)
     menu.clear()
     menu.addAction("Save Current as Preset…", lambda: _save_current(window, menu))
 
