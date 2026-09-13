@@ -3,6 +3,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser, QVBoxLayout, QWidget
 
+from playstore_app_audit.product_identity import DISPLAY_NAME, LEGACY_DISPLAY_NAME
+
 
 class RichHelpDialog(QDialog):
     """Scrollable native dialog for authored, static user guides."""
@@ -42,7 +44,9 @@ class RichHelpDialog(QDialog):
             .warning { background: #fff6e5; border: 1px solid #e9c77d; color: #6b4a16; padding: 10px; margin: 10px 0; }
             """
         )
-        self.browser.setHtml(content)
+        # Keep authored guides compatible while the source/docs terminology is
+        # migrated gradually. Technical identifiers and URLs are unaffected.
+        self.browser.setHtml(content.replace(LEGACY_DISPLAY_NAME, DISPLAY_NAME))
         layout.addWidget(self.browser, 1)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
