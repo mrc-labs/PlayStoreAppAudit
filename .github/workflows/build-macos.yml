@@ -128,9 +128,9 @@ jobs:
           PLAYSTORE_APP_AUDIT_SMOKE_TEST: "1"
         run: |
           python -m compileall -q playstore_app_audit
-          python -m py_compile .github/scripts/sign_macos_app.py
+          python -m py_compile .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py
           python -m pytest
-          ruff check playstore_app_audit tests main.py .github/scripts/sign_macos_app.py
+          ruff check playstore_app_audit tests main.py .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py
           python main.py
       - name: Validate managed ADB
         run: |
@@ -264,6 +264,19 @@ jobs:
             echo "Qt PDF image plugin pruning failed." >&2
             exit 1
           fi
+
+          CERTIFI_BEFORE="$(shasum -a 256 "$APP/Contents/MacOS/certifi/cacert.pem" | awk '{print $1}')"
+          python .github/scripts/normalize_macos_bundle.py --app "$APP"
+          CERTIFI_LINK="$APP/Contents/MacOS/certifi"
+          CERTIFI_RESOURCE="$APP/Contents/Resources/certifi/cacert.pem"
+          test -L "$CERTIFI_LINK"
+          test "$(readlink "$CERTIFI_LINK")" = "../Resources/certifi"
+          test -f "$CERTIFI_RESOURCE"
+          test ! -L "$CERTIFI_RESOURCE"
+          test -f "$CERTIFI_LINK/cacert.pem"
+          cmp "$CERTIFI_LINK/cacert.pem" "$CERTIFI_RESOURCE"
+          test "$(shasum -a 256 "$CERTIFI_RESOURCE" | awk '{print $1}')" = "$CERTIFI_BEFORE"
+          echo "macOS certifi layout PASS; cacert.pem SHA-256: $CERTIFI_BEFORE"
 
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
           PLIST="$APP/Contents/Info.plist"
@@ -433,6 +446,11 @@ jobs:
           ditto -x -k "$ZIP" roundtrip
           RAPP=$(find roundtrip -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$RAPP"
+          test -L "$RAPP/Contents/MacOS/certifi"
+          test "$(readlink "$RAPP/Contents/MacOS/certifi")" = "../Resources/certifi"
+          test -f "$RAPP/Contents/Resources/certifi/cacert.pem"
+          cmp "$RAPP/Contents/MacOS/certifi/cacert.pem" "$RAPP/Contents/Resources/certifi/cacert.pem"
+          test "$(shasum -a 256 "$RAPP/Contents/Resources/certifi/cacert.pem" | awk '{print $1}')" = "$CERTIFI_BEFORE"
           test -f "$RAPP/Contents/Resources/BUILD-INFO.txt"
 
           test -f "$RAPP/Contents/Resources/LICENSE"
