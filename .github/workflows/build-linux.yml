@@ -68,9 +68,9 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-      - name: Verify Python and Qt baseline
+      - name: Verify Python 3.14 baseline
         run: |
-          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
+          python -c "import sys; print(sys.version); assert sys.version_info[:2] == (3, 14)"
       - name: Read canonical project version
         id: project_version
         run: |
@@ -109,6 +109,9 @@ jobs:
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt "Nuitka==4.2.1"
+      - name: Verify Python and Qt baseline
+        run: |
+          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
       - name: Preflight release legal material
         run: |
           python .github/scripts/preflight_release_legal_material.py \
