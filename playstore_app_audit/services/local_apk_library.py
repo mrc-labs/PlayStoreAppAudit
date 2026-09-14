@@ -83,7 +83,7 @@ def _location_key(artifact_sha256: str, path: Path) -> tuple[str, str]:
 
 
 def _is_reparse_point(file_stat: os.stat_result) -> bool:
-    return bool(_REPARSE_POINT_FLAG and file_stat.st_file_attributes & _REPARSE_POINT_FLAG)
+    return bool(getattr(file_stat, "st_file_attributes", 0) & _REPARSE_POINT_FLAG)
 
 
 class LocalApkLibraryService:
