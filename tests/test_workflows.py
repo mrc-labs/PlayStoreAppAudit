@@ -82,6 +82,34 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
         assert "arch: arm64" in workflow
 
 
+def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:
+    for name, install_step in (
+        ("build-linux.yml", "Install Linux runtime and dependencies"),
+        ("build-macos.yml", "Install dependencies"),
+    ):
+        workflow = _workflow(name)
+        python_check = workflow.index("- name: Verify Python 3.14 baseline")
+        install = workflow.index(f"- name: {install_step}")
+        qt_check = workflow.index("- name: Verify Python and Qt baseline")
+
+        assert python_check < install < qt_check
+        assert "PySide6" not in workflow[python_check:install]
+        assert "PySide6.__version__ == '6.11.2'" in workflow[qt_check:]
+
+
+def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
+    workflow = _workflow("build-windows-exe.yml")
+    provision = workflow.index("- name: Provision native ARM64 OpenSSL for cryptography")
+    install = workflow.index("- name: Install runtime, test and build dependencies")
+    verify = workflow.index("- name: Verify native ARM64 cryptography runtime")
+
+    assert provision < install < verify
+    assert workflow.count("if: ${{ matrix.arch == 'arm64' }}") == 2
+    assert "VCPKG_INSTALLATION_ROOT" in workflow[provision:install]
+    assert "arm64-windows-static-md" in workflow[provision:install]
+    assert "OPENSSL_STATIC=1" in workflow[provision:install]
+
+
 def test_linux_release_keeps_shared_runtime_replaceable() -> None:
     linux = _workflow("build-linux.yml")
 

@@ -117,6 +117,68 @@ jobs:
           }
           "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Provision native ARM64 OpenSSL for cryptography
+        if: ${{ matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'OpenSSL prerequisite requires a native ARM64 runner.' }
+          if ([string]::IsNullOrWhiteSpace($env:VCPKG_INSTALLATION_ROOT)) {
+            throw 'VCPKG_INSTALLATION_ROOT is not set on the ARM64 runner.'
+          }
+          if (-not (Test-Path -LiteralPath $env:VCPKG_INSTALLATION_ROOT -PathType Container)) {
+            throw "Runner-provided Vcpkg root does not exist: $env:VCPKG_INSTALLATION_ROOT"
+          }
+
+          $vcpkgRoot = (Resolve-Path -LiteralPath $env:VCPKG_INSTALLATION_ROOT).Path
+          $vcpkgExe = Join-Path $vcpkgRoot 'vcpkg.exe'
+          $triplet = 'arm64-windows-static-md'
+          $tripletFile = Join-Path $vcpkgRoot "triplets/$triplet.cmake"
+          if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) { throw "Vcpkg executable is missing: $vcpkgExe" }
+          if (-not (Test-Path -LiteralPath $tripletFile -PathType Leaf)) { throw "ARM64 static-MD triplet is missing: $tripletFile" }
+          $tripletConfig = Get-Content -LiteralPath $tripletFile -Raw
+          if ($tripletConfig -notmatch 'VCPKG_TARGET_ARCHITECTURE\s+arm64' -or
+              $tripletConfig -notmatch 'VCPKG_LIBRARY_LINKAGE\s+static' -or
+              $tripletConfig -notmatch 'VCPKG_CRT_LINKAGE\s+dynamic') {
+            throw "Vcpkg triplet does not specify ARM64 static OpenSSL with dynamic CRT: $tripletFile"
+          }
+
+          Write-Host "Runner Vcpkg root: $vcpkgRoot"
+          Write-Host "OpenSSL target triplet: $triplet"
+          Write-Host "OpenSSL host triplet: arm64-windows"
+          Write-Host "Triplet toolchain: ARM64 libraries, static linkage, dynamic MSVC runtime"
+          & $vcpkgExe install "openssl[tools]:$triplet" --host-triplet=arm64-windows
+          if ($LASTEXITCODE -ne 0) { throw "Vcpkg failed to build OpenSSL for $triplet." }
+
+          $opensslDir = Join-Path $vcpkgRoot "installed/$triplet"
+          $opensslInclude = Join-Path $opensslDir 'include'
+          $opensslLib = Join-Path $opensslDir 'lib'
+          $opensslTool = Join-Path $opensslDir 'tools/openssl/openssl.exe'
+          foreach ($required in @(
+            (Join-Path $opensslInclude 'openssl/opensslv.h'),
+            (Join-Path $opensslLib 'libcrypto.lib'),
+            (Join-Path $opensslLib 'libssl.lib'),
+            $opensslTool
+          )) {
+            if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
+              throw "Native ARM64 OpenSSL prerequisite is incomplete: $required"
+            }
+          }
+          $opensslMachine = python .github/scripts/inspect_pe.py --expect 0xAA64 $opensslTool
+          if ($LASTEXITCODE -ne 0) { throw 'Vcpkg OpenSSL tool is not an ARM64 PE binary.' }
+          $opensslVersion = & $opensslTool version
+          if ($LASTEXITCODE -ne 0) { throw 'Native ARM64 OpenSSL tool could not run.' }
+          Write-Host "OpenSSL tool architecture: $opensslMachine"
+          Write-Host "OpenSSL version: $opensslVersion"
+          Write-Host "OpenSSL libraries: $opensslLib"
+
+          "VCPKG_ROOT=$vcpkgRoot" >> $env:GITHUB_ENV
+          "VCPKGRS_TRIPLET=$triplet" >> $env:GITHUB_ENV
+          "OPENSSL_DIR=$opensslDir" >> $env:GITHUB_ENV
+          "OPENSSL_INCLUDE_DIR=$opensslInclude" >> $env:GITHUB_ENV
+          "OPENSSL_LIB_DIR=$opensslLib" >> $env:GITHUB_ENV
+          'OPENSSL_STATIC=1' >> $env:GITHUB_ENV
+          'OPENSSL_NO_VENDOR=1' >> $env:GITHUB_ENV
+
       - name: Install runtime, test and build dependencies
         shell: pwsh
         run: |
@@ -124,6 +186,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
           python -m pip install -r requirements-dev.txt "Nuitka==4.2.1"
           if ($LASTEXITCODE -ne 0) { throw 'Could not install project/build dependencies.' }
+
+      - name: Verify native ARM64 cryptography runtime
+        if: ${{ matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          python -c "import cryptography; from cryptography.hazmat.backends.openssl.backend import backend; print('cryptography', cryptography.__version__); print(backend.openssl_version_text()); assert cryptography.__version__ == '50.0.1'"
+          if ($LASTEXITCODE -ne 0) { throw 'ARM64 cryptography import or OpenSSL runtime verification failed.' }
+          $rustBinary = python -c "from cryptography.hazmat.bindings import _rust; print(_rust.__file__)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not locate the cryptography Rust extension.' }
+          $rustMachine = python .github/scripts/inspect_pe.py --expect 0xAA64 $rustBinary
+          if ($LASTEXITCODE -ne 0) { throw 'cryptography Rust extension is not an ARM64 PE binary.' }
+          Write-Host "cryptography Rust extension architecture: $rustMachine"
 
       - name: Verify native PySide6 runtime
         shell: pwsh
