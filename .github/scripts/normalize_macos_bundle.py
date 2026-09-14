@@ -8,7 +8,7 @@ import os
 from hashlib import sha256
 from pathlib import Path
 
-CERTIFI_LINK_TARGET = "../Resources/certifi"
+CERTIFI_LINK_TARGET = str(Path("..") / "Resources" / "certifi")
 MACHO_MAGICS = {
     bytes.fromhex(value)
     for value in (
@@ -73,7 +73,10 @@ def _validate_layout(app: Path, expected_hash: str) -> None:
     link = macos / "certifi"
     destination = resources / "certifi"
 
-    if not link.is_symlink() or os.readlink(link) != CERTIFI_LINK_TARGET:
+    if not link.is_symlink():
+        raise RuntimeError(f"Expected the relative certifi runtime symlink: {link}")
+    target = Path(os.readlink(link))
+    if target.is_absolute() or target.parts != ("..", "Resources", "certifi"):
         raise RuntimeError(f"Expected the relative certifi runtime symlink: {link}")
     if destination.is_symlink() or not destination.is_dir():
         raise RuntimeError(f"Expected a real certifi resource directory: {destination}")

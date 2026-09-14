@@ -31,6 +31,15 @@ def _require_directory_symlink(tmp_path: Path) -> None:
     link.unlink()
 
 
+def test_certifi_link_target_is_native_relative_path() -> None:
+    target = Path(bundle.CERTIFI_LINK_TARGET)
+
+    assert os.path.join("..", "Resources", "certifi") == bundle.CERTIFI_LINK_TARGET
+    assert not target.is_absolute()
+    assert target.parts == ("..", "Resources", "certifi")
+    assert target.as_posix() == "../Resources/certifi"
+
+
 def test_certifi_relocation_preserves_bytes_and_runtime_lookup(tmp_path: Path) -> None:
     _require_directory_symlink(tmp_path)
     app, original = _app_with_certifi(tmp_path)
@@ -43,7 +52,7 @@ def test_certifi_relocation_preserves_bytes_and_runtime_lookup(tmp_path: Path) -
     assert resource.is_file() and not resource.is_symlink()
     assert resource.read_bytes() == original
     assert link.is_symlink()
-    assert os.readlink(link) == "../Resources/certifi"
+    assert Path(os.readlink(link)).parts == ("..", "Resources", "certifi")
     assert (link / "cacert.pem").read_bytes() == original
     assert bundle.normalize_bundle(app) == digest
 
@@ -99,7 +108,7 @@ def test_link_creation_failure_rolls_back_and_uses_relative_target(
     with pytest.raises(OSError, match="symlink unavailable"):
         bundle.normalize_bundle(app)
 
-    assert requested == [(link, "../Resources/certifi", True)]
+    assert requested == [(link, bundle.CERTIFI_LINK_TARGET, True)]
     assert (link / "cacert.pem").read_bytes() == original
     assert not (app / "Contents" / "Resources" / "certifi").exists()
 
