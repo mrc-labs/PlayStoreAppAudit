@@ -266,6 +266,7 @@ jobs:
           fi
 
           CERTIFI_BEFORE="$(shasum -a 256 "$APP/Contents/MacOS/certifi/cacert.pem" | awk '{print $1}')"
+          PYAXMLPARSER_BEFORE="$(shasum -a 256 "$APP/Contents/MacOS/pyaxmlparser/resources/public.xml" | awk '{print $1}')"
           python .github/scripts/normalize_macos_bundle.py --app "$APP"
           CERTIFI_LINK="$APP/Contents/MacOS/certifi"
           CERTIFI_RESOURCE="$APP/Contents/Resources/certifi/cacert.pem"
@@ -277,6 +278,17 @@ jobs:
           cmp "$CERTIFI_LINK/cacert.pem" "$CERTIFI_RESOURCE"
           test "$(shasum -a 256 "$CERTIFI_RESOURCE" | awk '{print $1}')" = "$CERTIFI_BEFORE"
           echo "macOS certifi layout PASS; cacert.pem SHA-256: $CERTIFI_BEFORE"
+
+          PYAXMLPARSER_LINK="$APP/Contents/MacOS/pyaxmlparser/resources"
+          PYAXMLPARSER_RESOURCE="$APP/Contents/Resources/pyaxmlparser/resources/public.xml"
+          test -L "$PYAXMLPARSER_LINK"
+          test "$(readlink "$PYAXMLPARSER_LINK")" = "../../Resources/pyaxmlparser/resources"
+          test -f "$PYAXMLPARSER_RESOURCE"
+          test ! -L "$PYAXMLPARSER_RESOURCE"
+          test -f "$PYAXMLPARSER_LINK/public.xml"
+          cmp "$PYAXMLPARSER_LINK/public.xml" "$PYAXMLPARSER_RESOURCE"
+          test "$(shasum -a 256 "$PYAXMLPARSER_RESOURCE" | awk '{print $1}')" = "$PYAXMLPARSER_BEFORE"
+          echo "macOS pyaxmlparser layout PASS; public.xml SHA-256: $PYAXMLPARSER_BEFORE"
 
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
           PLIST="$APP/Contents/Info.plist"
@@ -451,6 +463,13 @@ jobs:
           test -f "$RAPP/Contents/Resources/certifi/cacert.pem"
           cmp "$RAPP/Contents/MacOS/certifi/cacert.pem" "$RAPP/Contents/Resources/certifi/cacert.pem"
           test "$(shasum -a 256 "$RAPP/Contents/Resources/certifi/cacert.pem" | awk '{print $1}')" = "$CERTIFI_BEFORE"
+          test -L "$RAPP/Contents/MacOS/pyaxmlparser/resources"
+          test "$(readlink "$RAPP/Contents/MacOS/pyaxmlparser/resources")" = "../../Resources/pyaxmlparser/resources"
+          test -f "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml"
+          test ! -L "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml"
+          test -f "$RAPP/Contents/MacOS/pyaxmlparser/resources/public.xml"
+          cmp "$RAPP/Contents/MacOS/pyaxmlparser/resources/public.xml" "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml"
+          test "$(shasum -a 256 "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml" | awk '{print $1}')" = "$PYAXMLPARSER_BEFORE"
           test -f "$RAPP/Contents/Resources/BUILD-INFO.txt"
 
           test -f "$RAPP/Contents/Resources/LICENSE"
