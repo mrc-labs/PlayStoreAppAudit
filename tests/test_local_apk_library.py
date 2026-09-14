@@ -7,6 +7,8 @@ import stat
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -96,6 +98,28 @@ def _service(tmp_path: Path, **kwargs: object) -> LocalApkLibraryService:
 def _scan(service: LocalApkLibraryService, root: Path) -> LocalApkLibrary:
     library = service.register_roots(service.empty_library(), [root])
     return service.rescan(library).library
+
+
+def test_reparse_check_accepts_stat_without_file_attributes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    monkeypatch.setattr(library_service_module, "_REPARSE_POINT_FLAG", flag)
+    file_stat = cast(os.stat_result, SimpleNamespace(st_mode=stat.S_IFDIR))
+
+    assert not library_service_module._is_reparse_point(file_stat)
+
+
+def test_reparse_check_keeps_windows_flag_detection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    monkeypatch.setattr(library_service_module, "_REPARSE_POINT_FLAG", flag)
+    ordinary = cast(os.stat_result, SimpleNamespace(st_file_attributes=0))
+    reparse = cast(os.stat_result, SimpleNamespace(st_file_attributes=flag))
+
+    assert not library_service_module._is_reparse_point(ordinary)
+    assert library_service_module._is_reparse_point(reparse)
 
 
 def test_empty_library_creation_and_load(tmp_path: Path) -> None:

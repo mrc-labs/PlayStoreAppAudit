@@ -19,7 +19,6 @@ DENSITY_DEFAULTS = {
     "compatibility_status": 120,
     "version_comparison": 116,
     "app_enabled": 88,
-    "device_change": 175,
     "health_score": 86,
     "target_sdk": 74,
     "min_sdk": 70,
@@ -92,6 +91,10 @@ def test_semantic_defaults_are_bounded_and_do_not_resize_to_body_values(
         for column, preferred in DENSITY_DEFAULTS.items():
             width = window.table.columnWidth(window.model.columns.index(column))
             assert preferred <= width <= preferred + 4
+
+        device_change_policy = schema.COLUMN_WIDTH_POLICIES["device_change"]
+        device_change_width = window.table.columnWidth(window.model.columns.index("device_change"))
+        assert device_change_policy.preferred <= device_change_width <= device_change_policy.maximum
 
         score_width = window.table.columnWidth(window.model.columns.index("health_score"))
         url_width = window.table.columnWidth(window.model.columns.index("store_url"))
