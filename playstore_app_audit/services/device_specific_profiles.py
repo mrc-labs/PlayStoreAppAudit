@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from importlib import resources
 from types import MappingProxyType
 
-
 PROFILE_SCHEMA = 1
 PRODUCTION_PROFILE_IDS = (
     "android10_api29_oneplus8pro",

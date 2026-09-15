@@ -18,7 +18,6 @@ from playstore_app_audit.domain.device_specific_resolver import (
 )
 from playstore_app_audit.services.device_specific_profiles import ReferenceProfile
 
-
 PROTOCOL_REVISION = "fdfe-details-v1"
 DETAILS_URL = "https://android.clients.google.com/fdfe/details"
 ENCODED_TARGETS = (

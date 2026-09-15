@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-
 RESOLVER_CACHE_SCHEMA = 1
 
 

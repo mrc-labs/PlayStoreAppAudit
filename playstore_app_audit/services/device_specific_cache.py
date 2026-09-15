@@ -14,7 +14,6 @@ from playstore_app_audit.domain.device_specific_resolver import (
 )
 from playstore_app_audit.platform.runtime import app_data_dir
 
-
 DEFAULT_RESOLVER_CACHE_TTL_HOURS = 24
 
 

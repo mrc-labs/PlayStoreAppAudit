@@ -22,7 +22,6 @@ from playstore_app_audit.services.device_specific_protocol import (
 )
 from playstore_app_audit.services.version_relationship import DEVICE_SPECIFIC_VALUES
 
-
 _DEVICE_SPECIFIC_VALUES = frozenset(
     str(value).strip().casefold() for value in DEVICE_SPECIFIC_VALUES
 )

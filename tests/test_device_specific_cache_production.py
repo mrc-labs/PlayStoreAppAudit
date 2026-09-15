@@ -18,7 +18,6 @@ from playstore_app_audit.services.device_specific_cache import (
 )
 from playstore_app_audit.services.state import cache_path
 
-
 PROFILE_HASH = "a" * 64
 CONTEXT_HASH = "b" * 64
 

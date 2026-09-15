@@ -11,7 +11,6 @@ from playstore_app_audit.domain.device_specific_resolver import (
     ResolverStatus,
 )
 
-
 PROFILE_HASH = "a" * 64
 CONTEXT_HASH = "b" * 64
 
