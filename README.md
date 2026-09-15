@@ -12,6 +12,21 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
+## What can you use Store App Audit for?
+
+Store App Audit helps answer practical questions about the Android apps you use, archive or track:
+
+- **Are the apps on my phone still maintained?** Scan a connected Android phone through read-only ADB and spot apps whose Store listings have not been updated for a long time, as well as installed versions that appear behind available Store evidence.
+- **Are any of my apps no longer available in the Play Store country I use?** Identify packages that are not found in the Store countries successfully checked, while keeping the result deliberately conservative rather than claiming that an app disappeared globally.
+- **Which apps on my phone deserve attention first?** Use freshness, Store availability, installed-vs-Store relationships, Maintenance Score, filters and Smart Queries to triage a large app inventory instead of reviewing every package manually.
+- **Is my local APK collection up to date?** Audit individual package files or an entire folder and compare local versions with Store evidence to identify Outdated, Newer, Different, Device Specific or Unknown results.
+- **Do I have archived or sideloaded builds that differ from what Google Play currently exposes?** Keep physical package files independent and compare each local artifact with the Store evidence available for its package.
+- **Can I audit a list of apps without connecting a phone or keeping APK files?** Import package IDs from CSV, TSV or TXT and review Store availability, freshness, versions and maintenance signals in bulk.
+- **What changed since my previous audit or device snapshot?** Use Changes & History to review app inventory changes, Store availability changes, reappeared listings and Store version or update changes.
+- **Can I capture an inventory before cleaning up, replacing or troubleshooting a phone?** Scan through read-only ADB and export the resulting inventory and evidence as CSV, HTML or versioned JSON without modifying installed apps.
+
+`Not Found` is intentionally conservative: it means no listing was found in the configured Store countries that were successfully checked; it does not prove that an app has disappeared from Google Play globally.
+
 ## Key features
 
 - Import package lists from CSV, TSV or TXT files.
@@ -63,10 +78,9 @@ The live v2.1 plan is tracked in [issue #153](https://github.com/mrc-labs/PlaySt
 Current direction:
 
 - Local APK quick-filter spacing polish: completed.
-- Safe single-file Local APK/package Rename and Remove: completed in the current development source.
-- Mass Rename with preview, metadata templates and collision protection: next.
-- Mass Remove with explicit safeguards: follows Mass Rename.
-- Device Specific resolver: isolated proof of concept first, production integration only if the PoC is sufficiently reliable.
+- Local APK file management Track B: completed, including safe single-file Rename/Remove, Mass Rename with validated preview/templates/collision protection, and safeguarded Mass Remove for exact Outdated/Unknown relationships.
+- Device Specific resolver: next, beginning with an isolated proof of concept; production integration happens only if the PoC is sufficiently reliable.
+- Canonical README/in-app Help screenshots: planned after the v2.1 UI is substantially feature-complete, using deterministic synthetic data rather than real user apps/APKs.
 
 CLI/headless support is **not** part of v2.1 anymore. It is currently planned for v2.2, together with Named Custom Views issue #147. A smaller one-main-feature-per-release cadence may be adopted from v2.2 or v2.3.
 
@@ -102,7 +116,7 @@ The published v2.0.0 release can audit explicit local `.apk`, `.apks`, `.apkm` a
 
 The local-package path reuses the same Store/provider evidence and result presentation used elsewhere while keeping local metadata such as filename, path, label, local version, SHA-256 and SDK information available in the table and Details Panel.
 
-The current v2.1 development source adds safe single-file **Rename File…** and **Remove File…** actions. These operate on the selected physical file, preserve existing audit evidence in the current result view and do not rerun the Store audit. Mass Rename and Mass Remove remain active v2.1 work and are not part of the published v2.0.0 release.
+The current v2.1 development source extends this workflow with safe physical-file management. It includes single-file **Rename File…** / **Remove File…**, Mass Rename with metadata templates and a complete validation preview, plus **Remove All Outdated…** / **Remove All Unknown…** with permanent-deletion safeguards. Operations remain physical-path based, preserve unrelated Store/audit evidence, keep duplicate package/SHA files independent, and do not rerun the Store audit after filesystem mutation. These v2.1 additions are not part of the published v2.0.0 release.
 
 The Local APK direction is inspired by the long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility. Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
