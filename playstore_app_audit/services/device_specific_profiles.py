@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
 from types import MappingProxyType
-from typing import Mapping
 
 
 PROFILE_SCHEMA = 1
