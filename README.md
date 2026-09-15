@@ -2,85 +2,159 @@
 
 *Android App Inventory, Store Analysis & Maintenance Toolkit*
 
-Store App Audit is a desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for an imported app list, local Android package files or the packages installed on an Android phone.
+Store App Audit is a cross-platform desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for imported app lists, local Android package files and packages installed on an Android phone.
 
-The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. For v2.0 compatibility, the repository, release/update identifiers, executable filename and technical paths remain under the established `PlayStoreAppAudit` slug while the visible product name moves to **Store App Audit**.
+The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
 
-The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon. Development and packaging render each PNG and Windows ICO size directly from that SVG; the packaged UI uses a generated embedded 256 px PNG without a loose SVG or Pillow at runtime.
+**Latest published release:** [v2.0.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+
+**Current development line:** v2.1. The published v2.0.0 tag and release assets are immutable; active development continues on `main` through focused PRs.
+
+The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
 ## Key features
 
 - Import package lists from CSV, TSV or TXT files.
-- Scan a connected Android phone through ADB and export its current package inventory.
+- Scan a connected Android phone through read-only ADB and export its current package inventory.
 - Select local `.apk`, `.apks`, `.apkm` and `.xapk` package files directly or discover them recursively in a folder.
 - Check Google Play availability and update information in a selected Store country.
-- Use the connected Android device's active system language automatically for Store metadata, while file/list audits can use the primary language of the selected country.
-- Fall back across configurable countries without treating one regional absence as global removal.
-- Configure concurrent Store workers from Advanced settings; 16 is the current recommended/default value.
-- Show live progress while regional fallback countries are being verified.
-- Classify Store listings as Recent, Aging, Stale, Not Found or Anomaly, with configurable freshness thresholds.
-- Inspect the selected result in a dedicated Details Panel with Store/device/local-package metadata, country/language evidence, previous-audit changes and viewport-based narrow, wide and extra-wide layouts.
-- Review grouped changes such as newly installed/removed apps, Store availability changes, reappeared listings, Store version/update changes and maintenance-state transitions.
-- Optionally show Play Store app icons beside Store titles.
-- Optionally calculate a transparent Maintenance Score heuristic.
-- Read friendly Notes consistently in the table, tooltip, Details Panel and HTML report while raw machine-readable Notes remain available in data exports.
-- Optionally collect installed version, installer, SDK, install/update and permission metadata from a connected device.
-- Filter results with search, status chips and Quick Filters, save one-level All/Any Smart Queries, and restore full result visibility with **View > Clear All Filters**.
-- Switch between source-aware Basic, Source Details and Technical views, or a user-controlled Custom layout, without mixing result filters with audit configuration.
-- Use conservative smart/incremental re-audit behavior, targeted rechecks or an explicit Force full refresh.
-- Compare with a previous audit and inspect snapshots/inventory changes under **Tools > Changes & History**.
-- Export all or visible results as CSV, HTML or versioned JSON from **Audit > Export Results**.
-- Follow operational status in the native status bar and audit progress in the results header.
+- Use source-aware Store language and country handling, including Android-device language and configurable fallback countries.
+- Classify Store listings as Recent, Aging, Stale, Not Found or Anomaly with configurable freshness thresholds.
+- Compare installed or local-package versions with Store evidence using conservative Match / Outdated / Newer / Different / Device Specific / Unknown semantics.
+- Inspect results in a source-aware Details Panel with Store, device and local-package evidence.
+- Review grouped changes such as app inventory changes, Store availability changes, reappeared listings and Store version/update changes.
+- Optionally show Play Store icons and calculate a transparent Maintenance Score heuristic.
+- Filter results with search, status chips, Quick Filters and saved one-level All/Any Smart Queries.
+- Switch between source-aware Basic, Source Details, Technical and user-controlled Custom column layouts.
+- Use conservative cache/recheck behavior, targeted rechecks or an explicit full refresh.
+- Compare previous audits and device snapshots under **Tools > Changes & History**.
+- Export all or visible results as CSV, HTML or versioned JSON.
+- Follow operational state in the native status bar and progress in the results header.
 
-## Road to v2.0
+## Current project status
 
-v2.0 is in final release preparation for a return to full multi-platform distribution. Windows x64 packaged acceptance comes first. After that acceptance, the final v2.0 cross-platform gate is planned to produce Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64 builds from the same frozen exact source SHA.
+### Published v2.0.0
 
-A major v2.0 product pillar is **Local APK analysis**: safely reading standalone APK files and supported package containers from local storage, keeping exact package-artifact identity separate from Android package identity, and comparing local artifacts with Store/provider evidence. The current source provides one Local APK source that accepts explicit files or recursively discovers a folder, then parses only when the audit is run. A persistent local metadata cache reuses safe parse results while preserving filesystem/content identity checks. The persistent Library core remains future infrastructure rather than a separate v2.0 manager. This functionality is not part of the current published v1.99.0 release.
+v2.0.0 is the current public release and the first return to full six-target distribution. It was published from frozen source SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3` after exact-SHA Quality, platform builds, release assembly, checksum validation, clean re-download and byte-for-byte verification.
 
-The Local APK direction is inspired by the excellent, long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility, which provided a practical way to manage local Android APK collections and is now archived. Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
+Published binary targets:
 
-CLI/headless support is planned separately for v2.1 rather than v2.0. See the [Product roadmap](docs/ROADMAP.md) for the current release plan.
+- Windows x64
+- Windows ARM64
+- Linux x64
+- Linux ARM64
+- macOS Intel / x64
+- macOS Apple Silicon / ARM64
+
+The release also contains the consolidated third-party source archive and release-wide `SHA256SUMS.txt`.
+
+Signing status for v2.0.0:
+
+- Windows packages are unsigned.
+- Linux packages are unsigned.
+- macOS packages use ad-hoc engineering signing only and are **not** Developer ID signed or notarized.
+
+See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
+
+### v2.1 in development
+
+The live v2.1 plan is tracked in [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153).
+
+Current direction:
+
+- Local APK quick-filter spacing polish: completed.
+- Safe single-file Local APK/package Rename and Remove: completed in the current development source.
+- Mass Rename with preview, metadata templates and collision protection: next.
+- Mass Remove with explicit safeguards: follows Mass Rename.
+- Device Specific resolver: isolated proof of concept first, production integration only if the PoC is sufficiently reliable.
+
+CLI/headless support is **not** part of v2.1 anymore. It is currently planned for v2.2, together with Named Custom Views issue #147. A smaller one-main-feature-per-release cadence may be adopted from v2.2 or v2.3.
+
+During normal v2.1 feature development, packaged testing is intentionally concentrated on **Windows x64**. Once v2.1 is feature-complete and accepted on Windows x64, the project enters the cross-platform release phase: Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are built and any platform/architecture-specific issues are fixed. The final release gate then rebuilds and validates all six targets from one exact frozen SHA.
 
 ## Download and installation
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-The current published v1.99.0 release is a Windows x64-only build and provides one prebuilt package:
+For v2.0.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
 
-- Windows x64
+On Windows, the packaged executable intentionally keeps the compatibility filename `PlayStoreAppAudit.exe`.
 
-Download the Windows x64 ZIP, extract it to a normal folder, then start the application from the extracted package.
+Because the Windows v2.0.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.0.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
 
-The Windows v1.99.0 package is intentionally unsigned. v2.0 is the first planned return to multi-platform distribution; production signing is the preferred target but remains contingent on successful credential/provider validation. Microsoft Defender SmartScreen or another reputation-based check may therefore ask you to confirm that you want to run the current package. That warning reflects signing and reputation status, not an application error or a finding that the application is unsafe.
-
-Only Windows x64 is currently published as a v1.99.0 prebuilt. Windows ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon prebuilt packages are planned to return with v2.0. Windows x64 packaged acceptance must pass first, then the other five targets are validated in the final v2.0 cross-platform production gate.
-
-The v1.99.0 release includes one consolidated third-party source archive and a release-wide `SHA256SUMS.txt` alongside the Windows x64 ZIP. All three project-defined assets were validated from frozen source SHA `1065744488e548663e3ba365566a9932837f5fb5` before publication and reverified after download from the [published release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0).
+Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity matters.
 
 ## Quick start
 
 1. Start the application.
-2. Choose a CSV/TSV/TXT package list, select Local APK file(s) or a folder, or connect an Android phone and select **Scan Phone**.
-3. Confirm the Store country. Availability can differ by country, so adjust it when necessary.
+2. Choose a CSV/TSV/TXT package list, select Local APK/package file(s) or a folder, or connect an Android phone and select **Scan Phone**.
+3. Confirm the Store country. Availability can differ by country.
 4. Select the header **Run** button or **Audit > Run Audit**.
-5. Use the status chips, search box, **View > Quick Filters** or **View > Smart Queries** to inspect the results.
-6. Select a row to inspect Store/device/local-package evidence in the details panel or open the grouped audit-change overview.
-7. Export the complete or currently visible results from **Audit > Export Results**.
+5. Use status chips, search, **View > Quick Filters** or **View > Smart Queries** to inspect results.
+6. Select a row to inspect Store/device/local-package evidence in the Details Panel.
+7. Export complete or currently visible results from **Audit > Export Results**.
 
-A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. The included `sample_packages.csv` shows the simplest supported CSV format.
+A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. `sample_packages.csv` shows the simplest supported CSV format.
+
+## Local APK / package workflows
+
+The published v2.0.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
+
+The local-package path reuses the same Store/provider evidence and result presentation used elsewhere while keeping local metadata such as filename, path, label, local version, SHA-256 and SDK information available in the table and Details Panel.
+
+The current v2.1 development source adds safe single-file **Rename File…** and **Remove File…** actions. These operate on the selected physical file, preserve existing audit evidence in the current result view and do not rerun the Store audit. Mass Rename and Mass Remove remain active v2.1 work and are not part of the published v2.0.0 release.
+
+The Local APK direction is inspired by the long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility. Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
 ## Understanding the results
 
-- **Recent:** the listing age is at most the configured Recent maximum (365 days by default).
-- **Aging:** the listing age falls between the two configured thresholds (366–730 days by default).
-- **Stale:** the listing age is above the configured Stale threshold (730 days by default).
+- **Recent:** listing age is at most the configured Recent maximum, 365 days by default.
+- **Aging:** listing age falls between the configured thresholds, 366-730 days by default.
+- **Stale:** listing age is above the configured Stale threshold, 730 days by default.
 - **Not Found:** no listing was found in the configured countries that were successfully checked; this does not prove global removal.
-- **Anomaly:** Store responses were unusual, incomplete or could not be classified confidently. Raw Play Status and Notes retain the evidence distinction.
+- **Anomaly:** Store responses were unusual, incomplete or could not be classified confidently.
 
-The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its full methodology is available from **Help > Maintenance Score Methodology**.
+The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its methodology is available from **Help > Maintenance Score Methodology**.
 
-Installed and Local APK versions use a conservative Match / Outdated / Newer / Different / Device-specific / Unknown relationship. Outdated is reported only when leading numeric components establish ordering; it does not guarantee that an update is offered to a particular device because staged and device-specific rollouts remain possible.
+Installed and Local APK versions use a conservative relationship model. `Outdated` is reported only when version evidence establishes ordering; staged and device-specific rollouts can still differ from a simple public Store comparison.
+
+## Android phone and ADB support
+
+ADB access is read-only with respect to installed Android apps. Store App Audit can list packages, inspect device/package metadata and open Android's app-details settings screen. It does not install, uninstall, enable, disable or otherwise modify Android apps.
+
+The application can use an existing ADB executable from `PATH`, common Android SDK locations, `ANDROID_SDK_ROOT` or `ANDROID_HOME`. When no compatible ADB is found, supported hosts can offer a managed download of Google's official Android Platform-Tools archive into the application's local data directory.
+
+Managed Platform-Tools support:
+
+- Windows x64 and ARM64 hosts: Windows archive.
+- macOS Intel and Apple Silicon hosts: macOS archive.
+- Linux x64: Linux archive.
+- Linux ARM64: supply a native ARM64-compatible ADB from the operating system/distribution or Android SDK.
+
+USB debugging and device authorization are required. The in-app **ADB Setup Guide** contains troubleshooting instructions.
+
+Standard Scan Phone captures compact package state. Optional Advanced Settings can collect richer device metadata. A successful scan session can be reused by Run, and Store auditing can continue with captured compact data if the phone is later disconnected. Device Inventory history advances only after a successful audit, not merely after scanning.
+
+## Privacy and network behaviour
+
+Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and activity logs are processed and stored locally. Store App Audit has no first-party telemetry or analytics service.
+
+Audits are not completely offline: package IDs, Store country and Store language are used in requests to public Google Play endpoints through the application's Store lookup stack. Optional Store icons are downloaded from HTTPS URLs returned by Store metadata and cached locally. Software update checks contact the public GitHub Releases API. A managed ADB installation, when explicitly approved, downloads Google's official Platform-Tools archive.
+
+Diagnostic bundles are created only when explicitly requested and are not uploaded automatically. Logs, reports and diagnostic bundles can contain local or device-related information, so review them before sharing.
+
+## Platform support
+
+| Platform | Published v2.0.0 | v2.1 development / release strategy |
+| --- | --- | --- |
+| Windows x64 | ZIP published | Primary packaged development and acceptance target |
+| Windows ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
+| Linux x64 | ZIP published | Deferred until feature-complete cross-platform phase |
+| Linux ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
+| macOS Intel / x64 | ZIP published | Deferred until feature-complete cross-platform phase |
+| macOS Apple Silicon / ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
+
+All six final artifacts for a release must derive from the same frozen source SHA. Platform-specific fixes found during the final phase are merged first, then affected targets are revalidated before the final six-platform gate.
 
 ## Debug / troubleshooting
 
@@ -90,75 +164,29 @@ Start an explicit source-development debug session with:
 python main.py --debug
 ```
 
-The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. The packaged Windows executable keeps the compatibility filename `PlayStoreAppAudit.exe`, so the equivalent command is `PlayStoreAppAudit.exe --debug`. Debug logs are never uploaded automatically. They may contain local filesystem paths and filenames, so review them before sharing.
+The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. The packaged Windows equivalent is:
 
-For cold Local APK performance analysis on a representative folder, the source tree also includes a diagnostic profiler:
+```text
+PlayStoreAppAudit.exe --debug
+```
+
+Debug logs are never uploaded automatically and may contain local filesystem paths or filenames.
+
+For cold Local APK performance analysis on a representative folder:
 
 ```bash
 python tools/profile_local_apk_cold_load.py PATH_TO_APK_FOLDER
 ```
 
-It uses a temporary empty metadata cache and reports directory discovery, cache lookup, initial snapshot/SHA, ZIP preflight, manifest read/parse, resource-table read/parse and the second full-file SHA verification. It does not clear the application's normal cache and does not disable the second integrity verification.
-
-## Android phone and ADB support
-
-ADB access is read-only in the current application. Store App Audit can list packages, inspect device and package metadata, and open Android's own app-details settings screen. It does not install, uninstall, enable, disable or modify Android apps.
-
-The application can use an existing ADB executable from `PATH`, common Android SDK locations, `ANDROID_SDK_ROOT` or `ANDROID_HOME`. When no compatible ADB is found, it can offer to download the official Android Platform-Tools archive into the application's local data directory:
-
-- Windows x64 and ARM64 hosts can use the managed Windows archive.
-- Supported macOS hosts can use the managed macOS archive.
-- Linux x64 can use the managed Linux archive.
-- Linux ARM64 requires a native ADB supplied by the operating system, distribution or an ARM64-compatible Android SDK.
-
-USB debugging and device authorization are required. The in-app **ADB setup guide** contains troubleshooting instructions.
-
-Scan Phone always captures compact installed-app information, including versionCode, installer and enabled state where available. In **Tools > Advanced Settings > Device**, **Collect full device metadata during Scan Phone** optionally captures extended metadata such as installed version, SDK information and timestamps. It defaults to OFF and can significantly increase scan time. Sensitive permissions follow the existing permission-audit setting.
-
-After a successful full Scan, Run reuses the captured metadata even if the phone is disconnected; scan again to capture a newer device state. If extended collection fails, the compact scan remains usable and Run can collect extended data from the matching connected phone. The scan session lasts only until it is replaced or the application closes. Device Inventory comparisons use the compact scan snapshot, and scanning alone does not advance the history baseline.
-
-## Privacy and network behaviour
-
-Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and the activity log are processed and stored locally. The application has no first-party telemetry or analytics service.
-
-An audit is not entirely offline: package IDs, the selected country and the Store language are used in requests to public Google Play endpoints through `google-play-scraper` and the HTML fallback. If the optional app-icon setting is enabled, icon images are downloaded from HTTPS URLs returned by Store metadata and cached locally for reuse. A cached icon is retained while the app's Store update marker remains unchanged; when that marker changes, the icon is fetched again. The persistent icon cache is bounded to 512 entries and 64 MiB, while decoded icons use a smaller in-memory LRU for the active session. Disk reads and network downloads populate the already-visible table progressively rather than blocking results display; cached icons remain usable when the network is unavailable. **Help > About Store App Audit** also owns software-update status and contacts the public GitHub Releases API whenever About is opened. In v2.0, an automatic startup update check is enabled by default and runs asynchronously without blocking the application. It remains silent when the installed version is current or the check is unavailable; if a newer stable release is found, the same About window opens with the update status and release link. The About window contains **Check for updates automatically at startup** to disable or re-enable only the startup check; opening About always performs a fresh update check regardless of that setting. If you approve a managed ADB installation, the application downloads the official Platform-Tools archive from Google's download host.
-
-The activity log is local and records operational events such as startup, a loaded source filename and some failure messages. A diagnostic bundle is created only when you explicitly choose a destination; it is not uploaded automatically. The bundle contains sanitized settings, application/system information, aggregate result counts, available device-summary fields (including a masked serial when present) and the local activity log. Review diagnostic bundles before sharing them.
-
-CSV and HTML reports contain the audit/device fields selected by the application and should likewise be reviewed before distribution.
-
-## Platform support
-
-| Platform | Current published v1.99.0 | Planned v2.0 |
-| --- | --- | --- |
-| Windows x64 | Windows x64 ZIP | Primary implementation/acceptance platform and final v2.0 build |
-| Windows ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
-| Linux x64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
-| Linux ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
-| macOS Intel / x64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
-| macOS Apple Silicon / ARM64 | No current prebuilt | Planned in the final v2.0 cross-platform gate |
-
-The published v1.99.0 Windows x64 package was produced from exact commit `1065744488e548663e3ba365566a9932837f5fb5` after post-merge Quality validation, then assembled and checksum-verified before and after publication.
-
-## License
-
-The application's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (GPL-3.0-only).
-
-GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
-
-Third-party components remain under their own licenses. Binary release packages include the applicable third-party notices and source-availability material where required. The v1.99.0 release-wide corresponding-source archive is published alongside the Windows x64 ZIP.
-
-## Contributing
-
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Material contributions require acceptance of the project's [Contributor License Agreement](CLA.md).
+The profiler uses a temporary empty metadata cache and does not clear the application's normal cache.
 
 ## Development
 
-The current source identifies application version `2.0.0`. The latest immutable published release is v1.99.0.
+The active development line is **v2.1**. The package version currently remains `2.0.0` until the deliberate v2.1 release-version bump; this should not be confused with the latest published release, which is also v2.0.0.
 
-The v2.0 development and release-packaging baseline is Python 3.14, with CPython 3.14.7, PySide6-Essentials 6.11.2 and Nuitka 4.2.1 selected for release preparation. Python 3.15 pre-releases are intentionally outside the stable release baseline.
+The current release-development baseline uses Python 3.14, `PySide6-Essentials==6.11.2` and Nuitka 4.2.1. Python 3.15 pre-releases are outside the stable release baseline.
 
-Install the development dependencies, run the application and execute the quality checks with:
+Install the development dependencies, run the application and execute the main source checks with:
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -168,7 +196,7 @@ python -m pytest
 ruff check playstore_app_audit tests main.py
 ```
 
-Developer references:
+Useful references:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Building and release workflow](docs/BUILDING.md)
@@ -179,12 +207,26 @@ Developer references:
 - [Product roadmap](docs/ROADMAP.md)
 - [Local APK parser foundation](docs/LOCAL_APK_PARSER.md)
 - [Persistent Local APK Library core](docs/LOCAL_APK_LIBRARY.md)
-- [v1.99 chat handoff](docs/HANDOFF_V1.99.md)
-- [v1.9 release-closure handoff](docs/HANDOFF_V1.9.md)
 - [Project guidance for coding agents](AGENTS.md)
 
 ## Building from source
 
-The v2.0 release toolchain uses Python 3.14 and Nuitka 4.2.1 standalone packaging. The published v1.99.0 profile remains a historical Python 3.13 build: it used one exact `main` SHA, built only the Windows x64 candidate from that SHA, validated legal/source evidence, assembled the exact three-file Windows x64 release asset set, then tagged and published the already validated artifacts without rebuilding.
+The current release toolchain uses Python 3.14 and Nuitka standalone packaging. Release artifacts follow an exact-SHA model: source is frozen, platform builds and release assets are validated from that SHA, and tagging/publication happen only after acceptance.
 
-The full Windows/Linux/macOS x64/ARM64 production release path is assigned to v2.0. Windows x64 packaged acceptance comes first; Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are validated in the final cross-platform production gate. Production signing/notarization remains a preferred target where applicable, but is not promised until provider eligibility, credentials and end-to-end validation are proven. Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Store App Audit](docs/BUILDING.md); current milestone assignment is recorded in [Project decisions](docs/PROJECT_DECISIONS.md) and the [Product roadmap](docs/ROADMAP.md).
+For v2.1, normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. After feature completion, Windows x64 receives final packaged acceptance, then Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 enter the cross-platform validation/fix phase. The final release is assembled only after all six targets pass from one exact frozen SHA.
+
+Production signing/notarization is deferred to later 2.x work unless explicitly promoted and proven end-to-end. Do not assume signed/notarized packages simply because a platform build exists.
+
+Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Store App Audit](docs/BUILDING.md).
+
+## License
+
+The application's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (`GPL-3.0-only`).
+
+GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
+
+Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.0.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Material contributions require acceptance of the project's [Contributor License Agreement](CLA.md).
