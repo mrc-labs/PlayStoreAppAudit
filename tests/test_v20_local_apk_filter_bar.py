@@ -206,4 +206,3 @@ def test_more_selection_reflows_when_its_natural_label_grows(
         assert window.apk_relationship_more.width() >= window.apk_relationship_more.sizeHint().width()
     finally:
         window.close()
-
