@@ -123,16 +123,15 @@ def _copy_exclusive_then_remove(
 ) -> tuple[LocalPackageFileMutationStatus, str]:
     created = False
     try:
-        with source.open("rb") as source_handle:
-            with destination.open("xb") as destination_handle:
-                created = True
-                shutil.copyfileobj(
-                    source_handle,
-                    destination_handle,
-                    length=1024 * 1024,
-                )
-                destination_handle.flush()
-                os.fsync(destination_handle.fileno())
+        with source.open("rb") as source_handle, destination.open("xb") as destination_handle:
+            created = True
+            shutil.copyfileobj(
+                source_handle,
+                destination_handle,
+                length=1024 * 1024,
+            )
+            destination_handle.flush()
+            os.fsync(destination_handle.fileno())
         shutil.copystat(source, destination, follow_symlinks=False)
     except FileExistsError:
         return (
