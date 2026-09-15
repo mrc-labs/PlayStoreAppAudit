@@ -200,6 +200,8 @@ Use the same canonical screenshot set in:
 - README / GitHub homepage
 - an appropriate in-app Help / Getting Started / Overview surface
 
+The README/homepage and the in-app Help/Overview introduction should lead with practical user questions, not only a feature inventory: phone-app maintenance and Store availability, local APK freshness, package-list auditing and changes over time.
+
 Use deterministic synthetic fictional app/package data.
 
 Do not use real user-installed apps, user APK files, personal paths or account/device identifiers.

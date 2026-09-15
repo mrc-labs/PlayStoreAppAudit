@@ -12,6 +12,17 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
+## What can you use Store App Audit for?
+
+Store App Audit is designed to answer practical maintenance questions such as:
+
+- **Are the apps on my phone still maintained and still available on Google Play?** Scan a connected Android phone through read-only ADB to spot listings that have not been updated for a long time, packages that are not found in the configured Store countries, and installed versions that appear behind available Store evidence.
+- **Is my local APK collection up to date?** Audit individual package files or a folder and compare local versions with Store evidence to identify Outdated, Newer, Different, Device Specific or Unknown results.
+- **Can I audit a list of apps without connecting a phone or keeping APK files?** Import package IDs from CSV, TSV or TXT and review Store availability, freshness, versions and maintenance signals in bulk.
+- **What changed since my previous audit?** Compare audit and device history to identify inventory changes, listings that disappeared or reappeared in the checked Store context, and Store version or update changes.
+
+`Not Found` is intentionally conservative: it means no listing was found in the configured Store countries that were successfully checked; it does not prove that an app has disappeared from Google Play globally.
+
 ## Key features
 
 - Import package lists from CSV, TSV or TXT files.

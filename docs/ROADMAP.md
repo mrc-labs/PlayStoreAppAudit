@@ -310,7 +310,7 @@ Tracked by issue `#169` and intentionally scheduled after the v2.1 UI is substan
 
 Generate a small canonical screenshot set from the real Qt UI using deterministic synthetic fictional apps/package IDs and original neutral artwork. Do not use real user-installed apps, user APKs, personal paths or famous third-party logos. Reuse the canonical images in both README/homepage and an appropriate in-app Help/Getting Started/Overview surface.
 
-Windows x64 is the canonical screenshot-generation environment; source-controlled deterministic tooling is preferred over manually edited mockups.
+Windows x64 is the canonical screenshot-generation environment; source-controlled deterministic tooling is preferred over manually edited mockups. The README/homepage and in-app Help introduction should frame the product through concrete use cases such as phone-app maintenance, Store availability, local APK freshness, package-list auditing and changes over time.
 
 ### Deferred to v2.2
 
