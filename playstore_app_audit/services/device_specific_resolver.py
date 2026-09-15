@@ -6,6 +6,7 @@ from playstore_app_audit.domain.device_specific_resolver import (
     ResolverCacheIdentity,
     ResolverProvider,
     ResolverResult,
+    ResolverStatus,
 )
 from playstore_app_audit.services import store_locale
 from playstore_app_audit.services.device_specific_cache import (
@@ -13,9 +14,7 @@ from playstore_app_audit.services.device_specific_cache import (
     load_cached_result,
     store_resolved_result,
 )
-from playstore_app_audit.services.device_specific_profiles import (
-    load_reference_profile,
-)
+from playstore_app_audit.services.device_specific_profiles import load_reference_profile
 from playstore_app_audit.services.device_specific_protocol import (
     PROTOCOL_REVISION,
     provider_context_hash,
@@ -56,12 +55,33 @@ def build_cache_identity(
     )
 
 
+def _inconclusive_result(
+    *,
+    package_name: str,
+    profile_id: str,
+    profile_hash: str,
+    country: str,
+    language: str,
+    diagnostics: str,
+) -> ResolverResult:
+    return ResolverResult(
+        package_name=package_name,
+        profile_id=profile_id,
+        profile_hash=profile_hash,
+        provider=ResolverProvider.ANONYMOUS_DISPENSER,
+        status=ResolverStatus.INCONCLUSIVE,
+        requested_country=country,
+        requested_language=language,
+        diagnostics=diagnostics,
+    )
+
+
 def resolve_if_device_specific(
     *,
     public_store_version: object,
     package_name: str,
     profile_id: str,
-    dispenser_url: str,
+    dispenser_url: str | None,
     country: str,
     language: str,
     cache_ttl_hours: int = DEFAULT_RESOLVER_CACHE_TTL_HOURS,
@@ -73,6 +93,29 @@ def resolve_if_device_specific(
 
     profile = load_reference_profile(profile_id)
     effective_language = store_locale.resolve_store_language(language, country)
+    endpoint = str(dispenser_url or "").strip()
+    if not endpoint:
+        return _inconclusive_result(
+            package_name=package_name,
+            profile_id=profile.profile_id,
+            profile_hash=profile.profile_hash,
+            country=country,
+            language=effective_language,
+            diagnostics="missing_dispenser",
+        )
+
+    try:
+        context_hash = provider_context_hash(endpoint)
+    except ValueError:
+        return _inconclusive_result(
+            package_name=package_name,
+            profile_id=profile.profile_id,
+            profile_hash=profile.profile_hash,
+            country=country,
+            language=effective_language,
+            diagnostics="invalid_dispenser_endpoint",
+        )
+
     identity = ResolverCacheIdentity(
         package_name=package_name,
         profile_id=profile.profile_id,
@@ -80,7 +123,7 @@ def resolve_if_device_specific(
         requested_country=country,
         requested_language=effective_language,
         provider=ResolverProvider.ANONYMOUS_DISPENSER,
-        provider_context_hash=provider_context_hash(dispenser_url),
+        provider_context_hash=context_hash,
         protocol_revision=PROTOCOL_REVISION,
     )
 
@@ -92,7 +135,7 @@ def resolve_if_device_specific(
     result = resolve_metadata_with_dispenser(
         package_name=package_name,
         profile=profile,
-        dispenser_url=dispenser_url,
+        dispenser_url=endpoint,
         country=country,
         language=effective_language,
         timeout=timeout,
