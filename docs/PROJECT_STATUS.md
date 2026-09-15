@@ -33,6 +33,7 @@ Published project-defined assets:
 - `SHA256SUMS.txt`: 765 bytes; SHA-256 `3c2ff9b6fbce036856eb8f629952eb2ed3b56134100a1e56ff3a65cb3f06614c`
 
 Published v2.0.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets.
+
 ## Published v1.99.0 release
 
 - Latest published version: `v1.99.0`
@@ -97,13 +98,13 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Python release-packaging and Quality baseline: 3.14.
 - `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
-- Windows x64 packaged acceptance must pass before the final six-platform production gate.
+- The v2.0 release gates are complete; future package/release gates apply only to subsequent releases.
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers: 16; Store transport timeout: 25 seconds.
 - VS Code/Pylance Standard type checking remains a local development target, not a broad typing-refactor mandate.
 
-Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v1.99.0 release SHA remains fixed even after post-release documentation advances `main`.
+Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v2.0.0 release SHA remains fixed even after post-release documentation advances `main`; earlier published release SHAs remain immutable as well.
 
 ### Scan Phone lifecycle Phases A and B checkpoints
 
@@ -341,4 +342,3 @@ Do not reintroduce without a new explicit product decision:
 - Complete every release through `RELEASE_CLOSURE.md`, including post-release context, safe local synchronization and handoff generation only from clean synchronized `main`.
 
 See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `HANDOFF_V1.9.md` and `HANDOFF_V1.99.md` for durable policy, release history and continuation context.
-

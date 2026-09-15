@@ -1,4 +1,4 @@
-# Store App Audit v2.0.0 release draft
+# Store App Audit v2.0.0 published release record
 
 Status: **PUBLISHED - archived release record.** v2.0.0 was published from the final frozen SHA after all release gates and public-asset verification passed.
 
@@ -19,7 +19,7 @@ Published GitHub Release title: `Store App Audit v2.0.0`.
 - Definitive Google Play absence in the checked country is presented as a checked-market result rather than proof of global removal. Local APK relationship handling and Maintenance Score avoid double-counting unavailable Store evidence.
 - Audit Presets remain implemented internally but are hidden from the v2.0 menu to keep the release surface focused.
 - The release toolchain moves to CPython 3.14 with PySide6-Essentials/Shiboken6 6.11.2 and Nuitka 4.2.1.
-- v2.0 returns to a six-platform production target after Windows x64 acceptance: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- v2.0 returns to a six-platform release target after Windows x64 acceptance: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
 
 ### Fixed
 - About update-status layout reserves stable status/action space so the card does not jump vertically between checking, current and update-available states.
@@ -28,7 +28,7 @@ Published GitHub Release title: `Store App Audit v2.0.0`.
 ## Compatibility and distribution
 - Application version: `2.0.0`; Windows File Version and Product Version: `2.0.0.0`.
 - Python baseline: CPython 3.14.
-- Prebuilt production targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- Prebuilt release targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Existing compatibility-sensitive serialized identifiers, including internal `health_score`, remain unchanged in v2.0.
 - Signing/notarization status: Windows and Linux unsigned; macOS ad-hoc engineering signing only, not Developer ID signed and not notarized.

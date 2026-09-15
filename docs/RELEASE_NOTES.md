@@ -98,6 +98,82 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
+## Published v2.0.0 release body
+
+GitHub Release title: `Store App Audit v2.0.0`.
+
+The body below records the final v2.0.0 wording and verified release evidence [published on 2026-09-15](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0). Annotated tag object `e5e69b31b6ec8d57e1cca71945c8bfa83c91a6e3` peels to immutable source SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`; the tag, source, release body and eight project-defined assets are immutable.
+````markdown
+## What's New / Highlights
+
+### Added
+- Local APK analysis can audit explicit package files or recursively discover a folder while keeping local artifact identity separate from Android package identity. Supported package inputs include `.apk`, `.apks`, `.apkm` and `.xapk` containers with conservative split-container handling.
+- Local APK results can compare local installed/version evidence with Google Play evidence using the source-aware Local APK vs Store relationship without promoting Local APK data into phone inventory history.
+- Changes & History now has one explicit master tracking control with separate Play Store listing and device inventory tracking, while manual device snapshots remain independently user-controlled.
+- About now owns update status and can perform a fresh stable-release check on demand. An asynchronous startup check is enabled by default, remains silent when current or unavailable, and can be disabled without disabling manual About checks.
+
+### Changed
+- File is organized by the same source order as the main App Source UI: Android Phone (ADB), Local APK(s), then App List File, with source-specific commands grouped under each source.
+- Customize View separates Automatic Columns from user-controlled display/custom columns. Source/context overlays such as Play Store Listing Change, Device App Inventory Change and Local APK vs Store appear automatically only when applicable.
+- Definitive Google Play absence in the checked country is presented as a checked-market result rather than proof of global removal.
+- Audit Presets remain implemented internally but are hidden from the v2.0 menu to keep the release surface focused.
+- The release toolchain moves to CPython 3.14, PySide6-Essentials/Shiboken6 6.11.2 and Nuitka 4.2.1.
+- v2.0 returns to a six-platform release target: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+
+### Fixed
+- About update-status layout reserves stable status/action space so the card does not jump vertically between checking, current and update-available states.
+- Windows source/package smoke uses the current Source Details view naming.
+- POSIX Local APK scanning handles platform-specific file attributes correctly.
+- macOS standalone packaging normalizes certifi and pyaxmlparser resources before signing so the app bundle contains no unexpected regular resource files under `Contents/MacOS`.
+
+## Compatibility and distribution
+- Application version: `2.0.0`.
+- Windows File Version and Product Version: `2.0.0.0`.
+- Python baseline: CPython 3.14.
+- Prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- Managed ADB remains read-only with respect to installed Android apps.
+- Existing compatibility-sensitive serialized identifiers remain unchanged where required.
+- Windows packages are intentionally unsigned for v2.0. Windows may therefore show an unknown-publisher or SmartScreen warning.
+- Linux packages are unsigned.
+- macOS packages use ad-hoc engineering signing only. They are not Developer ID signed and are not Apple-notarized. macOS may therefore show Gatekeeper warnings depending on how the package is obtained and opened.
+- Production code signing and notarization are deferred to a later 2.x release.
+
+## Release assets
+- `PlayStoreAppAudit-v2.0.0-windows-x64.zip`
+- `PlayStoreAppAudit-v2.0.0-windows-arm64.zip`
+- `PlayStoreAppAudit-v2.0.0-linux-x64.zip`
+- `PlayStoreAppAudit-v2.0.0-linux-arm64.zip`
+- `PlayStoreAppAudit-v2.0.0-macos-x64.zip`
+- `PlayStoreAppAudit-v2.0.0-macos-arm64.zip`
+- `PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- Frozen final source SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- Final pre-release component freshness audit: PASS.
+- Exact-head Quality run `34903816649` / #445: PASS on the frozen SHA.
+- Windows x64 packaged human acceptance was completed before the final release-portability/build fixes.
+- Final Windows build run `34910426970`: x64 and ARM64 PASS on the frozen SHA.
+- Final Linux build run `34910428715`: x64 and ARM64 PASS on the frozen SHA.
+- Final macOS engineering build run `34904088998`: x64 and ARM64 PASS on the frozen SHA.
+- All six final packages passed their platform-specific architecture, package, smoke and public legal validation gates.
+- Final release assembly using the repository's canonical assembler: PASS.
+- Final release asset-layout and release-wide SHA-256 validation: PASS.
+- Final asset set: exactly 8 files.
+
+### SHA-256
+
+```text
+3a4309c4d3d1d339a3a693ba689c742dae7f4e6145d48f461347fb867822e40d  PlayStoreAppAudit-v2.0.0-linux-arm64.zip
+f6de5eaf6f242ec5bede7142a675be06922d8cff95e551e23c57992f5a1b296c  PlayStoreAppAudit-v2.0.0-linux-x64.zip
+54d0a131446c1d35db958efc596da699f06e2e6946e6b634aa5d4c3e7216855e  PlayStoreAppAudit-v2.0.0-macos-arm64.zip
+2bd36be38b6b703dffba955e1267516c85d1c0f93e2a73083c5f92ce17a98cba  PlayStoreAppAudit-v2.0.0-macos-x64.zip
+5ef4a97ea17e043fda09784bd65191873d5b3847ecfbae47a4d708a4e09f3870  PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz
+02ea7413fcf2d91283da5a869cdb55f407d0e11a2a7d013f7ce963bfbc8dfdba  PlayStoreAppAudit-v2.0.0-windows-arm64.zip
+3f1df2326bd875fdb5320e05ec7cbb7c8dc0bf4e34d5ddcea3f7a92c0672e665  PlayStoreAppAudit-v2.0.0-windows-x64.zip
+```
+````
+
 ## Published v1.99.0 release body
 
 GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`.

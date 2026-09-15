@@ -91,7 +91,7 @@ A global Fluent redesign, an icon library without demonstrated need, unnecessary
 
 ## v1.99 completed release
 
-v1.99.0 is published and immutable as the final planned Windows x64-only release before v2.0. RC8 satisfied the mandatory packaged acceptance gate. The final Quality, Windows x64 build, public-strict legal validation and engineering assembly passed from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`; annotated tag `v1.99.0` and the three canonical assets were published in the private repository on 2026-09-09. Active forward planning now moves to v2.0 while preserving the shipped v1.99 scope.
+v1.99.0 is published and immutable as the final planned Windows x64-only release before v2.0. RC8 satisfied the mandatory packaged acceptance gate. The final Quality, Windows x64 build, public-strict legal validation and engineering assembly passed from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`; annotated tag `v1.99.0` and the three canonical assets were published in the private repository on 2026-09-09. At v1.99.0 publication, forward planning moved to v2.0; current forward planning is v2.1.
 
 ### Cooperative Stop/Cancel
 
@@ -332,4 +332,3 @@ Do not reintroduce without a new product decision:
 ## Continuation and handoff generation
 
 The active human-readable handoff is `HANDOFF_V1.99.md`; `HANDOFF_V1.9.md` is the completed v1.9 closure context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` numerically and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.
-
