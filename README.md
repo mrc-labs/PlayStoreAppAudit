@@ -14,12 +14,16 @@ The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonic
 
 ## What can you use Store App Audit for?
 
-Store App Audit is designed to answer practical maintenance questions such as:
+Store App Audit helps answer practical questions about the Android apps you use, archive or track:
 
-- **Are the apps on my phone still maintained and still available on Google Play?** Scan a connected Android phone through read-only ADB to spot listings that have not been updated for a long time, packages that are not found in the configured Store countries, and installed versions that appear behind available Store evidence.
-- **Is my local APK collection up to date?** Audit individual package files or a folder and compare local versions with Store evidence to identify Outdated, Newer, Different, Device Specific or Unknown results.
+- **Are the apps on my phone still maintained?** Scan a connected Android phone through read-only ADB and spot apps whose Store listings have not been updated for a long time, as well as installed versions that appear behind available Store evidence.
+- **Are any of my apps no longer available in the Play Store country I use?** Identify packages that are not found in the Store countries successfully checked, while keeping the result deliberately conservative rather than claiming that an app disappeared globally.
+- **Which apps on my phone deserve attention first?** Use freshness, Store availability, installed-vs-Store relationships, Maintenance Score, filters and Smart Queries to triage a large app inventory instead of reviewing every package manually.
+- **Is my local APK collection up to date?** Audit individual package files or an entire folder and compare local versions with Store evidence to identify Outdated, Newer, Different, Device Specific or Unknown results.
+- **Do I have archived or sideloaded builds that differ from what Google Play currently exposes?** Keep physical package files independent and compare each local artifact with the Store evidence available for its package.
 - **Can I audit a list of apps without connecting a phone or keeping APK files?** Import package IDs from CSV, TSV or TXT and review Store availability, freshness, versions and maintenance signals in bulk.
-- **What changed since my previous audit?** Compare audit and device history to identify inventory changes, listings that disappeared or reappeared in the checked Store context, and Store version or update changes.
+- **What changed since my previous audit or device snapshot?** Use Changes & History to review app inventory changes, Store availability changes, reappeared listings and Store version or update changes.
+- **Can I capture an inventory before cleaning up, replacing or troubleshooting a phone?** Scan through read-only ADB and export the resulting inventory and evidence as CSV, HTML or versioned JSON without modifying installed apps.
 
 `Not Found` is intentionally conservative: it means no listing was found in the configured Store countries that were successfully checked; it does not prove that an app has disappeared from Google Play globally.
 
