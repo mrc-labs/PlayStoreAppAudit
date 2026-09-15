@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import errno
 import os
+import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -92,6 +94,102 @@ def _validate_new_filename(source: Path, value: str) -> str | None:
     return None
 
 
+
+_LINK_FALLBACK_ERRNOS = frozenset(
+    code
+    for code in (
+        errno.EXDEV,
+        errno.EPERM,
+        errno.EACCES,
+        errno.ENOSYS,
+        getattr(errno, "EOPNOTSUPP", None),
+        getattr(errno, "ENOTSUP", None),
+    )
+    if code is not None
+)
+
+
+def _rollback_destination(destination: Path) -> str:
+    try:
+        destination.unlink()
+    except OSError as exc:
+        return f" Rollback also failed: {exc}"
+    return ""
+
+
+def _copy_exclusive_then_remove(
+    source: Path,
+    destination: Path,
+) -> tuple[LocalPackageFileMutationStatus, str]:
+    created = False
+    try:
+        with source.open("rb") as source_handle:
+            with destination.open("xb") as destination_handle:
+                created = True
+                shutil.copyfileobj(
+                    source_handle,
+                    destination_handle,
+                    length=1024 * 1024,
+                )
+                destination_handle.flush()
+                os.fsync(destination_handle.fileno())
+        shutil.copystat(source, destination, follow_symlinks=False)
+    except FileExistsError:
+        return (
+            LocalPackageFileMutationStatus.COLLISION,
+            "A file or filesystem entry with that name already exists.",
+        )
+    except OSError as exc:
+        rollback = _rollback_destination(destination) if created else ""
+        return (
+            LocalPackageFileMutationStatus.FAILED,
+            f"The file could not be safely renamed: {exc}.{rollback}",
+        )
+
+    try:
+        source.unlink()
+    except OSError as exc:
+        rollback = _rollback_destination(destination)
+        return (
+            LocalPackageFileMutationStatus.FAILED,
+            f"The original file could not be removed after the safe copy: {exc}.{rollback}",
+        )
+
+    return LocalPackageFileMutationStatus.RENAMED, ""
+
+
+def _move_without_overwrite(
+    source: Path,
+    destination: Path,
+) -> tuple[LocalPackageFileMutationStatus, str]:
+    try:
+        # Creating the destination hard link is exclusive: an existing path is
+        # never replaced. Both names temporarily reference the same bytes.
+        os.link(source, destination)
+    except FileExistsError:
+        return (
+            LocalPackageFileMutationStatus.COLLISION,
+            "A file or filesystem entry with that name already exists.",
+        )
+    except OSError as exc:
+        if exc.errno not in _LINK_FALLBACK_ERRNOS:
+            return (
+                LocalPackageFileMutationStatus.FAILED,
+                f"The file could not be safely renamed: {exc}",
+            )
+        return _copy_exclusive_then_remove(source, destination)
+
+    try:
+        source.unlink()
+    except OSError as exc:
+        rollback = _rollback_destination(destination)
+        return (
+            LocalPackageFileMutationStatus.FAILED,
+            f"The original filename could not be removed: {exc}.{rollback}",
+        )
+
+    return LocalPackageFileMutationStatus.RENAMED, ""
+
 def rename_local_package_file(
     source_value: str | Path,
     new_filename: str,
@@ -138,29 +236,12 @@ def rename_local_package_file(
             "A file or filesystem entry with that name already exists.",
         )
 
-    try:
-        # Recheck immediately before mutation. Path.rename is used rather than
-        # replace so Windows never overwrites an existing destination.
-        if os.path.lexists(destination):
-            return LocalPackageFileMutationResult(
-                LocalPackageFileMutationStatus.COLLISION,
-                source,
-                destination,
-                "A file or filesystem entry with that name already exists.",
-            )
-        source.rename(destination)
-    except OSError as exc:
-        return LocalPackageFileMutationResult(
-            LocalPackageFileMutationStatus.FAILED,
-            source,
-            destination,
-            f"The file could not be renamed: {exc}",
-        )
-
+    status, message = _move_without_overwrite(source, destination)
     return LocalPackageFileMutationResult(
-        LocalPackageFileMutationStatus.RENAMED,
+        status,
         source,
         destination,
+        message,
     )
 
 
