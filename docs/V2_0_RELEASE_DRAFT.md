@@ -1,8 +1,8 @@
-# Store App Audit v2.0.0 release draft
+# Store App Audit v2.0.0 published release record
 
-Status: **DRAFT - not published.** Replace every verification/signing placeholder only with evidence from the final frozen SHA and final public assets.
+Status: **PUBLISHED - archived release record.** v2.0.0 was published from the final frozen SHA after all release gates and public-asset verification passed.
 
-Proposed GitHub Release title: `Store App Audit v2.0.0`.
+Published GitHub Release title: `Store App Audit v2.0.0`.
 
 ```markdown
 ## What's New / Highlights
@@ -19,7 +19,7 @@ Proposed GitHub Release title: `Store App Audit v2.0.0`.
 - Definitive Google Play absence in the checked country is presented as a checked-market result rather than proof of global removal. Local APK relationship handling and Maintenance Score avoid double-counting unavailable Store evidence.
 - Audit Presets remain implemented internally but are hidden from the v2.0 menu to keep the release surface focused.
 - The release toolchain moves to CPython 3.14 with PySide6-Essentials/Shiboken6 6.11.2 and Nuitka 4.2.1.
-- v2.0 returns to a six-platform production target after Windows x64 acceptance: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- v2.0 returns to a six-platform release target after Windows x64 acceptance: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
 
 ### Fixed
 - About update-status layout reserves stable status/action space so the card does not jump vertically between checking, current and update-available states.
@@ -28,13 +28,13 @@ Proposed GitHub Release title: `Store App Audit v2.0.0`.
 ## Compatibility and distribution
 - Application version: `2.0.0`; Windows File Version and Product Version: `2.0.0.0`.
 - Python baseline: CPython 3.14.
-- Prebuilt production targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- Prebuilt release targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Existing compatibility-sensitive serialized identifiers, including internal `health_score`, remain unchanged in v2.0.
-- Signing/notarization status: **TBD from final production evidence. Do not claim production signing until the real provider/credential gates pass.**
+- Signing/notarization status: Windows and Linux unsigned; macOS ad-hoc engineering signing only, not Developer ID signed and not notarized.
 
 ## Release assets
-Expected project-defined asset names, subject to final assembler validation:
+Published project-defined asset names:
 - `PlayStoreAppAudit-v2.0.0-windows-x64.zip`
 - `PlayStoreAppAudit-v2.0.0-windows-arm64.zip`
 - `PlayStoreAppAudit-v2.0.0-linux-x64.zip`
@@ -45,16 +45,23 @@ Expected project-defined asset names, subject to final assembler validation:
 - `SHA256SUMS.txt`
 
 ## Verification
-- Frozen source SHA: **TBD**.
-- Final component-freshness gate: **TBD**.
-- Exact-head Quality: **TBD**.
-- Windows x64 packaged human acceptance: **TBD**.
-- Final six-platform build/provenance/architecture/package validation: **TBD**.
-- Windows signing status: **TBD**.
-- macOS signing/notarization/stapling/Gatekeeper status: **TBD**.
-- Final release assembler/checksum/public re-download verification: **TBD**.
+- Frozen source SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- Final component-freshness gate: PASS.
+- Exact-head Quality: run `34903816649` / #445 PASS.
+- Windows x64 packaged human acceptance: PASS before the final six-platform gate.
+- Final six-platform build/provenance/architecture/package validation: PASS via Windows `34910426970`, Linux `34910428715` and macOS `34904088998`.
+- Windows signing status: intentionally unsigned for v2.0.
+- macOS signing/notarization/stapling/Gatekeeper status: ad-hoc engineering signature only; not Developer ID signed, notarized or stapled.
+- Final release assembler/checksum/public re-download verification: PASS, including clean GitHub Release re-download and byte-for-byte SHA-256 comparison.
 ```
 
-## Publication rule
+## Publication record
 
-Do not copy this draft verbatim into a public release until all `TBD` items have been replaced with evidence. If a production signing/notarization gate is unavailable or fails, state the actual resulting distribution status explicitly rather than implying a stronger trust state.
+Published on `2026-09-15T01:13:52Z`.
+
+GitHub Release:
+https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0
+
+Release ID: `388803000`.
+
+The published release, annotated tag and eight project-defined assets are immutable historical release evidence.
