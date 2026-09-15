@@ -64,6 +64,29 @@ def _result_matches_identity(
     )
 
 
+def _safe_persisted_result(result: ResolverResult) -> dict[str, Any]:
+    """Serialize only non-secret resolved evidence.
+
+    Diagnostics are intentionally omitted from persistent cache. They are useful
+    for live failure reporting, but are not required to reuse successful version
+    evidence and must never become an accidental sink for provider/session data.
+    """
+
+    return {
+        "package_name": result.package_name,
+        "profile_id": result.profile_id,
+        "profile_hash": result.profile_hash,
+        "provider": result.provider.value,
+        "status": result.status.value,
+        "requested_country": result.requested_country,
+        "requested_language": result.requested_language,
+        "version_name": result.version_name,
+        "version_code": result.version_code,
+        "fetched_at": result.fetched_at,
+        "diagnostics": "",
+    }
+
+
 def load_cached_result(
     identity: ResolverCacheIdentity,
     *,
@@ -110,7 +133,7 @@ def store_resolved_result(
     cache = _read_cache(target)
     cache["entries"][identity.key] = {
         "identity": list(identity.components()),
-        "result": result.to_mapping(),
+        "result": _safe_persisted_result(result),
     }
     _write_cache(target, cache)
     return True
