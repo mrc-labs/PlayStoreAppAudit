@@ -90,21 +90,46 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Canonical build artifact `10123641304` and assembler artifact `10123756577` remain available for audit.
 - GitHub Release assets, tags, source commits, earlier releases, repository retention settings and cleanup logic were not changed.
 
-## Current development baseline
+## Current v2.1 development baseline
 
-- Current source application version: `2.0.0`; derived Windows File/Product version: `2.0.0.0`.
+- Current source application version remains `2.0.0`; derived Windows File/Product version remains `2.0.0.0` until the deliberate v2.1 release-version bump.
 - Latest published release: immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
-- Active forward-development baseline: v2.1 planning under issue `#153`; published v2.0 remains frozen and immutable.
+- Track B code-complete baseline before this documentation-only handoff checkpoint: `f47bc14fa837f93e76a33cdf7711d080de1551fb`.
+- Post-merge Quality #461 passed on that exact Track B merge SHA.
+- Active forward-development plan remains issue `#153`; published v2.0 is frozen and immutable.
 - Python release-packaging and Quality baseline: 3.14.
 - `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
-- The v2.0 release gates are complete; future package/release gates apply only to subsequent releases.
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.
 - Default/recommended concurrent Store workers: 16; Store transport timeout: 25 seconds.
 - VS Code/Pylance Standard type checking remains a local development target, not a broad typing-refactor mandate.
 
-Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v2.0.0 release SHA remains fixed even after post-release documentation advances `main`; earlier published release SHAs remain immutable as well.
+### v2.1 Track A and Track B completion
+
+Track A is complete: Local APK quick-filter spacing was polished without changing filter semantics.
+
+Track B is complete:
+
+- B1 added safe physical-path based single-file Rename/Remove through the Qt-independent file-operation service and UI integration.
+- B2 added Mass Rename planning/execution and a Qt preview/confirmation workflow. Supported historical tokens are `{packagename}`, `{appname}`, `{playname}`, `{category}` and `{localversion}`. `{category}` is reserved for genuine Store-category evidence rather than installer category.
+- Mass Rename planning is mutation-free, validates portable filenames and complete-batch collisions, preserves package suffixes and safely supports swaps/cycles through temporary same-directory names.
+- B3 added `Remove All Outdated…` and `Remove All Unknown…` with exact relationship semantics, preview, revalidation, explicit permanent-deletion confirmation and a stronger second confirmation when the complete active Local APK source would be removed.
+- Local APK mutations update only exact physical paths. Duplicate package IDs or SHA-256 values do not collapse physical files.
+- Store cache/history, Device Inventory and unrelated audit evidence are not mutated by these file-management operations, and no Store re-audit or APK reparse is triggered after a successful mutation.
+- Final B3 local validation: `1283 passed, 6 skipped`; PR Quality #460 and post-merge main Quality #461 passed.
+
+### Remaining v2.1 scope
+
+Track C is next: an isolated Device Specific resolver proof of concept for normal Store results that return `Varies with device`. Production UI integration is conditional on stable PoC behavior and safe failure handling.
+
+Track D follows once the v2.1 UI is substantially feature-complete: reproducible canonical screenshots generated from the real Qt UI with deterministic fictional fixture apps/package IDs and original neutral artwork, reused in README and an appropriate in-app Help/Overview surface.
+
+CLI/headless support is deferred to v2.2. Named Custom Views issue #147 is currently a provisional v2.2 candidate rather than a binding v2.1 requirement.
+
+During feature implementation, source/Quality validation is continuous while packaged acceptance is concentrated on Windows x64. After feature completion, Windows x64 packaged acceptance precedes the cross-platform phase for Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64. The final release gate rebuilds all six artifacts from one exact frozen SHA.
+
+Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v2.0.0 release SHA remains fixed even after documentation or v2.1 development advances `main`; earlier published release SHAs remain immutable as well.
 
 ### Scan Phone lifecycle Phases A and B checkpoints
 
@@ -261,7 +286,7 @@ The core makes no Store/provider/cache calls and persists no remote evidence.
 Its audit projection reconstructs one deterministic present `LocalArtifact` per
 exact SHA for the existing package-deduplicated fan-out boundary. This core
 remains available as future infrastructure and is not mutated by the current
-session-local source. v1.99.0 remains the current published release.
+session-local source. v2.0.0 is the current published release.
 
 ### v2.0 Local APK source UX/correctness checkpoint
 
@@ -341,4 +366,4 @@ Do not reintroduce without a new explicit product decision:
 - v1.99's user-tested packaged-RC requirement is satisfied by RC8; its ZIP remains acceptance evidence and is not the official final release artifact.
 - Complete every release through `RELEASE_CLOSURE.md`, including post-release context, safe local synchronization and handoff generation only from clean synchronized `main`.
 
-See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `HANDOFF_V1.9.md` and `HANDOFF_V1.99.md` for durable policy, release history and continuation context.
+See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, historical handoffs, and `HANDOFF_V2.1_TRACK_C.md` for durable policy, release history and current continuation context.

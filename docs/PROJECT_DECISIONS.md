@@ -28,6 +28,20 @@ Rationale: one canonical integration line keeps platform work tied to the same s
 
 Rationale: the current boundaries keep platform and data-side effects testable while preserving the proven desktop UI.
 
+## Local APK physical-file mutation
+
+- Local APK Rename/Remove identity is the exact physical path, not package ID or SHA-256.
+- Single-file and batch filesystem mutation must stay behind Qt-independent service boundaries.
+- Batch planning/preview is read-only; destructive execution requires explicit confirmation.
+- Rename must never overwrite an unrelated filesystem entry.
+- Mass Rename validates the complete plan before mutation and must safely account for swaps/cycles and portable filename collisions.
+- Mass Remove v2.1 semantics are deliberately narrow: exact Local APK vs Store `Outdated` and exact `Unknown` only. `N/A`, blank, Device Specific and unrelated Store states are not aliases for Unknown.
+- Removing every currently loaded Local APK/package file requires an additional explicit whole-source warning.
+- Filesystem mutation does not delete or rewrite Store cache/history, Device Inventory or unrelated audit evidence.
+- Session synchronization follows actual physical-file outcomes, preserving failed/non-selected files and duplicate package/SHA rows independently.
+
+Rationale: local package files are user-owned filesystem objects. Mutation therefore requires physical identity, previewable intent, no-overwrite behavior and conservative failure semantics.
+
 ## Correctness
 
 - Never use Google Play `datePublished` as latest-update data.
@@ -129,28 +143,28 @@ v1.99 added a deliberately authorized packaged acceptance candidate before final
 
 Rationale: v1.7, v1.8, v1.9 and v1.99 remain focused desktop product iterations. Keeping one validated Windows x64 profile avoids unnecessary signing and multi-platform release cost before the v2.0 distribution milestone.
 
-### v2.0-or-later production release milestone
+### v2.0 six-platform release architecture and later releases
 
-v2.0 is the first planned return to the full six-platform production release architecture. Production signing is the preferred outcome, but public-trust signing/notarization must remain conditional until provider eligibility, credentials, cost and end-to-end verification are proven.
+v2.0.0 established the maintained six-target release architecture and is published and immutable. It shipped unsigned on Windows/Linux and with ad-hoc engineering signing on macOS; it was not Developer ID signed or notarized. Production-trust signing remains conditional for later releases and may be claimed only after real credentials/provider eligibility and complete end-to-end validation succeed.
 
-- Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates all derive from one exact frozen SHA.
-- Windows final candidates must use a validated publicly trusted code-signing provider with native post-sign verification.
-- macOS final candidates pass through Developer ID Application signing, hardened runtime, notarization, stapling and Gatekeeper verification.
-- Linux remains Nuitka standalone with replaceable Qt/PySide/Shiboken shared libraries.
-- Assemble with `.github/workflows/assemble-release.yml` only after all six candidates validate.
-- The full production asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
+- Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final artifacts derive from one exact frozen SHA.
+- Assemble the full release only after all six required candidates validate.
+- The full asset set is exactly eight project-defined files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one release-wide `SHA256SUMS.txt`.
+- Windows/Linux may remain unsigned unless a later release deliberately promotes and validates a production signing path.
+- macOS engineering/ad-hoc signing must never be described as Developer ID signing or notarization.
+- If production signing/notarization is promoted later, native post-sign verification is mandatory and any source/tooling change invalidates the affected candidate.
 
-Rationale: the production architecture can remain maintained and testable without forcing signing credentials, publisher eligibility, notarization setup or six-target release cost into v1.6, v1.7 or v1.8.
+For v2.1 and later normal feature development:
 
-Windows x64 is the primary v2.0 implementation, correction, stabilization and
-packaged-acceptance platform. Do not spend normal feature-development cycles
-building Windows ARM64, Linux x64/ARM64 or macOS x64/ARM64 in parallel. Those
-five targets form the final cross-platform production gate only after Windows
-x64 is functionally complete and accepted. Defects in shared code found there
-must be fixed, relevant Windows x64 regressions rerun and affected targets
-revalidated before freezing the one exact SHA used for all six final artifacts.
-Production signing/notarization remains conditional until proven in that final
-phase. CLI/headless remains a v2.1 concern.
+- source tests and Quality run continuously;
+- packaged development/acceptance is concentrated on Windows x64 until the feature set is complete;
+- Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 enter the deliberate cross-platform release phase after Windows x64 acceptance;
+- shared-code defects discovered in that phase are fixed before freeze, relevant Windows x64 regressions are rerun and affected targets are revalidated;
+- all six final artifacts are rebuilt/validated from the final one exact frozen SHA.
+
+CLI/headless is deferred to v2.2. When implemented, it must reuse domain/service boundaries rather than driving Qt or duplicating Store/ADB behavior.
+
+Rationale: six-target release integrity is preserved without spending all platform build cycles during every feature PR or making unsupported public-trust signing claims.
 
 ## Packaging and legal model
 
@@ -167,13 +181,14 @@ The release-wide source archive centralizes corresponding-source material requir
 
 ## Runtime policy
 
-- Packaging baseline is Python 3.13.
-- Quality/source compatibility is checked on Python 3.13 and 3.14.
-- Move the packaging baseline only as a deliberate compiler/deployment-toolchain migration.
-- Current Qt/PySide baseline is `PySide6-Essentials==6.11.1`.
-- Current Nuitka pin is `Nuitka==4.1.3`.
+- Stable Python 3.14 is the release-packaging and Quality baseline.
+- Python pre-releases, including Python 3.15 release candidates, are not release baselines without a deliberate engineering decision.
+- Current Qt/PySide baseline is `PySide6-Essentials==6.11.2`.
+- Current Nuitka pin is `Nuitka==4.2.1`.
+- Runtime, development and build pins are reviewed through the mandatory release-component freshness gate before a release freeze.
+- Move any packaging/toolchain baseline only through an explicit validated migration.
 
-Rationale: source compatibility can move ahead of the release compiler without making packaging depend on an insufficiently validated toolchain.
+Rationale: the release compiler, Qt baseline and Quality environment should describe the toolchain actually used by the maintained release architecture rather than an obsolete transitional baseline.
 
 ## Release workflow structure
 

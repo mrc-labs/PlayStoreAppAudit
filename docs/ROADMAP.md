@@ -201,15 +201,15 @@ Subsequent legal-tooling corrections were handled as release-engineering changes
 
 ### First planned return to multi-platform distribution
 
-v2.0 is the first planned release after v1.3 to return to the full six prebuilt platform/architecture targets:
+v2.0.0 is the published release that returned the project to the full six prebuilt platform/architecture targets:
 
 - Windows x64 and ARM64;
 - Linux x64 and ARM64;
 - macOS x64 and ARM64.
 
-Production-trust signing is the ideal target for Windows and macOS, including notarization/stapling on macOS, but it must not be promised until eligibility, credentials, provider cost and complete end-to-end validation are proven. If signing is not feasible, make a new explicit release decision rather than silently weakening verification.
+v2.0.0 shipped with unsigned Windows/Linux packages and ad-hoc engineering signing on macOS; it was not Developer ID signed or notarized. Public-trust signing remains conditional later-2.x work and must not be claimed until eligibility, credentials, provider cost and complete end-to-end validation are proven.
 
-The v2.0 production profile continues to require one frozen SHA, signed/native post-sign validation where applicable, strict legal/source evidence and the eight-file multi-platform asset set documented in `BUILDING.md`.
+The six-platform release architecture continues to require one frozen SHA, native package validation, strict legal/source evidence and the eight-file multi-platform asset set documented in `BUILDING.md`.
 
 Windows x64 is the primary platform for v2.0 implementation, correction,
 stabilization and packaged acceptance. Normal feature work does not build or
@@ -220,7 +220,8 @@ finds a shared-code defect, fix it, rerun relevant Windows x64 regressions and
 repeat validation for every affected target before freezing the final SHA. All
 six final artifacts must still derive from that one exact frozen SHA.
 Signing/notarization feasibility is proven only in the applicable final
-production phase and is not promised in advance. CLI/headless remains v2.1.
+production phase and is not promised in advance. CLI/headless is deferred to
+v2.2.
 
 ### Local APK Library / modern LocalAPK successor core
 
@@ -270,41 +271,56 @@ silently registered. Watchers, duplicate cleanup,
 rename/move/delete operations and the later v2.x Library-management backlog
 remain excluded.
 
-## v2.1 planned follow-up
+## v2.1 active development
 
-### CLI/headless work
+The live v2.1 plan is tracked by issue `#153`.
 
-CLI/headless support is assigned to v2.1. It must reuse service/domain boundaries rather than driving the Qt UI or duplicating Store/ADB logic. The exact command surface and first headless use case remain deliberate v2.1 design decisions; do not pull CLI implementation into the v2.0 core.
+### Track A: Local APK quick-filter polish
 
-## Later v2.x Local APK backlog
+Completed. Spacing between Store Status and APK vs Store quick-filter groups was increased without tightening Store Status or changing filter semantics.
 
-After the core is stable, restore Local APK/package-file management in later v2.x:
+### Track B: Local APK file management
 
-- **Single Rename** and **Single Remove** for a selected file.
-- **Mass Rename** is the highest-priority restoration. Preserve metadata-based
-  filename templates, including the historical tokens `{packagename}`, `{appname}`,
-  `{playname}`, `{category}` and `{localversion}`. Preview each current -> proposed
-  filename, validate before any filesystem mutation, handle collisions safely,
-  report skipped or conflicting files clearly and never overwrite accidentally.
-- **Mass Remove** must at least restore the historical **Remove all outdated** and
-  **Remove all unknown** selections, while allowing future expansion to other
-  useful relationship or status selections. Make each removal explicit and
-  confirmation-driven, show a preview and count where practical, and guard
-  against accidental broad deletion.
+Completed.
 
-Scope every rename and removal operation to Local APK/package files only.
-Duplicate APK detection/management, custom commands/integrations and Windows
-Explorer integration remain later library-management candidates. None of this
-file-management work is part of v2.0.
+- **Single Rename / Remove**: safe physical-path based operations with collision protection, explicit confirmation and current-session synchronization.
+- **Mass Rename**: mutation-free whole-batch planning, historical metadata templates, portable filename validation, collision detection, safe swap/cycle staging, preview and explicit confirmation.
+- **Mass Remove**: exact `Outdated` and exact `Unknown` selection only, mutation-free preview, source revalidation, explicit permanent-deletion confirmation and an additional guard when the complete active source would be deleted.
+- Store cache/history and Device Inventory are outside filesystem-mutation semantics.
+- Duplicate package IDs or SHA-256 values remain independent physical files.
+- No Store re-audit or APK reparse is required after successful file mutation.
 
-An optional **Device Specific resolver** is also post-v2.0 / v2.1-or-later work.
-Invoke it only when the normal Store lookup returns `Varies with device`. It may
-use Android 10-17 reference profiles and a cached **Your Device** profile from
-ADB; tooltips and Details should show the real reference device/profile
-metadata. Support an optional anonymous/Aurora-compatible mode and an optional
-Google-account authenticated mode, with a safe fallback to the current
-**Device Specific** state. Resolving metadata or a version must not require an
-APK download when that evidence is sufficient.
+### Track C: Device Specific resolver
+
+Next.
+
+Invoke the optional resolver only when the normal Store result is `Varies with device`. The first implementation gate is an isolated proof of concept:
+
+`package + reference profile + auth mode -> versionName + versionCode`
+
+Profiles may include a cached **Your Device** ADB profile plus coherent Android 10-17 reference profiles. Resolver evidence must remain additional evidence rather than overwriting the raw Store fact. Prefer versionCode/longVersionCode when available, distinguish the installed version from the version Play would deliver to the chosen profile, cache by package/profile/country/relevant context and fall back safely to the existing **Device Specific** state.
+
+Test the PoC against 2-3 currently device-specific apps across at least Android 10, Android 13 and Android 16/17. Do not integrate production UI until stability and failure handling are demonstrated. Metadata resolution must not require APK download when version metadata is sufficient.
+
+Anonymous/Aurora-compatible and optional authenticated Google modes may be investigated. Do not persist a raw Google password when avoidable; dispenser endpoints must be configurable rather than hardcoded.
+
+### Track D: release/homepage/help screenshot polish
+
+Tracked by issue `#169` and intentionally scheduled after the v2.1 UI is substantially feature-complete.
+
+Generate a small canonical screenshot set from the real Qt UI using deterministic synthetic fictional apps/package IDs and original neutral artwork. Do not use real user-installed apps, user APKs, personal paths or famous third-party logos. Reuse the canonical images in both README/homepage and an appropriate in-app Help/Getting Started/Overview surface.
+
+Windows x64 is the canonical screenshot-generation environment; source-controlled deterministic tooling is preferred over manually edited mockups.
+
+### Deferred to v2.2
+
+CLI/headless is not part of v2.1. It is planned for v2.2 and must reuse service/domain boundaries rather than driving Qt or duplicating Store/ADB logic.
+
+Named Custom Views issue `#147` is currently a provisional v2.2 candidate. The final v2.2 scope may be narrowed before implementation.
+
+### Later Local APK candidates
+
+Duplicate APK detection/management, custom commands/integrations and Windows Explorer integration remain later candidates and are not required for v2.1.
 
 ## Explicitly removed / not planned
 
@@ -331,4 +347,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-The active human-readable handoff is `HANDOFF_V1.99.md`; `HANDOFF_V1.9.md` is the completed v1.9 closure context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` numerically and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.
+The active human-readable continuation context for the next v2.1 phase is `HANDOFF_V2.1_TRACK_C.md`; older `HANDOFF_V*.md` files remain historical release/development context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest compatible `docs/HANDOFF_V*.md` and includes a freshly generated `REPOSITORY_SNAPSHOT.md`. Always verify the live GitHub `main` SHA when a new chat or coding session begins.
