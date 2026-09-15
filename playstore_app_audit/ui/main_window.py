@@ -13,6 +13,7 @@ from typing import Any
 from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QFont
 from PySide6.QtWidgets import (
+    QDialog,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -30,11 +31,13 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_file_ops as local_file_ops
+import playstore_app_audit.services.local_apk_mass_rename as mass_rename
 import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.local_apk_mass_rename_dialog as mass_rename_ui
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
 from playstore_app_audit.domain.local_artifacts import (
@@ -121,6 +124,15 @@ class MainWindow(results_ui.ResultsWindow):
         self.file_choose_apk_folder_action = QAction("Choose Package Folder…", self)
         self.file_choose_apk_folder_action.triggered.connect(self._choose_local_apk_folder)
         self.file_menu.insertAction(self.recent_menu.menuAction(), self.file_choose_apk_folder_action)
+
+        self.file_local_apk_menu.addSeparator()
+        self.file_mass_rename_action = self.file_local_apk_menu.addAction(
+            "Mass Rename…"
+        )
+        self.file_mass_rename_action.triggered.connect(
+            self._show_local_apk_mass_rename
+        )
+
         self.choose_apk_file_action = QAction("File(s)…", self)
         self.choose_apk_file_action.triggered.connect(self._choose_local_apks)
         self.choose_apk_folder_action = QAction("Folder…", self)
@@ -383,6 +395,10 @@ class MainWindow(results_ui.ResultsWindow):
         self.file_choose_apk_folder_action.setEnabled(idle)
         self.choose_apk_folder_action.setEnabled(idle)
         self.local_apk_options_button.setEnabled(idle)
+        if hasattr(self, "file_mass_rename_action"):
+            self.file_mass_rename_action.setEnabled(
+                self._local_mass_rename_available()
+            )
         self.exclude_system_source_check.setEnabled(idle and not local_source)
         self.hide_system_check.setEnabled(idle and not local_source)
         if local_source:
@@ -1267,6 +1283,252 @@ class MainWindow(results_ui.ResultsWindow):
                 self.table.selectRow(proxy_row)
                 self.table.scrollTo(proxy_index)
                 break
+
+    def _local_mass_rename_available(self) -> bool:
+        if (
+            not local_apk_audit.is_local_apk_source(
+                getattr(self, "source_mode", None)
+            )
+            or self._operation_running()
+        ):
+            return False
+
+        candidate_keys = {
+            self._local_apk_path_key(candidate)
+            for candidate in getattr(
+                self,
+                "_local_apk_candidates",
+                (),
+            )
+            if candidate.is_file()
+        }
+
+        if not candidate_keys:
+            return False
+
+        return any(
+            local_apk_audit.is_local_apk_source(
+                row.get("source_mode")
+            )
+            and self._local_apk_path_key(
+                row.get("local_apk_location")
+            )
+            in candidate_keys
+            for row in getattr(self, "current_rows", ())
+        )
+
+    def _sync_local_apk_mass_rename_result(
+        self,
+        result: mass_rename.MassRenameExecutionResult,
+    ) -> None:
+        by_source = {
+            self._local_apk_path_key(entry.source): entry
+            for entry in result.entries
+        }
+
+        new_candidates: list[Path] = []
+        seen_candidate_keys: set[str] = set()
+
+        for candidate in self._local_apk_candidates:
+            entry = by_source.get(
+                self._local_apk_path_key(candidate)
+            )
+
+            final_location = (
+                candidate
+                if entry is None
+                else entry.final_location
+            )
+
+            if final_location is None:
+                continue
+
+            final_path = Path(final_location).expanduser().resolve(
+                strict=False
+            )
+            final_key = self._local_apk_path_key(final_path)
+
+            if final_key in seen_candidate_keys:
+                continue
+
+            seen_candidate_keys.add(final_key)
+            new_candidates.append(final_path)
+
+        self._local_apk_candidates = tuple(new_candidates)
+
+        retained_rows: list[dict[str, Any]] = []
+
+        for row in self.current_rows:
+            source_key = self._local_apk_path_key(
+                row.get("local_apk_location")
+            )
+            entry = by_source.get(source_key)
+
+            if entry is None:
+                retained_rows.append(row)
+                continue
+
+            final_location = entry.final_location
+
+            if final_location is None:
+                continue
+
+            final_path = Path(final_location).expanduser().resolve(
+                strict=False
+            )
+
+            row["local_apk_location"] = str(final_path)
+            row["local_apk_file_name"] = final_path.name
+
+            provisional_key = row.get("_provisional_key")
+            if (
+                provisional_key
+                and self._local_apk_path_key(provisional_key)
+                == source_key
+            ):
+                row["_provisional_key"] = str(final_path)
+
+            retained_rows.append(row)
+
+        self.current_rows = retained_rows
+
+        preferred_location = next(
+            (
+                Path(entry.final_location)
+                for entry in result.entries
+                if (
+                    entry.status
+                    is local_file_ops.LocalPackageFileMutationStatus.RENAMED
+                    and entry.final_location is not None
+                )
+            ),
+            None,
+        )
+
+        if preferred_location is None:
+            preferred_location = next(
+                (
+                    Path(entry.final_location)
+                    for entry in result.entries
+                    if entry.final_location is not None
+                ),
+                None,
+            )
+
+        self._sync_local_apk_file_mutation_views(
+            preferred_location
+        )
+
+    @staticmethod
+    def _mass_rename_result_details(
+        result: mass_rename.MassRenameExecutionResult,
+    ) -> str:
+        lines: list[str] = []
+
+        for entry in result.entries:
+            if (
+                entry.status
+                is not local_file_ops.LocalPackageFileMutationStatus.FAILED
+            ):
+                continue
+
+            final_name = (
+                entry.final_location.name
+                if entry.final_location is not None
+                else "missing"
+            )
+            reason = entry.message or "Filesystem operation failed."
+
+            lines.append(
+                f"{entry.source.name} → {final_name}: {reason}"
+            )
+
+            if len(lines) >= 12:
+                break
+
+        remaining = sum(
+            entry.status
+            is local_file_ops.LocalPackageFileMutationStatus.FAILED
+            for entry in result.entries
+        ) - len(lines)
+
+        if remaining > 0:
+            lines.append(f"…and {remaining} more")
+
+        return "\n".join(lines)
+
+    def _show_local_apk_mass_rename(self) -> None:
+        if not self._local_mass_rename_available():
+            return
+
+        dialog = mass_rename_ui.LocalApkMassRenameDialog(
+            self,
+            self.current_rows,
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        plan = dialog.plan
+
+        if plan.has_blocking_issues or plan.rename_count <= 0:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Confirm Mass Rename",
+            (
+                f"Rename {plan.rename_count} local package file(s) "
+                "on disk?\n\n"
+                "The complete preview has been validated. "
+                "Existing unrelated files will never be overwritten."
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        result = mass_rename.execute_local_package_mass_rename(
+            plan
+        )
+
+        self._sync_local_apk_mass_rename_result(result)
+
+        if result.status is mass_rename.MassRenameBatchStatus.COMPLETED:
+            self.status_label.setText(
+                result.message
+                or "Local package files renamed"
+            )
+            return
+
+        if result.status is mass_rename.MassRenameBatchStatus.NO_CHANGES:
+            self.status_label.setText(
+                result.message or "No filenames changed"
+            )
+            return
+
+        details = self._mass_rename_result_details(result)
+        message = result.message or "Mass Rename could not complete."
+
+        if details:
+            message = f"{message}\n\n{details}"
+
+        if result.status is mass_rename.MassRenameBatchStatus.BLOCKED:
+            title = "Mass Rename blocked"
+        elif result.status is mass_rename.MassRenameBatchStatus.PARTIAL:
+            title = "Mass Rename partially completed"
+        else:
+            title = "Mass Rename failed"
+
+        self.status_label.setText(title)
+        QMessageBox.warning(
+            self,
+            title,
+            message,
+        )
 
     def _rename_local_package_row(self, row: dict[str, Any]) -> None:
         if not self._local_file_mutation_available(row):
