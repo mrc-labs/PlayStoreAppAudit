@@ -4,12 +4,12 @@ from typing import Any
 
 import pytest
 
-import playstore_app_audit.services.device_specific_integration as integration
 from playstore_app_audit.domain.device_specific_resolver import (
     ResolverProvider,
     ResolverResult,
     ResolverStatus,
 )
+from playstore_app_audit.services import device_specific_integration as integration
 from playstore_app_audit.services.device_specific_profiles import (
     PRODUCTION_PROFILE_IDS,
     load_reference_profile,
@@ -328,5 +328,11 @@ def test_live_result_is_persisted_only_after_worker_returns(monkeypatch) -> None
 def test_profile_choices_are_restricted_to_production_profiles() -> None:
     choices = integration.profile_choices()
     assert tuple(profile_id for profile_id, _label in choices) == PRODUCTION_PROFILE_IDS
-    assert any("OnePlus 8 Pro" in label and "API 29" in label for _profile_id, label in choices)
-    assert any("Galaxy S20+" in label and "API 33" in label for _profile_id, label in choices)
+    assert any(
+        "OnePlus 8 Pro" in label and "API 29" in label
+        for _profile_id, label in choices
+    )
+    assert any(
+        "Galaxy S20+" in label and "API 33" in label
+        for _profile_id, label in choices
+    )
