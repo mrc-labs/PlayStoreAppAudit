@@ -466,7 +466,7 @@ Audit history stores neither Maintenance Score nor provider evidence, so its bas
 - A richer Dashboard/status overview is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when mature multi-source and longitudinal/history workflows justify it.
 - Concrete bugs and polish found through real v1.9 use may be considered individually; they are not automatically in scope.
 
-Multi-platform distribution, production signing and CLI/headless mode remain v2.0-or-later work.
+The six-platform release architecture is established as of v2.0.0. Production-trust signing remains conditional later-2.x work, while CLI/headless is deferred to v2.2.
 
 ### v2.0 Local APK Library pillar
 
@@ -474,7 +474,7 @@ Local APK Audit is deferred entirely to v2.0 rather than entering v1.99 with pac
 
 The Library will scan one or more local APK directories recursively, parse package ID, app label, versionName/versionCode and useful SDK/icon/file/path metadata where practical, and compare local versions with Google Play and Alternative Distribution Discovery when appropriate. Reuse the existing classification, evidence, Details, filters, Smart Queries, export/reporting and service/domain architecture; do not duplicate existing CSV/export behavior. Portable/local workflow already exists and is not a new feature. ADB remains read-only unless a future explicit decision authorizes installation or other write behavior.
 
-Later v2.x candidates include metadata-template mass rename, duplicate APK detection/management, outdated-APK cleanup with preview/safety, custom commands/integrations, Windows Explorer integration and other library-management improvements after the core is stable.
+Metadata-template Mass Rename and safeguarded Outdated/Unknown Mass Remove are completed v2.1 Track B capabilities. Later candidates include duplicate APK detection/management, custom commands/integrations, Windows Explorer integration and other library-management improvements.
 
 The parser foundation uses a bounded standard-library ZIP boundary with the
 pinned Apache-2.0 `pyaxmlparser==0.3.31` binary-manifest/resource parser. One

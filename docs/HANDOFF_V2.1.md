@@ -202,7 +202,7 @@ Use the same canonical screenshot set in:
 
 Use deterministic synthetic fictional app/package data.
 
-Do not use Mauro's phone apps, Mauro's APK files, personal paths or account/device identifiers.
+Do not use real user-installed apps, user APK files, personal paths or account/device identifiers.
 
 Prefer fictional apps and original neutral/generated icons rather than famous third-party brands/logos.
 
