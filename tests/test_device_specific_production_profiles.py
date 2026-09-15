@@ -24,7 +24,7 @@ def test_only_proven_api29_and_api33_profiles_are_promoted() -> None:
 @pytest.mark.parametrize("profile_id", PRODUCTION_PROFILE_IDS)
 def test_production_profiles_are_coherent_hashed_and_attributed(profile_id: str) -> None:
     profile = load_reference_profile(profile_id)
-    assert REQUIRED_PROFILE_FIELDS <= set(profile.profile)
+    assert set(profile.profile) >= REQUIRED_PROFILE_FIELDS
     assert canonical_profile_hash(profile.profile) == profile.profile_hash
     assert profile.source_url.startswith("https://")
     assert "GPL-3.0-or-later" in profile.source_license
