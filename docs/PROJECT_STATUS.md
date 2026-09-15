@@ -1,7 +1,38 @@
 # Project Status
 
-Last updated: 2026-09-13
+Last updated: 2026-09-15
 
+## Published v2.0.0 release
+
+- Latest published version: `v2.0.0`
+- Published: `2026-09-15T01:13:52Z`
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0
+- GitHub Release ID: `388803000`
+- GitHub Release title: `Store App Audit v2.0.0`
+- Immutable frozen release SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`
+- Annotated tag: `v2.0.0`; tag object `e5e69b31b6ec8d57e1cca71945c8bfa83c91a6e3`; peel target is the exact frozen SHA
+- Release targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64
+- Windows and Linux packages are unsigned
+- macOS packages use ad-hoc engineering signing only; they are not Developer ID signed or notarized
+- Project-defined release assets: exactly 8
+- Final exact-head Quality: run `34903816649` / #445
+- Final Windows build: run `34910426970`, x64 + ARM64 PASS
+- Final Linux build: run `34910428715`, x64 + ARM64 PASS
+- Final macOS engineering build: run `34904088998`, x64 + ARM64 PASS
+- Canonical release assembly, release-wide SHA-256 validation, GitHub draft upload, clean re-download and byte-for-byte verification all passed before publication
+
+Published project-defined assets:
+
+- `PlayStoreAppAudit-v2.0.0-linux-arm64.zip`: 80,813,210 bytes; SHA-256 `3a4309c4d3d1d339a3a693ba689c742dae7f4e6145d48f461347fb867822e40d`
+- `PlayStoreAppAudit-v2.0.0-linux-x64.zip`: 83,526,649 bytes; SHA-256 `f6de5eaf6f242ec5bede7142a675be06922d8cff95e551e23c57992f5a1b296c`
+- `PlayStoreAppAudit-v2.0.0-macos-arm64.zip`: 45,350,453 bytes; SHA-256 `54d0a131446c1d35db958efc596da699f06e2e6946e6b634aa5d4c3e7216855e`
+- `PlayStoreAppAudit-v2.0.0-macos-x64.zip`: 48,996,574 bytes; SHA-256 `2bd36be38b6b703dffba955e1267516c85d1c0f93e2a73083c5f92ce17a98cba`
+- `PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz`: 73,174,984 bytes; SHA-256 `5ef4a97ea17e043fda09784bd65191873d5b3847ecfbae47a4d708a4e09f3870`
+- `PlayStoreAppAudit-v2.0.0-windows-arm64.zip`: 42,270,628 bytes; SHA-256 `02ea7413fcf2d91283da5a869cdb55f407d0e11a2a7d013f7ce963bfbc8dfdba`
+- `PlayStoreAppAudit-v2.0.0-windows-x64.zip`: 45,902,588 bytes; SHA-256 `3f1df2326bd875fdb5320e05ec7cbb7c8dc0bf4e34d5ddcea3f7a92c0672e665`
+- `SHA256SUMS.txt`: 765 bytes; SHA-256 `3c2ff9b6fbce036856eb8f629952eb2ed3b56134100a1e56ff3a65cb3f06614c`
+
+Published v2.0.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets.
 ## Published v1.99.0 release
 
 - Latest published version: `v1.99.0`
@@ -61,8 +92,8 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 ## Current development baseline
 
 - Current source application version: `2.0.0`; derived Windows File/Product version: `2.0.0.0`.
-- Latest published release: immutable v1.99.0 at release SHA `1065744488e548663e3ba365566a9932837f5fb5`.
-- Active v2.0 release-preparation PR: `#151` on `v2/release-prep-2.0.0`; the exact final release SHA is not frozen yet.
+- Latest published release: immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- Active forward-development baseline: v2.1 planning under issue `#153`; published v2.0 remains frozen and immutable.
 - Python release-packaging and Quality baseline: 3.14.
 - `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
@@ -310,3 +341,4 @@ Do not reintroduce without a new explicit product decision:
 - Complete every release through `RELEASE_CLOSURE.md`, including post-release context, safe local synchronization and handoff generation only from clean synchronized `main`.
 
 See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, `HANDOFF_V1.9.md` and `HANDOFF_V1.99.md` for durable policy, release history and continuation context.
+

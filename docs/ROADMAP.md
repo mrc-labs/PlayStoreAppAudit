@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-13
+Last updated: 2026-09-15
 
 ## Purpose
 
@@ -14,6 +14,21 @@ This file is the canonical forward-looking product roadmap for Store App Audit. 
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
 
+## v2.0 published baseline
+
+v2.0.0 was published on 2026-09-15 and is immutable.
+
+- Frozen release source SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0
+- Exact-head Quality run: `34903816649`.
+- Final Windows build: `34910426970`.
+- Final Linux build: `34910428715`.
+- Final macOS engineering build: `34904088998`.
+- Six prebuilt platform/architecture packages plus the consolidated third-party source archive and `SHA256SUMS.txt` were published as the exact eight-file project release set.
+- Windows and Linux remain unsigned for v2.0; macOS uses ad-hoc engineering signing only and is not Developer ID signed/notarized.
+- Final public release assets were cleanly re-downloaded and passed canonical layout/checksum validation plus byte-for-byte comparison with the locally assembled release set.
+
+Active forward planning now moves to **v2.1**, tracked by master issue `#153`. v2.1 work must not modify the published v2.0 source SHA, tag or assets.
 ## v1.8 published baseline
 
 v1.8.0 was published on 2026-08-24 as an unsigned Windows x64 Engineering Test Build and is immutable.
@@ -317,3 +332,4 @@ Do not reintroduce without a new product decision:
 ## Continuation and handoff generation
 
 The active human-readable handoff is `HANDOFF_V1.99.md`; `HANDOFF_V1.9.md` is the completed v1.9 closure context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest `docs/HANDOFF_V*.md` numerically and includes a freshly generated `REPOSITORY_SNAPSHOT.md`.
+
