@@ -24,6 +24,7 @@ import playstore_app_audit.services.local_package_metadata_cache as local_metada
 import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.main_window as main_window_ui
 from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
     LocalArtifactFailureKind,
@@ -786,3 +787,245 @@ def test_open_file_location_context_action_is_local_and_requires_a_file(
     assert window._local_file_location_action(
         {"source_mode": "local_apk", "local_apk_location": str(tmp_path / "gone.apk")}
     ) == (str(tmp_path / "gone.apk"), False)
+
+
+def _install_local_file_operation_rows(
+    window: MainWindow,
+    paths: tuple[Path, ...],
+    *,
+    same_identity: bool = False,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+
+    for index, path in enumerate(paths):
+        package = (
+            "com.example.same"
+            if same_identity
+            else f"com.example.file{index}"
+        )
+        sha = "a" * 64 if same_identity else f"{index + 1:064x}"
+        artifact = _artifact(path, sha, package)
+        row = local_apk_audit.artifact_result_row(
+            artifact,
+            {
+                "play_status": "available",
+                "play_title": f"Store title {index}",
+                "play_version": "2.0",
+            },
+            source_mode=local_apk_audit.SOURCE_MODE,
+        )
+        rows.append(row)
+
+    window._local_apk_candidates = tuple(
+        path.resolve() for path in paths
+    )
+    window.source_mode = local_apk_audit.SOURCE_MODE
+    window.current_rows = rows
+    window.model.set_rows(rows)
+    window.source_label.setToolTip(
+        "\n".join(str(path.resolve()) for path in paths)
+    )
+    window._sync_action_availability()
+    return rows
+
+
+def test_single_file_mutation_availability_requires_idle_active_candidate(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.apk"
+    source.write_bytes(b"package")
+    row = _install_local_file_operation_rows(window, (source,))[0]
+
+    monkeypatch.setattr(window, "_operation_running", lambda: False)
+    assert window._local_file_mutation_available(row)
+
+    monkeypatch.setattr(window, "_operation_running", lambda: True)
+    assert not window._local_file_mutation_available(row)
+
+    monkeypatch.setattr(window, "_operation_running", lambda: False)
+    non_local = dict(row)
+    non_local["source_mode"] = "file"
+    assert not window._local_file_mutation_available(non_local)
+
+    window._local_apk_candidates = ()
+    assert not window._local_file_mutation_available(row)
+
+    window._local_apk_candidates = (source.resolve(),)
+    source.unlink()
+    assert not window._local_file_mutation_available(row)
+
+
+def test_single_file_rename_updates_only_matching_physical_row(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.apk"
+    second = tmp_path / "second.apk"
+    first.write_bytes(b"same")
+    second.write_bytes(b"same")
+
+    first_row, second_row = _install_local_file_operation_rows(
+        window,
+        (first, second),
+        same_identity=True,
+    )
+    first_row["store_url"] = "https://example.test/store-evidence"
+
+    monkeypatch.setattr(
+        main_window_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("renamed.apk", True),
+    )
+
+    window._rename_local_package_row(first_row)
+    app.processEvents()
+
+    renamed = tmp_path / "renamed.apk"
+    assert not first.exists()
+    assert renamed.read_bytes() == b"same"
+    assert second.read_bytes() == b"same"
+
+    assert window._local_apk_candidates == (
+        renamed.resolve(),
+        second.resolve(),
+    )
+    assert first_row["local_apk_file_name"] == "renamed.apk"
+    assert first_row["local_apk_location"] == str(renamed.resolve())
+    assert first_row["store_url"] == "https://example.test/store-evidence"
+
+    assert second_row["local_apk_file_name"] == "second.apk"
+    assert second_row["local_apk_location"] == str(second.resolve())
+
+    current = window.table.currentIndex().data(
+        Qt.ItemDataRole.UserRole
+    )
+    assert isinstance(current, dict)
+    assert current["local_apk_location"] == str(renamed.resolve())
+
+    assert window.details_panel._row is not None
+    assert (
+        window.details_panel._row["local_apk_location"]
+        == str(renamed.resolve())
+    )
+
+
+def test_single_file_rename_cancel_and_collision_preserve_state(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.apk"
+    collision = tmp_path / "collision.apk"
+    source.write_bytes(b"source")
+    collision.write_bytes(b"existing")
+
+    row = _install_local_file_operation_rows(window, (source,))[0]
+    original_location = row["local_apk_location"]
+
+    monkeypatch.setattr(
+        main_window_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("ignored.apk", False),
+    )
+    window._rename_local_package_row(row)
+
+    assert source.read_bytes() == b"source"
+    assert row["local_apk_location"] == original_location
+
+    warnings: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        main_window_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("collision.apk", True),
+    )
+    monkeypatch.setattr(
+        main_window_ui.QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append(
+            (title, message)
+        ),
+    )
+
+    window._rename_local_package_row(row)
+
+    assert source.read_bytes() == b"source"
+    assert collision.read_bytes() == b"existing"
+    assert row["local_apk_location"] == original_location
+    assert window._local_apk_candidates == (source.resolve(),)
+    assert warnings
+    assert warnings[-1][0] == "Rename file failed"
+
+
+def test_single_file_remove_confirmation_targets_only_selected_physical_file(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.apk"
+    second = tmp_path / "second.apk"
+    first.write_bytes(b"same")
+    second.write_bytes(b"same")
+
+    first_row, second_row = _install_local_file_operation_rows(
+        window,
+        (first, second),
+        same_identity=True,
+    )
+
+    answers = [
+        main_window_ui.QMessageBox.StandardButton.No,
+        main_window_ui.QMessageBox.StandardButton.Yes,
+    ]
+    monkeypatch.setattr(
+        main_window_ui.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: answers.pop(0),
+    )
+
+    window._remove_local_package_row(first_row)
+
+    assert first.exists()
+    assert second.exists()
+    assert len(window.current_rows) == 2
+
+    window._remove_local_package_row(first_row)
+
+    assert not first.exists()
+    assert second.read_bytes() == b"same"
+    assert window._local_apk_candidates == (second.resolve(),)
+    assert window.current_rows == [second_row]
+    assert window.current_rows[0]["package_name"] == "com.example.same"
+
+
+def test_removing_final_local_file_clears_source_and_results(
+    window: MainWindow,
+    app: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "only.apk"
+    source.write_bytes(b"package")
+
+    row = _install_local_file_operation_rows(window, (source,))[0]
+
+    monkeypatch.setattr(
+        main_window_ui.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs:
+            main_window_ui.QMessageBox.StandardButton.Yes,
+    )
+
+    window._remove_local_package_row(row)
+    app.processEvents()
+
+    assert not source.exists()
+    assert window._local_apk_candidates == ()
+    assert window.source_mode is None
+    assert window.current_rows == []
+    assert window.model.rowCount() == 0
+    assert window.details_panel._row is None
+    assert not window.run_button.isEnabled()

@@ -1012,6 +1012,25 @@ class InsightsWindow(device_ui.DeviceWindow):
         local_location = location_action[0] if location_action is not None else ""
         local_location_exists = location_action[1] if location_action is not None else False
         open_location = menu.addAction("Open File Location") if location_action else None
+
+        rename_handler = getattr(self, "_rename_local_package_row", None)
+        remove_handler = getattr(self, "_remove_local_package_row", None)
+        mutation_available_handler = getattr(
+            self,
+            "_local_file_mutation_available",
+            None,
+        )
+
+        rename_file = None
+        remove_file = None
+        if (
+            location_action
+            and callable(rename_handler)
+            and callable(remove_handler)
+        ):
+            rename_file = menu.addAction("Rename File…")
+            remove_file = menu.addAction("Remove File…")
+
         menu.addSeparator()
         copy_package = menu.addAction("Copy Package Name")
         copy_title = menu.addAction("Copy Play Store Title")
@@ -1026,6 +1045,16 @@ class InsightsWindow(device_ui.DeviceWindow):
         open_info.setEnabled(availability.app_info)
         if open_location is not None:
             open_location.setEnabled(local_location_exists)
+
+        if rename_file is not None and remove_file is not None:
+            mutation_enabled = (
+                bool(mutation_available_handler(row))
+                if callable(mutation_available_handler)
+                else local_location_exists
+            )
+            rename_file.setEnabled(mutation_enabled)
+            remove_file.setEnabled(mutation_enabled)
+
         copy_package.setEnabled(availability.package)
         copy_title.setEnabled(availability.title)
         copy_url.setEnabled(availability.url)
@@ -1044,6 +1073,10 @@ class InsightsWindow(device_ui.DeviceWindow):
             location_handler = getattr(self, "_open_local_apk_location", None)
             if callable(location_handler):
                 location_handler(local_location)
+        elif rename_file is not None and chosen is rename_file:
+            rename_handler(row)
+        elif remove_file is not None and chosen is remove_file:
+            remove_handler(row)
         elif chosen is copy_package:
             QApplication.clipboard().setText(str(row.get("package_name") or ""))
         elif chosen is copy_title:

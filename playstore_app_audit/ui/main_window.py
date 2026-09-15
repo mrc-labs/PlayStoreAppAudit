@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from collections import deque
@@ -15,7 +16,9 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QLineEdit,
     QMenu,
     QMessageBox,
     QSizePolicy,
@@ -26,6 +29,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
+import playstore_app_audit.services.local_apk_file_ops as local_file_ops
 import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
@@ -1170,6 +1174,217 @@ class MainWindow(results_ui.ResultsWindow):
         opened, message = open_file_location(location)
         if not opened:
             QMessageBox.information(self, "File location unavailable", message)
+
+    @staticmethod
+    def _local_apk_path_key(value: object) -> str:
+        try:
+            path = Path(str(value)).expanduser().resolve(strict=False)
+            return os.path.normcase(str(path))
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return os.path.normcase(str(value))
+
+    def _local_file_mutation_available(self, row: dict[str, Any]) -> bool:
+        if (
+            not local_apk_audit.is_local_apk_source(row.get("source_mode"))
+            or self._operation_running()
+        ):
+            return False
+
+        location = str(row.get("local_apk_location") or "").strip()
+        if not location or not Path(location).is_file():
+            return False
+
+        source_key = self._local_apk_path_key(location)
+        return any(
+            self._local_apk_path_key(candidate) == source_key
+            for candidate in self._local_apk_candidates
+        )
+
+    def _replace_local_apk_candidate(
+        self,
+        source: Path,
+        destination: Path | None,
+    ) -> bool:
+        source_key = self._local_apk_path_key(source)
+        changed = False
+        candidates: list[Path] = []
+
+        for candidate in self._local_apk_candidates:
+            if not changed and self._local_apk_path_key(candidate) == source_key:
+                changed = True
+                if destination is not None:
+                    candidates.append(destination)
+            else:
+                candidates.append(candidate)
+
+        self._local_apk_candidates = tuple(candidates)
+        return changed
+
+    def _sync_local_apk_file_mutation_views(
+        self,
+        preferred_location: Path | None = None,
+    ) -> None:
+        if not self._local_apk_candidates:
+            self.source_mode = None
+            self.source_label.setToolTip("")
+            self._clear_source_result_rows()
+            self.source_label.setText(
+                "Local package source: No package files loaded"
+            )
+            self._apply_established_source_defaults()
+            self._sync_action_availability()
+            return
+
+        self.source_mode = local_apk_audit.SOURCE_MODE
+        self.source_label.setText(
+            f"Local package source: "
+            f"{len(self._local_apk_candidates)} package file(s)"
+        )
+        self.source_label.setToolTip(
+            "\n".join(str(path) for path in self._local_apk_candidates)
+        )
+
+        self.model.set_rows(self.current_rows)
+        self._apply_column_visibility(reset_order=False)
+        self._update_summary()
+        self._sync_action_availability()
+
+        if preferred_location is None:
+            return
+
+        preferred_key = self._local_apk_path_key(preferred_location)
+        for proxy_row in range(self.proxy.rowCount()):
+            proxy_index = self.proxy.index(proxy_row, 0)
+            candidate_row = self._row_from_proxy_index(proxy_index)
+            if (
+                candidate_row is not None
+                and self._local_apk_path_key(
+                    candidate_row.get("local_apk_location")
+                )
+                == preferred_key
+            ):
+                self.table.setCurrentIndex(proxy_index)
+                self.table.selectRow(proxy_row)
+                self.table.scrollTo(proxy_index)
+                break
+
+    def _rename_local_package_row(self, row: dict[str, Any]) -> None:
+        if not self._local_file_mutation_available(row):
+            return
+
+        source = Path(str(row.get("local_apk_location") or ""))
+        new_name, accepted = QInputDialog.getText(
+            self,
+            "Rename local package file",
+            "New filename:",
+            QLineEdit.EchoMode.Normal,
+            source.name,
+        )
+        if not accepted:
+            return
+
+        result = local_file_ops.rename_local_package_file(
+            source,
+            new_name,
+        )
+
+        if result.status is local_file_ops.LocalPackageFileMutationStatus.NO_CHANGE:
+            self.status_label.setText("Local package filename unchanged")
+            return
+
+        if (
+            result.status
+            is not local_file_ops.LocalPackageFileMutationStatus.RENAMED
+            or result.destination is None
+        ):
+            QMessageBox.warning(
+                self,
+                "Rename file failed",
+                result.message or "The local package file could not be renamed.",
+            )
+            return
+
+        destination = result.destination
+        source_key = self._local_apk_path_key(source)
+
+        self._replace_local_apk_candidate(source, destination)
+
+        for current_row in self.current_rows:
+            if (
+                self._local_apk_path_key(
+                    current_row.get("local_apk_location")
+                )
+                != source_key
+            ):
+                continue
+
+            current_row["local_apk_location"] = str(destination)
+            current_row["local_apk_file_name"] = destination.name
+
+            provisional_key = current_row.get("_provisional_key")
+            if (
+                provisional_key
+                and self._local_apk_path_key(provisional_key) == source_key
+            ):
+                current_row["_provisional_key"] = str(destination)
+            break
+
+        self._sync_local_apk_file_mutation_views(destination)
+        self.status_label.setText(
+            f"Renamed local package file: {source.name} → {destination.name}"
+        )
+
+    def _remove_local_package_row(self, row: dict[str, Any]) -> None:
+        if not self._local_file_mutation_available(row):
+            return
+
+        source = Path(str(row.get("local_apk_location") or ""))
+
+        answer = QMessageBox.question(
+            self,
+            "Remove local package file?",
+            "Permanently remove this file from disk?\n\n"
+            f"{source.name}\n\n{source}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        result = local_file_ops.remove_local_package_file(source)
+        if (
+            result.status
+            is not local_file_ops.LocalPackageFileMutationStatus.REMOVED
+        ):
+            QMessageBox.warning(
+                self,
+                "Remove file failed",
+                result.message or "The local package file could not be removed.",
+            )
+            return
+
+        source_key = self._local_apk_path_key(source)
+        self._replace_local_apk_candidate(source, None)
+
+        removed = False
+        retained_rows: list[dict[str, Any]] = []
+        for current_row in self.current_rows:
+            if (
+                not removed
+                and self._local_apk_path_key(
+                    current_row.get("local_apk_location")
+                )
+                == source_key
+            ):
+                removed = True
+                continue
+            retained_rows.append(current_row)
+
+        self.current_rows = retained_rows
+        self._sync_local_apk_file_mutation_views()
+        self.status_label.setText(
+            f"Removed local package file: {source.name}"
+        )
 
     def _on_controlled_progress(
         self, session: int, done: int, total: int, package_name: str
