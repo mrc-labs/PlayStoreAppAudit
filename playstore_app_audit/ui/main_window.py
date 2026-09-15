@@ -31,12 +31,14 @@ import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_file_ops as local_file_ops
+import playstore_app_audit.services.local_apk_mass_remove as mass_remove
 import playstore_app_audit.services.local_apk_mass_rename as mass_rename
 import playstore_app_audit.services.local_apk_source as local_apk_source
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.local_apk_mass_remove_dialog as mass_remove_ui
 import playstore_app_audit.ui.local_apk_mass_rename_dialog as mass_rename_ui
 import playstore_app_audit.ui.results_window as results_ui
 from playstore_app_audit.devices.adb import find_adb, install_platform_tools
@@ -131,6 +133,30 @@ class MainWindow(results_ui.ResultsWindow):
         )
         self.file_mass_rename_action.triggered.connect(
             self._show_local_apk_mass_rename
+        )
+
+        self.file_local_apk_menu.addSeparator()
+
+        self.file_mass_remove_outdated_action = (
+            self.file_local_apk_menu.addAction(
+                "Remove All Outdated…"
+            )
+        )
+        self.file_mass_remove_outdated_action.triggered.connect(
+            lambda _checked=False: self._show_local_apk_mass_remove(
+                mass_remove.MassRemoveTarget.OUTDATED
+            )
+        )
+
+        self.file_mass_remove_unknown_action = (
+            self.file_local_apk_menu.addAction(
+                "Remove All Unknown…"
+            )
+        )
+        self.file_mass_remove_unknown_action.triggered.connect(
+            lambda _checked=False: self._show_local_apk_mass_remove(
+                mass_remove.MassRemoveTarget.UNKNOWN
+            )
         )
 
         self.choose_apk_file_action = QAction("File(s)…", self)
@@ -399,6 +425,21 @@ class MainWindow(results_ui.ResultsWindow):
             self.file_mass_rename_action.setEnabled(
                 self._local_mass_rename_available()
             )
+
+        if hasattr(self, "file_mass_remove_outdated_action"):
+            self.file_mass_remove_outdated_action.setEnabled(
+                self._local_mass_remove_available(
+                    mass_remove.MassRemoveTarget.OUTDATED
+                )
+            )
+
+        if hasattr(self, "file_mass_remove_unknown_action"):
+            self.file_mass_remove_unknown_action.setEnabled(
+                self._local_mass_remove_available(
+                    mass_remove.MassRemoveTarget.UNKNOWN
+                )
+            )
+
         self.exclude_system_source_check.setEnabled(idle and not local_source)
         self.hide_system_check.setEnabled(idle and not local_source)
         if local_source:
@@ -1283,6 +1324,274 @@ class MainWindow(results_ui.ResultsWindow):
                 self.table.selectRow(proxy_row)
                 self.table.scrollTo(proxy_index)
                 break
+
+    def _local_mass_remove_available(
+        self,
+        target: mass_remove.MassRemoveTarget,
+    ) -> bool:
+        if (
+            not local_apk_audit.is_local_apk_source(
+                getattr(self, "source_mode", None)
+            )
+            or self._operation_running()
+        ):
+            return False
+
+        candidate_keys = {
+            self._local_apk_path_key(candidate)
+            for candidate in getattr(
+                self,
+                "_local_apk_candidates",
+                (),
+            )
+        }
+
+        if not candidate_keys:
+            return False
+
+        for row in getattr(self, "current_rows", ()):
+            if not local_apk_audit.is_local_apk_source(
+                row.get("source_mode")
+            ):
+                continue
+
+            if (
+                str(
+                    row.get(
+                        "local_apk_version_comparison"
+                    )
+                    or ""
+                )
+                != target.value
+            ):
+                continue
+
+            location = str(
+                row.get("local_apk_location") or ""
+            ).strip()
+
+            if (
+                location
+                and self._local_apk_path_key(location)
+                in candidate_keys
+            ):
+                return True
+
+        return False
+
+    def _sync_local_apk_mass_remove_result(
+        self,
+        result: mass_remove.MassRemoveExecutionResult,
+    ) -> None:
+        removed_keys = {
+            self._local_apk_path_key(entry.source)
+            for entry in result.entries
+            if (
+                entry.status
+                is local_file_ops.LocalPackageFileMutationStatus.REMOVED
+            )
+        }
+
+        if not removed_keys:
+            self._sync_action_availability()
+            return
+
+        self._local_apk_candidates = tuple(
+            candidate
+            for candidate in self._local_apk_candidates
+            if self._local_apk_path_key(candidate)
+            not in removed_keys
+        )
+
+        self.current_rows = [
+            row
+            for row in self.current_rows
+            if self._local_apk_path_key(
+                row.get("local_apk_location")
+            )
+            not in removed_keys
+        ]
+
+        preferred_location = next(
+            iter(self._local_apk_candidates),
+            None,
+        )
+
+        self._sync_local_apk_file_mutation_views(
+            preferred_location
+        )
+
+    @staticmethod
+    def _mass_remove_result_details(
+        result: mass_remove.MassRemoveExecutionResult,
+    ) -> str:
+        lines: list[str] = []
+
+        for entry in result.entries:
+            if (
+                entry.status
+                is local_file_ops.LocalPackageFileMutationStatus.REMOVED
+            ):
+                continue
+
+            reason = (
+                entry.message
+                or "The file was not removed."
+            )
+            lines.append(
+                f"{entry.source.name}: {reason}"
+            )
+
+            if len(lines) >= 12:
+                break
+
+        remaining = sum(
+            entry.status
+            is not local_file_ops.LocalPackageFileMutationStatus.REMOVED
+            for entry in result.entries
+        ) - len(lines)
+
+        if remaining > 0:
+            lines.append(f"…and {remaining} more")
+
+        return "\n".join(lines)
+
+    def _show_local_apk_mass_remove(
+        self,
+        target: mass_remove.MassRemoveTarget,
+    ) -> None:
+        if (
+            not local_apk_audit.is_local_apk_source(
+                getattr(self, "source_mode", None)
+            )
+            or self._operation_running()
+        ):
+            return
+
+        plan = mass_remove.plan_local_package_mass_remove(
+            self.current_rows,
+            self._local_apk_candidates,
+            target,
+        )
+
+        dialog = mass_remove_ui.LocalApkMassRemoveDialog(
+            self,
+            plan,
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        plan = dialog.plan
+
+        if plan.runnable_count <= 0:
+            return
+
+        blocked_note = ""
+        if plan.blocked_count:
+            blocked_note = (
+                f"\n\n{plan.blocked_count} blocked file(s) "
+                "will be skipped."
+            )
+
+        answer = QMessageBox.question(
+            self,
+            "Confirm Mass Remove",
+            (
+                f"Permanently delete {plan.runnable_count} "
+                f"{target.value.lower()} Local APK/package "
+                "file(s) from disk?"
+                f"{blocked_note}\n\n"
+                "This operation cannot be undone."
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        if plan.removes_entire_source:
+            answer = QMessageBox.question(
+                self,
+                "Remove Entire Local APK Source?",
+                (
+                    "This batch will permanently delete every "
+                    "currently loaded Local APK/package file "
+                    "from disk.\n\n"
+                    "The active Local APK source will become "
+                    "empty. Continue?"
+                ),
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+
+        result = (
+            mass_remove.execute_local_package_mass_remove(
+                plan
+            )
+        )
+
+        self._sync_local_apk_mass_remove_result(
+            result
+        )
+
+        if (
+            result.status
+            is mass_remove.MassRemoveBatchStatus.COMPLETED
+        ):
+            self.status_label.setText(
+                result.message
+                or "Local package files removed"
+            )
+            return
+
+        if (
+            result.status
+            is mass_remove.MassRemoveBatchStatus.NO_CHANGES
+        ):
+            self.status_label.setText(
+                result.message
+                or "No Local package files removed"
+            )
+            return
+
+        details = self._mass_remove_result_details(
+            result
+        )
+        message = (
+            result.message
+            or "Mass Remove could not complete."
+        )
+
+        if details:
+            message = f"{message}\n\n{details}"
+
+        if (
+            result.status
+            is mass_remove.MassRemoveBatchStatus.PARTIAL
+        ):
+            title = "Mass Remove Partially Completed"
+        elif (
+            result.status
+            is mass_remove.MassRemoveBatchStatus.BLOCKED
+        ):
+            title = "Mass Remove Blocked"
+        else:
+            title = "Mass Remove Failed"
+
+        self.status_label.setText(title)
+
+        QMessageBox.warning(
+            self,
+            title,
+            message,
+        )
 
     def _local_mass_rename_available(self) -> bool:
         if (

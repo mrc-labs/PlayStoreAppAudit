@@ -148,6 +148,9 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
         "Choose Package Folder…",
         None,
         "Mass Rename…",
+        None,
+        "Remove All Outdated…",
+        "Remove All Unknown…",
     ]
     assert _action_structure(window.file_app_list_menu) == [
         "Choose App List…",
@@ -160,6 +163,15 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
     ]
     assert local_apk_actions[2].isSeparator()
     assert local_apk_actions[3] is window.file_mass_rename_action
+    assert local_apk_actions[4].isSeparator()
+    assert (
+        local_apk_actions[5]
+        is window.file_mass_remove_outdated_action
+    )
+    assert (
+        local_apk_actions[6]
+        is window.file_mass_remove_unknown_action
+    )
     assert _action_structure(window.audit_menu) == [
         "Run Audit",
         "Recheck Not Found / Anomaly",
