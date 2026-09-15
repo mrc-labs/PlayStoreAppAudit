@@ -64,6 +64,45 @@ def test_ordinary_store_flow_never_calls_transport(monkeypatch) -> None:
     assert not called
 
 
+@pytest.mark.parametrize(
+    ("endpoint", "diagnostics"),
+    [
+        (None, "missing_dispenser"),
+        ("", "missing_dispenser"),
+        ("http://resolver.example/api/auth", "invalid_dispenser_endpoint"),
+        ("not-a-url", "invalid_dispenser_endpoint"),
+    ],
+)
+def test_missing_or_invalid_endpoint_fails_closed_without_transport(
+    endpoint: str | None,
+    diagnostics: str,
+    monkeypatch,
+) -> None:
+    called = False
+
+    def fail_transport(**_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("transport must not run")
+
+    monkeypatch.setattr(resolver, "resolve_metadata_with_dispenser", fail_transport)
+    result = resolver.resolve_if_device_specific(
+        public_store_version="Varies with device",
+        package_name="com.example.app",
+        profile_id="android10_api29_oneplus8pro",
+        dispenser_url=endpoint,
+        country="CH",
+        language="en",
+    )
+
+    assert result is not None
+    assert result.status is ResolverStatus.INCONCLUSIVE
+    assert result.diagnostics == diagnostics
+    assert result.version_name is None
+    assert result.version_code is None
+    assert not called
+
+
 def test_device_specific_flow_keeps_core_result_separate(monkeypatch) -> None:
     profile = resolver.load_reference_profile("android10_api29_oneplus8pro")
     expected = ResolverResult(
