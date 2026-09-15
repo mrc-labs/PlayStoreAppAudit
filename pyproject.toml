@@ -31,6 +31,9 @@ playstore-app-audit = "playstore_app_audit.app:main"
 [tool.setuptools.packages.find]
 include = ["playstore_app_audit*"]
 
+[tool.setuptools.package-data]
+"playstore_app_audit.device_profiles" = ["*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
