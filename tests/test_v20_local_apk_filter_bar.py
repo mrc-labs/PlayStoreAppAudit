@@ -145,7 +145,7 @@ def test_apk_vs_store_reflows_beside_store_status_then_below_when_needed(
                 window.criticality_buttons["green"].rect().topRight()
             ).x()
         )
-        assert 10 <= gap <= 16
+        assert 14 <= gap <= 20
         assert window.apk_relationship_filter_row.layout().contentsMargins().left() == APK_FILTER_GROUP_INDENT
 
         # Cross the natural-width threshold while the Store chips still fit.

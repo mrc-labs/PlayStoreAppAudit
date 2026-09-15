@@ -43,8 +43,8 @@ APK_RELATIONSHIP_STATUS = {
     "Device-specific": "blue",
     "N/A": "red",
 }
-# Together with the Store row's 5 px layout spacing, this leaves a 12 px gap.
-APK_FILTER_GROUP_INDENT = 7
+# Together with the Store row's 5 px layout spacing, this leaves a 16 px gap.
+APK_FILTER_GROUP_INDENT = 11
 APK_FILTER_REFLOW_RESERVE = 8
 
 _NEUTRAL_FILTER_BUTTON_STYLE = (
