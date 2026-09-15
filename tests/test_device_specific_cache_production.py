@@ -36,7 +36,7 @@ def _identity() -> ResolverCacheIdentity:
     )
 
 
-def _result(*, fetched_at: str | None = None) -> ResolverResult:
+def _result(*, fetched_at: str | None = None, diagnostics: str = "") -> ResolverResult:
     return ResolverResult(
         package_name="com.example.app",
         profile_id="profile",
@@ -48,6 +48,7 @@ def _result(*, fetched_at: str | None = None) -> ResolverResult:
         version_name="1.2.3",
         version_code=123,
         fetched_at=fetched_at or datetime.now(UTC).isoformat(),
+        diagnostics=diagnostics,
     )
 
 
@@ -83,6 +84,25 @@ def test_resolved_result_roundtrips_and_expires(tmp_path: Path) -> None:
         path=path,
         now=now + timedelta(hours=25),
     ) is None
+
+
+def test_resolved_diagnostics_are_not_persisted(tmp_path: Path) -> None:
+    path = tmp_path / "resolver.json"
+    identity = _identity()
+    sensitive = "Bearer-test-token gsfId-123 dummy@example.invalid"
+    result = _result(diagnostics=sensitive)
+
+    assert store_resolved_result(identity, result, path=path)
+    persisted = path.read_text(encoding="utf-8")
+    assert sensitive not in persisted
+    assert "Bearer-test-token" not in persisted
+    assert "dummy@example.invalid" not in persisted
+
+    loaded = load_cached_result(identity, path=path)
+    assert loaded is not None
+    assert loaded.diagnostics == ""
+    assert loaded.version_name == result.version_name
+    assert loaded.version_code == result.version_code
 
 
 def test_unresolved_result_is_never_persisted(tmp_path: Path) -> None:
