@@ -677,6 +677,8 @@ def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: Ma
     assert [action.text() for action in window.file_local_apk_menu.actions()] == [
         "Choose Package File(s)…",
         "Choose Package Folder…",
+        "",
+        "Mass Rename…",
     ]
     assert [action.text() for action in window.local_apk_options_menu.actions()] == [
         "File(s)…",

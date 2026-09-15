@@ -146,15 +146,20 @@ def test_final_file_and_audit_menu_hierarchy(window: MainWindow) -> None:
     assert _action_structure(window.file_local_apk_menu) == [
         "Choose Package File(s)…",
         "Choose Package Folder…",
+        None,
+        "Mass Rename…",
     ]
     assert _action_structure(window.file_app_list_menu) == [
         "Choose App List…",
         "Recent Sources",
     ]
-    assert window.file_local_apk_menu.actions() == [
+    local_apk_actions = window.file_local_apk_menu.actions()
+    assert local_apk_actions[:2] == [
         window.file_choose_apk_action,
         window.file_choose_apk_folder_action,
     ]
+    assert local_apk_actions[2].isSeparator()
+    assert local_apk_actions[3] is window.file_mass_rename_action
     assert _action_structure(window.audit_menu) == [
         "Run Audit",
         "Recheck Not Found / Anomaly",
