@@ -325,6 +325,11 @@ def test_third_party_notice_is_platform_neutral(
     assert "Windows standalone ZIP" not in text
     assert "The standalone package keeps" in text
     assert "one inseparable executable" in text
+    assert "## AuroraOSS Device Specific reference profiles" in text
+    assert "Yc.properties" in text
+    assert "1Z.properties" in text
+    assert "2020 AuroraOSS" in text
+    assert "GPL-3.0-or-later" in text
 
 
 def test_legal_manifest_policy_is_platform_neutral() -> None:
