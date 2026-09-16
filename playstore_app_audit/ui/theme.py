@@ -97,7 +97,7 @@ LIGHT_APPLICATION_COLOURS = ApplicationColours(
     title="#18212A",
     subtitle="#64717D",
     section="#26323D",
-    muted="#6F7C87",
+    muted="#66737D",
     control="#FFFFFF",
     control_border="#CCD4DC",
     control_hover="#F2F6FA",
@@ -290,6 +290,84 @@ def error_text_stylesheet(
     )
 
 
+def rich_help_stylesheet(
+    palette: QPalette | None = None,
+) -> str:
+    c = application_colours(palette)
+    note = semantic_status_colours(
+        "blue",
+        palette,
+    )
+
+    return f"""
+body {{
+    color: {c.text};
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 10.5pt;
+}}
+h1 {{
+    color: {c.title};
+    font-size: 19pt;
+    margin: 0 0 12px 0;
+}}
+h2 {{
+    color: {c.section};
+    font-size: 13pt;
+    margin: 18px 0 7px 0;
+}}
+h3 {{
+    color: {c.header_text};
+    font-size: 11pt;
+    margin: 14px 0 5px 0;
+}}
+p {{
+    margin: 5px 0 9px 0;
+}}
+ol, ul {{
+    margin: 5px 0 11px 22px;
+}}
+li {{
+    margin-bottom: 6px;
+}}
+pre {{
+    background: {c.header};
+    border: 1px solid {c.header_border};
+    color: {c.text};
+    padding: 10px;
+    margin: 8px 0 12px 0;
+    white-space: pre-wrap;
+}}
+code {{
+    color: {c.text};
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 9.5pt;
+}}
+a {{
+    color: {note.foreground};
+    text-decoration: underline;
+}}
+.lead {{
+    color: {c.muted};
+    font-size: 11pt;
+    margin-bottom: 12px;
+}}
+.note {{
+    background: {note.background};
+    border: 1px solid {note.accent};
+    color: {note.foreground};
+    padding: 10px;
+    margin: 10px 0;
+}}
+.warning {{
+    background: {c.warning_background};
+    border: 1px solid {c.warning_border};
+    color: {c.warning_foreground};
+    padding: 10px;
+    margin: 10px 0;
+}}
+"""
+
+
 def application_stylesheet(
     palette: QPalette | None = None,
 ) -> str:
@@ -325,6 +403,9 @@ QLabel#SectionTitle {{
     color: {c.section};
 }}
 QLabel#Muted {{
+    color: {c.muted};
+}}
+QLabel#SettingsNote {{
     color: {c.muted};
 }}
 QLabel#WarningBanner {{

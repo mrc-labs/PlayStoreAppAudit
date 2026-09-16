@@ -200,9 +200,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             "Change them only when genuinely necessary. Reset to defaults if you are unsure."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet(
-            "background:#FFF6E5; color:#6B4A16; border:1px solid #E9C77D; padding:10px; border-radius:6px;"
-        )
+        warning.setObjectName("WarningBanner")
         root.addWidget(warning)
 
         store_group = QGroupBox("Store, fallback markets and cache")
@@ -225,7 +223,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             "No fallback countries are shown in the normal UI. This list is used only behind the scenes when the selected Store country is unavailable or inconclusive."
         )
         fallback_note.setWordWrap(True)
-        fallback_note.setStyleSheet("color:#6F7C87;")
+        fallback_note.setObjectName("Muted")
         store_form.addRow("", fallback_note)
 
         cache_enabled = QCheckBox("Use intelligent cache")
@@ -242,7 +240,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             "Default: 24 hours. Only healthy available listings with a valid update date are reused. Not Found, anomaly and error states always run live."
         )
         cache_note.setWordWrap(True)
-        cache_note.setStyleSheet("color:#6F7C87;")
+        cache_note.setObjectName("Muted")
         store_form.addRow("", cache_note)
         root.addWidget(store_group)
 
@@ -258,7 +256,7 @@ class DeviceWindow(compact_ui.CompactWindow):
             "leading numeric components."
         )
         device_note.setWordWrap(True)
-        device_note.setStyleSheet("color:#6F7C87;")
+        device_note.setObjectName("Muted")
         device_layout.addWidget(device_note)
         root.addWidget(device_group)
 

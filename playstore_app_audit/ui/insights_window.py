@@ -610,9 +610,7 @@ class InsightsWindow(device_ui.DeviceWindow):
             "⚠ Expert settings. These options can change network load, Store interpretation, ADB collection and the technical data shown. Change them only when genuinely necessary."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet(
-            "background:#FFF6E5;color:#6B4A16;border:1px solid #E9C77D;padding:10px;border-radius:6px;"
-        )
+        warning.setObjectName("WarningBanner")
         root.addWidget(warning)
 
         scroll = QScrollArea()
