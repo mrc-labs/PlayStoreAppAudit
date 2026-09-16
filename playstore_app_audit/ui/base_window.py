@@ -16,6 +16,7 @@ from typing import cast
 
 from PySide6.QtCore import (
     QAbstractTableModel,
+    QEvent,
     QModelIndex,
     QObject,
     QSortFilterProxyModel,
@@ -47,6 +48,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.ui.theme as theme_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.product_identity import DISPLAY_NAME, TECHNICAL_NAME
@@ -234,8 +236,21 @@ def store_status_tooltips(settings: dict[str, object]) -> dict[str, str]:
         "orange": f"Show apps last updated more than {thresholds.stale_after_days} days ago.",
     }
 
-def semantic_foreground_colour(column: str, value: object) -> str | None:
-    return presentation.semantic_foreground_colour(column, value)
+def semantic_foreground_colour(
+    column: str,
+    value: object,
+    palette: QPalette | None = None,
+) -> str | None:
+    value_presentation = presentation.semantic_value_presentation(
+        column,
+        value,
+    )
+    if value_presentation is None:
+        return None
+    return theme_ui.semantic_status_colours(
+        value_presentation.status_key,
+        palette,
+    ).foreground
 
 
 def semantic_value_font(
@@ -252,7 +267,11 @@ def semantic_value_font(
 def apply_semantic_label_presentation(
     label: QLabel, column: str, value: object
 ) -> bool:
-    colour = semantic_foreground_colour(column, value)
+    colour = semantic_foreground_colour(
+        column,
+        value,
+        label.palette(),
+    )
     font = semantic_value_font(column, value, label.font())
     if colour is None or font is None:
         return False
@@ -533,6 +552,7 @@ class WorkerSignals(QObject):
 class BaseWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
+        self._theme_refreshing = False
         self.setWindowTitle("Store App Audit")
         self.resize(1500, 900)
         self.setMinimumSize(1100, 700)
@@ -565,108 +585,47 @@ class BaseWindow(QMainWindow):
         self._update_summary()
 
     def _apply_style(self) -> None:
-        self.setStyleSheet(
-            """
-            QMainWindow, QWidget#Central {
-                background: #F5F7FA;
-                color: #20252B;
+        if self._theme_refreshing:
+            return
+
+        self._theme_refreshing = True
+        try:
+            self.setStyleSheet(
+                theme_ui.application_stylesheet(
+                    QApplication.palette()
+                )
+            )
+            self._refresh_theme_styles()
+        finally:
+            self._theme_refreshing = False
+
+    def _refresh_theme_styles(self) -> None:
+        palette = QApplication.palette()
+        for key, button in getattr(
+            self,
+            "criticality_buttons",
+            {},
+        ).items():
+            button.setStyleSheet(
+                theme_ui.semantic_filter_button_stylesheet(
+                    key,
+                    palette,
+                )
+            )
+
+    def changeEvent(self, event: QEvent) -> None:
+        super().changeEvent(event)
+
+        if (
+            hasattr(self, "_theme_refreshing")
+            and not self._theme_refreshing
+            and event.type()
+            in {
+                QEvent.Type.PaletteChange,
+                QEvent.Type.ApplicationPaletteChange,
             }
-            QFrame#Card {
-                background: #FFFFFF;
-                border: 1px solid #E2E7EC;
-                border-radius: 12px;
-            }
-            QLabel#Title {
-                font-size: 22pt;
-                font-weight: 700;
-                color: #18212A;
-            }
-            QLabel#Subtitle {
-                color: #64717D;
-                font-size: 10pt;
-            }
-            QLabel#SectionTitle {
-                font-size: 11pt;
-                font-weight: 650;
-                color: #26323D;
-            }
-            QLabel#Muted {
-                color: #6F7C87;
-            }
-            QLineEdit, QSpinBox, QComboBox {
-                background: #FFFFFF;
-                border: 1px solid #CCD4DC;
-                border-radius: 7px;
-                min-height: 31px;
-                padding: 2px 8px;
-                selection-background-color: #2F75B5;
-            }
-            QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
-                border: 1px solid #4A8BC2;
-            }
-            QPushButton, QToolButton {
-                background: #FFFFFF;
-                border: 1px solid #CCD4DC;
-                border-radius: 7px;
-                min-height: 32px;
-                padding: 2px 12px;
-            }
-            QPushButton:hover, QToolButton:hover {
-                background: #F2F6FA;
-                border-color: #AEBBC6;
-            }
-            QPushButton#Primary {
-                background: #236EA8;
-                color: white;
-                border: 1px solid #236EA8;
-                font-weight: 650;
-                min-height: 38px;
-            }
-            QPushButton#Primary:hover {
-                background: #1D6398;
-            }
-            QPushButton#CriticalityButton {
-                min-height: 29px;
-                padding: 1px 9px;
-            }
-            QPushButton#CriticalityButton:checked {
-                border: 2px solid #657786;
-                font-weight: 650;
-            }
-            QCheckBox {
-                spacing: 7px;
-            }
-            QProgressBar {
-                background: #E9EEF3;
-                border: none;
-                border-radius: 5px;
-                height: 10px;
-                text-align: center;
-            }
-            QProgressBar::chunk {
-                background: #4A8BC2;
-                border-radius: 5px;
-            }
-            QTableView {
-                background: #FFFFFF;
-                alternate-background-color: #FAFBFC;
-                border: 1px solid #DFE5EA;
-                border-radius: 8px;
-                gridline-color: #E7EBEF;
-                selection-background-color: #DDEBF7;
-                selection-color: #18212A;
-            }
-            QHeaderView::section {
-                background: #F1F4F7;
-                color: #35424E;
-                border: none;
-                border-right: 1px solid #DDE3E8;
-                border-bottom: 1px solid #D7DEE5;
-                padding: 3px 7px;
-                font-weight: 650;
-            }
-            """
-        )
+        ):
+            self._apply_style()
 
     def _card(self) -> tuple[QFrame, QVBoxLayout]:
         frame = QFrame()

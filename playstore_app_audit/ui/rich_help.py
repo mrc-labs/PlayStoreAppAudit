@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser, QVBoxLayout, QWidget
 
+import playstore_app_audit.ui.theme as theme_ui
 from playstore_app_audit.product_identity import DISPLAY_NAME, PREVIOUS_DISPLAY_NAMES
 
 
@@ -28,21 +29,9 @@ class RichHelpDialog(QDialog):
         )
         self.browser.document().setDocumentMargin(22)
         self.browser.document().setDefaultStyleSheet(
-            """
-            body { color: #26323d; font-family: 'Segoe UI', sans-serif; font-size: 10.5pt; }
-            h1 { color: #18212a; font-size: 19pt; margin: 0 0 12px 0; }
-            h2 { color: #26323d; font-size: 13pt; margin: 18px 0 7px 0; }
-            h3 { color: #35424e; font-size: 11pt; margin: 14px 0 5px 0; }
-            p { margin: 5px 0 9px 0; }
-            ol, ul { margin: 5px 0 11px 22px; }
-            li { margin-bottom: 6px; }
-            pre { background: #f1f4f7; border: 1px solid #d7dee5; padding: 10px; margin: 8px 0 12px 0; white-space: pre-wrap; }
-            code { color: #203040; font-family: Consolas, 'Courier New', monospace; font-size: 9.5pt; }
-            a { color: #236ea8; text-decoration: underline; }
-            .lead { color: #566674; font-size: 11pt; margin-bottom: 12px; }
-            .note { background: #eef6fc; border: 1px solid #bdd7ea; color: #294f68; padding: 10px; margin: 10px 0; }
-            .warning { background: #fff6e5; border: 1px solid #e9c77d; color: #6b4a16; padding: 10px; margin: 10px 0; }
-            """
+            theme_ui.rich_help_stylesheet(
+                self.palette()
+            )
         )
         # Keep authored guides compatible while the source/docs terminology is
         # migrated gradually. Technical identifiers and URLs are unaffected.

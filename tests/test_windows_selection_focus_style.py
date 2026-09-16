@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication, QStyle, QStyleOptionViewItem, QTableView
 
 import playstore_app_audit.ui.table_window as table_ui
+import playstore_app_audit.ui.theme as theme_ui
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +53,12 @@ def test_selected_item_uses_custom_paint_state_without_windows_item_accents(
         assert not option.state & QStyle.StateFlag.State_Selected
         assert not option.state & QStyle.StateFlag.State_HasFocus
         assert not option.state & QStyle.StateFlag.State_KeyboardFocusChange
-        assert option.backgroundBrush.color() == base_background.darker(104)
+        assert option.backgroundBrush.color() == (
+            theme_ui.selected_semantic_background(
+                base_background,
+                app.palette(),
+            )
+        )
     finally:
         view.deleteLater()
         model.deleteLater()
@@ -85,9 +91,16 @@ def test_selected_semantic_cell_keeps_meaning_with_only_subtle_darkening(
         option.state |= QStyle.StateFlag.State_Selected
         delegate.initStyleOption(option, index)
 
-        expected = base_background.darker(104)
+        expected = theme_ui.selected_semantic_background(
+            base_background,
+            app.palette(),
+        )
         assert option.backgroundBrush.color() == expected
-        assert option.backgroundBrush.color() != QColor(table_ui.SELECTED_ROW_BACKGROUND)
+        assert option.backgroundBrush.color() != (
+            theme_ui.selection_background_colour(
+                app.palette()
+            )
+        )
     finally:
         view.deleteLater()
         model.deleteLater()

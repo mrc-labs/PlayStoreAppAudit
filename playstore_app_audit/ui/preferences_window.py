@@ -44,6 +44,7 @@ import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
+import playstore_app_audit.ui.theme as theme_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit.services.store_freshness import (
     MAX_THRESHOLD_DAYS,
@@ -709,9 +710,7 @@ class PreferencesWindow(table_ui.TableWindow):
             "⚠ Expert settings. These options can change Store interpretation, ADB collection, cache behaviour and the data shown. Change them only when genuinely necessary."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet(
-            "background:#FFF6E5;color:#6B4A16;border:1px solid #E9C77D;padding:10px;border-radius:6px;"
-        )
+        warning.setObjectName("WarningBanner")
         root.addWidget(warning)
 
         body = QHBoxLayout()
@@ -808,7 +807,13 @@ class PreferencesWindow(table_ui.TableWindow):
                 recent_days.value(), stale_days.value()
             )
             aging_range.setText(text)
-            aging_range.setStyleSheet("" if valid else "color:#B42318;font-weight:650;")
+            aging_range.setStyleSheet(
+                ""
+                if valid
+                else theme_ui.error_text_stylesheet(
+                    aging_range.palette()
+                )
+            )
             aging_range.setToolTip(
                 ""
                 if valid

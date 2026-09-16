@@ -5,6 +5,7 @@ import threading
 from PySide6.QtCore import QEvent, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QFileDialog,
     QGridLayout,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.ui.theme as theme_ui
 from playstore_app_audit.services import scan_session as scan_sessions
 from playstore_app_audit.services import state
 from playstore_app_audit.services.audit_engine import AuditConfig, load_apps
@@ -47,21 +49,18 @@ APK_RELATIONSHIP_STATUS = {
 APK_FILTER_GROUP_INDENT = 11
 APK_FILTER_REFLOW_RESERVE = 8
 
-_NEUTRAL_FILTER_BUTTON_STYLE = (
-    "QPushButton {min-height:29px; padding:1px 9px; background:#FFFFFF; "
-    "border:2px solid #CCD4DC;}"
-    "QPushButton:checked {border:2px solid #657786; font-weight:650;}"
-)
+def _neutral_filter_button_style() -> str:
+    return theme_ui.neutral_filter_button_stylesheet(
+        QApplication.palette()
+    )
 
 
-def _semantic_filter_button_style(status_key: str) -> str:
-    info = CRITICALITY[status_key]
-    return (
-        f"QPushButton {{min-height:29px; padding:1px 9px; "
-        f"background:{info['background']}; color:{info['foreground']}; "
-        f"border:2px solid {info['background']};}}"
-        f"QPushButton:hover {{border:2px solid {info['accent']};}}"
-        f"QPushButton:checked {{border:2px solid {info['accent']}; font-weight:650;}}"
+def _semantic_filter_button_style(
+    status_key: str,
+) -> str:
+    return theme_ui.semantic_filter_button_stylesheet(
+        status_key,
+        QApplication.palette(),
     )
 
 
@@ -83,6 +82,44 @@ class AuditWindow(BaseWindow):
         self._scan_session: scan_sessions.ScanSession | None = None
         self._scan_cancel_event = threading.Event()
         super().__init__()
+
+    def _refresh_theme_styles(self) -> None:
+        super()._refresh_theme_styles()
+
+        if not hasattr(
+            self,
+            "apk_relationship_buttons",
+        ):
+            return
+
+        palette = QApplication.palette()
+
+        for value, button in (
+            self.apk_relationship_buttons.items()
+        ):
+            status_key = APK_RELATIONSHIP_STATUS.get(
+                value
+            )
+            if status_key is None:
+                button.setStyleSheet(
+                    theme_ui.neutral_filter_button_stylesheet(
+                        palette
+                    )
+                )
+            else:
+                button.setStyleSheet(
+                    theme_ui.semantic_filter_button_stylesheet(
+                        status_key,
+                        palette,
+                    )
+                )
+
+        if hasattr(self, "apk_relationship_more"):
+            self.apk_relationship_more.setStyleSheet(
+                theme_ui.neutral_filter_button_stylesheet(
+                    palette
+                )
+            )
 
     def _begin_phone_scan_request(self) -> int:
         self._scan_cancel_event.set()
@@ -445,7 +482,7 @@ class AuditWindow(BaseWindow):
             if status_key is not None:
                 button.setStyleSheet(_semantic_filter_button_style(status_key))
             else:
-                button.setStyleSheet(_NEUTRAL_FILTER_BUTTON_STYLE)
+                button.setStyleSheet(_neutral_filter_button_style())
             button.setToolTip(
                 "The Store version varies by device; a direct comparison may not be available."
                 if value == "Device-specific"
@@ -459,7 +496,7 @@ class AuditWindow(BaseWindow):
         self.apk_relationship_more = QPushButton("More ▾")
         self.apk_relationship_more.setObjectName("ApkRelationshipMoreButton")
         self.apk_relationship_more.setCheckable(True)
-        self.apk_relationship_more.setStyleSheet(_NEUTRAL_FILTER_BUTTON_STYLE)
+        self.apk_relationship_more.setStyleSheet(_neutral_filter_button_style())
         more_menu = QMenu(self.apk_relationship_more)
         self.apk_relationship_more_actions: dict[str, QAction] = {}
         for value in ("Different", "Unknown"):

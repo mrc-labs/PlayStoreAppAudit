@@ -699,9 +699,7 @@ class CompactWindow(AuditWindow):
             "Change them only when necessary and if you understand the effect."
         )
         warning.setWordWrap(True)
-        warning.setStyleSheet(
-            "background:#FFF6E5; color:#6B4A16; border:1px solid #E9C77D; padding:10px; border-radius:6px;"
-        )
+        warning.setObjectName("WarningBanner")
         root.addWidget(warning)
 
         store_group = QGroupBox("Store and cache")
@@ -729,7 +727,7 @@ class CompactWindow(AuditWindow):
             "Default: 24 hours. Only normal available apps with a valid update date are reused; risky or uncertain states always bypass the cache."
         )
         cache_note.setWordWrap(True)
-        cache_note.setStyleSheet("color:#6F7C87;")
+        cache_note.setObjectName("Muted")
         store_form.addRow("", cache_note)
         root.addWidget(store_group)
 
