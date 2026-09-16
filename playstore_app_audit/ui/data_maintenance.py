@@ -41,6 +41,21 @@ CACHE_ACTIONS = (
         "Store Results Cache cleared",
     ),
     MaintenanceAction(
+        "device_specific_resolver",
+        "Device Specific Resolver Cache",
+        (
+            "Resolved profile-specific Play version evidence; "
+            "separate from Store results."
+        ),
+        "Clear Device Specific Resolver Cache?",
+        (
+            "Delete cached Device Specific resolved version evidence? "
+            "Google Play results, history, settings and current results "
+            "will not be deleted."
+        ),
+        "Device Specific Resolver Cache cleared",
+    ),
+    MaintenanceAction(
         "app_icons",
         "App Icon Cache",
         "Downloaded Google Play artwork held in memory and on disk.",
@@ -93,8 +108,9 @@ HISTORY_ACTIONS = (
 )
 
 CLEAR_ALL_CONFIRMATION = (
-    "Delete Store results, app icons, alternative-store and local package metadata caches? History, Device "
-    "Snapshots, settings and current results will not be deleted."
+    "Delete Store results, Device Specific resolver, app icon, "
+    "alternative-store and local package metadata caches? History, "
+    "Device Snapshots, settings and current results will not be deleted."
 )
 
 
@@ -261,5 +277,7 @@ class DataMaintenanceDialog(QDialog):
             return
 
         self._status_callback(
-            "Store Results Cache, App Icon Cache, Alternative Store Cache and Local Package Metadata Cache cleared"
+            "Store Results Cache, Device Specific Resolver Cache, "
+            "App Icon Cache, Alternative Store Cache and "
+            "Local Package Metadata Cache cleared"
         )

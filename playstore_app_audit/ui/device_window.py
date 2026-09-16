@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
@@ -687,6 +688,27 @@ class DeviceWindow(compact_ui.CompactWindow):
                 row["version_comparison"] = device_metadata.compare_versions(
                     row.get("installed_version"), row.get("play_version")
                 )
+
+            try:
+                device_specific_integration.enrich_rows_with_device_specific_resolution(
+                    rows,
+                    settings=settings,
+                    country=config.country,
+                    language=config.language,
+                    pause_event=pause_event,
+                    cancel_event=cancel_event,
+                )
+            except Exception:
+                # Device Specific resolution is optional enrichment. Never let
+                # it convert a successful public Store audit into a failed audit.
+                for row in rows:
+                    for field in device_specific_integration.ROW_FIELDS:
+                        row[field] = ""
+                    row["version_comparison"] = device_metadata.compare_versions(
+                        row.get("installed_version"),
+                        row.get("play_version"),
+                    )
+
             self._pending_device_metadata = metadata
             if not cancel_event.is_set():
                 alternative_distribution.run_alternative_distribution_phase(

@@ -22,6 +22,31 @@ from playstore_app_audit.ui.update_check import install_update_check_controller
 SMOKE_TEST_ENV = "PLAYSTORE_APP_AUDIT_SMOKE_TEST"
 
 
+def _validate_device_specific_profiles_for_smoke() -> None:
+    """Prove packaged importlib.resources can load production profiles."""
+
+    from playstore_app_audit.services.device_specific_profiles import (
+        PRODUCTION_PROFILE_IDS,
+        list_reference_profiles,
+    )
+
+    loaded = tuple(
+        profile.profile_id
+        for profile in list_reference_profiles()
+    )
+
+    if loaded != PRODUCTION_PROFILE_IDS:
+        raise RuntimeError(
+            "Device Specific packaged profile set mismatch: "
+            f"{loaded!r}"
+        )
+
+    print(
+        "Device Specific packaged profile resource smoke: PASS",
+        flush=True,
+    )
+
+
 def consume_debug_argument(arguments: list[str]) -> tuple[list[str], bool]:
     debug = "--debug" in arguments[1:]
     return ([item for item in arguments if item != "--debug"] if debug else list(arguments), debug)
@@ -42,7 +67,14 @@ def main() -> int:
     install_performance_diagnostics()
     install_app_icon_metadata_capture()
 
-    smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {"1", "true", "yes"}
+    smoke_test = os.environ.get(SMOKE_TEST_ENV, "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    if smoke_test:
+        _validate_device_specific_profiles_for_smoke()
 
     app = QApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)

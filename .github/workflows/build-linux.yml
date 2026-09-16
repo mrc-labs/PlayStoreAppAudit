@@ -154,7 +154,7 @@ jobs:
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.png').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
       - name: Build, inspect and smoke packaged Linux standalone tree
@@ -172,6 +172,8 @@ jobs:
 
           STANDALONE_DIR="$(find dist -maxdepth 1 -type d -name '*.dist' -print -quit)"
           test -n "$STANDALONE_DIR"
+
+          python .github/scripts/validate_device_specific_profile_resources.py "$STANDALONE_DIR"
 
           find "$STANDALONE_DIR" -type f -name 'libqpdf.so*' -print -delete
 
@@ -310,6 +312,8 @@ jobs:
 
           ROUNDTRIP_DIR="roundtrip/$PACKAGE_NAME"
           ROUNDTRIP_BIN="$ROUNDTRIP_DIR/PlayStoreAppAudit"
+
+          python .github/scripts/validate_device_specific_profile_resources.py "$ROUNDTRIP_DIR"
 
           test -x "$ROUNDTRIP_BIN"
           test -f "$ROUNDTRIP_DIR/BUILD-INFO.txt"
