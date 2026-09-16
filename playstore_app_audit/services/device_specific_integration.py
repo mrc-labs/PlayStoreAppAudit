@@ -10,6 +10,7 @@ from concurrent.futures import (
     ThreadPoolExecutor,
     wait,
 )
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
@@ -247,11 +248,17 @@ def enrich_rows_with_device_specific_resolution(
             )
             continue
 
-        cached = (
-            load_cached_result(identity, ttl_hours=cache_ttl_hours)
-            if use_cache
-            else None
-        )
+        cached = None
+        if use_cache:
+            try:
+                cached = load_cached_result(
+                    identity,
+                    ttl_hours=cache_ttl_hours,
+                )
+            except Exception:
+                # Resolver cache is optional enrichment. A locked, corrupt
+                # or otherwise unreadable cache must never fail an audit.
+                cached = None
         if cached is not None:
             cache_hits += 1
             resolved += int(
@@ -333,7 +340,8 @@ def enrich_rows_with_device_specific_resolution(
                 if is_resolved:
                     resolved += 1
                     if use_cache:
-                        store_resolved_result(identity, result)
+                        with suppress(Exception):
+                            store_resolved_result(identity, result)
 
             if cancel_event is not None and cancel_event.is_set():
                 cancelled = True

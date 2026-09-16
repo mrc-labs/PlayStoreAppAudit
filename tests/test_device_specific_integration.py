@@ -15,7 +15,6 @@ from playstore_app_audit.services.device_specific_profiles import (
     load_reference_profile,
 )
 
-
 ENDPOINT = "https://resolver.example/api/auth"
 COUNTRY = "CH"
 LANGUAGE = "en"
@@ -336,3 +335,83 @@ def test_profile_choices_are_restricted_to_production_profiles() -> None:
         "Galaxy S20+" in label and "API 33" in label
         for _profile_id, label in choices
     )
+
+
+
+def test_cache_read_failure_falls_back_to_live_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "installed_version_code": "100",
+            "version_comparison": "Device-specific",
+        }
+    ]
+
+    def broken_cache(*_args: object, **_kwargs: object) -> None:
+        raise OSError("locked")
+
+    monkeypatch.setattr(
+        integration,
+        "load_cached_result",
+        broken_cache,
+    )
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=_settings(),
+        country=COUNTRY,
+        language=LANGUAGE,
+        resolver=lambda **_kwargs: _resolved(version_code=101),
+    )
+
+    assert summary.attempted == 1
+    assert summary.resolved == 1
+    assert rows[0]["play_version"] == "Varies with device"
+    assert rows[0][integration.STATUS_FIELD] == "resolved"
+    assert rows[0]["version_comparison"] == "Outdated"
+
+
+def test_cache_write_failure_keeps_successful_live_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "installed_version_code": "101",
+            "version_comparison": "Device-specific",
+        }
+    ]
+
+    monkeypatch.setattr(
+        integration,
+        "load_cached_result",
+        lambda *_args, **_kwargs: None,
+    )
+
+    def broken_store(*_args: object, **_kwargs: object) -> None:
+        raise OSError("read-only")
+
+    monkeypatch.setattr(
+        integration,
+        "store_resolved_result",
+        broken_store,
+    )
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=_settings(),
+        country=COUNTRY,
+        language=LANGUAGE,
+        resolver=lambda **_kwargs: _resolved(version_code=101),
+    )
+
+    assert summary.attempted == 1
+    assert summary.resolved == 1
+    assert rows[0]["play_version"] == "Varies with device"
+    assert rows[0][integration.RESOLVED_VERSION_CODE_FIELD] == 101
+    assert rows[0][integration.STATUS_FIELD] == "resolved"
+    assert rows[0]["version_comparison"] == "Match"
