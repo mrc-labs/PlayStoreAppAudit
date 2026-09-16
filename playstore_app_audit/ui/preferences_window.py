@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
@@ -67,6 +68,10 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
         "play_http_status",
         "is_system",
         "installed_version_code",
+        "resolved_play_version",
+        "resolved_play_version_code",
+        "device_specific_profile",
+        "device_specific_resolver_status",
         "installer_package",
         "target_sdk",
         "min_sdk",
@@ -828,6 +833,117 @@ class PreferencesWindow(table_ui.TableWindow):
         store_layout.addWidget(freshness_group)
         store_layout.addStretch(1)
 
+        _resolver_page, resolver_layout = add_page(
+            "DeviceSpecificSettingsPage",
+            "Device Specific",
+            (
+                "Resolve Play Store 'Varies with device' versions only when "
+                "explicitly enabled with a compatible dispenser and a validated "
+                "reference device profile."
+            ),
+        )
+
+        resolver_enabled = QCheckBox(
+            "Enable Device Specific version resolution"
+        )
+        resolver_enabled.setObjectName(
+            "DeviceSpecificResolverEnabledCheck"
+        )
+        resolver_enabled.setChecked(
+            self.user_settings.get(
+                device_specific_integration.SETTING_ENABLED
+            )
+            is True
+        )
+
+        resolver_form = QFormLayout()
+        resolver_form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+
+        resolver_endpoint = QLineEdit(
+            str(
+                self.user_settings.get(
+                    device_specific_integration.SETTING_ENDPOINT
+                )
+                or ""
+            )
+        )
+        resolver_endpoint.setObjectName(
+            "DeviceSpecificResolverEndpointEdit"
+        )
+        resolver_endpoint.setPlaceholderText(
+            "https://your-compatible-dispenser.example/api/auth"
+        )
+        resolver_endpoint.setToolTip(
+            "Explicit compatible dispenser endpoint. Remote endpoints require "
+            "HTTPS; loopback HTTP is allowed for local/self-hosted use. "
+            "Credentials, query strings and fragments are rejected."
+        )
+
+        resolver_profile = QComboBox()
+        resolver_profile.setObjectName(
+            "DeviceSpecificResolverProfileCombo"
+        )
+
+        for profile_id, label in (
+            device_specific_integration.profile_choices()
+        ):
+            resolver_profile.addItem(label, profile_id)
+
+        configured_profile = str(
+            self.user_settings.get(
+                device_specific_integration.SETTING_PROFILE_ID
+            )
+            or device_specific_integration.DEFAULT_PROFILE_ID
+        )
+
+        profile_index = resolver_profile.findData(
+            configured_profile
+        )
+
+        if profile_index < 0:
+            profile_index = resolver_profile.findData(
+                device_specific_integration.DEFAULT_PROFILE_ID
+            )
+
+        if profile_index >= 0:
+            resolver_profile.setCurrentIndex(profile_index)
+
+        resolver_form.addRow("", resolver_enabled)
+        resolver_form.addRow(
+            "Dispenser Endpoint",
+            resolver_endpoint,
+        )
+        resolver_form.addRow(
+            "Reference Device",
+            resolver_profile,
+        )
+
+        resolver_layout.addLayout(resolver_form)
+
+        resolver_layout.addWidget(
+            self._settings_note(
+                "Disabled by default. The normal public Play Store lookup "
+                "always remains authoritative and runs first. Only rows whose "
+                "raw Play Store Version is Device Specific are enriched; the "
+                "raw Store value is never replaced. Only production-validated "
+                "reference profiles are offered here."
+            )
+        )
+
+        resolver_layout.addStretch(1)
+
+        def sync_resolver_controls() -> None:
+            enabled = resolver_enabled.isChecked()
+            resolver_endpoint.setEnabled(enabled)
+            resolver_profile.setEnabled(enabled)
+
+        resolver_enabled.toggled.connect(
+            sync_resolver_controls
+        )
+        sync_resolver_controls()
+
         _alternative_page, alternative_layout = add_page(
             "AlternativeDistributionSettingsPage",
             "Alternative Distribution",
@@ -921,6 +1037,15 @@ class PreferencesWindow(table_ui.TableWindow):
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             recent_days.setValue(StoreFreshnessThresholds().recent_max_days)
             stale_days.setValue(StoreFreshnessThresholds().stale_after_days)
+            resolver_enabled.setChecked(False)
+            resolver_endpoint.clear()
+            resolver_default = resolver_profile.findData(
+                device_specific_integration.DEFAULT_PROFILE_ID
+            )
+            if resolver_default >= 0:
+                resolver_profile.setCurrentIndex(
+                    resolver_default
+                )
             collect.setChecked(True)
             full_scan.setChecked(False)
             permissions.setChecked(False)
@@ -938,6 +1063,30 @@ class PreferencesWindow(table_ui.TableWindow):
                     "Recent must be strictly lower than Stale.",
                 )
                 return
+
+            resolver_endpoint_text = (
+                resolver_endpoint.text().strip()
+            )
+
+            if (
+                resolver_enabled.isChecked()
+                or resolver_endpoint_text
+            ):
+                try:
+                    device_specific_integration.validate_resolver_endpoint(
+                        resolver_endpoint_text
+                    )
+                except ValueError as exc:
+                    navigation.setCurrentRow(
+                        stack.indexOf(_resolver_page)
+                    )
+                    QMessageBox.warning(
+                        dialog,
+                        "Device Specific resolver",
+                        str(exc),
+                    )
+                    return
+
             dialog.accept()
 
         buttons.accepted.connect(accept_valid_settings)
@@ -956,6 +1105,16 @@ class PreferencesWindow(table_ui.TableWindow):
                 "store_workers": workers.value(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
+                device_specific_integration.SETTING_ENABLED: (
+                    resolver_enabled.isChecked()
+                ),
+                device_specific_integration.SETTING_ENDPOINT: (
+                    resolver_endpoint.text().strip()
+                ),
+                device_specific_integration.SETTING_PROFILE_ID: str(
+                    resolver_profile.currentData()
+                    or device_specific_integration.DEFAULT_PROFILE_ID
+                ),
                 "store_recent_max_days": recent_days.value(),
                 "store_stale_after_days": stale_days.value(),
                 "collect_device_metadata": collect.isChecked(),

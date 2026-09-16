@@ -43,6 +43,13 @@ DEVICE_EXTRA_COLUMNS = (
 )
 DEVICE_MODEL_COLUMNS = tuple(dict.fromkeys(COMPACT_MODEL_COLUMNS + DEVICE_EXTRA_COLUMNS))
 
+DEVICE_SPECIFIC_RESOLVER_COLUMNS = (
+    "resolved_play_version",
+    "resolved_play_version_code",
+    "device_specific_profile",
+    "device_specific_resolver_status",
+)
+
 INSIGHTS_EXTRA_COLUMNS = (
     "compatibility_status",
     "target_sdk",
@@ -65,7 +72,12 @@ LOCAL_APK_EXTRA_COLUMNS = (
     "local_apk_sha256",
 )
 MODEL_COLUMNS = tuple(
-    dict.fromkeys(DEVICE_MODEL_COLUMNS + INSIGHTS_EXTRA_COLUMNS + LOCAL_APK_EXTRA_COLUMNS)
+    dict.fromkeys(
+        DEVICE_MODEL_COLUMNS
+        + INSIGHTS_EXTRA_COLUMNS
+        + LOCAL_APK_EXTRA_COLUMNS
+        + DEVICE_SPECIFIC_RESOLVER_COLUMNS
+    )
 )
 
 COLUMN_LABELS = {
@@ -83,6 +95,10 @@ COLUMN_LABELS = {
     "store_url": "Store URL",
     "is_system": "System App",
     "play_version": "Play Store Version",
+    "resolved_play_version": "Resolved Store Version",
+    "resolved_play_version_code": "Resolved Store Version Code",
+    "device_specific_profile": "Reference Profile",
+    "device_specific_resolver_status": "Resolver Status",
     "installed_version": "Installed Version",
     "installed_version_code": "Installed Version Code",
     "version_comparison": "Installed vs Store",
@@ -116,6 +132,8 @@ TABLE_HEADER_LABELS = {
     "play_http_status": "HTTP\nStatus",
     "is_system": "System\nApp",
     "version_comparison": "Installed vs\nStore",
+    "resolved_play_version_code": "Resolved Store\nVersion Code",
+    "device_specific_resolver_status": "Resolver\nStatus",
     "compatibility_status": "Android\nCompatibility",
     "sensitive_permissions_count": "Sensitive Permissions\nCount",
     "device_change": "Device App Inventory\nChange",
@@ -167,6 +185,16 @@ COLUMN_WIDTH_POLICIES = {
     "store_url": _width(ColumnWidthCategory.LONG_TEXT, 250, 220, 280),
     "is_system": _width(ColumnWidthCategory.COMPACT, 78, 70, 82),
     "play_version": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
+    "resolved_play_version": _width(ColumnWidthCategory.MEDIUM, 165, 135, 210),
+    "resolved_play_version_code": _width(
+        ColumnWidthCategory.COMPACT, 145, 125, 170
+    ),
+    "device_specific_profile": _width(
+        ColumnWidthCategory.LONG_TEXT, 250, 210, 320
+    ),
+    "device_specific_resolver_status": _width(
+        ColumnWidthCategory.MEDIUM, 145, 125, 180
+    ),
     "installed_version": _width(ColumnWidthCategory.MEDIUM, 150, 125, 190),
     "installed_version_code": _width(ColumnWidthCategory.COMPACT, 125, 105, 140),
     "version_comparison": _width(ColumnWidthCategory.MEDIUM, 116, 104, 120),
@@ -230,6 +258,8 @@ EXPORT_EXTRA_FIELDS = (
     "installed_version",
     "installed_version_code",
     "version_comparison",
+    *DEVICE_SPECIFIC_RESOLVER_COLUMNS,
+    "device_specific_profile_id",
     "installer_source",
     "installer_category",
     "installer_package",

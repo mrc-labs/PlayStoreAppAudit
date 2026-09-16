@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMessageBox
 
 import playstore_app_audit.services.app_icon_disk_cache as disk_cache
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_specific_cache as resolver_cache
 import playstore_app_audit.services.local_package_metadata_cache as local_metadata_cache
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -49,6 +50,7 @@ def window(
     monkeypatch.setattr(disk_cache, "app_data_dir", lambda: tmp_path)
     monkeypatch.setattr(device_insights, "app_data_dir_v9", lambda: tmp_path)
     monkeypatch.setattr(local_metadata_cache, "app_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(resolver_cache, "app_data_dir", lambda: tmp_path)
     created = MainWindow()
     yield created
     created.close()
@@ -58,6 +60,9 @@ def window(
 def _callbacks(window: MainWindow):
     return {
         "store_results": window._perform_clear_audit_cache,
+        "device_specific_resolver": (
+            window._perform_clear_device_specific_resolver_cache
+        ),
         "app_icons": window._perform_clear_app_icon_cache,
         "alternative_store": window._perform_clear_alternative_store_cache,
         "local_package_metadata": window._perform_clear_local_package_metadata_cache,
@@ -70,6 +75,7 @@ def _seed_data(tmp_path: Path) -> dict[str, Path]:
     paths = {
         "settings": tmp_path / "settings.json",
         "store": tmp_path / "audit_cache.json",
+        "resolver": tmp_path / "device_specific_resolver_cache.json",
         "history": tmp_path / "audit_history.json",
         "alternative": tmp_path / "alternative_distribution_cache.json",
         "local_metadata": tmp_path / "local_package_metadata.sqlite3",
@@ -98,6 +104,7 @@ def test_dialog_has_two_sections_exact_actions_and_no_combined_data_clear(
         assert dialog.history_group.title() == "History"
         assert tuple(action.title for action in CACHE_ACTIONS) == (
             "Store Results Cache",
+            "Device Specific Resolver Cache",
             "App Icon Cache",
             "Alternative Store Cache",
             "Local Package Metadata Cache",
@@ -108,6 +115,7 @@ def test_dialog_has_two_sections_exact_actions_and_no_combined_data_clear(
         )
         assert set(dialog.action_buttons) == {
             "store_results",
+            "device_specific_resolver",
             "app_icons",
             "alternative_store",
             "local_package_metadata",
@@ -211,6 +219,21 @@ def test_individual_cache_and_history_operations_preserve_other_stores(
     assert window.current_rows == [row]
 
     paths = _seed_data(tmp_path)
+    assert (
+        window._perform_clear_device_specific_resolver_cache()
+        == "Device Specific Resolver Cache cleared"
+    )
+    assert json.loads(
+        paths["resolver"].read_text(encoding="utf-8")
+    ) == {
+        "schema": 1,
+        "entries": {},
+    }
+    assert paths["store"].read_text(encoding="utf-8") != "{}"
+    assert paths["history"].is_file()
+    assert paths["settings"].is_file()
+
+    paths = _seed_data(tmp_path)
     window._perform_clear_alternative_store_cache()
     assert json.loads(paths["alternative"].read_text(encoding="utf-8")) == {}
     assert paths["local_metadata"].exists()
@@ -248,7 +271,7 @@ def test_individual_cache_and_history_operations_preserve_other_stores(
     assert paths["settings"].is_file()
 
 
-def test_clear_all_caches_clears_exactly_four_caches(
+def test_clear_all_caches_clears_exactly_five_caches(
     window: MainWindow,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -269,6 +292,12 @@ def test_clear_all_caches_clears_exactly_four_caches(
     dialog._clear_all_caches()
 
     assert json.loads(paths["store"].read_text(encoding="utf-8")) == {}
+    assert json.loads(
+        paths["resolver"].read_text(encoding="utf-8")
+    ) == {
+        "schema": 1,
+        "entries": {},
+    }
     assert json.loads(paths["alternative"].read_text(encoding="utf-8")) == {}
     assert not paths["local_metadata"].exists()
     assert not paths["icons"].exists()
@@ -278,7 +307,7 @@ def test_clear_all_caches_clears_exactly_four_caches(
     assert window.source_mode == source_mode
     assert "saved_smart_queries" in window.user_settings
     assert status == [
-        "Store Results Cache, App Icon Cache, Alternative Store Cache and Local Package Metadata Cache cleared"
+        "Store Results Cache, Device Specific Resolver Cache, App Icon Cache, Alternative Store Cache and Local Package Metadata Cache cleared"
     ]
 
 
@@ -298,6 +327,7 @@ def test_clear_all_reports_partial_failure_without_claiming_success(
         window,
         {
             "store_results": lambda: calls.append("store"),
+            "device_specific_resolver": lambda: calls.append("resolver"),
             "app_icons": fail_icons,
             "alternative_store": lambda: calls.append("alternative"),
             "local_package_metadata": lambda: calls.append("local"),
@@ -319,7 +349,13 @@ def test_clear_all_reports_partial_failure_without_claiming_success(
 
     dialog._clear_all_caches()
 
-    assert calls == ["store", "icons", "alternative", "local"]
+    assert calls == [
+        "store",
+        "resolver",
+        "icons",
+        "alternative",
+        "local",
+    ]
     assert statuses and "incomplete" in statuses[0]
     assert "App Icon Cache" in statuses[0]
     assert errors and "locked" in errors[0][1]

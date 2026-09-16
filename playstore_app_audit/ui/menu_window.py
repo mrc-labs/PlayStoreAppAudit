@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_specific_cache as device_specific_cache
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
@@ -368,6 +369,9 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self,
             {
                 "store_results": self._perform_clear_audit_cache,
+                "device_specific_resolver": (
+                    self._perform_clear_device_specific_resolver_cache
+                ),
                 "app_icons": self._perform_clear_app_icon_cache,
                 "alternative_store": self._perform_clear_alternative_store_cache,
                 "local_package_metadata": self._perform_clear_local_package_metadata_cache,
@@ -395,6 +399,11 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         with suppress(RuntimeError):
             model.icon_loader_busy_changed.disconnect(sync_dialog_availability)
         self._data_maintenance_dialog = None
+
+    @staticmethod
+    def _perform_clear_device_specific_resolver_cache() -> str:
+        device_specific_cache.clear_resolver_cache()
+        return "Device Specific Resolver Cache cleared"
 
     def _perform_clear_app_icon_cache(self) -> str:
         model: Any = self.model

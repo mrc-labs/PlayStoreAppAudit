@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -432,6 +433,7 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         assert pages is not None
         assert [navigation.item(index).text() for index in range(navigation.count())] == [
             "Store & Cache",
+            "Device Specific",
             "Alternative Distribution",
             "Device",
             "Audit",
@@ -439,6 +441,7 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         ]
         assert [pages.widget(index).objectName() for index in range(pages.count())] == [
             "StoreCacheSettingsPage",
+            "DeviceSpecificSettingsPage",
             "AlternativeDistributionSettingsPage",
             "DeviceSettingsPage",
             "AuditSettingsPage",
@@ -1512,3 +1515,79 @@ def test_linkedin_url_and_link_are_removed() -> None:
     assert "PROJECT_URL" not in sources
     assert "linkedin.com" not in sources.lower()
     assert "Created by MRC" in inspect.getsource(compact_ui.CompactWindow._show_about)
+
+
+
+def test_device_specific_advanced_settings_are_disabled_by_default(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    saved: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        state,
+        "load_settings",
+        lambda: dict(window.user_settings),
+    )
+    monkeypatch.setattr(
+        state,
+        "save_settings",
+        lambda values: saved.append(dict(values)) or dict(values),
+    )
+
+    def configure(dialog: QDialog) -> int:
+        enabled = dialog.findChild(
+            QCheckBox,
+            "DeviceSpecificResolverEnabledCheck",
+        )
+        endpoint = dialog.findChild(
+            QLineEdit,
+            "DeviceSpecificResolverEndpointEdit",
+        )
+        profile = dialog.findChild(
+            QComboBox,
+            "DeviceSpecificResolverProfileCombo",
+        )
+
+        assert enabled is not None
+        assert endpoint is not None
+        assert profile is not None
+
+        assert not enabled.isChecked()
+        assert not endpoint.isEnabled()
+        assert not profile.isEnabled()
+
+        assert profile.count() == 2
+
+        enabled.setChecked(True)
+
+        assert endpoint.isEnabled()
+        assert profile.isEnabled()
+
+        endpoint.setText(
+            "https://resolver.example/api/auth"
+        )
+
+        default_index = profile.findData(
+            device_specific_integration.DEFAULT_PROFILE_ID
+        )
+
+        assert default_index >= 0
+        profile.setCurrentIndex(default_index)
+
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", configure)
+
+    window._show_advanced_settings()
+
+    assert saved
+    assert saved[-1][
+        device_specific_integration.SETTING_ENABLED
+    ] is True
+    assert saved[-1][
+        device_specific_integration.SETTING_ENDPOINT
+    ] == "https://resolver.example/api/auth"
+    assert saved[-1][
+        device_specific_integration.SETTING_PROFILE_ID
+    ] == device_specific_integration.DEFAULT_PROFILE_ID

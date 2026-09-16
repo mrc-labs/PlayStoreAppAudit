@@ -822,6 +822,16 @@ class AppDetailsPanel(QFrame):
             ("Package", "package_name"),
             ("Play status", "play_status"),
             ("Store version", "play_version"),
+            ("Resolved Store version", "resolved_play_version"),
+            (
+                "Resolved Store version code",
+                "resolved_play_version_code",
+            ),
+            ("Reference profile", "device_specific_profile"),
+            (
+                "Resolver status",
+                "device_specific_resolver_status",
+            ),
             ("Latest update", "play_last_update"),
             ("Store market", "store_country"),
             ("Store language", "store_language"),
