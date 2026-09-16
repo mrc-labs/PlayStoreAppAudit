@@ -168,7 +168,7 @@ jobs:
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
           version = os.environ['APP_VERSION']
-          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
 
@@ -268,6 +268,8 @@ jobs:
           CERTIFI_BEFORE="$(shasum -a 256 "$APP/Contents/MacOS/certifi/cacert.pem" | awk '{print $1}')"
           PYAXMLPARSER_BEFORE="$(shasum -a 256 "$APP/Contents/MacOS/pyaxmlparser/resources/public.xml" | awk '{print $1}')"
           python .github/scripts/normalize_macos_bundle.py --app "$APP"
+
+          python .github/scripts/validate_device_specific_profile_resources.py "$APP"
           CERTIFI_LINK="$APP/Contents/MacOS/certifi"
           CERTIFI_RESOURCE="$APP/Contents/Resources/certifi/cacert.pem"
           test -L "$CERTIFI_LINK"
@@ -458,6 +460,8 @@ jobs:
           ditto -x -k "$ZIP" roundtrip
           RAPP=$(find roundtrip -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$RAPP"
+
+          python .github/scripts/validate_device_specific_profile_resources.py "$RAPP"
           test -L "$RAPP/Contents/MacOS/certifi"
           test "$(readlink "$RAPP/Contents/MacOS/certifi")" = "../Resources/certifi"
           test -f "$RAPP/Contents/Resources/certifi/cacert.pem"

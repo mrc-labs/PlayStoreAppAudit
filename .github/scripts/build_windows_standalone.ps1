@@ -48,6 +48,7 @@ if ([IO.Path]::IsPathRooted($OutputRoot)) {
 
 $InspectPe = Join-Path $RepoRoot ".github\scripts\inspect_pe.py"
 $ValidateStandalone = Join-Path $RepoRoot ".github\scripts\validate_windows_standalone.py"
+$ValidateDeviceSpecificProfiles = Join-Path $RepoRoot ".github\scripts\validate_device_specific_profile_resources.py"
 $PrepareReleaseLegal = Join-Path $RepoRoot ".github\scripts\prepare_release_legal_bundle.py"
 $ValidateReleaseLegal = Join-Path $RepoRoot ".github\scripts\validate_release_legal_bundle.py"
 
@@ -163,6 +164,7 @@ $NuitkaArgs = @(
     "--enable-plugin=pyside6",
     "--noinclude-qt-plugins=platforminputcontexts",
     "--noinclude-qt-translations",
+    "--include-package-data=playstore_app_audit.device_profiles:*.json",
     "--windows-console-mode=disable",
     "--nofollow-import-to=PIL",
     "--assume-yes-for-downloads",
@@ -202,6 +204,13 @@ if (-not $DistDir) {
 
 Write-Host ""
 Write-Host "Raw standalone directory: $($DistDir.FullName)"
+
+Write-Host ""
+Write-Host "=== VALIDATE DEVICE SPECIFIC PROFILE RESOURCES ==="
+& $Python $ValidateDeviceSpecificProfiles $DistDir.FullName
+if ($LASTEXITCODE -ne 0) {
+    Fail "Standalone Device Specific profile validation failed."
+}
 
 # qpdf.dll is not required by Store App Audit.
 $QPdfFiles = @(
@@ -277,6 +286,13 @@ Write-Host "Packaged smoke test: PASS"
 Write-Host ""
 Write-Host "=== CREATE VERSIONED PACKAGE ==="
 Copy-Item -LiteralPath $DistDir.FullName -Destination $PackageDir -Recurse
+
+Write-Host ""
+Write-Host "=== VALIDATE VERSIONED PACKAGE PROFILE RESOURCES ==="
+& $Python $ValidateDeviceSpecificProfiles $PackageDir
+if ($LASTEXITCODE -ne 0) {
+    Fail "Versioned package Device Specific profile validation failed."
+}
 
 if ($PrivateBuild) {
     @(
