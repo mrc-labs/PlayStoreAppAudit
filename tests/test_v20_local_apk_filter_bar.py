@@ -7,8 +7,8 @@ from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
-import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.theme as theme_ui
 from playstore_app_audit.ui.audit_window import APK_FILTER_GROUP_INDENT
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -65,11 +65,12 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         }
         for relationship, status_key in expected.items():
             button = window.apk_relationship_buttons[relationship]
-            info = base_ui.CRITICALITY[status_key]
-            stylesheet = button.styleSheet()
-            assert str(info["background"]) in stylesheet
-            assert str(info["foreground"]) in stylesheet
-            assert str(info["accent"]) in stylesheet
+            assert button.styleSheet() == (
+                theme_ui.semantic_filter_button_stylesheet(
+                    status_key,
+                    app.palette(),
+                )
+            )
 
         device_button = window.apk_relationship_buttons["Device-specific"]
         assert device_button.text() == "Device Spec."
@@ -102,12 +103,21 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         assert device_button.isChecked()
         window._clear_all_filters()
 
-        # All and More remain neutral, with a visible checked border.
+        # All and More remain neutral using the active theme tokens.
         all_button = window.apk_relationship_buttons["All"]
         assert all_button.isChecked()
-        assert "QPushButton:checked {border:2px solid #657786; font-weight:650;}" in all_button.styleSheet()
-        assert "background:#FFFFFF" in all_button.styleSheet()
-        assert "QPushButton:checked {border:2px solid #657786; font-weight:650;}" in window.apk_relationship_more.styleSheet()
+
+        expected_neutral = (
+            theme_ui.neutral_filter_button_stylesheet(
+                app.palette()
+            )
+        )
+
+        assert all_button.styleSheet() == expected_neutral
+        assert (
+            window.apk_relationship_more.styleSheet()
+            == expected_neutral
+        )
         window._set_apk_relationship_filter("Different")
         assert not all_button.isChecked()
         assert window.apk_relationship_more.isChecked()

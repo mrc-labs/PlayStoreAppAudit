@@ -28,6 +28,7 @@ import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.theme as theme_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit import __version__
 from playstore_app_audit.ui import schema
@@ -40,8 +41,6 @@ TABLE_SCHEMA_VERSION = "v12-schema-3"
 ICON_STATUSES = {"available", "available_in_other_country", "available_in_fallback_locale_only"}
 ICON_COLUMN = "play_title"
 TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
-SELECTED_ROW_BACKGROUND = "#DDEBF7"
-SELECTED_ROW_FOREGROUND = "#18212A"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
@@ -90,18 +89,40 @@ class SemanticSelectionDelegate(QStyledItemDelegate):
 
         background = index.data(Qt.ItemDataRole.BackgroundRole)
         foreground = index.data(Qt.ItemDataRole.ForegroundRole)
+        palette = QApplication.palette()
+
         if isinstance(background, QColor):
-            # Semantic cells keep their meaning and become only slightly darker
-            # while selected, instead of being replaced by the generic blue tint.
-            selected_background = background.darker(104)
+            # Semantic cells keep their meaning while selection remains visible
+            # in both native light and native dark colour schemes.
+            selected_background = (
+                theme_ui.selected_semantic_background(
+                    background,
+                    palette,
+                )
+            )
         else:
-            selected_background = QColor(SELECTED_ROW_BACKGROUND)
-        option.backgroundBrush = QBrush(selected_background)
+            selected_background = (
+                theme_ui.selection_background_colour(
+                    palette
+                )
+            )
+
+        option.backgroundBrush = QBrush(
+            selected_background
+        )
 
         if isinstance(foreground, QColor):
-            option.palette.setColor(QPalette.ColorRole.Text, foreground)
+            option.palette.setColor(
+                QPalette.ColorRole.Text,
+                foreground,
+            )
         else:
-            option.palette.setColor(QPalette.ColorRole.Text, QColor(SELECTED_ROW_FOREGROUND))
+            option.palette.setColor(
+                QPalette.ColorRole.Text,
+                theme_ui.selection_text_colour(
+                    palette
+                ),
+            )
 
 
 class AuditTableModel(base_ui.AppTableModel):
@@ -315,7 +336,13 @@ class AuditTableModel(base_ui.AppTableModel):
         column = self.columns[index.column()]
         provisional = bool(row.get("_audit_provisional"))
         key = str(row.get("criticality_key") or "blue")
-        info = base_ui.CRITICALITY.get(key, base_ui.CRITICALITY["blue"])
+        palette = QApplication.palette()
+        info_colours = (
+            theme_ui.semantic_status_colours(
+                key,
+                palette,
+            )
+        )
 
         if role == Qt.ItemDataRole.DisplayRole:
             if column == "criticality" and key in {"purple", "green"}:
@@ -336,25 +363,41 @@ class AuditTableModel(base_ui.AppTableModel):
             if provisional and not row.get("criticality_key"):
                 return None
             if not local_apk_row:
-                return QColor(info["background"])
+                return QColor(info_colours.background)
             if column == "criticality":
-                return QColor(info["background"])
+                return QColor(info_colours.background)
             relation_key = _local_apk_relationship_status(row)
             if relation_key:
-                return QColor(base_ui.CRITICALITY[relation_key]["background"])
+                return QColor(
+                    theme_ui.semantic_status_colours(
+                        relation_key,
+                        palette,
+                    ).background
+                )
             return None
 
         if role == Qt.ItemDataRole.ForegroundRole:
             if column == "criticality" and not provisional:
-                return QColor(info["accent"])
+                return QColor(info_colours.accent)
             if local_apk_row and column == "local_apk_version_comparison":
                 relation_key = _local_apk_relationship_status(row)
                 if relation_key:
-                    return QColor(base_ui.CRITICALITY[relation_key]["foreground"])
-            semantic_colour = base_ui.semantic_foreground_colour(column, row.get(column))
+                    return QColor(
+                        theme_ui.semantic_status_colours(
+                            relation_key,
+                            palette,
+                        ).foreground
+                    )
+            semantic_colour = base_ui.semantic_foreground_colour(
+                column,
+                row.get(column),
+                palette,
+            )
             if semantic_colour:
                 return QColor(semantic_colour)
-            return QColor("#263238")
+            return theme_ui.text_colour(
+                palette
+            )
 
         if role == Qt.ItemDataRole.ToolTipRole:
             if column == "notes":

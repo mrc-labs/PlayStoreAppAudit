@@ -299,9 +299,6 @@ class MainWindow(results_ui.ResultsWindow):
     def _source_option(self, label_text: str, button) -> QFrame:
         frame = QFrame()
         frame.setObjectName("SourceOption")
-        frame.setStyleSheet(
-            "QFrame#SourceOption {background:#F8FAFC; border:1px solid #E3E9EE; border-radius:8px;}"
-        )
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(10, 5, 6, 5)
         layout.setSpacing(8)
