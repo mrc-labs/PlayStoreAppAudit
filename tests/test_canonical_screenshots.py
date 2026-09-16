@@ -108,9 +108,9 @@ def test_generator_produces_complete_png_set(
     for name, dimensions in EXPECTED.items():
         path = first / name
 
-        # Headless/offscreen PNG compression is environment-dependent.
-        # The generator itself verifies that the capture contains visible
-        # UI variation; here we verify the artifact and exact geometry.
+        # Headless/offscreen rendering is environment-dependent.
+        # This smoke gate verifies a real non-empty PNG and exact geometry;
+        # the committed Windows assets have the stronger visual/size gate.
         assert path.stat().st_size > 256
 
         image = QImage(str(path))

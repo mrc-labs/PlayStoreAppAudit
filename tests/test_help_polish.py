@@ -13,7 +13,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.menu_window as menu_ui
 import playstore_app_audit.ui.update_check as update_ui
-from playstore_app_audit import __version__
+from playstore_app_audit import __version__, resources
 from playstore_app_audit.product_identity import DISPLAY_NAME, PREVIOUS_DISPLAY_NAMES
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.rich_help import RichHelpDialog
@@ -90,6 +90,45 @@ def test_help_feedback_action_opens_github_issue_chooser(
     window.feedback_action.trigger()
 
     assert opened == [menu_ui.FEEDBACK_ISSUE_URL]
+
+
+def test_overview_help_action_reuses_canonical_screenshots(
+    window_store: tuple[MainWindow, dict[str, object]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window, _settings = window_store
+    opened: list[tuple[object, str, str]] = []
+
+    monkeypatch.setattr(
+        menu_ui.rich_help,
+        "show_rich_help",
+        lambda parent, title, content: opened.append(
+            (parent, title, content)
+        ),
+    )
+
+    assert (
+        window.help_menu.actions()[0]
+        is window.overview_help_action
+    )
+    assert (
+        window.overview_help_action.text()
+        == "Store App Audit Overview…"
+    )
+
+    window.overview_help_action.trigger()
+
+    assert len(opened) == 1
+
+    parent, title, content = opened[0]
+
+    assert parent is window
+    assert title == "Store App Audit Overview"
+    assert content.count("<img ") == 4
+    assert "Not Found" in content
+
+    for filename in resources.CANONICAL_HELP_IMAGE_NAMES:
+        assert filename in content
 
 
 def test_startup_update_check_defaults_on() -> None:

@@ -168,7 +168,7 @@ jobs:
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
           version = os.environ['APP_VERSION']
-          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']=f'--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
 
@@ -270,6 +270,7 @@ jobs:
           python .github/scripts/normalize_macos_bundle.py --app "$APP"
 
           python .github/scripts/validate_device_specific_profile_resources.py "$APP"
+          python .github/scripts/validate_canonical_help_resources.py "$APP" --canonical-dir "$PWD/docs/images"
           CERTIFI_LINK="$APP/Contents/MacOS/certifi"
           CERTIFI_RESOURCE="$APP/Contents/Resources/certifi/cacert.pem"
           test -L "$CERTIFI_LINK"
@@ -462,6 +463,7 @@ jobs:
           test -n "$RAPP"
 
           python .github/scripts/validate_device_specific_profile_resources.py "$RAPP"
+          python .github/scripts/validate_canonical_help_resources.py "$RAPP" --canonical-dir "$PWD/docs/images"
           test -L "$RAPP/Contents/MacOS/certifi"
           test "$(readlink "$RAPP/Contents/MacOS/certifi")" = "../Resources/certifi"
           test -f "$RAPP/Contents/Resources/certifi/cacert.pem"

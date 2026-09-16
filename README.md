@@ -27,6 +27,18 @@ Store App Audit helps answer practical questions about the Android apps you use,
 
 `Not Found` is intentionally conservative: it means no listing was found in the configured Store countries that were successfully checked; it does not prove that an app has disappeared from Google Play globally.
 
+## Screenshots
+
+These screenshots show the current **v2.1 development UI** using fully synthetic fictional apps and package IDs. They are generated reproducibly from the real Qt interface by `tools/generate_canonical_screenshots.py`; no live Store request, connected phone, personal app inventory or third-party app artwork is used.
+
+| Phone maintenance and triage | Local APK / package comparison |
+| --- | --- |
+| [![Store App Audit phone maintenance view](docs/images/store-app-audit-phone-maintenance.png)](docs/images/store-app-audit-phone-maintenance.png) | [![Store App Audit Local APK comparison view](docs/images/store-app-audit-local-apk.png)](docs/images/store-app-audit-local-apk.png) |
+| **Changes & History** | **Mass Rename preview** |
+| [![Store App Audit Changes and History](docs/images/store-app-audit-changes-history.png)](docs/images/store-app-audit-changes-history.png) | [![Store App Audit Mass Rename preview](docs/images/store-app-audit-mass-rename.png)](docs/images/store-app-audit-mass-rename.png) |
+
+The latest published release remains **v2.0.0** until the v2.1 release is deliberately frozen, validated and published.
+
 ## Key features
 
 - Import package lists from CSV, TSV or TXT files.
@@ -79,8 +91,10 @@ Current direction:
 
 - Local APK quick-filter spacing polish: completed.
 - Local APK file management Track B: completed, including safe single-file Rename/Remove, Mass Rename with validated preview/templates/collision protection, and safeguarded Mass Remove for exact Outdated/Unknown relationships.
-- Device Specific resolver: next, beginning with an isolated proof of concept; production integration happens only if the PoC is sufficiently reliable.
-- Canonical README/in-app Help screenshots: planned after the v2.1 UI is substantially feature-complete, using deterministic synthetic data rather than real user apps/APKs.
+- Device Specific resolver integration: completed for the v2.1 development line as an opt-in advanced second-stage resolver using an explicit configured metadata endpoint and bundled reference profiles; the public Store result remains authoritative.
+- Theme-aware semantic presentation and dark-mode contrast work: completed.
+- Canonical README/in-app Help screenshots: generated from deterministic synthetic data and reused across the repository homepage and in-app Overview.
+- After this documentation polish, v2.1 moves to final Windows x64 packaged acceptance and then the cross-platform release-validation phase.
 
 CLI/headless support is **not** part of v2.1 anymore. It is currently planned for v2.2, together with Named Custom Views issue #147. A smaller one-main-feature-per-release cadence may be adopted from v2.2 or v2.3.
 
