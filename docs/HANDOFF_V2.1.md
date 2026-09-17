@@ -6,6 +6,26 @@ This is the canonical continuation handoff for the final v2.1 work, replacing th
 
 Use this document as the durable starting point for a fresh ChatGPT/control-tower session, but always verify live GitHub state before consequential decisions because PRs, workflow runs and `main` may have advanced after this file was written.
 
+### Lifecycle / retirement rule
+
+This file is a **temporary release-cycle handoff**, not a permanent source of truth for post-v2.1 development.
+
+After v2.1.0 has been published, independently reverified and the permanent release-closure procedure in `docs/RELEASE_CLOSURE.md` is complete, `docs/HANDOFF_V2.1.md` may — and preferably should — be deleted so stale branch/SHA/session state does not remain in the maintained documentation set.
+
+Before deleting it, explicitly verify that every durable fact introduced during v2.1 has been migrated to the appropriate permanent source:
+
+- published release evidence and final toolchain state → `docs/PROJECT_STATUS.md`;
+- future milestone/deferred work → `docs/ROADMAP.md` and/or a dedicated GitHub issue;
+- durable architectural/product decisions → `docs/PROJECT_DECISIONS.md`;
+- permanent engineering/release invariants → `AGENTS.md`;
+- build/release procedure changes → `docs/BUILDING.md`, `docs/RELEASE_COMPONENT_FRESHNESS.md`, `docs/RELEASE_CLOSURE.md` or `docs/RELEASE_NOTES.md` as appropriate;
+- release history → `CHANGELOG.md` / published GitHub Release;
+- active follow-up work → its own GitHub issue rather than this handoff.
+
+No post-v2.1 roadmap item or permanent decision should intentionally exist only in this handoff. If the final closure review finds one, migrate it before deleting the file. Current future-facing items are already tracked elsewhere: CLI/headless and Named Custom Views in the roadmap/status documents, broader Device Specific work in #153/follow-up issues, trust/signing work in #154, and the Local APK Device Specific release blocker in #185.
+
+Do **not** delete this file before v2.1 release closure while it is still the active cross-chat continuation context.
+
 ---
 
 ## 1. Repository and immutable release boundary
