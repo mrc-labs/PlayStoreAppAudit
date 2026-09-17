@@ -154,6 +154,28 @@ def test_local_apk_device_specific_resolution_preserves_raw_store_and_uses_versi
     assert row[integration.RESOLVED_VERSION_CODE_FIELD] == 101
     assert row[integration.STATUS_FIELD] == "resolved"
     assert row["local_apk_version_comparison"] == "Outdated"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == "Outdated (DS)"
+
+
+def test_local_apk_device_specific_match_keeps_raw_semantics_and_marks_display(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _disable_resolver_cache(monkeypatch)
+    monkeypatch.setattr(
+        integration,
+        "resolve_if_device_specific",
+        lambda **_kwargs: _resolved(version_code=100),
+    )
+
+    result = _service("Varies with device").collect(
+        [_artifact(version_code=100)],
+        AuditConfig(country=COUNTRY, language=LANGUAGE),
+        _settings(),
+    )
+    row = local_apk_audit.association_result_rows(result.associations)[0]
+
+    assert row["local_apk_version_comparison"] == "Match"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == "Match (DS)"
 
 
 def test_ordinary_local_apk_store_row_causes_zero_resolver_activity(
@@ -177,6 +199,7 @@ def test_ordinary_local_apk_store_row_causes_zero_resolver_activity(
     assert row[integration.RESOLVED_VERSION_FIELD] == ""
     assert row[integration.STATUS_FIELD] == ""
     assert row["local_apk_version_comparison"] == "Outdated"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == "Outdated"
 
 
 def test_local_apk_resolver_failure_preserves_successful_raw_evidence(
@@ -202,6 +225,7 @@ def test_local_apk_resolver_failure_preserves_successful_raw_evidence(
     assert row[integration.RESOLVED_VERSION_CODE_FIELD] == ""
     assert row[integration.STATUS_FIELD] == "inconclusive"
     assert row["local_apk_version_comparison"] == "Device-specific"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == "Device-specific"
 
 
 def test_local_apk_prefers_long_version_code_when_available(
@@ -226,3 +250,4 @@ def test_local_apk_prefers_long_version_code_when_available(
 
     assert row[integration.RESOLVED_VERSION_CODE_FIELD] == 100
     assert row["local_apk_version_comparison"] == "Newer"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == "Newer (DS)"
