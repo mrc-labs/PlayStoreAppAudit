@@ -1,5 +1,120 @@
 from __future__ import annotations
 
+from html import escape
+
+from playstore_app_audit.resources import (
+    canonical_help_image_uri,
+)
+
+
+def store_app_audit_overview_html() -> str:
+    phone = escape(
+        canonical_help_image_uri(
+            "store-app-audit-phone-maintenance.png"
+        ),
+        quote=True,
+    )
+    local_apk = escape(
+        canonical_help_image_uri(
+            "store-app-audit-local-apk.png"
+        ),
+        quote=True,
+    )
+    changes = escape(
+        canonical_help_image_uri(
+            "store-app-audit-changes-history.png"
+        ),
+        quote=True,
+    )
+    mass_rename = escape(
+        canonical_help_image_uri(
+            "store-app-audit-mass-rename.png"
+        ),
+        quote=True,
+    )
+
+    return f"""
+<h1>What can Store App Audit help you answer?</h1>
+<p class="lead">
+Store App Audit brings Android inventories, public Google Play evidence,
+Local APK/package metadata and change history into one review workflow.
+The examples below use fictional synthetic apps.
+</p>
+
+<ul>
+  <li><b>Are the apps on my phone still maintained and still available in
+      the Store context I use?</b> Scan a connected Android phone through
+      read-only ADB and review listing freshness, conservative availability
+      results and installed-vs-Store version evidence.</li>
+  <li><b>Which installed apps deserve attention first?</b> Combine Store
+      status, age, version relationships, Android compatibility,
+      Maintenance Score, filters and Smart Queries instead of inspecting
+      every app manually.</li>
+  <li><b>Is my Local APK/package collection up to date?</b> Audit individual
+      files or folders and distinguish Match, Outdated, Newer, Different,
+      Device Specific and Unknown relationships without collapsing separate
+      physical artifacts.</li>
+  <li><b>Can I audit an arbitrary package list without a phone or APKs?</b>
+      Import package IDs from CSV, TSV or TXT and review Store evidence in
+      bulk.</li>
+  <li><b>What changed since a previous audit or device snapshot?</b>
+      Changes &amp; History can surface inventory additions/removals,
+      Store availability changes, reappeared listings and Store
+      version/update changes.</li>
+  <li><b>Can I keep evidence outside the GUI?</b> Export complete or filtered
+      results as CSV, HTML or versioned JSON for later review or sharing.</li>
+  <li><b>Which cases should remain uncertain?</b> Anomaly, Device Specific
+      and Unknown states deliberately preserve incomplete evidence instead
+      of forcing an unsupported yes/no conclusion.</li>
+</ul>
+
+<div class="note">
+<b>Store interpretation:</b> <code>Not Found</code> means no listing was
+found in the configured Store countries that were successfully checked.
+It is not proof that an app disappeared from Google Play globally.
+</div>
+
+<h2>Phone maintenance and triage</h2>
+<p>
+A phone audit combines Store freshness, installed version evidence,
+compatibility and optional Maintenance Score with a source-aware
+Details Panel.
+</p>
+<p><img src="{phone}"
+alt="Synthetic phone maintenance audit screenshot"></p>
+
+<h2>Local APK / package comparison</h2>
+<p>
+Local package files retain their own filenames, versions and identities
+while Store relationships remain separate and conservative.
+</p>
+<p><img src="{local_apk}"
+alt="Synthetic Local APK comparison screenshot"></p>
+
+<h2>Changes &amp; History</h2>
+<p>
+Automatic comparison baselines and manual device snapshots remain
+separate, with explicit controls for reviewing retained change evidence.
+</p>
+<p><img src="{changes}"
+alt="Changes and History screenshot"></p>
+
+<h2>Safe Local APK file management</h2>
+<p>
+Mass Rename builds and validates the complete filename plan before any
+filesystem mutation.
+</p>
+<p><img src="{mass_rename}"
+alt="Mass Rename preview screenshot"></p>
+
+<div class="warning">
+<b>Development-line note:</b> these screenshots represent the current v2.1
+development UI. The latest published release remains v2.0.0 until v2.1
+passes its final release gates and is published.
+</div>
+"""
+
+
 ADB_SETUP_GUIDE = """ADB setup guide
 
 1. On the Android phone, enable Developer options and USB debugging.

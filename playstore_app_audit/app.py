@@ -10,7 +10,11 @@ from PySide6.QtWidgets import QApplication
 
 from playstore_app_audit import __version__
 from playstore_app_audit.product_identity import DISPLAY_NAME
-from playstore_app_audit.resources import ensure_runtime_icon
+from playstore_app_audit.resources import (
+    CANONICAL_HELP_IMAGE_NAMES,
+    canonical_help_image_path,
+    ensure_runtime_icon,
+)
 from playstore_app_audit.services import debug_logging
 from playstore_app_audit.services.app_icon_metadata import install_app_icon_metadata_capture
 from playstore_app_audit.services.performance_diagnostics import install_performance_diagnostics
@@ -47,6 +51,29 @@ def _validate_device_specific_profiles_for_smoke() -> None:
     )
 
 
+def _validate_canonical_help_images_for_smoke() -> None:
+    """Prove packaged Help can resolve every canonical screenshot."""
+
+    resolved = tuple(
+        canonical_help_image_path(filename)
+        for filename in CANONICAL_HELP_IMAGE_NAMES
+    )
+
+    if any(
+        not path.is_file()
+        or path.stat().st_size <= 0
+        for path in resolved
+    ):
+        raise RuntimeError(
+            "Canonical packaged Help image validation failed."
+        )
+
+    print(
+        "Canonical packaged Help image resource smoke: PASS",
+        flush=True,
+    )
+
+
 def consume_debug_argument(arguments: list[str]) -> tuple[list[str], bool]:
     debug = "--debug" in arguments[1:]
     return ([item for item in arguments if item != "--debug"] if debug else list(arguments), debug)
@@ -75,6 +102,7 @@ def main() -> int:
 
     if smoke_test:
         _validate_device_specific_profiles_for_smoke()
+        _validate_canonical_help_images_for_smoke()
 
     app = QApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)

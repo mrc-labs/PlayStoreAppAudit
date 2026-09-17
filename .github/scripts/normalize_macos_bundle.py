@@ -12,6 +12,12 @@ CERTIFI_LINK_TARGET = str(Path("..") / "Resources" / "certifi")
 PYAXMLPARSER_LINK_TARGET = str(
     Path("..") / ".." / "Resources" / "pyaxmlparser" / "resources"
 )
+HELP_IMAGE_NAMES = (
+    "store-app-audit-phone-maintenance.png",
+    "store-app-audit-local-apk.png",
+    "store-app-audit-changes-history.png",
+    "store-app-audit-mass-rename.png",
+)
 MACHO_MAGICS = {
     bytes.fromhex(value)
     for value in (
@@ -115,6 +121,82 @@ def _normalize_pyaxmlparser(macos: Path, resources: Path) -> str:
     return expected_hash
 
 
+def _check_help_images(directory: Path) -> None:
+    if directory.is_symlink() or not directory.is_dir():
+        raise RuntimeError(
+            f"Expected a real canonical Help image directory: {directory}"
+        )
+
+    entries = tuple(
+        sorted(
+            directory.iterdir(),
+            key=lambda path: path.name,
+        )
+    )
+
+    names = tuple(
+        path.name
+        for path in entries
+    )
+
+    if names != tuple(sorted(HELP_IMAGE_NAMES)):
+        raise RuntimeError(
+            "Unexpected canonical Help image set: "
+            f"{directory}: {names!r}"
+        )
+
+    for path in entries:
+        if (
+            path.is_symlink()
+            or not path.is_file()
+        ):
+            raise RuntimeError(
+                "Canonical Help image directory contains a "
+                f"non-regular file: {path}"
+            )
+
+        if _is_macho(path):
+            raise RuntimeError(
+                "Refusing to treat Mach-O code as a Help image: "
+                f"{path}"
+            )
+
+
+def _normalize_help_images(
+    macos: Path,
+    resources: Path,
+) -> None:
+    source = macos / "help-images"
+    destination = resources / "help-images"
+
+    source_exists = (
+        source.exists()
+        or source.is_symlink()
+    )
+    destination_exists = (
+        destination.exists()
+        or destination.is_symlink()
+    )
+
+    if not source_exists and not destination_exists:
+        return
+
+    if source_exists:
+        _check_help_images(source)
+
+        if destination_exists:
+            raise RuntimeError(
+                "Canonical Help image destination already exists: "
+                f"{destination}"
+            )
+
+        source.rename(destination)
+    else:
+        _check_help_images(destination)
+
+    _check_help_images(destination)
+
+
 def _non_code_macos_files(macos: Path) -> list[str]:
     non_code: list[str] = []
     for root, dirs, files in os.walk(macos, followlinks=False):
@@ -179,6 +261,10 @@ def _validate_layout(app: Path, expected_hash: str, expected_public_hash: str) -
     ):
         raise RuntimeError("pyaxmlparser public.xml bytes changed during bundle normalization")
 
+    help_images = resources / "help-images"
+    if help_images.exists() or help_images.is_symlink():
+        _check_help_images(help_images)
+
     remaining = _non_code_macos_files(macos)
     if remaining:
         raise RuntimeError(
@@ -218,6 +304,7 @@ def normalize_bundle(app: Path) -> str:
             raise
 
     expected_public_hash = _normalize_pyaxmlparser(macos, resources)
+    _normalize_help_images(macos, resources)
     _validate_layout(app, expected_hash, expected_public_hash)
     return expected_hash
 

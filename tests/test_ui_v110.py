@@ -1435,6 +1435,8 @@ def test_static_adb_and_import_help_open_as_rich_dialogs(
         lambda *_args: pytest.fail("Static guides must use the rich-help dialog"),
     )
     assert _action_structure(window.help_menu) == [
+        "Store App Audit Overview…",
+        None,
         "ADB Setup Guide…",
         "App List Import Guide…",
         None,

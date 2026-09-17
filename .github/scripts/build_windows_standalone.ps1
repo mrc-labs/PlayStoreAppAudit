@@ -49,6 +49,7 @@ if ([IO.Path]::IsPathRooted($OutputRoot)) {
 $InspectPe = Join-Path $RepoRoot ".github\scripts\inspect_pe.py"
 $ValidateStandalone = Join-Path $RepoRoot ".github\scripts\validate_windows_standalone.py"
 $ValidateDeviceSpecificProfiles = Join-Path $RepoRoot ".github\scripts\validate_device_specific_profile_resources.py"
+$ValidateCanonicalHelpResources = Join-Path $RepoRoot ".github\scripts\validate_canonical_help_resources.py"
 $PrepareReleaseLegal = Join-Path $RepoRoot ".github\scripts\prepare_release_legal_bundle.py"
 $ValidateReleaseLegal = Join-Path $RepoRoot ".github\scripts\validate_release_legal_bundle.py"
 
@@ -60,6 +61,9 @@ if (-not (Test-Path -LiteralPath $InspectPe)) {
 }
 if (-not (Test-Path -LiteralPath $ValidateStandalone)) {
     Fail "Standalone validation helper was not found: $ValidateStandalone"
+}
+if (-not (Test-Path -LiteralPath $ValidateCanonicalHelpResources)) {
+    Fail "Canonical Help resource validator was not found: $ValidateCanonicalHelpResources"
 }
 
 if (-not $PrivateBuild) {
@@ -165,6 +169,7 @@ $NuitkaArgs = @(
     "--noinclude-qt-plugins=platforminputcontexts",
     "--noinclude-qt-translations",
     "--include-package-data=playstore_app_audit.device_profiles:*.json",
+    "--include-data-dir=docs/images=help-images",
     "--windows-console-mode=disable",
     "--nofollow-import-to=PIL",
     "--assume-yes-for-downloads",
@@ -210,6 +215,15 @@ Write-Host "=== VALIDATE DEVICE SPECIFIC PROFILE RESOURCES ==="
 & $Python $ValidateDeviceSpecificProfiles $DistDir.FullName
 if ($LASTEXITCODE -ne 0) {
     Fail "Standalone Device Specific profile validation failed."
+}
+
+Write-Host ""
+Write-Host "=== VALIDATE CANONICAL HELP RESOURCES ==="
+& $Python $ValidateCanonicalHelpResources `
+    $DistDir.FullName `
+    --canonical-dir (Join-Path $RepoRoot "docs\images")
+if ($LASTEXITCODE -ne 0) {
+    Fail "Standalone canonical Help resource validation failed."
 }
 
 # qpdf.dll is not required by Store App Audit.
@@ -292,6 +306,15 @@ Write-Host "=== VALIDATE VERSIONED PACKAGE PROFILE RESOURCES ==="
 & $Python $ValidateDeviceSpecificProfiles $PackageDir
 if ($LASTEXITCODE -ne 0) {
     Fail "Versioned package Device Specific profile validation failed."
+}
+
+Write-Host ""
+Write-Host "=== VALIDATE VERSIONED PACKAGE HELP RESOURCES ==="
+& $Python $ValidateCanonicalHelpResources `
+    $PackageDir `
+    --canonical-dir (Join-Path $RepoRoot "docs\images")
+if ($LASTEXITCODE -ne 0) {
+    Fail "Versioned package canonical Help resource validation failed."
 }
 
 if ($PrivateBuild) {

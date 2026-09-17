@@ -207,6 +207,15 @@ class MenuWindow(preferences_ui.PreferencesWindow):
 
         self.help_menu = QMenu("Help", bar)
         bar.addMenu(self.help_menu)
+        self.overview_help_action = self.help_menu.addAction(
+            "Store App Audit Overview…",
+            lambda: rich_help.show_rich_help(
+                self,
+                "Store App Audit Overview",
+                help_texts.store_app_audit_overview_html(),
+            ),
+        )
+        self.help_menu.addSeparator()
         self.help_menu.addAction(
             "ADB Setup Guide…",
             lambda: rich_help.show_rich_help(

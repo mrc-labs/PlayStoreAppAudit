@@ -250,6 +250,50 @@ def test_link_creation_failure_rolls_back_and_uses_relative_target(
     assert not (app / "Contents" / "Resources" / "certifi").exists()
 
 
+def test_help_images_relocate_to_resources_idempotently(
+    tmp_path: Path,
+) -> None:
+    app, _ = _app_with_certifi(tmp_path)
+    macos = app / "Contents" / "MacOS"
+    resources = app / "Contents" / "Resources"
+    source = macos / "help-images"
+    source.mkdir()
+
+    expected: dict[str, bytes] = {}
+
+    for index, filename in enumerate(
+        bundle.HELP_IMAGE_NAMES,
+        start=1,
+    ):
+        payload = (
+            f"synthetic help image {index}: {filename}\n"
+        ).encode()
+        expected[filename] = payload
+        (source / filename).write_bytes(payload)
+
+    bundle._normalize_help_images(
+        macos,
+        resources,
+    )
+
+    destination = resources / "help-images"
+
+    assert not source.exists()
+    assert destination.is_dir()
+
+    for filename, payload in expected.items():
+        assert (
+            destination / filename
+        ).read_bytes() == payload
+
+    bundle._normalize_help_images(
+        macos,
+        resources,
+    )
+
+    assert destination.is_dir()
+
+
 def test_non_code_survey_reports_other_macos_resources(tmp_path: Path) -> None:
     app, _ = _app_with_certifi(tmp_path)
     macos = app / "Contents" / "MacOS"
