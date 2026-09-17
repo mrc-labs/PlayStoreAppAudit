@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from playstore_app_audit.services import connected_device_profile as connected_profile
 
-
 COMPLETE_PROPERTIES = {
     "ro.hardware": "qcom",
     "gsm.version.baseband": "g5400c-240805-240927-B-12401357",
