@@ -16,6 +16,7 @@ SOURCE_MODE = "local_apk"
 LIBRARY_SOURCE_MODE = "local_apk_library"
 LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
 DEFINITIVE_STORE_ABSENCE = "not_found_in_checked_countries"
+DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS = frozenset({"Outdated", "Match", "Newer"})
 
 
 def is_local_apk_source(source_mode: object) -> bool:
@@ -57,6 +58,26 @@ def _local_store_relationship(
             play_version,
         )
     return ""
+
+
+def local_apk_relationship_display_value(row: Mapping[str, Any]) -> str:
+    """Return the user-facing Local APK relationship without changing raw semantics.
+
+    Resolved Device Specific rows keep their canonical raw relationship
+    (Outdated/Match/Newer) so filters, sorting, exports, Smart Queries and file
+    management continue to use established semantics. The UI adds ``(DS)`` only
+    when separate resolver evidence proves that relationship came from a
+    successful Device Specific resolution.
+    """
+
+    relationship = str(row.get("local_apk_version_comparison") or "").strip()
+    if relationship not in DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS:
+        return relationship
+    if str(row.get(device_specific_integration.STATUS_FIELD) or "").strip() != "resolved":
+        return relationship
+    if row.get(device_specific_integration.RESOLVED_VERSION_CODE_FIELD) in {None, ""}:
+        return relationship
+    return f"{relationship} (DS)"
 
 
 def association_result_row(
