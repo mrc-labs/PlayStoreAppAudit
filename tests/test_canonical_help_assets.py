@@ -111,6 +111,7 @@ def test_overview_html_reuses_exact_canonical_gallery() -> None:
     )
 
     assert content.count("<img ") == 4
+    assert 'width="700"' not in content
     assert "What can Store App Audit help you answer?" in content
     assert "Not Found" in content
     assert "v2.0.0" in content

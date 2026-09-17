@@ -80,7 +80,7 @@ A phone audit combines Store freshness, installed version evidence,
 compatibility and optional Maintenance Score with a source-aware
 Details Panel.
 </p>
-<p><img src="{phone}" width="700"
+<p><img src="{phone}"
 alt="Synthetic phone maintenance audit screenshot"></p>
 
 <h2>Local APK / package comparison</h2>
@@ -88,7 +88,7 @@ alt="Synthetic phone maintenance audit screenshot"></p>
 Local package files retain their own filenames, versions and identities
 while Store relationships remain separate and conservative.
 </p>
-<p><img src="{local_apk}" width="700"
+<p><img src="{local_apk}"
 alt="Synthetic Local APK comparison screenshot"></p>
 
 <h2>Changes &amp; History</h2>
@@ -96,7 +96,7 @@ alt="Synthetic Local APK comparison screenshot"></p>
 Automatic comparison baselines and manual device snapshots remain
 separate, with explicit controls for reviewing retained change evidence.
 </p>
-<p><img src="{changes}" width="700"
+<p><img src="{changes}"
 alt="Changes and History screenshot"></p>
 
 <h2>Safe Local APK file management</h2>
@@ -104,7 +104,7 @@ alt="Changes and History screenshot"></p>
 Mass Rename builds and validates the complete filename plan before any
 filesystem mutation.
 </p>
-<p><img src="{mass_rename}" width="700"
+<p><img src="{mass_rename}"
 alt="Mass Rename preview screenshot"></p>
 
 <div class="warning">
