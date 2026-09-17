@@ -44,10 +44,9 @@ python -m tools.device_specific_poc.runner --list-profiles
 
 Live transport testing requires `goopdl==1.2.1` in an isolated environment.
 
-Anonymous mode deliberately requires an explicit dispenser endpoint.
+Anonymous mode deliberately requires an explicit dispenser endpoint. Store App Audit must not ship AuroraOSS's community dispenser as a default backend for third-party traffic; self-hosted/custom compatible endpoints remain valid test and advanced-user paths.
 
 Plain HTTP is accepted only for loopback endpoints such as the validated `localhost` PoC. Remote dispenser endpoints must use HTTPS.
-
 
 ```text
 python -m tools.device_specific_poc.runner \
@@ -69,5 +68,7 @@ Only these environment variables are read:
 The AAS token must start with `aas_et/`.
 
 No raw-password path exists.
+
+The v2.1 productization follow-up should prefer a supported personal-session UX plus a privacy-safe Connected Device profile, while retaining custom/self-hosted dispenser support as an advanced provider option.
 
 See `docs/DEVICE_SPECIFIC_RESOLVER_POC.md`.
