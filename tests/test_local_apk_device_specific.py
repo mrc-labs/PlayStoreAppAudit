@@ -157,6 +157,39 @@ def test_local_apk_device_specific_resolution_preserves_raw_store_and_uses_versi
     assert local_apk_audit.local_apk_relationship_display_value(row) == "Outdated (DS)"
 
 
+def test_local_apk_device_specific_refreshes_progressive_callback_after_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _disable_resolver_cache(monkeypatch)
+    monkeypatch.setattr(
+        integration,
+        "resolve_if_device_specific",
+        lambda **_kwargs: _resolved(version_code=101),
+    )
+    callback_rows: list[dict[str, Any]] = []
+
+    _service("Varies with device").collect(
+        [_artifact(version_code=100)],
+        AuditConfig(country=COUNTRY, language=LANGUAGE),
+        _settings(),
+        row_completed_callback=lambda _package, row: callback_rows.append(dict(row)),
+    )
+
+    assert len(callback_rows) == 2
+    assert callback_rows[0]["play_version"] == "Varies with device"
+    assert callback_rows[0].get(integration.STATUS_FIELD, "") == ""
+    assert callback_rows[1][integration.STATUS_FIELD] == "resolved"
+    assert callback_rows[1][integration.RESOLVED_VERSION_CODE_FIELD] == 101
+
+    progressive_row = local_apk_audit.artifact_result_row(
+        _artifact(version_code=100),
+        callback_rows[1],
+        provisional=True,
+    )
+    assert progressive_row["local_apk_version_comparison"] == "Outdated"
+    assert local_apk_audit.local_apk_relationship_display_value(progressive_row) == "Outdated (DS)"
+
+
 def test_local_apk_device_specific_match_keeps_raw_semantics_and_marks_display(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
