@@ -15,7 +15,12 @@ from playstore_app_audit.domain.local_artifact_store import (
     PackageStoreEvidence,
 )
 from playstore_app_audit.domain.local_artifacts import LocalArtifact
-from playstore_app_audit.services import alternative_distribution, app_icon_metadata, state
+from playstore_app_audit.services import (
+    alternative_distribution,
+    app_icon_metadata,
+    device_specific_integration,
+    state,
+)
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.play_store import PlayStoreService
 
@@ -237,6 +242,19 @@ class LocalArtifactStoreService:
                 cache_file=provider_cache_file,
                 phase_callback=alternative_phase_callback,
             )
+
+        if not cancelled.is_set():
+            try:
+                device_specific_integration.enrich_rows_with_device_specific_resolution(
+                    ordered_rows,
+                    settings=settings,
+                    country=config.country,
+                    language=config.language,
+                    pause_event=running,
+                    cancel_event=cancelled,
+                )
+            except Exception:
+                logger.exception("Local package Device Specific enrichment failed")
 
         evidence_by_package: dict[str, PackageStoreEvidence] = {}
         for row in ordered_rows:
