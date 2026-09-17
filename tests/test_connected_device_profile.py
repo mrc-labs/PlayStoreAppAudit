@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import playstore_app_audit.services.connected_device_profile as connected_profile
+from playstore_app_audit.services import connected_device_profile as connected_profile
 
 
 COMPLETE_PROPERTIES = {
