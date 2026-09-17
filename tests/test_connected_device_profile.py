@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import playstore_app_audit.services.connected_device_profile as connected_profile
 
 
@@ -161,7 +159,7 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
         assert adb == "adb"
         assert timeout > 0
         calls.append(tuple(args))
-        return SimpleNamespace(stdout=outputs.get(tuple(args), ""))
+        return type("Result", (), {"stdout": outputs.get(tuple(args), "")})()
 
     monkeypatch.setattr(connected_profile, "run_adb", fake_run_adb)
 
