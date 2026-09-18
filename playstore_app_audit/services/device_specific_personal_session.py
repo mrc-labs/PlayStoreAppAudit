@@ -35,40 +35,8 @@ from websocket import (
 
 EMBEDDED_SETUP_URL = "https://accounts.google.com/EmbeddedSetup"
 GOOGLE_AUTH_URL = "https://android.clients.google.com/auth"
+OAUTH_EMAIL_HINT = "oauth-token@example.com"
 
-_EMAIL_CAPTURE_EXPRESSION = r"""
-(() => {
-  const selectors = [
-    '[data-email]',
-    '[data-identifier]',
-    'input[type="email"]',
-    '#identifierId',
-    '[aria-label*="@"]',
-    '[title*="@"]'
-  ];
-  const candidates = [];
-  for (const selector of selectors) {
-    for (const element of document.querySelectorAll(selector)) {
-      candidates.push(
-        element.getAttribute('data-email'),
-        element.getAttribute('data-identifier'),
-        element.value,
-        element.getAttribute('aria-label'),
-        element.getAttribute('title'),
-        element.textContent
-      );
-    }
-  }
-  for (const candidate of candidates) {
-    if (typeof candidate !== 'string') continue;
-    const match = candidate.match(
-      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
-    );
-    if (match) return match[0];
-  }
-  return '';
-})()
-"""
 
 
 class PersonalGoogleSessionError(RuntimeError):
@@ -147,17 +115,19 @@ def sign_in_interactive(*, timeout: float = 300.0) -> PersonalGoogleSessionStatu
 
     email = ""
     oauth_token = ""
+    aas_token = ""
     try:
-        email, oauth_token = capture_browser_oauth(timeout=timeout)
-        aas_token = exchange_oauth_for_aas(email, oauth_token)
+        oauth_token = capture_browser_oauth(timeout=timeout)
+        email, aas_token = exchange_oauth_for_aas(oauth_token)
         install_personal_session(email, aas_token)
     finally:
         oauth_token = ""
+        aas_token = ""
         email = ""
     return personal_session_status()
 
 
-def capture_browser_oauth(*, timeout: float = 300.0) -> tuple[str, str]:
+def capture_browser_oauth(*, timeout: float = 300.0) -> str:
     browser = _find_browser()
     port = _free_port()
     origin = f"http://127.0.0.1:{port}"
@@ -183,7 +153,7 @@ def capture_browser_oauth(*, timeout: float = 300.0) -> tuple[str, str]:
 
         try:
             websocket_url = _wait_for_debugger(port, process)
-            return _wait_for_oauth_credentials(
+            return _wait_for_oauth_token(
                 websocket_url,
                 origin,
                 process,
@@ -197,17 +167,20 @@ def capture_browser_oauth(*, timeout: float = 300.0) -> tuple[str, str]:
             _stop_browser(process)
 
 
-def exchange_oauth_for_aas(email: str, oauth_token: str) -> str:
-    clean_email = str(email or "").strip()
+def exchange_oauth_for_aas(oauth_token: str) -> tuple[str, str]:
+    """Exchange one EmbeddedSetup token for account email and process-local AAS."""
+
     one_time = str(oauth_token or "").strip()
-    if "@" not in clean_email or not one_time.startswith("oauth2_4/"):
-        raise PersonalGoogleSessionError("Google sign-in did not return a valid one-time session.")
+    if not one_time.startswith("oauth2_4/"):
+        raise PersonalGoogleSessionError(
+            "Google sign-in did not return a valid one-time session."
+        )
 
     try:
         response = requests.post(
             GOOGLE_AUTH_URL,
             data={
-                "Email": clean_email,
+                "Email": OAUTH_EMAIL_HINT,
                 "Token": one_time,
                 "ACCESS_TOKEN": "1",
                 "add_account": "1",
@@ -228,9 +201,12 @@ def exchange_oauth_for_aas(email: str, oauth_token: str) -> str:
                 "app": "com.google.android.gms",
             },
             timeout=30,
+            allow_redirects=False,
         )
     except requests.RequestException as exc:
-        raise PersonalGoogleSessionError("Google session exchange could not be reached.") from exc
+        raise PersonalGoogleSessionError(
+            "Google session exchange could not be reached."
+        ) from exc
 
     values: dict[str, str] = {}
     for line in response.text.splitlines():
@@ -238,9 +214,16 @@ def exchange_oauth_for_aas(email: str, oauth_token: str) -> str:
         if separator:
             values[key] = value
 
-    token = str(values.get("Token") or "").strip()
-    if token.startswith("aas_et/"):
-        return token
+    aas_token = str(values.get("Token") or "").strip()
+    account_email = str(values.get("Email") or "").strip()
+
+    if (
+        aas_token.startswith("aas_et/")
+        and "@" in account_email
+        and account_email.casefold() != OAUTH_EMAIL_HINT.casefold()
+    ):
+        return account_email, aas_token
+
     if response.status_code == 429:
         raise PersonalGoogleSessionError("Google session exchange is rate limited.")
     if response.status_code in {401, 403} or values.get("Error"):
@@ -249,7 +232,13 @@ def exchange_oauth_for_aas(email: str, oauth_token: str) -> str:
         response.raise_for_status()
     except requests.RequestException as exc:
         raise PersonalGoogleSessionError("Google session exchange failed.") from exc
-    raise PersonalGoogleSessionError("Google session exchange returned no usable session.")
+    if not aas_token.startswith("aas_et/"):
+        raise PersonalGoogleSessionError(
+            "Google session exchange returned no usable session."
+        )
+    raise PersonalGoogleSessionError(
+        "Google session exchange returned no account identity."
+    )
 
 
 def _find_browser() -> Path:
@@ -346,13 +335,13 @@ def _wait_for_debugger(
     raise PersonalGoogleSessionError("The sign-in browser did not become ready.")
 
 
-def _wait_for_oauth_credentials(
+def _wait_for_oauth_token(
     websocket_url: str,
     origin: str,
     process: subprocess.Popen[Any],
     *,
     timeout: float,
-) -> tuple[str, str]:
+) -> str:
     deadline = time.monotonic() + timeout
     request_id = 0
     try:
@@ -363,35 +352,17 @@ def _wait_for_oauth_credentials(
             http_no_proxy=["127.0.0.1", "localhost"],
         )
     except (OSError, WebSocketException) as exc:
-        raise PersonalGoogleSessionError("Could not attach to the sign-in browser.") from exc
+        raise PersonalGoogleSessionError(
+            "Could not attach to the sign-in browser."
+        ) from exc
 
-    email: str | None = None
-    oauth_token: str | None = None
     try:
-        request_id, session_id = _attach_page(websocket, request_id)
+        request_id, _session_id = _attach_page(websocket, request_id)
         while time.monotonic() < deadline:
             if process.poll() is not None:
-                raise PersonalGoogleSessionError("The sign-in browser closed before completion.")
-
-            try:
-                request_id, response = _cdp_request(
-                    websocket,
-                    request_id,
-                    "Runtime.evaluate",
-                    {
-                        "expression": _EMAIL_CAPTURE_EXPRESSION,
-                        "returnByValue": True,
-                    },
-                    session_id,
+                raise PersonalGoogleSessionError(
+                    "The sign-in browser closed before completion."
                 )
-            except WebSocketTimeoutException:
-                response = {}
-            if response:
-                _raise_cdp_error(response)
-                candidate = _profile_email(response)
-                if candidate:
-                    email = candidate
-
             try:
                 request_id, response = _cdp_request(
                     websocket,
@@ -399,26 +370,19 @@ def _wait_for_oauth_credentials(
                     "Storage.getCookies",
                 )
             except WebSocketTimeoutException:
-                response = {}
-            if response:
-                _raise_cdp_error(response)
-                candidate = _oauth_token(
-                    response.get("result", {}).get("cookies", [])
-                )
-                if candidate:
-                    oauth_token = candidate
-
-            if email and oauth_token:
-                return email, oauth_token
-
+                continue
+            _raise_cdp_error(response)
+            oauth_token = _oauth_token(
+                response.get("result", {}).get("cookies", [])
+            )
+            if oauth_token:
+                return oauth_token
             time.sleep(0.5)
     finally:
         websocket.close()
 
     raise PersonalGoogleSessionError(
-        "Google sign-in timed out before completion "
-        f"(email_seen={email is not None}, "
-        f"oauth_token_seen={oauth_token is not None})."
+        "Google sign-in timed out before the OAuth token appeared."
     )
 
 
@@ -497,12 +461,6 @@ def _oauth_token(cookies: list[dict[str, Any]]) -> str | None:
             return value
     return None
 
-
-def _profile_email(response: dict[str, Any]) -> str | None:
-    value = response.get("result", {}).get("result", {}).get("value")
-    if not isinstance(value, str) or "@" not in value:
-        return None
-    return value.strip()
 
 
 def _stop_browser(process: subprocess.Popen[Any]) -> None:
