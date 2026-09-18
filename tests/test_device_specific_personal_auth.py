@@ -169,3 +169,44 @@ def test_personal_auth_failure_is_non_secret() -> None:
     assert message == "play_token_auth_failed"
     assert email not in message
     assert aas not in message
+
+
+def test_checkin_parse_failures_are_typed_without_secret_values() -> None:
+    email = "private.user@example.com"
+    aas = "aas_et/PRIVATE-AAS"
+    personal_session.install_personal_session(email, aas)
+    profile = load_reference_profile("android13_api33_s20plus")
+
+    missing_device_id = _successful_session()
+    missing_device_id.responses[("POST", personal_auth.CHECKIN_URL)] = _Response(
+        200,
+        content=personal_auth._proto_bytes(12, "consistency-token"),
+    )
+    with pytest.raises(
+        personal_auth.PersonalGoogleAuthError,
+        match="checkin_device_id_parse_error",
+    ) as raised:
+        personal_auth.create_personal_auth_bundle(
+            profile=profile,
+            country="CH",
+            language="en",
+            session=missing_device_id,  # type: ignore[arg-type]
+        )
+    assert email not in str(raised.value)
+    assert aas not in str(raised.value)
+
+    missing_consistency = _successful_session()
+    missing_consistency.responses[("POST", personal_auth.CHECKIN_URL)] = _Response(
+        200,
+        content=personal_auth._proto_varint(7, 0x1234),
+    )
+    with pytest.raises(
+        personal_auth.PersonalGoogleAuthError,
+        match="checkin_consistency_token_parse_error",
+    ):
+        personal_auth.create_personal_auth_bundle(
+            profile=profile,
+            country="CH",
+            language="en",
+            session=missing_consistency,  # type: ignore[arg-type]
+        )
