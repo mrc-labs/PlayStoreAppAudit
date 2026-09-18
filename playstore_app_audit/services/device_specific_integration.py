@@ -23,6 +23,7 @@ from playstore_app_audit.services.device_specific_cache import (
     load_cached_result,
     store_resolved_result,
 )
+from playstore_app_audit.services import device_specific_settings
 from playstore_app_audit.services.device_specific_profiles import (
     PRODUCTION_PROFILE_IDS,
     list_reference_profiles,
@@ -35,9 +36,11 @@ from playstore_app_audit.services.device_specific_resolver import (
     should_attempt_device_specific_resolver,
 )
 
-SETTING_ENABLED = "device_specific_resolver_enabled"
-SETTING_ENDPOINT = "device_specific_resolver_endpoint"
-SETTING_PROFILE_ID = "device_specific_resolver_profile"
+SETTING_ENABLED = device_specific_settings.LEGACY_SETTING_ENABLED
+SETTING_PROVIDER = device_specific_settings.SETTING_PROVIDER
+SETTING_ENDPOINT = device_specific_settings.SETTING_ENDPOINT
+SETTING_PROFILE_ID = device_specific_settings.SETTING_PROFILE_ID
+CONNECTED_DEVICE_PROFILE_ID = device_specific_settings.CONNECTED_DEVICE_PROFILE_ID
 DEFAULT_PROFILE_ID = PRODUCTION_PROFILE_IDS[-1]
 DEFAULT_MAX_WORKERS = 4
 
@@ -196,7 +199,8 @@ def enrich_rows_with_device_specific_resolution(
     for row in rows:
         _clear_resolver_evidence(row)
 
-    if settings.get(SETTING_ENABLED) is not True:
+    provider = device_specific_settings.provider_from_settings(settings)
+    if provider is device_specific_settings.DeviceSpecificProvider.DISABLED:
         return ResolverIntegrationSummary()
 
     eligible_indices = [
@@ -209,6 +213,11 @@ def enrich_rows_with_device_specific_resolution(
 
     endpoint = str(settings.get(SETTING_ENDPOINT) or "").strip()
     profile_id = str(settings.get(SETTING_PROFILE_ID) or DEFAULT_PROFILE_ID).strip()
+    if provider is device_specific_settings.DeviceSpecificProvider.PERSONAL_GOOGLE_SESSION:
+        return ResolverIntegrationSummary(
+            eligible=len(eligible_indices),
+            configuration_error="personal_google_session_unavailable",
+        )
     try:
         endpoint = validate_resolver_endpoint(endpoint)
         profile = load_reference_profile(profile_id)
