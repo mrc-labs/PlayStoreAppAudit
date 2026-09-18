@@ -8,13 +8,17 @@ from typing import Any
 import pytest
 import requests
 
-from playstore_app_audit.domain.device_specific_resolver import ResolverStatus
+from playstore_app_audit.domain.device_specific_resolver import (
+    ResolverProvider,
+    ResolverStatus,
+)
 from playstore_app_audit.services.device_specific_profiles import load_reference_profile
 from playstore_app_audit.services.device_specific_protocol import (
     DETAILS_URL,
     normalise_dispenser_endpoint,
     parse_details_version,
     provider_context_hash,
+    resolve_metadata_with_auth_bundle,
     resolve_metadata_with_dispenser,
 )
 
@@ -286,3 +290,35 @@ def test_production_protocol_has_no_download_or_goopdl_runtime_path() -> None:
     assert "/purchase" not in lowered
     assert "/delivery" not in lowered
     assert "download_batch" not in lowered
+
+
+def test_personal_auth_bundle_uses_shared_metadata_only_details_path() -> None:
+    session = _FakeSession(
+        get_response=_Response(
+            200,
+            content=_details_payload("577.0.0.50.72", 474426253),
+        ),
+    )
+    profile = load_reference_profile("android13_api33_s20plus")
+    auth = _auth_payload()
+
+    result = resolve_metadata_with_auth_bundle(
+        package_name="com.facebook.katana",
+        profile=profile,
+        auth_bundle=auth,
+        country="CH",
+        language="en",
+        provider=ResolverProvider.PERSONAL_GOOGLE_SESSION,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    assert result.status is ResolverStatus.RESOLVED
+    assert result.provider is ResolverProvider.PERSONAL_GOOGLE_SESSION
+    assert result.version_name == "577.0.0.50.72"
+    assert result.version_code == 474426253
+    assert len(session.post_calls) == 0
+    assert len(session.get_calls) == 1
+    serialized = json.dumps(result.to_mapping())
+    assert "test-bearer" not in serialized
+    assert "123456" not in serialized
+    assert auth["authToken"] == "test-bearer"
