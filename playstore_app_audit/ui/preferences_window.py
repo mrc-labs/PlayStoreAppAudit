@@ -1143,7 +1143,11 @@ class PreferencesWindow(table_ui.TableWindow):
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             recent_days.setValue(StoreFreshnessThresholds().recent_max_days)
             stale_days.setValue(StoreFreshnessThresholds().stale_after_days)
-            resolver_enabled.setChecked(False)
+            disabled_provider = resolver_provider.findData(
+                device_specific_settings.DeviceSpecificProvider.DISABLED.value
+            )
+            if disabled_provider >= 0:
+                resolver_provider.setCurrentIndex(disabled_provider)
             resolver_endpoint.clear()
             resolver_default = resolver_profile.findData(
                 device_specific_integration.DEFAULT_PROFILE_ID
@@ -1174,9 +1178,10 @@ class PreferencesWindow(table_ui.TableWindow):
                 resolver_endpoint.text().strip()
             )
 
+            provider_value = str(resolver_provider.currentData() or "")
             if (
-                resolver_enabled.isChecked()
-                or resolver_endpoint_text
+                provider_value
+                == device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER.value
             ):
                 try:
                     device_specific_integration.validate_resolver_endpoint(
@@ -1211,8 +1216,9 @@ class PreferencesWindow(table_ui.TableWindow):
                 "store_workers": workers.value(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
-                device_specific_integration.SETTING_ENABLED: (
-                    resolver_enabled.isChecked()
+                device_specific_integration.SETTING_PROVIDER: str(
+                    resolver_provider.currentData()
+                    or device_specific_settings.DeviceSpecificProvider.DISABLED.value
                 ),
                 device_specific_integration.SETTING_ENDPOINT: (
                     resolver_endpoint.text().strip()
