@@ -17,6 +17,8 @@ from playstore_app_audit.services.device_specific_protocol import (
     DETAILS_URL,
     normalise_dispenser_endpoint,
     parse_details_version,
+    protobuf_string_path,
+    protobuf_value,
     provider_context_hash,
     resolve_metadata_with_auth_bundle,
     resolve_metadata_with_dispenser,
@@ -39,6 +41,14 @@ def _field_varint(number: int, value: int) -> bytes:
 def _field_bytes(number: int, value: bytes | str) -> bytes:
     raw = value.encode("utf-8") if isinstance(value, str) else value
     return _varint((number << 3) | 2) + _varint(len(raw)) + raw
+
+
+def _field_group(number: int, payload: bytes) -> bytes:
+    return (
+        _varint((number << 3) | 3)
+        + payload
+        + _varint((number << 3) | 4)
+    )
 
 
 def _details_payload(version_name: str = "1.2.3", version_code: int = 123) -> bytes:
@@ -123,6 +133,36 @@ def test_endpoint_rejects_insecure_or_ambiguous_context(endpoint: str) -> None:
         normalise_dispenser_endpoint(endpoint, country="CH", language="en")
     with pytest.raises(ValueError):
         provider_context_hash(endpoint)
+
+
+def test_protobuf_helpers_tolerate_proto2_groups_in_checkin_response() -> None:
+    payload = b"".join(
+        (
+            _field_group(3, _field_varint(1, 99)),
+            _field_varint(7, 0x123456),
+            _field_group(
+                10,
+                _field_bytes(1, "nested")
+                + _field_group(2, _field_varint(1, 1)),
+            ),
+            _field_bytes(12, "consistency-token"),
+            _field_group(20, _field_varint(1, 7)),
+        )
+    )
+
+    assert protobuf_value(payload, 7) == 0x123456
+    assert protobuf_string_path(payload, 12) == "consistency-token"
+
+
+def test_protobuf_helpers_reject_mismatched_group_end() -> None:
+    payload = (
+        _varint((3 << 3) | 3)
+        + _field_varint(1, 1)
+        + _varint((4 << 3) | 4)
+    )
+
+    with pytest.raises(ValueError, match="mismatched end group"):
+        protobuf_value(payload, 7)
 
 
 def test_minimal_protobuf_parser_extracts_version_evidence() -> None:
