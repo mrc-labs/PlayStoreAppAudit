@@ -250,15 +250,30 @@ def create_personal_auth_bundle(
             raise PersonalGoogleAuthError(f"checkin_http_{checkin.status_code}")
 
         try:
-            android_id = device_specific_protocol.protobuf_value(checkin.content, 7)
+            android_id = device_specific_protocol.protobuf_value(
+                checkin.content,
+                7,
+            )
+        except ValueError as exc:
+            raise PersonalGoogleAuthError(
+                "checkin_device_id_parse_error"
+            ) from exc
+        if not isinstance(android_id, int):
+            raise PersonalGoogleAuthError("checkin_device_id_type_error")
+
+        try:
             consistency_token = device_specific_protocol.protobuf_string_path(
                 checkin.content,
                 12,
             )
         except ValueError as exc:
-            raise PersonalGoogleAuthError("checkin_malformed_response") from exc
-        if not isinstance(android_id, int):
-            raise PersonalGoogleAuthError("checkin_malformed_response")
+            raise PersonalGoogleAuthError(
+                "checkin_consistency_token_parse_error"
+            ) from exc
+        if not consistency_token:
+            raise PersonalGoogleAuthError(
+                "checkin_consistency_token_empty"
+            )
         gsf_id = format(android_id, "x")
 
         partial: dict[str, object] = {
