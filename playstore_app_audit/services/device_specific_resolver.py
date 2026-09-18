@@ -26,6 +26,7 @@ from playstore_app_audit.services.device_specific_protocol import (
 )
 from playstore_app_audit.services.version_relationship import DEVICE_SPECIFIC_VALUES
 
+
 class DeviceSpecificProfileLike(Protocol):
     profile_id: str
     profile_hash: str
@@ -179,8 +180,8 @@ def resolve_if_device_specific(
     except ValueError:
         return _inconclusive_result(
             package_name=package_name,
-            profile_id=profile.profile_id,
-            profile_hash=profile.profile_hash,
+            profile_id=selected_profile.profile_id,
+            profile_hash=selected_profile.profile_hash,
             country=country,
             language=effective_language,
             diagnostics="invalid_dispenser_endpoint",
