@@ -290,10 +290,10 @@ def build_connected_device_profile(
     features: str,
     libraries: str,
     input_configuration: str,
-    resource_configuration: str = "",
     vending_package: str,
-    vending_version_code_listing: str = "",
     gsf_package: str,
+    resource_configuration: str = "",
+    vending_version_code_listing: str = "",
     gsf_version_code_listing: str = "",
 ) -> ConnectedDeviceProfile:
     safe_properties = safe_profile_properties(properties)
