@@ -36,6 +36,40 @@ from websocket import (
 EMBEDDED_SETUP_URL = "https://accounts.google.com/EmbeddedSetup"
 GOOGLE_AUTH_URL = "https://android.clients.google.com/auth"
 
+_EMAIL_CAPTURE_EXPRESSION = r"""
+(() => {
+  const selectors = [
+    '[data-email]',
+    '[data-identifier]',
+    'input[type="email"]',
+    '#identifierId',
+    '[aria-label*="@"]',
+    '[title*="@"]'
+  ];
+  const candidates = [];
+  for (const selector of selectors) {
+    for (const element of document.querySelectorAll(selector)) {
+      candidates.push(
+        element.getAttribute('data-email'),
+        element.getAttribute('data-identifier'),
+        element.value,
+        element.getAttribute('aria-label'),
+        element.getAttribute('title'),
+        element.textContent
+      );
+    }
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const match = candidate.match(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+    );
+    if (match) return match[0];
+  }
+  return '';
+})()
+"""
+
 
 class PersonalGoogleSessionError(RuntimeError):
     """Personal Google Session failed without exposing secret material."""
@@ -331,11 +365,33 @@ def _wait_for_oauth_credentials(
     except (OSError, WebSocketException) as exc:
         raise PersonalGoogleSessionError("Could not attach to the sign-in browser.") from exc
 
+    email: str | None = None
+    oauth_token: str | None = None
     try:
         request_id, session_id = _attach_page(websocket, request_id)
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 raise PersonalGoogleSessionError("The sign-in browser closed before completion.")
+
+            try:
+                request_id, response = _cdp_request(
+                    websocket,
+                    request_id,
+                    "Runtime.evaluate",
+                    {
+                        "expression": _EMAIL_CAPTURE_EXPRESSION,
+                        "returnByValue": True,
+                    },
+                    session_id,
+                )
+            except WebSocketTimeoutException:
+                response = {}
+            if response:
+                _raise_cdp_error(response)
+                candidate = _profile_email(response)
+                if candidate:
+                    email = candidate
+
             try:
                 request_id, response = _cdp_request(
                     websocket,
@@ -343,31 +399,27 @@ def _wait_for_oauth_credentials(
                     "Storage.getCookies",
                 )
             except WebSocketTimeoutException:
-                continue
-            _raise_cdp_error(response)
-            token = _oauth_token(response.get("result", {}).get("cookies", []))
-            if token:
-                request_id, response = _cdp_request(
-                    websocket,
-                    request_id,
-                    "Runtime.evaluate",
-                    {
-                        "expression": (
-                            "document.querySelector('[data-profile-identifier]'"
-                            "[data-email]')?.getAttribute('data-email') || ''"
-                        ),
-                        "returnByValue": True,
-                    },
-                    session_id,
-                )
+                response = {}
+            if response:
                 _raise_cdp_error(response)
-                email = _profile_email(response)
-                if email:
-                    return email, token
+                candidate = _oauth_token(
+                    response.get("result", {}).get("cookies", [])
+                )
+                if candidate:
+                    oauth_token = candidate
+
+            if email and oauth_token:
+                return email, oauth_token
+
             time.sleep(0.5)
     finally:
         websocket.close()
-    raise PersonalGoogleSessionError("Google sign-in timed out before completion.")
+
+    raise PersonalGoogleSessionError(
+        "Google sign-in timed out before completion "
+        f"(email_seen={email is not None}, "
+        f"oauth_token_seen={oauth_token is not None})."
+    )
 
 
 def _attach_page(websocket: Any, request_id: int) -> tuple[int, str]:
