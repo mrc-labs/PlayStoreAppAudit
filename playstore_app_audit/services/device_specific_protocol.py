@@ -232,6 +232,65 @@ def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
     raise ProtobufDecodeError("varint exceeds 64-bit encoding")
 
 
+def _read_group(
+    data: bytes,
+    offset: int,
+    field_number: int,
+) -> tuple[bytes, int]:
+    start = offset
+    while offset < len(data):
+        tag_start = offset
+        tag, offset = _read_varint(data, offset)
+        nested_field = tag >> 3
+        wire_type = tag & 7
+        if nested_field <= 0:
+            raise ProtobufDecodeError("invalid field number")
+        if wire_type == 4:
+            if nested_field != field_number:
+                raise ProtobufDecodeError("mismatched end group")
+            return data[start:tag_start], offset
+        offset = _skip_value(
+            data,
+            offset,
+            nested_field,
+            wire_type,
+        )
+    raise ProtobufDecodeError("truncated group")
+
+
+def _skip_value(
+    data: bytes,
+    offset: int,
+    field_number: int,
+    wire_type: int,
+) -> int:
+    if wire_type == 0:
+        _value, offset = _read_varint(data, offset)
+        return offset
+    if wire_type == 1:
+        end = offset + 8
+        if end > len(data):
+            raise ProtobufDecodeError("truncated fixed64")
+        return end
+    if wire_type == 2:
+        size, offset = _read_varint(data, offset)
+        end = offset + size
+        if end > len(data):
+            raise ProtobufDecodeError("truncated bytes field")
+        return end
+    if wire_type == 3:
+        _value, offset = _read_group(data, offset, field_number)
+        return offset
+    if wire_type == 4:
+        raise ProtobufDecodeError("unexpected end group")
+    if wire_type == 5:
+        end = offset + 4
+        if end > len(data):
+            raise ProtobufDecodeError("truncated fixed32")
+        return end
+    raise ProtobufDecodeError(f"unsupported wire type: {wire_type}")
+
+
 def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
     result: list[tuple[int, int, int | bytes]] = []
     offset = 0
@@ -257,6 +316,10 @@ def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
                 raise ProtobufDecodeError("truncated bytes field")
             value = data[offset:end]
             offset = end
+        elif wire_type == 3:
+            value, offset = _read_group(data, offset, field_number)
+        elif wire_type == 4:
+            raise ProtobufDecodeError("unexpected end group")
         elif wire_type == 5:
             end = offset + 4
             if end > len(data):
