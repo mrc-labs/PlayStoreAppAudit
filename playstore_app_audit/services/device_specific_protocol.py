@@ -324,17 +324,122 @@ def _failure(
     country: str,
     language: str,
     diagnostics: str,
+    provider: ResolverProvider = ResolverProvider.ANONYMOUS_DISPENSER,
 ) -> ResolverResult:
     return ResolverResult(
         package_name=package_name,
         profile_id=profile.profile_id,
         profile_hash=profile.profile_hash,
-        provider=ResolverProvider.ANONYMOUS_DISPENSER,
+        provider=provider,
         status=status,
         requested_country=country,
         requested_language=language,
         diagnostics=diagnostics,
     )
+
+
+def resolve_metadata_with_auth_bundle(
+    *,
+    package_name: str,
+    profile: ReferenceProfile,
+    auth_bundle: Mapping[str, Any],
+    country: str,
+    language: str,
+    provider: ResolverProvider,
+    timeout: float = 30.0,
+    session: requests.Session | None = None,
+) -> ResolverResult:
+    """Resolve metadata from a process-local auth bundle without persisting secrets."""
+
+    package = str(package_name or "").strip()
+    if not package:
+        raise ValueError("package_name is required")
+    country = _normalise_country(country)
+    language = _normalise_language(language)
+
+    bundle = _sanitize_auth_bundle(auth_bundle, country=country)
+    if bundle is None:
+        return _failure(
+            package_name=package,
+            profile=profile,
+            status=ResolverStatus.AUTH_FAILED,
+            country=country,
+            language=language,
+            diagnostics="personal_auth_context_incomplete",
+            provider=provider,
+        )
+
+    client = session or requests.Session()
+    owns_client = session is None
+    try:
+        try:
+            details_response = client.get(
+                DETAILS_URL,
+                params={"doc": package, "gl": country},
+                headers=_fdfe_headers(bundle, country=country, language=language),
+                timeout=timeout,
+            )
+        except requests.RequestException:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=ResolverStatus.TRANSPORT_ERROR,
+                country=country,
+                language=language,
+                diagnostics="play_transport_error",
+                provider=provider,
+            )
+
+        if details_response.status_code == 404:
+            status = ResolverStatus.UNAVAILABLE_FOR_PROFILE
+        elif details_response.status_code in {401, 403}:
+            status = ResolverStatus.AUTH_FAILED
+        elif details_response.status_code == 429:
+            status = ResolverStatus.RATE_LIMITED
+        elif details_response.status_code != 200:
+            status = ResolverStatus.TRANSPORT_ERROR
+        else:
+            status = None
+
+        if status is not None:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=status,
+                country=country,
+                language=language,
+                diagnostics=f"play_http_{details_response.status_code}",
+                provider=provider,
+            )
+
+        try:
+            parsed = parse_details_version(details_response.content)
+        except ValueError:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=ResolverStatus.MALFORMED_RESPONSE,
+                country=country,
+                language=language,
+                diagnostics="play_malformed_details",
+                provider=provider,
+            )
+
+        return ResolverResult(
+            package_name=package,
+            profile_id=profile.profile_id,
+            profile_hash=profile.profile_hash,
+            provider=provider,
+            status=ResolverStatus.RESOLVED,
+            requested_country=country,
+            requested_language=language,
+            version_name=parsed.version_name,
+            version_code=parsed.version_code,
+        )
+    finally:
+        bundle.clear()
+        if owns_client:
+            client.close()
 
 
 def resolve_metadata_with_dispenser(
