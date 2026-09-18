@@ -11,8 +11,8 @@ implemented. There is no APK purchase, delivery or download path.
 from __future__ import annotations
 
 import time
-from contextlib import suppress
 from collections.abc import Mapping
+from contextlib import suppress
 from typing import Protocol
 
 import requests
