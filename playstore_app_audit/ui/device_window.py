@@ -79,6 +79,7 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._subset_label = ""
         self._pending_device_metadata: dict[str, dict[str, str]] = {}
         self._force_refresh_sessions: set[int] = set()
+        self._device_specific_connected_profile = None
         super().__init__()
         self._build_menu_v8()
         self._apply_column_visibility(reset_order=False)
@@ -688,6 +689,29 @@ class DeviceWindow(compact_ui.CompactWindow):
                 )
 
             try:
+                connected_profile = self._device_specific_connected_profile
+                requested_profile = str(
+                    settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+                ).strip()
+                if (
+                    requested_profile
+                    == device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+                    and (
+                        connected_profile is None
+                        or not connected_profile.complete
+                    )
+                    and scan_session is not None
+                ):
+                    adb = self._get_matching_scan_session_adb(scan_session)
+                    if adb:
+                        candidate = scan_sessions.collect_connected_device_profile_for_session(
+                            adb,
+                            scan_session,
+                        )
+                        if candidate.complete:
+                            connected_profile = candidate
+                            self._device_specific_connected_profile = candidate
+
                 device_specific_integration.enrich_rows_with_device_specific_resolution(
                     rows,
                     settings=settings,
@@ -695,6 +719,7 @@ class DeviceWindow(compact_ui.CompactWindow):
                     language=config.language,
                     pause_event=pause_event,
                     cancel_event=cancel_event,
+                    connected_profile=connected_profile,
                 )
             except Exception:
                 # Device Specific resolution is optional enrichment. Never let
