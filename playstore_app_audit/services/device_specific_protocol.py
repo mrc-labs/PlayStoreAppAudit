@@ -141,6 +141,7 @@ def profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, st
         mcc, mnc = pair
         patched["CellOperator"] = mcc
         patched["SimOperator"] = mnc
+    patched.setdefault("Roaming", "mobile-notroaming")
     return patched
 
 
