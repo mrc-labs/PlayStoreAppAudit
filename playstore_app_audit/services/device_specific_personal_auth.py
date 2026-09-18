@@ -11,6 +11,7 @@ implemented. There is no APK purchase, delivery or download path.
 from __future__ import annotations
 
 import time
+from contextlib import suppress
 from collections.abc import Mapping
 from typing import Protocol
 
@@ -369,15 +370,13 @@ def create_personal_auth_bundle(
         except requests.RequestException:
             toc = None
         if toc is not None and toc.status_code == 200:
-            try:
+            with suppress(ValueError):
                 bundle["dfeCookie"] = device_specific_protocol.protobuf_string_path(
                     toc.content,
                     1,
                     6,
                     22,
                 )
-            except ValueError:
-                pass
         return bundle
     finally:
         email = ""
