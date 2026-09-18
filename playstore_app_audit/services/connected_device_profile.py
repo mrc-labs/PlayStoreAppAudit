@@ -444,6 +444,7 @@ def collect_connected_device_profile(
     adb: str,
     *,
     properties: Mapping[str, str] | None = None,
+    serial: str | None = None,
 ) -> ConnectedDeviceProfile:
     """Collect one on-demand, read-only Play-targeting profile over ADB.
 
@@ -453,7 +454,7 @@ def collect_connected_device_profile(
     Network/operator context is deliberately left to the resolver request.
     """
 
-    serial = _authorised_device_serial(adb)
+    serial = serial or _authorised_device_serial(adb)
 
     if properties is None:
         getprop = _required_device_stdout(
