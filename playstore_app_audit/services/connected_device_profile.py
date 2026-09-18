@@ -305,9 +305,64 @@ def build_connected_device_profile(
     )
 
 
-def _safe_stdout(adb: str, *args: str, timeout: int) -> str:
+def _authorised_device_serial(adb: str) -> str:
+    """Return the one authorised ADB serial for command targeting only."""
+
     try:
-        return str(run_adb(adb, *args, timeout=timeout).stdout or "")
+        output = str(run_adb(adb, "devices", timeout=20).stdout or "")
+    except Exception:
+        raise RuntimeError("ADB could not enumerate connected Android devices.") from None
+
+    authorised: list[str] = []
+    unauthorised = False
+    offline = False
+    for raw_line in output.splitlines()[1:]:
+        parts = raw_line.split()
+        if len(parts) < 2:
+            continue
+        state = parts[1]
+        if state == "device":
+            authorised.append(parts[0])
+        elif state == "unauthorized":
+            unauthorised = True
+        elif state == "offline":
+            offline = True
+
+    if len(authorised) == 1:
+        return authorised[0]
+    if len(authorised) > 1:
+        raise RuntimeError(
+            "More than one authorised Android device is visible to ADB. "
+            "Keep only the phone you want to use connected."
+        )
+    if unauthorised:
+        raise RuntimeError(
+            "The Android device is visible to ADB but is not authorised. "
+            "Unlock it and accept the USB debugging prompt."
+        )
+    if offline:
+        raise RuntimeError(
+            "The Android device is visible to ADB but is offline. Reconnect it and try again."
+        )
+    raise RuntimeError("ADB can see no authorised Android device.")
+
+
+def _required_device_stdout(
+    adb: str,
+    serial: str,
+    *args: str,
+    timeout: int,
+    label: str,
+) -> str:
+    try:
+        return str(run_adb(adb, "-s", serial, *args, timeout=timeout).stdout or "")
+    except Exception:
+        raise RuntimeError(f"ADB could not read the connected device {label}.") from None
+
+
+def _optional_device_stdout(adb: str, serial: str, *args: str, timeout: int) -> str:
+    try:
+        return str(run_adb(adb, "-s", serial, *args, timeout=timeout).stdout or "")
     except Exception:
         return ""
 
@@ -319,26 +374,60 @@ def collect_connected_device_profile(
 ) -> ConnectedDeviceProfile:
     """Collect one on-demand, read-only Play-targeting profile over ADB.
 
-    The function never reads account identifiers, Android ID, GSF ID, IMEI/MEID,
-    subscriber/SIM identifiers or the raw ADB serial. Network/operator context is
-    deliberately left to the resolver request.
+    The function never reads account identifiers, Android ID, GSF ID, IMEI/MEID or
+    subscriber/SIM identifiers. The raw ADB serial is used only transiently as the
+    command-local adb -s selector and is never returned, persisted or logged.
+    Network/operator context is deliberately left to the resolver request.
     """
 
+    serial = _authorised_device_serial(adb)
+
     if properties is None:
-        getprop = _safe_stdout(adb, "shell", "getprop", timeout=25)
+        getprop = _required_device_stdout(
+            adb,
+            serial,
+            "shell",
+            "getprop",
+            timeout=25,
+            label="properties",
+        )
         properties = store_locale.parse_getprop_output(getprop)
+        if not properties:
+            raise RuntimeError("ADB returned no readable Android device properties.")
 
     return build_connected_device_profile(
         properties=properties,
-        wm_size=_safe_stdout(adb, "shell", "wm", "size", timeout=15),
-        wm_density=_safe_stdout(adb, "shell", "wm", "density", timeout=15),
-        features=_safe_stdout(adb, "shell", "pm", "list", "features", timeout=30),
-        libraries=_safe_stdout(adb, "shell", "pm", "list", "libraries", timeout=30),
-        input_configuration=_safe_stdout(adb, "shell", "dumpsys", "input", timeout=30),
-        vending_package=_safe_stdout(
-            adb, "shell", "dumpsys", "package", "com.android.vending", timeout=30
+        wm_size=_optional_device_stdout(
+            adb, serial, "shell", "wm", "size", timeout=15
         ),
-        gsf_package=_safe_stdout(
-            adb, "shell", "dumpsys", "package", "com.google.android.gsf", timeout=30
+        wm_density=_optional_device_stdout(
+            adb, serial, "shell", "wm", "density", timeout=15
+        ),
+        features=_optional_device_stdout(
+            adb, serial, "shell", "pm", "list", "features", timeout=30
+        ),
+        libraries=_optional_device_stdout(
+            adb, serial, "shell", "pm", "list", "libraries", timeout=30
+        ),
+        input_configuration=_optional_device_stdout(
+            adb, serial, "shell", "dumpsys", "input", timeout=30
+        ),
+        vending_package=_optional_device_stdout(
+            adb,
+            serial,
+            "shell",
+            "dumpsys",
+            "package",
+            "com.android.vending",
+            timeout=30,
+        ),
+        gsf_package=_optional_device_stdout(
+            adb,
+            serial,
+            "shell",
+            "dumpsys",
+            "package",
+            "com.google.android.gsf",
+            timeout=30,
         ),
     )
