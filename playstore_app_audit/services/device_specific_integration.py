@@ -16,14 +16,21 @@ from typing import Any
 
 from playstore_app_audit.domain.device_specific_resolver import (
     ResolverCacheIdentity,
+    ResolverProvider,
     ResolverResult,
+    ResolverStatus,
 )
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.device_specific_cache import (
     DEFAULT_RESOLVER_CACHE_TTL_HOURS,
     load_cached_result,
     store_resolved_result,
 )
-from playstore_app_audit.services import device_specific_settings
+from playstore_app_audit.services import (
+    device_specific_personal_auth,
+    device_specific_personal_session,
+    device_specific_settings,
+)
 from playstore_app_audit.services.device_specific_profiles import (
     PRODUCTION_PROFILE_IDS,
     list_reference_profiles,
@@ -31,7 +38,7 @@ from playstore_app_audit.services.device_specific_profiles import (
 )
 from playstore_app_audit.services.device_specific_protocol import provider_context_hash
 from playstore_app_audit.services.device_specific_resolver import (
-    build_cache_identity,
+    build_cache_identity_for_profile,
     resolve_if_device_specific,
     should_attempt_device_specific_resolver,
 )
@@ -161,6 +168,33 @@ def _apply_inconclusive(
     row[STATUS_FIELD] = "inconclusive"
 
 
+def _apply_provider_failure(
+    row: dict[str, Any],
+    *,
+    profile_id: str,
+    profile_label: str,
+    status: ResolverStatus,
+) -> None:
+    row[PROFILE_FIELD] = profile_label
+    row[PROFILE_ID_FIELD] = profile_id
+    row[STATUS_FIELD] = status.value
+
+
+def _personal_auth_failure_status(
+    error: device_specific_personal_auth.PersonalGoogleAuthError,
+) -> ResolverStatus:
+    code = str(error)
+    if "rate_limited" in code:
+        return ResolverStatus.RATE_LIMITED
+    if "auth_failed" in code or "not_signed_in" in code:
+        return ResolverStatus.AUTH_FAILED
+    if "transport_error" in code:
+        return ResolverStatus.TRANSPORT_ERROR
+    if "malformed_response" in code:
+        return ResolverStatus.MALFORMED_RESPONSE
+    return ResolverStatus.INCONCLUSIVE
+
+
 def _wait_until_running(
     pause_event: threading.Event | None,
     cancel_event: threading.Event | None,
@@ -188,6 +222,7 @@ def enrich_rows_with_device_specific_resolution(
     use_cache: bool = True,
     timeout: float = 30.0,
     resolver: ResolverCallable | None = None,
+    connected_profile: ConnectedDeviceProfile | None = None,
 ) -> ResolverIntegrationSummary:
     """Add resolved evidence without replacing raw Store facts.
 
@@ -213,19 +248,42 @@ def enrich_rows_with_device_specific_resolution(
 
     endpoint = str(settings.get(SETTING_ENDPOINT) or "").strip()
     profile_id = str(settings.get(SETTING_PROFILE_ID) or DEFAULT_PROFILE_ID).strip()
-    if provider is device_specific_settings.DeviceSpecificProvider.PERSONAL_GOOGLE_SESSION:
-        return ResolverIntegrationSummary(
-            eligible=len(eligible_indices),
-            configuration_error="personal_google_session_unavailable",
-        )
-    try:
-        endpoint = validate_resolver_endpoint(endpoint)
-        profile = load_reference_profile(profile_id)
-    except (KeyError, TypeError, ValueError):
-        return ResolverIntegrationSummary(
-            eligible=len(eligible_indices),
-            configuration_error="invalid_resolver_configuration",
-        )
+    if profile_id == CONNECTED_DEVICE_PROFILE_ID:
+        if connected_profile is None or not connected_profile.complete:
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                configuration_error="connected_device_profile_unavailable",
+            )
+        profile = connected_profile
+    else:
+        try:
+            profile = load_reference_profile(profile_id)
+        except (KeyError, TypeError, ValueError):
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                configuration_error="invalid_resolver_profile",
+            )
+
+    if provider is device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER:
+        try:
+            endpoint = validate_resolver_endpoint(endpoint)
+            provider_context = provider_context_hash(endpoint)
+        except (TypeError, ValueError):
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                configuration_error="invalid_resolver_configuration",
+            )
+        resolver_provider = ResolverProvider.ANONYMOUS_DISPENSER
+    else:
+        session_status = device_specific_personal_session.personal_session_status()
+        if not session_status.signed_in or not session_status.context_hash:
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                configuration_error="personal_google_session_not_signed_in",
+            )
+        endpoint = ""
+        provider_context = session_status.context_hash
+        resolver_provider = ResolverProvider.PERSONAL_GOOGLE_SESSION
 
     if not _wait_until_running(pause_event, cancel_event):
         return ResolverIntegrationSummary(
@@ -242,10 +300,11 @@ def enrich_rows_with_device_specific_resolution(
 
     for index in eligible_indices:
         try:
-            identity = build_cache_identity(
+            identity = build_cache_identity_for_profile(
                 package_name=str(rows[index].get("package_name") or ""),
-                profile_id=profile.profile_id,
-                dispenser_url=endpoint,
+                profile=profile,
+                provider=resolver_provider,
+                provider_context_hash_value=provider_context,
                 country=country,
                 language=language,
             )
@@ -284,6 +343,31 @@ def enrich_rows_with_device_specific_resolution(
             unresolved=len(eligible_indices) - resolved,
         )
 
+    auth_bundle: dict[str, object] | None = None
+    if resolver_provider is ResolverProvider.PERSONAL_GOOGLE_SESSION:
+        try:
+            auth_bundle = device_specific_personal_auth.create_personal_auth_bundle(
+                profile=profile,
+                country=country,
+                language=language,
+                timeout=timeout,
+            )
+        except device_specific_personal_auth.PersonalGoogleAuthError as exc:
+            failure_status = _personal_auth_failure_status(exc)
+            for index, _identity in misses:
+                _apply_provider_failure(
+                    rows[index],
+                    profile_id=profile.profile_id,
+                    profile_label=profile_label,
+                    status=failure_status,
+                )
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                cache_hits=cache_hits,
+                resolved=resolved,
+                unresolved=len(eligible_indices) - resolved,
+            )
+
     try:
         requested_workers = int(max_workers)
     except (TypeError, ValueError):
@@ -303,11 +387,15 @@ def enrich_rows_with_device_specific_resolution(
             public_store_version=rows[index].get("play_version"),
             package_name=str(rows[index].get("package_name") or ""),
             profile_id=profile.profile_id,
-            dispenser_url=endpoint,
+            dispenser_url=endpoint or None,
             country=country,
             language=language,
             use_cache=False,
             timeout=timeout,
+            provider=resolver_provider,
+            profile=profile,
+            auth_bundle=auth_bundle,
+            provider_context_hash_value=provider_context,
         )
 
     def fill_submission_window() -> None:
@@ -360,6 +448,8 @@ def enrich_rows_with_device_specific_resolution(
             fill_submission_window()
     finally:
         executor.shutdown(wait=not cancelled, cancel_futures=True)
+        if auth_bundle is not None:
+            auth_bundle.clear()
 
     unresolved = max(0, len(eligible_indices) - resolved)
     return ResolverIntegrationSummary(
