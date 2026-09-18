@@ -162,7 +162,60 @@ def _parse_named_rows(text: str, prefix: str) -> str:
     return ",".join(sorted(values))
 
 
-def _parse_input_configuration(text: str) -> dict[str, str]:
+def _parse_resource_configuration(text: str) -> dict[str, str]:
+    """Map Android resource qualifiers to Google Play profile input fields."""
+
+    tokens = {
+        token.casefold()
+        for token in re.split(r"[\s-]+", str(text or "").strip())
+        if token
+    }
+    result: dict[str, str] = {}
+
+    if "finger" in tokens:
+        result["TouchScreen"] = "3"
+    elif "notouch" in tokens:
+        result["TouchScreen"] = "1"
+
+    keyboard_values = {"nokeys": "1", "qwerty": "2", "12key": "3"}
+    for token, value in keyboard_values.items():
+        if token in tokens:
+            result["Keyboard"] = value
+            break
+
+    navigation_values = {
+        "nonav": "1",
+        "dpad": "2",
+        "trackball": "3",
+        "wheel": "4",
+    }
+    for token, value in navigation_values.items():
+        if token in tokens:
+            result["Navigation"] = value
+            break
+
+    screen_layout_values = {
+        "small": "1",
+        "smll": "1",
+        "normal": "2",
+        "nrml": "2",
+        "large": "3",
+        "lrg": "3",
+        "xlarge": "4",
+        "xlrg": "4",
+    }
+    for token, value in screen_layout_values.items():
+        if token in tokens:
+            result["ScreenLayout"] = value
+            break
+
+    return result
+
+
+def _parse_input_configuration(
+    text: str,
+    resource_configuration: str = "",
+) -> dict[str, str]:
     source = str(text or "")
     patterns = {
         "TouchScreen": r"(?i)\btouch(?:screen|Screen)\s*[=:]\s*(\d+)",
@@ -179,6 +232,11 @@ def _parse_input_configuration(text: str) -> dict[str, str]:
                 value &= 0x0F
             if value > 0:
                 result[key] = str(value)
+
+    fallback = _parse_resource_configuration(resource_configuration)
+    for key, value in fallback.items():
+        result.setdefault(key, value)
+
     keyboard = result.get("Keyboard")
     if keyboard:
         result["HasHardKeyboard"] = "false" if keyboard == "1" else "true"
@@ -190,10 +248,16 @@ def _parse_input_configuration(text: str) -> dict[str, str]:
     return result
 
 
-def _parse_package_version(text: str) -> tuple[str, str]:
+def _parse_package_version(
+    text: str,
+    version_code_listing: str = "",
+) -> tuple[str, str]:
     source = str(text or "")
-    code = re.search(r"\bversionCode=(\d+)\b", source)
+    listing = str(version_code_listing or "")
+    listed_code = re.search(r"\bversionCode[:=](\d+)\b", listing)
+    dumped_code = re.search(r"\bversionCode=(\d+)\b", source)
     name = re.search(r"\bversionName=([^\r\n]+)", source)
+    code = listed_code or dumped_code
     return (
         code.group(1) if code else "",
         name.group(1).strip() if name else "",
@@ -226,8 +290,11 @@ def build_connected_device_profile(
     features: str,
     libraries: str,
     input_configuration: str,
+    resource_configuration: str = "",
     vending_package: str,
+    vending_version_code_listing: str = "",
     gsf_package: str,
+    gsf_version_code_listing: str = "",
 ) -> ConnectedDeviceProfile:
     safe_properties = safe_profile_properties(properties)
     profile: dict[str, str] = {}
@@ -259,10 +326,16 @@ def build_connected_device_profile(
             raw_gl = gl_match.group(1)
             profile["GL.Version"] = str(int(raw_gl, 16 if raw_gl.startswith("0x") else 10))
 
-    profile.update(_parse_input_configuration(input_configuration))
+    profile.update(
+        _parse_input_configuration(input_configuration, resource_configuration)
+    )
 
-    vending_code, vending_name = _parse_package_version(vending_package)
-    gsf_code, _gsf_name = _parse_package_version(gsf_package)
+    vending_code, vending_name = _parse_package_version(
+        vending_package, vending_version_code_listing
+    )
+    gsf_code, _gsf_name = _parse_package_version(
+        gsf_package, gsf_version_code_listing
+    )
     if vending_code:
         profile["Vending.version"] = vending_code
     if vending_name:
@@ -412,6 +485,9 @@ def collect_connected_device_profile(
         input_configuration=_optional_device_stdout(
             adb, serial, "shell", "dumpsys", "input", timeout=30
         ),
+        resource_configuration=_optional_device_stdout(
+            adb, serial, "shell", "cmd", "activity", "get-config", timeout=20
+        ),
         vending_package=_optional_device_stdout(
             adb,
             serial,
@@ -421,6 +497,17 @@ def collect_connected_device_profile(
             "com.android.vending",
             timeout=30,
         ),
+        vending_version_code_listing=_optional_device_stdout(
+            adb,
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.android.vending",
+            timeout=20,
+        ),
         gsf_package=_optional_device_stdout(
             adb,
             serial,
@@ -429,5 +516,16 @@ def collect_connected_device_profile(
             "package",
             "com.google.android.gsf",
             timeout=30,
+        ),
+        gsf_version_code_listing=_optional_device_stdout(
+            adb,
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.google.android.gsf",
+            timeout=20,
         ),
     )
