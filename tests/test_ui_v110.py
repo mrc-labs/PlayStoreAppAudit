@@ -1520,7 +1520,7 @@ def test_linkedin_url_and_link_are_removed() -> None:
 
 
 
-def test_device_specific_advanced_settings_are_disabled_by_default(
+def test_device_specific_advanced_settings_use_provider_model(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1538,9 +1538,9 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
     )
 
     def configure(dialog: QDialog) -> int:
-        enabled = dialog.findChild(
-            QCheckBox,
-            "DeviceSpecificResolverEnabledCheck",
+        provider = dialog.findChild(
+            QComboBox,
+            "DeviceSpecificProviderCombo",
         )
         endpoint = dialog.findChild(
             QLineEdit,
@@ -1550,30 +1550,36 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
             QComboBox,
             "DeviceSpecificResolverProfileCombo",
         )
+        personal_controls = dialog.findChild(
+            QWidget,
+            "DeviceSpecificPersonalSessionControls",
+        )
 
-        assert enabled is not None
+        assert provider is not None
         assert endpoint is not None
         assert profile is not None
+        assert personal_controls is not None
 
-        assert not enabled.isChecked()
-        assert not endpoint.isEnabled()
+        assert provider.currentData() == "disabled"
+        assert endpoint.isHidden()
+        assert personal_controls.isHidden()
         assert not profile.isEnabled()
-
         assert profile.count() == 2
 
-        enabled.setChecked(True)
+        custom_index = provider.findData("custom_dispenser")
+        assert custom_index >= 0
+        provider.setCurrentIndex(custom_index)
 
+        assert not endpoint.isHidden()
         assert endpoint.isEnabled()
+        assert personal_controls.isHidden()
         assert profile.isEnabled()
 
-        endpoint.setText(
-            "https://resolver.example/api/auth"
-        )
+        endpoint.setText("https://resolver.example/api/auth")
 
         default_index = profile.findData(
             device_specific_integration.DEFAULT_PROFILE_ID
         )
-
         assert default_index >= 0
         profile.setCurrentIndex(default_index)
 
@@ -1585,11 +1591,12 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
 
     assert saved
     assert saved[-1][
-        device_specific_integration.SETTING_ENABLED
-    ] is True
+        device_specific_integration.SETTING_PROVIDER
+    ] == "custom_dispenser"
     assert saved[-1][
         device_specific_integration.SETTING_ENDPOINT
     ] == "https://resolver.example/api/auth"
     assert saved[-1][
         device_specific_integration.SETTING_PROFILE_ID
     ] == device_specific_integration.DEFAULT_PROFILE_ID
+
