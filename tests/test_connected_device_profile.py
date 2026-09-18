@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from playstore_app_audit.services import connected_device_profile as connected_profile
 
 COMPLETE_PROPERTIES = {
@@ -133,23 +135,25 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
     monkeypatch,
 ) -> None:
     calls: list[tuple[str, ...]] = []
+    serial = "ABC123"
     outputs = {
-        ("shell", "getprop"): "\n".join(
+        ("devices",): f"List of devices attached\n{serial}\tdevice\n",
+        ("-s", serial, "shell", "getprop"): "\n".join(
             f"[{key}]: [{value}]" for key, value in COMPLETE_PROPERTIES.items()
         ),
-        ("shell", "wm", "size"): "Physical size: 1080x2400",
-        ("shell", "wm", "density"): "Physical density: 420",
-        ("shell", "pm", "list", "features"): (
+        ("-s", serial, "shell", "wm", "size"): "Physical size: 1080x2400",
+        ("-s", serial, "shell", "wm", "density"): "Physical density: 420",
+        ("-s", serial, "shell", "pm", "list", "features"): (
             "feature:android.hardware.touchscreen\nreqGlEsVersion=0x30002"
         ),
-        ("shell", "pm", "list", "libraries"): "library:android.test.base",
-        ("shell", "dumpsys", "input"): (
+        ("-s", serial, "shell", "pm", "list", "libraries"): "library:android.test.base",
+        ("-s", serial, "shell", "dumpsys", "input"): (
             "touchScreen=3 keyboard=1 navigation=1 screenLayout=2"
         ),
-        ("shell", "dumpsys", "package", "com.android.vending"): (
+        ("-s", serial, "shell", "dumpsys", "package", "com.android.vending"): (
             "versionCode=100\nversionName=1.0"
         ),
-        ("shell", "dumpsys", "package", "com.google.android.gsf"): (
+        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"): (
             "versionCode=200\nversionName=2.0"
         ),
     }
@@ -166,17 +170,35 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
 
     assert result.complete is True
     assert calls == [
-        ("shell", "getprop"),
-        ("shell", "wm", "size"),
-        ("shell", "wm", "density"),
-        ("shell", "pm", "list", "features"),
-        ("shell", "pm", "list", "libraries"),
-        ("shell", "dumpsys", "input"),
-        ("shell", "dumpsys", "package", "com.android.vending"),
-        ("shell", "dumpsys", "package", "com.google.android.gsf"),
+        ("devices",),
+        ("-s", serial, "shell", "getprop"),
+        ("-s", serial, "shell", "wm", "size"),
+        ("-s", serial, "shell", "wm", "density"),
+        ("-s", serial, "shell", "pm", "list", "features"),
+        ("-s", serial, "shell", "pm", "list", "libraries"),
+        ("-s", serial, "shell", "dumpsys", "input"),
+        ("-s", serial, "shell", "dumpsys", "package", "com.android.vending"),
+        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"),
     ]
+    returned = repr(dict(result.profile)).casefold()
+    assert serial.casefold() not in returned
+    assert "android_id" not in returned
+    assert "gsf_id" not in returned
     joined = " ".join(" ".join(call) for call in calls).casefold()
-    assert "serial" not in joined
-    assert "android_id" not in joined
     assert "iphonesubinfo" not in joined
     assert "account" not in joined
+
+
+def test_collect_connected_profile_fails_loudly_without_authorised_device(
+    monkeypatch,
+) -> None:
+    def fake_run_adb(adb: str, *args: str, timeout: int):
+        assert adb == "adb"
+        assert timeout > 0
+        assert args == ("devices",)
+        return type("Result", (), {"stdout": "List of devices attached\n"})()
+
+    monkeypatch.setattr(connected_profile, "run_adb", fake_run_adb)
+
+    with pytest.raises(RuntimeError, match="no authorised Android device"):
+        connected_profile.collect_connected_device_profile("adb")
