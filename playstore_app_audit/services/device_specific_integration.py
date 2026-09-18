@@ -20,16 +20,16 @@ from playstore_app_audit.domain.device_specific_resolver import (
     ResolverResult,
     ResolverStatus,
 )
+from playstore_app_audit.services import (
+    device_specific_personal_auth,
+    device_specific_personal_session,
+    device_specific_settings,
+)
 from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.device_specific_cache import (
     DEFAULT_RESOLVER_CACHE_TTL_HOURS,
     load_cached_result,
     store_resolved_result,
-)
-from playstore_app_audit.services import (
-    device_specific_personal_auth,
-    device_specific_personal_session,
-    device_specific_settings,
 )
 from playstore_app_audit.services.device_specific_profiles import (
     PRODUCTION_PROFILE_IDS,
