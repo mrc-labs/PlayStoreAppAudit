@@ -157,3 +157,90 @@ def test_sign_in_interactive_discards_one_time_context_after_install(
         "private.user@example.com",
         "aas_et/SESSION",
     )
+
+
+def test_browser_capture_can_observe_email_before_oauth_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSocket:
+        def close(self) -> None:
+            pass
+
+    class FakeProcess:
+        def poll(self) -> None:
+            return None
+
+    monkeypatch.setattr(personal, "create_connection", lambda *_args, **_kwargs: FakeSocket())
+    monkeypatch.setattr(
+        personal,
+        "_attach_page",
+        lambda _websocket, request_id: (request_id + 1, "session"),
+    )
+    monkeypatch.setattr(personal.time, "sleep", lambda _seconds: None)
+
+    responses = iter(
+        [
+            (
+                "Runtime.evaluate",
+                {
+                    "result": {
+                        "result": {
+                            "value": "private.user@example.com",
+                        }
+                    }
+                },
+            ),
+            ("Storage.getCookies", {"result": {"cookies": []}}),
+            (
+                "Runtime.evaluate",
+                {"result": {"result": {"value": ""}}},
+            ),
+            (
+                "Storage.getCookies",
+                {
+                    "result": {
+                        "cookies": [
+                            {
+                                "name": "oauth_token",
+                                "domain": ".accounts.google.com",
+                                "value": "oauth2_4/LATER",
+                            }
+                        ]
+                    }
+                },
+            ),
+        ]
+    )
+
+    def fake_cdp_request(
+        _websocket: object,
+        request_id: int,
+        method: str,
+        _params: dict[str, object] | None = None,
+        _session_id: str | None = None,
+    ) -> tuple[int, dict[str, object]]:
+        expected_method, response = next(responses)
+        assert method == expected_method
+        return request_id + 1, response
+
+    monkeypatch.setattr(personal, "_cdp_request", fake_cdp_request)
+
+    email, token = personal._wait_for_oauth_credentials(
+        "ws://127.0.0.1/devtools/browser/test",
+        "http://127.0.0.1:9222",
+        FakeProcess(),  # type: ignore[arg-type]
+        timeout=5,
+    )
+
+    assert email == "private.user@example.com"
+    assert token == "oauth2_4/LATER"
+
+
+def test_email_capture_expression_covers_current_google_sign_in_shapes() -> None:
+    expression = personal._EMAIL_CAPTURE_EXPRESSION
+
+    assert "data-email" in expression
+    assert "data-identifier" in expression
+    assert 'input[type="email"]' in expression
+    assert "identifierId" in expression
+    assert "aria-label" in expression
