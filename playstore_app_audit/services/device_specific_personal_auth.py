@@ -268,7 +268,10 @@ def create_personal_auth_bundle(
             "dfeCookie": "",
             "deviceInfoProvider": {
                 "userAgentString": finsky_user_agent,
-                "mccMnc": profile_data.get("SimOperator", ""),
+                "mccMnc": (
+                    f"{profile_data.get('CellOperator', '')}"
+                    f"{profile_data.get('SimOperator', '')}"
+                ),
             },
         }
 
