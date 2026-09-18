@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QStackedWidget,
+    QWidget,
 )
 
 import playstore_app_audit.services.change_overview as change_service
