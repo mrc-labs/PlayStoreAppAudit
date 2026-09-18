@@ -18,6 +18,7 @@ GETPROP_WITH_LOCALE = "\n".join(
         "[ro.build.version.sdk]: [36]",
         "[ro.build.version.security_patch]: [2026-08-05]",
         "[persist.sys.locale]: [it-CH]",
+        "[ro.serialno]: [raw-serial-1234]",
     )
 )
 
@@ -101,6 +102,13 @@ def test_scan_session_reuses_one_device_context_and_has_no_raw_serial(
     assert session.android_version == "16"
     assert session.android_api == "36"
     assert session.security_patch == "2026-08-05"
+    safe_properties = session.connected_device_properties()
+    assert safe_properties["ro.product.manufacturer"] == "Google"
+    assert safe_properties["ro.product.model"] == "Pixel 9 Pro"
+    assert safe_properties["ro.build.version.sdk"] == "36"
+    assert safe_properties["persist.sys.locale"] == "it-CH"
+    assert "ro.serialno" not in safe_properties
+    assert "raw-serial-1234" not in repr(session)
     assert session.locale == store_locale.StoreLocale(
         "it", "ch", "it-CH", "android_getprop:persist.sys.locale"
     )
@@ -129,6 +137,72 @@ def test_scan_session_reuses_one_device_context_and_has_no_raw_serial(
         ("shell", "pm", "list", "packages", "-3", "-i", "--show-versioncode"),
         ("shell", "pm", "list", "packages", "-3", "-d"),
     ]
+
+
+def test_connected_device_profile_reuses_safe_session_properties_without_getprop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, ...]] = []
+    runner = _successful_runner(calls)
+    monkeypatch.setattr(scan_sessions, "run_adb", runner)
+    session = scan_sessions.collect_scan_session("adb", exclude_system=True)
+
+    calls.clear()
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    def collect(
+        adb: str,
+        *,
+        properties: dict[str, str],
+        serial: str,
+    ) -> object:
+        captured["adb"] = adb
+        captured["properties"] = dict(properties)
+        captured["serial"] = serial
+        return sentinel
+
+    monkeypatch.setattr(
+        scan_sessions.connected_device_profile,
+        "collect_connected_device_profile",
+        collect,
+    )
+
+    result = scan_sessions.collect_connected_device_profile_for_session("adb", session)
+
+    assert result is sentinel
+    assert calls == [("devices",)]
+    assert captured["adb"] == "adb"
+    assert captured["serial"] == "raw-serial-1234"
+    properties = captured["properties"]
+    assert isinstance(properties, dict)
+    assert properties["ro.product.model"] == "Pixel 9 Pro"
+    assert "ro.serialno" not in properties
+
+
+def test_connected_device_profile_rejects_different_phone_before_collection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(scan_sessions, "run_adb", _successful_runner(calls))
+    session = scan_sessions.collect_scan_session("adb", exclude_system=True)
+
+    calls.clear()
+    monkeypatch.setattr(
+        scan_sessions,
+        "run_adb",
+        lambda *_args, **_kwargs: _completed(
+            "List of devices attached\nother-device\tdevice\n"
+        ),
+    )
+    monkeypatch.setattr(
+        scan_sessions.connected_device_profile,
+        "collect_connected_device_profile",
+        lambda *_args, **_kwargs: pytest.fail("collector ran for the wrong phone"),
+    )
+
+    with pytest.raises(RuntimeError, match="no longer matches this scan"):
+        scan_sessions.collect_connected_device_profile_for_session("adb", session)
 
 
 def test_all_package_scope_preserves_system_classification(

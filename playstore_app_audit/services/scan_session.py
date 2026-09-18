@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from threading import Event
@@ -10,7 +10,7 @@ from typing import Literal
 from uuid import uuid4
 
 from playstore_app_audit.devices.adb import run_adb
-from playstore_app_audit.services import installer_source, store_locale
+from playstore_app_audit.services import connected_device_profile, installer_source, store_locale
 
 
 class FullMetadataStatus(StrEnum):
@@ -74,6 +74,9 @@ class ScanSession:
     system_packages: frozenset[str]
     system_scope: Literal["third_party_only", "all_packages"]
     locale_fallback_attempted: bool
+    connected_device_profile_properties: tuple[tuple[str, str], ...] = field(
+        default=(), repr=False
+    )
     full_metadata_status: FullMetadataStatus = FullMetadataStatus.NOT_REQUESTED
     full_metadata: tuple[FullPackageMetadata, ...] = ()
     full_metadata_captured_at: datetime | None = None
@@ -102,6 +105,11 @@ class ScanSession:
 
     def metadata_by_package(self) -> dict[str, CompactPackageMetadata]:
         return {item.package_name: item for item in self.package_metadata}
+
+    def connected_device_properties(self) -> dict[str, str]:
+        """Return the safe process-local Play-profile property snapshot."""
+
+        return dict(self.connected_device_profile_properties)
 
     def device_summary(self) -> dict[str, object]:
         return {
@@ -345,6 +353,24 @@ def authorised_session_serial(adb: str, expected_device_id: str) -> str:
     return serial
 
 
+def collect_connected_device_profile_for_session(
+    adb: str, session: ScanSession
+) -> connected_device_profile.ConnectedDeviceProfile:
+    """Build a Connected Device profile only for the phone that owns ``session``."""
+
+    properties = session.connected_device_properties()
+    if not properties:
+        raise RuntimeError(
+            "This Scan Phone session does not contain a Connected Device profile snapshot."
+        )
+    serial = authorised_session_serial(adb, session.device_id)
+    return connected_device_profile.collect_connected_device_profile(
+        adb,
+        properties=properties,
+        serial=serial,
+    )
+
+
 def device_summary_from_properties(
     properties: dict[str, str],
     serial: str,
@@ -433,6 +459,9 @@ def collect_scan_session(
         system_packages=system_packages,
         system_scope="third_party_only" if exclude_system else "all_packages",
         locale_fallback_attempted=fallback_attempted,
+        connected_device_profile_properties=tuple(
+            sorted(connected_device_profile.safe_profile_properties(properties).items())
+        ),
     )
     if collect_full_metadata:
         return _capture_full_metadata(adb, session, cancel_event)
