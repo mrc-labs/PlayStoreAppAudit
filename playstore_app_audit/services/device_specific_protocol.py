@@ -134,7 +134,7 @@ def provider_context_hash(dispenser_url: str) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, str]:
+def profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, str]:
     patched = dict(profile.profile)
     pair = COUNTRY_MCC_MNC.get(_normalise_country(country))
     if pair is not None:
@@ -144,7 +144,7 @@ def _profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, s
     return patched
 
 
-def _sanitize_auth_bundle(
+def sanitize_auth_bundle(
     value: object,
     *,
     country: str,
@@ -174,7 +174,7 @@ def _sanitize_auth_bundle(
     return bundle
 
 
-def _fdfe_headers(
+def fdfe_headers(
     bundle: Mapping[str, Any],
     *,
     country: str,
@@ -357,7 +357,7 @@ def resolve_metadata_with_auth_bundle(
     country = _normalise_country(country)
     language = _normalise_language(language)
 
-    bundle = _sanitize_auth_bundle(auth_bundle, country=country)
+    bundle = sanitize_auth_bundle(auth_bundle, country=country)
     if bundle is None:
         return _failure(
             package_name=package,
@@ -376,7 +376,7 @@ def resolve_metadata_with_auth_bundle(
             details_response = client.get(
                 DETAILS_URL,
                 params={"doc": package, "gl": country},
-                headers=_fdfe_headers(bundle, country=country, language=language),
+                headers=fdfe_headers(bundle, country=country, language=language),
                 timeout=timeout,
             )
         except requests.RequestException:
@@ -481,7 +481,7 @@ def resolve_metadata_with_dispenser(
         try:
             auth_response = client.post(
                 endpoint,
-                json=_profile_for_country(profile, country),
+                json=profile_for_country(profile, country),
                 headers={
                     "Content-Type": "application/json",
                     "User-Agent": "StoreAppAudit-DeviceSpecific/1",
@@ -528,7 +528,7 @@ def resolve_metadata_with_dispenser(
                 diagnostics="dispenser_malformed_json",
             )
 
-        bundle = _sanitize_auth_bundle(payload, country=country)
+        bundle = sanitize_auth_bundle(payload, country=country)
         if bundle is None:
             return _failure(
                 package_name=package,
@@ -543,7 +543,7 @@ def resolve_metadata_with_dispenser(
             details_response = client.get(
                 DETAILS_URL,
                 params={"doc": package, "gl": country},
-                headers=_fdfe_headers(bundle, country=country, language=language),
+                headers=fdfe_headers(bundle, country=country, language=language),
                 timeout=timeout,
             )
         except requests.RequestException:
