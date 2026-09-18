@@ -40,7 +40,7 @@ def build_complete_profile() -> connected_profile.ConnectedDeviceProfile:
             "screenLayout=268435810\n"
         ),
         vending_package="versionCode=83911210 minSdk=23\nversionName=47.2.19-31\n",
-        gsf_package="versionCode=253431037 minSdk=23\nversionName=15-12345678\n",
+        play_services_package="versionCode=253431037 minSdk=23\nversionName=15-12345678\n",
     )
 
 
@@ -93,7 +93,7 @@ def test_sensitive_getprop_values_never_enter_connected_profile() -> None:
         libraries="library:android.test.base",
         input_configuration="touchScreen=3 keyboard=1 navigation=1 screenLayout=2",
         vending_package="versionCode=100\nversionName=1.0",
-        gsf_package="versionCode=200\nversionName=2.0",
+        play_services_package="versionCode=200\nversionName=2.0",
     )
 
     combined = repr(safe) + repr(dict(profile.profile))
@@ -118,7 +118,7 @@ def test_incomplete_connected_profile_reports_missing_fields() -> None:
         libraries="",
         input_configuration="",
         vending_package="",
-        gsf_package="",
+        play_services_package="",
     )
 
     assert result.complete is False
@@ -166,7 +166,7 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
             "--show-versioncode",
             "com.android.vending",
         ): "package:com.android.vending versionCode:100",
-        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"): (
+        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gms"): (
             "versionCode=37\nversionName=2.0"
         ),
         (
@@ -177,8 +177,8 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
             "list",
             "packages",
             "--show-versioncode",
-            "com.google.android.gsf",
-        ): "package:com.google.android.gsf versionCode:200",
+            "com.google.android.gms",
+        ): "package:com.google.android.gms versionCode:200",
     }
 
     def fake_run_adb(adb: str, *args: str, timeout: int):
@@ -214,7 +214,7 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
             "--show-versioncode",
             "com.android.vending",
         ),
-        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"),
+        ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gms"),
         (
             "-s",
             serial,
@@ -223,7 +223,7 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
             "list",
             "packages",
             "--show-versioncode",
-            "com.google.android.gsf",
+            "com.google.android.gms",
         ),
     ]
     returned = repr(dict(result.profile)).casefold()
@@ -231,6 +231,8 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
     assert "android_id" not in returned
     assert "gsf_id" not in returned
     joined = " ".join(" ".join(call) for call in calls).casefold()
+    assert "com.google.android.gms" in joined
+    assert "com.google.android.gsf" not in joined
     assert "iphonesubinfo" not in joined
     assert "account" not in joined
 
@@ -266,9 +268,9 @@ def test_android_resource_qualifiers_fill_modern_input_configuration() -> None:
         vending_version_code_listing=(
             "package:com.android.vending versionCode:85302740"
         ),
-        gsf_package="versionCode=37",
-        gsf_version_code_listing=(
-            "package:com.google.android.gsf versionCode:263435035"
+        play_services_package="versionCode=37",
+        play_services_version_code_listing=(
+            "package:com.google.android.gms versionCode:263435035"
         ),
     )
 
