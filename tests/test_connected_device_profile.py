@@ -150,12 +150,35 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
         ("-s", serial, "shell", "dumpsys", "input"): (
             "touchScreen=3 keyboard=1 navigation=1 screenLayout=2"
         ),
+        ("-s", serial, "shell", "cmd", "activity", "get-config"): (
+            "config: en-rGB-sw420dp-normal-port-finger-nokeys-nonav-v37"
+        ),
         ("-s", serial, "shell", "dumpsys", "package", "com.android.vending"): (
-            "versionCode=100\nversionName=1.0"
+            "versionCode=37\nversionName=1.0"
         ),
+        (
+            "-s",
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.android.vending",
+        ): "package:com.android.vending versionCode:100",
         ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"): (
-            "versionCode=200\nversionName=2.0"
+            "versionCode=37\nversionName=2.0"
         ),
+        (
+            "-s",
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.google.android.gsf",
+        ): "package:com.google.android.gsf versionCode:200",
     }
 
     def fake_run_adb(adb: str, *args: str, timeout: int):
@@ -169,6 +192,8 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
     result = connected_profile.collect_connected_device_profile("adb")
 
     assert result.complete is True
+    assert result.profile["Vending.version"] == "100"
+    assert result.profile["GSF.version"] == "200"
     assert calls == [
         ("devices",),
         ("-s", serial, "shell", "getprop"),
@@ -177,8 +202,29 @@ def test_collect_connected_profile_uses_only_expected_read_only_adb_probes(
         ("-s", serial, "shell", "pm", "list", "features"),
         ("-s", serial, "shell", "pm", "list", "libraries"),
         ("-s", serial, "shell", "dumpsys", "input"),
+        ("-s", serial, "shell", "cmd", "activity", "get-config"),
         ("-s", serial, "shell", "dumpsys", "package", "com.android.vending"),
+        (
+            "-s",
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.android.vending",
+        ),
         ("-s", serial, "shell", "dumpsys", "package", "com.google.android.gsf"),
+        (
+            "-s",
+            serial,
+            "shell",
+            "pm",
+            "list",
+            "packages",
+            "--show-versioncode",
+            "com.google.android.gsf",
+        ),
     ]
     returned = repr(dict(result.profile)).casefold()
     assert serial.casefold() not in returned
@@ -202,3 +248,36 @@ def test_collect_connected_profile_fails_loudly_without_authorised_device(
 
     with pytest.raises(RuntimeError, match="no authorised Android device"):
         connected_profile.collect_connected_device_profile("adb")
+
+
+def test_android_resource_qualifiers_fill_modern_input_configuration() -> None:
+    result = connected_profile.build_connected_device_profile(
+        properties=COMPLETE_PROPERTIES,
+        wm_size="Physical size: 1280x2856",
+        wm_density="Physical density: 480",
+        features="feature:android.hardware.touchscreen\nreqGlEsVersion=0x30002",
+        libraries="library:android.test.base",
+        input_configuration="",
+        resource_configuration=(
+            "config: 234mcc10mnc-en-rGB-ldltr-sw420dp-w420dp-h876dp-"
+            "normal-long-port-finger-keysexposed-nokeys-navhidden-nonav-v37"
+        ),
+        vending_package="versionCode=37\nversionName=53.0.27-34 [0] [PR] 973951861",
+        vending_version_code_listing=(
+            "package:com.android.vending versionCode:85302740"
+        ),
+        gsf_package="versionCode=37",
+        gsf_version_code_listing=(
+            "package:com.google.android.gsf versionCode:263435035"
+        ),
+    )
+
+    assert result.complete is True
+    assert result.profile["TouchScreen"] == "3"
+    assert result.profile["Keyboard"] == "1"
+    assert result.profile["Navigation"] == "1"
+    assert result.profile["ScreenLayout"] == "2"
+    assert result.profile["HasHardKeyboard"] == "false"
+    assert result.profile["HasFiveWayNavigation"] == "false"
+    assert result.profile["Vending.version"] == "85302740"
+    assert result.profile["GSF.version"] == "263435035"
