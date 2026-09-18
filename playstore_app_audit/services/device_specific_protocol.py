@@ -288,6 +288,29 @@ def _navigate(data: bytes, *path: int) -> list[tuple[int, int, int | bytes]]:
     return _fields(current)
 
 
+def protobuf_value(data: bytes, field_number: int) -> int | bytes:
+    """Return the first protobuf field value from the shared tiny decoder."""
+
+    for number, _wire_type, value in _fields(data):
+        if number == field_number:
+            return value
+    raise ProtobufDecodeError(f"protobuf field {field_number} is missing")
+
+
+def protobuf_string_path(data: bytes, *path: int) -> str:
+    value: int | bytes = data
+    for field_number in path:
+        if not isinstance(value, bytes):
+            raise ProtobufDecodeError("protobuf path is not length-delimited")
+        value = protobuf_value(value, field_number)
+    if not isinstance(value, bytes):
+        raise ProtobufDecodeError("protobuf path does not end in bytes")
+    try:
+        return value.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProtobufDecodeError("protobuf string is not UTF-8") from exc
+
+
 def parse_details_version(raw: bytes) -> ParsedPlayVersion:
     doc_fields = _navigate(raw, 1, 2, 4)
     if not doc_fields:
