@@ -316,6 +316,7 @@ def test_third_party_notice_is_platform_neutral(
         nuitka_version="4.1.3",
         nuitka_files=["licenses/nuitka/LICENSE.txt"],
         openssl=None,
+        goopdl_license="licenses/goopdl/LICENSE.txt",
     )
 
     text = (
