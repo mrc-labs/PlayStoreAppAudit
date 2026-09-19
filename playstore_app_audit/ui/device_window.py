@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
@@ -121,12 +122,19 @@ class DeviceWindow(compact_ui.CompactWindow):
         self,
         requested_profile: str,
         scan_session: scan_sessions.ScanSession | None,
+        *,
+        resolver_enabled: bool = True,
     ) -> ConnectedDeviceProfile | None:
         """Return only a complete profile valid for the current audit context."""
 
+        if (
+            not resolver_enabled
+            or requested_profile
+            != device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+        ):
+            return None
+
         cached_profile = self._device_specific_connected_profile
-        if requested_profile != device_specific_integration.CONNECTED_DEVICE_PROFILE_ID:
-            return cached_profile
         if scan_session is None:
             return (
                 cached_profile
@@ -733,9 +741,16 @@ class DeviceWindow(compact_ui.CompactWindow):
                 requested_profile = str(
                     settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
                 ).strip()
+                resolver_provider = device_specific_settings.provider_from_settings(
+                    settings
+                )
                 connected_profile = self._connected_device_profile_for_resolution(
                     requested_profile,
                     scan_session,
+                    resolver_enabled=(
+                        resolver_provider
+                        is not device_specific_settings.DeviceSpecificProvider.DISABLED
+                    ),
                 )
 
                 device_specific_integration.enrich_rows_with_device_specific_resolution(
