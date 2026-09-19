@@ -307,7 +307,7 @@ def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
             end = offset + 8
             if end > len(data):
                 raise ProtobufDecodeError("truncated fixed64")
-            value = data[offset:end]
+            value = int.from_bytes(data[offset:end], "little")
             offset = end
         elif wire_type == 2:
             size, offset = _read_varint(data, offset)
@@ -324,7 +324,7 @@ def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
             end = offset + 4
             if end > len(data):
                 raise ProtobufDecodeError("truncated fixed32")
-            value = data[offset:end]
+            value = int.from_bytes(data[offset:end], "little")
             offset = end
         else:
             raise ProtobufDecodeError(f"unsupported wire type: {wire_type}")
