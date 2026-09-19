@@ -37,6 +37,16 @@ EMBEDDED_SETUP_URL = "https://accounts.google.com/EmbeddedSetup"
 GOOGLE_AUTH_URL = "https://android.clients.google.com/auth"
 OAUTH_EMAIL_HINT = "oauth-token@example.com"
 
+_SIGNED_IN_COOKIE_NAMES = frozenset(
+    {
+        "SID",
+        "LSID",
+        "SAPISID",
+        "__Secure-1PSID",
+        "__Secure-3PSID",
+    }
+)
+
 
 
 class PersonalGoogleSessionError(RuntimeError):
@@ -356,8 +366,10 @@ def _wait_for_oauth_token(
             "Could not attach to the sign-in browser."
         ) from exc
 
+    signed_in_cookie_seen = False
+    embedded_setup_retriggered = False
     try:
-        request_id, _session_id = _attach_page(websocket, request_id)
+        request_id, session_id = _attach_page(websocket, request_id)
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 raise PersonalGoogleSessionError(
@@ -372,17 +384,32 @@ def _wait_for_oauth_token(
             except WebSocketTimeoutException:
                 continue
             _raise_cdp_error(response)
-            oauth_token = _oauth_token(
-                response.get("result", {}).get("cookies", [])
-            )
+            cookies = response.get("result", {}).get("cookies", [])
+            oauth_token = _oauth_token(cookies)
             if oauth_token:
                 return oauth_token
+
+            if _signed_in_google_session(cookies):
+                signed_in_cookie_seen = True
+                if not embedded_setup_retriggered:
+                    request_id, response = _cdp_request(
+                        websocket,
+                        request_id,
+                        "Page.navigate",
+                        {"url": EMBEDDED_SETUP_URL},
+                        session_id,
+                    )
+                    _raise_cdp_error(response)
+                    embedded_setup_retriggered = True
+
             time.sleep(0.5)
     finally:
         websocket.close()
 
     raise PersonalGoogleSessionError(
-        "Google sign-in timed out before the OAuth token appeared."
+        "Google sign-in timed out before the OAuth token appeared "
+        f"(signed_in_cookie_seen={signed_in_cookie_seen}, "
+        f"embedded_setup_retriggered={embedded_setup_retriggered})."
     )
 
 
@@ -444,6 +471,21 @@ def _receive_response(websocket: Any, request_id: int) -> dict[str, Any]:
 def _raise_cdp_error(response: dict[str, Any]) -> None:
     if response.get("error"):
         raise PersonalGoogleSessionError("The sign-in browser rejected a local request.")
+
+
+def _signed_in_google_session(cookies: list[dict[str, Any]]) -> bool:
+    for cookie in cookies:
+        name = str(cookie.get("name") or "")
+        domain = str(cookie.get("domain") or "").lstrip(".").casefold()
+        if (
+            name in _SIGNED_IN_COOKIE_NAMES
+            and (
+                domain == "google.com"
+                or domain.endswith(".google.com")
+            )
+        ):
+            return True
+    return False
 
 
 def _oauth_token(cookies: list[dict[str, Any]]) -> str | None:
