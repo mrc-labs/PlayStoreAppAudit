@@ -348,6 +348,35 @@ def _run_worker(
     app.processEvents()
 
 
+def test_connected_profile_capture_is_skipped_when_resolver_disabled(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _session(_compact(), device_id="safe-device-a")
+    window._device_specific_connected_profile = _connected_profile("Phone A")
+    window._device_specific_connected_profile_device_id = session.device_id
+    monkeypatch.setattr(
+        window,
+        "_get_matching_scan_session_adb",
+        lambda _session: pytest.fail("ADB was probed while Device Specific was disabled"),
+    )
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        lambda *_args: pytest.fail(
+            "Connected Device profile was captured while Device Specific was disabled"
+        ),
+    )
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        session,
+        resolver_enabled=False,
+    )
+
+    assert result is None
+
+
 def test_connected_profile_cache_reuses_same_safe_device_without_recapture(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
