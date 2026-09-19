@@ -39,6 +39,7 @@ import playstore_app_audit.services.device_specific_integration as device_specif
 import playstore_app_audit.services.device_specific_personal_session as device_specific_personal_session
 import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
@@ -923,17 +924,26 @@ class PreferencesWindow(table_ui.TableWindow):
             "_device_specific_connected_profile",
             None,
         )
+        connected_profile_device_id = getattr(
+            self,
+            "_device_specific_connected_profile_device_id",
+            None,
+        )
         scan_session = getattr(self, "_scan_session", None)
-        connected_available = bool(
+        if not isinstance(scan_session, scan_sessions.ScanSession):
+            scan_session = None
+        cached_profile_matches_context = bool(
             connected_profile is not None
             and getattr(connected_profile, "complete", False)
-        ) or scan_session is not None
+            and (
+                scan_session is None
+                or connected_profile_device_id
+                == getattr(scan_session, "device_id", None)
+            )
+        )
+        connected_available = cached_profile_matches_context or scan_session is not None
         if connected_available:
-            if connected_profile is not None and getattr(
-                connected_profile,
-                "complete",
-                False,
-            ):
+            if cached_profile_matches_context:
                 connected_label = (
                     f"Connected Device — {connected_profile.display_name} — "
                     f"Android {connected_profile.android_release} / "
