@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.platform.file_locations as file_locations
 import playstore_app_audit.services.device_insights as device_insights
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.local_apk as local_apk
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_source as local_apk_source
@@ -34,6 +35,7 @@ from playstore_app_audit.domain.local_artifacts import (
 )
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui import details_panel, schema
 from playstore_app_audit.ui.base_window import EXPORT_FIELDS
@@ -114,6 +116,74 @@ def test_choose_files_establishes_candidates_without_parsing(
     assert parser_calls == []
     assert scheduled == [True]
     assert window.run_button.isEnabled()
+
+
+@pytest.mark.parametrize(
+    ("provider", "profile_complete", "expects_profile"),
+    [
+        ("custom_dispenser", True, True),
+        ("custom_dispenser", False, False),
+        ("disabled", True, False),
+    ],
+)
+def test_local_apk_start_passes_only_complete_cached_profile_without_adb(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    provider: str,
+    profile_complete: bool,
+    expects_profile: bool,
+) -> None:
+    candidate = tmp_path / "device-specific.apk"
+    candidate.write_bytes(b"candidate")
+    profile = ConnectedDeviceProfile(
+        profile_id="connected_device_test",
+        display_name="Validated Phone",
+        android_release="16",
+        api_level=36,
+        profile_hash="b" * 64,
+        profile={"UserReadableName": "Validated Phone"},
+        complete=profile_complete,
+        missing_fields=() if profile_complete else ("Build.FINGERPRINT",),
+    )
+    settings = dict(window.user_settings)
+    settings.update(
+        {
+            device_specific_integration.SETTING_PROVIDER: provider,
+            device_specific_integration.SETTING_ENDPOINT: "https://resolver.example/api/auth",
+            device_specific_integration.SETTING_PROFILE_ID: (
+                device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+            ),
+        }
+    )
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(
+        window,
+        "_get_matching_scan_session_adb",
+        lambda _session: pytest.fail("Local APK start probed ADB"),
+    )
+    window._device_specific_connected_profile = profile
+    window._device_specific_connected_profile_device_id = "safe-device-id"
+    window._local_apk_candidates = (candidate,)
+    window.source_mode = "local_apk"
+    captured: dict[str, object] = {}
+
+    class DeferredThread:
+        def __init__(self, *, target, args, daemon: bool) -> None:
+            captured.update(target=target, args=args, daemon=daemon)
+
+        def start(self) -> None:
+            captured["started"] = True
+
+    monkeypatch.setattr(main_window_ui.threading, "Thread", DeferredThread)
+
+    window._start_local_apk_audit()
+
+    assert captured["started"] is True
+    assert captured["daemon"] is True
+    args = captured["args"]
+    assert isinstance(args, tuple)
+    assert args[-1] is (profile if expects_profile else None)
 
 
 def test_folder_discovery_is_recursive_case_insensitive_and_filtered(tmp_path: Path) -> None:

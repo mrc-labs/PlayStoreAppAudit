@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_file_ops as local_file_ops
 import playstore_app_audit.services.local_apk_mass_remove as mass_remove
@@ -53,6 +55,7 @@ from playstore_app_audit.platform import runtime
 from playstore_app_audit.platform.file_locations import open_file_location
 from playstore_app_audit.product_identity import is_known_display_name
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.column_presets import (
@@ -891,6 +894,20 @@ class MainWindow(results_ui.ResultsWindow):
         self._alternative_phase_active = False
         self._set_audit_source_controls_enabled(False)
         self._set_audit_state(AuditRunState.RUNNING)
+        requested_profile = str(
+            self.user_settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+        ).strip()
+        resolver_provider = device_specific_settings.provider_from_settings(
+            self.user_settings
+        )
+        connected_profile = self._connected_device_profile_for_resolution(
+            requested_profile,
+            None,
+            resolver_enabled=(
+                resolver_provider
+                is not device_specific_settings.DeviceSpecificProvider.DISABLED
+            ),
+        )
         threading.Thread(
             target=self._local_apk_audit_worker,
             args=(
@@ -902,6 +919,7 @@ class MainWindow(results_ui.ResultsWindow):
                 self._audit_cancel_event,
                 force_refresh,
                 source_mode,
+                connected_profile,
             ),
             daemon=True,
         ).start()
@@ -919,6 +937,7 @@ class MainWindow(results_ui.ResultsWindow):
         cancel_event: threading.Event,
         force_refresh: bool,
         source_mode: str = local_apk_audit.SOURCE_MODE,
+        connected_profile: ConnectedDeviceProfile | None = None,
     ) -> None:
         parse_started = time.perf_counter()
         artifacts: list[LocalArtifact] = []
@@ -1130,6 +1149,7 @@ class MainWindow(results_ui.ResultsWindow):
                     session, eligible
                 ),
                 row_completed_callback=row_completed,
+                connected_profile=connected_profile,
             )
             rows = local_apk_audit.association_result_rows(
                 result.associations,

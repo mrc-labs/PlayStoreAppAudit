@@ -15,8 +15,14 @@ from playstore_app_audit.domain.local_artifact_store import (
     PackageStoreEvidence,
 )
 from playstore_app_audit.domain.local_artifacts import LocalArtifact
-from playstore_app_audit.services import alternative_distribution, app_icon_metadata, state
+from playstore_app_audit.services import (
+    alternative_distribution,
+    app_icon_metadata,
+    device_specific_integration,
+    state,
+)
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.play_store import PlayStoreService
 
 logger = logging.getLogger(__name__)
@@ -116,6 +122,7 @@ class LocalArtifactStoreService:
         progress_callback: Callable[[int, int, str], None] | None = None,
         alternative_phase_callback: Callable[[int], None] | None = None,
         row_completed_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        connected_profile: ConnectedDeviceProfile | None = None,
     ) -> LocalArtifactStoreFanoutResult:
         ordered_artifacts = tuple(artifacts)
         unique_apps: list[dict[str, str]] = []
@@ -237,6 +244,44 @@ class LocalArtifactStoreService:
                 cache_file=provider_cache_file,
                 phase_callback=alternative_phase_callback,
             )
+
+        if not cancelled.is_set():
+            try:
+                resolver_summary = (
+                    device_specific_integration.enrich_rows_with_device_specific_resolution(
+                        ordered_rows,
+                        settings=settings,
+                        country=config.country,
+                        language=config.language,
+                        pause_event=running,
+                        cancel_event=cancelled,
+                        connected_profile=connected_profile,
+                    )
+                )
+                logger.info(
+                    "local_device_specific_summary eligible=%d attempted=%d cache_hits=%d "
+                    "resolved=%d unresolved=%d cancelled=%s configuration_error=%s",
+                    resolver_summary.eligible,
+                    resolver_summary.attempted,
+                    resolver_summary.cache_hits,
+                    resolver_summary.resolved,
+                    resolver_summary.unresolved,
+                    resolver_summary.cancelled,
+                    resolver_summary.configuration_error or "none",
+                )
+                if row_completed_callback is not None and resolver_summary.eligible:
+                    for row in ordered_rows:
+                        if not device_specific_integration.should_attempt_device_specific_resolver(
+                            row.get("play_version")
+                        ):
+                            continue
+                        package_name = str(row.get("package_name") or "")
+                        if package_name:
+                            row_completed_callback(package_name, dict(row))
+            except Exception:
+                # Optional metadata-only enrichment must never fail the public
+                # Store + Local APK audit or expose provider exception details.
+                logger.warning("Local package Device Specific enrichment failed")
 
         evidence_by_package: dict[str, PackageStoreEvidence] = {}
         for row in ordered_rows:
