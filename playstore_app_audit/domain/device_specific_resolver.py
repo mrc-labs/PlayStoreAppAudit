@@ -25,6 +25,7 @@ class ResolverStatus(StrEnum):
 
 class ResolverProvider(StrEnum):
     ANONYMOUS_DISPENSER = "anonymous_dispenser"
+    PERSONAL_GOOGLE_SESSION = "personal_google_session"
 
 
 def _normalise_country(value: object) -> str:

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from playstore_app_audit.platform.runtime import app_data_dir
+from playstore_app_audit.services import device_specific_settings
 from playstore_app_audit.services.store_freshness import (
     DEFAULT_RECENT_MAX_DAYS,
     DEFAULT_STALE_AFTER_DAYS,
@@ -74,6 +75,12 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "compare_previous": False,
     "exclude_system_source": True,
     "collect_full_device_metadata_on_scan": False,
+    device_specific_settings.SETTING_PROVIDER: (
+        device_specific_settings.DeviceSpecificProvider.DISABLED.value
+    ),
+    device_specific_settings.SETTING_ENDPOINT: "",
+    device_specific_settings.SETTING_PROFILE_ID: "",
+    device_specific_settings.LEGACY_SETTING_ENABLED: False,
     "details_panel_position": "right",
     "view_preset": "Basic",
     "technical_columns": [],
@@ -248,6 +255,10 @@ def load_settings() -> dict[str, Any]:
     settings["collect_full_device_metadata_on_scan"] = (
         settings.get("collect_full_device_metadata_on_scan") is True
     )
+    migrate_device_specific = device_specific_settings.migrate_settings(
+        settings,
+        raw_settings=raw_settings,
+    )
     details_position = str(settings.get("details_panel_position") or "right").strip().casefold()
     settings["details_panel_position"] = (
         details_position
@@ -282,7 +293,7 @@ def load_settings() -> dict[str, Any]:
         default_alternative["aptoide"].get("api_key_protected") or ""
     ).strip()
     settings["alternative_distribution"] = default_alternative
-    if migrate_legacy_cache_default or migrate_changes_history:
+    if migrate_legacy_cache_default or migrate_changes_history or migrate_device_specific:
         _write_json(settings_path(), settings)
     return settings
 
@@ -306,6 +317,7 @@ def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
     merged["collect_full_device_metadata_on_scan"] = (
         merged.get("collect_full_device_metadata_on_scan") is True
     )
+    device_specific_settings.migrate_settings(merged)
     _write_json(settings_path(), merged)
     return merged
 

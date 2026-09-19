@@ -8,13 +8,19 @@ from typing import Any
 import pytest
 import requests
 
-from playstore_app_audit.domain.device_specific_resolver import ResolverStatus
+from playstore_app_audit.domain.device_specific_resolver import (
+    ResolverProvider,
+    ResolverStatus,
+)
 from playstore_app_audit.services.device_specific_profiles import load_reference_profile
 from playstore_app_audit.services.device_specific_protocol import (
     DETAILS_URL,
     normalise_dispenser_endpoint,
     parse_details_version,
+    protobuf_string_path,
+    protobuf_value,
     provider_context_hash,
+    resolve_metadata_with_auth_bundle,
     resolve_metadata_with_dispenser,
 )
 
@@ -32,9 +38,25 @@ def _field_varint(number: int, value: int) -> bytes:
     return _varint(number << 3) + _varint(value)
 
 
+def _field_fixed64(number: int, value: int) -> bytes:
+    return _varint((number << 3) | 1) + value.to_bytes(8, "little")
+
+
+def _field_fixed32(number: int, value: int) -> bytes:
+    return _varint((number << 3) | 5) + value.to_bytes(4, "little")
+
+
 def _field_bytes(number: int, value: bytes | str) -> bytes:
     raw = value.encode("utf-8") if isinstance(value, str) else value
     return _varint((number << 3) | 2) + _varint(len(raw)) + raw
+
+
+def _field_group(number: int, payload: bytes) -> bytes:
+    return (
+        _varint((number << 3) | 3)
+        + payload
+        + _varint((number << 3) | 4)
+    )
 
 
 def _details_payload(version_name: str = "1.2.3", version_code: int = 123) -> bytes:
@@ -119,6 +141,62 @@ def test_endpoint_rejects_insecure_or_ambiguous_context(endpoint: str) -> None:
         normalise_dispenser_endpoint(endpoint, country="CH", language="en")
     with pytest.raises(ValueError):
         provider_context_hash(endpoint)
+
+
+def test_protobuf_helpers_decode_fixed_integer_wire_types() -> None:
+    fixed64 = 0x123456789ABCDEF0
+    fixed32 = 0x89ABCDEF
+    payload = (
+        _field_fixed64(7, fixed64)
+        + _field_fixed32(8, fixed32)
+        + _field_bytes(12, "consistency-token")
+    )
+
+    assert protobuf_value(payload, 7) == fixed64
+    assert protobuf_value(payload, 8) == fixed32
+    assert protobuf_string_path(payload, 12) == "consistency-token"
+
+
+def test_google_checkin_device_id_can_be_fixed64() -> None:
+    android_id = 0x123456789ABCDEF
+    payload = (
+        _field_fixed64(7, android_id)
+        + _field_bytes(12, "consistency-token")
+    )
+
+    value = protobuf_value(payload, 7)
+    assert isinstance(value, int)
+    assert value == android_id
+
+
+def test_protobuf_helpers_tolerate_proto2_groups_in_checkin_response() -> None:
+    payload = b"".join(
+        (
+            _field_group(3, _field_varint(1, 99)),
+            _field_varint(7, 0x123456),
+            _field_group(
+                10,
+                _field_bytes(1, "nested")
+                + _field_group(2, _field_varint(1, 1)),
+            ),
+            _field_bytes(12, "consistency-token"),
+            _field_group(20, _field_varint(1, 7)),
+        )
+    )
+
+    assert protobuf_value(payload, 7) == 0x123456
+    assert protobuf_string_path(payload, 12) == "consistency-token"
+
+
+def test_protobuf_helpers_reject_mismatched_group_end() -> None:
+    payload = (
+        _varint((3 << 3) | 3)
+        + _field_varint(1, 1)
+        + _varint((4 << 3) | 4)
+    )
+
+    with pytest.raises(ValueError, match="mismatched end group"):
+        protobuf_value(payload, 7)
 
 
 def test_minimal_protobuf_parser_extracts_version_evidence() -> None:
@@ -286,3 +364,35 @@ def test_production_protocol_has_no_download_or_goopdl_runtime_path() -> None:
     assert "/purchase" not in lowered
     assert "/delivery" not in lowered
     assert "download_batch" not in lowered
+
+
+def test_personal_auth_bundle_uses_shared_metadata_only_details_path() -> None:
+    session = _FakeSession(
+        get_response=_Response(
+            200,
+            content=_details_payload("577.0.0.50.72", 474426253),
+        ),
+    )
+    profile = load_reference_profile("android13_api33_s20plus")
+    auth = _auth_payload()
+
+    result = resolve_metadata_with_auth_bundle(
+        package_name="com.facebook.katana",
+        profile=profile,
+        auth_bundle=auth,
+        country="CH",
+        language="en",
+        provider=ResolverProvider.PERSONAL_GOOGLE_SESSION,
+        session=session,  # type: ignore[arg-type]
+    )
+
+    assert result.status is ResolverStatus.RESOLVED
+    assert result.provider is ResolverProvider.PERSONAL_GOOGLE_SESSION
+    assert result.version_name == "577.0.0.50.72"
+    assert result.version_code == 474426253
+    assert len(session.post_calls) == 0
+    assert len(session.get_calls) == 1
+    serialized = json.dumps(result.to_mapping())
+    assert "test-bearer" not in serialized
+    assert "123456" not in serialized
+    assert auth["authToken"] == "test-bearer"

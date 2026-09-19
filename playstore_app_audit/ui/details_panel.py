@@ -382,7 +382,11 @@ def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
     )
     lines: list[str] = []
     for label, key in fields:
-        value = row.get(key)
+        value = (
+            local_apk_audit.local_apk_relationship_display_value(row)
+            if key == "local_apk_version_comparison"
+            else row.get(key)
+        )
         if value is not None and str(value) != "":
             lines.append(f"{label}: {presentation.display_relationship_value(key, value)}")
     if (

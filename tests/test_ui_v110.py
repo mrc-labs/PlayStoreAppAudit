@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -24,18 +24,22 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QStackedWidget,
+    QWidget,
 )
 
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_personal_session as personal_session
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -1520,12 +1524,20 @@ def test_linkedin_url_and_link_are_removed() -> None:
 
 
 
-def test_device_specific_advanced_settings_are_disabled_by_default(
+def test_device_specific_advanced_settings_use_provider_model(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     saved: list[dict[str, object]] = []
 
+    monkeypatch.setattr(
+        personal_session,
+        "personal_session_status",
+        lambda: personal_session.PersonalGoogleSessionStatus(
+            signed_in=False,
+            context_hash="",
+        ),
+    )
     monkeypatch.setattr(
         state,
         "load_settings",
@@ -1538,9 +1550,9 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
     )
 
     def configure(dialog: QDialog) -> int:
-        enabled = dialog.findChild(
-            QCheckBox,
-            "DeviceSpecificResolverEnabledCheck",
+        provider = dialog.findChild(
+            QComboBox,
+            "DeviceSpecificProviderCombo",
         )
         endpoint = dialog.findChild(
             QLineEdit,
@@ -1550,30 +1562,68 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
             QComboBox,
             "DeviceSpecificResolverProfileCombo",
         )
+        personal_controls = dialog.findChild(
+            QWidget,
+            "DeviceSpecificPersonalSessionControls",
+        )
+        personal_status = dialog.findChild(
+            QLabel,
+            "DeviceSpecificPersonalSessionStatus",
+        )
 
-        assert enabled is not None
+        assert provider is not None
         assert endpoint is not None
         assert profile is not None
+        assert personal_controls is not None
+        assert personal_status is not None
 
-        assert not enabled.isChecked()
-        assert not endpoint.isEnabled()
+        assert [provider.itemText(index) for index in range(provider.count())] == [
+            "Disabled",
+            "Personal Google Session",
+            "Custom Dispenser (Advanced)",
+        ]
+        assert [provider.itemData(index) for index in range(provider.count())] == [
+            "disabled",
+            "personal_google_session",
+            "custom_dispenser",
+        ]
+        assert provider.currentData() == "disabled"
+        assert endpoint.isHidden()
+        assert personal_controls.isHidden()
         assert not profile.isEnabled()
-
         assert profile.count() == 2
+        profile_ids = [profile.itemData(index) for index in range(profile.count())]
+        profile_labels = [profile.itemText(index) for index in range(profile.count())]
+        assert profile_ids == [
+            "android10_api29_oneplus8pro",
+            "android13_api33_s20plus",
+        ]
+        assert "OnePlus" in profile_labels[0]
+        assert "Samsung" in profile_labels[1]
 
-        enabled.setChecked(True)
+        personal_index = provider.findData("personal_google_session")
+        assert personal_index >= 0
+        provider.setCurrentIndex(personal_index)
 
-        assert endpoint.isEnabled()
+        assert endpoint.isHidden()
+        assert not personal_controls.isHidden()
+        assert personal_status.text() == "Not signed in"
         assert profile.isEnabled()
 
-        endpoint.setText(
-            "https://resolver.example/api/auth"
-        )
+        custom_index = provider.findData("custom_dispenser")
+        assert custom_index >= 0
+        provider.setCurrentIndex(custom_index)
+
+        assert not endpoint.isHidden()
+        assert endpoint.isEnabled()
+        assert personal_controls.isHidden()
+        assert profile.isEnabled()
+
+        endpoint.setText("https://resolver.example/api/auth")
 
         default_index = profile.findData(
             device_specific_integration.DEFAULT_PROFILE_ID
         )
-
         assert default_index >= 0
         profile.setCurrentIndex(default_index)
 
@@ -1585,11 +1635,182 @@ def test_device_specific_advanced_settings_are_disabled_by_default(
 
     assert saved
     assert saved[-1][
-        device_specific_integration.SETTING_ENABLED
-    ] is True
+        device_specific_integration.SETTING_PROVIDER
+    ] == "custom_dispenser"
     assert saved[-1][
         device_specific_integration.SETTING_ENDPOINT
     ] == "https://resolver.example/api/auth"
     assert saved[-1][
         device_specific_integration.SETTING_PROFILE_ID
     ] == device_specific_integration.DEFAULT_PROFILE_ID
+
+
+def _device_specific_test_session(
+    *,
+    device_id: str = "safe-session-device",
+    serial_masked: str = "raw-serial-must-not-appear",
+) -> scan_sessions.ScanSession:
+    return scan_sessions.ScanSession(
+        session_id="device-specific-ui-session",
+        captured_at=datetime(2026, 9, 19, 10, 0, tzinfo=UTC),
+        source_id=f"device:{device_id}:device-specific-ui-session",
+        source_kind="device",
+        device_id=device_id,
+        serial_masked=serial_masked,
+        manufacturer="Google",
+        model="Pixel Test",
+        android_version="16",
+        android_api="36",
+        security_patch="2026-09-01",
+        locale=None,
+        packages=("com.example.app",),
+        package_metadata=(),
+        system_packages=frozenset(),
+        system_scope="third_party_only",
+        locale_fallback_attempted=False,
+    )
+
+
+def _device_specific_test_profile(
+    name: str = "Validated Phone",
+    *,
+    complete: bool = True,
+) -> ConnectedDeviceProfile:
+    return ConnectedDeviceProfile(
+        profile_id="connected_device_test",
+        display_name=name,
+        android_release="16",
+        api_level=36,
+        profile_hash="profile-hash-must-not-appear",
+        profile={
+            "account_identity": "account-must-not-appear",
+            "auth_token": "token-must-not-appear",
+            "cookie": "cookie-must-not-appear",
+            "GSF.ID": "gsf-id-must-not-appear",
+            "Checkin.ID": "checkin-id-must-not-appear",
+        },
+        complete=complete,
+        missing_fields=() if complete else ("Build.FINGERPRINT",),
+    )
+
+
+def test_connected_device_profile_choice_requires_meaningful_context(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_profile_ids: list[list[str]] = []
+
+    def inspect(dialog: QDialog) -> int:
+        profile = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert profile is not None
+        captured_profile_ids.append(
+            [str(profile.itemData(index)) for index in range(profile.count())]
+        )
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+
+    window._scan_session = None
+    window._device_specific_connected_profile = None
+    window._device_specific_connected_profile_device_id = None
+    window._show_advanced_settings()
+
+    window._device_specific_connected_profile = _device_specific_test_profile(
+        complete=False
+    )
+    window._device_specific_connected_profile_device_id = "safe-cached-device"
+    window._show_advanced_settings()
+
+    window._device_specific_connected_profile = _device_specific_test_profile()
+    window._device_specific_connected_profile_device_id = "safe-cached-device"
+    window._show_advanced_settings()
+
+    window._device_specific_connected_profile = None
+    window._device_specific_connected_profile_device_id = None
+    window._scan_session = _device_specific_test_session()
+    window._show_advanced_settings()
+
+    assert "connected_device" not in captured_profile_ids[0]
+    assert "connected_device" not in captured_profile_ids[1]
+    assert "connected_device" in captured_profile_ids[2]
+    assert "connected_device" in captured_profile_ids[3]
+
+
+def test_configured_connected_device_without_context_falls_back_conservatively(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    window._scan_session = None
+    window._device_specific_connected_profile = None
+    window._device_specific_connected_profile_device_id = None
+    window.user_settings[device_specific_integration.SETTING_PROFILE_ID] = (
+        device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+    )
+    monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
+
+    def inspect(dialog: QDialog) -> int:
+        profile = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert profile is not None
+        assert profile.findData("connected_device") < 0
+        assert profile.currentData() == device_specific_integration.DEFAULT_PROFILE_ID
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+
+
+def test_device_specific_ui_uses_current_context_without_exposing_identity_material(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _device_specific_test_session(device_id="safe-current-device")
+    window._scan_session = session
+    window._device_specific_connected_profile = _device_specific_test_profile("Old Phone")
+    window._device_specific_connected_profile_device_id = "safe-old-device"
+    monkeypatch.setattr(
+        personal_session,
+        "personal_session_status",
+        lambda: personal_session.PersonalGoogleSessionStatus(
+            signed_in=True,
+            context_hash="context-hash-must-not-appear",
+        ),
+    )
+
+    def inspect(dialog: QDialog) -> int:
+        profile = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        status = dialog.findChild(QLabel, "DeviceSpecificPersonalSessionStatus")
+        assert profile is not None
+        assert status is not None
+        connected_index = profile.findData("connected_device")
+        assert connected_index >= 0
+        connected_label = profile.itemText(connected_index)
+        assert connected_label == "Connected Device — Google Pixel Test"
+        assert "Old Phone" not in connected_label
+        assert status.text() == "Signed in for this app session"
+
+        surfaced_text = " ".join(
+            [widget.text() for widget in dialog.findChildren(QLabel)]
+            + [widget.text() for widget in dialog.findChildren(QPushButton)]
+            + [
+                combo.itemText(index)
+                for combo in dialog.findChildren(QComboBox)
+                for index in range(combo.count())
+            ]
+        )
+        for secret in (
+            session.device_id,
+            session.serial_masked,
+            "profile-hash-must-not-appear",
+            "account-must-not-appear",
+            "token-must-not-appear",
+            "cookie-must-not-appear",
+            "gsf-id-must-not-appear",
+            "checkin-id-must-not-appear",
+            "context-hash-must-not-appear",
+        ):
+            assert secret not in surfaced_text
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+

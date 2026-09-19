@@ -19,6 +19,7 @@ import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -94,6 +95,19 @@ def _store_row(package: str = "com.example.app") -> dict[str, object]:
         "play_last_update": "2026-08-01",
         "play_version": "1.0",
     }
+
+
+def _connected_profile(name: str, *, complete: bool = True) -> ConnectedDeviceProfile:
+    return ConnectedDeviceProfile(
+        profile_id=f"connected_device_{name.casefold()}",
+        display_name=name,
+        android_release="16",
+        api_level=36,
+        profile_hash=f"hash-{name.casefold()}",
+        profile={"UserReadableName": name},
+        complete=complete,
+        missing_fields=() if complete else ("Build.FINGERPRINT",),
+    )
 
 
 def test_compact_model_is_immutable_and_contains_no_rich_fields() -> None:
@@ -332,6 +346,131 @@ def _run_worker(
     )
     app.processEvents()
     app.processEvents()
+
+
+def test_connected_profile_capture_is_skipped_when_resolver_disabled(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _session(_compact(), device_id="safe-device-a")
+    window._device_specific_connected_profile = _connected_profile("Phone A")
+    window._device_specific_connected_profile_device_id = session.device_id
+    monkeypatch.setattr(
+        window,
+        "_get_matching_scan_session_adb",
+        lambda _session: pytest.fail("ADB was probed while Device Specific was disabled"),
+    )
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        lambda *_args: pytest.fail(
+            "Connected Device profile was captured while Device Specific was disabled"
+        ),
+    )
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        session,
+        resolver_enabled=False,
+    )
+
+    assert result is None
+
+
+def test_connected_profile_cache_reuses_same_safe_device_without_recapture(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _session(_compact(), device_id="safe-device-a")
+    cached = _connected_profile("Phone A")
+    window._device_specific_connected_profile = cached
+    window._device_specific_connected_profile_device_id = session.device_id
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        lambda *_args: pytest.fail("same-device profile was recaptured"),
+    )
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        session,
+    )
+
+    assert result is cached
+
+
+def test_connected_profile_cache_recaptures_for_different_safe_device(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_profile = _connected_profile("Phone A")
+    new_profile = _connected_profile("Phone B")
+    session = _session(_compact(), name="Phone B", device_id="safe-device-b")
+    window._device_specific_connected_profile = old_profile
+    window._device_specific_connected_profile_device_id = "safe-device-a"
+    monkeypatch.setattr(window, "_get_matching_scan_session_adb", lambda _session: "adb")
+    calls: list[tuple[str, scan_sessions.ScanSession]] = []
+
+    def collect(adb: str, current: scan_sessions.ScanSession) -> ConnectedDeviceProfile:
+        calls.append((adb, current))
+        return new_profile
+
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        collect,
+    )
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        session,
+    )
+
+    assert result is new_profile
+    assert calls == [("adb", session)]
+    assert window._device_specific_connected_profile is new_profile
+    assert window._device_specific_connected_profile_device_id == "safe-device-b"
+
+
+def test_incomplete_recapture_never_supplies_old_device_profile(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_profile = _connected_profile("Phone A")
+    incomplete = _connected_profile("Phone B", complete=False)
+    session = _session(_compact(), name="Phone B", device_id="safe-device-b")
+    window._device_specific_connected_profile = old_profile
+    window._device_specific_connected_profile_device_id = "safe-device-a"
+    monkeypatch.setattr(window, "_get_matching_scan_session_adb", lambda _session: "adb")
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        lambda _adb, _session: incomplete,
+    )
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        session,
+    )
+
+    assert result is None
+    assert window._device_specific_connected_profile is old_profile
+    assert window._device_specific_connected_profile_device_id == "safe-device-a"
+
+
+def test_connected_profile_cache_remains_available_without_phone_scan_session(
+    window: MainWindow,
+) -> None:
+    cached = _connected_profile("Last Validated Phone")
+    window._device_specific_connected_profile = cached
+    window._device_specific_connected_profile_device_id = "safe-device-a"
+
+    result = window._connected_device_profile_for_resolution(
+        "connected_device",
+        None,
+    )
+
+    assert result is cached
 
 
 def test_disconnected_run_keeps_t1_compact_values_and_store_audit(

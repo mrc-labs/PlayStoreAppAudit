@@ -6,12 +6,17 @@ from typing import Any
 
 from playstore_app_audit.domain.local_artifact_store import LocalArtifactStoreAssociation
 from playstore_app_audit.domain.local_artifacts import LocalArtifact
-from playstore_app_audit.services import alternative_distribution, device_metadata
+from playstore_app_audit.services import (
+    alternative_distribution,
+    device_metadata,
+    device_specific_integration,
+)
 
 SOURCE_MODE = "local_apk"
 LIBRARY_SOURCE_MODE = "local_apk_library"
 LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
 DEFINITIVE_STORE_ABSENCE = "not_found_in_checked_countries"
+DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS = frozenset({"Outdated", "Match", "Newer"})
 
 
 def is_local_apk_source(source_mode: object) -> bool:
@@ -26,6 +31,52 @@ def _mutable_value(value: Any) -> Any:
     if isinstance(value, (set, frozenset)):
         return sorted((_mutable_value(item) for item in value), key=str)
     return value
+
+
+def _local_store_relationship(
+    artifact: LocalArtifact,
+    row: Mapping[str, Any],
+) -> str:
+    if row.get("play_status") == DEFINITIVE_STORE_ABSENCE:
+        return "N/A"
+
+    local_version_code: object = artifact.long_version_code
+    if local_version_code is None:
+        local_version_code = artifact.version_code
+    resolved_relationship = device_specific_integration.relationship_from_version_codes(
+        local_version_code,
+        row.get(device_specific_integration.RESOLVED_VERSION_CODE_FIELD),
+    )
+    if resolved_relationship is not None:
+        return resolved_relationship
+
+    play_version = row.get("play_version")
+    if play_version:
+        return device_metadata.compare_versions(
+            artifact.version_name or "",
+            play_version,
+        )
+    return ""
+
+
+def local_apk_relationship_display_value(row: Mapping[str, Any]) -> str:
+    """Add Device Specific provenance without changing canonical semantics."""
+
+    relationship = str(row.get("local_apk_version_comparison") or "").strip()
+    if relationship not in DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS:
+        return relationship
+    if str(row.get(device_specific_integration.STATUS_FIELD) or "").strip() != "resolved":
+        return relationship
+    local_version_code = row.get("local_apk_long_version_code")
+    if local_version_code in {None, ""}:
+        local_version_code = row.get("local_apk_version_code")
+    resolved_relationship = device_specific_integration.relationship_from_version_codes(
+        local_version_code,
+        row.get(device_specific_integration.RESOLVED_VERSION_CODE_FIELD),
+    )
+    if resolved_relationship != relationship:
+        return relationship
+    return f"{relationship} (DS)"
 
 
 def association_result_row(
@@ -64,7 +115,6 @@ def artifact_result_row(
     """Merge authoritative local evidence with optional package-level Store evidence."""
 
     row = _mutable_value(store_row or {})
-    local_version = artifact.version_name or ""
     row.update(
         {
             "source_mode": source_mode,
@@ -89,14 +139,9 @@ def artifact_result_row(
             "local_apk_permissions": list(artifact.permissions),
             "local_apk_features": list(artifact.features),
             "local_apk_warnings": [warning.value for warning in artifact.warnings],
-            "local_apk_version_comparison": (
-                "N/A"
-                if row.get("play_status") == DEFINITIVE_STORE_ABSENCE
-                else (
-                    device_metadata.compare_versions(local_version, row.get("play_version"))
-                    if row.get("play_version")
-                    else ""
-                )
+            "local_apk_version_comparison": _local_store_relationship(
+                artifact,
+                row,
             ),
         }
     )
