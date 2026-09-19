@@ -38,6 +38,14 @@ def _field_varint(number: int, value: int) -> bytes:
     return _varint(number << 3) + _varint(value)
 
 
+def _field_fixed64(number: int, value: int) -> bytes:
+    return _varint((number << 3) | 1) + value.to_bytes(8, "little")
+
+
+def _field_fixed32(number: int, value: int) -> bytes:
+    return _varint((number << 3) | 5) + value.to_bytes(4, "little")
+
+
 def _field_bytes(number: int, value: bytes | str) -> bytes:
     raw = value.encode("utf-8") if isinstance(value, str) else value
     return _varint((number << 3) | 2) + _varint(len(raw)) + raw
@@ -133,6 +141,32 @@ def test_endpoint_rejects_insecure_or_ambiguous_context(endpoint: str) -> None:
         normalise_dispenser_endpoint(endpoint, country="CH", language="en")
     with pytest.raises(ValueError):
         provider_context_hash(endpoint)
+
+
+def test_protobuf_helpers_decode_fixed_integer_wire_types() -> None:
+    fixed64 = 0x123456789ABCDEF0
+    fixed32 = 0x89ABCDEF
+    payload = (
+        _field_fixed64(7, fixed64)
+        + _field_fixed32(8, fixed32)
+        + _field_bytes(12, "consistency-token")
+    )
+
+    assert protobuf_value(payload, 7) == fixed64
+    assert protobuf_value(payload, 8) == fixed32
+    assert protobuf_string_path(payload, 12) == "consistency-token"
+
+
+def test_google_checkin_device_id_can_be_fixed64() -> None:
+    android_id = 0x123456789ABCDEF
+    payload = (
+        _field_fixed64(7, android_id)
+        + _field_bytes(12, "consistency-token")
+    )
+
+    value = protobuf_value(payload, 7)
+    assert isinstance(value, int)
+    assert value == android_id
 
 
 def test_protobuf_helpers_tolerate_proto2_groups_in_checkin_response() -> None:
