@@ -198,6 +198,105 @@ def test_browser_capture_completes_from_oauth_cookie_only(
     assert token == "oauth2_4/EXPECTED"
 
 
+def test_browser_retriggers_embedded_setup_after_google_sign_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSocket:
+        def close(self) -> None:
+            pass
+
+    class FakeProcess:
+        def poll(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        personal,
+        "create_connection",
+        lambda *_args, **_kwargs: FakeSocket(),
+    )
+    monkeypatch.setattr(
+        personal,
+        "_attach_page",
+        lambda _websocket, request_id: (request_id + 1, "session"),
+    )
+    monkeypatch.setattr(personal.time, "sleep", lambda _seconds: None)
+
+    calls: list[tuple[str, object, object]] = []
+    responses = iter(
+        [
+            (
+                "Storage.getCookies",
+                {
+                    "result": {
+                        "cookies": [
+                            {
+                                "name": "SID",
+                                "domain": ".google.com",
+                                "value": "not-inspected",
+                            }
+                        ]
+                    }
+                },
+            ),
+            ("Page.navigate", {"result": {"frameId": "frame"}}),
+            (
+                "Storage.getCookies",
+                {
+                    "result": {
+                        "cookies": [
+                            {
+                                "name": "oauth_token",
+                                "domain": ".accounts.google.com",
+                                "value": "oauth2_4/EXPECTED",
+                            }
+                        ]
+                    }
+                },
+            ),
+        ]
+    )
+
+    def fake_cdp_request(
+        _websocket: object,
+        request_id: int,
+        method: str,
+        params: dict[str, object] | None = None,
+        session_id: str | None = None,
+    ) -> tuple[int, dict[str, object]]:
+        expected_method, response = next(responses)
+        assert method == expected_method
+        calls.append((method, params, session_id))
+        return request_id + 1, response
+
+    monkeypatch.setattr(personal, "_cdp_request", fake_cdp_request)
+
+    token = personal._wait_for_oauth_token(
+        "ws://127.0.0.1/devtools/browser/test",
+        "http://127.0.0.1:9222",
+        FakeProcess(),  # type: ignore[arg-type]
+        timeout=5,
+    )
+
+    assert token == "oauth2_4/EXPECTED"
+    assert calls[1] == (
+        "Page.navigate",
+        {"url": personal.EMBEDDED_SETUP_URL},
+        "session",
+    )
+
+
+def test_signed_in_cookie_detection_uses_names_and_google_domain_only() -> None:
+    assert personal._signed_in_google_session(
+        [{"name": "SID", "domain": ".google.com", "value": "secret"}]
+    )
+    assert not personal._signed_in_google_session(
+        [{"name": "SID", "domain": ".example.com", "value": "secret"}]
+    )
+    assert not personal._signed_in_google_session(
+        [{"name": "OTHER", "domain": ".google.com", "value": "secret"}]
+    )
+
+
 def test_exchange_rejects_placeholder_when_google_does_not_return_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
