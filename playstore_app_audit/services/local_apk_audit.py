@@ -76,7 +76,7 @@ def local_apk_relationship_display_value(row: Mapping[str, Any]) -> str:
     )
     if resolved_relationship != relationship:
         return relationship
-    return f"{relationship} (DS)"
+    return f"{relationship} (Dev. Spec.)"
 
 
 def association_result_row(

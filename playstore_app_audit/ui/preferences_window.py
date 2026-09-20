@@ -945,9 +945,9 @@ class PreferencesWindow(table_ui.TableWindow):
         if connected_available:
             if cached_profile_matches_context:
                 connected_label = (
-                    f"Connected Device — {connected_profile.display_name} — "
+                    f"Personal Device — {connected_profile.display_name} — "
                     f"Android {connected_profile.android_release} / "
-                    f"API {connected_profile.api_level}"
+                    f"API {connected_profile.api_level} (this session)"
                 )
             else:
                 manufacturer = str(
@@ -957,7 +957,10 @@ class PreferencesWindow(table_ui.TableWindow):
                 device_name = " ".join(
                     part for part in (manufacturer, model) if part
                 ).strip() or "current Scan Phone device"
-                connected_label = f"Connected Device — {device_name}"
+                connected_label = (
+                    f"Personal Device — {device_name} "
+                    "(capture when settings are saved)"
+                )
             resolver_profile.addItem(
                 connected_label,
                 device_specific_integration.CONNECTED_DEVICE_PROFILE_ID,
@@ -988,16 +991,28 @@ class PreferencesWindow(table_ui.TableWindow):
         resolver_form.addRow("Device Profile", resolver_profile)
         resolver_layout.addLayout(resolver_form)
 
-        resolver_layout.addWidget(
-            self._settings_note(
-                "Personal Google Session opens an isolated browser sign-in and "
-                "keeps its auth context only in this running app process. Store "
-                "App Audit never asks for or stores your Google password. Custom "
-                "Dispenser remains an advanced self-hosted option; no public "
-                "Aurora dispenser is configured by default. Connected Device is "
-                "available after Scan Phone and is kept only for this app session."
-            )
+        personal_provider_note = self._settings_note(
+            "Personal Google Session performs direct metadata-only Google Play "
+            "resolution through an isolated browser sign-in. Its session and "
+            "credentials stay only in this running app process and are never "
+            "persisted. It never purchases, delivers or downloads APKs."
         )
+        personal_provider_note.setObjectName("DeviceSpecificPersonalProviderNote")
+        resolver_layout.addWidget(personal_provider_note)
+        custom_provider_note = self._settings_note(
+            "Custom Dispenser requires no local Google login. Enter the URL of a "
+            "compatible service that you run and control; authentication occurs "
+            "server-side. No default or public endpoint is configured. Remote "
+            "endpoints require HTTPS; loopback HTTP is allowed."
+        )
+        custom_provider_note.setObjectName("DeviceSpecificCustomProviderNote")
+        resolver_layout.addWidget(custom_provider_note)
+        personal_device_note = self._settings_note(
+            "Personal Device is captured from Scan Phone only when selected and "
+            "kept as one complete, ephemeral slot for this running app process."
+        )
+        personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
+        resolver_layout.addWidget(personal_device_note)
         resolver_layout.addStretch(1)
 
         def refresh_personal_session_status() -> None:
@@ -1050,6 +1065,8 @@ class PreferencesWindow(table_ui.TableWindow):
             )
             resolver_profile.setEnabled(enabled)
             personal_controls.setVisible(personal)
+            personal_provider_note.setVisible(personal)
+            custom_provider_note.setVisible(custom)
             resolver_endpoint_label.setVisible(custom)
             resolver_endpoint.setVisible(custom)
             resolver_endpoint.setEnabled(custom)
@@ -1247,6 +1264,15 @@ class PreferencesWindow(table_ui.TableWindow):
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
+        current_scan_session = getattr(self, "_scan_session", None)
+        capture_personal_device = getattr(
+            self, "_capture_requested_personal_device_profile", None
+        )
+        if (
+            isinstance(current_scan_session, scan_sessions.ScanSession)
+            and callable(capture_personal_device)
+        ):
+            capture_personal_device(self.user_settings, current_scan_session)
         for row in self.current_rows:
             self._classify_row(row)
         if self.current_rows:

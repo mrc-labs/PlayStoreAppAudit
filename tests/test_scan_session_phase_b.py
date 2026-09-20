@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
@@ -471,6 +472,92 @@ def test_connected_profile_cache_remains_available_without_phone_scan_session(
     )
 
     assert result is cached
+
+
+def test_scan_completion_captures_selected_personal_device_slot(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _session(_compact(), device_id="safe-device-a")
+    profile = _connected_profile("Phone A")
+    configured = {
+        device_specific_integration.SETTING_PROVIDER: "custom_dispenser",
+        device_specific_integration.SETTING_PROFILE_ID: "connected_device",
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(configured))
+    monkeypatch.setattr(window, "_get_matching_scan_session_adb", lambda current: "adb")
+    captures: list[tuple[str, scan_sessions.ScanSession]] = []
+
+    def collect(adb: str, current: scan_sessions.ScanSession) -> ConnectedDeviceProfile:
+        captures.append((adb, current))
+        return profile
+
+    monkeypatch.setattr(
+        scan_sessions, "collect_connected_device_profile_for_session", collect
+    )
+
+    _select_session(window, session)
+
+    assert captures == [("adb", session)]
+    assert window._device_specific_connected_profile is profile
+    assert window._device_specific_connected_profile_device_id == session.device_id
+
+
+def test_scan_completion_does_not_probe_when_personal_device_is_not_selected(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _session(_compact(), device_id="safe-device-a")
+    monkeypatch.setattr(
+        state,
+        "load_settings",
+        lambda: {
+            device_specific_integration.SETTING_PROVIDER: "disabled",
+            device_specific_integration.SETTING_PROFILE_ID: "connected_device",
+        },
+    )
+    monkeypatch.setattr(
+        window,
+        "_get_matching_scan_session_adb",
+        lambda _session: pytest.fail("disabled scan probed ADB for a profile"),
+    )
+
+    _select_session(window, session)
+
+    assert window._device_specific_connected_profile is None
+
+
+def test_scan_completion_failed_replacement_preserves_but_cannot_use_old_slot(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_profile = _connected_profile("Phone A")
+    session = _session(_compact(), name="Phone B", device_id="safe-device-b")
+    window._device_specific_connected_profile = old_profile
+    window._device_specific_connected_profile_device_id = "safe-device-a"
+    monkeypatch.setattr(
+        state,
+        "load_settings",
+        lambda: {
+            device_specific_integration.SETTING_PROVIDER: "personal_google_session",
+            device_specific_integration.SETTING_PROFILE_ID: "connected_device",
+        },
+    )
+    monkeypatch.setattr(window, "_get_matching_scan_session_adb", lambda _session: "adb")
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_connected_device_profile_for_session",
+        lambda _adb, _session: _connected_profile("Phone B", complete=False),
+    )
+
+    _select_session(window, session)
+
+    assert window._device_specific_connected_profile is old_profile
+    assert window._device_specific_connected_profile_device_id == "safe-device-a"
+    assert (
+        window._connected_device_profile_for_resolution("connected_device", session)
+        is None
+    )
 
 
 def test_disconnected_run_keeps_t1_compact_values_and_store_audit(

@@ -3,7 +3,6 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import QEvent, QTimer
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -13,7 +12,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMenu,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -114,13 +112,6 @@ class AuditWindow(BaseWindow):
                     )
                 )
 
-        if hasattr(self, "apk_relationship_more"):
-            self.apk_relationship_more.setStyleSheet(
-                theme_ui.neutral_filter_button_stylesheet(
-                    palette
-                )
-            )
-
     def _begin_phone_scan_request(self) -> int:
         self._scan_cancel_event.set()
         self._scan_cancel_event = threading.Event()
@@ -165,14 +156,6 @@ class AuditWindow(BaseWindow):
                 if relationship == "All"
                 else relationship in self._apk_relationship_filters
             )
-        hidden = self._apk_relationship_filters & {"Different", "Unknown"}
-        self.apk_relationship_more.setChecked(bool(hidden))
-        self.apk_relationship_more.setText(
-            f"More ({len(hidden)}) ▾" if hidden else "More ▾"
-        )
-        for relationship, action in self.apk_relationship_more_actions.items():
-            action.setChecked(relationship in hidden)
-
     def _schedule_apk_relationship_reflow(self) -> None:
         if self._apk_relationship_reflow_pending:
             return
@@ -470,7 +453,9 @@ class AuditWindow(BaseWindow):
             ("Outdated", "Outdated"),
             ("Newer", "Newer"),
             ("Match", "Match"),
-            ("Device-specific", "Device Spec."),
+            ("Different", "Different"),
+            ("Unknown", "Unknown"),
+            ("Device-specific", "Device Specific"),
             ("N/A", "N/A"),
         ):
             button = QPushButton(label)
@@ -493,30 +478,6 @@ class AuditWindow(BaseWindow):
             )
             self.apk_relationship_buttons[value] = button
             relationship_row.addWidget(button)
-        self.apk_relationship_more = QPushButton("More ▾")
-        self.apk_relationship_more.setObjectName("ApkRelationshipMoreButton")
-        self.apk_relationship_more.setCheckable(True)
-        self.apk_relationship_more.setStyleSheet(_neutral_filter_button_style())
-        more_menu = QMenu(self.apk_relationship_more)
-        self.apk_relationship_more_actions: dict[str, QAction] = {}
-        for value in ("Different", "Unknown"):
-            action = more_menu.addAction(value)
-            action.setCheckable(True)
-            action.triggered.connect(
-                lambda _checked=False, relationship=value: self._set_apk_relationship_filter(relationship)
-            )
-            self.apk_relationship_more_actions[value] = action
-
-        def show_more_menu() -> None:
-            self._sync_apk_relationship_buttons()
-            more_menu.popup(
-                self.apk_relationship_more.mapToGlobal(
-                    self.apk_relationship_more.rect().bottomLeft()
-                )
-            )
-
-        self.apk_relationship_more.clicked.connect(show_more_menu)
-        relationship_row.addWidget(self.apk_relationship_more)
         relationship_row.addStretch(1)
         self.apk_relationship_filter_row.setVisible(False)
         results_layout.addWidget(self.apk_relationship_filter_row)

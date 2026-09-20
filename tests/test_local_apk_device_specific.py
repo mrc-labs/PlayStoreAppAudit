@@ -409,7 +409,7 @@ def test_positive_resolved_version_code_drives_canonical_relationship(
     )
 
     assert row["local_apk_version_comparison"] == expected
-    assert local_apk_audit.local_apk_relationship_display_value(row) == f"{expected} (DS)"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == f"{expected} (Dev. Spec.)"
 
 
 def test_long_version_code_precedes_manifest_version_code(
@@ -556,7 +556,7 @@ def test_progressive_callback_receives_raw_then_resolved_device_specific_evidenc
     )
     assert progressive["local_apk_version_comparison"] == "Outdated"
     assert local_apk_audit.local_apk_relationship_display_value(progressive) == (
-        "Outdated (DS)"
+        "Outdated (Dev. Spec.)"
     )
 
 
@@ -588,7 +588,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
     column = model.columns.index("local_apk_version_comparison")
     index = model.index(0, column)
     ordinary_index = model.index(1, column)
-    assert model.data(index, Qt.ItemDataRole.DisplayRole) == "Outdated (DS)"
+    assert model.data(index, Qt.ItemDataRole.DisplayRole) == "Outdated (Dev. Spec.)"
     assert model.data(ordinary_index, Qt.ItemDataRole.DisplayRole) == "Outdated"
     assert model.data(index, Qt.ItemDataRole.UserRole)[
         "local_apk_version_comparison"
@@ -601,7 +601,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
         ordinary_index,
         Qt.ItemDataRole.ForegroundRole,
     )
-    assert "Local APK vs Store: Outdated (DS)" in details_panel.local_apk_details_lines(
+    assert "Local APK vs Store: Outdated (Dev. Spec.)" in details_panel.local_apk_details_lines(
         row
     )
 
@@ -609,7 +609,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
     proxy.setSourceModel(model)
     proxy.set_relationship_filters({"Outdated"})
     assert proxy.rowCount() == 2
-    proxy.set_relationship_filters({"Outdated (DS)"})
+    proxy.set_relationship_filters({"Outdated (Dev. Spec.)"})
     assert proxy.rowCount() == 0
 
     breakdown = device_insights.calculate_health_score_breakdown(row)

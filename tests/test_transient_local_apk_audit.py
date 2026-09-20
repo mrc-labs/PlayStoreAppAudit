@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QComboBox, QDialog
 
 import playstore_app_audit.platform.file_locations as file_locations
 import playstore_app_audit.services.device_insights as device_insights
@@ -184,6 +184,61 @@ def test_local_apk_start_passes_only_complete_cached_profile_without_adb(
     args = captured["args"]
     assert isinstance(args, tuple)
     assert args[-1] is (profile if expects_profile else None)
+
+
+def test_switching_from_phone_to_local_apk_preserves_ephemeral_personal_device_slot(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    candidate = tmp_path / "device-specific.apk"
+    candidate.write_bytes(b"candidate")
+    profile = ConnectedDeviceProfile(
+        profile_id="connected_device_test",
+        display_name="Validated Phone",
+        android_release="16",
+        api_level=36,
+        profile_hash="b" * 64,
+        profile={"UserReadableName": "Validated Phone"},
+        complete=True,
+        missing_fields=(),
+    )
+    window._device_specific_connected_profile = profile
+    window._device_specific_connected_profile_device_id = "safe-device-id"
+    window._scan_session = object()  # type: ignore[assignment]
+    monkeypatch.setattr(window, "_schedule_first_audit", lambda: None)
+    monkeypatch.setattr(
+        window,
+        "_get_matching_scan_session_adb",
+        lambda _session: pytest.fail("Local APK source switch probed ADB"),
+    )
+
+    window._begin_local_apk_parse([candidate])
+
+    assert window._scan_session is None
+    assert window._device_specific_connected_profile is profile
+    assert window._device_specific_connected_profile_device_id == "safe-device-id"
+    assert (
+        window._connected_device_profile_for_resolution("connected_device", None)
+        is profile
+    )
+
+    offered_labels: list[str] = []
+
+    def inspect(dialog: QDialog) -> int:
+        profiles = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert profiles is not None
+        index = profiles.findData("connected_device")
+        assert index >= 0
+        offered_labels.append(profiles.itemText(index))
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+
+    assert offered_labels == [
+        "Personal Device — Validated Phone — Android 16 / API 36 (this session)"
+    ]
 
 
 def test_folder_discovery_is_recursive_case_insensitive_and_filtered(tmp_path: Path) -> None:

@@ -351,6 +351,8 @@ class AuditTableModel(base_ui.AppTableModel):
             if column == "notes":
                 return presentation.friendly_notes(row)
             value = row.get(column, "")
+            if column == "play_version":
+                value = presentation.play_store_version_display_value(row)
             if column == "local_apk_version_comparison":
                 value = local_apk_audit.local_apk_relationship_display_value(row)
             if isinstance(value, bool):

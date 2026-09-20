@@ -9,6 +9,9 @@ from typing import Any, Literal
 
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
+from playstore_app_audit.services.device_specific_resolver import (
+    should_attempt_device_specific_resolver,
+)
 
 APP_VERSION = __version__
 
@@ -100,6 +103,22 @@ def display_relationship_value(field: str, value: object) -> str:
     if field in VERSION_RELATIONSHIP_FIELDS:
         return VERSION_RELATIONSHIP_LABELS.get(text, text)
     return text
+
+
+def play_store_version_display_value(row: Mapping[str, object]) -> str:
+    """Return the table-only Store version display with resolved provenance."""
+
+    raw_version = str(row.get("play_version") or "")
+    resolved_version = str(row.get("resolved_play_version") or "").strip()
+    if (
+        should_attempt_device_specific_resolver(raw_version)
+        and str(row.get("device_specific_resolver_status") or "").strip().casefold()
+        == "resolved"
+        and resolved_version
+        and not should_attempt_device_specific_resolver(resolved_version)
+    ):
+        return f"{resolved_version} ({raw_version})"
+    return raw_version
 
 
 @dataclass(frozen=True, slots=True)

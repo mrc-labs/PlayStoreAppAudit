@@ -1570,12 +1570,18 @@ def test_device_specific_advanced_settings_use_provider_model(
             QLabel,
             "DeviceSpecificPersonalSessionStatus",
         )
+        personal_note = dialog.findChild(QLabel, "DeviceSpecificPersonalProviderNote")
+        custom_note = dialog.findChild(QLabel, "DeviceSpecificCustomProviderNote")
+        device_note = dialog.findChild(QLabel, "DeviceSpecificPersonalDeviceNote")
 
         assert provider is not None
         assert endpoint is not None
         assert profile is not None
         assert personal_controls is not None
         assert personal_status is not None
+        assert personal_note is not None
+        assert custom_note is not None
+        assert device_note is not None
 
         assert [provider.itemText(index) for index in range(provider.count())] == [
             "Disabled",
@@ -1590,7 +1596,10 @@ def test_device_specific_advanced_settings_use_provider_model(
         assert provider.currentData() == "disabled"
         assert endpoint.isHidden()
         assert personal_controls.isHidden()
+        assert personal_note.isHidden()
+        assert custom_note.isHidden()
         assert not profile.isEnabled()
+        assert "ephemeral slot" in device_note.text()
         assert profile.count() == 2
         profile_ids = [profile.itemData(index) for index in range(profile.count())]
         profile_labels = [profile.itemText(index) for index in range(profile.count())]
@@ -1607,6 +1616,11 @@ def test_device_specific_advanced_settings_use_provider_model(
 
         assert endpoint.isHidden()
         assert not personal_controls.isHidden()
+        assert not personal_note.isHidden()
+        assert custom_note.isHidden()
+        assert "direct metadata-only Google Play resolution" in personal_note.text()
+        assert "never persisted" in personal_note.text()
+        assert "never purchases, delivers or downloads APKs" in personal_note.text()
         assert personal_status.text() == "Not signed in"
         assert profile.isEnabled()
 
@@ -1617,6 +1631,12 @@ def test_device_specific_advanced_settings_use_provider_model(
         assert not endpoint.isHidden()
         assert endpoint.isEnabled()
         assert personal_controls.isHidden()
+        assert personal_note.isHidden()
+        assert not custom_note.isHidden()
+        assert "requires no local Google login" in custom_note.text()
+        assert "run and control" in custom_note.text()
+        assert "No default or public endpoint" in custom_note.text()
+        assert "loopback HTTP is allowed" in custom_note.text()
         assert profile.isEnabled()
 
         endpoint.setText("https://resolver.example/api/auth")
@@ -1784,7 +1804,9 @@ def test_device_specific_ui_uses_current_context_without_exposing_identity_mater
         connected_index = profile.findData("connected_device")
         assert connected_index >= 0
         connected_label = profile.itemText(connected_index)
-        assert connected_label == "Connected Device — Google Pixel Test"
+        assert connected_label == (
+            "Personal Device — Google Pixel Test (capture when settings are saved)"
+        )
         assert "Old Phone" not in connected_label
         assert status.text() == "Signed in for this app session"
 
@@ -1813,4 +1835,42 @@ def test_device_specific_ui_uses_current_context_without_exposing_identity_mater
 
     monkeypatch.setattr(QDialog, "exec", inspect)
     window._show_advanced_settings()
+
+
+def test_saving_advanced_settings_captures_selected_personal_device(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _device_specific_test_session()
+    window._scan_session = session
+    captured: list[tuple[dict[str, object], scan_sessions.ScanSession]] = []
+    monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
+    monkeypatch.setattr(state, "save_settings", lambda values: dict(values))
+    monkeypatch.setattr(
+        window,
+        "_capture_requested_personal_device_profile",
+        lambda settings, current: captured.append((dict(settings), current)),
+    )
+
+    def configure(dialog: QDialog) -> int:
+        provider = dialog.findChild(QComboBox, "DeviceSpecificProviderCombo")
+        endpoint = dialog.findChild(QLineEdit, "DeviceSpecificResolverEndpointEdit")
+        profile = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert provider is not None
+        assert endpoint is not None
+        assert profile is not None
+        provider.setCurrentIndex(provider.findData("custom_dispenser"))
+        endpoint.setText("https://resolver.example/api/auth")
+        profile.setCurrentIndex(profile.findData("connected_device"))
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", configure)
+
+    window._show_advanced_settings()
+
+    assert len(captured) == 1
+    settings, current = captured[0]
+    assert current is session
+    assert settings[device_specific_integration.SETTING_PROVIDER] == "custom_dispenser"
+    assert settings[device_specific_integration.SETTING_PROFILE_ID] == "connected_device"
 

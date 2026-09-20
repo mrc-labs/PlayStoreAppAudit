@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import os
 
+import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
+import playstore_app_audit.services.presentation as presentation
 from playstore_app_audit.ui import column_presets, schema
 from playstore_app_audit.ui.details_panel import AppDetailsPanel
+from playstore_app_audit.ui.table_window import AuditTableModel
 
 
 def test_resolver_fields_are_canonical_exportable_technical_evidence() -> None:
@@ -89,4 +93,60 @@ def test_details_keep_raw_store_fact_beside_resolved_evidence() -> None:
         assert "Resolver status: resolved" in text
     finally:
         panel.deleteLater()
+        app.processEvents()
+
+
+@pytest.mark.parametrize(
+    ("updates", "expected"),
+    [
+        (
+            {
+                "play_version": "Varies with device",
+                "resolved_play_version": "5.0",
+                "device_specific_resolver_status": "resolved",
+            },
+            "5.0 (Varies with device)",
+        ),
+        (
+            {
+                "play_version": "Varies with device",
+                "resolved_play_version": "5.0",
+                "device_specific_resolver_status": "inconclusive",
+            },
+            "Varies with device",
+        ),
+        (
+            {
+                "play_version": "Varies with device",
+                "resolved_play_version": "",
+                "device_specific_resolver_status": "resolved",
+            },
+            "Varies with device",
+        ),
+        (
+            {
+                "play_version": "4.0",
+                "resolved_play_version": "5.0",
+                "device_specific_resolver_status": "resolved",
+            },
+            "4.0",
+        ),
+    ],
+)
+def test_normal_table_combines_resolved_version_only_for_successful_exact_trigger(
+    updates: dict[str, object], expected: str
+) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QApplication.instance() or QApplication([])
+    model = AuditTableModel()
+    row: dict[str, object] = {"package_name": "com.example.app", **updates}
+    model.set_rows([row])
+    index = model.index(0, model.columns.index("play_version"))
+
+    try:
+        assert index.data(Qt.ItemDataRole.DisplayRole) == expected
+        assert row["play_version"] == updates["play_version"]
+        assert presentation.rows_for_output([row])[0]["play_version"] == updates["play_version"]
+    finally:
+        model.deleteLater()
         app.processEvents()

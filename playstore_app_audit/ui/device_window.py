@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import dataclass
@@ -163,6 +164,47 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._device_specific_connected_profile = candidate
         self._device_specific_connected_profile_device_id = scan_session.device_id
         return candidate
+
+    def _capture_requested_personal_device_profile(
+        self,
+        settings: Mapping[str, Any],
+        scan_session: scan_sessions.ScanSession,
+    ) -> ConnectedDeviceProfile | None:
+        """Capture the selected Personal Device slot for this exact scan session."""
+
+        provider = device_specific_settings.provider_from_settings(settings)
+        requested_profile = str(
+            settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+        )
+        if (
+            provider is device_specific_settings.DeviceSpecificProvider.DISABLED
+            or requested_profile
+            != device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+        ):
+            return None
+        try:
+            return self._connected_device_profile_for_resolution(
+                requested_profile,
+                scan_session,
+                resolver_enabled=True,
+            )
+        except Exception:
+            # Profile capture is optional enrichment. Preserve any prior complete
+            # process-local slot, while exact-session binding prevents stale use.
+            return None
+
+    def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
+        super()._on_adb_scan_done(apps, system_packages)
+        if (
+            isinstance(apps, scan_sessions.ScanSession)
+            and self._scan_session is apps
+        ):
+            self._capture_requested_personal_device_profile(
+                state.load_settings(),
+                apps,
+            )
 
     # ---------- Menus ----------
     def _build_menu_v8(self) -> None:
