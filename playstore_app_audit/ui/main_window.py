@@ -10,7 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QModelIndex, QObject, QPoint, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QDialog,
@@ -407,12 +407,8 @@ class MainWindow(results_ui.ResultsWindow):
         local_source = local_apk_audit.is_local_apk_source(self.source_mode)
         if hasattr(self, "apk_relationship_filter_row"):
             self.apk_relationship_filter_row.setVisible(local_source)
-            if not local_source and self._apk_relationship_filters:
-                self._apk_relationship_filters.clear()
-                setter = getattr(self.proxy, "set_relationship_filters", None)
-                if callable(setter):
-                    setter(set())
-                self._sync_apk_relationship_buttons()
+            if not local_source:
+                self._clear_local_apk_relationship_context()
         if not hasattr(self, "choose_apk_button"):
             return
         idle = not self._operation_running()
@@ -541,6 +537,33 @@ class MainWindow(results_ui.ResultsWindow):
         self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
         self._apply_source_default_sort()
 
+    def _clear_local_apk_relationship_context(self) -> None:
+        """Remove Local APK-only filtering from any non-Local source."""
+
+        self._apk_relationship_filters.clear()
+        setter = getattr(self.proxy, "set_relationship_filters", None)
+        if callable(setter):
+            setter(set())
+        if hasattr(self, "apk_relationship_buttons"):
+            self._sync_apk_relationship_buttons()
+
+    def _establish_source_presentation(
+        self,
+        *,
+        clear_stale_selection: bool = False,
+    ) -> None:
+        """Apply all contextual presentation state for the established source."""
+
+        if not local_apk_audit.is_local_apk_source(self.source_mode):
+            self._clear_local_apk_relationship_context()
+        if clear_stale_selection:
+            self.table.clearSelection()
+            self.table.setCurrentIndex(QModelIndex())
+            self.details_panel.clear()
+        self._apply_established_source_defaults()
+        self._sync_action_availability()
+        self._update_summary()
+
     def _apply_source_default_sort(self) -> None:
         column = (
             "local_apk_version_comparison"
@@ -646,8 +669,7 @@ class MainWindow(results_ui.ResultsWindow):
         else:
             self.source_label.setText(f"Local package source: No supported files {description}")
             self.status_label.setText("No Local APK source was established")
-        self._apply_established_source_defaults()
-        self._sync_action_availability()
+        self._establish_source_presentation()
         if candidates:
             self._schedule_first_audit()
 
@@ -761,9 +783,8 @@ class MainWindow(results_ui.ResultsWindow):
             else:
                 self._begin_icon_result_generation()
             self.status_label.setText("File ready. Run the Play Store audit.")
-            self._apply_established_source_defaults()
+            self._establish_source_presentation()
             self._set_busy(False)
-            self._sync_action_availability()
             self._schedule_first_audit()
 
     def _set_view_preset(self, name: str) -> None:
@@ -780,8 +801,7 @@ class MainWindow(results_ui.ResultsWindow):
         super()._on_adb_scan_done(apps, system_packages)
         if self.source_mode == "device":
             self._local_apk_candidates = ()
-            self._apply_established_source_defaults()
-            self._sync_action_availability()
+            self._establish_source_presentation(clear_stale_selection=True)
             logger.info(
                 "source_established type=android_phone physical_candidates=1 packages=%d",
                 len(self.device_apps_all),
@@ -2132,7 +2152,7 @@ class MainWindow(results_ui.ResultsWindow):
         if local_apk_audit.is_local_apk_source(self.source_mode):
             self.source_mode = None
             self._clear_source_result_rows()
-            self._apply_column_visibility(reset_order=False)
+            self._establish_source_presentation(clear_stale_selection=True)
         else:
             self._begin_icon_result_generation()
         request_id = self._begin_phone_scan_request()

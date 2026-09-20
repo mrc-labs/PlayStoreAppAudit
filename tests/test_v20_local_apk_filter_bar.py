@@ -60,6 +60,8 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
             "Outdated": "orange",
             "Newer": "green",
             "Match": "green",
+            "Different": "yellow",
+            "Unknown": "purple",
             "Device-specific": "blue",
             "N/A": "red",
         }
@@ -70,6 +72,11 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
                     status_key,
                     app.palette(),
                 )
+            )
+        window._refresh_theme_styles()
+        for relationship, status_key in expected.items():
+            assert window.apk_relationship_buttons[relationship].styleSheet() == (
+                theme_ui.semantic_filter_button_stylesheet(status_key, app.palette())
             )
 
         device_button = window.apk_relationship_buttons["Device-specific"]
@@ -103,7 +110,7 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         assert device_button.isChecked()
         window._clear_all_filters()
 
-        # All, Different and Unknown remain neutral using the active theme tokens.
+        # All remains neutral; relationship buttons use the shared semantic palette.
         all_button = window.apk_relationship_buttons["All"]
         assert all_button.isChecked()
 
@@ -114,8 +121,12 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         )
 
         assert all_button.styleSheet() == expected_neutral
-        assert window.apk_relationship_buttons["Different"].styleSheet() == expected_neutral
-        assert window.apk_relationship_buttons["Unknown"].styleSheet() == expected_neutral
+        assert window.apk_relationship_buttons["Different"].styleSheet() == (
+            theme_ui.semantic_filter_button_stylesheet("yellow", app.palette())
+        )
+        assert window.apk_relationship_buttons["Unknown"].styleSheet() == (
+            theme_ui.semantic_filter_button_stylesheet("purple", app.palette())
+        )
         window._set_apk_relationship_filter("Different")
         assert not all_button.isChecked()
         assert window.apk_relationship_buttons["Different"].isChecked()

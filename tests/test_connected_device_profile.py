@@ -252,6 +252,35 @@ def test_collect_connected_profile_fails_loudly_without_authorised_device(
         connected_profile.collect_connected_device_profile("adb")
 
 
+def test_direct_capture_enumerates_once_and_returns_only_safe_ownership(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_serial = "private-adb-serial"
+    profile = build_complete_profile()
+    enumerations: list[str] = []
+
+    def authorise(adb: str) -> str:
+        enumerations.append(adb)
+        return raw_serial
+
+    def collect(adb: str, *, serial: str):
+        assert adb == "adb"
+        assert serial == raw_serial
+        return profile
+
+    monkeypatch.setattr(connected_profile, "_authorised_device_serial", authorise)
+    monkeypatch.setattr(connected_profile, "collect_connected_device_profile", collect)
+
+    capture = connected_profile.capture_connected_device_profile("adb")
+
+    assert enumerations == ["adb"]
+    assert capture.profile is profile
+    assert capture.ownership_token == connected_profile.ephemeral_device_ownership_token(
+        raw_serial
+    )
+    assert raw_serial not in repr(capture)
+
+
 def test_android_resource_qualifiers_fill_modern_input_configuration() -> None:
     result = connected_profile.build_connected_device_profile(
         properties=COMPLETE_PROPERTIES,

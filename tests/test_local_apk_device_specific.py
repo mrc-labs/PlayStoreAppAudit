@@ -409,7 +409,7 @@ def test_positive_resolved_version_code_drives_canonical_relationship(
     )
 
     assert row["local_apk_version_comparison"] == expected
-    assert local_apk_audit.local_apk_relationship_display_value(row) == f"{expected} (Dev. Spec.)"
+    assert local_apk_audit.local_apk_relationship_display_value(row) == f"{expected} (Dev. Sp.)"
 
 
 def test_long_version_code_precedes_manifest_version_code(
@@ -556,7 +556,7 @@ def test_progressive_callback_receives_raw_then_resolved_device_specific_evidenc
     )
     assert progressive["local_apk_version_comparison"] == "Outdated"
     assert local_apk_audit.local_apk_relationship_display_value(progressive) == (
-        "Outdated (Dev. Spec.)"
+        "Outdated (Dev. Sp.)"
     )
 
 
@@ -588,7 +588,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
     column = model.columns.index("local_apk_version_comparison")
     index = model.index(0, column)
     ordinary_index = model.index(1, column)
-    assert model.data(index, Qt.ItemDataRole.DisplayRole) == "Outdated (Dev. Spec.)"
+    assert model.data(index, Qt.ItemDataRole.DisplayRole) == "Outdated (Dev. Sp.)"
     assert model.data(ordinary_index, Qt.ItemDataRole.DisplayRole) == "Outdated"
     assert model.data(index, Qt.ItemDataRole.UserRole)[
         "local_apk_version_comparison"
@@ -601,7 +601,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
         ordinary_index,
         Qt.ItemDataRole.ForegroundRole,
     )
-    assert "Local APK vs Store: Outdated (Dev. Spec.)" in details_panel.local_apk_details_lines(
+    assert "Local APK vs Store: Outdated (Dev. Sp.)" in details_panel.local_apk_details_lines(
         row
     )
 
@@ -609,7 +609,7 @@ def test_ds_suffix_is_presentation_only_for_table_details_filter_and_score(
     proxy.setSourceModel(model)
     proxy.set_relationship_filters({"Outdated"})
     assert proxy.rowCount() == 2
-    proxy.set_relationship_filters({"Outdated (Dev. Spec.)"})
+    proxy.set_relationship_filters({"Outdated (Dev. Sp.)"})
     assert proxy.rowCount() == 0
 
     breakdown = device_insights.calculate_health_score_breakdown(row)
@@ -630,3 +630,79 @@ def test_ds_suffix_requires_matching_positive_version_code_evidence() -> None:
     row[integration.RESOLVED_VERSION_CODE_FIELD] = 100
     row["local_apk_version_comparison"] = "Match"
     assert local_apk_audit.local_apk_relationship_display_value(row) == "Match"
+
+
+@pytest.mark.parametrize(
+    ("installed_code", "resolved_code", "relationship"),
+    [(99, 100, "Outdated"), (100, 100, "Match"), (101, 100, "Newer")],
+)
+def test_phone_relationship_provenance_is_reproduced_from_strict_evidence(
+    installed_code: int,
+    resolved_code: int,
+    relationship: str,
+) -> None:
+    row = {
+        "play_version": "Varies with device",
+        "installed_version_code": installed_code,
+        "resolved_play_version_code": resolved_code,
+        "device_specific_resolver_status": "resolved",
+        "version_comparison": relationship,
+    }
+
+    assert presentation.relationship_display_value(row, "version_comparison") == (
+        f"{relationship} (Dev. Sp.)"
+    )
+    assert row["version_comparison"] == relationship
+
+    model = table_ui.AuditTableModel()
+    model.set_rows([row])
+    index = model.index(0, model.columns.index("version_comparison"))
+    assert model.data(index, Qt.ItemDataRole.DisplayRole) == f"{relationship} (Dev. Sp.)"
+    assert model.data(index, Qt.ItemDataRole.UserRole)["version_comparison"] == relationship
+
+
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"play_version": "2.0"},
+        {"device_specific_resolver_status": "inconclusive"},
+        {"resolved_play_version_code": 0},
+        {"installed_version_code": ""},
+        {"version_comparison": "Match"},
+    ],
+)
+def test_phone_relationship_provenance_is_not_fabricated(
+    updates: dict[str, object],
+) -> None:
+    row: dict[str, object] = {
+        "play_version": "Varies with device",
+        "installed_version_code": 99,
+        "resolved_play_version_code": 100,
+        "device_specific_resolver_status": "resolved",
+        "version_comparison": "Outdated",
+    }
+    row.update(updates)
+
+    assert presentation.relationship_display_value(row, "version_comparison") == str(
+        row["version_comparison"]
+    )
+
+
+def test_phone_relationship_details_use_row_aware_provenance_and_canonical_style() -> None:
+    row = {
+        "play_version": "Varies with device",
+        "installed_version_code": 99,
+        "resolved_play_version_code": 100,
+        "device_specific_resolver_status": "resolved",
+        "version_comparison": "Outdated",
+    }
+
+    rendered = details_panel._joined_semantic_fields(
+        row,
+        [("Installed vs Store", "version_comparison")],
+    )
+
+    assert "Outdated (Dev. Sp.)" in rendered
+    assert presentation.semantic_value_presentation(
+        "version_comparison", row["version_comparison"]
+    ).status_key == "orange"

@@ -38,7 +38,11 @@ import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
-from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
+from playstore_app_audit.services.connected_device_profile import (
+    ConnectedDeviceProfile,
+    ConnectedDeviceProfileCapture,
+    capture_connected_device_profile,
+)
 from playstore_app_audit.ui import schema
 
 # Stable device-layer schema aliases. The canonical definitions live in ui.schema.
@@ -192,6 +196,36 @@ class DeviceWindow(compact_ui.CompactWindow):
             # Profile capture is optional enrichment. Preserve any prior complete
             # process-local slot, while exact-session binding prevents stale use.
             return None
+
+    def _collect_personal_device_profile_direct(
+        self,
+    ) -> ConnectedDeviceProfileCapture:
+        """Read only Device Specific profile data, without a Scan Phone inventory."""
+
+        adb = self._find_adb()
+        if not adb:
+            raise RuntimeError(
+                "ADB is not available. Install Android Platform-Tools and try again."
+            )
+        return capture_connected_device_profile(adb)
+
+    def _store_direct_personal_device_capture(
+        self,
+        capture: ConnectedDeviceProfileCapture,
+    ) -> ConnectedDeviceProfile:
+        """Atomically replace the one process-local slot after complete capture."""
+
+        if not isinstance(capture, ConnectedDeviceProfileCapture):
+            raise RuntimeError("The phone data could not be captured safely.")
+        profile = capture.profile
+        if not profile.complete or not capture.ownership_token:
+            raise RuntimeError(
+                "The phone data required for Device Specific resolution could not "
+                "be captured completely."
+            )
+        self._device_specific_connected_profile = profile
+        self._device_specific_connected_profile_device_id = capture.ownership_token
+        return profile
 
     def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
         if not self._is_current_scan_completion(apps, system_packages):
@@ -451,7 +485,12 @@ class DeviceWindow(compact_ui.CompactWindow):
             value = str(row.get(key, "") or "")
             if not value and key not in {"notes", "change"}:
                 continue
-            label = QLabel(html.escape(presentation.display_relationship_value(key, value)))
+            display_value = (
+                presentation.relationship_display_value(row, key)
+                if key in presentation.VERSION_RELATIONSHIP_FIELDS
+                else presentation.display_relationship_value(key, value)
+            )
+            label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             form.addRow(label_text, label)

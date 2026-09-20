@@ -924,7 +924,11 @@ class InsightsWindow(device_ui.DeviceWindow):
             display_value = (
                 f"{value}/100"
                 if key == "health_score"
-                else presentation.display_relationship_value(key, value)
+                else (
+                    presentation.relationship_display_value(row, key)
+                    if key in presentation.VERSION_RELATIONSHIP_FIELDS
+                    else presentation.display_relationship_value(key, value)
+                )
             )
             label = QLabel(html.escape(display_value))
             label.setWordWrap(True)

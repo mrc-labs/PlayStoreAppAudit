@@ -40,6 +40,8 @@ APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Newer": "green",
     "Match": "green",
+    "Different": "yellow",
+    "Unknown": "purple",
     "Device-specific": "blue",
     "N/A": "red",
 }

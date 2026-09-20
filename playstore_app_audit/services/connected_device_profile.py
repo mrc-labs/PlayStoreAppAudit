@@ -7,6 +7,7 @@ Specific resolution.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -109,6 +110,24 @@ class ConnectedDeviceProfile:
     profile: Mapping[str, str]
     complete: bool
     missing_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectedDeviceProfileCapture:
+    """Complete profile plus an opaque, process-local device ownership token."""
+
+    profile: ConnectedDeviceProfile
+    ownership_token: str
+
+
+def ephemeral_device_ownership_token(serial: str) -> str:
+    """Derive the same non-reversible process-local ownership key as ScanSession."""
+
+    return (
+        hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16]
+        if serial
+        else "unknown"
+    )
 
 
 def _first(properties: Mapping[str, str], keys: tuple[str, ...]) -> str:
@@ -536,4 +555,18 @@ def collect_connected_device_profile(
             "com.google.android.gms",
             timeout=20,
         ),
+    )
+
+
+def capture_connected_device_profile(adb: str) -> ConnectedDeviceProfileCapture:
+    """Capture a profile and safe ownership token with one ADB enumeration.
+
+    The raw serial remains command-local: it selects the device for the allowlisted
+    profile reads and is never returned, logged or persisted.
+    """
+
+    serial = _authorised_device_serial(adb)
+    return ConnectedDeviceProfileCapture(
+        profile=collect_connected_device_profile(adb, serial=serial),
+        ownership_token=ephemeral_device_ownership_token(serial),
     )

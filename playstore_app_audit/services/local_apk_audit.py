@@ -10,13 +10,13 @@ from playstore_app_audit.services import (
     alternative_distribution,
     device_metadata,
     device_specific_integration,
+    presentation,
 )
 
 SOURCE_MODE = "local_apk"
 LIBRARY_SOURCE_MODE = "local_apk_library"
 LOCAL_APK_SOURCE_MODES = frozenset({SOURCE_MODE, LIBRARY_SOURCE_MODE})
 DEFINITIVE_STORE_ABSENCE = "not_found_in_checked_countries"
-DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS = frozenset({"Outdated", "Match", "Newer"})
 
 
 def is_local_apk_source(source_mode: object) -> bool:
@@ -62,21 +62,10 @@ def _local_store_relationship(
 def local_apk_relationship_display_value(row: Mapping[str, Any]) -> str:
     """Add Device Specific provenance without changing canonical semantics."""
 
-    relationship = str(row.get("local_apk_version_comparison") or "").strip()
-    if relationship not in DEVICE_SPECIFIC_RESOLVED_RELATIONSHIPS:
-        return relationship
-    if str(row.get(device_specific_integration.STATUS_FIELD) or "").strip() != "resolved":
-        return relationship
-    local_version_code = row.get("local_apk_long_version_code")
-    if local_version_code in {None, ""}:
-        local_version_code = row.get("local_apk_version_code")
-    resolved_relationship = device_specific_integration.relationship_from_version_codes(
-        local_version_code,
-        row.get(device_specific_integration.RESOLVED_VERSION_CODE_FIELD),
+    return presentation.relationship_display_value(
+        row,
+        "local_apk_version_comparison",
     )
-    if resolved_relationship != relationship:
-        return relationship
-    return f"{relationship} (Dev. Spec.)"
 
 
 def association_result_row(

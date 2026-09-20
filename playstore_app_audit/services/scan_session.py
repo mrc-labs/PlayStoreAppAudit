@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
@@ -318,11 +317,7 @@ def _authorised_serial(devices_output: str) -> str:
 
 
 def _masked_device_identity(serial: str) -> tuple[str, str]:
-    device_id = (
-        hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16]
-        if serial
-        else "unknown"
-    )
+    device_id = connected_device_profile.ephemeral_device_ownership_token(serial)
     if len(serial) >= 4:
         masked = f"••••{serial[-4:]}"
     elif serial:

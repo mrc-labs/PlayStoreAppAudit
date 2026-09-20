@@ -6,9 +6,11 @@ import subprocess
 import threading
 from dataclasses import FrozenInstanceError, fields
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 import playstore_app_audit.services.device_insights as device_insights
@@ -18,9 +20,13 @@ import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
+import playstore_app_audit.ui.main_window as main_ui
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
-from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
+from playstore_app_audit.services.connected_device_profile import (
+    ConnectedDeviceProfile,
+    ConnectedDeviceProfileCapture,
+)
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -302,6 +308,88 @@ def _select_session(window: MainWindow, session: scan_sessions.ScanSession) -> N
     window._on_adb_scan_done(session, request_id)
 
 
+def test_local_apk_to_phone_transition_restores_all_device_presentation(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(window, "_schedule_first_audit", lambda: None)
+    window._establish_local_apk_candidates((Path("example.apk"),), "selected")
+    window._set_apk_relationship_filter("Unknown")
+    local_column = window.model.columns.index("local_apk_version_comparison")
+    assert window.source_mode == "local_apk"
+    assert window.proxy.relationship_filters == {"Unknown"}
+    assert not window.table.isColumnHidden(local_column)
+    assert window.table.horizontalHeader().sortIndicatorSection() == local_column
+
+    class DeferredThread:
+        def __init__(self, *, target, args, daemon: bool) -> None:
+            assert daemon is True
+
+        def start(self) -> None:
+            return None
+
+    monkeypatch.setattr(main_ui.threading, "Thread", DeferredThread)
+    window._scan_phone()
+    request_id = window._active_scan_request_id
+    assert request_id is not None
+    window._on_adb_scan_done(_session(_compact()), request_id)
+
+    assert window.source_mode == "device"
+    assert window._local_apk_candidates == ()
+    assert window._apk_relationship_filters == set()
+    assert window.proxy.relationship_filters == set()
+    assert window.apk_relationship_filter_row.isHidden()
+    assert window.table.isColumnHidden(local_column)
+    assert window.table.horizontalHeader().sortIndicatorSection() == (
+        window.model.columns.index("criticality")
+    )
+    assert not window.table.selectionModel().hasSelection()
+
+
+def test_device_source_transition_preserves_custom_user_column_order(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = {
+        "view_preset": "Custom",
+        "custom_columns": ["criticality", "package_name", "play_title"],
+        "recent_sources": [],
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    header = window.table.horizontalHeader()
+    package_column = window.model.columns.index("package_name")
+    title_column = window.model.columns.index("play_title")
+    header.moveSection(header.visualIndex(title_column), header.visualIndex(package_column))
+    order_before = [
+        header.logicalIndex(index)
+        for index in range(header.count())
+        if header.logicalIndex(index)
+        not in {
+            window.model.columns.index("change"),
+            window.model.columns.index("device_change"),
+            window.model.columns.index("local_apk_version_comparison"),
+            window.model.columns.index("criticality"),
+        }
+    ]
+
+    window.source_mode = "device"
+    window._establish_source_presentation()
+
+    order_after = [
+        header.logicalIndex(index)
+        for index in range(header.count())
+        if header.logicalIndex(index)
+        not in {
+            window.model.columns.index("change"),
+            window.model.columns.index("device_change"),
+            window.model.columns.index("local_apk_version_comparison"),
+            window.model.columns.index("criticality"),
+        }
+    ]
+    assert order_after == order_before
+    assert header.sortIndicatorOrder() == Qt.SortOrder.AscendingOrder
+
+
 def _run_worker(
     window: MainWindow,
     app: QApplication,
@@ -501,6 +589,53 @@ def test_scan_completion_captures_selected_personal_device_slot(
     assert captures == [("adb", session)]
     assert window._device_specific_connected_profile is profile
     assert window._device_specific_connected_profile_device_id == session.device_id
+
+
+def test_direct_phone_profile_collection_never_builds_scan_inventory(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = _connected_profile("Direct Phone")
+    expected = ConnectedDeviceProfileCapture(profile, "safe-owner")
+    monkeypatch.setattr(window, "_find_adb", lambda: "adb")
+    monkeypatch.setattr(
+        device_ui,
+        "capture_connected_device_profile",
+        lambda adb: expected if adb == "adb" else pytest.fail("unexpected ADB"),
+    )
+    monkeypatch.setattr(
+        scan_sessions,
+        "collect_scan_session",
+        lambda *_args, **_kwargs: pytest.fail("direct capture enumerated app inventory"),
+    )
+
+    assert window._collect_personal_device_profile_direct() is expected
+
+
+def test_direct_capture_replaces_slot_only_after_complete_result(
+    window: MainWindow,
+) -> None:
+    previous = _connected_profile("Phone A")
+    replacement = _connected_profile("Phone B")
+    incomplete = _connected_profile("Incomplete", complete=False)
+    window._device_specific_connected_profile = previous
+    window._device_specific_connected_profile_device_id = "owner-a"
+
+    with pytest.raises(RuntimeError, match="could not be captured completely"):
+        window._store_direct_personal_device_capture(
+            ConnectedDeviceProfileCapture(incomplete, "owner-b")
+        )
+
+    assert window._device_specific_connected_profile is previous
+    assert window._device_specific_connected_profile_device_id == "owner-a"
+
+    stored = window._store_direct_personal_device_capture(
+        ConnectedDeviceProfileCapture(replacement, "owner-b")
+    )
+
+    assert stored is replacement
+    assert window._device_specific_connected_profile is replacement
+    assert window._device_specific_connected_profile_device_id == "owner-b"
 
 
 def test_scan_completion_does_not_probe_when_personal_device_is_not_selected(

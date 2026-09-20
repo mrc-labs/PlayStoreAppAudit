@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import sys
+import threading
 from typing import Any
 
 from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_windows
 
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, QSize, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QObject, QSize, QSortFilterProxyModel, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.help_texts as help_texts
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
@@ -45,6 +47,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.rich_help as rich_help
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 import playstore_app_audit.ui.theme as theme_ui
@@ -85,6 +88,30 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
         "local_apk_sha256",
     }
 )
+
+
+class DeviceProfileCaptureSignals(QObject):
+    completed = Signal(object)
+    failed = Signal(object)
+
+
+def safe_phone_capture_error(error: object) -> str:
+    """Translate collector failures without surfacing commands or identifiers."""
+
+    message = str(error or "").casefold()
+    if "more than one" in message:
+        return (
+            "More than one authorised Android phone is connected. Keep only the "
+            "phone you want to use connected and try again."
+        )
+    if "not available" in message or "not installed" in message:
+        return "ADB is not available. Install Android Platform-Tools and try again."
+    if any(marker in message for marker in ("unauthor", "offline", "no authorised")):
+        return (
+            "No authorised Android phone was found. Connect one phone, enable USB "
+            "debugging and authorise this computer."
+        )
+    return "The phone data required for Device Specific resolution could not be captured."
 
 CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
 CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
@@ -913,6 +940,8 @@ class PreferencesWindow(table_ui.TableWindow):
             "Credentials, query strings and fragments are rejected."
         )
         resolver_endpoint_label = QLabel("Dispenser Endpoint")
+        dispenser_help = QPushButton("Find dispenser options…")
+        dispenser_help.setObjectName("DeviceSpecificDispenserHelpButton")
 
         resolver_profile = QComboBox()
         resolver_profile.setObjectName(
@@ -929,38 +958,21 @@ class PreferencesWindow(table_ui.TableWindow):
             "_device_specific_connected_profile_device_id",
             None,
         )
-        scan_session = getattr(self, "_scan_session", None)
-        if not isinstance(scan_session, scan_sessions.ScanSession):
-            scan_session = None
         cached_profile_matches_context = bool(
             connected_profile is not None
             and getattr(connected_profile, "complete", False)
             and (
-                scan_session is None
+                not isinstance(getattr(self, "_scan_session", None), scan_sessions.ScanSession)
                 or connected_profile_device_id
-                == getattr(scan_session, "device_id", None)
+                == getattr(getattr(self, "_scan_session", None), "device_id", None)
             )
         )
-        connected_available = cached_profile_matches_context or scan_session is not None
-        if connected_available:
-            if cached_profile_matches_context:
-                connected_label = (
-                    f"Personal Device — {connected_profile.display_name} — "
-                    f"Android {connected_profile.android_release} / "
-                    f"API {connected_profile.api_level} (this session)"
-                )
-            else:
-                manufacturer = str(
-                    getattr(scan_session, "manufacturer", "") or ""
-                ).strip()
-                model = str(getattr(scan_session, "model", "") or "").strip()
-                device_name = " ".join(
-                    part for part in (manufacturer, model) if part
-                ).strip() or "current Scan Phone device"
-                connected_label = (
-                    f"Personal Device — {device_name} "
-                    "(capture when settings are saved)"
-                )
+        if cached_profile_matches_context:
+            connected_label = (
+                f"Personal Device — {connected_profile.display_name} — "
+                f"Android {connected_profile.android_release} / "
+                f"API {connected_profile.api_level} (this session)"
+            )
             resolver_profile.addItem(
                 connected_label,
                 device_specific_integration.CONNECTED_DEVICE_PROFILE_ID,
@@ -988,7 +1000,19 @@ class PreferencesWindow(table_ui.TableWindow):
         resolver_form.addRow("Provider", resolver_provider)
         resolver_form.addRow("Google Session", personal_controls)
         resolver_form.addRow(resolver_endpoint_label, resolver_endpoint)
+        resolver_form.addRow("", dispenser_help)
         resolver_form.addRow("Device Profile", resolver_profile)
+        get_phone_data = QPushButton("Get Phone Data")
+        get_phone_data.setObjectName("DeviceSpecificGetPhoneDataButton")
+        phone_data_status = QLabel()
+        phone_data_status.setObjectName("DeviceSpecificPhoneDataStatus")
+        phone_data_status.setWordWrap(True)
+        phone_data_controls = QWidget()
+        phone_data_layout = QHBoxLayout(phone_data_controls)
+        phone_data_layout.setContentsMargins(0, 0, 0, 0)
+        phone_data_layout.addWidget(get_phone_data)
+        phone_data_layout.addWidget(phone_data_status, 1)
+        resolver_form.addRow("", phone_data_controls)
         resolver_layout.addLayout(resolver_form)
 
         personal_provider_note = self._settings_note(
@@ -1001,15 +1025,15 @@ class PreferencesWindow(table_ui.TableWindow):
         resolver_layout.addWidget(personal_provider_note)
         custom_provider_note = self._settings_note(
             "Custom Dispenser requires no local Google login. Enter the URL of a "
-            "compatible service that you run and control; authentication occurs "
-            "server-side. No default or public endpoint is configured. Remote "
-            "endpoints require HTTPS; loopback HTTP is allowed."
+            "compatible service you choose; authentication occurs server-side. "
+            "No default public endpoint is configured. Remote endpoints require "
+            "HTTPS; loopback HTTP is allowed."
         )
         custom_provider_note.setObjectName("DeviceSpecificCustomProviderNote")
         resolver_layout.addWidget(custom_provider_note)
         personal_device_note = self._settings_note(
-            "Personal Device is captured from Scan Phone only when selected and "
-            "kept as one complete, ephemeral slot for this running app process."
+            "Reads only the phone data needed for Device Specific Play resolution. "
+            "The Personal Device profile is kept only for this app session."
         )
         personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
         resolver_layout.addWidget(personal_device_note)
@@ -1049,6 +1073,63 @@ class PreferencesWindow(table_ui.TableWindow):
         personal_sign_in.clicked.connect(sign_in_personal_session)
         personal_clear.clicked.connect(clear_personal_session)
 
+        dispenser_help.clicked.connect(
+            lambda: rich_help.show_rich_help(
+                dialog,
+                "Custom Dispenser Options",
+                help_texts.DEVICE_SPECIFIC_DISPENSER_GUIDE_HTML,
+            )
+        )
+
+        capture_signals = DeviceProfileCaptureSignals(dialog)
+
+        def upsert_personal_device(profile: object) -> None:
+            profile_id = device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+            label = (
+                f"Personal Device — {getattr(profile, 'display_name', 'Android phone')} — "
+                f"Android {getattr(profile, 'android_release', '')} / "
+                f"API {getattr(profile, 'api_level', '')} (this session)"
+            )
+            index = resolver_profile.findData(profile_id)
+            if index < 0:
+                resolver_profile.insertItem(0, label, profile_id)
+                index = resolver_profile.findData(profile_id)
+            else:
+                resolver_profile.setItemText(index, label)
+            resolver_profile.setCurrentIndex(index)
+
+        def finish_phone_capture(capture: object) -> None:
+            try:
+                profile = self._store_direct_personal_device_capture(capture)
+            except Exception as exc:
+                fail_phone_capture(exc)
+                return
+            upsert_personal_device(profile)
+            get_phone_data.setEnabled(True)
+            phone_data_status.setText("Phone data ready for this app session.")
+
+        def fail_phone_capture(error: object) -> None:
+            get_phone_data.setEnabled(True)
+            phone_data_status.setText(safe_phone_capture_error(error))
+
+        capture_signals.completed.connect(finish_phone_capture)
+        capture_signals.failed.connect(fail_phone_capture)
+
+        def collect_phone_data_worker() -> None:
+            try:
+                capture_signals.completed.emit(
+                    self._collect_personal_device_profile_direct()
+                )
+            except Exception as exc:
+                capture_signals.failed.emit(exc)
+
+        def get_phone_data_now() -> None:
+            get_phone_data.setEnabled(False)
+            phone_data_status.setText("Getting phone data…")
+            threading.Thread(target=collect_phone_data_worker, daemon=True).start()
+
+        get_phone_data.clicked.connect(get_phone_data_now)
+
         def sync_resolver_controls() -> None:
             provider_value = str(resolver_provider.currentData() or "")
             enabled = (
@@ -1070,6 +1151,7 @@ class PreferencesWindow(table_ui.TableWindow):
             resolver_endpoint_label.setVisible(custom)
             resolver_endpoint.setVisible(custom)
             resolver_endpoint.setEnabled(custom)
+            dispenser_help.setVisible(custom)
             refresh_personal_session_status()
 
         resolver_provider.currentIndexChanged.connect(

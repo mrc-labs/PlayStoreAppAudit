@@ -39,7 +39,10 @@ import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
-from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
+from playstore_app_audit.services.connected_device_profile import (
+    ConnectedDeviceProfile,
+    ConnectedDeviceProfileCapture,
+)
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -1599,7 +1602,7 @@ def test_device_specific_advanced_settings_use_provider_model(
         assert personal_note.isHidden()
         assert custom_note.isHidden()
         assert not profile.isEnabled()
-        assert "ephemeral slot" in device_note.text()
+        assert "kept only for this app session" in device_note.text()
         assert profile.count() == 2
         profile_ids = [profile.itemData(index) for index in range(profile.count())]
         profile_labels = [profile.itemText(index) for index in range(profile.count())]
@@ -1634,8 +1637,8 @@ def test_device_specific_advanced_settings_use_provider_model(
         assert personal_note.isHidden()
         assert not custom_note.isHidden()
         assert "requires no local Google login" in custom_note.text()
-        assert "run and control" in custom_note.text()
-        assert "No default or public endpoint" in custom_note.text()
+        assert "compatible service you choose" in custom_note.text()
+        assert "No default public endpoint" in custom_note.text()
         assert "loopback HTTP is allowed" in custom_note.text()
         assert profile.isEnabled()
 
@@ -1753,7 +1756,7 @@ def test_connected_device_profile_choice_requires_meaningful_context(
     assert "connected_device" not in captured_profile_ids[0]
     assert "connected_device" not in captured_profile_ids[1]
     assert "connected_device" in captured_profile_ids[2]
-    assert "connected_device" in captured_profile_ids[3]
+    assert "connected_device" not in captured_profile_ids[3]
 
 
 def test_configured_connected_device_without_context_falls_back_conservatively(
@@ -1801,13 +1804,7 @@ def test_device_specific_ui_uses_current_context_without_exposing_identity_mater
         status = dialog.findChild(QLabel, "DeviceSpecificPersonalSessionStatus")
         assert profile is not None
         assert status is not None
-        connected_index = profile.findData("connected_device")
-        assert connected_index >= 0
-        connected_label = profile.itemText(connected_index)
-        assert connected_label == (
-            "Personal Device — Google Pixel Test (capture when settings are saved)"
-        )
-        assert "Old Phone" not in connected_label
+        assert profile.findData("connected_device") < 0
         assert status.text() == "Signed in for this app session"
 
         surfaced_text = " ".join(
@@ -1843,6 +1840,8 @@ def test_saving_advanced_settings_captures_selected_personal_device(
 ) -> None:
     session = _device_specific_test_session()
     window._scan_session = session
+    window._device_specific_connected_profile = _device_specific_test_profile()
+    window._device_specific_connected_profile_device_id = session.device_id
     captured: list[tuple[dict[str, object], scan_sessions.ScanSession]] = []
     monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
     monkeypatch.setattr(state, "save_settings", lambda values: dict(values))
@@ -1873,4 +1872,164 @@ def test_saving_advanced_settings_captures_selected_personal_device(
     assert current is session
     assert settings[device_specific_integration.SETTING_PROVIDER] == "custom_dispenser"
     assert settings[device_specific_integration.SETTING_PROFILE_ID] == "connected_device"
+
+
+def test_get_phone_data_is_explicit_async_profile_only_action(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = _device_specific_test_profile("Google Pixel Test")
+    capture = ConnectedDeviceProfileCapture(
+        profile=profile,
+        ownership_token="safe-process-local-owner",
+    )
+    calls: list[str] = []
+    audit_calls: list[str] = []
+    saved: list[object] = []
+
+    class ImmediateThread:
+        def __init__(self, *, target, daemon: bool) -> None:
+            assert daemon is True
+            self.target = target
+
+        def start(self) -> None:
+            self.target()
+
+    window._scan_session = None
+    monkeypatch.setattr(
+        window,
+        "_collect_personal_device_profile_direct",
+        lambda: calls.append("profile") or capture,
+    )
+    monkeypatch.setattr(
+        window,
+        "_start_audit",
+        lambda: audit_calls.append("audit"),
+    )
+    monkeypatch.setattr(preferences_ui.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(state, "save_settings", lambda values: saved.append(values))
+
+    def inspect(dialog: QDialog) -> int:
+        provider = dialog.findChild(QComboBox, "DeviceSpecificProviderCombo")
+        button = dialog.findChild(QPushButton, "DeviceSpecificGetPhoneDataButton")
+        status = dialog.findChild(QLabel, "DeviceSpecificPhoneDataStatus")
+        profiles = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert provider is not None
+        assert button is not None
+        assert status is not None
+        assert profiles is not None
+        assert provider.currentData() == "disabled"
+
+        button.click()
+
+        assert button.isEnabled()
+        assert status.text() == "Phone data ready for this app session."
+        connected_index = profiles.findData("connected_device")
+        assert connected_index >= 0
+        assert profiles.currentIndex() == connected_index
+        label = profiles.itemText(connected_index)
+        assert label == (
+            "Personal Device — Google Pixel Test — Android 16 / API 36 "
+            "(this session)"
+        )
+        for forbidden in (
+            "safe-process-local-owner",
+            "profile-hash-must-not-appear",
+            "raw-serial-must-not-appear",
+        ):
+            assert forbidden not in label
+            assert forbidden not in status.text()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+
+    assert calls == ["profile"]
+    assert audit_calls == []
+    assert saved == []
+    assert window._device_specific_connected_profile is profile
+    assert (
+        window._device_specific_connected_profile_device_id
+        == "safe-process-local-owner"
+    )
+
+
+def test_get_phone_data_failure_preserves_previous_complete_profile(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = _device_specific_test_profile("Previous Phone")
+    window._device_specific_connected_profile = previous
+    window._device_specific_connected_profile_device_id = "previous-owner"
+
+    class ImmediateThread:
+        def __init__(self, *, target, daemon: bool) -> None:
+            self.target = target
+
+        def start(self) -> None:
+            self.target()
+
+    monkeypatch.setattr(preferences_ui.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(
+        window,
+        "_collect_personal_device_profile_direct",
+        lambda: (_ for _ in ()).throw(RuntimeError("private command detail")),
+    )
+
+    def inspect(dialog: QDialog) -> int:
+        button = dialog.findChild(QPushButton, "DeviceSpecificGetPhoneDataButton")
+        status = dialog.findChild(QLabel, "DeviceSpecificPhoneDataStatus")
+        assert button is not None
+        assert status is not None
+        button.click()
+        assert button.isEnabled()
+        assert status.text() == (
+            "The phone data required for Device Specific resolution could not be captured."
+        )
+        assert "private command detail" not in status.text()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+
+    assert window._device_specific_connected_profile is previous
+    assert window._device_specific_connected_profile_device_id == "previous-owner"
+
+
+def test_custom_dispenser_help_is_owned_explanation_with_verified_links(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        rich_help,
+        "show_rich_help",
+        lambda _parent, title, content: opened.append((title, content)),
+    )
+
+    def inspect(dialog: QDialog) -> int:
+        provider = dialog.findChild(QComboBox, "DeviceSpecificProviderCombo")
+        help_button = dialog.findChild(
+            QPushButton,
+            "DeviceSpecificDispenserHelpButton",
+        )
+        assert provider is not None
+        assert help_button is not None
+        provider.setCurrentIndex(provider.findData("custom_dispenser"))
+        help_button.click()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+
+    assert len(opened) == 1
+    title, content = opened[0]
+    assert title == "Custom Dispenser Options"
+    assert "No default public endpoint" in content
+    assert "http://localhost:3000/api/auth" in content
+    assert "actually running a compatible dispenser service" in content
+    assert "operated independently" in content
+    assert "not currently drop-in supported" in content
+    assert "https://gitlab.com/AuroraOSS/aurora-dispenser" in content
+    assert "https://github.com/rehmatworks/gplaydl-dispenser" in content
 

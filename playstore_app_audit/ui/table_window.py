@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
 )
 
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
-import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.base_window as base_ui
@@ -45,7 +44,7 @@ TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
-    "Unknown": "blue",
+    "Unknown": "purple",
     "Device-specific": "blue",
     "Newer": "green",
     "Match": "green",
@@ -353,8 +352,8 @@ class AuditTableModel(base_ui.AppTableModel):
             value = row.get(column, "")
             if column == "play_version":
                 value = presentation.play_store_version_display_value(row)
-            if column == "local_apk_version_comparison":
-                value = local_apk_audit.local_apk_relationship_display_value(row)
+            if column in presentation.VERSION_RELATIONSHIP_FIELDS:
+                value = presentation.relationship_display_value(row, column)
             if isinstance(value, bool):
                 return "Yes" if value else "No"
             return presentation.display_relationship_value(column, value)
