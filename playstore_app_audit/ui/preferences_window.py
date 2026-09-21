@@ -1012,7 +1012,20 @@ class PreferencesWindow(table_ui.TableWindow):
         phone_data_layout.setContentsMargins(0, 0, 0, 0)
         phone_data_layout.addWidget(get_phone_data)
         phone_data_layout.addWidget(phone_data_status, 1)
-        resolver_form.addRow("", phone_data_controls)
+        personal_device_note = self._settings_note(
+            "Reads only the Device Specific profile from one connected Android "
+            "phone via ADB. No app scan. Adds it as Personal Device for this app "
+            "session."
+        )
+        personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
+        phone_data_section = QWidget()
+        phone_data_section_layout = QVBoxLayout(phone_data_section)
+        phone_data_section_layout.setContentsMargins(0, 0, 0, 0)
+        phone_data_section_layout.addWidget(phone_data_controls)
+        phone_data_section_layout.addWidget(personal_device_note)
+        your_phone_label = QLabel("Your Phone")
+        your_phone_label.setObjectName("DeviceSpecificYourPhoneLabel")
+        resolver_form.addRow(your_phone_label, phone_data_section)
         resolver_layout.addLayout(resolver_form)
 
         personal_provider_note = self._settings_note(
@@ -1031,12 +1044,6 @@ class PreferencesWindow(table_ui.TableWindow):
         )
         custom_provider_note.setObjectName("DeviceSpecificCustomProviderNote")
         resolver_layout.addWidget(custom_provider_note)
-        personal_device_note = self._settings_note(
-            "Reads only the phone data needed for Device Specific Play resolution. "
-            "The Personal Device profile is kept only for this app session."
-        )
-        personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
-        resolver_layout.addWidget(personal_device_note)
         resolver_layout.addStretch(1)
 
         def refresh_personal_session_status() -> None:

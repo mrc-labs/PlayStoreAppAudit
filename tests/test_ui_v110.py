@@ -1602,7 +1602,9 @@ def test_device_specific_advanced_settings_use_provider_model(
         assert personal_note.isHidden()
         assert custom_note.isHidden()
         assert not profile.isEnabled()
-        assert "kept only for this app session" in device_note.text()
+        assert "connected Android phone via ADB" in device_note.text()
+        assert "No app scan" in device_note.text()
+        assert "Personal Device for this app session" in device_note.text()
         assert profile.count() == 2
         profile_ids = [profile.itemData(index) for index in range(profile.count())]
         profile_labels = [profile.itemText(index) for index in range(profile.count())]
@@ -1952,6 +1954,30 @@ def test_get_phone_data_is_explicit_async_profile_only_action(
         window._device_specific_connected_profile_device_id
         == "safe-process-local-owner"
     )
+
+
+def test_device_specific_settings_explain_your_phone_capture(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def inspect(dialog: QDialog) -> int:
+        label = dialog.findChild(QLabel, "DeviceSpecificYourPhoneLabel")
+        button = dialog.findChild(QPushButton, "DeviceSpecificGetPhoneDataButton")
+        note = dialog.findChild(QLabel, "DeviceSpecificPersonalDeviceNote")
+
+        assert label is not None
+        assert label.text() == "Your Phone"
+        assert button is not None
+        assert button.text() == "Get Phone Data"
+        assert note is not None
+        explanation = note.text()
+        assert "connected Android phone via ADB" in explanation
+        assert "No app scan" in explanation
+        assert "Adds it as Personal Device for this app session" in explanation
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
 
 
 def test_get_phone_data_failure_preserves_previous_complete_profile(
