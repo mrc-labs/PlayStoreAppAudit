@@ -23,6 +23,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit.ui import column_presets, schema, table_layout
+from playstore_app_audit.ui import theme as theme_ui
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.results_window import NumericAuditFilterProxy
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION, AuditTableModel
@@ -236,7 +237,7 @@ def test_source_status_text_names_the_active_source(
                 "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
-                "installer_source", "installer_category", "app_enabled", "first_install_time",
+                "installer_source", "app_enabled", "first_install_time",
                 "last_local_update", "health_score", "notes",
             ],
         ),
@@ -495,7 +496,7 @@ def test_new_source_default_sort_then_manual_sort_is_respected_during_refresh(
         ("N/A", "red"),
         ("Outdated", "orange"),
         ("Different", "yellow"),
-        ("Unknown", "blue"),
+        ("Unknown", "purple"),
         ("Device-specific", "blue"),
         ("Newer", "green"),
         ("Match", "green"),
@@ -523,15 +524,16 @@ def test_local_apk_relationship_colours_ordinary_cells_and_keeps_store_status(
     assert criticality.data(Qt.ItemDataRole.BackgroundRole) == QColor(
         CRITICALITY["red"]["background"]
     )
+    relationship_colours = theme_ui.semantic_status_colours(status_key)
     assert relationship_index.data(Qt.ItemDataRole.BackgroundRole) == QColor(
-        CRITICALITY[status_key]["background"]
+        relationship_colours.background
     )
     assert relationship_index.data(Qt.ItemDataRole.ForegroundRole) == QColor(
-        CRITICALITY[status_key]["foreground"]
+        relationship_colours.foreground
     )
     assert relationship_index.data(Qt.ItemDataRole.FontRole).weight() == 700
     assert package.data(Qt.ItemDataRole.BackgroundRole) == QColor(
-        CRITICALITY[status_key]["background"]
+        relationship_colours.background
     )
 
 
@@ -663,6 +665,7 @@ def test_customize_column_groups_partition_the_existing_schema() -> None:
         "change",
         "device_change",
         "local_apk_version_comparison",
+        "installer_category",
     }
 
     assert set(common).isdisjoint(advanced)
