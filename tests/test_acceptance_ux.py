@@ -237,7 +237,7 @@ def test_source_status_text_names_the_active_source(
                 "criticality", "change", "device_change", "package_name", "play_title",
                 "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
-                "installer_source", "installer_category", "app_enabled", "first_install_time",
+                "installer_source", "app_enabled", "first_install_time",
                 "last_local_update", "health_score", "notes",
             ],
         ),
@@ -665,6 +665,7 @@ def test_customize_column_groups_partition_the_existing_schema() -> None:
         "change",
         "device_change",
         "local_apk_version_comparison",
+        "installer_category",
     }
 
     assert set(common).isdisjoint(advanced)
