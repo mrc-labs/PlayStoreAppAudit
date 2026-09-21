@@ -6,6 +6,45 @@ from playstore_app_audit.resources import (
     canonical_help_image_uri,
 )
 
+DEVICE_SPECIFIC_DISPENSER_GUIDE_HTML = """
+<h1>Custom Dispenser Options</h1>
+<p>A custom dispenser is an advanced, user-selected service for Device Specific
+Google Play metadata resolution. Store App Audit sends the selected device profile
+and Store locale metadata to the endpoint you configure. No Google login occurs
+inside Store App Audit for this provider; the service handles its own server-side
+authentication.</p>
+
+<div class="warning"><b>No default public endpoint:</b> Store App Audit does not
+operate, select or recommend a public dispenser backend. Remote endpoints must use
+HTTPS. Loopback HTTP is allowed only for a service running on your own computer.</div>
+
+<h2>Self-hosted example</h2>
+<p><code>http://localhost:3000/api/auth</code> is a tested endpoint form, but it
+works only when you are actually running a compatible dispenser service at that
+address. Store App Audit does not install or start one.</p>
+
+<h2>Ecosystem references</h2>
+<ul>
+  <li><a href="https://gitlab.com/AuroraOSS/aurora-dispenser">AuroraOSS / Aurora
+      Dispenser</a> is the ecosystem from which the compatible dispenser pattern is
+      derived. Store App Audit does not use AuroraOSS infrastructure as a default.
+      Shared infrastructure may be rate-limited, unavailable or unsuitable for
+      third-party default traffic.</li>
+  <li><a href="https://github.com/rehmatworks/gplaydl-dispenser">gplaydl
+      dispenser</a> is an independently operated dispenser-related project. Its
+      current flow requires linked API-key/account authentication and is
+      <b>not currently drop-in supported</b> by Store App Audit's single endpoint
+      contract. The related
+      <a href="https://github.com/rehmatworks/gplaydl">gplaydl project</a> provides
+      its own tooling and documentation.</li>
+</ul>
+
+<div class="note"><b>Independent services:</b> Third-party dispenser projects and
+services are operated independently of Store App Audit. Availability,
+authentication requirements and compatibility can change. Review the operator's
+documentation and privacy terms before configuring an endpoint.</div>
+"""
+
 
 def store_app_audit_overview_html() -> str:
     phone = escape(

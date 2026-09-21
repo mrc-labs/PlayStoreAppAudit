@@ -10,6 +10,7 @@ from playstore_app_audit.domain.device_specific_resolver import (
     ResolverStatus,
 )
 from playstore_app_audit.services import device_specific_integration as integration
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.device_specific_profiles import (
     PRODUCTION_PROFILE_IDS,
     load_reference_profile,
@@ -415,3 +416,197 @@ def test_cache_write_failure_keeps_successful_live_evidence(
     assert rows[0][integration.RESOLVED_VERSION_CODE_FIELD] == 101
     assert rows[0][integration.STATUS_FIELD] == "resolved"
     assert rows[0]["version_comparison"] == "Match"
+
+
+def test_personal_provider_uses_one_process_local_bundle_and_clears_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "installed_version_code": "100",
+            "version_comparison": "Device-specific",
+        }
+    ]
+    settings = {
+        integration.SETTING_PROVIDER: "personal_google_session",
+        integration.SETTING_PROFILE_ID: integration.DEFAULT_PROFILE_ID,
+    }
+    monkeypatch.setattr(
+        integration.device_specific_personal_session,
+        "personal_session_status",
+        lambda: type(
+            "Status",
+            (),
+            {"signed_in": True, "context_hash": "a" * 64},
+        )(),
+    )
+    bundle: dict[str, object] = {
+        "authToken": "SECRET-BEARER",
+        "gsfId": "SECRET-GSF",
+    }
+    monkeypatch.setattr(
+        integration.device_specific_personal_auth,
+        "create_personal_auth_bundle",
+        lambda **_kwargs: bundle,
+    )
+
+    calls: list[dict[str, object]] = []
+
+    def resolver(**kwargs: object) -> ResolverResult:
+        calls.append(dict(kwargs))
+        profile = load_reference_profile(integration.DEFAULT_PROFILE_ID)
+        return ResolverResult(
+            package_name="com.example.app",
+            profile_id=profile.profile_id,
+            profile_hash=profile.profile_hash,
+            provider=ResolverProvider.PERSONAL_GOOGLE_SESSION,
+            status=ResolverStatus.RESOLVED,
+            requested_country=COUNTRY,
+            requested_language=LANGUAGE,
+            version_name="5.0",
+            version_code=101,
+        )
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=settings,
+        country=COUNTRY,
+        language=LANGUAGE,
+        use_cache=False,
+        max_workers=1,
+        resolver=resolver,
+    )
+
+    assert summary.resolved == 1
+    assert len(calls) == 1
+    assert calls[0]["provider"] is ResolverProvider.PERSONAL_GOOGLE_SESSION
+    assert calls[0]["auth_bundle"] is bundle
+    assert calls[0]["provider_context_hash_value"] == "a" * 64
+    assert bundle == {}
+    assert rows[0][integration.STATUS_FIELD] == "resolved"
+    assert rows[0]["version_comparison"] == "Outdated"
+
+
+def test_personal_provider_without_sign_in_fails_closed_before_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "version_comparison": "Device-specific",
+        }
+    ]
+    settings = {
+        integration.SETTING_PROVIDER: "personal_google_session",
+        integration.SETTING_PROFILE_ID: integration.DEFAULT_PROFILE_ID,
+    }
+    monkeypatch.setattr(
+        integration.device_specific_personal_session,
+        "personal_session_status",
+        lambda: type(
+            "Status",
+            (),
+            {"signed_in": False, "context_hash": ""},
+        )(),
+    )
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=settings,
+        country=COUNTRY,
+        language=LANGUAGE,
+        resolver=lambda **_kwargs: pytest.fail("resolver must not run"),
+    )
+
+    assert summary.eligible == 1
+    assert summary.attempted == 0
+    assert summary.configuration_error == "personal_google_session_not_signed_in"
+    assert rows[0][integration.STATUS_FIELD] == ""
+
+
+def test_connected_device_profile_is_passed_to_custom_dispenser_resolver() -> None:
+    reference = load_reference_profile(integration.DEFAULT_PROFILE_ID)
+    connected = ConnectedDeviceProfile(
+        profile_id="connected_device_test",
+        display_name="Google Test Phone",
+        android_release="17",
+        api_level=37,
+        profile_hash="b" * 64,
+        profile=dict(reference.profile),
+        complete=True,
+        missing_fields=(),
+    )
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "installed_version_code": "100",
+            "version_comparison": "Device-specific",
+        }
+    ]
+    settings = {
+        integration.SETTING_PROVIDER: "custom_dispenser",
+        integration.SETTING_ENDPOINT: ENDPOINT,
+        integration.SETTING_PROFILE_ID: integration.CONNECTED_DEVICE_PROFILE_ID,
+    }
+    seen: dict[str, object] = {}
+
+    def resolver(**kwargs: object) -> ResolverResult:
+        seen.update(kwargs)
+        return ResolverResult(
+            package_name="com.example.app",
+            profile_id=connected.profile_id,
+            profile_hash=connected.profile_hash,
+            provider=ResolverProvider.ANONYMOUS_DISPENSER,
+            status=ResolverStatus.RESOLVED,
+            requested_country=COUNTRY,
+            requested_language=LANGUAGE,
+            version_name="5.0",
+            version_code=101,
+        )
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=settings,
+        country=COUNTRY,
+        language=LANGUAGE,
+        use_cache=False,
+        max_workers=1,
+        resolver=resolver,
+        connected_profile=connected,
+    )
+
+    assert summary.resolved == 1
+    assert seen["profile"] is connected
+    assert seen["profile_id"] == connected.profile_id
+    assert rows[0][integration.PROFILE_ID_FIELD] == connected.profile_id
+    assert "Google Test Phone" in rows[0][integration.PROFILE_FIELD]
+
+
+def test_connected_device_preference_without_profile_fails_closed() -> None:
+    rows = [
+        {
+            "package_name": "com.example.app",
+            "play_version": "Varies with device",
+            "version_comparison": "Device-specific",
+        }
+    ]
+    settings = {
+        integration.SETTING_PROVIDER: "custom_dispenser",
+        integration.SETTING_ENDPOINT: ENDPOINT,
+        integration.SETTING_PROFILE_ID: integration.CONNECTED_DEVICE_PROFILE_ID,
+    }
+
+    summary = integration.enrich_rows_with_device_specific_resolution(
+        rows,
+        settings=settings,
+        country=COUNTRY,
+        language=LANGUAGE,
+        resolver=lambda **_kwargs: pytest.fail("resolver must not run"),
+    )
+
+    assert summary.eligible == 1
+    assert summary.configuration_error == "connected_device_profile_unavailable"

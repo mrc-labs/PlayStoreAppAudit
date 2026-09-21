@@ -60,6 +60,8 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
             "Outdated": "orange",
             "Newer": "green",
             "Match": "green",
+            "Different": "yellow",
+            "Unknown": "purple",
             "Device-specific": "blue",
             "N/A": "red",
         }
@@ -71,9 +73,14 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
                     app.palette(),
                 )
             )
+        window._refresh_theme_styles()
+        for relationship, status_key in expected.items():
+            assert window.apk_relationship_buttons[relationship].styleSheet() == (
+                theme_ui.semantic_filter_button_stylesheet(status_key, app.palette())
+            )
 
         device_button = window.apk_relationship_buttons["Device-specific"]
-        assert device_button.text() == "Device Spec."
+        assert device_button.text() == "Device Specific"
         assert device_button.accessibleName() == "Device Specific"
         assert device_button.toolTip() == (
             "The Store version varies by device; a direct comparison may not be available."
@@ -103,7 +110,7 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         assert device_button.isChecked()
         window._clear_all_filters()
 
-        # All and More remain neutral using the active theme tokens.
+        # All remains neutral; relationship buttons use the shared semantic palette.
         all_button = window.apk_relationship_buttons["All"]
         assert all_button.isChecked()
 
@@ -114,13 +121,15 @@ def test_apk_vs_store_buttons_use_store_status_semantic_colours(
         )
 
         assert all_button.styleSheet() == expected_neutral
-        assert (
-            window.apk_relationship_more.styleSheet()
-            == expected_neutral
+        assert window.apk_relationship_buttons["Different"].styleSheet() == (
+            theme_ui.semantic_filter_button_stylesheet("yellow", app.palette())
+        )
+        assert window.apk_relationship_buttons["Unknown"].styleSheet() == (
+            theme_ui.semantic_filter_button_stylesheet("purple", app.palette())
         )
         window._set_apk_relationship_filter("Different")
         assert not all_button.isChecked()
-        assert window.apk_relationship_more.isChecked()
+        assert window.apk_relationship_buttons["Different"].isChecked()
     finally:
         window.close()
 
@@ -168,7 +177,7 @@ def test_apk_vs_store_reflows_beside_store_status_then_below_when_needed(
             store_button.rect().topLeft()
         ).y()
         assert window.apk_relationship_filter_row.layout().contentsMargins().left() == 0
-        for button in (window.all_chip, *window.criticality_buttons.values(), *window.apk_relationship_buttons.values(), window.apk_relationship_more):
+        for button in (window.all_chip, *window.criticality_buttons.values(), *window.apk_relationship_buttons.values()):
             assert button.width() >= button.sizeHint().width()
             assert button.height() >= button.sizeHint().height()
             assert button.maximumHeight() > button.sizeHint().height()
@@ -193,26 +202,26 @@ def test_apk_vs_store_reflows_beside_store_status_then_below_when_needed(
         window.close()
 
 
-def test_more_selection_reflows_when_its_natural_label_grows(
+def test_all_relationship_filters_are_direct_visible_buttons_in_required_order(
     app: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     window = _window(app, monkeypatch, width=1900)
     try:
-        margins = window._results_layout.contentsMargins()
-        available = window._results_card.contentsRect().width() - margins.left() - margins.right()
-        window_chrome = window.width() - available
-        initial_required = window._filter_layout_required_width()
-        window.resize(initial_required + window_chrome + 2, 760)
-        app.processEvents()
-        app.processEvents()
-        assert window._apk_relationship_on_store_row
-
-        window._set_apk_relationship_filter("Different")
-        app.processEvents()
-        app.processEvents()
-        assert window.apk_relationship_more.isChecked()
-        assert window._filter_layout_required_width() > initial_required
-        assert not window._apk_relationship_on_store_row
-        assert window.apk_relationship_more.width() >= window.apk_relationship_more.sizeHint().width()
+        assert list(window.apk_relationship_buttons) == [
+            "All",
+            "Outdated",
+            "Newer",
+            "Match",
+            "Different",
+            "Unknown",
+            "Device-specific",
+            "N/A",
+        ]
+        assert not hasattr(window, "apk_relationship_more")
+        for relationship in ("Different", "Unknown"):
+            button = window.apk_relationship_buttons[relationship]
+            assert button.isVisible()
+            window._set_apk_relationship_filter(relationship)
+            assert button.isChecked()
     finally:
         window.close()

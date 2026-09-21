@@ -7,6 +7,7 @@ Specific resolution.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -37,6 +38,11 @@ _SAFE_GETPROP_MAP = {
 # CellOperator / SimOperator / Roaming are intentionally not captured from the
 # phone. Store country/network context belongs to the resolver request and is
 # patched there. Identifiers/account material are forbidden entirely.
+#
+# Historical Aurora/goopdl profile compatibility keeps the field name
+# "GSF.version", but the direct-auth protocol sends that value as
+# google_play_services_version. Connected Device therefore sources it from
+# com.google.android.gms, not com.google.android.gsf.
 CONNECTED_REQUIRED_FIELDS = frozenset(
     {
         "UserReadableName",
@@ -104,6 +110,24 @@ class ConnectedDeviceProfile:
     profile: Mapping[str, str]
     complete: bool
     missing_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectedDeviceProfileCapture:
+    """Complete profile plus an opaque, process-local device ownership token."""
+
+    profile: ConnectedDeviceProfile
+    ownership_token: str
+
+
+def ephemeral_device_ownership_token(serial: str) -> str:
+    """Derive the same non-reversible process-local ownership key as ScanSession."""
+
+    return (
+        hashlib.sha256(serial.encode("utf-8", errors="ignore")).hexdigest()[:16]
+        if serial
+        else "unknown"
+    )
 
 
 def _first(properties: Mapping[str, str], keys: tuple[str, ...]) -> str:
@@ -291,10 +315,10 @@ def build_connected_device_profile(
     libraries: str,
     input_configuration: str,
     vending_package: str,
-    gsf_package: str,
+    play_services_package: str,
     resource_configuration: str = "",
     vending_version_code_listing: str = "",
-    gsf_version_code_listing: str = "",
+    play_services_version_code_listing: str = "",
 ) -> ConnectedDeviceProfile:
     safe_properties = safe_profile_properties(properties)
     profile: dict[str, str] = {}
@@ -333,15 +357,17 @@ def build_connected_device_profile(
     vending_code, vending_name = _parse_package_version(
         vending_package, vending_version_code_listing
     )
-    gsf_code, _gsf_name = _parse_package_version(
-        gsf_package, gsf_version_code_listing
+    play_services_code, _play_services_name = _parse_package_version(
+        play_services_package,
+        play_services_version_code_listing,
     )
     if vending_code:
         profile["Vending.version"] = vending_code
     if vending_name:
         profile["Vending.versionString"] = vending_name
-    if gsf_code:
-        profile["GSF.version"] = gsf_code
+    if play_services_code:
+        # Legacy profile key; semantically this is Google Play services.
+        profile["GSF.version"] = play_services_code
 
     locales = _normalise_locales(safe_properties)
     if locales:
@@ -509,16 +535,16 @@ def collect_connected_device_profile(
             "com.android.vending",
             timeout=20,
         ),
-        gsf_package=_optional_device_stdout(
+        play_services_package=_optional_device_stdout(
             adb,
             serial,
             "shell",
             "dumpsys",
             "package",
-            "com.google.android.gsf",
+            "com.google.android.gms",
             timeout=30,
         ),
-        gsf_version_code_listing=_optional_device_stdout(
+        play_services_version_code_listing=_optional_device_stdout(
             adb,
             serial,
             "shell",
@@ -526,7 +552,21 @@ def collect_connected_device_profile(
             "list",
             "packages",
             "--show-versioncode",
-            "com.google.android.gsf",
+            "com.google.android.gms",
             timeout=20,
         ),
+    )
+
+
+def capture_connected_device_profile(adb: str) -> ConnectedDeviceProfileCapture:
+    """Capture a profile and safe ownership token with one ADB enumeration.
+
+    The raw serial remains command-local: it selects the device for the allowlisted
+    profile reads and is never returned, logged or persisted.
+    """
+
+    serial = _authorised_device_serial(adb)
+    return ConnectedDeviceProfileCapture(
+        profile=collect_connected_device_profile(adb, serial=serial),
+        ownership_token=ephemeral_device_ownership_token(serial),
     )

@@ -10,7 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QModelIndex, QObject, QPoint, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QDialog,
@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
+import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
 import playstore_app_audit.services.local_apk_file_ops as local_file_ops
 import playstore_app_audit.services.local_apk_mass_remove as mass_remove
@@ -53,6 +55,7 @@ from playstore_app_audit.platform import runtime
 from playstore_app_audit.platform.file_locations import open_file_location
 from playstore_app_audit.product_identity import is_known_display_name
 from playstore_app_audit.services.audit_engine import AuditConfig
+from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
 from playstore_app_audit.ui.action_icons import main_action_icon
 from playstore_app_audit.ui.column_presets import (
@@ -404,12 +407,8 @@ class MainWindow(results_ui.ResultsWindow):
         local_source = local_apk_audit.is_local_apk_source(self.source_mode)
         if hasattr(self, "apk_relationship_filter_row"):
             self.apk_relationship_filter_row.setVisible(local_source)
-            if not local_source and self._apk_relationship_filters:
-                self._apk_relationship_filters.clear()
-                setter = getattr(self.proxy, "set_relationship_filters", None)
-                if callable(setter):
-                    setter(set())
-                self._sync_apk_relationship_buttons()
+            if not local_source:
+                self._clear_local_apk_relationship_context()
         if not hasattr(self, "choose_apk_button"):
             return
         idle = not self._operation_running()
@@ -538,6 +537,33 @@ class MainWindow(results_ui.ResultsWindow):
         self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
         self._apply_source_default_sort()
 
+    def _clear_local_apk_relationship_context(self) -> None:
+        """Remove Local APK-only filtering from any non-Local source."""
+
+        self._apk_relationship_filters.clear()
+        setter = getattr(self.proxy, "set_relationship_filters", None)
+        if callable(setter):
+            setter(set())
+        if hasattr(self, "apk_relationship_buttons"):
+            self._sync_apk_relationship_buttons()
+
+    def _establish_source_presentation(
+        self,
+        *,
+        clear_stale_selection: bool = False,
+    ) -> None:
+        """Apply all contextual presentation state for the established source."""
+
+        if not local_apk_audit.is_local_apk_source(self.source_mode):
+            self._clear_local_apk_relationship_context()
+        if clear_stale_selection:
+            self.table.clearSelection()
+            self.table.setCurrentIndex(QModelIndex())
+            self.details_panel.clear()
+        self._apply_established_source_defaults()
+        self._sync_action_availability()
+        self._update_summary()
+
     def _apply_source_default_sort(self) -> None:
         column = (
             "local_apk_version_comparison"
@@ -643,8 +669,7 @@ class MainWindow(results_ui.ResultsWindow):
         else:
             self.source_label.setText(f"Local package source: No supported files {description}")
             self.status_label.setText("No Local APK source was established")
-        self._apply_established_source_defaults()
-        self._sync_action_availability()
+        self._establish_source_presentation()
         if candidates:
             self._schedule_first_audit()
 
@@ -758,9 +783,8 @@ class MainWindow(results_ui.ResultsWindow):
             else:
                 self._begin_icon_result_generation()
             self.status_label.setText("File ready. Run the Play Store audit.")
-            self._apply_established_source_defaults()
+            self._establish_source_presentation()
             self._set_busy(False)
-            self._sync_action_availability()
             self._schedule_first_audit()
 
     def _set_view_preset(self, name: str) -> None:
@@ -777,8 +801,7 @@ class MainWindow(results_ui.ResultsWindow):
         super()._on_adb_scan_done(apps, system_packages)
         if self.source_mode == "device":
             self._local_apk_candidates = ()
-            self._apply_established_source_defaults()
-            self._sync_action_availability()
+            self._establish_source_presentation(clear_stale_selection=True)
             logger.info(
                 "source_established type=android_phone physical_candidates=1 packages=%d",
                 len(self.device_apps_all),
@@ -891,6 +914,20 @@ class MainWindow(results_ui.ResultsWindow):
         self._alternative_phase_active = False
         self._set_audit_source_controls_enabled(False)
         self._set_audit_state(AuditRunState.RUNNING)
+        requested_profile = str(
+            self.user_settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+        ).strip()
+        resolver_provider = device_specific_settings.provider_from_settings(
+            self.user_settings
+        )
+        connected_profile = self._connected_device_profile_for_resolution(
+            requested_profile,
+            None,
+            resolver_enabled=(
+                resolver_provider
+                is not device_specific_settings.DeviceSpecificProvider.DISABLED
+            ),
+        )
         threading.Thread(
             target=self._local_apk_audit_worker,
             args=(
@@ -902,6 +939,7 @@ class MainWindow(results_ui.ResultsWindow):
                 self._audit_cancel_event,
                 force_refresh,
                 source_mode,
+                connected_profile,
             ),
             daemon=True,
         ).start()
@@ -919,6 +957,7 @@ class MainWindow(results_ui.ResultsWindow):
         cancel_event: threading.Event,
         force_refresh: bool,
         source_mode: str = local_apk_audit.SOURCE_MODE,
+        connected_profile: ConnectedDeviceProfile | None = None,
     ) -> None:
         parse_started = time.perf_counter()
         artifacts: list[LocalArtifact] = []
@@ -1130,6 +1169,7 @@ class MainWindow(results_ui.ResultsWindow):
                     session, eligible
                 ),
                 row_completed_callback=row_completed,
+                connected_profile=connected_profile,
             )
             rows = local_apk_audit.association_result_rows(
                 result.associations,
@@ -2112,7 +2152,7 @@ class MainWindow(results_ui.ResultsWindow):
         if local_apk_audit.is_local_apk_source(self.source_mode):
             self.source_mode = None
             self._clear_source_result_rows()
-            self._apply_column_visibility(reset_order=False)
+            self._establish_source_presentation(clear_stale_selection=True)
         else:
             self._begin_icon_result_generation()
         request_id = self._begin_phone_scan_request()

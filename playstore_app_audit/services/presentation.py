@@ -9,6 +9,12 @@ from typing import Any, Literal
 
 import playstore_app_audit.services.state as state
 from playstore_app_audit import __version__
+from playstore_app_audit.services.device_specific_integration import (
+    relationship_from_version_codes,
+)
+from playstore_app_audit.services.device_specific_resolver import (
+    should_attempt_device_specific_resolver,
+)
 
 APP_VERSION = __version__
 
@@ -102,6 +108,59 @@ def display_relationship_value(field: str, value: object) -> str:
     return text
 
 
+DEVICE_SPECIFIC_PROVENANCE_RELATIONSHIPS = frozenset(
+    {"Outdated", "Match", "Newer"}
+)
+
+
+def relationship_display_value(row: Mapping[str, object], field: str) -> str:
+    """Return a row-aware relationship label without changing canonical data."""
+
+    relationship = str(row.get(field) or "").strip()
+    if relationship not in DEVICE_SPECIFIC_PROVENANCE_RELATIONSHIPS:
+        return display_relationship_value(field, relationship)
+    if not should_attempt_device_specific_resolver(row.get("play_version")):
+        return relationship
+    if (
+        str(row.get("device_specific_resolver_status") or "").strip().casefold()
+        != "resolved"
+    ):
+        return relationship
+
+    if field == "local_apk_version_comparison":
+        source_version_code = row.get("local_apk_long_version_code")
+        if source_version_code in {None, ""}:
+            source_version_code = row.get("local_apk_version_code")
+    elif field == "version_comparison":
+        source_version_code = row.get("installed_version_code")
+    else:
+        return display_relationship_value(field, relationship)
+
+    reproduced = relationship_from_version_codes(
+        source_version_code,
+        row.get("resolved_play_version_code"),
+    )
+    if reproduced != relationship:
+        return relationship
+    return f"{relationship} (Dev. Sp.)"
+
+
+def play_store_version_display_value(row: Mapping[str, object]) -> str:
+    """Return the table-only Store version display with resolved provenance."""
+
+    raw_version = str(row.get("play_version") or "")
+    resolved_version = str(row.get("resolved_play_version") or "").strip()
+    if (
+        should_attempt_device_specific_resolver(raw_version)
+        and str(row.get("device_specific_resolver_status") or "").strip().casefold()
+        == "resolved"
+        and resolved_version
+        and not should_attempt_device_specific_resolver(resolved_version)
+    ):
+        return f"{resolved_version} ({raw_version})"
+    return raw_version
+
+
 @dataclass(frozen=True, slots=True)
 class SemanticValuePresentation:
     status_key: str
@@ -170,6 +229,23 @@ def semantic_foreground_colour(field: str, value: object) -> str | None:
 
 def semantic_html_value(field: str, value: object) -> str:
     text = html.escape(display_relationship_value(field, value))
+    value_presentation = semantic_value_presentation(field, value)
+    if value_presentation is None:
+        return text
+    colour = STATUS_FOREGROUND_COLOURS[value_presentation.status_key]
+    css_class = value_presentation.emphasis.replace("_", "-")
+    return (
+        f'<span class="semantic-{css_class}" '
+        f'style="color:{colour};font-weight:{value_presentation.font_weight}">'
+        f"{text}</span>"
+    )
+
+
+def semantic_html_value_for_row(row: Mapping[str, object], field: str) -> str:
+    """Render row-aware text with styling based on the canonical relationship."""
+
+    value = row.get(field)
+    text = html.escape(relationship_display_value(row, field))
     value_presentation = semantic_value_presentation(field, value)
     if value_presentation is None:
         return text

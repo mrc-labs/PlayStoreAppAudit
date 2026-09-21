@@ -44,7 +44,7 @@ TABLE_ITEM_FOCUS_STYLE = "QTableView::item:focus { outline: none; }"
 LOCAL_APK_RELATIONSHIP_STATUS = {
     "Outdated": "orange",
     "Different": "yellow",
-    "Unknown": "blue",
+    "Unknown": "purple",
     "Device-specific": "blue",
     "Newer": "green",
     "Match": "green",
@@ -350,6 +350,10 @@ class AuditTableModel(base_ui.AppTableModel):
             if column == "notes":
                 return presentation.friendly_notes(row)
             value = row.get(column, "")
+            if column == "play_version":
+                value = presentation.play_store_version_display_value(row)
+            if column in presentation.VERSION_RELATIONSHIP_FIELDS:
+                value = presentation.relationship_display_value(row, column)
             if isinstance(value, bool):
                 return "Yes" if value else "No"
             return presentation.display_relationship_value(column, value)

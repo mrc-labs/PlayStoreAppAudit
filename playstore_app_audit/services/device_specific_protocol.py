@@ -134,17 +134,18 @@ def provider_context_hash(dispenser_url: str) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, str]:
+def profile_for_country(profile: ReferenceProfile, country: str) -> dict[str, str]:
     patched = dict(profile.profile)
     pair = COUNTRY_MCC_MNC.get(_normalise_country(country))
     if pair is not None:
         mcc, mnc = pair
         patched["CellOperator"] = mcc
         patched["SimOperator"] = mnc
+    patched.setdefault("Roaming", "mobile-notroaming")
     return patched
 
 
-def _sanitize_auth_bundle(
+def sanitize_auth_bundle(
     value: object,
     *,
     country: str,
@@ -174,7 +175,7 @@ def _sanitize_auth_bundle(
     return bundle
 
 
-def _fdfe_headers(
+def fdfe_headers(
     bundle: Mapping[str, Any],
     *,
     country: str,
@@ -231,6 +232,65 @@ def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
     raise ProtobufDecodeError("varint exceeds 64-bit encoding")
 
 
+def _read_group(
+    data: bytes,
+    offset: int,
+    field_number: int,
+) -> tuple[bytes, int]:
+    start = offset
+    while offset < len(data):
+        tag_start = offset
+        tag, offset = _read_varint(data, offset)
+        nested_field = tag >> 3
+        wire_type = tag & 7
+        if nested_field <= 0:
+            raise ProtobufDecodeError("invalid field number")
+        if wire_type == 4:
+            if nested_field != field_number:
+                raise ProtobufDecodeError("mismatched end group")
+            return data[start:tag_start], offset
+        offset = _skip_value(
+            data,
+            offset,
+            nested_field,
+            wire_type,
+        )
+    raise ProtobufDecodeError("truncated group")
+
+
+def _skip_value(
+    data: bytes,
+    offset: int,
+    field_number: int,
+    wire_type: int,
+) -> int:
+    if wire_type == 0:
+        _value, offset = _read_varint(data, offset)
+        return offset
+    if wire_type == 1:
+        end = offset + 8
+        if end > len(data):
+            raise ProtobufDecodeError("truncated fixed64")
+        return end
+    if wire_type == 2:
+        size, offset = _read_varint(data, offset)
+        end = offset + size
+        if end > len(data):
+            raise ProtobufDecodeError("truncated bytes field")
+        return end
+    if wire_type == 3:
+        _value, offset = _read_group(data, offset, field_number)
+        return offset
+    if wire_type == 4:
+        raise ProtobufDecodeError("unexpected end group")
+    if wire_type == 5:
+        end = offset + 4
+        if end > len(data):
+            raise ProtobufDecodeError("truncated fixed32")
+        return end
+    raise ProtobufDecodeError(f"unsupported wire type: {wire_type}")
+
+
 def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
     result: list[tuple[int, int, int | bytes]] = []
     offset = 0
@@ -247,7 +307,7 @@ def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
             end = offset + 8
             if end > len(data):
                 raise ProtobufDecodeError("truncated fixed64")
-            value = data[offset:end]
+            value = int.from_bytes(data[offset:end], "little")
             offset = end
         elif wire_type == 2:
             size, offset = _read_varint(data, offset)
@@ -256,11 +316,15 @@ def _fields(data: bytes) -> list[tuple[int, int, int | bytes]]:
                 raise ProtobufDecodeError("truncated bytes field")
             value = data[offset:end]
             offset = end
+        elif wire_type == 3:
+            value, offset = _read_group(data, offset, field_number)
+        elif wire_type == 4:
+            raise ProtobufDecodeError("unexpected end group")
         elif wire_type == 5:
             end = offset + 4
             if end > len(data):
                 raise ProtobufDecodeError("truncated fixed32")
-            value = data[offset:end]
+            value = int.from_bytes(data[offset:end], "little")
             offset = end
         else:
             raise ProtobufDecodeError(f"unsupported wire type: {wire_type}")
@@ -286,6 +350,29 @@ def _navigate(data: bytes, *path: int) -> list[tuple[int, int, int | bytes]]:
             return []
         current = nested
     return _fields(current)
+
+
+def protobuf_value(data: bytes, field_number: int) -> int | bytes:
+    """Return the first protobuf field value from the shared tiny decoder."""
+
+    for number, _wire_type, value in _fields(data):
+        if number == field_number:
+            return value
+    raise ProtobufDecodeError(f"protobuf field {field_number} is missing")
+
+
+def protobuf_string_path(data: bytes, *path: int) -> str:
+    value: int | bytes = data
+    for field_number in path:
+        if not isinstance(value, bytes):
+            raise ProtobufDecodeError("protobuf path is not length-delimited")
+        value = protobuf_value(value, field_number)
+    if not isinstance(value, bytes):
+        raise ProtobufDecodeError("protobuf path does not end in bytes")
+    try:
+        return value.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ProtobufDecodeError("protobuf string is not UTF-8") from exc
 
 
 def parse_details_version(raw: bytes) -> ParsedPlayVersion:
@@ -324,17 +411,122 @@ def _failure(
     country: str,
     language: str,
     diagnostics: str,
+    provider: ResolverProvider = ResolverProvider.ANONYMOUS_DISPENSER,
 ) -> ResolverResult:
     return ResolverResult(
         package_name=package_name,
         profile_id=profile.profile_id,
         profile_hash=profile.profile_hash,
-        provider=ResolverProvider.ANONYMOUS_DISPENSER,
+        provider=provider,
         status=status,
         requested_country=country,
         requested_language=language,
         diagnostics=diagnostics,
     )
+
+
+def resolve_metadata_with_auth_bundle(
+    *,
+    package_name: str,
+    profile: ReferenceProfile,
+    auth_bundle: Mapping[str, Any],
+    country: str,
+    language: str,
+    provider: ResolverProvider,
+    timeout: float = 30.0,
+    session: requests.Session | None = None,
+) -> ResolverResult:
+    """Resolve metadata from a process-local auth bundle without persisting secrets."""
+
+    package = str(package_name or "").strip()
+    if not package:
+        raise ValueError("package_name is required")
+    country = _normalise_country(country)
+    language = _normalise_language(language)
+
+    bundle = sanitize_auth_bundle(auth_bundle, country=country)
+    if bundle is None:
+        return _failure(
+            package_name=package,
+            profile=profile,
+            status=ResolverStatus.AUTH_FAILED,
+            country=country,
+            language=language,
+            diagnostics="personal_auth_context_incomplete",
+            provider=provider,
+        )
+
+    client = session or requests.Session()
+    owns_client = session is None
+    try:
+        try:
+            details_response = client.get(
+                DETAILS_URL,
+                params={"doc": package, "gl": country},
+                headers=fdfe_headers(bundle, country=country, language=language),
+                timeout=timeout,
+            )
+        except requests.RequestException:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=ResolverStatus.TRANSPORT_ERROR,
+                country=country,
+                language=language,
+                diagnostics="play_transport_error",
+                provider=provider,
+            )
+
+        if details_response.status_code == 404:
+            status = ResolverStatus.UNAVAILABLE_FOR_PROFILE
+        elif details_response.status_code in {401, 403}:
+            status = ResolverStatus.AUTH_FAILED
+        elif details_response.status_code == 429:
+            status = ResolverStatus.RATE_LIMITED
+        elif details_response.status_code != 200:
+            status = ResolverStatus.TRANSPORT_ERROR
+        else:
+            status = None
+
+        if status is not None:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=status,
+                country=country,
+                language=language,
+                diagnostics=f"play_http_{details_response.status_code}",
+                provider=provider,
+            )
+
+        try:
+            parsed = parse_details_version(details_response.content)
+        except ValueError:
+            return _failure(
+                package_name=package,
+                profile=profile,
+                status=ResolverStatus.MALFORMED_RESPONSE,
+                country=country,
+                language=language,
+                diagnostics="play_malformed_details",
+                provider=provider,
+            )
+
+        return ResolverResult(
+            package_name=package,
+            profile_id=profile.profile_id,
+            profile_hash=profile.profile_hash,
+            provider=provider,
+            status=ResolverStatus.RESOLVED,
+            requested_country=country,
+            requested_language=language,
+            version_name=parsed.version_name,
+            version_code=parsed.version_code,
+        )
+    finally:
+        bundle.clear()
+        if owns_client:
+            client.close()
 
 
 def resolve_metadata_with_dispenser(
@@ -376,7 +568,7 @@ def resolve_metadata_with_dispenser(
         try:
             auth_response = client.post(
                 endpoint,
-                json=_profile_for_country(profile, country),
+                json=profile_for_country(profile, country),
                 headers={
                     "Content-Type": "application/json",
                     "User-Agent": "StoreAppAudit-DeviceSpecific/1",
@@ -423,7 +615,7 @@ def resolve_metadata_with_dispenser(
                 diagnostics="dispenser_malformed_json",
             )
 
-        bundle = _sanitize_auth_bundle(payload, country=country)
+        bundle = sanitize_auth_bundle(payload, country=country)
         if bundle is None:
             return _failure(
                 package_name=package,
@@ -438,7 +630,7 @@ def resolve_metadata_with_dispenser(
             details_response = client.get(
                 DETAILS_URL,
                 params={"doc": package, "gl": country},
-                headers=_fdfe_headers(bundle, country=country, language=language),
+                headers=fdfe_headers(bundle, country=country, language=language),
                 timeout=timeout,
             )
         except requests.RequestException:

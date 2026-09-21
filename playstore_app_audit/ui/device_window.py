@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
 import playstore_app_audit.services.alternative_distribution as alternative_distribution
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
@@ -36,6 +38,11 @@ import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.compact_window as compact_ui
 from app_icon import ensure_runtime_icon
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
+from playstore_app_audit.services.connected_device_profile import (
+    ConnectedDeviceProfile,
+    ConnectedDeviceProfileCapture,
+    capture_connected_device_profile,
+)
 from playstore_app_audit.ui import schema
 
 # Stable device-layer schema aliases. The canonical definitions live in ui.schema.
@@ -79,6 +86,8 @@ class DeviceWindow(compact_ui.CompactWindow):
         self._subset_label = ""
         self._pending_device_metadata: dict[str, dict[str, str]] = {}
         self._force_refresh_sessions: set[int] = set()
+        self._device_specific_connected_profile = None
+        self._device_specific_connected_profile_device_id: str | None = None
         super().__init__()
         self._build_menu_v8()
         self._apply_column_visibility(reset_order=False)
@@ -113,6 +122,123 @@ class DeviceWindow(compact_ui.CompactWindow):
         # The exact-session check already verifies single-device authorization;
         # do not precede it with another generic `devices` probe.
         return adb if adb and scan_sessions.authorised_device_matches(adb, session.device_id) else None
+
+    def _connected_device_profile_for_resolution(
+        self,
+        requested_profile: str,
+        scan_session: scan_sessions.ScanSession | None,
+        *,
+        resolver_enabled: bool = True,
+    ) -> ConnectedDeviceProfile | None:
+        """Return only a complete profile valid for the current audit context."""
+
+        if (
+            not resolver_enabled
+            or requested_profile
+            != device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+        ):
+            return None
+
+        cached_profile = self._device_specific_connected_profile
+        if scan_session is None:
+            return (
+                cached_profile
+                if cached_profile is not None and cached_profile.complete
+                else None
+            )
+
+        cached_device_id = self._device_specific_connected_profile_device_id
+        if (
+            cached_profile is not None
+            and cached_profile.complete
+            and cached_device_id == scan_session.device_id
+        ):
+            return cached_profile
+
+        adb = self._get_matching_scan_session_adb(scan_session)
+        if not adb:
+            return None
+        candidate = scan_sessions.collect_connected_device_profile_for_session(
+            adb,
+            scan_session,
+        )
+        if not candidate.complete:
+            return None
+
+        self._device_specific_connected_profile = candidate
+        self._device_specific_connected_profile_device_id = scan_session.device_id
+        return candidate
+
+    def _capture_requested_personal_device_profile(
+        self,
+        settings: Mapping[str, Any],
+        scan_session: scan_sessions.ScanSession,
+    ) -> ConnectedDeviceProfile | None:
+        """Capture the selected Personal Device slot for this exact scan session."""
+
+        provider = device_specific_settings.provider_from_settings(settings)
+        requested_profile = str(
+            settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+        )
+        if (
+            provider is device_specific_settings.DeviceSpecificProvider.DISABLED
+            or requested_profile
+            != device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+        ):
+            return None
+        try:
+            return self._connected_device_profile_for_resolution(
+                requested_profile,
+                scan_session,
+                resolver_enabled=True,
+            )
+        except Exception:
+            # Profile capture is optional enrichment. Preserve any prior complete
+            # process-local slot, while exact-session binding prevents stale use.
+            return None
+
+    def _collect_personal_device_profile_direct(
+        self,
+    ) -> ConnectedDeviceProfileCapture:
+        """Read only Device Specific profile data, without a Scan Phone inventory."""
+
+        adb = self._find_adb()
+        if not adb:
+            raise RuntimeError(
+                "ADB is not available. Install Android Platform-Tools and try again."
+            )
+        return capture_connected_device_profile(adb)
+
+    def _store_direct_personal_device_capture(
+        self,
+        capture: ConnectedDeviceProfileCapture,
+    ) -> ConnectedDeviceProfile:
+        """Atomically replace the one process-local slot after complete capture."""
+
+        if not isinstance(capture, ConnectedDeviceProfileCapture):
+            raise RuntimeError("The phone data could not be captured safely.")
+        profile = capture.profile
+        if not profile.complete or not capture.ownership_token:
+            raise RuntimeError(
+                "The phone data required for Device Specific resolution could not "
+                "be captured completely."
+            )
+        self._device_specific_connected_profile = profile
+        self._device_specific_connected_profile_device_id = capture.ownership_token
+        return profile
+
+    def _on_adb_scan_done(self, apps: object, system_packages: object) -> None:
+        if not self._is_current_scan_completion(apps, system_packages):
+            return
+        super()._on_adb_scan_done(apps, system_packages)
+        if (
+            isinstance(apps, scan_sessions.ScanSession)
+            and self._scan_session is apps
+        ):
+            self._capture_requested_personal_device_profile(
+                state.load_settings(),
+                apps,
+            )
 
     # ---------- Menus ----------
     def _build_menu_v8(self) -> None:
@@ -359,7 +485,12 @@ class DeviceWindow(compact_ui.CompactWindow):
             value = str(row.get(key, "") or "")
             if not value and key not in {"notes", "change"}:
                 continue
-            label = QLabel(html.escape(presentation.display_relationship_value(key, value)))
+            display_value = (
+                presentation.relationship_display_value(row, key)
+                if key in presentation.VERSION_RELATIONSHIP_FIELDS
+                else presentation.display_relationship_value(key, value)
+            )
+            label = QLabel(html.escape(display_value))
             label.setWordWrap(True)
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             form.addRow(label_text, label)
@@ -688,6 +819,21 @@ class DeviceWindow(compact_ui.CompactWindow):
                 )
 
             try:
+                requested_profile = str(
+                    settings.get(device_specific_integration.SETTING_PROFILE_ID) or ""
+                ).strip()
+                resolver_provider = device_specific_settings.provider_from_settings(
+                    settings
+                )
+                connected_profile = self._connected_device_profile_for_resolution(
+                    requested_profile,
+                    scan_session,
+                    resolver_enabled=(
+                        resolver_provider
+                        is not device_specific_settings.DeviceSpecificProvider.DISABLED
+                    ),
+                )
+
                 device_specific_integration.enrich_rows_with_device_specific_resolution(
                     rows,
                     settings=settings,
@@ -695,6 +841,7 @@ class DeviceWindow(compact_ui.CompactWindow):
                     language=config.language,
                     pause_event=pause_event,
                     cancel_event=cancel_event,
+                    connected_profile=connected_profile,
                 )
             except Exception:
                 # Device Specific resolution is optional enrichment. Never let

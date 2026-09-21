@@ -1546,6 +1546,27 @@ def _copy_nuitka_legal_files(licenses_root: Path) -> tuple[str, list[str]]:
     return dist.version, copied
 
 
+def _copy_goopdl_license(licenses_root: Path) -> str:
+    url = "https://raw.githubusercontent.com/Villoh/goopdl/v1.2.1/LICENSE"
+    license_text = _download_text(url)
+    if (
+        "MIT License" not in license_text
+        or "Copyright (c) 2021 Rehmat Alam" not in license_text
+        or "Copyright (c) 2025 Mikel Villota" not in license_text
+        or "Permission is hereby granted" not in license_text
+    ):
+        raise RuntimeError(f"Unexpected goopdl MIT license content from {url}")
+
+    destination = licenses_root / "goopdl" / "LICENSE.txt"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        license_text,
+        encoding="utf-8",
+        newline="\n",
+    )
+    return _safe_relpath(destination, licenses_root.parent)
+
+
 def _copy_openssl_license(
     licenses_root: Path,
     openssl_version: str,
@@ -1654,6 +1675,7 @@ def _write_third_party_notices(
     nuitka_version: str,
     nuitka_files: list[str],
     openssl: dict[str, Any] | None,
+    goopdl_license: str,
 ) -> None:
     lines = [
         "# Third-party notices",
@@ -1734,6 +1756,17 @@ def _write_third_party_notices(
         )
     lines.extend(
         [
+            "",
+            "## goopdl-derived Personal Google Session protocol",
+            "",
+            "- The browser OAuth capture and metadata-only direct-auth protocol contain portions",
+            "  adapted from goopdl v1.2.1.",
+            "- Upstream copyright: Copyright (c) 2021 Rehmat Alam; Copyright (c) 2025 Mikel Villota.",
+            "- Upstream license: MIT.",
+            f"- License: `{goopdl_license}`.",
+            "- Store App Audit does not include goopdl as a runtime dependency and does not include",
+            "  its APK purchase, delivery or download paths.",
+            "- The adapted Store App Audit source is available in the exact release tag.",
             "",
             "## AuroraOSS Device Specific reference profiles",
             "",
@@ -2142,6 +2175,7 @@ def main() -> int:
 
     cpython_license = _copy_cpython_license(licenses_root)
     nuitka_version, nuitka_files = _copy_nuitka_legal_files(licenses_root)
+    goopdl_license = _copy_goopdl_license(licenses_root)
 
     if report_nuitka_version != nuitka_version:
         raise RuntimeError(
@@ -2214,6 +2248,7 @@ def main() -> int:
         nuitka_version=nuitka_version,
         nuitka_files=nuitka_files,
         openssl=openssl,
+        goopdl_license=goopdl_license,
     )
 
     build_info = next(
@@ -2253,6 +2288,18 @@ def main() -> int:
             "openssl": openssl,
         },
         "runtime_dependencies": dependencies,
+        "derived_sources": [
+            {
+                "name": "goopdl",
+                "version": "1.2.1",
+                "license": "MIT",
+                "license_file": goopdl_license,
+                "usage": (
+                    "Browser OAuth capture and metadata-only direct-auth protocol portions"
+                ),
+                "source": "https://github.com/Villoh/goopdl/tree/v1.2.1",
+            }
+        ],
         "qt": {
             "version": pyside_version,
             "distribution_basis": "LGPL-3.0-only",

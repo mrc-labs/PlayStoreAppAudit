@@ -111,17 +111,17 @@ def test_local_apk_relationship_filters_combine_with_store_status_and_clear(
         window._update_summary()
         assert window.criticality_buttons["blue"].text() == "Anomaly 4"
         assert set(window.apk_relationship_buttons) == {
-            "All", "Outdated", "Newer", "Match", "Device-specific", "N/A"
+            "All", "Outdated", "Newer", "Match", "Different", "Unknown",
+            "Device-specific", "N/A"
         }
         window._set_criticality_filter("blue")
         assert window.proxy.rowCount() == 4
         window._set_apk_relationship_filter("Different")
         assert window.proxy.rowCount() == 2
-        assert window.apk_relationship_more.isChecked()
-        assert window.apk_relationship_more_actions["Different"].isChecked()
+        assert window.apk_relationship_buttons["Different"].isChecked()
         window._set_apk_relationship_filter("Unknown")
         assert window.proxy.rowCount() == 3
-        assert "(2)" in window.apk_relationship_more.text()
+        assert window.apk_relationship_buttons["Unknown"].isChecked()
         window._clear_all_filters()
         assert window.proxy.rowCount() == 5
         assert not window._status_filters and not window._apk_relationship_filters

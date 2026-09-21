@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import sys
+import threading
 from typing import Any
 
 from playstore_app_audit.platform.subprocesses import install_hidden_subprocess_windows
 
 install_hidden_subprocess_windows()
 
-from PySide6.QtCore import QModelIndex, QSize, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QObject, QSize, QSortFilterProxyModel, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -32,16 +33,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import playstore_app_audit.help_texts as help_texts
 import playstore_app_audit.services.app_icon_metadata as app_icon_metadata
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
+import playstore_app_audit.services.device_specific_personal_session as device_specific_personal_session
+import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.presentation as presentation
+import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.rich_help as rich_help
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 import playstore_app_audit.ui.theme as theme_ui
@@ -82,6 +88,30 @@ ADVANCED_CUSTOM_COLUMNS = frozenset(
         "local_apk_sha256",
     }
 )
+
+
+class DeviceProfileCaptureSignals(QObject):
+    completed = Signal(object)
+    failed = Signal(object)
+
+
+def safe_phone_capture_error(error: object) -> str:
+    """Translate collector failures without surfacing commands or identifiers."""
+
+    message = str(error or "").casefold()
+    if "more than one" in message:
+        return (
+            "More than one authorised Android phone is connected. Keep only the "
+            "phone you want to use connected and try again."
+        )
+    if "not available" in message or "not installed" in message:
+        return "ADB is not available. Install Android Platform-Tools and try again."
+    if any(marker in message for marker in ("unauthor", "offline", "no authorised")):
+        return (
+            "No authorised Android phone was found. Connect one phone, enable USB "
+            "debugging and authorise this computer."
+        )
+    return "The phone data required for Device Specific resolution could not be captured."
 
 CUSTOMIZE_VIEW_MIN_SIZE = QSize(620, 500)
 CUSTOMIZE_VIEW_NORMAL_WIDTH = 780
@@ -842,29 +872,53 @@ class PreferencesWindow(table_ui.TableWindow):
             "DeviceSpecificSettingsPage",
             "Device Specific",
             (
-                "Resolve Play Store 'Varies with device' versions only when "
-                "explicitly enabled with a compatible dispenser and a validated "
-                "reference device profile."
+                "Resolve Play Store 'Varies with device' versions with an explicit "
+                "provider and a coherent device profile. Public Store evidence "
+                "always remains authoritative."
             ),
-        )
-
-        resolver_enabled = QCheckBox(
-            "Enable Device Specific version resolution"
-        )
-        resolver_enabled.setObjectName(
-            "DeviceSpecificResolverEnabledCheck"
-        )
-        resolver_enabled.setChecked(
-            self.user_settings.get(
-                device_specific_integration.SETTING_ENABLED
-            )
-            is True
         )
 
         resolver_form = QFormLayout()
         resolver_form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
+
+        resolver_provider = QComboBox()
+        resolver_provider.setObjectName("DeviceSpecificProviderCombo")
+        resolver_provider.addItem(
+            "Disabled",
+            device_specific_settings.DeviceSpecificProvider.DISABLED.value,
+        )
+        resolver_provider.addItem(
+            "Personal Google Session",
+            device_specific_settings.DeviceSpecificProvider.PERSONAL_GOOGLE_SESSION.value,
+        )
+        resolver_provider.addItem(
+            "Custom Dispenser (Advanced)",
+            device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER.value,
+        )
+        configured_provider = device_specific_settings.provider_from_settings(
+            self.user_settings
+        )
+        provider_index = resolver_provider.findData(configured_provider.value)
+        if provider_index >= 0:
+            resolver_provider.setCurrentIndex(provider_index)
+
+        personal_session_status = QLabel()
+        personal_session_status.setObjectName(
+            "DeviceSpecificPersonalSessionStatus"
+        )
+        personal_sign_in = QPushButton("Sign in…")
+        personal_sign_in.setObjectName("DeviceSpecificPersonalSignInButton")
+        personal_clear = QPushButton("Clear session")
+        personal_clear.setObjectName("DeviceSpecificPersonalClearButton")
+        personal_controls = QWidget()
+        personal_controls.setObjectName("DeviceSpecificPersonalSessionControls")
+        personal_controls_layout = QHBoxLayout(personal_controls)
+        personal_controls_layout.setContentsMargins(0, 0, 0, 0)
+        personal_controls_layout.addWidget(personal_session_status, 1)
+        personal_controls_layout.addWidget(personal_sign_in)
+        personal_controls_layout.addWidget(personal_clear)
 
         resolver_endpoint = QLineEdit(
             str(
@@ -881,15 +935,48 @@ class PreferencesWindow(table_ui.TableWindow):
             "https://your-compatible-dispenser.example/api/auth"
         )
         resolver_endpoint.setToolTip(
-            "Explicit compatible dispenser endpoint. Remote endpoints require "
-            "HTTPS; loopback HTTP is allowed for local/self-hosted use. "
+            "Advanced: explicit compatible dispenser endpoint. Remote endpoints "
+            "require HTTPS; loopback HTTP is allowed for local/self-hosted use. "
             "Credentials, query strings and fragments are rejected."
         )
+        resolver_endpoint_label = QLabel("Dispenser Endpoint")
+        dispenser_help = QPushButton("Find dispenser options…")
+        dispenser_help.setObjectName("DeviceSpecificDispenserHelpButton")
 
         resolver_profile = QComboBox()
         resolver_profile.setObjectName(
             "DeviceSpecificResolverProfileCombo"
         )
+
+        connected_profile = getattr(
+            self,
+            "_device_specific_connected_profile",
+            None,
+        )
+        connected_profile_device_id = getattr(
+            self,
+            "_device_specific_connected_profile_device_id",
+            None,
+        )
+        cached_profile_matches_context = bool(
+            connected_profile is not None
+            and getattr(connected_profile, "complete", False)
+            and (
+                not isinstance(getattr(self, "_scan_session", None), scan_sessions.ScanSession)
+                or connected_profile_device_id
+                == getattr(getattr(self, "_scan_session", None), "device_id", None)
+            )
+        )
+        if cached_profile_matches_context:
+            connected_label = (
+                f"Personal Device — {connected_profile.display_name} — "
+                f"Android {connected_profile.android_release} / "
+                f"API {connected_profile.api_level} (this session)"
+            )
+            resolver_profile.addItem(
+                connected_label,
+                device_specific_integration.CONNECTED_DEVICE_PROFILE_ID,
+            )
 
         for profile_id, label in (
             device_specific_integration.profile_choices()
@@ -902,49 +989,179 @@ class PreferencesWindow(table_ui.TableWindow):
             )
             or device_specific_integration.DEFAULT_PROFILE_ID
         )
-
-        profile_index = resolver_profile.findData(
-            configured_profile
-        )
-
+        profile_index = resolver_profile.findData(configured_profile)
         if profile_index < 0:
             profile_index = resolver_profile.findData(
                 device_specific_integration.DEFAULT_PROFILE_ID
             )
-
         if profile_index >= 0:
             resolver_profile.setCurrentIndex(profile_index)
 
-        resolver_form.addRow("", resolver_enabled)
-        resolver_form.addRow(
-            "Dispenser Endpoint",
-            resolver_endpoint,
+        resolver_form.addRow("Provider", resolver_provider)
+        resolver_form.addRow("Google Session", personal_controls)
+        resolver_form.addRow(resolver_endpoint_label, resolver_endpoint)
+        resolver_form.addRow("", dispenser_help)
+        resolver_form.addRow("Device Profile", resolver_profile)
+        get_phone_data = QPushButton("Get Phone Data")
+        get_phone_data.setObjectName("DeviceSpecificGetPhoneDataButton")
+        phone_data_status = QLabel()
+        phone_data_status.setObjectName("DeviceSpecificPhoneDataStatus")
+        phone_data_status.setWordWrap(True)
+        phone_data_controls = QWidget()
+        phone_data_layout = QHBoxLayout(phone_data_controls)
+        phone_data_layout.setContentsMargins(0, 0, 0, 0)
+        phone_data_layout.addWidget(get_phone_data)
+        phone_data_layout.addWidget(phone_data_status, 1)
+        personal_device_note = self._settings_note(
+            "Reads only the Device Specific profile from one connected Android "
+            "phone via ADB. No app scan. Adds it as Personal Device for this app "
+            "session."
         )
-        resolver_form.addRow(
-            "Reference Device",
-            resolver_profile,
-        )
-
+        personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
+        phone_data_section = QWidget()
+        phone_data_section_layout = QVBoxLayout(phone_data_section)
+        phone_data_section_layout.setContentsMargins(0, 0, 0, 0)
+        phone_data_section_layout.addWidget(phone_data_controls)
+        phone_data_section_layout.addWidget(personal_device_note)
+        your_phone_label = QLabel("Your Phone")
+        your_phone_label.setObjectName("DeviceSpecificYourPhoneLabel")
+        resolver_form.addRow(your_phone_label, phone_data_section)
         resolver_layout.addLayout(resolver_form)
 
-        resolver_layout.addWidget(
-            self._settings_note(
-                "Disabled by default. The normal public Play Store lookup "
-                "always remains authoritative and runs first. Only rows whose "
-                "raw Play Store Version is Device Specific are enriched; the "
-                "raw Store value is never replaced. Only production-validated "
-                "reference profiles are offered here."
+        personal_provider_note = self._settings_note(
+            "Personal Google Session performs direct metadata-only Google Play "
+            "resolution through an isolated browser sign-in. Its session and "
+            "credentials stay only in this running app process and are never "
+            "persisted. It never purchases, delivers or downloads APKs."
+        )
+        personal_provider_note.setObjectName("DeviceSpecificPersonalProviderNote")
+        resolver_layout.addWidget(personal_provider_note)
+        custom_provider_note = self._settings_note(
+            "Custom Dispenser requires no local Google login. Enter the URL of a "
+            "compatible service you choose; authentication occurs server-side. "
+            "No default public endpoint is configured. Remote endpoints require "
+            "HTTPS; loopback HTTP is allowed."
+        )
+        custom_provider_note.setObjectName("DeviceSpecificCustomProviderNote")
+        resolver_layout.addWidget(custom_provider_note)
+        resolver_layout.addStretch(1)
+
+        def refresh_personal_session_status() -> None:
+            session_status = (
+                device_specific_personal_session.personal_session_status()
+            )
+            personal_session_status.setText(
+                "Signed in for this app session"
+                if session_status.signed_in
+                else "Not signed in"
+            )
+            personal_clear.setEnabled(session_status.signed_in)
+
+        def sign_in_personal_session() -> None:
+            personal_sign_in.setEnabled(False)
+            personal_session_status.setText("Waiting for browser sign-in…")
+            QApplication.processEvents()
+            try:
+                device_specific_personal_session.sign_in_interactive()
+            except device_specific_personal_session.PersonalGoogleSessionError as exc:
+                QMessageBox.warning(
+                    dialog,
+                    "Personal Google Session",
+                    str(exc),
+                )
+            finally:
+                personal_sign_in.setEnabled(True)
+                refresh_personal_session_status()
+
+        def clear_personal_session() -> None:
+            device_specific_personal_session.clear_personal_session()
+            refresh_personal_session_status()
+
+        personal_sign_in.clicked.connect(sign_in_personal_session)
+        personal_clear.clicked.connect(clear_personal_session)
+
+        dispenser_help.clicked.connect(
+            lambda: rich_help.show_rich_help(
+                dialog,
+                "Custom Dispenser Options",
+                help_texts.DEVICE_SPECIFIC_DISPENSER_GUIDE_HTML,
             )
         )
 
-        resolver_layout.addStretch(1)
+        capture_signals = DeviceProfileCaptureSignals(dialog)
+
+        def upsert_personal_device(profile: object) -> None:
+            profile_id = device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
+            label = (
+                f"Personal Device — {getattr(profile, 'display_name', 'Android phone')} — "
+                f"Android {getattr(profile, 'android_release', '')} / "
+                f"API {getattr(profile, 'api_level', '')} (this session)"
+            )
+            index = resolver_profile.findData(profile_id)
+            if index < 0:
+                resolver_profile.insertItem(0, label, profile_id)
+                index = resolver_profile.findData(profile_id)
+            else:
+                resolver_profile.setItemText(index, label)
+            resolver_profile.setCurrentIndex(index)
+
+        def finish_phone_capture(capture: object) -> None:
+            try:
+                profile = self._store_direct_personal_device_capture(capture)
+            except Exception as exc:
+                fail_phone_capture(exc)
+                return
+            upsert_personal_device(profile)
+            get_phone_data.setEnabled(True)
+            phone_data_status.setText("Phone data ready for this app session.")
+
+        def fail_phone_capture(error: object) -> None:
+            get_phone_data.setEnabled(True)
+            phone_data_status.setText(safe_phone_capture_error(error))
+
+        capture_signals.completed.connect(finish_phone_capture)
+        capture_signals.failed.connect(fail_phone_capture)
+
+        def collect_phone_data_worker() -> None:
+            try:
+                capture_signals.completed.emit(
+                    self._collect_personal_device_profile_direct()
+                )
+            except Exception as exc:
+                capture_signals.failed.emit(exc)
+
+        def get_phone_data_now() -> None:
+            get_phone_data.setEnabled(False)
+            phone_data_status.setText("Getting phone data…")
+            threading.Thread(target=collect_phone_data_worker, daemon=True).start()
+
+        get_phone_data.clicked.connect(get_phone_data_now)
 
         def sync_resolver_controls() -> None:
-            enabled = resolver_enabled.isChecked()
-            resolver_endpoint.setEnabled(enabled)
+            provider_value = str(resolver_provider.currentData() or "")
+            enabled = (
+                provider_value
+                != device_specific_settings.DeviceSpecificProvider.DISABLED.value
+            )
+            personal = (
+                provider_value
+                == device_specific_settings.DeviceSpecificProvider.PERSONAL_GOOGLE_SESSION.value
+            )
+            custom = (
+                provider_value
+                == device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER.value
+            )
             resolver_profile.setEnabled(enabled)
+            personal_controls.setVisible(personal)
+            personal_provider_note.setVisible(personal)
+            custom_provider_note.setVisible(custom)
+            resolver_endpoint_label.setVisible(custom)
+            resolver_endpoint.setVisible(custom)
+            resolver_endpoint.setEnabled(custom)
+            dispenser_help.setVisible(custom)
+            refresh_personal_session_status()
 
-        resolver_enabled.toggled.connect(
+        resolver_provider.currentIndexChanged.connect(
             sync_resolver_controls
         )
         sync_resolver_controls()
@@ -1042,7 +1259,11 @@ class PreferencesWindow(table_ui.TableWindow):
             ttl.setValue(state.DEFAULT_CACHE_TTL_HOURS)
             recent_days.setValue(StoreFreshnessThresholds().recent_max_days)
             stale_days.setValue(StoreFreshnessThresholds().stale_after_days)
-            resolver_enabled.setChecked(False)
+            disabled_provider = resolver_provider.findData(
+                device_specific_settings.DeviceSpecificProvider.DISABLED.value
+            )
+            if disabled_provider >= 0:
+                resolver_provider.setCurrentIndex(disabled_provider)
             resolver_endpoint.clear()
             resolver_default = resolver_profile.findData(
                 device_specific_integration.DEFAULT_PROFILE_ID
@@ -1073,9 +1294,10 @@ class PreferencesWindow(table_ui.TableWindow):
                 resolver_endpoint.text().strip()
             )
 
+            provider_value = str(resolver_provider.currentData() or "")
             if (
-                resolver_enabled.isChecked()
-                or resolver_endpoint_text
+                provider_value
+                == device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER.value
             ):
                 try:
                     device_specific_integration.validate_resolver_endpoint(
@@ -1110,8 +1332,9 @@ class PreferencesWindow(table_ui.TableWindow):
                 "store_workers": workers.value(),
                 "cache_enabled": cache.isChecked(),
                 "cache_ttl_hours": ttl.value(),
-                device_specific_integration.SETTING_ENABLED: (
-                    resolver_enabled.isChecked()
+                device_specific_integration.SETTING_PROVIDER: str(
+                    resolver_provider.currentData()
+                    or device_specific_settings.DeviceSpecificProvider.DISABLED.value
                 ),
                 device_specific_integration.SETTING_ENDPOINT: (
                     resolver_endpoint.text().strip()
@@ -1130,6 +1353,15 @@ class PreferencesWindow(table_ui.TableWindow):
             }
         )
         self.user_settings = state.save_settings(self.user_settings)
+        current_scan_session = getattr(self, "_scan_session", None)
+        capture_personal_device = getattr(
+            self, "_capture_requested_personal_device_profile", None
+        )
+        if (
+            isinstance(current_scan_session, scan_sessions.ScanSession)
+            and callable(capture_personal_device)
+        ):
+            capture_personal_device(self.user_settings, current_scan_session)
         for row in self.current_rows:
             self._classify_row(row)
         if self.current_rows:

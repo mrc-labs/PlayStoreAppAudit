@@ -347,8 +347,13 @@ def _joined_semantic_fields(
     for label, key in fields:
         value = _text(row.get(key))
         if value:
+            rendered = (
+                presentation.semantic_html_value_for_row(row, key)
+                if key in presentation.VERSION_RELATIONSHIP_FIELDS
+                else presentation.semantic_html_value(key, value)
+            )
             lines.append(
-                f"{html.escape(label)}: {presentation.semantic_html_value(key, value)}"
+                f"{html.escape(label)}: {rendered}"
             )
     return "<br>".join(lines)
 
@@ -382,7 +387,11 @@ def local_apk_details_lines(row: Mapping[str, Any]) -> list[str]:
     )
     lines: list[str] = []
     for label, key in fields:
-        value = row.get(key)
+        value = (
+            presentation.relationship_display_value(row, key)
+            if key == "local_apk_version_comparison"
+            else row.get(key)
+        )
         if value is not None and str(value) != "":
             lines.append(f"{label}: {presentation.display_relationship_value(key, value)}")
     if (
