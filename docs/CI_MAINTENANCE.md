@@ -73,6 +73,18 @@ The post-publication review on 2026-09-09 followed immutable v1.99.0 release SHA
 - Both artifacts are the current canonical audit evidence; no redundant eligible artifact was present, so no deletion was required.
 - The three GitHub Release assets, annotated tag, exact source commit, retention settings and cleanup logic remained unchanged, and repository visibility remained private.
 
+### v2.1.0 closure snapshot
+
+Post-release housekeeping run `35793158003` applied the unchanged policy successfully on 2026-09-22 from immutable v2.1.0 release SHA `df2726b959963e5dbb096638d5072bd15eb1de92`.
+
+- The automated pass saw 13 active artifacts and deleted expired failed/cancelled runs `35023120949`, `35023486423`, `35023585122` and `35023610443`; it selected no successful run or individual artifact automatically.
+- Explicit release-lineage review then deleted fully superseded candidate runs `35708299383`, `35708322474` and `35731253986`, removing their six invalidated/pre-final platform artifacts.
+- The six canonical v2.1 final-build artifacts remain: Windows x64/ARM64 from `35776095408`, Linux x64/ARM64 from `35776120755`, and macOS x64/ARM64 from `35776146620`.
+- Historical canonical v1.99 assembler artifact `10123756577` remains retained.
+- Remaining Actions storage is 7 artifacts / 1,344,361,022 bytes (1,282.08 MiB / 1.252 GiB).
+- The v2.1.0 GitHub Release still contains exactly eight unchanged assets; the annotated tag and frozen source commit remain unchanged.
+- No retention setting, cleanup algorithm, source workflow or published release asset changed.
+
 ## Public release naming
 
 Do not use **Engineering Test Build** or **ETB** in public GitHub Release titles, release-body headings or public compatibility labels. Build validation and signing status should be stated directly instead of encoded in a build-class label.

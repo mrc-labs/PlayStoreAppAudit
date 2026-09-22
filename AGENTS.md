@@ -31,7 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- v2.0 development and release-packaging baseline: stable Python 3.14.
+- Current v2.1 release/development baseline: stable Python 3.14.
 - Quality CI: Python 3.14.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
 - Current release compiler pin: `Nuitka==4.2.2`.
@@ -178,14 +178,14 @@ v1.99 is feature complete, published and immutable as the final planned Windows 
 - Preserve the semantic warning hierarchy across the table, Details surfaces and HTML report: `Different` and `Aging target` reuse the status palette's dark-yellow foreground with DemiBold 600 emphasis; `Legacy target` reuses dark orange with DemiBold 600 emphasis; `Modern` remains Regular 400 and the Status column remains Bold 700. The selection background remains Qt-managed, with warning colours chosen for both selected and unselected readability, and machine-readable values remain unchanged.
 - Alternative Distribution Discovery is informational exact-package-ID evidence, not endorsement or an automatic equivalent-app association. v1.99 automatic checks are limited to F-Droid main and optional authorized Aptoide, require conclusive eligible Google Play evidence and must not run for transient, scraper or ambiguous failures. The remaining providers in the limitations panel are not implemented.
 - The v1.99 Maintenance Score update applies `-60` only for raw `play_status == "not_found_in_checked_countries"`, then recovers `+10` for current conclusive F-Droid main availability and `+5` for current conclusive Aptoide availability. Recovery is cumulative, deduplicated, limited to the current `+15` provider mapping and disabled unless the `-60` component is active; it is never an unconditional multi-store bonus. Store anomaly is `-20`; Other/inconclusive is `-15`; stale/aging freshness is `-25`/`-15`; legacy/aging target SDK is `-15`/`-10`; installed/store difference is `-5`. Regional unavailability is not definitive absence. Scores remain clamped to 0-100 and `health_score` remains the compatibility identifier.
-- Defer the internal `health_score` rename to v2.1. It is a separate compatibility migration and is not implied by the scoring update.
+- The internal `health_score` rename did not ship in v2.1. It remains a separate, unassigned compatibility migration and is not implied by the scoring update.
 - `QDockWidget` is rejected and not planned. Retain the Details Panel's Auto/Right/Below/Hidden placement and narrow/wide/extra-wide responsiveness.
 - Do not add Local APK Audit functionality in v1.99. Begin v2.0 with a parser/verifier spike, then a typed `LocalArtifact` model with SHA-256 artifact identity and package-deduplicated Store/provider fan-out before implementing Local APK Audit and the persistent Local APK Library core.
 - A richer dashboard is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when multiple mature sources and longitudinal/history workflows justify it.
 
-### v2.0-or-later production profile
+### v2.0-and-later six-platform profile
 
-v2.0 is the first planned return to a full multi-platform release. Production signing remains the preferred target, but it must not be promised until provider eligibility, credentials, cost and end-to-end signing/notarization validation are confirmed.
+v2.0 established the full multi-platform release architecture. Production signing remains a preferred later target, but it must not be promised until provider eligibility, credentials, cost and end-to-end signing/notarization validation are confirmed.
 
 - Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 final candidates must all come from the same frozen SHA.
 - Windows final candidates require a publicly trusted code-signing provider with native post-sign verification.
@@ -193,7 +193,17 @@ v2.0 is the first planned return to a full multi-platform release. Production si
 - Linux production packaging remains Nuitka standalone, not onefile, with replaceable Qt/PySide/Shiboken shared libraries.
 - Assemble with `.github/workflows/assemble-release.yml` only after all six final candidates validate.
 - The full production public asset set is exactly eight files: six platform ZIPs, one consolidated third-party source `tar.xz`, and one `SHA256SUMS.txt`.
-- Local APK analysis is a major v2.0 product pillar. The v2.0 source supports explicit local APK/container files and recursive folder discovery with safe package/version parsing and Store comparison. A separate persistent library-management UI, mass rename, duplicate management and cleanup remain later v2.x work rather than a v2.0 release blocker.
+- Local APK analysis is a major v2.x product pillar. v2.0 introduced explicit local APK/container files and recursive folder discovery; v2.1 added safe single-file and mass file management. A separate persistent library-management UI and duplicate management remain later work.
+
+### v2.1.0 immutable release profile
+
+v2.1.0 is published and immutable at `df2726b959963e5dbb096638d5072bd15eb1de92`.
+
+- Public assets are exactly six platform ZIPs, one consolidated third-party source `tar.xz`, and `SHA256SUMS.txt`.
+- Windows x64/ARM64 and Linux x64/ARM64 are unsigned.
+- macOS x64/ARM64 use ad-hoc engineering signing only and are not Developer ID signed or notarized.
+- Canonical final runs are Quality `35775208797`, Windows `35776095408`, Linux `35776120755`, and macOS `35776146620`.
+- The public assets passed clean re-download, size, SHA-256, and byte-for-byte verification. Do not rebuild, retag, move, or replace them.
 
 v1.3.0 at commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081` is already published and immutable. Do not rebuild, retag or replace its artifacts.
 

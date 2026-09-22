@@ -98,6 +98,81 @@ A short release heading may precede the four mandatory sections when a profile r
 
 The mandatory four sections must follow that heading unchanged.
 
+## Published v2.1.0 release body
+
+GitHub Release title: `Store App Audit v2.1.0`.
+
+The body below records the final v2.1.0 wording [published on 2026-09-22](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0). Annotated tag object `a0f7000e7e95cc5d0d075bfbf44c7b3debae7f58` peels to immutable source SHA `df2726b959963e5dbb096638d5072bd15eb1de92`; the tag, source, release body and eight project-defined assets are immutable.
+
+````markdown
+## What's New / Highlights
+
+### Added
+- Local APK file management now supports single-file Rename/Remove, batch Mass Rename with preview/collision checks and swap/cycle-safe execution, plus guarded Remove All Outdated and Remove All Unknown actions.
+- Device Specific resolution can add reproducible Store version evidence when the normal public result is `Varies with device`, using validated reference profiles while keeping the raw public Store fact unchanged.
+- Device Specific provider choices include Disabled, Personal Google Session and Advanced Custom Dispenser. Personal Google Session is temporary/session-only and Device Specific metadata paths do not purchase, deliver or download APKs.
+- **Get Phone Data** can capture one privacy-safe Personal Device profile from a connected Android phone through read-only ADB without running an app scan; the profile exists only for the current application session.
+- Canonical privacy-safe screenshots generated from deterministic synthetic data are now used in the README gallery and the in-app Store App Audit Overview.
+
+### Changed
+- Device Specific resolved metadata is additive and separated from raw Play Store evidence. Installed/Local APK relationships may show the `(Dev. Sp.)` presentation suffix only when resolved evidence supports it.
+- Local APK quick-filter presentation includes the accepted Device Specific and N/A states while preserving canonical filtering/sorting values.
+- Semantic status, comparison and criticality colours are theme-aware for readable light- and dark-mode presentation.
+- Release-entry component freshness updated Ruff from 0.16.7 to 0.16.8; the Python 3.14 release/tooling environment passed a fail-closed outdated-package audit.
+- The repeated post-macOS-fix final freshness audit updated the release compiler from Nuitka 4.2.1 to 4.2.2.
+
+### Fixed
+- `Installer Category` no longer appears as a duplicate table/customization field in Source Details, Technical or Customize Columns; `Installer Source` remains the useful user-facing field.
+- Phone -> Local APK Folder -> Phone transitions clear stale Local APK relationship/context state and restore the proper phone columns/order.
+- Personal Device ownership checks prevent captured Device Specific evidence from being stale-reused as evidence for a different connected phone.
+- Failed/incomplete Personal Device recapture preserves the last complete process-local Personal Device profile rather than replacing it with partial evidence.
+
+## Compatibility and distribution
+- Application version: `2.1.0`; Windows File Version and Product Version: `2.1.0.0`.
+- Python baseline: CPython 3.14.
+- Prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- Managed ADB remains read-only with respect to installed Android apps.
+- The v2.1 Personal Device profile is intentionally session-only. Persistent multi-profile storage remains post-v2.1 issue #200.
+- Published v2.0.0 remains immutable.
+- Windows and Linux packages are unsigned.
+- macOS packages use ad-hoc engineering signing only. They are not Developer ID signed and are not notarized.
+
+## Release assets
+- `PlayStoreAppAudit-v2.1.0-windows-x64.zip`
+- `PlayStoreAppAudit-v2.1.0-windows-arm64.zip`
+- `PlayStoreAppAudit-v2.1.0-linux-x64.zip`
+- `PlayStoreAppAudit-v2.1.0-linux-arm64.zip`
+- `PlayStoreAppAudit-v2.1.0-macos-x64.zip`
+- `PlayStoreAppAudit-v2.1.0-macos-arm64.zip`
+- `PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz`
+- `SHA256SUMS.txt`
+
+## Verification
+- Frozen final source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`.
+- Quality #592 / workflow run `35775208797`: PASS on the frozen SHA.
+- Windows workflow run `35776095408`: x64 and ARM64 PASS on the frozen SHA.
+- Linux workflow run `35776120755`: x64 and ARM64 PASS on the frozen SHA.
+- macOS workflow run `35776146620`: x64 and ARM64 PASS on the frozen SHA.
+- All six final packages passed the canonical frozen-SHA, platform, architecture, legal-manifest and source-material validation gates.
+- Final release assembly using the repository's canonical assembler: PASS.
+- Final release asset-layout and independently recomputed SHA-256 validation: PASS.
+- Final asset set: exactly 8 files.
+
+### SHA-256
+
+```text
+317cfddac8c7e9db30d1fb6bf37a94136e71be3713619c59f737272ec99075ef  PlayStoreAppAudit-v2.1.0-linux-arm64.zip
+0646398d6b30f7e6941c7c6348530499965f93388e8f0735cba465c3837a96a9  PlayStoreAppAudit-v2.1.0-linux-x64.zip
+9f101f432c949b443d089e614d8d5b3d4c21f4f02045667e88570196ebb11ef2  PlayStoreAppAudit-v2.1.0-macos-arm64.zip
+0cf00bb1a65b478f700db2918641e0085d591e4cfb57a1e9b438d3e0eb06f334  PlayStoreAppAudit-v2.1.0-macos-x64.zip
+4edfac898906e9d70d8e8a168293a6ff9208d80c953590bf4f1854dd2b0b85c8  PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz
+0b2456e139e50a1df381b4db76fe4dc0011f7970106c141f55c14e8be94cf190  PlayStoreAppAudit-v2.1.0-windows-arm64.zip
+0b0c03a27d467f3f1e61e1100dc1709dbb4d7fb8058e0f6d01b7175c6d5818a7  PlayStoreAppAudit-v2.1.0-windows-x64.zip
+```
+````
+
+After publication, all eight project-defined assets were downloaded into a fresh directory. Names and sizes matched the release metadata, all seven payload hashes matched the published `SHA256SUMS.txt`, the checksum file itself matched the accepted local copy, and every published file was byte-for-byte identical to the validated local final set.
+
 ## Published v2.0.0 release body
 
 GitHub Release title: `Store App Audit v2.0.0`.

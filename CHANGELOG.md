@@ -31,10 +31,11 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 ### Compatibility
 
 - Application version is `2.1.0`; Windows File/Product version is `2.1.0.0`; the Python baseline remains 3.14.
-- Planned final targets remain Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 from one exact frozen release SHA.
+- Published Windows x64/ARM64 and Linux x64/ARM64 packages are unsigned; published macOS x64/ARM64 packages use ad-hoc engineering signing only and are not Developer ID signed or notarized.
+- All six platform packages were built and validated from immutable release SHA `df2726b959963e5dbb096638d5072bd15eb1de92`; the exact eight-asset public release was independently re-downloaded and verified byte-for-byte.
 - Managed ADB remains read-only with respect to installed Android apps.
 - The Personal Device profile is intentionally session-only in v2.1; persistent multi-profile storage remains post-v2.1 issue #200.
-- Production Windows signing and Apple Developer ID/notarization status must be recorded only from the final real release runs; v2.0.0 remains immutable.
+- Published v2.0.0 and v2.1.0 remain immutable.
 
 ## [2.0.0] - 2026-09-13
 

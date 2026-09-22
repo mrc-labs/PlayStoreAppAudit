@@ -1,8 +1,9 @@
-# v2.1.0 release preparation
+# v2.1.0 release preparation and publication record
 
 Date opened: 2026-09-22 CEST
+Published: 2026-09-22T22:11:47Z
 
-Status: **IN PROGRESS - release preparation only. No final release SHA is frozen and no public v2.1.0 tag or release exists yet.**
+Status: **PUBLISHED AND IN POST-RELEASE CLOSURE.** Immutable release SHA `df2726b959963e5dbb096638d5072bd15eb1de92`; public release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
 
 This checklist begins after the feature-complete Windows x64 acceptance and the mandatory release-entry component freshness gate. The dedicated release-preparation branch is `v2/release-prep-2.1.0`, created from post-freshness `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
 
@@ -39,24 +40,24 @@ This checklist begins after the feature-complete Windows x64 acceptance and the 
 - [x] v2.1.0 changelog entry prepared without rewriting immutable historical release facts.
 - [x] Canonical v2.1.0 GitHub Release body drafted using the `docs/RELEASE_NOTES.md` structure.
 - [x] Current project-status and roadmap context updated for release preparation.
-- [ ] Exact-head Quality passes after all release-preparation source/docs changes.
+- [x] Exact-head Quality #592 / run `35775208797` passed on the frozen SHA.
 - [x] Mandatory second complete component-freshness gate passes immediately before exact-SHA freeze.
 - [x] Clean Python 3.14 release environment re-resolved on Quality #585 / run `35700725588`; `pip check` passed and `pip list --outdated --format=json` returned exactly `[]`.
 - [x] Maintained GitHub Actions, runner selections, Platform-Tools/ADB and signing/notarization source paths rechecked against current upstream support/release state.
 - [x] Final pre-release freshness evidence recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS.md`; the temporary continuous audit step was removed before final exact-head Quality.
-- [ ] Repeated post-macOS-fix final freshness gate completes after adopting Nuitka 4.2.2; its one-shot hosted proof passed on Quality #590 / run `35759658599`, while normal cleanup Quality and subsequent closure checks remain pending. The earlier gate remains historical evidence only.
-- [ ] Post-fix hosted evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md` and temporary audit instrumentation is removed locally; normal exact-head Quality remains pending.
-- [ ] Exact candidate SHA selected only after the second freshness gate and green exact-head Quality.
-- [ ] Final six-platform exact-SHA production gate passes.
-- [ ] Actual Windows/macOS signing/notarization status is recorded from real final runs.
-- [ ] Release assembly produces the exact project-defined public asset set.
-- [ ] `SHA256SUMS.txt` independently validates every project-defined public asset.
-- [ ] Annotated `v2.1.0` tag is created only after the frozen SHA and assets are accepted.
-- [ ] GitHub Release is created from already validated assets; tag push must not rebuild binaries.
-- [ ] Public release assets are cleanly re-downloaded and names, sizes and SHA-256 values are independently reverified.
-- [ ] Permanent closure follows `docs/RELEASE_CLOSURE.md`, including issue #153 and Actions-storage review.
+- [x] Repeated post-macOS-fix final freshness gate completed after adopting Nuitka 4.2.2; evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md`.
+- [x] Temporary audit instrumentation was removed before the normal exact-head Quality gate.
+- [x] Exact candidate SHA `df2726b959963e5dbb096638d5072bd15eb1de92` was selected only after the second freshness gate and green exact-head Quality.
+- [x] Final six-platform exact-SHA gate passed: Windows `35776095408`, Linux `35776120755`, macOS `35776146620`.
+- [x] Actual signing state recorded: Windows/Linux unsigned; macOS ad-hoc engineering signed, not Developer ID signed and not notarized.
+- [x] Release assembly produced exactly eight project-defined public files.
+- [x] `SHA256SUMS.txt` independently validated every payload.
+- [x] Annotated `v2.1.0` tag was created after the frozen SHA and assets were accepted.
+- [x] GitHub Release was created from the already validated assets; no tag-triggered rebuild occurred.
+- [x] Public release assets were cleanly re-downloaded and names, sizes, SHA-256 values and byte identity were independently reverified.
+- [ ] Permanent closure documentation PR, merge, local synchronization, issue #153 closure and final handoff/snapshot remain. Actions housekeeping run `35793158003` and explicit artifact cleanup are complete.
 
-## Feature scope frozen for release prep
+## Feature scope frozen for release preparation
 
 v2.1 includes the completed Local APK quick-filter/file-management work, Device Specific productization across phone and Local APK workflows, Personal Google Session and Advanced Custom Dispenser provider paths, process-local privacy-safe Personal Device capture, theme-aware semantic colour polish, canonical synthetic screenshots/in-app Overview, source-transition corrections and final Installer Category presentation cleanup.
 
@@ -64,6 +65,6 @@ Do not add new product scope during release preparation unless a genuine release
 
 ## Freeze rule
 
-This branch and a successful Quality run are not the final release freeze. Repeat the complete freshness audit immediately before freeze. Only after that audit and exact-head Quality are green may one full `main` SHA be selected as the v2.1.0 release SHA. Every final platform artifact must derive from exactly that SHA.
+The release freeze is complete at `df2726b959963e5dbb096638d5072bd15eb1de92`. Every final platform artifact derives from that SHA. Later documentation-only closure commits must distinguish their newer `main` SHA from the immutable release source SHA.
 
-The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` is invalidated and not for release. The macOS packaging fix and the later Nuitka 4.2.2 freshness update require a new exact candidate SHA and entirely new final platform artifacts.
+The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` remains invalidated historical evidence and was not used for publication.
