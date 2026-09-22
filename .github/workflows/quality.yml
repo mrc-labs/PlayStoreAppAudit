@@ -57,6 +57,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Release-entry freshness dependency audit
+        shell: pwsh
+        run: |
+          python -m pip install "setuptools==84.0.0" "wheel==0.48.0" "Nuitka==4.2.1"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install release build-system dependencies for freshness audit.' }
+
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'pip check failed during release-entry freshness audit.' }
+
+          $outdatedJson = python -m pip list --outdated --format=json
+          if ($LASTEXITCODE -ne 0) { throw 'pip list --outdated failed during release-entry freshness audit.' }
+          Write-Host "Outdated release/tooling packages: $outdatedJson"
+          $outdated = @($outdatedJson | ConvertFrom-Json)
+          if ($outdated.Count -ne 0) {
+            throw "Release-entry freshness audit found outdated packages: $outdatedJson"
+          }
+
       - name: Verify runtime
         shell: pwsh
         env:
