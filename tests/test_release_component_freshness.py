@@ -51,3 +51,27 @@ def test_v2_release_entry_freshness_audit_is_recorded_but_not_final() -> None:
     assert "Android Platform-Tools | upstream latest endpoint | 37.0.1" in evidence
     assert "must not be copied forward as proof" in evidence
     assert "repeat the full audit" in evidence
+
+def test_v21_release_entry_freshness_audit_is_recorded_and_pending_native_gate() -> None:
+    evidence = (
+        ROOT / "docs" / "V2_1_RELEASE_ENTRY_FRESHNESS.md"
+    ).read_text(encoding="utf-8")
+    dev_requirements = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+    windows_workflow = (
+        ROOT / ".github" / "workflows" / "build-windows-exe.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "Audit date: 2026-09-22 CEST" in evidence
+    assert "ruff 0.16.8" in evidence.lower()
+    assert "pip list --outdated=[]" in evidence
+    assert "1586 tests" in evidence
+    assert "Android Platform-Tools" in evidence
+    assert "37.0.1" in evidence
+    assert "**PENDING**" in evidence
+    assert "final pre-release freshness gate remains mandatory" in evidence
+
+    assert "ruff==0.16.8" in dev_requirements
+    assert "ruff==0.16.7" not in dev_requirements
+    assert "RUNNER_STATUS: generally available" in windows_workflow
+    assert "RUNNER_STATUS: ${{" not in windows_workflow
+
