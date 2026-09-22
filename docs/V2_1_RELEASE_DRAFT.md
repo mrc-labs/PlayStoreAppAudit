@@ -50,7 +50,7 @@ Expected project-defined asset names, subject to final assembler validation:
 - Feature-complete Windows x64 combined acceptance: PASS from pre-release-prep `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`, workflow run `35655658931`.
 - Release-entry component freshness gate: PASS; evidence recorded in `docs/V2_1_RELEASE_ENTRY_FRESHNESS.md`.
 - Frozen source SHA: **TBD after the second freshness gate.**
-- Final pre-freeze component freshness gate: **TBD.**
+- Final pre-freeze component freshness gate: **PASS** on Quality #585 / workflow run `35700725588` at audit head `126602cfe8ef7d05139ed8005940047a1062088d`; `pip check` passed and `pip list --outdated --format=json` returned exactly `[]`. The temporary freshness step is removed before freeze.
 - Exact-head Quality on the frozen candidate: **TBD.**
 - Final six-platform build/provenance/architecture/package validation: **TBD.**
 - Windows signing status: **TBD.**

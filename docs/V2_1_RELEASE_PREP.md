@@ -40,9 +40,10 @@ This checklist begins after the feature-complete Windows x64 acceptance and the 
 - [x] Canonical v2.1.0 GitHub Release body drafted using the `docs/RELEASE_NOTES.md` structure.
 - [x] Current project-status and roadmap context updated for release preparation.
 - [ ] Exact-head Quality passes after all release-preparation source/docs changes.
-- [ ] Mandatory second complete component-freshness gate passes immediately before exact-SHA freeze.
-- [ ] Clean Python 3.14 release environment is re-resolved and checked for outdated maintained release-path/transitive packages.
-- [ ] Maintained GitHub Actions, runner selections, Platform-Tools/ADB and signing/notarization paths are rechecked against current stable upstreams.
+- [x] Mandatory second complete component-freshness gate passes immediately before exact-SHA freeze.
+- [x] Clean Python 3.14 release environment re-resolved on Quality #585 / run `35700725588`; `pip check` passed and `pip list --outdated --format=json` returned exactly `[]`.
+- [x] Maintained GitHub Actions, runner selections, Platform-Tools/ADB and signing/notarization source paths rechecked against current upstream support/release state.
+- [x] Final pre-release freshness evidence recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS.md`; the temporary continuous audit step was removed before final exact-head Quality.
 - [ ] Exact candidate SHA selected only after the second freshness gate and green exact-head Quality.
 - [ ] Final six-platform exact-SHA production gate passes.
 - [ ] Actual Windows/macOS signing/notarization status is recorded from real final runs.
