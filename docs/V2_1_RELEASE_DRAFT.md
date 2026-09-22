@@ -52,7 +52,7 @@ Expected project-defined asset names, subject to final assembler validation:
 - Release-entry component freshness gate: PASS; evidence recorded in `docs/V2_1_RELEASE_ENTRY_FRESHNESS.md`.
 - Frozen source SHA: **TBD after the second freshness gate.**
 - Earlier pre-fix final freshness gate: historical PASS on Quality #585 / workflow run `35700725588` at audit head `126602cfe8ef7d05139ed8005940047a1062088d`; it does not authorize the post-macOS-fix candidate.
-- Repeated post-macOS-fix final freshness gate: **IN PROGRESS**; evidence is being recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md` after adopting Nuitka 4.2.2.
+- Repeated post-macOS-fix final freshness gate: **IN PROGRESS**; the one-shot hosted proof passed on Quality #590 / workflow run `35759658599` after adopting Nuitka 4.2.2, and temporary instrumentation is removed locally pending normal exact-head Quality. Evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md`.
 - Exact-head Quality on the frozen candidate: **TBD.**
 - Final six-platform build/provenance/architecture/package validation: **TBD.**
 - Windows signing status: **TBD.**

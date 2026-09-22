@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-22 CEST
 
-Status: **IN PROGRESS pending exact-head CI and removal of the temporary one-shot audit step.** The live audit found one required update: Nuitka 4.2.1 to 4.2.2. The maintained pins and workflows have been updated locally and the clean Python 3.14 dependency proof now passes. This record does not freeze a release SHA, tag, publish, or claim production signing/notarization credentials.
+Status: **ONE-SHOT HOSTED PROOF PASSED; cleanup is complete locally and normal exact-head Quality is pending.** The live audit found one required update: Nuitka 4.2.1 to 4.2.2. The maintained pins and workflows were updated, and Quality #590 / run `35759658599` proved the clean hosted Python 3.14 dependency state. The temporary audit step has now been removed while all permanent Nuitka 4.2.2 changes remain. This record does not freeze a release SHA, tag, publish, or claim production signing/notarization credentials.
 
 This is a new audit under `docs/RELEASE_COMPONENT_FRESHNESS.md`. It does not rewrite or extend the authority of `V2_1_FINAL_PRE_RELEASE_FRESHNESS.md`, whose evidence remains historical and predates the macOS Device Specific resource-packaging correction.
 
@@ -11,6 +11,7 @@ Audit lineage:
 - accepted post-macOS-fix `main` audited at `a1505f7763a169668064eadef77f44beb7bd48e0`;
 - previous candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23`: **INVALIDATED, NOT FOR RELEASE**;
 - focused local toolchain-update commit: `e4a6361d6036910c597df525f926ca181f76ee54`;
+- hosted proof PR head: `d6154352c38d4dae87a23a3d4534b8a372345720`;
 - final release SHA: not selected.
 
 ## Python, Qt, direct dependencies and release tooling
@@ -41,7 +42,7 @@ Python 3.15 remains a pre-release line on the audit date and is outside the stab
 
 ## Clean Python 3.14 dependency proof
 
-A new virtual environment under the retained release-work area was created from CPython 3.14.6 x64 because that is the locally installed 3.14 interpreter. The repository requires the stable 3.14 line, and the one-shot hosted Quality proof must independently resolve the current 3.14.7 patch release before this gate can close.
+A new virtual environment under the retained release-work area was created from CPython 3.14.6 x64 because that is the locally installed 3.14 interpreter. The repository requires the stable 3.14 line, and the one-shot hosted Quality proof independently resolved the current 3.14.7 patch release as recorded below.
 
 The environment installed every dependency in `requirements-dev.txt` plus the exact release-tooling pins `setuptools==84.0.0`, `wheel==0.48.0` and `Nuitka==4.2.2`. PySide6, Shiboken and Qt each reported 6.11.2.
 
@@ -78,6 +79,23 @@ Observed local proof after the Nuitka update:
 - Qt offscreen smoke: PASS
 
 The first fail-closed query before the update returned Nuitka 4.2.1 with latest version 4.2.2. That result triggered the update; it was not waived.
+
+### Hosted one-shot proof
+
+GitHub Quality #590 / workflow run `35759658599` completed successfully for PR head `d6154352c38d4dae87a23a3d4534b8a372345720`. Because this was a `pull_request` workflow, `actions/checkout` tested GitHub's synthetic merge ref at `03ebbbf866d815c5bc9a77f4e6f7d0c550af52e2`, which merged that PR head into base `a1505f7763a169668064eadef77f44beb7bd48e0`. The checkout SHA was therefore the synthetic merge SHA, not the PR head SHA.
+
+Hosted evidence:
+
+- CPython: 3.14.7
+- Nuitka: 4.2.2
+- `python -m pip check`: `No broken requirements found.`
+- `OUTDATED_JSON=[]`
+- `POST_MACOS_FIX_PYTHON_FRESHNESS=PASS`
+- pytest: `1591 passed`
+- Ruff: PASS
+- Qt offscreen smoke: PASS
+
+The one-shot hosted proof therefore passed. The temporary audit step has been removed from the normal Quality workflow in the following local cleanup commit; normal exact-head Quality on that cleanup commit is still required.
 
 ## GitHub Actions
 
@@ -147,13 +165,13 @@ This audit verifies source configuration and current upstream support. It does *
 
 ## Gate closure requirements
 
-The gate cannot be marked PASS until all of the following complete:
+The one-shot hosted proof has passed, but the repeated gate cannot be marked fully complete until all of the following complete:
 
-1. push the focused update branch without changing its tested contents;
-2. run exact-head Quality with the temporary one-shot audit on hosted Python 3.14 and require `pip check` clean plus `OUTDATED_JSON=[]`;
-3. record the run number, run ID, exact SHA, resolved CPython patch version and result here;
-4. remove the temporary audit step byte-for-byte while keeping the permanent Nuitka 4.2.2 pins;
-5. run normal exact-head Quality after cleanup;
+1. **COMPLETE:** push the focused update branch without changing its tested contents;
+2. **COMPLETE:** run Quality with the temporary one-shot audit on hosted Python 3.14 and require `pip check` clean plus `OUTDATED_JSON=[]`;
+3. **COMPLETE:** record the run number, run ID, PR head SHA, synthetic merge checkout SHA, resolved CPython patch version and result here;
+4. **COMPLETE LOCALLY:** remove the temporary audit step while keeping the permanent Nuitka 4.2.2 pins;
+5. **PENDING:** run normal exact-head Quality after cleanup;
 6. merge through a normal merge commit with expected-head protection;
 7. require post-merge normal Quality on the new `main`;
 8. repeat the live final freshness check from that new `main` and confirm no newer stable component appeared.
