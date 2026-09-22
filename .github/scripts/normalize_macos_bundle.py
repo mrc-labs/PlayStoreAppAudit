@@ -8,9 +8,15 @@ import os
 from hashlib import sha256
 from pathlib import Path
 
+from validate_device_specific_profile_resources import EXPECTED_PROFILES
+
 CERTIFI_LINK_TARGET = str(Path("..") / "Resources" / "certifi")
 PYAXMLPARSER_LINK_TARGET = str(
     Path("..") / ".." / "Resources" / "pyaxmlparser" / "resources"
+)
+DEVICE_PROFILE_FILENAMES = tuple(EXPECTED_PROFILES)
+DEVICE_PROFILE_RESOURCE_PARENT = (
+    Path("playstore_app_audit") / "device_profiles"
 )
 HELP_IMAGE_NAMES = (
     "store-app-audit-phone-maintenance.png",
@@ -121,6 +127,106 @@ def _normalize_pyaxmlparser(macos: Path, resources: Path) -> str:
     return expected_hash
 
 
+def _device_profile_link_target(filename: str) -> str:
+    return str(
+        Path("..")
+        / ".."
+        / ".."
+        / "Resources"
+        / DEVICE_PROFILE_RESOURCE_PARENT
+        / filename
+    )
+
+
+def _regular_device_profile(path: Path) -> Path:
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError(f"Expected a regular Device Specific profile: {path}")
+    if _is_macho(path):
+        raise RuntimeError(f"Refusing to move Mach-O code into Resources: {path}")
+    return path
+
+
+def _validate_device_profile_link(
+    link: Path,
+    destination: Path,
+    filename: str,
+) -> None:
+    if not link.is_symlink():
+        raise RuntimeError(f"Expected the relative Device Specific runtime symlink: {link}")
+    target = Path(os.readlink(link))
+    expected_target = Path(_device_profile_link_target(filename))
+    if target.is_absolute() or target.parts != expected_target.parts:
+        raise RuntimeError(f"Expected the relative Device Specific runtime symlink: {link}")
+    _regular_device_profile(destination)
+    if link.resolve(strict=True) != destination.resolve(strict=True):
+        raise RuntimeError(
+            f"Device Specific runtime symlink does not resolve to Resources: {link}"
+        )
+
+
+def _normalize_device_profiles(
+    macos: Path,
+    resources: Path,
+) -> dict[str, str]:
+    package = macos / DEVICE_PROFILE_RESOURCE_PARENT
+    if package.is_symlink() or not package.is_dir():
+        raise RuntimeError(
+            f"Expected a real Device Specific package directory: {package}"
+        )
+
+    resource_package = resources / "playstore_app_audit"
+    destination_parent = resources / DEVICE_PROFILE_RESOURCE_PARENT
+    for directory in (resource_package, destination_parent):
+        if directory.is_symlink() or (
+            directory.exists() and not directory.is_dir()
+        ):
+            raise RuntimeError(
+                f"Expected a real Device Specific resource directory: {directory}"
+            )
+
+    expected_hashes: dict[str, str] = {}
+    pending: list[tuple[Path, Path, str]] = []
+    for filename in DEVICE_PROFILE_FILENAMES:
+        link = package / filename
+        destination = destination_parent / filename
+        if link.is_symlink():
+            _validate_device_profile_link(link, destination, filename)
+            expected_hashes[filename] = sha256(destination.read_bytes()).hexdigest()
+            continue
+        source = _regular_device_profile(link)
+        if destination.exists() or destination.is_symlink():
+            raise RuntimeError(
+                f"Device Specific resource destination already exists: {destination}"
+            )
+        expected_hashes[filename] = sha256(source.read_bytes()).hexdigest()
+        pending.append((source, destination, filename))
+
+    created_resource_package = not resource_package.exists()
+    created_destination_parent = not destination_parent.exists()
+    destination_parent.mkdir(parents=True, exist_ok=True)
+    moved: list[tuple[Path, Path]] = []
+    try:
+        for source, destination, filename in pending:
+            source.rename(destination)
+            try:
+                source.symlink_to(_device_profile_link_target(filename))
+            except OSError:
+                destination.rename(source)
+                raise
+            moved.append((source, destination))
+    except OSError:
+        for source, destination in reversed(moved):
+            source.unlink()
+            destination.rename(source)
+        if created_destination_parent and destination_parent.exists():
+            destination_parent.rmdir()
+        if created_resource_package and resource_package.exists():
+            resource_package.rmdir()
+        raise
+
+    return expected_hashes
+
+
 def _check_help_images(directory: Path) -> None:
     if directory.is_symlink() or not directory.is_dir():
         raise RuntimeError(
@@ -211,7 +317,12 @@ def _non_code_macos_files(macos: Path) -> list[str]:
     return sorted(non_code)
 
 
-def _validate_layout(app: Path, expected_hash: str, expected_public_hash: str) -> None:
+def _validate_layout(
+    app: Path,
+    expected_hash: str,
+    expected_public_hash: str,
+    expected_profile_hashes: dict[str, str],
+) -> None:
     macos = app / "Contents" / "MacOS"
     resources = app / "Contents" / "Resources"
     link = macos / "certifi"
@@ -261,6 +372,30 @@ def _validate_layout(app: Path, expected_hash: str, expected_public_hash: str) -
     ):
         raise RuntimeError("pyaxmlparser public.xml bytes changed during bundle normalization")
 
+    profile_package = macos / DEVICE_PROFILE_RESOURCE_PARENT
+    profile_resources = resources / DEVICE_PROFILE_RESOURCE_PARENT
+    app_root = app.resolve(strict=True)
+    for filename in DEVICE_PROFILE_FILENAMES:
+        link = profile_package / filename
+        destination = profile_resources / filename
+        _validate_device_profile_link(link, destination, filename)
+        resolved_destination = destination.resolve(strict=True)
+        if not resolved_destination.is_relative_to(app_root):
+            raise RuntimeError(
+                f"Device Specific resource resolves outside the app bundle: {destination}"
+            )
+        expected_profile_hash = expected_profile_hashes[filename]
+        resource_hash = sha256(destination.read_bytes()).hexdigest()
+        runtime_hash = sha256(link.read_bytes()).hexdigest()
+        if (
+            resource_hash != expected_profile_hash
+            or runtime_hash != expected_profile_hash
+        ):
+            raise RuntimeError(
+                "Device Specific profile bytes changed during bundle normalization: "
+                f"{filename}"
+            )
+
     help_images = resources / "help-images"
     if help_images.exists() or help_images.is_symlink():
         _check_help_images(help_images)
@@ -304,8 +439,14 @@ def normalize_bundle(app: Path) -> str:
             raise
 
     expected_public_hash = _normalize_pyaxmlparser(macos, resources)
+    expected_profile_hashes = _normalize_device_profiles(macos, resources)
     _normalize_help_images(macos, resources)
-    _validate_layout(app, expected_hash, expected_public_hash)
+    _validate_layout(
+        app,
+        expected_hash,
+        expected_public_hash,
+        expected_profile_hashes,
+    )
     return expected_hash
 
 
@@ -320,6 +461,18 @@ def main() -> int:
         "macOS pyaxmlparser bundle normalization PASS; public.xml SHA-256: "
         + sha256(public_xml.read_bytes()).hexdigest()
     )
+    profile_root = (
+        args.app
+        / "Contents"
+        / "Resources"
+        / DEVICE_PROFILE_RESOURCE_PARENT
+    )
+    for filename in DEVICE_PROFILE_FILENAMES:
+        print(
+            "macOS Device Specific resource normalization PASS; "
+            f"{filename} SHA-256: "
+            + sha256((profile_root / filename).read_bytes()).hexdigest()
+        )
     print("No non-Mach-O regular files remain under Contents/MacOS.")
     return 0
 

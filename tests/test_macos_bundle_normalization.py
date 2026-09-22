@@ -6,8 +6,19 @@ from pathlib import Path
 
 import normalize_macos_bundle as bundle
 import pytest
+from validate_device_specific_profile_resources import validate_profile_resources
 
 PUBLIC_XML = b"<resources><public name='test' id='0x1'/></resources>\n"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEVICE_PROFILE_BYTES = {
+    filename: (
+        REPO_ROOT
+        / "playstore_app_audit"
+        / "device_profiles"
+        / filename
+    ).read_bytes()
+    for filename in bundle.DEVICE_PROFILE_FILENAMES
+}
 
 
 def _app_with_certifi(tmp_path: Path) -> tuple[Path, bytes]:
@@ -22,6 +33,13 @@ def _app_with_certifi(tmp_path: Path) -> tuple[Path, bytes]:
     public_dir = macos / "pyaxmlparser" / "resources"
     public_dir.mkdir(parents=True)
     (public_dir / "public.xml").write_bytes(PUBLIC_XML)
+    profile_dir = macos / bundle.DEVICE_PROFILE_RESOURCE_PARENT
+    profile_dir.mkdir(parents=True)
+    (profile_dir / "__init__.so").write_bytes(
+        bytes.fromhex("cffaedfe") + b"compiled package code"
+    )
+    for filename, payload in DEVICE_PROFILE_BYTES.items():
+        (profile_dir / filename).write_bytes(payload)
     return app, original
 
 
@@ -54,6 +72,29 @@ def test_pyaxmlparser_link_target_is_native_relative_path() -> None:
     assert not target.is_absolute()
     assert target.parts == ("..", "..", "Resources", "pyaxmlparser", "resources")
     assert target.as_posix() == "../../Resources/pyaxmlparser/resources"
+
+
+def test_device_profile_registry_and_link_targets_are_exact() -> None:
+    from playstore_app_audit.services.device_specific_profiles import (
+        PRODUCTION_PROFILE_IDS,
+    )
+
+    assert tuple(
+        f"{profile_id}.json"
+        for profile_id in PRODUCTION_PROFILE_IDS
+    ) == bundle.DEVICE_PROFILE_FILENAMES
+    for filename in bundle.DEVICE_PROFILE_FILENAMES:
+        target = Path(bundle._device_profile_link_target(filename))
+        assert not target.is_absolute()
+        assert target.parts == (
+            "..",
+            "..",
+            "..",
+            "Resources",
+            "playstore_app_audit",
+            "device_profiles",
+            filename,
+        )
 
 
 def test_certifi_relocation_preserves_bytes_and_runtime_lookup(tmp_path: Path) -> None:
@@ -98,6 +139,110 @@ def test_pyaxmlparser_relocation_preserves_bytes_hash_and_runtime_lookup(
     assert bundle._non_code_macos_files(macos) == []
     bundle.normalize_bundle(app)
     assert physical.read_bytes() == PUBLIC_XML
+
+
+def test_device_profiles_relocate_exact_resources_and_preserve_runtime_lookup(
+    tmp_path: Path,
+) -> None:
+    _require_directory_symlink(tmp_path)
+    app, _ = _app_with_certifi(tmp_path)
+    macos = app / "Contents" / "MacOS"
+    runtime_root = macos / bundle.DEVICE_PROFILE_RESOURCE_PARENT
+    resource_root = (
+        app
+        / "Contents"
+        / "Resources"
+        / bundle.DEVICE_PROFILE_RESOURCE_PARENT
+    )
+
+    bundle.normalize_bundle(app)
+
+    assert (runtime_root / "__init__.so").is_file()
+    assert not (runtime_root / "__init__.so").is_symlink()
+    for filename, expected in DEVICE_PROFILE_BYTES.items():
+        runtime = runtime_root / filename
+        resource = resource_root / filename
+        assert runtime.is_symlink()
+        assert not Path(os.readlink(runtime)).is_absolute()
+        assert Path(os.readlink(runtime)).parts == (
+            "..",
+            "..",
+            "..",
+            "Resources",
+            "playstore_app_audit",
+            "device_profiles",
+            filename,
+        )
+        assert runtime.resolve(strict=True) == resource.resolve(strict=True)
+        assert runtime.resolve(strict=True).is_relative_to(app.resolve(strict=True))
+        assert resource.is_file() and not resource.is_symlink()
+        assert runtime.read_bytes() == resource.read_bytes() == expected
+
+    assert bundle._non_code_macos_files(macos) == []
+    found = validate_profile_resources(app)
+    assert set(found) == set(bundle.DEVICE_PROFILE_FILENAMES)
+
+    bundle.normalize_bundle(app)
+    for filename, expected in DEVICE_PROFILE_BYTES.items():
+        assert (runtime_root / filename).read_bytes() == expected
+        assert (resource_root / filename).read_bytes() == expected
+
+
+def test_device_profile_traversal_symlink_is_rejected(tmp_path: Path) -> None:
+    _require_directory_symlink(tmp_path)
+    app, _ = _app_with_certifi(tmp_path)
+    macos = app / "Contents" / "MacOS"
+    resources = app / "Contents" / "Resources"
+    filename = bundle.DEVICE_PROFILE_FILENAMES[0]
+    source = macos / bundle.DEVICE_PROFILE_RESOURCE_PARENT / filename
+    outside = tmp_path / "outside-profile.json"
+    outside.write_bytes(DEVICE_PROFILE_BYTES[filename])
+    source.unlink()
+    source.symlink_to(os.path.relpath(outside, source.parent))
+
+    with pytest.raises(RuntimeError, match="relative Device Specific runtime symlink"):
+        bundle._normalize_device_profiles(macos, resources)
+
+    assert source.resolve(strict=True) == outside.resolve(strict=True)
+    assert not (
+        resources / bundle.DEVICE_PROFILE_RESOURCE_PARENT / filename
+    ).exists()
+
+
+def test_device_profile_macho_is_not_moved(tmp_path: Path) -> None:
+    app, _ = _app_with_certifi(tmp_path)
+    macos = app / "Contents" / "MacOS"
+    resources = app / "Contents" / "Resources"
+    filename = bundle.DEVICE_PROFILE_FILENAMES[0]
+    source = macos / bundle.DEVICE_PROFILE_RESOURCE_PARENT / filename
+    source.write_bytes(bytes.fromhex("feedfacf") + b"Mach-O code")
+
+    with pytest.raises(RuntimeError, match="Refusing to move Mach-O code"):
+        bundle._normalize_device_profiles(macos, resources)
+
+    assert source.is_file()
+    assert not (
+        resources / bundle.DEVICE_PROFILE_RESOURCE_PARENT
+    ).exists()
+
+
+def test_unregistered_json_still_fails_final_survey(tmp_path: Path) -> None:
+    _require_directory_symlink(tmp_path)
+    app, _ = _app_with_certifi(tmp_path)
+    macos = app / "Contents" / "MacOS"
+    stray = (
+        macos
+        / bundle.DEVICE_PROFILE_RESOURCE_PARENT
+        / "unregistered.json"
+    )
+    stray.write_text("{}", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="unregistered.json"):
+        bundle.normalize_bundle(app)
+
+    assert bundle._non_code_macos_files(macos) == [
+        "playstore_app_audit/device_profiles/unregistered.json"
+    ]
 
 
 def test_pyaxmlparser_destination_collision_preserves_source(tmp_path: Path) -> None:
@@ -303,6 +448,8 @@ def test_non_code_survey_reports_other_macos_resources(tmp_path: Path) -> None:
     assert bundle._non_code_macos_files(macos) == [
         "certifi/cacert.pem",
         "other-package/data.txt",
+        "playstore_app_audit/device_profiles/android10_api29_oneplus8pro.json",
+        "playstore_app_audit/device_profiles/android13_api33_s20plus.json",
         "pyaxmlparser/resources/public.xml",
     ]
 
@@ -339,3 +486,11 @@ def test_workflow_normalizes_before_legal_inventory_and_signing() -> None:
     assert 'cmp "$PYAXMLPARSER_LINK/public.xml" "$PYAXMLPARSER_RESOURCE"' in workflow
     assert 'test "$(readlink "$RAPP/Contents/MacOS/pyaxmlparser/resources")" = "../../Resources/pyaxmlparser/resources"' in workflow
     assert 'cmp "$RAPP/Contents/MacOS/pyaxmlparser/resources/public.xml"' in workflow
+    assert workflow.count("android10_api29_oneplus8pro.json") == 2
+    assert workflow.count("android13_api33_s20plus.json") == 2
+    assert workflow.count(
+        'test "$(readlink "$PROFILE_LINK")" = '
+        '"../../../Resources/playstore_app_audit/device_profiles/$PROFILE_FILENAME"'
+    ) == 2
+    assert workflow.count('cmp "$PROFILE_SOURCE" "$PROFILE_RESOURCE"') == 2
+    assert workflow.count('cmp "$PROFILE_LINK" "$PROFILE_RESOURCE"') == 2
