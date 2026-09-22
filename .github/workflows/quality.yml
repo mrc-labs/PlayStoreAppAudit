@@ -57,6 +57,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Release-entry dependency freshness snapshot
+        if: ${{ github.event_name == 'pull_request' && github.head_ref == 'v2.1/release-entry-freshness' }}
+        shell: pwsh
+        run: |
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'pip check failed.' }
+
+          $outdated = python -m pip list --outdated --format=json
+          if ($LASTEXITCODE -ne 0) { throw 'pip list --outdated failed.' }
+          Write-Host "PIP_OUTDATED_JSON=$outdated"
+
       - name: Verify runtime
         shell: pwsh
         env:
