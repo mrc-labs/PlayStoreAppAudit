@@ -293,6 +293,22 @@ jobs:
           test "$(shasum -a 256 "$PYAXMLPARSER_RESOURCE" | awk '{print $1}')" = "$PYAXMLPARSER_BEFORE"
           echo "macOS pyaxmlparser layout PASS; public.xml SHA-256: $PYAXMLPARSER_BEFORE"
 
+          for PROFILE_FILENAME in \
+            android10_api29_oneplus8pro.json \
+            android13_api33_s20plus.json
+          do
+            PROFILE_LINK="$APP/Contents/MacOS/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            PROFILE_RESOURCE="$APP/Contents/Resources/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            PROFILE_SOURCE="$PWD/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            test -L "$PROFILE_LINK"
+            test "$(readlink "$PROFILE_LINK")" = "../../../Resources/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            test -f "$PROFILE_RESOURCE"
+            test ! -L "$PROFILE_RESOURCE"
+            cmp "$PROFILE_SOURCE" "$PROFILE_RESOURCE"
+            cmp "$PROFILE_LINK" "$PROFILE_RESOURCE"
+            echo "macOS Device Specific resource layout PASS; $PROFILE_FILENAME SHA-256: $(shasum -a 256 "$PROFILE_RESOURCE" | awk '{print $1}')"
+          done
+
           test "$(du -sk "$APP" | awk '{print $1}')" -gt 1024
           PLIST="$APP/Contents/Info.plist"
           plutil -lint "$PLIST"
@@ -476,6 +492,20 @@ jobs:
           test -f "$RAPP/Contents/MacOS/pyaxmlparser/resources/public.xml"
           cmp "$RAPP/Contents/MacOS/pyaxmlparser/resources/public.xml" "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml"
           test "$(shasum -a 256 "$RAPP/Contents/Resources/pyaxmlparser/resources/public.xml" | awk '{print $1}')" = "$PYAXMLPARSER_BEFORE"
+          for PROFILE_FILENAME in \
+            android10_api29_oneplus8pro.json \
+            android13_api33_s20plus.json
+          do
+            PROFILE_LINK="$RAPP/Contents/MacOS/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            PROFILE_RESOURCE="$RAPP/Contents/Resources/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            PROFILE_SOURCE="$PWD/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            test -L "$PROFILE_LINK"
+            test "$(readlink "$PROFILE_LINK")" = "../../../Resources/playstore_app_audit/device_profiles/$PROFILE_FILENAME"
+            test -f "$PROFILE_RESOURCE"
+            test ! -L "$PROFILE_RESOURCE"
+            cmp "$PROFILE_SOURCE" "$PROFILE_RESOURCE"
+            cmp "$PROFILE_LINK" "$PROFILE_RESOURCE"
+          done
           test -f "$RAPP/Contents/Resources/BUILD-INFO.txt"
 
           test -f "$RAPP/Contents/Resources/LICENSE"
