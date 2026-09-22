@@ -62,7 +62,7 @@ For current v2.0 development and the future production profile:
 - Quality CI: Python 3.14
 - `PySide6-Essentials==6.11.2`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
-- `Nuitka==4.2.1`
+- `Nuitka==4.2.2`
 - Qt Widgets
 - official JavaScript GitHub Actions at their currently supported majors
 

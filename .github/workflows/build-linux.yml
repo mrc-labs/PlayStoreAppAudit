@@ -108,7 +108,7 @@ jobs:
             zip
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt "Nuitka==4.2.1"
+          pip install -r requirements-dev.txt "Nuitka==4.2.2"
       - name: Verify Python and Qt baseline
         run: |
           python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
@@ -116,7 +116,7 @@ jobs:
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.2.1"
+            --expected-nuitka-version "4.2.2"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen

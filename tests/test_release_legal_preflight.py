@@ -68,7 +68,7 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
         legal,
         "_copy_nuitka_legal_files",
         lambda _root: (
-            "4.2.1",
+            "4.2.2",
             [
                 "licenses/nuitka/LICENSE-runtime.txt",
                 "licenses/nuitka/LICENSE.txt",
@@ -79,13 +79,13 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
 
     result = preflight.run_preflight(
         ROOT,
-        expected_nuitka_version="4.2.1",
+        expected_nuitka_version="4.2.2",
     )
 
     assert result["project_version"] == "2.1.0"
     assert result["pyside6_essentials_version"] == "6.11.2"
     assert result["shiboken6_version"] == "6.11.2"
-    assert result["nuitka_version"] == "4.2.1"
+    assert result["nuitka_version"] == "4.2.2"
     assert result["cpython_license"] == "resolved"
 
     components = {
@@ -120,7 +120,7 @@ def test_preflight_rejects_pyside_shiboken_mismatch(
     ):
         preflight.run_preflight(
             ROOT,
-            expected_nuitka_version="4.2.1",
+            expected_nuitka_version="4.2.2",
         )
 
 
@@ -168,7 +168,7 @@ def test_preflight_rejects_wrong_nuitka_pin(
     ):
         preflight.run_preflight(
             ROOT,
-            expected_nuitka_version="4.2.1",
+            expected_nuitka_version="4.2.2",
         )
 
 

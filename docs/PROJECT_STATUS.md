@@ -92,6 +92,9 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 
 ## Current v2.1 release-preparation baseline
 
+- Current accepted remote `main`: `a1505f7763a169668064eadef77f44beb7bd48e0`, the normal merge of PR #205 after its exact-head macOS engineering package gate and post-merge Quality #589 / run `35736488008` succeeded.
+- The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` and its Windows/Linux/macOS builds remain invalidated and are not release inputs.
+- The mandatory final freshness gate is being repeated after the macOS packaging fix. The repeat updated the release compiler and all maintained build/preflight references from Nuitka 4.2.1 to 4.2.2. The one-shot hosted proof passed on Quality #590 / run `35759658599` for PR head `d6154352c38d4dae87a23a3d4534b8a372345720`; its `pull_request` checkout correctly used synthetic merge SHA `03ebbbf866d815c5bc9a77f4e6f7d0c550af52e2` over base `a1505f7763a169668064eadef77f44beb7bd48e0`. Temporary instrumentation is now removed locally, pending normal exact-head Quality before the gate can advance.
 - Release-preparation branch: `v2/release-prep-2.1.0`, created from post-freshness `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
 - Current release-preparation source application version: `2.1.0`; derived Windows File/Product version: `2.1.0.0`.
 - Latest published release remains immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
@@ -101,7 +104,7 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Post-merge Quality #582 / workflow run `35699222465` passed on exact `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
 - Active release coordination remains issue `#153`; persistent Personal Device profile library issue `#200` remains explicitly post-v2.1.
 - Python release-packaging and Quality baseline: 3.14.
-- `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1; Ruff: 0.16.8.
+- `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.2; Ruff: 0.16.8.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.

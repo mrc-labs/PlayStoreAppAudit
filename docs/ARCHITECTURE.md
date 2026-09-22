@@ -131,7 +131,7 @@ There are no permanent operating-system branches.
 
 ## Deployment and release architecture
 
-The v2.0 development and release toolchain uses stable Python 3.14, `PySide6-Essentials==6.11.2` and `Nuitka==4.2.1`. Every release verifies the complete maintained component set against the latest stable upstream versions at release-phase entry and again immediately before the final exact-SHA freeze, as defined in `RELEASE_COMPONENT_FRESHNESS.md`.
+The current development and release toolchain uses stable Python 3.14, `PySide6-Essentials==6.11.2` and `Nuitka==4.2.2`. Every release verifies the complete maintained component set against the latest stable upstream versions at release-phase entry and again immediately before the final exact-SHA freeze, as defined in `RELEASE_COMPONENT_FRESHNESS.md`.
 
 Every public release is an exact-SHA assembly rather than a collection of independently built packages:
 

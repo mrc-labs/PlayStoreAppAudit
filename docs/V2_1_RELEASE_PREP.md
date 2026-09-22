@@ -44,6 +44,8 @@ This checklist begins after the feature-complete Windows x64 acceptance and the 
 - [x] Clean Python 3.14 release environment re-resolved on Quality #585 / run `35700725588`; `pip check` passed and `pip list --outdated --format=json` returned exactly `[]`.
 - [x] Maintained GitHub Actions, runner selections, Platform-Tools/ADB and signing/notarization source paths rechecked against current upstream support/release state.
 - [x] Final pre-release freshness evidence recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS.md`; the temporary continuous audit step was removed before final exact-head Quality.
+- [ ] Repeated post-macOS-fix final freshness gate completes after adopting Nuitka 4.2.2; its one-shot hosted proof passed on Quality #590 / run `35759658599`, while normal cleanup Quality and subsequent closure checks remain pending. The earlier gate remains historical evidence only.
+- [ ] Post-fix hosted evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md` and temporary audit instrumentation is removed locally; normal exact-head Quality remains pending.
 - [ ] Exact candidate SHA selected only after the second freshness gate and green exact-head Quality.
 - [ ] Final six-platform exact-SHA production gate passes.
 - [ ] Actual Windows/macOS signing/notarization status is recorded from real final runs.
@@ -63,3 +65,5 @@ Do not add new product scope during release preparation unless a genuine release
 ## Freeze rule
 
 This branch and a successful Quality run are not the final release freeze. Repeat the complete freshness audit immediately before freeze. Only after that audit and exact-head Quality are green may one full `main` SHA be selected as the v2.1.0 release SHA. Every final platform artifact must derive from exactly that SHA.
+
+The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` is invalidated and not for release. The macOS packaging fix and the later Nuitka 4.2.2 freshness update require a new exact candidate SHA and entirely new final platform artifacts.

@@ -60,7 +60,7 @@ echo.
 echo === Install/update build dependencies ===
 "%PYTHON%" -m pip install --upgrade pip
 if errorlevel 1 exit /b 1
-"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.2.1"
+"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.2.2"
 if errorlevel 1 exit /b 1
 
 echo.

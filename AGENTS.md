@@ -34,7 +34,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 - v2.0 development and release-packaging baseline: stable Python 3.14.
 - Quality CI: Python 3.14.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
-- Current release compiler pin: `Nuitka==4.2.1`.
+- Current release compiler pin: `Nuitka==4.2.2`.
 - Runtime, development and build dependency pins must reflect the latest stable versions verified by the mandatory release freshness gate.
 - Python pre-releases, including Python 3.15 release candidates, are not stable release baselines unless a deliberate engineering decision changes the policy.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
