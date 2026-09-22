@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-15
+Last updated: 2026-09-22
 
 ## Purpose
 
@@ -271,52 +271,63 @@ silently registered. Watchers, duplicate cleanup,
 rename/move/delete operations and the later v2.x Library-management backlog
 remain excluded.
 
-## v2.1 active development
+## v2.1 release preparation
 
-The live v2.1 plan is tracked by issue `#153`.
+The live v2.1 release is tracked by issue `#153`. Feature implementation is complete and the combined Windows x64 package has passed human acceptance.
 
 ### Track A: Local APK quick-filter polish
 
-Completed. Spacing between Store Status and APK vs Store quick-filter groups was increased without tightening Store Status or changing filter semantics.
+Completed. Store Status and APK vs Store groups remain distinct, and Local APK relationships include the accepted Device Specific and N/A semantics without changing canonical filter values.
 
 ### Track B: Local APK file management
 
 Completed.
 
-- **Single Rename / Remove**: safe physical-path based operations with collision protection, explicit confirmation and current-session synchronization.
-- **Mass Rename**: mutation-free whole-batch planning, historical metadata templates, portable filename validation, collision detection, safe swap/cycle staging, preview and explicit confirmation.
-- **Mass Remove**: exact `Outdated` and exact `Unknown` selection only, mutation-free preview, source revalidation, explicit permanent-deletion confirmation and an additional guard when the complete active source would be deleted.
-- Store cache/history and Device Inventory are outside filesystem-mutation semantics.
+- **Single Rename / Remove**: physical-path based, collision-safe, confirmation-driven operations.
+- **Mass Rename**: mutation-free whole-batch planning, historical metadata templates, portable filename validation, collision detection, swap/cycle-safe staging, preview and explicit confirmation.
+- **Mass Remove**: exact Outdated / Unknown targeting, preview, revalidation, explicit permanent-deletion confirmation and a stronger guard for complete-source removal.
 - Duplicate package IDs or SHA-256 values remain independent physical files.
-- No Store re-audit or APK reparse is required after successful file mutation.
+- Successful file mutation does not trigger Store re-audit or APK reparse.
 
-### Track C: Device Specific resolver
+### Track C: Device Specific productization
 
-Next.
+Completed for v2.1.
 
-Invoke the optional resolver only when the normal Store result is `Varies with device`. The first implementation gate is an isolated proof of concept:
+- Raw public Play evidence remains authoritative; resolved metadata is additional evidence only.
+- Built-in validated reference profiles are OnePlus 8 Pro EEA / Android 10 / API 29 and Samsung Galaxy S20+ / Android 13 / API 33.
+- Provider choices are Disabled, Personal Google Session and Custom Dispenser (Advanced).
+- Personal Google Session uses temporary session/auth material only and the Device Specific path remains metadata-only with no APK purchase/delivery/download.
+- **Get Phone Data** captures one privacy-safe process-local Personal Device profile through read-only ADB without running an app scan.
+- Ownership hardening prevents one device's captured profile from impersonating another connected device.
+- Local APK and phone paths both support the accepted Device Specific relationship/provenance presentation.
+- Persistent multi-profile Personal Device storage is deliberately deferred to post-v2.1 issue #200.
 
-`package + reference profile + auth mode -> versionName + versionCode`
+### Dark-mode and release UI polish
 
-Profiles may include a cached **Your Device** ADB profile plus coherent Android 10-17 reference profiles. Resolver evidence must remain additional evidence rather than overwriting the raw Store fact. Prefer versionCode/longVersionCode when available, distinguish the installed version from the version Play would deliver to the chosen profile, cache by package/profile/country/relevant context and fall back safely to the existing **Device Specific** state.
+Completed through #177. Semantic status/comparison/criticality presentation is theme-aware and accepted in light and dark mode without changing machine-readable values.
 
-Test the PoC against 2-3 currently device-specific apps across at least Android 10, Android 13 and Android 16/17. Do not integrate production UI until stability and failure handling are demonstrated. Metadata resolution must not require APK download when version metadata is sufficient.
+### Track D: release/homepage/help screenshots
 
-Anonymous/Aurora-compatible and optional authenticated Google modes may be investigated. Do not persist a raw Google password when avoidable; dispenser endpoints must be configurable rather than hardcoded.
+Completed through #169. Canonical privacy-safe screenshots are generated reproducibly from the real Qt UI with deterministic synthetic data, reused in the README gallery and in-app Store App Audit Overview.
 
-### Track D: release/homepage/help screenshot polish
+### Final feature-complete acceptance and release gates
 
-Tracked by issue `#169` and intentionally scheduled after the v2.1 UI is substantially feature-complete.
-
-Generate a small canonical screenshot set from the real Qt UI using deterministic synthetic fictional apps/package IDs and original neutral artwork. Do not use real user-installed apps, user APKs, personal paths or famous third-party logos. Reuse the canonical images in both README/homepage and an appropriate in-app Help/Getting Started/Overview surface.
-
-Windows x64 is the canonical screenshot-generation environment; source-controlled deterministic tooling is preferred over manually edited mockups. The README/homepage and in-app Help introduction should frame the product through concrete use cases such as phone-app maintenance, Store availability, local APK freshness, package-list auditing and changes over time.
+- Final Installer Category presentation cleanup is complete: it is absent from Source Details, Technical and Customize Columns while Installer Source remains user-facing.
+- Combined Windows x64 packaged acceptance passed from `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`.
+- Mandatory release-entry freshness gate passed and merged through PR #203; post-merge Quality #582 passed on `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
+- Release preparation is now active on `v2/release-prep-2.1.0`.
+- Before freeze, repeat the complete component-freshness audit and require exact-head Quality green.
+- Freeze one exact release SHA, then build/validate all six platform/architecture targets from exactly that SHA.
+- Assemble/checksum first; create the annotated `v2.1.0` tag and GitHub Release only after artifact acceptance and then independently re-download/reverify public assets.
+- Production signing/notarization may be described only from actual final-run evidence. Published v2.0.0 remains immutable.
 
 ### Deferred to v2.2
 
 CLI/headless is not part of v2.1. It is planned for v2.2 and must reuse service/domain boundaries rather than driving Qt or duplicating Store/ADB logic.
 
 Named Custom Views issue `#147` is currently a provisional v2.2 candidate. The final v2.2 scope may be narrowed before implementation.
+
+Persistent Personal Device profile storage/library issue `#200` is post-v2.1 and must preserve the v2.1 privacy boundary; do not pull it into release closure.
 
 ### Later Local APK candidates
 

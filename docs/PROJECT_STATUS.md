@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-15
+Last updated: 2026-09-22
 
 ## Published v2.0.0 release
 
@@ -90,15 +90,18 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Canonical build artifact `10123641304` and assembler artifact `10123756577` remain available for audit.
 - GitHub Release assets, tags, source commits, earlier releases, repository retention settings and cleanup logic were not changed.
 
-## Current v2.1 development baseline
+## Current v2.1 release-preparation baseline
 
-- Current source application version remains `2.0.0`; derived Windows File/Product version remains `2.0.0.0` until the deliberate v2.1 release-version bump.
-- Latest published release: immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
-- Track B code-complete baseline before this documentation-only handoff checkpoint: `f47bc14fa837f93e76a33cdf7711d080de1551fb`.
-- Post-merge Quality #461 passed on that exact Track B merge SHA.
-- Active forward-development plan remains issue `#153`; published v2.0 is frozen and immutable.
+- Release-preparation branch: `v2/release-prep-2.1.0`, created from post-freshness `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
+- Current release-preparation source application version: `2.1.0`; derived Windows File/Product version: `2.1.0.0`.
+- Latest published release remains immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- Combined feature-complete v2.1 Windows x64 acceptance passed from `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`, workflow run `35655658931`.
+- Accepted combined Windows artifact ID: `10665003533`; verified inner ZIP SHA-256: `4b26dac70281d01fef4fe08038a9a6d3ab0b48cce847fdb315eeb12ec96f0a31`.
+- Mandatory release-entry component freshness gate passed and merged through PR #203; Ruff advanced to 0.16.8 and the one-shot clean Python 3.14 audit returned `pip check` clean and `pip list --outdated --format=json == []`.
+- Post-merge Quality #582 / workflow run `35699222465` passed on exact `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
+- Active release coordination remains issue `#153`; persistent Personal Device profile library issue `#200` remains explicitly post-v2.1.
 - Python release-packaging and Quality baseline: 3.14.
-- `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1.
+- `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.1; Ruff: 0.16.8.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
 - UI: Qt Widgets using the platform/default QStyle.
 - Managed ADB remains read-only with respect to installed Android apps.
@@ -119,17 +122,20 @@ Track B is complete:
 - Store cache/history, Device Inventory and unrelated audit evidence are not mutated by these file-management operations, and no Store re-audit or APK reparse is triggered after a successful mutation.
 - Final B3 local validation: `1283 passed, 6 skipped`; PR Quality #460 and post-merge main Quality #461 passed.
 
-### Remaining v2.1 scope
+### v2.1 release-preparation checkpoint
 
-Track C is next: an isolated Device Specific resolver proof of concept for normal Store results that return `Varies with device`. Production UI integration is conditional on stable PoC behavior and safe failure handling.
+The v2.1 feature scope is complete and the combined Windows x64 package has passed human acceptance. Track C Device Specific productization, dark-mode semantic-colour polish, canonical screenshot/help work, Local APK Device Specific integration and the final Installer Category presentation cleanup are all complete.
 
-Track D follows once the v2.1 UI is substantially feature-complete: reproducible canonical screenshots generated from the real Qt UI with deterministic fictional fixture apps/package IDs and original neutral artwork, reused in README and an appropriate in-app Help/Overview surface.
+Release work is now deliberately limited to:
 
-CLI/headless support is deferred to v2.2. Named Custom Views issue #147 is currently a provisional v2.2 candidate rather than a binding v2.1 requirement.
+1. canonical `2.1.0` version/changelog/release-note preparation;
+2. exact-head Quality on the release-preparation branch;
+3. the mandatory second complete component-freshness audit immediately before freeze;
+4. one exact frozen release SHA after green validation;
+5. final Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 package validation from that exact SHA;
+6. canonical assembly, checksums, annotated tag, GitHub Release, clean public re-download verification and permanent release closure.
 
-During feature implementation, source/Quality validation is continuous while packaged acceptance is concentrated on Windows x64. After feature completion, Windows x64 packaged acceptance precedes the cross-platform phase for Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64. The final release gate rebuilds all six artifacts from one exact frozen SHA.
-
-Always verify live `main` and open-PR state rather than treating this document as a branch pointer. The immutable v2.0.0 release SHA remains fixed even after documentation or v2.1 development advances `main`; earlier published release SHAs remain immutable as well.
+No public RC tag is planned. Any source/tooling change after the second freshness gate invalidates the candidate SHA. Published v2.0.0 remains immutable, and issue #200 must not enter v2.1 release closure.
 
 ### Scan Phone lifecycle Phases A and B checkpoints
 
