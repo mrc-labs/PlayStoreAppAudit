@@ -1,8 +1,8 @@
-# Store App Audit v2.1.0 release draft
+# Store App Audit v2.1.0 published release record
 
-Status: **DRAFT - not published.** Replace every verification/signing placeholder only with evidence from the final frozen SHA and final public assets.
+Status: **PUBLISHED AND IMMUTABLE.** Public release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
 
-Proposed GitHub Release title: `Store App Audit v2.1.0`.
+GitHub Release title: `Store App Audit v2.1.0`.
 
 ```markdown
 ## What's New / Highlights
@@ -30,14 +30,15 @@ Proposed GitHub Release title: `Store App Audit v2.1.0`.
 ## Compatibility and distribution
 - Application version: `2.1.0`; Windows File Version and Product Version: `2.1.0.0`.
 - Python baseline: CPython 3.14.
-- Planned prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- Prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
 - Managed ADB remains read-only with respect to installed Android apps.
 - The v2.1 Personal Device profile is intentionally session-only. Persistent multi-profile storage remains post-v2.1 issue #200.
 - Published v2.0.0 remains immutable.
-- Signing/notarization status: **TBD from final production evidence. Do not claim production signing until the real provider/credential gates pass.**
+- Windows and Linux packages are unsigned.
+- macOS packages use ad-hoc engineering signing only. They are not Developer ID signed and are not notarized.
 
 ## Release assets
-Expected project-defined asset names, subject to final assembler validation:
+Published project-defined asset names:
 - `PlayStoreAppAudit-v2.1.0-windows-x64.zip`
 - `PlayStoreAppAudit-v2.1.0-windows-arm64.zip`
 - `PlayStoreAppAudit-v2.1.0-linux-x64.zip`
@@ -50,16 +51,16 @@ Expected project-defined asset names, subject to final assembler validation:
 ## Verification
 - Feature-complete Windows x64 combined acceptance: PASS from pre-release-prep `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`, workflow run `35655658931`.
 - Release-entry component freshness gate: PASS; evidence recorded in `docs/V2_1_RELEASE_ENTRY_FRESHNESS.md`.
-- Frozen source SHA: **TBD after the second freshness gate.**
+- Frozen source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`.
 - Earlier pre-fix final freshness gate: historical PASS on Quality #585 / workflow run `35700725588` at audit head `126602cfe8ef7d05139ed8005940047a1062088d`; it does not authorize the post-macOS-fix candidate.
-- Repeated post-macOS-fix final freshness gate: **IN PROGRESS**; the one-shot hosted proof passed on Quality #590 / workflow run `35759658599` after adopting Nuitka 4.2.2, and temporary instrumentation is removed locally pending normal exact-head Quality. Evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md`.
-- Exact-head Quality on the frozen candidate: **TBD.**
-- Final six-platform build/provenance/architecture/package validation: **TBD.**
-- Windows signing status: **TBD.**
-- macOS signing/notarization/stapling/Gatekeeper status: **TBD.**
-- Final release assembler/checksum/public re-download verification: **TBD.**
+- Repeated post-macOS-fix final freshness gate: PASS after adopting Nuitka 4.2.2; evidence is recorded in `docs/V2_1_FINAL_PRE_RELEASE_FRESHNESS_POST_MACOS_FIX.md`.
+- Exact-head Quality #592 / run `35775208797`: PASS on the frozen SHA.
+- Final Windows run `35776095408`, Linux run `35776120755` and macOS run `35776146620`: x64 + ARM64 PASS on the frozen SHA.
+- Windows and Linux signing status: unsigned.
+- macOS signing status: ad-hoc engineering signed; not Developer ID signed, notarized or stapled.
+- Final canonical assembly, exact eight-file layout, checksum validation, public re-download and byte-for-byte verification: PASS.
 ```
 
-## Publication rule
+## Immutability rule
 
-Do not copy this draft verbatim into a public release until all `TBD` items have been replaced with evidence. If production signing/notarization is unavailable or fails, state the actual distribution status explicitly rather than implying a stronger trust state.
+The published tag, release source commit, release body and eight assets are immutable. Post-release documentation may record verification and housekeeping evidence but must not rebuild, retag, replace or upload release material.

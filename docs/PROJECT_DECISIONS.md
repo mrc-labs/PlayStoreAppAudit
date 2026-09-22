@@ -154,7 +154,7 @@ v2.0.0 established the maintained six-target release architecture and is publish
 - macOS engineering/ad-hoc signing must never be described as Developer ID signing or notarization.
 - If production signing/notarization is promoted later, native post-sign verification is mandatory and any source/tooling change invalidates the affected candidate.
 
-For v2.1 and later normal feature development:
+For normal feature development after v2.1:
 
 - source tests and Quality run continuously;
 - packaged development/acceptance is concentrated on Windows x64 until the feature set is complete;
@@ -165,6 +165,19 @@ For v2.1 and later normal feature development:
 CLI/headless is deferred to v2.2. When implemented, it must reuse domain/service boundaries rather than driving Qt or duplicating Store/ADB behavior.
 
 Rationale: six-target release integrity is preserved without spending all platform build cycles during every feature PR or making unsupported public-trust signing claims.
+
+### v2.1 immutable release outcome
+
+v2.1.0 is published and immutable at source SHA `df2726b959963e5dbb096638d5072bd15eb1de92`.
+
+- The public set is exactly six platform ZIPs, one consolidated third-party source archive and one release-wide `SHA256SUMS.txt`.
+- Windows x64/ARM64 and Linux x64/ARM64 are unsigned.
+- macOS x64/ARM64 use ad-hoc engineering signing only and are not Developer ID signed or notarized.
+- Because the production assembler workflow requires production-trusted Windows and macOS inputs, v2.1 release assembly used the same canonical repository Python assembly and release-layout validation logic directly against the six exact-run candidates.
+- The six platform ZIPs were preserved byte-for-byte, and the published release passed clean re-download, independent SHA-256 and byte-for-byte verification.
+- Documentation-only post-release commits may advance `main` but never change the immutable v2.1 source SHA, tag or assets.
+
+Rationale: the actual public trust state must be described honestly while preserving the established six-platform exact-SHA and fail-closed legal/source model.
 
 ## Packaging and legal model
 
@@ -200,9 +213,9 @@ Package workflows are platform-isolated and exact-SHA guarded:
 
 Trust/assembly workflows are purpose-specific:
 
-- `.github/workflows/sign-windows.yml`: future Windows production-signing stage, not planned for normal execution before v2.0;
+- `.github/workflows/sign-windows.yml`: optional Windows production-signing stage, used only after a deliberate credential/provider validation decision;
 - `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.99;
-- `.github/workflows/assemble-release.yml`: future six-platform production asset assembly, not planned for normal execution before v2.0.
+- `.github/workflows/assemble-release.yml`: six-platform production-trust asset assembly; its signed-Windows and production-macOS requirements must not be weakened to fit an unsigned/ad-hoc release profile.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
 

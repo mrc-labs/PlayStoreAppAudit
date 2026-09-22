@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 ## Purpose
 
@@ -28,7 +28,7 @@ v2.0.0 was published on 2026-09-15 and is immutable.
 - Windows and Linux remain unsigned for v2.0; macOS uses ad-hoc engineering signing only and is not Developer ID signed/notarized.
 - Final public release assets were cleanly re-downloaded and passed canonical layout/checksum validation plus byte-for-byte comparison with the locally assembled release set.
 
-Active forward planning now moves to **v2.1**, tracked by master issue `#153`. v2.1 work must not modify the published v2.0 source SHA, tag or assets.
+v2.1.0 is now published and immutable. Post-v2.1 planning must not modify either the v2.0.0 or v2.1.0 source SHA, tag or assets.
 ## v1.8 published baseline
 
 v1.8.0 was published on 2026-08-24 as an unsigned Windows x64 Engineering Test Build and is immutable.
@@ -91,7 +91,7 @@ A global Fluent redesign, an icon library without demonstrated need, unnecessary
 
 ## v1.99 completed release
 
-v1.99.0 is published and immutable as the final planned Windows x64-only release before v2.0. RC8 satisfied the mandatory packaged acceptance gate. The final Quality, Windows x64 build, public-strict legal validation and engineering assembly passed from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`; annotated tag `v1.99.0` and the three canonical assets were published in the private repository on 2026-09-09. At v1.99.0 publication, forward planning moved to v2.0; current forward planning is v2.1.
+v1.99.0 is published and immutable as the final Windows x64-only release before v2.0. RC8 satisfied the mandatory packaged acceptance gate. The final Quality, Windows x64 build, public-strict legal validation and engineering assembly passed from exact release SHA `1065744488e548663e3ba365566a9932837f5fb5`; annotated tag `v1.99.0` and the three canonical assets were published in the private repository on 2026-09-09. Later v2.0.0 and v2.1.0 releases are recorded in their own published baselines.
 
 ### Cooperative Stop/Cancel
 
@@ -271,9 +271,20 @@ silently registered. Watchers, duplicate cleanup,
 rename/move/delete operations and the later v2.x Library-management backlog
 remain excluded.
 
-## v2.1 release preparation
+## v2.1 published baseline
 
-The live v2.1 release is tracked by issue `#153`. Feature implementation is complete and the combined Windows x64 package has passed human acceptance.
+v2.1.0 was published on 2026-09-22 and is immutable.
+
+- Frozen release source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`.
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
+- Quality #592 / run `35775208797`: PASS.
+- Final Windows run `35776095408`: x64 and ARM64 PASS.
+- Final Linux run `35776120755`: x64 and ARM64 PASS.
+- Final macOS run `35776146620`: x64 and ARM64 PASS.
+- The exact public set is six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`.
+- Windows/Linux are unsigned; macOS is ad-hoc engineering signed and is not Developer ID signed or notarized.
+- Canonical assembly, checksum validation, public re-download and byte-for-byte verification passed.
+- Issue #200 remained outside v2.1 and continues as post-v2.1 work.
 
 ### Track A: Local APK quick-filter polish
 
@@ -310,16 +321,15 @@ Completed through #177. Semantic status/comparison/criticality presentation is t
 
 Completed through #169. Canonical privacy-safe screenshots are generated reproducibly from the real Qt UI with deterministic synthetic data, reused in the README gallery and in-app Store App Audit Overview.
 
-### Final feature-complete acceptance and release gates
+### Final feature-complete acceptance and release outcome
 
 - Final Installer Category presentation cleanup is complete: it is absent from Source Details, Technical and Customize Columns while Installer Source remains user-facing.
 - Combined Windows x64 packaged acceptance passed from `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`.
 - Mandatory release-entry freshness gate passed and merged through PR #203; post-merge Quality #582 passed on `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
-- Release preparation is now active on `v2/release-prep-2.1.0`.
-- Before freeze, repeat the complete component-freshness audit and require exact-head Quality green.
-- Freeze one exact release SHA, then build/validate all six platform/architecture targets from exactly that SHA.
-- Assemble/checksum first; create the annotated `v2.1.0` tag and GitHub Release only after artifact acceptance and then independently re-download/reverify public assets.
-- Production signing/notarization may be described only from actual final-run evidence. Published v2.0.0 remains immutable.
+- The repeated complete component-freshness audit and exact-head Quality gate passed before the final SHA was frozen.
+- All six platform/architecture targets were validated from the exact frozen SHA.
+- The annotated `v2.1.0` tag was created only after canonical assembly/checksum acceptance; the public assets were then independently re-downloaded and reverified.
+- Production signing was not claimed: Windows/Linux are unsigned and macOS is ad-hoc engineering signed only. Published v2.0.0 and v2.1.0 remain immutable.
 
 ### Deferred to v2.2
 
@@ -358,4 +368,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-The active human-readable continuation context for the next v2.1 phase is `HANDOFF_V2.1.md`; older `HANDOFF_V*.md` files remain historical release/development context. Generate continuation ZIPs only from a clean, synchronized local `main` checkout after documentation is merged, using `../scripts/export_chat_handoff.ps1`; the script selects the newest numerically versioned handoff matching `HANDOFF_V<major>.<minor>[.<patch>].md` and includes a freshly generated `REPOSITORY_SNAPSHOT.md`. Always verify the live GitHub `main` SHA when a new chat or coding session begins.
+`HANDOFF_V2.1.md` records the completed release and the pre-merge closure continuation point. Do not generate a final continuation ZIP or `REPOSITORY_SNAPSHOT.md` until the closure documentation PR is merged and the normal local checkout is clean and synchronized to that later documentation-only `main` SHA. Future cycle scope must be established deliberately from the roadmap and open issues rather than inferred from the release handoff.

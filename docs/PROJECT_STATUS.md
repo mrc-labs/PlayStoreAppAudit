@@ -1,10 +1,53 @@
 # Project Status
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
+
+## Published v2.1.0 release
+
+- Latest published version: `v2.1.0`
+- Published: `2026-09-22T22:11:47Z`
+- GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
+- GitHub Release ID: `394150624`
+- GitHub Release title: `Store App Audit v2.1.0`
+- Immutable frozen release SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`
+- Annotated tag: `v2.1.0`; tag object `a0f7000e7e95cc5d0d075bfbf44c7b3debae7f58`; peel target is the exact frozen SHA
+- Final exact-head Quality: #592 / run `35775208797`
+- Final Windows build: run `35776095408`, x64 + ARM64 PASS
+- Final Linux build: run `35776120755`, x64 + ARM64 PASS
+- Final macOS engineering build: run `35776146620`, x64 + ARM64 PASS
+- Windows and Linux packages are unsigned
+- macOS packages use ad-hoc engineering signing only; they are not Developer ID signed or notarized
+- Project-defined release assets: exactly 8
+- Canonical release assembly and release-wide SHA-256 validation: PASS
+- Clean public re-download, independent hash recomputation, size verification and byte-for-byte comparison with the accepted local final set: PASS
+
+Published project-defined assets:
+
+- `PlayStoreAppAudit-v2.1.0-linux-arm64.zip`: 82,302,976 bytes; SHA-256 `317cfddac8c7e9db30d1fb6bf37a94136e71be3713619c59f737272ec99075ef`
+- `PlayStoreAppAudit-v2.1.0-linux-x64.zip`: 85,135,427 bytes; SHA-256 `0646398d6b30f7e6941c7c6348530499965f93388e8f0735cba465c3837a96a9`
+- `PlayStoreAppAudit-v2.1.0-macos-arm64.zip`: 46,593,358 bytes; SHA-256 `9f101f432c949b443d089e614d8d5b3d4c21f4f02045667e88570196ebb11ef2`
+- `PlayStoreAppAudit-v2.1.0-macos-x64.zip`: 50,329,335 bytes; SHA-256 `0cf00bb1a65b478f700db2918641e0085d591e4cfb57a1e9b438d3e0eb06f334`
+- `PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz`: 73,174,984 bytes; SHA-256 `4edfac898906e9d70d8e8a168293a6ff9208d80c953590bf4f1854dd2b0b85c8`
+- `PlayStoreAppAudit-v2.1.0-windows-arm64.zip`: 43,405,489 bytes; SHA-256 `0b2456e139e50a1df381b4db76fe4dc0011f7970106c141f55c14e8be94cf190`
+- `PlayStoreAppAudit-v2.1.0-windows-x64.zip`: 46,939,952 bytes; SHA-256 `0b0c03a27d467f3f1e61e1100dc1709dbb4d7fb8058e0f6d01b7175c6d5818a7`
+- `SHA256SUMS.txt`: 765 bytes; SHA-256 `abc0fe1c06d3753557f14b9f5525083b2c667fcf09b510d7a5a31ecbe34fabb7`
+
+Published v2.1.0 is immutable. Do not rebuild, retag, move, rewrite or replace its source commit, annotated tag, release body or assets. The post-release closure documentation PR creates a later documentation-only `main` SHA; it does not change the release SHA.
+
+### v2.1.0 post-release Actions housekeeping
+
+Manual housekeeping run `35793158003` completed successfully from the frozen `main` SHA using the unchanged generational policy.
+
+- The automated pass deleted expired failed/cancelled runs `35023120949`, `35023486423`, `35023585122` and `35023610443`.
+- Explicit post-release review deleted fully superseded candidate runs `35708299383`, `35708322474` and `35731253986`, removing six invalidated/pre-final v2.1 artifacts.
+- Retained canonical v2.1 artifacts are the two Windows artifacts from `35776095408`, two Linux artifacts from `35776120755` and two macOS artifacts from `35776146620`.
+- Canonical v1.99 assembler artifact `10123756577` remains retained as historical audit evidence.
+- Remaining Actions storage: 7 artifacts / 1,344,361,022 bytes (1,282.08 MiB / 1.252 GiB).
+- The public v2.1.0 Release, tag, source commit and eight assets were rechecked unchanged after housekeeping.
 
 ## Published v2.0.0 release
 
-- Latest published version: `v2.0.0`
+- Published version: `v2.0.0`
 - Published: `2026-09-15T01:13:52Z`
 - GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0
 - GitHub Release ID: `388803000`
@@ -36,7 +79,7 @@ Published v2.0.0 is immutable. Do not rebuild, retag, rewrite or replace its sou
 
 ## Published v1.99.0 release
 
-- Latest published version: `v1.99.0`
+- Published version: `v1.99.0`
 - Published: `2026-09-09T20:44:16Z`
 - GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0
 - GitHub Release ID: `385831055`
@@ -90,19 +133,17 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Canonical build artifact `10123641304` and assembler artifact `10123756577` remain available for audit.
 - GitHub Release assets, tags, source commits, earlier releases, repository retention settings and cleanup logic were not changed.
 
-## Current v2.1 release-preparation baseline
+## v2.1 completed release scope
 
-- Current accepted remote `main`: `a1505f7763a169668064eadef77f44beb7bd48e0`, the normal merge of PR #205 after its exact-head macOS engineering package gate and post-merge Quality #589 / run `35736488008` succeeded.
-- The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` and its Windows/Linux/macOS builds remain invalidated and are not release inputs.
-- The mandatory final freshness gate is being repeated after the macOS packaging fix. The repeat updated the release compiler and all maintained build/preflight references from Nuitka 4.2.1 to 4.2.2. The one-shot hosted proof passed on Quality #590 / run `35759658599` for PR head `d6154352c38d4dae87a23a3d4534b8a372345720`; its `pull_request` checkout correctly used synthetic merge SHA `03ebbbf866d815c5bc9a77f4e6f7d0c550af52e2` over base `a1505f7763a169668064eadef77f44beb7bd48e0`. Temporary instrumentation is now removed locally, pending normal exact-head Quality before the gate can advance.
-- Release-preparation branch: `v2/release-prep-2.1.0`, created from post-freshness `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
-- Current release-preparation source application version: `2.1.0`; derived Windows File/Product version: `2.1.0.0`.
-- Latest published release remains immutable v2.0.0 at release SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- v2.1 release work is complete and immutable at `df2726b959963e5dbb096638d5072bd15eb1de92`.
+- The earlier candidate `459d3cf5e6c9290ec1c30e0116fd823d82660c23` and its Windows/Linux builds remain invalidated historical evidence and were removed from Actions storage during post-release housekeeping.
+- The post-macOS-fix final freshness repeat updated the compiler baseline to Nuitka 4.2.2 and completed before the final exact-SHA Quality/build sequence.
+- Application version is `2.1.0`; derived Windows File/Product version is `2.1.0.0`.
 - Combined feature-complete v2.1 Windows x64 acceptance passed from `main` SHA `3a76e292bc45e8ff20bad39ffe4e2a5b0c0353b4`, workflow run `35655658931`.
 - Accepted combined Windows artifact ID: `10665003533`; verified inner ZIP SHA-256: `4b26dac70281d01fef4fe08038a9a6d3ab0b48cce847fdb315eeb12ec96f0a31`.
 - Mandatory release-entry component freshness gate passed and merged through PR #203; Ruff advanced to 0.16.8 and the one-shot clean Python 3.14 audit returned `pip check` clean and `pip list --outdated --format=json == []`.
 - Post-merge Quality #582 / workflow run `35699222465` passed on exact `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
-- Active release coordination remains issue `#153`; persistent Personal Device profile library issue `#200` remains explicitly post-v2.1.
+- Release coordination issue `#153` remains open only through permanent closure; persistent Personal Device profile library issue `#200` remains explicitly post-v2.1 and was not included.
 - Python release-packaging and Quality baseline: 3.14.
 - `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.2; Ruff: 0.16.8.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
@@ -125,20 +166,11 @@ Track B is complete:
 - Store cache/history, Device Inventory and unrelated audit evidence are not mutated by these file-management operations, and no Store re-audit or APK reparse is triggered after a successful mutation.
 - Final B3 local validation: `1283 passed, 6 skipped`; PR Quality #460 and post-merge main Quality #461 passed.
 
-### v2.1 release-preparation checkpoint
+### v2.1 release outcome
 
 The v2.1 feature scope is complete and the combined Windows x64 package has passed human acceptance. Track C Device Specific productization, dark-mode semantic-colour polish, canonical screenshot/help work, Local APK Device Specific integration and the final Installer Category presentation cleanup are all complete.
 
-Release work is now deliberately limited to:
-
-1. canonical `2.1.0` version/changelog/release-note preparation;
-2. exact-head Quality on the release-preparation branch;
-3. the mandatory second complete component-freshness audit immediately before freeze;
-4. one exact frozen release SHA after green validation;
-5. final Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 package validation from that exact SHA;
-6. canonical assembly, checksums, annotated tag, GitHub Release, clean public re-download verification and permanent release closure.
-
-No public RC tag is planned. Any source/tooling change after the second freshness gate invalidates the candidate SHA. Published v2.0.0 remains immutable, and issue #200 must not enter v2.1 release closure.
+The mandatory freshness, exact-head Quality, six-platform build, canonical assembly, checksum, annotated-tag, publication and clean public re-download gates all passed. No public RC tag was created. Published v2.0.0 and v2.1.0 remain immutable, and issue #200 did not enter v2.1 scope.
 
 ### Scan Phone lifecycle Phases A and B checkpoints
 
@@ -352,7 +384,7 @@ semantics and source-aware scoring. Outdated costs 10 Maintenance Score points;
 Local Unknown costs 15 only when local evidence is missing while a usable Store
 version exists, so Store-side absence is not double-counted. Structured update dates win over localized
 visible text, and `--debug` creates an opt-in per-session app-data log. The
-persistent Library core/data remains intact as future infrastructure. v2.0.0 is the current published release.
+persistent Library core/data remains intact as future infrastructure. v2.0.0 is an immutable historical release; v2.1.0 is the current published release.
 
 ## Explicitly removed / rejected
 

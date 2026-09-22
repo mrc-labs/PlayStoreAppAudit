@@ -1,6 +1,6 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.0 release-packaging Python baseline is 3.14.
+Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.1 release/development Python baseline is 3.14.
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-Python 3.14 is the current v2.0 release-packaging and Quality CI baseline. Future toolchain changes require the release component freshness gate and affected package validation.
+Python 3.14 is the current v2.1 release-packaging and Quality CI baseline. Future toolchain changes require the release component freshness gate and affected package validation.
 
 ## Run from source
 
@@ -56,7 +56,7 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-For current v2.0 development and the future production profile:
+For the current v2.1 baseline and later release work:
 
 - Packaging Python: 3.14
 - Quality CI: Python 3.14
@@ -82,7 +82,7 @@ without triggering the other five targets during primary development.
 
 ## Release profiles
 
-The project has a lightweight unsigned Windows x64 Engineering Test Build profile for near-term releases and a preserved six-platform signed production profile for a later production milestone.
+The project retains the historical Windows x64 Engineering Test Build profiles and the six-platform architecture established by v2.0. Production-trust signing remains optional until deliberately credential-validated.
 
 ### v1.4 Windows x64 Engineering Test Build (ETB)
 
@@ -139,9 +139,9 @@ v1.7.0, v1.8.0, v1.9.0 and v1.99.0 are published and immutable as unsigned Windo
 - v1.99.0 frozen release SHA is `1065744488e548663e3ba365566a9932837f5fb5`.
 - v1.99's real packaged Windows x64 user-acceptance gate was satisfied by RC8 before the separate final exact-SHA release freeze.
 
-### v2.0-or-later full production release
+### v2.0-or-later six-platform release
 
-Production trust validation and the full six-platform release are not planned before v2.0. The production workflows remain intact so the architecture can be activated later without being part of the Windows x64-only v1.6-v1.99 release cost.
+v2.0 established the full six-platform release. Production-trust workflows remain intact, but unsigned Windows/Linux and ad-hoc macOS distribution must be described honestly when production credentials are not used.
 
 The future production profile consists of:
 
@@ -151,6 +151,17 @@ The future production profile consists of:
 - the six-candidate assembler with exactly eight final public assets.
 
 Production signing is implemented in source but is not considered credential-validated until deliberate real signing runs succeed.
+
+### v2.1.0 published release profile
+
+v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`.
+
+- Windows x64/ARM64 and Linux x64/ARM64 are unsigned.
+- macOS x64/ARM64 are ad-hoc engineering signed and are not Developer ID signed or notarized.
+- Final runs are Quality `35775208797`, Windows `35776095408`, Linux `35776120755` and macOS `35776146620`.
+- The production `assemble-release.yml` workflow was not used because its production-signing contract did not match the real v2.1 trust profile.
+- The unchanged canonical `assemble_release_assets.py` and `release_asset_layout.py` logic assembled and validated the exact-run artifacts directly; all six platform ZIPs remained byte-for-byte unchanged.
+- The published eight-file set passed clean re-download, size, checksum and byte-for-byte validation. Never rebuild or replace it.
 
 ## GitHub Actions retention
 
@@ -199,7 +210,7 @@ Future production Windows trust uses:
 Assembly is profile-specific:
 
 - `.github/workflows/assemble-windows-engineering-release.yml` for Windows x64 ETB releases including the Windows x64 ETB profiles through v1.99;
-- `.github/workflows/assemble-release.yml` for the future v2.0-or-later six-platform production release.
+- `.github/workflows/assemble-release.yml` for a six-platform production-trust release whose signed input requirements are actually satisfied.
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
 
@@ -271,7 +282,7 @@ Its only release input is the required exact `expected_sha`.
 
 Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the complete standalone tree so Qt/PySide/Shiboken shared libraries remain individually replaceable. Linux x64 can use the managed Google Platform-Tools archive; Linux ARM64 requires a native compatible ADB.
 
-Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It remains part of the future v2.0-or-later production profile.
+Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It is part of the v2.0-and-later six-platform profile.
 
 ### macOS
 
@@ -396,9 +407,9 @@ For the frozen v1.6.0 Windows x64 ETB profile, the generic procedure above speci
 - current release title: `Play Store App Audit v1.6.0 (Win x64 Only)`;
 - body heading: `## Play Store App Audit v1.6.0 (Engineering Test Build - Windows x64 Only)`.
 
-## Frozen-SHA future full production procedure
+## Frozen-SHA full production-trust procedure
 
-The future v2.0-or-later production profile uses one exact immutable source revision for all six platform packages.
+The production-trust profile uses one exact immutable source revision for all six platform packages.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release PR to `main` with a normal merge commit.
@@ -425,7 +436,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0, v1.9.0 and v1.99.0 version metadata are part of their immutable published release profiles. Current source remains `1.99.0` until the next deliberately scoped development-version change.
+v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.1.0`; a future version change requires deliberate next-cycle scope.
 
 ## Packaged smoke tests
 

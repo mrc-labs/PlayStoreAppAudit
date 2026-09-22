@@ -6,9 +6,9 @@ Store App Audit is a cross-platform desktop utility for checking Android package
 
 The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
 
-**Latest published release:** [v2.0.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+**Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** v2.1. The published v2.0.0 tag and release assets are immutable; active development continues on `main` through focused PRs.
+**Current development line:** post-v2.1 planning. The published v2.1.0 tag and release assets are immutable; detailed v2.2 scope is not yet frozen.
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
@@ -29,7 +29,7 @@ Store App Audit helps answer practical questions about the Android apps you use,
 
 ## Screenshots
 
-These screenshots show the current **v2.1 development UI** using fully synthetic fictional apps and package IDs. They are generated reproducibly from the real Qt interface by `tools/generate_canonical_screenshots.py`; no live Store request, connected phone, personal app inventory or third-party app artwork is used.
+These screenshots show the published **v2.1 UI** using fully synthetic fictional apps and package IDs. They are generated reproducibly from the real Qt interface by `tools/generate_canonical_screenshots.py`; no live Store request, connected phone, personal app inventory or third-party app artwork is used.
 
 | Phone maintenance and triage | Local APK / package comparison |
 | --- | --- |
@@ -37,7 +37,7 @@ These screenshots show the current **v2.1 development UI** using fully synthetic
 | **Changes & History** | **Mass Rename preview** |
 | [![Store App Audit Changes and History](docs/images/store-app-audit-changes-history.png)](docs/images/store-app-audit-changes-history.png) | [![Store App Audit Mass Rename preview](docs/images/store-app-audit-mass-rename.png)](docs/images/store-app-audit-mass-rename.png) |
 
-The latest published release remains **v2.0.0** until the v2.1 release is deliberately frozen, validated and published.
+These screenshots are included in the immutable v2.1.0 source and packages.
 
 ## Key features
 
@@ -60,9 +60,9 @@ The latest published release remains **v2.0.0** until the v2.1 release is delibe
 
 ## Current project status
 
-### Published v2.0.0
+### Published v2.1.0
 
-v2.0.0 is the current public release and the first return to full six-target distribution. It was published from frozen source SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3` after exact-SHA Quality, platform builds, release assembly, checksum validation, clean re-download and byte-for-byte verification.
+v2.1.0 is the current public release. It was published from frozen source SHA `df2726b959963e5dbb096638d5072bd15eb1de92` after Quality #592, exact-SHA Windows/Linux/macOS builds, canonical release assembly, checksum validation, clean public re-download and byte-for-byte verification.
 
 Published binary targets:
 
@@ -75,7 +75,7 @@ Published binary targets:
 
 The release also contains the consolidated third-party source archive and release-wide `SHA256SUMS.txt`.
 
-Signing status for v2.0.0:
+Signing status for v2.1.0:
 
 - Windows packages are unsigned.
 - Linux packages are unsigned.
@@ -83,32 +83,32 @@ Signing status for v2.0.0:
 
 See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
 
-### v2.1 in development
+### Post-v2.1 planning
 
-The live v2.1 plan is tracked in [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153).
+v2.1 release work is complete. [Issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) remains open only until the permanent release-closure PR is merged and final synchronization is complete.
 
 Current direction:
 
 - Local APK quick-filter spacing polish: completed.
 - Local APK file management Track B: completed, including safe single-file Rename/Remove, Mass Rename with validated preview/templates/collision protection, and safeguarded Mass Remove for exact Outdated/Unknown relationships.
-- Device Specific resolver integration: completed for the v2.1 development line as an opt-in advanced second-stage resolver using an explicit configured metadata endpoint and bundled reference profiles; the public Store result remains authoritative.
+- Device Specific resolver integration: shipped in v2.1 as an opt-in advanced second-stage resolver using an explicit configured metadata endpoint and bundled reference profiles; the public Store result remains authoritative.
 - Theme-aware semantic presentation and dark-mode contrast work: completed.
 - Canonical README/in-app Help screenshots: generated from deterministic synthetic data and reused across the repository homepage and in-app Overview.
-- After this documentation polish, v2.1 moves to final Windows x64 packaged acceptance and then the cross-platform release-validation phase.
+- All six final platform packages were validated from the same frozen SHA and the public eight-asset set was independently reverified.
 
-CLI/headless support is **not** part of v2.1 anymore. It is currently planned for v2.2, together with Named Custom Views issue #147. A smaller one-main-feature-per-release cadence may be adopted from v2.2 or v2.3.
+CLI/headless support and Named Custom Views issue #147 remain candidates for v2.2. Persistent Personal Device profiles remain separate post-v2.1 issue #200. Detailed next-cycle scope is not frozen by release closure.
 
-During normal v2.1 feature development, packaged testing is intentionally concentrated on **Windows x64**. Once v2.1 is feature-complete and accepted on Windows x64, the project enters the cross-platform release phase: Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 are built and any platform/architecture-specific issues are fixed. The final release gate then rebuilds and validates all six targets from one exact frozen SHA.
+Future release work continues to use the exact-SHA, six-platform validation model documented in the project release guides.
 
 ## Download and installation
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-For v2.0.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
+For v2.1.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
 
 On Windows, the packaged executable intentionally keeps the compatibility filename `PlayStoreAppAudit.exe`.
 
-Because the Windows v2.0.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.0.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
+Because the Windows v2.1.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.1.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
 
 Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity matters.
 
@@ -126,11 +126,11 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 
 ## Local APK / package workflows
 
-The published v2.0.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
+The published v2.1.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
 
 The local-package path reuses the same Store/provider evidence and result presentation used elsewhere while keeping local metadata such as filename, path, label, local version, SHA-256 and SDK information available in the table and Details Panel.
 
-The current v2.1 development source extends this workflow with safe physical-file management. It includes single-file **Rename File…** / **Remove File…**, Mass Rename with metadata templates and a complete validation preview, plus **Remove All Outdated…** / **Remove All Unknown…** with permanent-deletion safeguards. Operations remain physical-path based, preserve unrelated Store/audit evidence, keep duplicate package/SHA files independent, and do not rerun the Store audit after filesystem mutation. These v2.1 additions are not part of the published v2.0.0 release.
+v2.1 extends this workflow with safe physical-file management. It includes single-file **Rename File…** / **Remove File…**, Mass Rename with metadata templates and a complete validation preview, plus **Remove All Outdated…** / **Remove All Unknown…** with permanent-deletion safeguards. Operations remain physical-path based, preserve unrelated Store/audit evidence, keep duplicate package/SHA files independent, and do not rerun the Store audit after filesystem mutation.
 
 The Local APK direction is inspired by the long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility. Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
 
@@ -173,14 +173,14 @@ Diagnostic bundles are created only when explicitly requested and are not upload
 
 ## Platform support
 
-| Platform | Published v2.0.0 | v2.1 development / release strategy |
+| Platform | Published v2.1.0 | Distribution state |
 | --- | --- | --- |
-| Windows x64 | ZIP published | Primary packaged development and acceptance target |
-| Windows ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
-| Linux x64 | ZIP published | Deferred until feature-complete cross-platform phase |
-| Linux ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
-| macOS Intel / x64 | ZIP published | Deferred until feature-complete cross-platform phase |
-| macOS Apple Silicon / ARM64 | ZIP published | Deferred until feature-complete cross-platform phase |
+| Windows x64 | ZIP published | Unsigned |
+| Windows ARM64 | ZIP published | Unsigned |
+| Linux x64 | ZIP published | Unsigned |
+| Linux ARM64 | ZIP published | Unsigned |
+| macOS Intel / x64 | ZIP published | Ad-hoc engineering signed; not notarized |
+| macOS Apple Silicon / ARM64 | ZIP published | Ad-hoc engineering signed; not notarized |
 
 All six final artifacts for a release must derive from the same frozen source SHA. Platform-specific fixes found during the final phase are merged first, then affected targets are revalidated before the final six-platform gate.
 
@@ -210,7 +210,7 @@ The profiler uses a temporary empty metadata cache and does not clear the applic
 
 ## Development
 
-The active development line is **v2.1**. The package version currently remains `2.0.0` until the deliberate v2.1 release-version bump; this should not be confused with the latest published release, which is also v2.0.0.
+The current source version is `2.1.0`, matching the latest published release. Post-release documentation commits may move `main` beyond the immutable release SHA without changing the v2.1.0 tag or assets.
 
 The current release-development baseline uses Python 3.14, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Python 3.15 pre-releases are outside the stable release baseline.
 
@@ -241,7 +241,7 @@ Useful references:
 
 The current release toolchain uses Python 3.14 and Nuitka standalone packaging. Release artifacts follow an exact-SHA model: source is frozen, platform builds and release assets are validated from that SHA, and tagging/publication happen only after acceptance.
 
-For v2.1, normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. After feature completion, Windows x64 receives final packaged acceptance, then Windows ARM64, Linux x64/ARM64 and macOS x64/ARM64 enter the cross-platform validation/fix phase. The final release is assembled only after all six targets pass from one exact frozen SHA.
+Normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. The final release gate validates all six targets from one exact frozen SHA.
 
 Production signing/notarization is deferred to later 2.x work unless explicitly promoted and proven end-to-end. Do not assume signed/notarized packages simply because a platform build exists.
 
@@ -253,7 +253,7 @@ The application's own code is licensed under the [GNU General Public License ver
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
-Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.0.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
+Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.1.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
 
 ## Contributing
 
