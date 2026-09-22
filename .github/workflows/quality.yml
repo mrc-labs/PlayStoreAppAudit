@@ -57,6 +57,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: One-shot post-macOS-fix release freshness audit
+        shell: pwsh
+        run: |
+          python -m pip install "setuptools==84.0.0" "wheel==0.48.0" "Nuitka==4.2.2"
+          if ($LASTEXITCODE -ne 0) { throw 'Release tooling install failed.' }
+
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'pip check failed.' }
+
+          python -m pip list
+          if ($LASTEXITCODE -ne 0) { throw 'pip list failed.' }
+
+          $outdatedJson = python -m pip list --outdated --format=json
+          if ($LASTEXITCODE -ne 0) { throw 'pip list --outdated failed.' }
+
+          Write-Host "OUTDATED_JSON=$outdatedJson"
+          $outdated = @($outdatedJson | ConvertFrom-Json)
+          if ($outdated.Count -ne 0) {
+            $outdated | Format-Table -AutoSize | Out-String | Write-Host
+            throw "Post-macOS-fix freshness gate found $($outdated.Count) outdated package(s)."
+          }
+
+          Write-Host 'POST_MACOS_FIX_PYTHON_FRESHNESS=PASS'
+
       - name: Verify runtime
         shell: pwsh
         env:
