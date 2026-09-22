@@ -184,7 +184,7 @@ The release-wide source archive centralizes corresponding-source material requir
 - Stable Python 3.14 is the release-packaging and Quality baseline.
 - Python pre-releases, including Python 3.15 release candidates, are not release baselines without a deliberate engineering decision.
 - Current Qt/PySide baseline is `PySide6-Essentials==6.11.2`.
-- Current Nuitka pin is `Nuitka==4.2.1`.
+- Current Nuitka pin is `Nuitka==4.2.2`.
 - Runtime, development and build pins are reviewed through the mandatory release-component freshness gate before a release freeze.
 - Move any packaging/toolchain baseline only through an explicit validated migration.
 

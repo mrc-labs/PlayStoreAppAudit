@@ -19,6 +19,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 - Local APK quick filters and semantic relationship colours now cover Device Specific and N/A while preserving the existing filtering/sorting semantics.
 - Semantic UI colours are theme-aware so status, comparison and criticality presentation remain readable in both light and dark mode.
 - Updated the development/release freshness pin from Ruff 0.16.7 to 0.16.8 after the mandatory v2.1 release-entry component audit.
+- Updated the release compiler from Nuitka 4.2.1 to 4.2.2 after the repeated post-macOS-fix final freshness audit.
 
 ### Fixed
 

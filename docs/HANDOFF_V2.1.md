@@ -571,7 +571,7 @@ Current baseline to preserve unless freshness changes it deliberately:
 - Python 3.14
 - `PySide6-Essentials==6.11.2`
 - `pyaxmlparser==0.3.31`
-- `Nuitka==4.2.1`
+- `Nuitka==4.2.2`
 - current runtime pins from `pyproject.toml` / requirements
 
 #### `docs/RELEASE_COMPONENT_FRESHNESS.md`

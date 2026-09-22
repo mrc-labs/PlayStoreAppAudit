@@ -21,7 +21,7 @@ def test_local_windows_build_helper_tracks_v2_toolchain_and_source_details() -> 
     helper = (ROOT / "build_windows_exe.bat").read_text(encoding="utf-8")
 
     assert "py -3.14" in helper
-    assert '"Nuitka==4.2.1"' in helper
+    assert '"Nuitka==4.2.2"' in helper
     assert "_set_view_preset('Source Details')" in helper
     assert "_set_view_preset('Device')" not in helper
 

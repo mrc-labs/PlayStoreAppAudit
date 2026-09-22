@@ -212,7 +212,7 @@ The profiler uses a temporary empty metadata cache and does not clear the applic
 
 The active development line is **v2.1**. The package version currently remains `2.0.0` until the deliberate v2.1 release-version bump; this should not be confused with the latest published release, which is also v2.0.0.
 
-The current release-development baseline uses Python 3.14, `PySide6-Essentials==6.11.2` and Nuitka 4.2.1. Python 3.15 pre-releases are outside the stable release baseline.
+The current release-development baseline uses Python 3.14, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Python 3.15 pre-releases are outside the stable release baseline.
 
 Install the development dependencies, run the application and execute the main source checks with:
 
