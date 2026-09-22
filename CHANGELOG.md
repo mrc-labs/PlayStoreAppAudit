@@ -2,6 +2,39 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [2.1.0] - 2026-09-22
+
+### Added
+
+- Added safe Local APK file management: single-file Rename/Remove, batch Mass Rename with preview and collision-safe swap/cycle handling, plus guarded Remove All Outdated and Remove All Unknown actions.
+- Added production Device Specific resolution for Store results that vary by device, with validated OnePlus 8 Pro EEA / Android 10 and Samsung Galaxy S20+ / Android 13 reference profiles.
+- Added an optional Personal Google Session metadata provider and an Advanced Custom Dispenser provider; Device Specific metadata paths do not purchase, deliver or download APKs.
+- Added privacy-safe **Get Phone Data** capture for one process-local Personal Device profile from a connected Android phone through read-only ADB, without running an app scan.
+- Added deterministic privacy-safe canonical screenshots, a README gallery and an in-app Store App Audit Overview generated from synthetic fixture data.
+
+### Changed
+
+- Device Specific evidence is additive: raw public Google Play evidence such as `Varies with device` remains authoritative while resolved version/profile evidence is presented separately.
+- Installed and Local APK relationship presentation can show the `(Dev. Sp.)` suffix only when resolved evidence reproducibly supports the comparison; canonical raw relationship values remain unchanged.
+- Local APK quick filters and semantic relationship colours now cover Device Specific and N/A while preserving the existing filtering/sorting semantics.
+- Semantic UI colours are theme-aware so status, comparison and criticality presentation remain readable in both light and dark mode.
+- Updated the development/release freshness pin from Ruff 0.16.7 to 0.16.8 after the mandatory v2.1 release-entry component audit.
+
+### Fixed
+
+- Removed duplicate `Installer Category` presentation from Source Details, Technical and Customize Columns while preserving internal compatibility and the user-facing Installer Source field.
+- Fixed Phone -> Local APK Folder -> Phone source transitions so Local APK relationship filters, contextual columns and stale selection/details state do not leak back into the phone source.
+- Hardened Device Specific Personal Device ownership so cached profile evidence cannot be reused across different connected devices.
+- Kept failed or incomplete phone-profile recapture from replacing the last complete process-local Personal Device profile.
+
+### Compatibility
+
+- Application version is `2.1.0`; Windows File/Product version is `2.1.0.0`; the Python baseline remains 3.14.
+- Planned final targets remain Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 from one exact frozen release SHA.
+- Managed ADB remains read-only with respect to installed Android apps.
+- The Personal Device profile is intentionally session-only in v2.1; persistent multi-profile storage remains post-v2.1 issue #200.
+- Production Windows signing and Apple Developer ID/notarization status must be recorded only from the final real release runs; v2.0.0 remains immutable.
+
 ## [2.0.0] - 2026-09-13
 
 ### Added
