@@ -35,7 +35,7 @@ jobs:
       EXPECTED_PE_MACHINE: ${{ matrix.arch == 'x64' && '0x8664' || '0xAA64' }}
       PYSIDE_WHEEL_PLATFORM: ${{ matrix.arch == 'x64' && 'win_amd64' || 'win_arm64' }}
       RUNNER_LABEL: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
-      RUNNER_STATUS: ${{ matrix.arch == 'x64' && 'generally available' || 'generally available' }}
+      RUNNER_STATUS: generally available
 
     steps:
       - name: Checkout repository
