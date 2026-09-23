@@ -259,7 +259,7 @@ Concrete bugs and polish found through actual v1.9 use may be reviewed individua
 
 The v2.1.0 release cycle is fully closed. Release coordination issue `#153` is closed as completed; the immutable v2.1.0 release remains frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. The final post-release documentation baseline before v2.2 kickoff is `fca18639480b2ce90396d860cfea34d3a9ed2771`, with post-merge Quality #597 / run `35803473823` passing on that exact SHA.
 
-v2.2 is the active planning/development line with three approved pillars:
+v2.2 is the active planning/development line, coordinated by master issue `#212`, with three approved pillars:
 
 - `#208`: source-aware views with two explicit persistent Custom layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving the existing source-aware built-in preset architecture and keeping contextual overlays outside user-owned saved layouts;
 - `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
