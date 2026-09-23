@@ -333,7 +333,7 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 
 ## v2.2 active scope
 
-v2.2 is the current active planning line. The v2.1 release cycle is closed; implementation should proceed through focused issues and small PRs rather than reopening v2.1 release work.
+v2.2 is the current active planning line, coordinated by master issue `#212`. The v2.1 release cycle is closed; implementation should proceed through focused issues and small PRs rather than reopening v2.1 release work.
 
 ### Source-aware views and layouts — issue #208
 
