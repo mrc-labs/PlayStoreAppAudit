@@ -13,7 +13,7 @@ Changing a decision here should be deliberate and should normally happen in the 
 - `main` is the only permanent branch.
 - Use short-lived branches and normal PR merge commits.
 - Delete short-lived branches after merge.
-- Published release history is immutable. Do not rewrite, squash, retag or replace already published release commits/assets.
+- Published release commits, tag targets and binary/source/checksum assets are immutable. Descriptive Release prose follows the separate editorial policy below.
 
 Rationale: one canonical integration line keeps platform work tied to the same source history and avoids release drift.
 
@@ -66,6 +66,15 @@ Every public release profile uses one exact source commit.
 - Never mix release artifacts from different source SHAs.
 
 Rationale: release tags identify the source that produced already validated artifacts. A tag-triggered rebuild could produce different binaries or dependency states after validation.
+
+## Published release immutability and editorial maintenance
+
+- Immutable release material consists of the frozen release source commit, annotated tag/target, and every published binary, source, and checksum asset.
+- GitHub Release descriptive prose is editorially maintainable after publication. It may be corrected, clarified, reformatted, or condensed when historical facts, release semantics, distribution/signing state, and verification claims do not change.
+- Editorial maintenance never authorizes rebuilding, retagging, replacing an asset, changing a checksum, or adding a claim not supported by the historical release evidence.
+- `docs/RELEASE_NOTES.md` records the current normalized public prose; detailed release/audit evidence remains in its dedicated historical records.
+
+Rationale: download identity and source provenance must remain immutable, while readable descriptive text may be maintained like other documentation.
 
 ## Release profiles
 
@@ -178,6 +187,30 @@ v2.1.0 is published and immutable at source SHA `df2726b959963e5dbb096638d5072bd
 - Documentation-only post-release commits may advance `main` but never change the immutable v2.1 source SHA, tag or assets.
 
 Rationale: the actual public trust state must be described honestly while preserving the established six-platform exact-SHA and fail-closed legal/source model.
+
+## v2.2 source-aware view baseline
+
+Issue `#208` is explicit v2.2 UX scope.
+
+- Local APK sources automatically expose applicable Local APK Version and APK Filename context while inapplicable phone-only Installed Version / Installed vs Store columns disappear.
+- Automatic/contextual fields remain distinct from user-owned fields and must not be serialized into Custom layout definitions.
+- Phone/phone-derived App List workflows and Local APK file/folder workflows persist separate Custom layouts and restore the correct layout when the source family changes.
+- Built-in presets require a source-family audit, clear source-aware labeling/grouping where variants are needed, and an appropriate default for every supported source mode.
+- The existing single Custom layout requires a safe migration path.
+- Broader arbitrary named views remain separate issue `#147`; #208 must not silently redefine or close it.
+
+Rationale: two deterministic source-family layouts solve the immediate semantic mismatch without prematurely committing to a general named-view manager.
+
+## Later 2.x update delivery
+
+Issue `#209` is post-v2.2 and cross-linked to distribution-trust issue `#154`.
+
+- Phase 1 may improve notification and add verified background download or an explicit Download Update action, but installation remains explicit.
+- A true self-updater requires an external updater/bootstrap process, preservation of the user-selected portable install location, atomic replacement, rollback, interrupted-update recovery, and platform-specific process/permission/quarantine handling.
+- Release metadata and SHA-256 validation are mandatory. Production signing/notarization is strongly preferred before automatic installation.
+- Never silently install unsigned Windows/Linux or ad-hoc/non-notarized macOS packages as though they carried production trust.
+
+Rationale: update convenience must not compromise a working portable installation or weaken release provenance and platform trust boundaries.
 
 ## Packaging and legal model
 

@@ -1,10 +1,10 @@
 # Release Notes Standard
 
-This document defines the canonical GitHub Release notes structure for Play Store App Audit. It is a durable release invariant, not a per-release styling preference.
+This document defines the canonical GitHub Release-note structure and records the editorially maintained public body for every published Store App Audit release.
 
 ## Mandatory structure
 
-Every public GitHub Release body must use these four sections, in this exact order:
+Every public GitHub Release body uses these four sections, in this order:
 
 ```markdown
 ## What's New / Highlights
@@ -28,703 +28,448 @@ Every public GitHub Release body must use these four sections, in this exact ord
 - ...
 ```
 
-The four `##` sections are mandatory for every release.
+`Added`, `Changed`, and `Fixed` are optional subsections. Omit an empty subsection. Keep the highlights user-facing, concise, and free of routine release-engineering detail that belongs in `Verification` or a dedicated evidence record.
 
-Within `## What's New / Highlights`, `### Added`, `### Changed`, and `### Fixed` are the standard subheadings. Include only subheadings that contain meaningful entries. Omit an empty subheading rather than adding filler such as `None` or `N/A`.
+`Compatibility and distribution` states the actual platform, architecture, signing, notarization, and important compatibility limitations. `Release assets` identifies the project-defined deliverables without duplicating GitHub's Assets UI unnecessarily. `Verification` retains the frozen source SHA and the essential package, provenance, legal, and checksum evidence that actually passed.
 
-## Content rules
+## Immutability and editorial maintenance
 
-### What's New / Highlights
+The following published release material is immutable:
 
-Keep this section user-facing. Describe meaningful product, UX, performance, reliability, packaging, or maintenance changes. Prefer concise bullets and avoid internal PR/workflow history unless it materially affects users.
+- the release source commit;
+- the annotated tag and its target;
+- every published binary, source, and checksum asset.
 
-Use:
+GitHub Release descriptive prose is editorially maintainable. It may be corrected, clarified, reformatted, or condensed after publication when the historical facts, release semantics, distribution limitations, signing state, verification claims, tag, and assets remain unchanged. Editorial maintenance never authorizes rebuilding, retagging, replacing an asset, changing a checksum, or strengthening an unsupported historical claim.
 
-- `Added` for new capabilities or newly exposed options.
-- `Changed` for behavioural, UX, performance, distribution, or dependency changes.
-- `Fixed` for defects and regressions corrected in the release.
-
-### Compatibility and distribution
-
-Always state the actual public distribution profile for that release, including as applicable:
-
-- supported/prebuilt platforms and architectures;
-- unsigned, ad-hoc-signed, or production-signed status;
-- Engineering Test Build (ETB) status;
-- important compatibility/toolchain notes that materially affect users;
-- intentionally deferred platforms or signing work when relevant.
-
-Do not imply that source support is the same as a prebuilt public package.
-
-### Release assets
-
-List the public release assets users should expect. Prefer exact filenames once the release asset set is frozen. The list must agree with the selected release profile and assembler output.
-
-Do not list temporary GitHub Actions artifacts, signing/notarization intermediates, validation evidence, or GitHub's automatically generated source-code ZIP/tarball as part of the project-defined release asset set unless a historical release note explicitly treats them as release deliverables.
-
-### Verification
-
-Summarize release evidence that actually passed for the published artifacts. Depending on the release profile this can include:
-
-- exact frozen source SHA;
-- Quality CI targets;
-- package architecture/version/startup validation;
-- legal/source-material validation;
-- signing/notarization/Gatekeeper verification;
-- release-provenance and checksum validation;
-- confirmation that the final public asset set came from the same frozen SHA.
-
-Never claim a verification step that was not actually performed.
-
-## Historical-source rule
-
-When normalizing an already published release, the body that was actually published on GitHub is the primary historical source. Preserve its substantive claims and details, then reorganize them into the canonical four-section format.
-
-`CHANGELOG.md`, release documentation, tags, commits, checksums and preserved CI evidence may supplement a historical body only where they provide clearly supported missing details. They must not silently replace, reinterpret or strengthen the claims made in the published body.
-
-Obvious editorial mistakes may be corrected while normalizing, for example an internal heading that names the wrong version, provided the release/tag identity itself is unambiguous. Such corrections must not change the substantive historical meaning.
-
-Published tags, source commits, binary assets and checksums remain immutable. Normalizing release-note prose never authorizes retagging, rebuilding or replacing published artifacts.
-
-## Release title and heading
-
-Release-profile-specific title suffixes remain separate from the four-section body standard. Current and future Windows x64 Engineering Test Build releases use the GitHub Release title suffix `(Win x64 Only)` and must clearly identify the package as unsigned. Historical titles may retain older wording where that reflects the published record.
-
-A short release heading may precede the four mandatory sections when a profile requires it, for example:
-
-```markdown
-## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)
-```
-
-The mandatory four sections must follow that heading unchanged.
+The body published on GitHub remains the primary historical source. Repository changelogs, tags, checksums, and preserved CI evidence may supplement only clearly supported missing detail. Obvious encoding and formatting corruption may be fixed without changing meaning.
 
 ## Published v2.1.0 release body
 
-GitHub Release title: `Store App Audit v2.1.0`.
+Title: `Store App Audit v2.1.0` · [Published 2026-09-22](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0)
 
-The body below records the final v2.1.0 wording [published on 2026-09-22](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0). Annotated tag object `a0f7000e7e95cc5d0d075bfbf44c7b3debae7f58` peels to immutable source SHA `df2726b959963e5dbb096638d5072bd15eb1de92`; the tag, source, release body and eight project-defined assets are immutable.
-
-````markdown
+```markdown
 ## What's New / Highlights
 
 ### Added
-- Local APK file management now supports single-file Rename/Remove, batch Mass Rename with preview/collision checks and swap/cycle-safe execution, plus guarded Remove All Outdated and Remove All Unknown actions.
-- Device Specific resolution can add reproducible Store version evidence when the normal public result is `Varies with device`, using validated reference profiles while keeping the raw public Store fact unchanged.
-- Device Specific provider choices include Disabled, Personal Google Session and Advanced Custom Dispenser. Personal Google Session is temporary/session-only and Device Specific metadata paths do not purchase, deliver or download APKs.
-- **Get Phone Data** can capture one privacy-safe Personal Device profile from a connected Android phone through read-only ADB without running an app scan; the profile exists only for the current application session.
-- Canonical privacy-safe screenshots generated from deterministic synthetic data are now used in the README gallery and the in-app Store App Audit Overview.
+- **Local APK file management:** Manage Local APK files safely with single-file Rename/Remove, collision-checked Mass Rename, and guarded removal of exact Outdated or Unknown results.
+- **Device Specific resolution:** Resolve `Varies with device` Store versions through validated Device Specific profiles using Personal Google Session or Advanced Custom Dispenser providers, while preserving the raw public Store result.
+- **Get Phone Data:** Capture one privacy-safe Personal Device profile through read-only ADB without running an app scan; the profile lasts only for the current session.
+- Privacy-safe synthetic screenshots now document the main workflows in the README and in-app Overview.
 
 ### Changed
-- Device Specific resolved metadata is additive and separated from raw Play Store evidence. Installed/Local APK relationships may show the `(Dev. Sp.)` presentation suffix only when resolved evidence supports it.
-- Local APK quick-filter presentation includes the accepted Device Specific and N/A states while preserving canonical filtering/sorting values.
-- Semantic status, comparison and criticality colours are theme-aware for readable light- and dark-mode presentation.
-- Release-entry component freshness updated Ruff from 0.16.7 to 0.16.8; the Python 3.14 release/tooling environment passed a fail-closed outdated-package audit.
-- The repeated post-macOS-fix final freshness audit updated the release compiler from Nuitka 4.2.1 to 4.2.2.
+- **Source-aware Local APK UX:** Local APK comparison and quick-filter presentation now includes Device Specific and N/A states, with clearer source-aware evidence.
+- **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
 
 ### Fixed
-- `Installer Category` no longer appears as a duplicate table/customization field in Source Details, Technical or Customize Columns; `Installer Source` remains the useful user-facing field.
-- Phone -> Local APK Folder -> Phone transitions clear stale Local APK relationship/context state and restore the proper phone columns/order.
-- Personal Device ownership checks prevent captured Device Specific evidence from being stale-reused as evidence for a different connected phone.
-- Failed/incomplete Personal Device recapture preserves the last complete process-local Personal Device profile rather than replacing it with partial evidence.
+- **Source transition fix:** Phone → Local APK Folder → Phone transitions no longer leave stale Local APK state or columns behind.
+- `Installer Category` no longer duplicates the useful `Installer Source` field in views or column customization.
+- Personal Device ownership and recapture guards prevent stale or partial profiles from replacing valid evidence.
 
 ## Compatibility and distribution
-- Application version: `2.1.0`; Windows File Version and Product Version: `2.1.0.0`.
-- Python baseline: CPython 3.14.
-- Prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
-- Managed ADB remains read-only with respect to installed Android apps.
-- The v2.1 Personal Device profile is intentionally session-only. Persistent multi-profile storage remains post-v2.1 issue #200.
-- Published v2.0.0 remains immutable.
+- Version `2.1.0`; Windows File/Product version `2.1.0.0`; CPython 3.14 baseline.
+- Prebuilt for Windows x64/ARM64, Linux x64/ARM64, and macOS Intel/Apple Silicon.
 - Windows and Linux packages are unsigned.
-- macOS packages use ad-hoc engineering signing only. They are not Developer ID signed and are not notarized.
+- macOS packages are ad-hoc engineering signed, not Developer ID signed, and not notarized.
+- Managed ADB remains read-only. Personal Device profiles are session-only; persistent profiles remain issue #200.
 
 ## Release assets
-- `PlayStoreAppAudit-v2.1.0-windows-x64.zip`
-- `PlayStoreAppAudit-v2.1.0-windows-arm64.zip`
-- `PlayStoreAppAudit-v2.1.0-linux-x64.zip`
-- `PlayStoreAppAudit-v2.1.0-linux-arm64.zip`
-- `PlayStoreAppAudit-v2.1.0-macos-x64.zip`
-- `PlayStoreAppAudit-v2.1.0-macos-arm64.zip`
-- `PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
+- Six platform ZIPs for Windows, Linux, and macOS on x64/ARM64.
+- `PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
 
 ## Verification
-- Frozen final source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`.
-- Quality #592 / workflow run `35775208797`: PASS on the frozen SHA.
-- Windows workflow run `35776095408`: x64 and ARM64 PASS on the frozen SHA.
-- Linux workflow run `35776120755`: x64 and ARM64 PASS on the frozen SHA.
-- macOS workflow run `35776146620`: x64 and ARM64 PASS on the frozen SHA.
-- All six final packages passed the canonical frozen-SHA, platform, architecture, legal-manifest and source-material validation gates.
-- Final release assembly using the repository's canonical assembler: PASS.
-- Final release asset-layout and independently recomputed SHA-256 validation: PASS.
-- Final asset set: exactly 8 files.
-
-### SHA-256
-
-```text
-317cfddac8c7e9db30d1fb6bf37a94136e71be3713619c59f737272ec99075ef  PlayStoreAppAudit-v2.1.0-linux-arm64.zip
-0646398d6b30f7e6941c7c6348530499965f93388e8f0735cba465c3837a96a9  PlayStoreAppAudit-v2.1.0-linux-x64.zip
-9f101f432c949b443d089e614d8d5b3d4c21f4f02045667e88570196ebb11ef2  PlayStoreAppAudit-v2.1.0-macos-arm64.zip
-0cf00bb1a65b478f700db2918641e0085d591e4cfb57a1e9b438d3e0eb06f334  PlayStoreAppAudit-v2.1.0-macos-x64.zip
-4edfac898906e9d70d8e8a168293a6ff9208d80c953590bf4f1854dd2b0b85c8  PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz
-0b2456e139e50a1df381b4db76fe4dc0011f7970106c141f55c14e8be94cf190  PlayStoreAppAudit-v2.1.0-windows-arm64.zip
-0b0c03a27d467f3f1e61e1100dc1709dbb4d7fb8058e0f6d01b7175c6d5818a7  PlayStoreAppAudit-v2.1.0-windows-x64.zip
+- Frozen source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`.
+- Quality #592 / run `35775208797`: PASS.
+- Windows `35776095408`, Linux `35776120755`, and macOS `35776146620`: x64 + ARM64 PASS.
+- All six packages passed frozen-SHA, architecture, package, legal/source, and release-layout validation; canonical assembly produced exactly eight files.
+- All seven payload hashes matched `SHA256SUMS.txt`; a clean public re-download matched names, sizes, hashes, and the accepted local files byte-for-byte.
 ```
-````
-
-After publication, all eight project-defined assets were downloaded into a fresh directory. Names and sizes matched the release metadata, all seven payload hashes matched the published `SHA256SUMS.txt`, the checksum file itself matched the accepted local copy, and every published file was byte-for-byte identical to the validated local final set.
 
 ## Published v2.0.0 release body
 
-GitHub Release title: `Store App Audit v2.0.0`.
+Title: `Store App Audit v2.0.0` · [Published 2026-09-15](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0)
 
-The body below records the final v2.0.0 wording and verified release evidence [published on 2026-09-15](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.0.0). Annotated tag object `e5e69b31b6ec8d57e1cca71945c8bfa83c91a6e3` peels to immutable source SHA `f6530eeecd88df552c616dbb42dd78e867ae7db3`; the tag, source, release body and eight project-defined assets are immutable.
-````markdown
+```markdown
 ## What's New / Highlights
 
 ### Added
-- Local APK analysis can audit explicit package files or recursively discover a folder while keeping local artifact identity separate from Android package identity. Supported package inputs include `.apk`, `.apks`, `.apkm` and `.xapk` containers with conservative split-container handling.
-- Local APK results can compare local installed/version evidence with Google Play evidence using the source-aware Local APK vs Store relationship without promoting Local APK data into phone inventory history.
-- Changes & History now has one explicit master tracking control with separate Play Store listing and device inventory tracking, while manual device snapshots remain independently user-controlled.
-- About now owns update status and can perform a fresh stable-release check on demand. An asynchronous startup check is enabled by default, remains silent when current or unavailable, and can be disabled without disabling manual About checks.
+- **Local APK auditing:** Audit individual `.apk`, `.apks`, `.apkm`, and `.xapk` files or recursively scan a folder while keeping each physical artifact distinct.
+- **Store comparison:** Compare Local APK versions with Google Play evidence without writing phone inventory history.
+- **Changes & History:** Separates Play Store listing tracking, device inventory tracking, and manual snapshots.
+- **Update checks:** About owns manual update checks, with an optional quiet startup check.
 
 ### Changed
-- File is organized by the same source order as the main App Source UI: Android Phone (ADB), Local APK(s), then App List File, with source-specific commands grouped under each source.
-- Customize View separates Automatic Columns from user-controlled display/custom columns. Source/context overlays such as Play Store Listing Change, Device App Inventory Change and Local APK vs Store appear automatically only when applicable.
-- Definitive Google Play absence in the checked country is presented as a checked-market result rather than proof of global removal.
-- Audit Presets remain implemented internally but are hidden from the v2.0 menu to keep the release surface focused.
-- The release toolchain moves to CPython 3.14, PySide6-Essentials/Shiboken6 6.11.2 and Nuitka 4.2.1.
-- v2.0 returns to a six-platform release target: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
+- **Source-aware views:** File and view controls are source-aware, and contextual columns appear only when applicable.
+- Checked-country Store absence is presented conservatively rather than as proof of global removal.
+- v2.0 returns to six-platform distribution and moves the release baseline to CPython 3.14.
 
 ### Fixed
-- About update-status layout reserves stable status/action space so the card does not jump vertically between checking, current and update-available states.
-- Windows source/package smoke uses the current Source Details view naming.
-- POSIX Local APK scanning handles platform-specific file attributes correctly.
-- macOS standalone packaging normalizes certifi and pyaxmlparser resources before signing so the app bundle contains no unexpected regular resource files under `Contents/MacOS`.
+- Stabilized About update-status layout, POSIX Local APK scanning, and macOS standalone resource packaging.
 
 ## Compatibility and distribution
-- Application version: `2.0.0`.
-- Windows File Version and Product Version: `2.0.0.0`.
-- Python baseline: CPython 3.14.
-- Prebuilt targets: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Intel/x64 and macOS Apple Silicon/ARM64.
-- Managed ADB remains read-only with respect to installed Android apps.
-- Existing compatibility-sensitive serialized identifiers remain unchanged where required.
-- Windows packages are intentionally unsigned for v2.0. Windows may therefore show an unknown-publisher or SmartScreen warning.
-- Linux packages are unsigned.
-- macOS packages use ad-hoc engineering signing only. They are not Developer ID signed and are not Apple-notarized. macOS may therefore show Gatekeeper warnings depending on how the package is obtained and opened.
-- Production code signing and notarization are deferred to a later 2.x release.
+- Version `2.0.0`; Windows File/Product version `2.0.0.0`; CPython 3.14 baseline.
+- Prebuilt for Windows x64/ARM64, Linux x64/ARM64, and macOS Intel/Apple Silicon.
+- Windows and Linux packages are unsigned.
+- macOS packages are ad-hoc engineering signed, not Developer ID signed, and not notarized.
+- Managed ADB remains read-only.
 
 ## Release assets
-- `PlayStoreAppAudit-v2.0.0-windows-x64.zip`
-- `PlayStoreAppAudit-v2.0.0-windows-arm64.zip`
-- `PlayStoreAppAudit-v2.0.0-linux-x64.zip`
-- `PlayStoreAppAudit-v2.0.0-linux-arm64.zip`
-- `PlayStoreAppAudit-v2.0.0-macos-x64.zip`
-- `PlayStoreAppAudit-v2.0.0-macos-arm64.zip`
-- `PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
+- Six platform ZIPs for Windows, Linux, and macOS on x64/ARM64.
+- `PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
 
 ## Verification
-- Frozen final source SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
-- Final pre-release component freshness audit: PASS.
-- Exact-head Quality run `34903816649` / #445: PASS on the frozen SHA.
-- Windows x64 packaged human acceptance was completed before the final release-portability/build fixes.
-- Final Windows build run `34910426970`: x64 and ARM64 PASS on the frozen SHA.
-- Final Linux build run `34910428715`: x64 and ARM64 PASS on the frozen SHA.
-- Final macOS engineering build run `34904088998`: x64 and ARM64 PASS on the frozen SHA.
-- All six final packages passed their platform-specific architecture, package, smoke and public legal validation gates.
-- Final release assembly using the repository's canonical assembler: PASS.
-- Final release asset-layout and release-wide SHA-256 validation: PASS.
-- Final asset set: exactly 8 files.
-
-### SHA-256
-
-```text
-3a4309c4d3d1d339a3a693ba689c742dae7f4e6145d48f461347fb867822e40d  PlayStoreAppAudit-v2.0.0-linux-arm64.zip
-f6de5eaf6f242ec5bede7142a675be06922d8cff95e551e23c57992f5a1b296c  PlayStoreAppAudit-v2.0.0-linux-x64.zip
-54d0a131446c1d35db958efc596da699f06e2e6946e6b634aa5d4c3e7216855e  PlayStoreAppAudit-v2.0.0-macos-arm64.zip
-2bd36be38b6b703dffba955e1267516c85d1c0f93e2a73083c5f92ce17a98cba  PlayStoreAppAudit-v2.0.0-macos-x64.zip
-5ef4a97ea17e043fda09784bd65191873d5b3847ecfbae47a4d708a4e09f3870  PlayStoreAppAudit-v2.0.0-third-party-sources.tar.xz
-02ea7413fcf2d91283da5a869cdb55f407d0e11a2a7d013f7ce963bfbc8dfdba  PlayStoreAppAudit-v2.0.0-windows-arm64.zip
-3f1df2326bd875fdb5320e05ec7cbb7c8dc0bf4e34d5ddcea3f7a92c0672e665  PlayStoreAppAudit-v2.0.0-windows-x64.zip
+- Frozen source SHA: `f6530eeecd88df552c616dbb42dd78e867ae7db3`.
+- Quality run `34903816649`, Windows `34910426970`, Linux `34910428715`, and macOS `34904088998`: PASS.
+- All six packages passed architecture, package, startup, legal/source, provenance, assembly, and release-layout validation.
+- The exact eight-file set passed release-wide SHA-256 validation and clean public re-download verification.
 ```
-````
 
 ## Published v1.99.0 release body
 
-GitHub Release title: `Play Store App Audit v1.99.0 (Win x64 Only)`.
-
-The body below records the final v1.99.0 wording and verified release evidence [published on 2026-09-09](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0). Annotated tag object `3b4088de9295e6637ced0f5a3d4246b8c8f00680` peels to immutable source SHA `1065744488e548663e3ba365566a9932837f5fb5`; the tag, source, release body and three assets are immutable.
+Title: `Play Store App Audit v1.99.0 (Win x64 Only)` · [Published 2026-09-09](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.99.0)
 
 ```markdown
-## Play Store App Audit v1.99.0 (Engineering Test Build - Windows x64 Only)
-
 ## What's New / Highlights
 
 ### Added
-- A coherent Scan Phone session now captures compact installed version, installer, enabled-state and system-app metadata for every package and keeps that snapshot tied to the selected source.
-- An optional Advanced setting can collect complete device metadata during Scan Phone; a complete capture is reused by Run without repeating ADB work, even if the phone is later disconnected.
-- Alternative Distribution Discovery adds exact-package informational evidence from F-Droid main and optional authorized Aptoide when Google Play is conclusively unavailable in the checked countries.
-- Run now has cooperative Stop behavior that preserves completed valid results and independent cache entries while leaving cancelled audits explicitly incomplete.
+- **Coherent phone snapshot:** Scan Phone captures one coherent package snapshot with installed version, installer, enabled state, and system-app metadata.
+- **Advanced Scan reuse:** Optional Advanced scanning can reuse complete device metadata during Run, even after the phone disconnects.
+- **Alternative distribution evidence:** Alternative Distribution Discovery adds exact-package evidence from F-Droid main and optional authorized Aptoide when Google Play is conclusively unavailable in checked countries.
+- **Cooperative Stop:** Preserves completed results and independent cache entries while marking the audit incomplete.
 
 ### Changed
-- Maintenance Score now distinguishes conclusive checked-market absence from regional or inconclusive Store outcomes and applies only bounded recovery for current conclusive F-Droid or Aptoide availability.
-- The results header now keeps Run/Pause/Resume, Stop, stable progress, Export Results and Clear Results in one predictable order while operational text remains in the compact native status bar.
-- Column Presets, Custom layout persistence, table density, responsive Details presentation and semantic warning emphasis have been refined for clearer native Windows use.
-- Device Inventory comparison now uses the same coherent compact Scan Phone snapshot as the audit, avoiding mixed-time metadata.
+- **Maintenance Score:** Distinguishes checked-market absence from regional or inconclusive outcomes and applies only bounded alternative-store recovery.
+- Results actions, progress, source-aware layouts, Details presentation, and warning emphasis are clearer and more consistent.
+- Device Inventory comparison uses the same coherent snapshot as the audit.
 
 ### Fixed
-- Device Inventory Change values and summary counts now remain synchronized when results are finalized.
-- HTML reports now include the escaped Device Inventory Change value for every row, matching CSV and versioned JSON exports.
+- Device Inventory Change values, summary counts, and HTML/CSV/JSON exports remain synchronized.
 
 ## Compatibility and distribution
-- Engineering Test Build (ETB), Windows x64 only.
-- Application version: `1.99.0`; Windows File Version and Product Version: `1.99.0.0`.
-- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
-- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
-- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.99.0.
-- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
-- Existing settings and serialized compatibility identifiers, including `health_score`, remain supported.
-- Managed ADB remains read-only with respect to installed Android apps.
+- Version `1.99.0`; Windows File/Product version `1.99.0.0`.
+- Windows x64 standalone ZIP only; no separate Python installation is required.
+- The Windows package is unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Windows ARM64, Linux, and macOS were not published for v1.99.0.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI; managed ADB remains read-only.
 
 ## Release assets
-- `PlayStoreAppAudit-v1.99.0-windows-x64.zip` - 38,344,767 bytes.
-- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` - 73,128,144 bytes.
-- `SHA256SUMS.txt` - 227 bytes.
+- `PlayStoreAppAudit-v1.99.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
 
 ## Verification
 - Frozen source SHA: `1065744488e548663e3ba365566a9932837f5fb5`.
-- Post-merge Quality run `34397570534` passed on Python 3.13 and 3.14.
-- Windows x64 build run `34397819253` passed exact-SHA provenance, all 727 tests, Nuitka compilation, PE AMD64 architecture, application/Windows version checks, standalone validation, deterministic packaged smoke and public-strict legal/source validation.
-- Engineering assembler run `34401780853` verified the source workflow, repository, exact SHA, x64-only build lineage and exact three-file asset set.
-- `PlayStoreAppAudit-v1.99.0-windows-x64.zip` SHA-256: `cc556054280ef09bb693a8fd5d6e861c138ee387f96b098788b18db3e171f6c6`.
-- `PlayStoreAppAudit-v1.99.0-third-party-sources.tar.xz` SHA-256: `873087f13af891bb20e6e52d97342ba507311f9e13d1f05b80823103e58b80a3`.
-- Final project-defined release asset count: 3. The annotated tag peels to the frozen SHA, all assets and `SHA256SUMS.txt` were re-downloaded and independently verified, and repository visibility remained private.
+- Quality `34397570534`, Windows build `34397819253`, and assembly `34401780853`: PASS.
+- Package SHA-256: `cc556054280ef09bb693a8fd5d6e861c138ee387f96b098788b18db3e171f6c6`.
+- Third-party sources SHA-256: `873087f13af891bb20e6e52d97342ba507311f9e13d1f05b80823103e58b80a3`.
+- Exact-SHA provenance, AMD64/version/startup, legal/source, three-file layout, checksum, tag-target, and public re-download validation passed.
 ```
 
 ## Published v1.9.0 release body
 
-GitHub Release title: `Play Store App Audit v1.9.0 (Win x64 Only)`.
-
-The body below records the final v1.9.0 wording and verified release evidence [published on 2026-08-25](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0). The annotated tag object `e61033f0ffba3d14f598da4d928aa07390dbbfa9` peels to immutable source SHA `6c117009525f40434e9db714dadf1dd01b79f9ab`; the tag, source, release body and three assets are immutable.
+Title: `Play Store App Audit v1.9.0 (Win x64 Only)` · [Published 2026-08-25](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.9.0)
 
 ```markdown
-## Play Store App Audit v1.9.0 (Engineering Test Build - Windows x64 Only)
-
 ## What's New / Highlights
 
 ### Added
-- A third, automatic extra-wide Details Panel layout for genuinely wide panel viewports, with three related content columns and hysteresis for stable resizing.
-- A native operational status bar that reuses the existing status label and progress widget, keeps the native size grip and shows progress only during active work.
+- **Extra-wide Details:** The Details Panel gains an automatic extra-wide layout for wide viewports.
+- **Native status bar:** A native status bar shows operational state and active progress without duplicating source context.
 
 ### Changed
-- Friendly Notes now appear consistently in the table, complete table tooltip, Details Panel and HTML report while raw Notes remain unchanged in machine-readable data and exports.
-- **Maintenance Score** replaces **Health Score** in user-facing labels, help and reports; the scoring algorithm and compatibility-sensitive `health_score` identifier are unchanged.
-- Installed-vs-Store **Different**, Android Compatibility **Aging target** and **Legacy target** values now use readable foreground warning colours from the existing status palette.
-- The About dialog now presents the product title, tagline and version in a clearer hierarchy.
-- Choose File, Scan Phone and Export Results now use one coordinated, palette-aware icon family.
-- The main action row contains only Run, Export Results and Clear Results; operational status and active progress use the status bar without duplicating source/device identity.
+- **Friendly Notes:** Now appear consistently across the table, tooltip, Details Panel, and HTML report while raw export values remain unchanged.
+- **Maintenance Score naming:** Replaces **Health Score** in user-facing text without changing the algorithm or `health_score` compatibility identifier.
+- Warning colours, About hierarchy, action icons, and the main action row are clearer and more consistent.
 
 ### Fixed
-- Fixed a crash when changing Display Settings with populated, sorted or filtered results.
-- Kept Custom preset selection, field checkboxes, visible columns, selection, Details content and saved column widths consistent through repeated changes and application restart.
+- **Display Settings stability:** Fixed crashes and preserved Custom layout, selection, Details content, and column widths across repeated changes and restart.
 
 ## Compatibility and distribution
-- Engineering Test Build (ETB), Windows x64 only.
-- Application version: `1.9.0`; Windows File Version and Product Version: `1.9.0.0`.
-- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
-- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
-- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.9.0.
-- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
-- Existing v1.8 settings and Smart Queries remain compatible; raw Notes and the internal `health_score` field ID are unchanged.
-- Managed ADB remains read-only with respect to installed Android apps.
+- Version `1.9.0`; Windows File/Product version `1.9.0.0`.
+- Windows x64 standalone ZIP only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI; managed ADB remains read-only.
 
 ## Release assets
-- `PlayStoreAppAudit-v1.9.0-windows-x64.zip` - 33,477,938 bytes.
-- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` - 73,128,144 bytes.
-- `SHA256SUMS.txt` - 225 bytes.
-
-## Verification
-- Frozen source SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`.
-- Quality push run `32797795985` passed on Python 3.13 and 3.14.
-- Windows x64 build run `32798334950` succeeded from the exact same frozen SHA.
-- The canonical build used Python 3.13.15 AMD64, `PySide6-Essentials==6.11.1` and `Nuitka==4.1.3`; PE AMD64/x64, application version `1.9.0`, Windows File/Product version `1.9.0.0`, standalone packaging and intentionally unsigned status were verified. Startup, runtime-content, legal/source and provenance checks passed, and 403 pytest tests passed during the build.
-- Managed Android Platform-Tools 37.0.1 was validated; `adb.exe` is PE I386 and ran successfully under Windows WOW64.
-- Engineering assembly run `32801220807` validated the exact three-file x64-only asset set from the same frozen SHA.
-- Final project-defined release asset count: 3.
-- `PlayStoreAppAudit-v1.9.0-windows-x64.zip` SHA-256: `74db811d959a06709aba4d747873ec1b19894e50ba7183f463f7929b44e19c68`.
-- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz` SHA-256: `ccccbd72992bed8692388077fd409dc76bb8f64efce8fa2ef283b74797a4df95`.
-- `SHA256SUMS.txt` SHA-256: `eb2b5f6d5a8fe978e54367b887c65d77994307447154435e3b3ae81c4bf2bd23`.
-- A clean extraction of the exact assembler-produced Windows ZIP passed the deterministic packaged startup smoke with isolated application-data directories. Application/Windows versions, AMD64 PE architecture and unsigned status were revalidated, and the ZIP retained its canonical SHA-256 after the smoke.
-```
-
-After publication, all three assets were re-downloaded from the public GitHub Release into a fresh directory. Their names, byte sizes and SHA-256 values matched the release record, `SHA256SUMS.txt` was independently parsed successfully, and a clean extraction of the public ZIP passed the deterministic packaged smoke again with isolated application-data directories.
-
-## Published v1.8.0 release body
-
-The body below records the final v1.8.0 release wording and successful evidence [published on 2026-08-24](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0). The annotated tag, frozen source commit and three assets are immutable; post-publication re-download evidence is recorded in `PROJECT_STATUS.md` and `HANDOFF_V1.8.md`.
-
-```markdown
-## Play Store App Audit v1.8.0 (Engineering Test Build - Windows x64 Only)
-
-## What's New / Highlights
-
-### Added
-- Saved Smart Queries with a curated one-level All/Any builder, versioned persistence and session-only active state, kept separate from Quick Filters and Audit Profiles.
-- A Hidden mode for the Details Panel and a focused Display Settings dialog for App Icons, Date Format and Custom Columns.
-
-### Changed
-- Replaced the permanent Details Panel position buttons with one compact **Details** control synchronized with **View > Details Panel**, while preserving Auto, Right and Below placement.
-- Reorganized Advanced Settings into Store & Cache, Device, Audit & History, and Data & Storage categories.
-- Graduated optional Play Store icons from experimental presentation and hardened cache bounds, offline reuse, malformed-data handling and large-table updates.
-- Unified result export actions and action availability across menus, buttons and running-operation states.
-- Standardized command naming, contextual help and the informational product tagline presentation.
-
-### Fixed
-- Prevented incompatible settings/profile commands from opening during active source, audit, finalization or data-maintenance operations.
-- Preserved active operational messages when presentation-only filters or display/layout commands are used.
-- Standardized the result-clearing command as **Clear Results**.
-
-## Compatibility and distribution
-- Engineering Test Build (ETB), Windows x64 only.
-- Application version: `1.8.0`; Windows File Version and Product Version: `1.8.0.0`.
-- Standalone Windows x64 package compiled with Nuitka; no separate Python installation is required.
-- The Windows package is intentionally unsigned. Windows may display a SmartScreen or unknown-publisher warning because the package has no production signature/reputation; that warning does not by itself indicate an application error.
-- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.8.0.
-- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
-- Managed ADB remains read-only with respect to installed Android apps.
-
-## Release assets
-- `PlayStoreAppAudit-v1.8.0-windows-x64.zip` - 33,450,079 bytes.
-- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz` - 73,128,136 bytes.
-- `SHA256SUMS.txt` - 225 bytes.
-
-## Verification
-- Frozen source SHA: `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
-- Quality push run `32682693020` passed on Python 3.13 and 3.14.
-- Windows x64 build run `32683271942` succeeded on the same frozen SHA.
-- The package was validated as PE AMD64/x64, application version `1.8.0`, Windows File/Product version `1.8.0.0`, standalone and unsigned; package contents, startup, legal/source material and release provenance checks passed.
-- Clean extraction, distributed-application smoke and normal startup checks passed. A v1.7.0 settings profile opened under v1.8.0 with expected preferences and audit data preserved; Smart Queries initialized independently without migrating legacy saved filters.
-- Native Windows UI checks passed at logical client sizes 1100x700, 1200x760, 1500x900 and 1600x900 with DPI awareness enabled.
-- Engineering assembly run `32684933669` validated the exact x64-only three-file set from the same frozen SHA.
-- Windows x64 ZIP SHA-256: `b056be21804d2c22483ebee14c2f2bcbee5611a36ad6c7fea51c3dd91043991d`.
-- Third-party source archive SHA-256: `10ea03905fec3b9e9cf03e30a54e98f2c3ceb9d2aea423df4732a10f1551977e`.
-- `SHA256SUMS.txt` SHA-256: `09717c84a7096351dcc8ba91609146a877ffb2eee1184b34ccfea40c39bebb6b`.
-```
-
-## Historical normalized release notes
-
-The following bodies are normalized from the release notes that were actually published on GitHub. Content is reorganized into the canonical structure without retroactively claiming verification steps or distribution properties that the historical body did not support.
-
-### v1.4.0
-
-```markdown
-## Play Store App Audit v1.4.0 (Engineering Test Build - Windows x64 Only)
-
-## What's New / Highlights
-
-### Changed
-- Qt now uses the platform-default application style instead of forcing Fusion globally.
-- Native platform styling now owns the default application font and generic scrollbar presentation.
-- Existing semantic colours, branded actions, table treatment and layout are retained while native Windows and macOS control integration is improved.
-
-## Compatibility and distribution
-- Prebuilt release package: Windows x64 only.
-- The Windows package is intentionally unsigned.
-- Production code signing is planned for a later production release.
-- Windows ARM64, Linux and macOS remain supported by the shared source tree, but v1.4.0 does not publish new prebuilt packages for those targets.
-- Python 3.13 remains the release-packaging baseline. Python 3.13 and 3.14 are the Quality CI targets.
-- Because this package is unsigned, Windows may display a SmartScreen or publisher warning when opening it.
-
-## Release assets
-This release intentionally contains exactly three project-defined assets:
-- `PlayStoreAppAudit-v1.4.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.4.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
-
-The third-party source archive contains the corresponding source material required for the distributed runtime dependencies.
-
-## Verification
-- Frozen source commit: `6830e0c4a03e355f442070f00dd5008322f5dbc4`.
-- `PlayStoreAppAudit-v1.4.0-windows-x64.zip`: `238da12f3dd5a243cbebd4b8618935a973607706fe67edad2d15e3b4be06408d`.
-- `PlayStoreAppAudit-v1.4.0-third-party-sources.tar.xz`: `93ded83b5a15389924911cee2865cb1684efeca992e011c1d0d9a02f68c69d72`.
-- Published `SHA256SUMS.txt` asset SHA-256: `41dd2d20b1fc75a19a0c318a86e28fb0072bbc8e4bac046f688d3afd13a0e9d5`.
-```
-
-### v1.3.0
-
-```markdown
-## Play Store App Audit v1.3.0
-
-## What's New / Highlights
-
-### Changed
-- Native standalone packages for Windows, Linux and macOS.
-- x64 and ARM64 builds for all three platforms.
-- Qt / PySide6 6.11.1 baseline.
-- Improved cross-platform packaging and runtime validation.
-- Managed ADB support where available.
-- Consolidated third-party source archive for release compliance.
-- Release-wide SHA-256 checksums.
-
-## Compatibility and distribution
-- Choose the ZIP matching the operating system and architecture.
-- Prebuilt packages cover Windows x64/ARM64, Linux x64/ARM64, macOS Apple Silicon/ARM64 and macOS Intel/x64.
-- The macOS builds use an ad-hoc CI signature and are not Apple-notarized.
-
-## Release assets
-- Six platform ZIP packages covering Windows, Linux and macOS on x64 and ARM64.
-- `PlayStoreAppAudit-v1.3.0-third-party-sources.tar.xz`.
+- `PlayStoreAppAudit-v1.9.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.9.0-third-party-sources.tar.xz`.
 - `SHA256SUMS.txt`.
 
 ## Verification
-- All published binary and source assets were assembled and validated from commit `fb2193dfc13d0f0e6b7be660c1342bbf87d26081`.
+- Frozen source SHA: `6c117009525f40434e9db714dadf1dd01b79f9ab`.
+- Windows package architecture, version, startup, legal/source, provenance, and managed Platform-Tools validation passed.
+- Payload SHA-256: `96677284def49dfe70612e9ca6717da432d6ebfdbbeb279f8a6a9f66f0b48306` (ZIP), `ccccbd72992bed8692388077fd409dc76bb8f64efce8fa2ef283b74797a4df95` (sources).
+- `SHA256SUMS.txt` SHA-256: `0604b0541e6f4fe02df32cdbc6b9fa77f48e96403356f66ec56c20342815fa52`.
 ```
 
-### v1.2.0
+## Published v1.8.0 release body
+
+Title: `Play Store App Audit v1.8.0 (Win x64 Only)` · [Published 2026-08-24](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.8.0)
 
 ```markdown
-## Play Store App Audit v1.2.0 (Engineering Test Build - Windows x64 Only)
-
 ## What's New / Highlights
 
 ### Added
-- Scan a connected Android phone directly and export its current package inventory as CSV.
-- Added a detailed Health Score methodology and limitations guide.
-- Added the application version to About and support diagnostics.
+- **Saved Smart Queries:** Use a one-level All/Any builder and versioned persistence.
+- **Display controls:** Hidden Details mode and a focused Display Settings dialog cover icons, dates, and Custom columns.
 
 ### Changed
-- Reorganized File, Tools and Help menus and grouped data-maintenance actions more clearly.
-- Separated clearing current results from cache and audit-history maintenance.
-- Inventory export is available only when a current phone inventory exists.
-- Windows x64 is distributed as a validated Nuitka standalone ZIP with a SHA-256 checksum sidecar.
-- Play Store App Audit's own code is released under GPL-3.0-only. Alternative commercial licensing is available separately.
-
-## Compatibility and distribution
-- Windows x64: normal prebuilt release target.
-- Windows ARM64: manual engineering build capability.
-- macOS and Linux: supported from source, with packaging performed manually or on demand.
-- The Windows build is unsigned, so Microsoft Defender SmartScreen or another reputation-based check may display a warning when the application is first run.
-- Required corresponding-source archives for bundled Qt/PySide components and certifi are included with this release.
-
-## Release assets
-- Windows x64 validated Nuitka standalone ZIP.
-- SHA-256 checksum sidecar for the Windows x64 ZIP.
-
-## Verification
-- Release commit: `72e2ca9`.
-- Windows x64 ZIP SHA-256: `5eab727b80f8dd67a49c63e14c2ca49f229aaca6e74d5c56e8f6c92320ea982a`.
-```
-
-### v1.1.0
-
-The originally published body contained an internal heading that incorrectly said `v1.2.0`; the normalized body below corrects that obvious editorial typo to `v1.1.0` while preserving the release's substantive content.
-
-```markdown
-## Play Store App Audit v1.1.0 (Engineering Test Build - Windows x64 Only)
-
-## What's New / Highlights
-
-### Added
-- Added a Recent sources dropdown beside Choose file.
-- Reorganized File and export actions, including Run Play Store audit in the File menu.
-- Added clearer ADB setup and app-list import guides.
-
-### Changed
-- Play Store App Audit v1.1.0 makes common tasks easier to reach and the main window more compact.
-- Improved application icon sizing without changing its artwork.
-- Removed the LinkedIn link from About.
-
-## Compatibility and distribution
-- v1.1.0 provides a prebuilt Windows x64 package.
-- v1.0.0 remains available for the previously published Windows ARM64, Linux and macOS packages.
-
-## Release assets
-- Prebuilt Windows x64 package.
-
-## Verification
-- Release commit: `af5f96b`.
-- The published body did not record additional standardized verification details.
-```
-
-### v1.0.0
-
-```markdown
-## Play Store App Audit v1.0.0
-
-## What's New / Highlights
-
-### Added
-- First stable release.
-- Cross-platform runtime abstraction for application data, Store-country detection and Android Platform-Tools paths.
-- Portable-mode data-path handling in the canonical platform layer.
-- Bulk Android package metadata collection through one read-only `dumpsys package` request, with conservative per-package fallback.
-- Canonical immutable Qt table schema in `playstore_app_audit/ui/schema.py`.
-- Explicit UI behaviour hooks for row classification, cache loading and device metadata collection/enrichment.
-- Regression coverage for country parsing, version comparison, Android compatibility labels, Health Score, filters, portable paths, ADB bulk parsing, architecture constraints and UI schema integrity.
-- Lightweight pull-request quality workflow covering compile, tests, Ruff and Qt offscreen smoke checks.
-- Manual Linux and macOS packaging workflows with platform-specific runtime validation.
-- Native Windows ARM64 application packaging alongside the Windows x64 package.
-
-### Changed
-- Application version is 1.0.0 across the package and project metadata.
-- State/settings/cache/history code uses `services.state` directly; the temporary persistence compatibility shim was removed.
-- Historical v7/v8/v9, `qt_base`, `features` and `user_state` module aliases were replaced by descriptive imports.
-- Table columns, labels, widths and export extras no longer depend on UI import order.
-- Cross-module runtime monkey-patching for audit selection, classification, cache bypass and ADB enrichment was replaced by explicit overridable methods.
-- Device metadata collection can avoid hundreds of individual `dumpsys package <package>` subprocesses on large app inventories.
-- Service/report version strings follow the package version rather than historical 0.9.x literals.
-- Linux CI installs the EGL/X11 libraries required by Qt on the hosted runner.
-- macOS packaging excludes the unused Qt Virtual Keyboard platform-input-context plugin.
-- macOS/Linux packaging validates the actual generated binary/app bundle so a deployment-tool false positive cannot upload an empty artifact.
-- Release packaging covers Windows x64 and ARM64, Linux x64 and ARM64, and macOS Apple Silicon and Intel from the same source revision.
-- Windows packaging validates native Python/PySide6 inputs; packaging asserts actual PE/ELF/Mach-O architecture, runs deterministic source and packaged smoke tests, and records release provenance in `BUILD-INFO`.
-- ADB validation is architecture-aware: each supported managed or native path must execute successfully, while Windows records the downloaded `adb.exe` architecture separately from the native application package.
+- **Details layout control:** One compact control replaces permanent position buttons while preserving Auto, Right, and Below layouts.
+- Advanced Settings, optional Store icons, exports, action availability, naming, and contextual help are more consistent.
 
 ### Fixed
-- `MainWindow` no longer mutates platform, state or version modules at import time.
-- Final source controls are no longer rebuilt twice during window construction.
-- Saved Qt header state is invalidated once for the canonical table schema.
-- Google Play `datePublished` is not accepted as a latest-update date.
-- ADB subprocesses no longer flash console windows on Windows.
-- The macOS deployment path no longer attempts to bundle the unused `QtVirtualKeyboardQml` framework through platform input contexts.
-- The Linux Qt smoke/build workflow provides `libEGL` and related XCB runtime libraries.
+- **Busy-state safety:** Incompatible settings/profile actions are blocked without overwriting active status messages.
 
 ## Compatibility and distribution
-- Windows x64 and Windows ARM64 packages.
-- Linux x64 and Linux ARM64 packages.
-- macOS Apple Silicon / ARM64 and macOS Intel / x64 packages.
-- Windows remains the primary automatic release build.
-- Linux and macOS use the same Qt/PySide6 source tree and are manual/on-demand release targets.
-- CustomTkinter remains retired and preserved only by the historical `legacy-customtkinter-v9.3` tag.
-- Windows and Linux packages are unsigned.
-- macOS packages are ad-hoc signed for CI integrity but are not Apple-notarized.
-- Windows ARM64 was natively built and smoke-tested on GitHub's Windows ARM64 runner, which was in public preview at release validation time.
-- macOS ARM64 and Intel/x64 are separate thin packages, not universal binaries.
-- macOS minimum-version Mach-O metadata is not a complete compatibility guarantee for every older macOS release.
+- Version `1.8.0`; Windows File/Product version `1.8.0.0`.
+- Windows x64 standalone ZIP only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI; managed ADB remains read-only.
 
 ## Release assets
-- Six platform ZIP packages: Windows x64, Windows ARM64, Linux x64, Linux ARM64, macOS Apple Silicon/ARM64 and macOS Intel/x64.
-- SHA-256 sidecars for all six packages.
+- `PlayStoreAppAudit-v1.8.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.8.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
 
 ## Verification
-- All packages were built from exact commit `87cb259218f3acd3be38b43cd3343ef93f3d7ae6`.
-- Windows ARM64 was natively built and smoke-tested on GitHub's Windows ARM64 runner.
-- Linux x64 was validated on Ubuntu 22.04 CI.
-- Linux ARM64 was validated on Ubuntu 24.04 ARM64 CI.
-- Packaging validates actual PE/ELF/Mach-O architecture, deterministic source and packaged smoke tests, and release provenance in `BUILD-INFO`.
-- SHA-256 sidecars are provided for all six packages.
+- Frozen source SHA: `ac328f0dffddb6b70fa7600f1291377376bc05d4`.
+- Package architecture/version, startup, legal/source, provenance, settings migration, and native Windows UI validation passed.
+- Payload SHA-256: `290bdb3e04ae9a763d5a280fcc76b3cf4d4afb2d7483603a52de1351cbff5239` (ZIP), `10ea03905fec3b9e9cf03e30a54e98f2c3ceb9d2aea423df4732a10f1551977e` (sources).
+- `SHA256SUMS.txt` SHA-256: `cf12bd9e9989307895aa73b7b84341e5f5a40d3443b044fbf0617c12bef070a6`.
+```
+
+## Published v1.7.0 release body
+
+Title: `Play Store App Audit v1.7.0 (Win x64 Only)` · [Published 2026-08-23](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.7.0)
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Audit workflow expansion:** Added responsive Details layouts, structured Store request evidence, installer/source and SDK filters, versioned JSON export, reusable audit profiles, and conservative smart re-audits.
+
+### Changed
+- **Store context and history:** Country/language resolution, market notes, and separate Store/device history are clearer and more conservative.
+- **Health Score guardrails:** The optional maintenance heuristic is disabled by default and explicitly not a malware/security score.
+
+### Fixed
+- **Context correctness:** File/list audits no longer inherit phone language, first audits no longer imply prior inventory changes, and not-found evidence remains distinct from transient failures.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI; managed ADB remains read-only.
+
+## Release assets
+- `PlayStoreAppAudit-v1.7.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.7.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
+
+## Verification
+- Frozen source SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
+- Windows x64 version, regression, Qt smoke, managed ADB, legal/source, standalone-package, and public verification passed.
+- Payload SHA-256: `83f0d3ce20f89f8439406400dd1d1c081d4423dd0f3e55add3c97feab6bbbe9c` (ZIP), `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458` (sources).
+- `SHA256SUMS.txt` SHA-256: `a2ba41af69bf4169f96569695a9fce69d479566cff97e1eadd2f00cce6b1b533`.
+```
+
+## Published v1.6.0 release body
+
+Title: `Play Store App Audit v1.6.0 (Win x64 Only)` · [Published 2026-08-22](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.6.0)
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Source-aware Store language:** Can follow the connected phone, while file/list audits use the selected Store country's language.
+- **Details and history:** Added remembered Right/Below layouts, structured Store country/language evidence, developer metadata, and grouped previous-audit changes.
+
+### Changed
+- **Consistent audit context:** Consolidated bounded country fallback, aligned Store icons with titles, retained structured change events, and treated the first phone inventory as a baseline.
+
+### Fixed
+- **Cache and locale reliability:** Hardened icon-cache failures, avoided language-only retries for conclusive not-found results, and prevented file/list audits from inheriting phone locale.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI; managed ADB remains read-only.
+
+## Release assets
+- `PlayStoreAppAudit-v1.6.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.6.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
+
+## Verification
+- Frozen source SHA: `246acb15b8e9b2aa9155dc1c3a7c24dc32d19540`.
+- Windows x64 regression, Qt smoke, managed ADB, legal/source, standalone-package, and startup validation passed.
+- Payload SHA-256: `ab90a461eb9db84579edc15bdc819e59882cf4b210d92787bb86e2ff02f9d593` (ZIP), `0f068f20ef14e0e53bd4869c66ae6542725a5c34e390cebf804279a8b28b1165` (sources).
+- `SHA256SUMS.txt` SHA-256: `06899818f1defa92a3151b6e05d714d3d59eda079479624d46cbcbdcaf3e0f93`.
 ```
 
 ## Published v1.5.0 release body
 
-The body below records the final v1.5.0 release wording and the successful evidence used for publication. The published tag, source commit and assets are immutable.
+Title: `Play Store App Audit v1.5.0 (Win x64 Only)` · [Published 2026-08-21](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.5.0)
 
 ```markdown
-## Play Store App Audit v1.5.0 (Engineering Test Build - Windows x64 Only)
-
 ## What's New / Highlights
 
 ### Added
-- Configurable concurrent Google Play workers in Advanced settings, with 16 as the default/recommended value.
-- Live regional-verification progress while fallback Store countries are checked.
-- Optional experimental Play Store app icons with long-lived disk reuse and progressive non-blocking table population.
-- Connected-device source summaries with manufacturer/model and Android version/API.
+- **Faster Store audits:** Added configurable concurrent Store workers, live regional-verification progress, optional cached Store icons, and connected-device summaries.
 
 ### Changed
-- Reduced negative multi-country audit latency with bounded ordered fallback batches while preserving country priority and final classifications.
-- Treat propagated Store `NotFoundError` as terminal for the outer retry loop while retaining retry/backoff for transient failures.
-- Added a 25-second scraper transport timeout.
-- Improved cached/live/finalization progress, File-menu result actions, numeric sorting and status-chip sizing.
-- Defaulted source-level system-app exclusion to enabled while preserving explicit saved choices.
+- **Audit responsiveness:** Faster bounded multi-country checks, a 25-second transport timeout, clearer progress/actions/sorting, and system-app exclusion enabled by default.
 
 ### Fixed
-- Avoided deterministic retries for definitive Store not-found results.
-- Preserved uncertainty semantics for timeout/network failures.
-- Prevented unavailable/removed rows from displaying stale experimental app icons.
+- **Not-found reliability:** Definitive results no longer receive deterministic retries, network uncertainty remains distinct, and unavailable rows no longer show stale icons.
 
 ## Compatibility and distribution
-- Engineering Test Build (ETB), Windows x64 only.
-- Windows package intentionally unsigned.
-- Windows ARM64, Linux and macOS remain source-supported but are not rebuilt for v1.5.0.
-- Production signing and the full Windows/Linux/macOS x64/ARM64 release profile remain planned for v1.6.
-- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
-- Because this package is unsigned, Windows may display a SmartScreen or publisher warning when opening it.
+- Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI.
 
 ## Release assets
-This release intentionally contains exactly three project-defined assets:
-- `PlayStoreAppAudit-v1.5.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
-
-The third-party source archive contains the corresponding source material required for the distributed runtime dependencies.
+- `PlayStoreAppAudit-v1.5.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
 
 ## Verification
 - Frozen source SHA: `6f00bea0789874bc6339286a2ffc3eb9cb2891bb`.
-- Quality CI push run `32438975177` passed on the frozen SHA with Python 3.13 and Python 3.14.
-- Windows x64 build run `32443253472` completed successfully from the same frozen SHA.
-- Native Python/PySide6 architecture, project version, static/regression tests, Qt source smoke tests, managed ADB path and Windows standalone package validation passed.
-- Strict release legal/source-material preflight and packaged legal validation passed.
-- Engineering release assembly run `32446825765` verified the source workflow identity, repository, exact SHA, x64-only input and exact three-file public asset set.
-- `PlayStoreAppAudit-v1.5.0-windows-x64.zip` SHA-256: `942084863817852be53d63370b07b0a080728e8467f0e158deb8c2a1af354f8f`.
-- `PlayStoreAppAudit-v1.5.0-third-party-sources.tar.xz` SHA-256: `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719`.
-- Independent post-publication SHA-256 calculation matched the published `SHA256SUMS.txt` for both payload assets.
+- Windows x64 version, regression, Qt smoke, managed ADB, standalone-package, legal/source, and three-file assembly validation passed.
+- Payload SHA-256: `693203f3371cc6ddf000ac54597389c2ca0c30ca54f1a1187b5b2cc6c2e7b661` (ZIP), `b24595b3bbf6adb77846104b246956d0f171777c8be81ef6e22b8d2b68a9a719` (sources).
+- `SHA256SUMS.txt` SHA-256: `533a3e88f8fbcd6ab1225a177f39817aa6098264052108384243637fac52e217`.
 ```
 
+## Published v1.4.0 release body
 
-## Published v1.7.0 release body
-
-The body below records the final v1.7.0 release wording and successful evidence. The published tag, source commit and three assets are immutable.
+Title: `Play Store App Audit v1.4.0 (Win x64 Only)` · [Published 2026-08-19](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.4.0)
 
 ```markdown
-## Play Store App Audit v1.7.0 (Engineering Test Build - Windows x64 Only)
+## What's New / Highlights
 
+### Changed
+- **Native styling:** Qt now uses the system-default style, font, and generic scrollbar presentation while retaining the established semantic colours and branded actions.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
+- Python 3.13 packaging baseline; Python 3.13/3.14 Quality CI.
+
+## Release assets
+- `PlayStoreAppAudit-v1.4.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.4.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
+
+## Verification
+- Frozen source SHA: `6830e0c4a03e355f442070f00dd5008322f5dbc4`.
+- Windows x64 package and release validation passed.
+- Payload SHA-256: `1c9edf10c7b2b85c3cfc4095340f665815da0e7e3ef82fae664f6fc61929a6fd` (ZIP), `93ded83b5a15389924911cee2865cb1684efeca992e011c1d0d9a02f68c69d72` (sources).
+- `SHA256SUMS.txt` SHA-256: `531acbb17a00a212ac6556dc1e6f92871b73ea8dc01190197304086c1f1a19ed`.
+```
+
+## Published v1.3.0 release body
+
+Title: `Play Store App Audit v1.3.0 (Win x64 Only)` · [Published 2026-08-19](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.3.0)
+
+```markdown
+## What's New / Highlights
+
+### Changed
+- **Standalone packaging:** Moved Windows distribution to a native standalone package with Qt/PySide6 6.11.1, managed ADB where available, bundled third-party source material, and release-wide checksums.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned.
+
+## Release assets
+- `PlayStoreAppAudit-v1.3.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.3.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
+
+## Verification
+- Frozen source SHA: `fb2193dfc13d0f0e6b7be660c1342bbf87d26081`.
+- Windows x64 package, runtime, and release validation passed.
+- Payload SHA-256: `e5ee2f21dca73d1fadff3f77fed6b551804db8b2fd22230e03971e9a4cded4de` (ZIP), `4020dd73b4a1cf65e8107c640cc85b502f1b96fe5ebbcf7b1603a4b830efd69c` (sources).
+- `SHA256SUMS.txt` SHA-256: `beaa9fc071aeef8427ef9724a3c8a87e68d7ea5e0a6c2bfe219237758ba800c0`.
+```
+
+## Published v1.2.0 release body
+
+Title: `Play Store App Audit v1.2.0 (Win x64 Only)` · [Published 2026-08-18](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.2.0)
+
+```markdown
 ## What's New / Highlights
 
 ### Added
-- Responsive selected-row Details Panel controls with Auto, Right and Below placement modes and adaptive content layout.
-- Structured Store request evidence and compact diagnostics for country/language checks, fallback markets and inconclusive results.
-- Installer/source classification and built-in installer filters.
-- SDK maintenance filters and compatibility-state filtering.
-- Versioned JSON export for all or visible results.
-- Reusable audit profiles.
-- Conservative smart/incremental re-audit behavior with targeted rechecks and Force full refresh.
+- **Phone inventory:** Scan a connected Android phone and export its package inventory as CSV.
+- **Health Score guidance:** Added Health Score methodology/limitations guidance and version details in About and support diagnostics.
 
 ### Changed
-- Store country and Store language are resolved independently with explicit override/host/device fallback semantics.
-- Store market evidence and Notes prioritize concise human-readable outcomes while raw evidence remains structured.
-- Store audit history and phone inventory history are presented separately, including first-baseline wording.
-- Health Score is an optional supported 0-100 maintenance heuristic, disabled by default and not a malware/security score.
-- Details Panel position controls are larger and clearer while retaining hover tooltips.
-
-### Fixed
-- File/list audits no longer inherit stale connected-phone language context.
-- First-audit rows no longer present phone inventory changes as previous Store-audit changes.
-- Removed/region-restricted apps no longer expose raw machine-note tokens in the user-facing Details Panel.
-- Definitive Store not-found evidence remains distinct from transient/inconclusive failures.
+- Reorganized File, Tools, Help, export, and data-maintenance actions.
+- **Standalone distribution:** Windows x64 is distributed as a validated standalone ZIP; project code uses GPL-3.0-only with separate commercial licensing available.
 
 ## Compatibility and distribution
-- Engineering Test Build (ETB), Windows x64 only.
-- The Windows package is intentionally unsigned; Windows may display a SmartScreen/publisher warning.
-- Windows ARM64, Linux and macOS remain source-supported but were not rebuilt for v1.7.0.
-- Python 3.13 is the packaging baseline; Python 3.13 and 3.14 are Quality CI targets.
-- `PySide6-Essentials==6.11.1`; `Nuitka==4.1.3`.
-- Managed ADB remains read-only with respect to installed Android apps.
+- Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
 
 ## Release assets
-- `PlayStoreAppAudit-v1.7.0-windows-x64.zip`
-- `PlayStoreAppAudit-v1.7.0-third-party-sources.tar.xz`
-- `SHA256SUMS.txt`
+- `PlayStoreAppAudit-v1.2.0-windows-x64.zip`.
+- `PlayStoreAppAudit-v1.2.0-windows-x64.zip.sha256`.
 
 ## Verification
-- Frozen source SHA: `e2d09098bc42c6f16d202d010deda3eb24d99aa3`.
-- Quality push run `32609018096` passed on Python 3.13 and 3.14.
-- Windows x64 build run `32609148943` succeeded on the same frozen SHA.
-- Engineering assembly run `32610281618` validated the exact x64-only three-file set.
-- Publish/post-publication verification run `32610914851` re-downloaded all three public assets, verified their checksums and confirmed annotated tag `v1.7.0` peels to the frozen SHA.
-- Windows x64 ZIP SHA-256: `142b15e40fba3d7ed8b29e1e37b366551dde3cf65e18608434869f4528d50c1b`.
-- Third-party source archive SHA-256: `9a3991509a8629a2827074b939975c048695b4557e2e22635eef35336c682458`.
-- `SHA256SUMS.txt` SHA-256: `984d81cc77f60e10b1033199ba71b4737adb0b272c416d268a8e5025226e2ae9`.
+- Frozen source SHA: `72e2ca962120de83aa5dfe7571d496f9bf334fa7`.
+- ZIP SHA-256: `d72498992f93d68bcd17dbf926f52427fcb2051c8f1cbeecaac3dbf8d7a30e82`.
+- Checksum sidecar SHA-256: `b41885c1d8c93b137cd0c0cee66d8233291898c524034d6f9f2ca4a087af42d4`.
+```
+
+## Published v1.1.0 release body
+
+Title: `Play Store App Audit v1.1.0 (Win x64 Only)` · [Published 2026-08-17](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.1.0)
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Navigation and guidance:** Added Recent Sources, easier-to-reach File/export/audit actions, and clearer ADB and app-list import guides.
+
+### Changed
+- **Compact UI:** Made the main window more compact, improved icon sizing, and simplified About.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned.
+
+## Release assets
+- `PlayStoreAppAudit-v1.1.0-windows-x64.exe`.
+- `PlayStoreAppAudit-v1.1.0-windows-x64.exe.sha256`.
+
+## Verification
+- Frozen source SHA: `af5f96b35d63d846530a2e09207297aa21463251`.
+- Executable SHA-256: `2e59211dbfb66f20eaff45bb32dd722f65bc1d11787d50d82b31870bcedc41db`.
+- Checksum sidecar SHA-256: `0157e7e2710768e234b0dbe3e0f9677bec58faccfe0254d1cc1abb32f94d683b`.
+```
+
+## Published v1.0.0 release body
+
+Title: `Play Store App Audit v1.0.0 (Win x64 Only)` · [Published 2026-08-17](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v1.0.0)
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Stable Qt release:** First stable Qt desktop release, with portable application-data handling, platform-aware Store/ADB paths, and bulk read-only Android package metadata collection.
+- Added a stable table schema, explicit UI extension points, regression coverage, and pull-request Quality checks.
+
+### Changed
+- Consolidated runtime/state/version ownership and replaced historical module aliases and runtime monkey-patching with explicit canonical interfaces.
+- **Faster device metadata:** Bulk device metadata avoids hundreds of individual package subprocesses on large inventories.
+
+### Fixed
+- **Store update-date correctness:** Google Play `datePublished` is no longer accepted as the latest-update date.
+- ADB subprocesses no longer flash console windows on Windows.
+
+## Compatibility and distribution
+- Windows x64 only; unsigned.
+
+## Release assets
+- `PlayStoreAppAudit-v1.0.0-windows-x64.exe`.
+- `PlayStoreAppAudit-v1.0.0-windows-x64.exe.sha256`.
+
+## Verification
+- Frozen source SHA: `87cb259218f3acd3be38b43cd3343ef93f3d7ae6`.
+- Windows x64 packaged-startup validation passed.
+- Executable SHA-256: `6b57a5adaaad41a62e4b5045a66652782fd24a34f33f5b8ac473234d760e0509`.
+- Checksum sidecar SHA-256: `0ad90919ff02c6f4097a989dd7639c54bccbd258a3ec421cbd783b5a04d77b1a`.
 ```

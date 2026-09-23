@@ -55,7 +55,7 @@ This checklist begins after the feature-complete Windows x64 acceptance and the 
 - [x] Annotated `v2.1.0` tag was created after the frozen SHA and assets were accepted.
 - [x] GitHub Release was created from the already validated assets; no tag-triggered rebuild occurred.
 - [x] Public release assets were cleanly re-downloaded and names, sizes, SHA-256 values and byte identity were independently reverified.
-- [ ] Permanent closure documentation PR, merge, local synchronization, issue #153 closure and final handoff/snapshot remain. Actions housekeeping run `35793158003` and explicit artifact cleanup are complete.
+- [ ] The final editorial/roadmap PR, post-merge local synchronization, issue #153 closure and final handoff/snapshot remain. The first closure PR, Actions housekeeping run `35793158003` and explicit artifact cleanup are complete.
 
 ## Feature scope frozen for release preparation
 

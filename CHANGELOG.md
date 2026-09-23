@@ -35,7 +35,7 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 - All six platform packages were built and validated from immutable release SHA `df2726b959963e5dbb096638d5072bd15eb1de92`; the exact eight-asset public release was independently re-downloaded and verified byte-for-byte.
 - Managed ADB remains read-only with respect to installed Android apps.
 - The Personal Device profile is intentionally session-only in v2.1; persistent multi-profile storage remains post-v2.1 issue #200.
-- Published v2.0.0 and v2.1.0 remain immutable.
+- Published v2.0.0 and v2.1.0 source commits, tag targets and assets remain immutable; descriptive Release prose may be maintained under `docs/RELEASE_NOTES.md`.
 
 ## [2.0.0] - 2026-09-13
 

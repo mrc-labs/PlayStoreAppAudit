@@ -8,9 +8,19 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** post-v2.1 planning. The published v2.1.0 tag and release assets are immutable; detailed v2.2 scope is not yet frozen.
+**Current development line:** v2.2 planning. Source-aware table layouts and presets are explicitly scoped in [issue #208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208); no v2.2 implementation is part of the v2.1 closure work.
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
+
+## What's new in v2.1
+
+- **Local APK file management:** Rename or remove individual files, preview collision-safe Mass Rename operations, and guard bulk removal of exact Outdated or Unknown results.
+- **Device Specific resolution:** Resolve Store versions through validated profiles and configurable metadata providers without replacing the raw public Store result.
+- **Get Phone Data:** Capture a privacy-safe, session-only Personal Device profile through read-only ADB.
+- **Source-aware Local APK UX:** Review clearer comparison states and corrected transitions between phone and Local APK sources.
+- **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
+
+See the [v2.1.0 GitHub Release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0) for the complete notes and verified downloads.
 
 ## What can you use Store App Audit for?
 
@@ -62,43 +72,17 @@ These screenshots are included in the immutable v2.1.0 source and packages.
 
 ### Published v2.1.0
 
-v2.1.0 is the current public release. It was published from frozen source SHA `df2726b959963e5dbb096638d5072bd15eb1de92` after Quality #592, exact-SHA Windows/Linux/macOS builds, canonical release assembly, checksum validation, clean public re-download and byte-for-byte verification.
-
-Published binary targets:
-
-- Windows x64
-- Windows ARM64
-- Linux x64
-- Linux ARM64
-- macOS Intel / x64
-- macOS Apple Silicon / ARM64
-
-The release also contains the consolidated third-party source archive and release-wide `SHA256SUMS.txt`.
-
-Signing status for v2.1.0:
-
-- Windows packages are unsigned.
-- Linux packages are unsigned.
-- macOS packages use ad-hoc engineering signing only and are **not** Developer ID signed or notarized.
+v2.1.0 is the current public release, frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. It provides Windows, Linux, and macOS packages for x64 and ARM64 plus consolidated third-party sources and `SHA256SUMS.txt`. Windows/Linux are unsigned; macOS is ad-hoc engineering signed and is not Developer ID signed or notarized. Canonical assembly, checksum validation, and public byte-for-byte re-download verification passed.
 
 See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
 
-### Post-v2.1 planning
+### v2.2 and later planning
 
-v2.1 release work is complete. [Issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) remains open only until the permanent release-closure PR is merged and final synchronization is complete.
+v2.1 release work is complete. [Issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) remains open through the final editorial PR and post-merge synchronization.
 
-Current direction:
+Explicit v2.2 UX scope in [issue #208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208) covers automatic Local APK columns, separate persistent Custom layouts for phone/App List and Local APK sources, and source-aware built-in presets. Broader arbitrary Named Custom Views remain separate [issue #147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
 
-- Local APK quick-filter spacing polish: completed.
-- Local APK file management Track B: completed, including safe single-file Rename/Remove, Mass Rename with validated preview/templates/collision protection, and safeguarded Mass Remove for exact Outdated/Unknown relationships.
-- Device Specific resolver integration: shipped in v2.1 as an opt-in advanced second-stage resolver using an explicit configured metadata endpoint and bundled reference profiles; the public Store result remains authoritative.
-- Theme-aware semantic presentation and dark-mode contrast work: completed.
-- Canonical README/in-app Help screenshots: generated from deterministic synthetic data and reused across the repository homepage and in-app Overview.
-- All six final platform packages were validated from the same frozen SHA and the public eight-asset set was independently reverified.
-
-CLI/headless support and Named Custom Views issue #147 remain candidates for v2.2. Persistent Personal Device profiles remain separate post-v2.1 issue #200. Detailed next-cycle scope is not frozen by release closure.
-
-Future release work continues to use the exact-SHA, six-platform validation model documented in the project release guides.
+CLI/headless remains planned for v2.2 through the existing service/domain boundaries. Persistent Personal Device profiles remain separate post-v2.1 issue #200. Safe update delivery is later-2.x issue [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209), linked to signing/notarization trust issue #154; automatic installation is not v2.2 scope.
 
 ## Download and installation
 

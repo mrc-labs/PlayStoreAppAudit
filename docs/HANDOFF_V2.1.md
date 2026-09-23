@@ -1,89 +1,66 @@
-# Store App Audit v2.1 — post-release closure handoff
+# Store App Audit v2.1 — final editorial closure handoff
 
 Last updated: 2026-09-23 CEST
 
-## Status
+## Current state
 
-v2.1.0 is published, independently verified and immutable. Product and release work is complete. This handoff now exists only to carry the permanent closure documentation PR through normal merge, synchronize the normal local checkout, close/update issue #153 as appropriate, and generate the final post-merge snapshot/handoff.
+v2.1.0 is published, independently verified, and complete. Its immutable release source is `df2726b959963e5dbb096638d5072bd15eb1de92`.
 
-Do not rebuild, retag, move, replace or upload anything to the v2.1.0 release.
+The first post-release closure PR merged normally. Canonical `main` before the final editorial pass is `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679`; post-merge Quality #594 / run `35796651559` passed.
+
+The final editorial/roadmap work is on `docs/final-v2.1-editorial-roadmap`. No application source, version, dependency, workflow, release tag, or release asset is changed.
+
+Issue #153 remains open. Do not generate `REPOSITORY_SNAPSHOT.md` or the final chat/handoff export until this final editorial PR is merged and the normal checkout is synchronized to the resulting `main` SHA.
 
 ## Immutable v2.1.0 release
 
 - Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
-- Published: `2026-09-22T22:11:47Z`
-- Release ID: `394150624`
 - Frozen source SHA: `df2726b959963e5dbb096638d5072bd15eb1de92`
 - Annotated tag object: `a0f7000e7e95cc5d0d075bfbf44c7b3debae7f58`
-- Tag peel target: `df2726b959963e5dbb096638d5072bd15eb1de92`
 - Quality #592 / run `35775208797`: PASS
-- Windows final run `35776095408`: x64 + ARM64 PASS
-- Linux final run `35776120755`: x64 + ARM64 PASS
-- macOS final run `35776146620`: x64 + ARM64 PASS
+- Windows `35776095408`, Linux `35776120755`, macOS `35776146620`: x64 + ARM64 PASS
 - Windows/Linux: unsigned
-- macOS: ad-hoc engineering signed; not Developer ID signed and not notarized
+- macOS: ad-hoc engineering signed; not Developer ID signed or notarized
+- Exactly eight project-defined assets; checksum, clean public re-download, and byte-for-byte verification: PASS
 
-Exactly eight project-defined assets were published:
+The release source commit, annotated tag target, and all binary/source/checksum assets are immutable. Descriptive GitHub Release prose is editorially maintainable under `RELEASE_NOTES.md` when historical facts and semantics do not change.
 
-1. `PlayStoreAppAudit-v2.1.0-windows-x64.zip`
-2. `PlayStoreAppAudit-v2.1.0-windows-arm64.zip`
-3. `PlayStoreAppAudit-v2.1.0-linux-x64.zip`
-4. `PlayStoreAppAudit-v2.1.0-linux-arm64.zip`
-5. `PlayStoreAppAudit-v2.1.0-macos-x64.zip`
-6. `PlayStoreAppAudit-v2.1.0-macos-arm64.zip`
-7. `PlayStoreAppAudit-v2.1.0-third-party-sources.tar.xz`
-8. `SHA256SUMS.txt`
+## Final editorial pass
 
-Canonical assembly, release-layout validation and independent SHA-256 recomputation passed before publication. After publication, all eight assets were downloaded into a fresh directory; names, sizes, payload hashes and the checksum file matched, and every public file was byte-for-byte identical to the accepted local final set. No platform binary was rebuilt or repackaged.
+- All 13 published GitHub Release bodies, v2.1.0 through v1.0.0, were condensed into a consistent four-section structure.
+- User-facing highlights now take precedence over internal engineering detail.
+- Historical platform/signing limitations, frozen SHAs, checksums, and essential verification evidence remain.
+- The corrupted dash encoding in the old v1.99.0 note was removed.
+- Release titles, tags, asset IDs, names, sizes, and digests were not changed.
+- `docs/RELEASE_NOTES.md` is the canonical repository mirror of the maintained public prose.
 
-## Post-release Actions housekeeping
+## Roadmap decisions
 
-Manual `actions-retention.yml` run `35793158003` completed successfully from the frozen `main` SHA with the existing retention algorithm and settings.
+- Issue #208 is explicit v2.2 scope for source-aware automatic columns, separate persistent Custom layouts for phone/App List and Local APK source families, and source-aware built-in presets.
+- Issue #147 remains the broader named Custom Views enhancement and is not redefined or closed by #208.
+- CLI/headless remains planned for v2.2 through existing service/domain boundaries.
+- Issue #200 remains separate post-v2.1 work for persistent Personal Device profiles.
+- Issue #209 tracks later-2.x update notification/download and eventual self-update design; automatic installation is not v2.2 scope.
+- Issue #209 is linked to signing/notarization trust issue #154.
 
-- Automated policy deletion: expired failed/cancelled runs `35023120949`, `35023486423`, `35023585122`, `35023610443`.
-- Explicit post-release deletion: superseded candidate runs `35708299383`, `35708322474`, `35731253986` and their six invalidated/pre-final platform artifacts.
-- Retained canonical v2.1 evidence: the six final artifacts from runs `35776095408`, `35776120755` and `35776146620`.
-- Retained historical evidence: v1.99 assembler artifact `10123756577`.
-- Remaining storage: 7 artifacts / 1,344,361,022 bytes (1,282.08 MiB / 1.252 GiB).
-- The public release remained unchanged after housekeeping.
+## Local artifact cleanup
 
-## Product scope outcome
+`artifact\` contained no tracked files and is ignored by `.gitignore`.
 
-v2.1 shipped:
-
-- safe single-file Local APK Rename/Remove;
-- validated collision-safe Mass Rename and guarded exact Outdated/Unknown Mass Remove;
-- Device Specific resolution for phone and Local APK paths with raw public Store evidence preserved;
-- Personal Google Session and Advanced Custom Dispenser metadata paths;
-- privacy-safe process-local **Get Phone Data** Personal Device profile capture;
-- theme-aware semantic presentation;
-- canonical synthetic README and in-app Overview screenshots;
-- source-transition and Installer Category presentation fixes.
-
-Persistent Personal Device profile storage issue #200 was deliberately excluded and remains post-v2.1. Production-trust signing/notarization issue #154 also remains future work.
-
-## Closure PR continuation point
-
-The focused closure branch is `docs/v2.1-post-release-closure`, created from frozen release SHA/current `origin/main` `df2726b959963e5dbb096638d5072bd15eb1de92`.
-
-The closure change is documentation-only. Its eventual merge commit will become a newer post-release `main` SHA and must remain clearly distinct from the immutable release SHA above.
-
-Issue #153 is still open and must not be closed before this closure PR is merged and the final synchronization procedure is complete.
-
-No v2.2 implementation has started. CLI/headless and Named Custom Views #147 remain candidates, not a frozen next-release contract. Issue #200 remains separate post-v2.1 work.
+- Before: 6,008,445,053 bytes across 18,104 files.
+- Deleted: 5,973,360,239 bytes of public re-downloads, assembled releases, virtual environments, Nuitka/build trees, old source/test copies, and preserved builder outputs.
+- Retained: 35,084,814 bytes of small diagnostics, benchmark data, screenshots, scripts, and acceptance reports that may be unique.
+- No ACL broadening was used and all 17 exact deletion targets succeeded.
 
 ## Required next sequence
 
-1. Review the complete closure documentation diff and require documentation validation/Quality to pass.
-2. Merge the closure PR with a normal merge commit; do not squash or rebase.
-3. Before synchronizing the normal checkout, run `git status --short` and stop if it is dirty.
-4. On a clean checkout, run `git fetch --prune origin`, switch to `main`, and use `git pull --ff-only origin main`.
-5. Verify local `HEAD` equals the canonical documentation-only post-release `main` SHA and the tree is clean.
-6. Update/close issue #153 only after the merged documentation and synchronized workspace agree.
-7. Only then generate `REPOSITORY_SNAPSHOT.md` and any final chat/continuation export.
-
-Do not generate the final snapshot or handoff package from this pre-merge branch.
+1. Review and merge the final editorial PR with a normal merge commit; do not squash or rebase.
+2. Confirm post-merge Quality passes.
+3. On the normal checkout, require a clean `git status --short`, then fetch, switch to `main`, and pull with `--ff-only`.
+4. Verify the clean local HEAD equals the canonical post-editorial `main` SHA.
+5. Keep issue #153 open until the final synchronized closure state is confirmed.
+6. Only then update/close #153 as directed and generate `REPOSITORY_SNAPSHOT.md` plus the final continuation export.
 
 ## One-line state summary
 
-**v2.1.0 is published and immutable; complete the documentation-only closure PR, merge normally, synchronize clean local `main`, close/update #153, and only then generate the final snapshot/handoff before deliberate v2.2 scope selection.**
+**v2.1.0 remains immutable; merge and synchronize the final prose/roadmap PR, then finish issue #153 and generate the final snapshot/handoff from clean canonical `main`.**

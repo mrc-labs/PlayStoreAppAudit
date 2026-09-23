@@ -61,6 +61,6 @@ Published project-defined asset names:
 - Final canonical assembly, exact eight-file layout, checksum validation, public re-download and byte-for-byte verification: PASS.
 ```
 
-## Immutability rule
+## Immutability and editorial rule
 
-The published tag, release source commit, release body and eight assets are immutable. Post-release documentation may record verification and housekeeping evidence but must not rebuild, retag, replace or upload release material.
+The published tag target, release source commit, and eight binary/source/checksum assets are immutable. Descriptive GitHub Release prose may be corrected, clarified or condensed without changing historical facts or release semantics. Editorial maintenance must not rebuild, retag, replace or upload release material.
