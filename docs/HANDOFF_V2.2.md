@@ -20,7 +20,7 @@ The application version remains `2.1.0` until a deliberate v2.2 release-preparat
 
 ## v2.2 approved product pillars
 
-v2.2 has three approved pillars. Do not silently add unrelated deferred work to the release.
+v2.2 has three approved pillars coordinated through master issue `#212`. Do not silently add unrelated deferred work to the release.
 
 ### 1. Source-aware views and two explicit Custom layouts — #208
 
