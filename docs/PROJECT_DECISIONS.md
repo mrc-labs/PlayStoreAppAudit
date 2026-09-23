@@ -192,14 +192,43 @@ Rationale: the actual public trust state must be described honestly while preser
 
 Issue `#208` is explicit v2.2 UX scope.
 
-- Local APK sources automatically expose applicable Local APK Version and APK Filename context while inapplicable phone-only Installed Version / Installed vs Store columns disappear.
+- Keep the existing source-aware `Basic`, `Source Details` and `Technical` internal preset IDs and definitions rather than duplicating them solely for display labels.
+- Local APK source defaults expose applicable Local APK Version and APK Filename context while inapplicable phone-only Installed Version / Installed vs Store columns disappear.
+- Ordinary Local APK metadata remains user-owned/configurable even when source-appropriate defaults expose it automatically.
 - Automatic/contextual fields remain distinct from user-owned fields and must not be serialized into Custom layout definitions.
-- Phone/phone-derived App List workflows and Local APK file/folder workflows persist separate Custom layouts and restore the correct layout when the source family changes.
-- Built-in presets require a source-family audit, clear source-aware labeling/grouping where variants are needed, and an appropriate default for every supported source mode.
-- The existing single Custom layout requires a safe migration path.
+- Replace the single shared Custom concept with two explicit user-facing persistent layouts:
+  - **Custom (Phone / App List)**
+  - **Custom (Local APK)**
+- Both Custom concepts should remain discoverable in `View > Column Preset`; the layout that does not apply to the active source may remain visible but disabled rather than disappearing.
+- Phone/phone-derived App List workflows and Local APK file/folder workflows restore the correct saved layout when the source family changes without rewriting the other layout.
+- The existing single Custom layout requires conservative migration with no silent loss.
 - Broader arbitrary named views remain separate issue `#147`; #208 must not silently redefine or close it.
 
-Rationale: two deterministic source-family layouts solve the immediate semantic mismatch without prematurely committing to a general named-view manager.
+Rationale: two explicit deterministic source-family layouts solve the immediate semantic mismatch and make the behavior understandable without prematurely committing to a general named-view manager.
+
+## v2.2 persistent Personal Device profile library
+
+Issue `#200` is approved v2.2 scope.
+
+- Persistence is explicit/opt-in and may contain multiple user-captured profiles with friendly local names.
+- Built-in validated reference profiles and user-captured profiles remain visually and semantically distinct.
+- Saved profiles may be selected without the physical phone connected and may support explicit refresh/replace, rename and delete.
+- Design the durable schema before implementation.
+- v2.1 transient session state must not be silently promoted into a saved profile.
+
+Never persist or expose raw ADB serial, durable device-correlation identifiers/hashes, Android ID, GSF device ID, IMEI/MEID, SIM/subscriber identifiers, Google identity, OAuth/AAS/Play bearer tokens, cookies, check-in ID or profile hashes derived from sensitive identifiers.
+
+Raw public Store evidence remains authoritative; Personal Device/Device Specific evidence remains additive.
+
+## v2.2 CLI/headless boundary
+
+Issue `#211` is approved v2.2 scope.
+
+- Reuse domain/service boundaries and canonical result/export semantics.
+- Do not drive Qt widgets or duplicate Store/ADB business logic.
+- Preserve Store correctness, cache, scoring, Device Specific, privacy and read-only ADB behavior.
+- The GUI remains the default product experience.
+- Interactive TUI, background daemon/server mode, scheduled monitoring and update installation are not implied by this scope.
 
 ## Later 2.x update delivery
 
