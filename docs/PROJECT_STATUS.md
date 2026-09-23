@@ -2,6 +2,8 @@
 
 Last updated: 2026-09-23
 
+Current canonical post-release `main`: `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679`; post-merge Quality #594 / run `35796651559`: PASS. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
+
 ## Published v2.1.0 release
 
 - Latest published version: `v2.1.0`
@@ -32,7 +34,7 @@ Published project-defined assets:
 - `PlayStoreAppAudit-v2.1.0-windows-x64.zip`: 46,939,952 bytes; SHA-256 `0b0c03a27d467f3f1e61e1100dc1709dbb4d7fb8058e0f6d01b7175c6d5818a7`
 - `SHA256SUMS.txt`: 765 bytes; SHA-256 `abc0fe1c06d3753557f14b9f5525083b2c667fcf09b510d7a5a31ecbe34fabb7`
 
-Published v2.1.0 is immutable. Do not rebuild, retag, move, rewrite or replace its source commit, annotated tag, release body or assets. The post-release closure documentation PR creates a later documentation-only `main` SHA; it does not change the release SHA.
+Published v2.1.0 source, annotated tag target, and binary/source/checksum assets are immutable. Its descriptive GitHub Release prose may be editorially clarified or condensed without changing historical facts, distribution semantics, verification claims, tags or assets. The post-release documentation commits create later documentation-only `main` SHAs; they do not change the release SHA.
 
 ### v2.1.0 post-release Actions housekeeping
 
@@ -44,6 +46,14 @@ Manual housekeeping run `35793158003` completed successfully from the frozen `ma
 - Canonical v1.99 assembler artifact `10123756577` remains retained as historical audit evidence.
 - Remaining Actions storage: 7 artifacts / 1,344,361,022 bytes (1,282.08 MiB / 1.252 GiB).
 - The public v2.1.0 Release, tag, source commit and eight assets were rechecked unchanged after housekeeping.
+
+### Final release-note and roadmap editorial pass
+
+- All 13 published GitHub Release bodies from v2.1.0 through v1.0.0 were condensed for readability and synchronized with `docs/RELEASE_NOTES.md`.
+- Release titles, tags, source commits and asset IDs/names/sizes/digests remained unchanged; only descriptive prose changed.
+- The durable policy now distinguishes immutable source/tag/assets from editorially maintainable release prose.
+- v2.2 source-aware automatic columns, separate phone/App List vs Local APK Custom layouts, and built-in preset review are tracked by issue `#208`; broader named views remain issue `#147`.
+- Later-2.x update delivery/self-update design is issue `#209`, linked to signing/notarization trust issue `#154`; automatic installation is not v2.2 scope.
 
 ## Published v2.0.0 release
 
@@ -75,7 +85,7 @@ Published project-defined assets:
 - `PlayStoreAppAudit-v2.0.0-windows-x64.zip`: 45,902,588 bytes; SHA-256 `3f1df2326bd875fdb5320e05ec7cbb7c8dc0bf4e34d5ddcea3f7a92c0672e665`
 - `SHA256SUMS.txt`: 765 bytes; SHA-256 `3c2ff9b6fbce036856eb8f629952eb2ed3b56134100a1e56ff3a65cb3f06614c`
 
-Published v2.0.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets.
+Published v2.0.0 source, annotated tag target, and binary/source/checksum assets are immutable. Descriptive Release prose remains editorially maintainable under `RELEASE_NOTES.md`.
 
 ## Published v1.99.0 release
 
@@ -94,7 +104,7 @@ Published v2.0.0 is immutable. Do not rebuild, retag, rewrite or replace its sou
 - Project-defined release assets: exactly 3
 - Repository visibility after publication and verification: `PRIVATE`
 
-Published v1.99.0 is immutable. Do not rebuild, retag, rewrite or replace its source commit, annotated tag, release body or assets. RC8 remains the completed user-acceptance evidence and must not be reused as a release artifact; RC6 and RC7 remain failed historical candidates.
+Published v1.99.0 source, annotated tag target, and binary/source/checksum assets are immutable. Descriptive Release prose remains editorially maintainable under `RELEASE_NOTES.md`. RC8 remains the completed user-acceptance evidence and must not be reused as a release artifact; RC6 and RC7 remain failed historical candidates.
 
 ## v1.99.0 release evidence
 
@@ -400,7 +410,7 @@ Do not reintroduce without a new explicit product decision:
 
 - `main` is the only permanent branch; use short-lived branches and normal PR merge commits.
 - Before any local pull, require a clean working tree; never reset, stash or discard automatically.
-- Published releases are immutable and all release artifacts derive from one exact frozen SHA.
+- Published release source commits, tag targets and assets are immutable, and all release artifacts derive from one exact frozen SHA; descriptive Release prose remains editorially maintainable.
 - Quality precedes SHA freeze; tagging follows artifact validation; tag pushes do not rebuild binaries.
 - Strict legal/source validation remains fail-closed; ADB remains read-only.
 - v1.99's user-tested packaged-RC requirement is satisfied by RC8; its ZIP remains acceptance evidence and is not the official final release artifact.

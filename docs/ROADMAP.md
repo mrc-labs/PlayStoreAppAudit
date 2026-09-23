@@ -10,7 +10,7 @@ This file is the canonical forward-looking product roadmap for Store App Audit. 
 
 - Preserve the exact-SHA release model, read-only ADB policy and Store correctness semantics unless a deliberate decision changes them.
 - Do not silently move deferred or rejected ideas into active scope.
-- Published releases, tags and assets are immutable.
+- Published release source commits, tag targets and binary/source/checksum assets are immutable; descriptive Release prose may be maintained without changing historical meaning.
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
 
@@ -331,13 +331,37 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 - The annotated `v2.1.0` tag was created only after canonical assembly/checksum acceptance; the public assets were then independently re-downloaded and reverified.
 - Production signing was not claimed: Windows/Linux are unsigned and macOS is ad-hoc engineering signed only. Published v2.0.0 and v2.1.0 remain immutable.
 
-### Deferred to v2.2
+## v2.2 scoped work
 
-CLI/headless is not part of v2.1. It is planned for v2.2 and must reuse service/domain boundaries rather than driving Qt or duplicating Store/ADB logic.
+No v2.2 implementation is part of v2.1 closure. The following scope is approved for v2.2 planning:
 
-Named Custom Views issue `#147` is currently a provisional v2.2 candidate. The final v2.2 scope may be narrowed before implementation.
+### Source-aware views and layouts — issue #208
 
-Persistent Personal Device profile storage/library issue `#200` is post-v2.1 and must preserve the v2.1 privacy boundary; do not pull it into release closure.
+Issue `#208` defines the required source-aware baseline:
+
+- Local APK sources automatically show useful fields such as Local APK Version and APK Filename where applicable.
+- Phone-only fields such as Installed Version and Installed vs Store automatically disappear when they do not apply.
+- Automatic/contextual columns remain distinct from user-owned columns and are not persisted into Custom definitions.
+- Phone/phone-derived App List workflows and Local APK file/folder workflows keep separate persistent Custom layouts; changing source family restores the corresponding layout instead of rewriting one shared layout.
+- Every built-in preset is reviewed for source relevance. Where one preset cannot serve both source families cleanly, labels/grouping and source-specific variants must make the intended source clear and provide a suitable default.
+- Existing single-Custom settings require a safe migration path.
+
+This is intentionally narrower than arbitrary named Custom Views. Issue `#147` remains open as the broader future create/select/rename/delete named-view enhancement and must not be silently redefined by #208.
+
+### CLI/headless
+
+CLI/headless remains planned for v2.2 and must reuse service/domain boundaries rather than driving Qt or duplicating Store/ADB logic.
+
+Persistent Personal Device profile storage/library issue `#200` remains separate post-v2.1 work and must preserve the v2.1 privacy boundary.
+
+## Later 2.x update delivery
+
+Issue `#209` tracks update delivery after v2.2 and is cross-linked to signing/notarization trust issue `#154`.
+
+- Phase 1 improves update notification and may add verified background download or an explicit Download Update action; installation remains explicit, with no silent in-place replacement.
+- Phase 2 considers a real self-updater only after an external updater/bootstrap design covers the user-selected portable install location, atomic replacement, rollback, interrupted updates, process restart, and platform-specific permissions/quarantine.
+- GitHub Release metadata and SHA-256 verification are mandatory. Production signing/notarization is strongly preferred before automatic installation.
+- Windows/Linux unsigned and macOS ad-hoc/non-notarized packages must not be silently installed as though they had production trust.
 
 ### Later Local APK candidates
 
@@ -357,7 +381,7 @@ Do not reintroduce without a new product decision:
 
 - `main` is the only permanent branch.
 - Use short-lived branches and normal merge commits; no squash/rebase project history.
-- Published releases are immutable.
+- Published release source commits, annotated tag targets and binary/source/checksum assets are immutable. Descriptive GitHub Release prose remains editorially maintainable when historical facts and semantics do not change.
 - Before every local pull, run `git status --short`; if dirty, stop. Never auto-stash/reset/discard/clean user work.
 - Every release uses one exact frozen SHA and tags only after artifact validation.
 - Tag pushes do not rebuild binaries.
@@ -368,4 +392,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` records the completed release and the pre-merge closure continuation point. Do not generate a final continuation ZIP or `REPOSITORY_SNAPSHOT.md` until the closure documentation PR is merged and the normal local checkout is clean and synchronized to that later documentation-only `main` SHA. Future cycle scope must be established deliberately from the roadmap and open issues rather than inferred from the release handoff.
+`HANDOFF_V2.1.md` records the completed release and final editorial continuation point. Do not generate a final continuation ZIP or `REPOSITORY_SNAPSHOT.md` until the final editorial PR is merged and the normal local checkout is clean and synchronized to that later documentation-only `main` SHA. Future work follows the explicitly scoped issues above rather than being inferred from release prose.

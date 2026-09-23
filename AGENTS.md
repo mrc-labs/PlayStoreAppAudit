@@ -80,7 +80,7 @@ Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths or Windows-
 These are hard constraints unless deliberately changed through a dedicated engineering decision:
 
 - `main` is the only permanent branch. Use short-lived branches and normal PR merge commits.
-- Published release history is immutable. Do not squash, rewrite, retag or replace published release assets.
+- Published release source commits, annotated tag targets and binary/source/checksum assets are immutable. GitHub Release descriptive prose may be corrected, clarified or condensed when historical facts and release semantics remain unchanged; editorial maintenance never authorizes rebuilding, retagging or replacing assets.
 - Every release must run the complete component freshness gate twice: once at release-phase entry and again immediately before the final exact-SHA freeze. Verify Python, all runtime/dev/build dependencies, transitive release-path packages, PySide/Qt/Shiboken, Nuitka, packaging tools, GitHub Actions, Android Platform-Tools/ADB, signing/notarization tooling, runner/build prerequisites and every other maintained third-party release component against the latest stable upstream version. The canonical procedure and evidence requirements are in `docs/RELEASE_COMPONENT_FRESHNESS.md`.
 - If either freshness gate finds a newer stable component, update it and repeat every affected source, package, legal, signing and platform validation before release work continues. Do not silently ship a known older stable component under this policy.
 - A release profile freezes one exact full `main` SHA after Quality CI passes.
@@ -94,7 +94,7 @@ These are hard constraints unless deliberately changed through a dedicated engin
 - Every public GitHub Release body follows `docs/RELEASE_NOTES.md`: the four mandatory sections are `What's New / Highlights`, `Compatibility and distribution`, `Release assets`, and `Verification`, in that exact order. `Added`, `Changed`, and `Fixed` are the standard optional subheadings inside `What's New / Highlights` and empty subheadings are omitted.
 - When normalizing an already published release, the body actually published on GitHub is the primary historical source. Changelog/docs may supplement only clearly supported missing details and must not silently replace or strengthen the historical claims.
 - Obvious editorial mistakes in historical prose may be corrected during normalization only when the release/tag identity is unambiguous and the substantive meaning is unchanged.
-- Release-note prose may be normalized after publication, but this never authorizes changing an immutable published tag, source commit, binary/source asset, or checksum file.
+- Release-note prose is editorially maintainable after publication, but this never authorizes changing an immutable published tag, source commit, binary/source asset, checksum file, distribution state or verification claim.
 - Every release must finish the permanent closure procedure in `docs/RELEASE_CLOSURE.md`. Publishing alone is not release completion: post-release context Markdown must be reviewed/updated, the local VS Code checkout must be synchronized safely to canonical `main`, the local tree/SHA must be verified, and any new handoff must be generated only from that clean synchronized state.
 
 ### Permanent release closure and VS Code sync
