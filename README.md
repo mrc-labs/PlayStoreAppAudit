@@ -14,11 +14,11 @@ The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonic
 
 ## What's new in v2.1
 
-- Rename or remove individual Local APK files, preview collision-safe Mass Rename operations, and guard bulk removal of exact Outdated or Unknown results.
-- Resolve Device Specific Store versions through validated profiles and configurable metadata providers without replacing the raw public Store result.
-- Capture a privacy-safe, session-only Personal Device profile with **Get Phone Data** through read-only ADB.
-- Review clearer source-aware Local APK comparisons, Device Specific/N/A states, and corrected source transitions.
-- Use improved theme-aware status presentation plus privacy-safe screenshots in the README and in-app Overview.
+- **Local APK file management:** Rename or remove individual files, preview collision-safe Mass Rename operations, and guard bulk removal of exact Outdated or Unknown results.
+- **Device Specific resolution:** Resolve Store versions through validated profiles and configurable metadata providers without replacing the raw public Store result.
+- **Get Phone Data:** Capture a privacy-safe, session-only Personal Device profile through read-only ADB.
+- **Source-aware Local APK UX:** Review clearer comparison states and corrected transitions between phone and Local APK sources.
+- **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
 
 See the [v2.1.0 GitHub Release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0) for the complete notes and verified downloads.
 

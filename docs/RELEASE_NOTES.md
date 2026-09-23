@@ -52,17 +52,17 @@ Title: `Store App Audit v2.1.0` · [Published 2026-09-22](https://github.com/mrc
 ## What's New / Highlights
 
 ### Added
-- Manage Local APK files safely with single-file Rename/Remove, collision-checked Mass Rename, and guarded removal of exact Outdated or Unknown results.
-- Resolve `Varies with device` Store versions through validated Device Specific profiles using Personal Google Session or Advanced Custom Dispenser providers, while preserving the raw public Store result.
-- **Get Phone Data** captures one privacy-safe Personal Device profile through read-only ADB without running an app scan; the profile lasts only for the current session.
+- **Local APK file management:** Manage Local APK files safely with single-file Rename/Remove, collision-checked Mass Rename, and guarded removal of exact Outdated or Unknown results.
+- **Device Specific resolution:** Resolve `Varies with device` Store versions through validated Device Specific profiles using Personal Google Session or Advanced Custom Dispenser providers, while preserving the raw public Store result.
+- **Get Phone Data:** Capture one privacy-safe Personal Device profile through read-only ADB without running an app scan; the profile lasts only for the current session.
 - Privacy-safe synthetic screenshots now document the main workflows in the README and in-app Overview.
 
 ### Changed
-- Local APK comparison and quick-filter presentation now includes Device Specific and N/A states, with clearer source-aware evidence.
-- Semantic status, comparison, and criticality colours adapt to light and dark themes.
+- **Source-aware Local APK UX:** Local APK comparison and quick-filter presentation now includes Device Specific and N/A states, with clearer source-aware evidence.
+- **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
 
 ### Fixed
-- Phone → Local APK Folder → Phone transitions no longer leave stale Local APK state or columns behind.
+- **Source transition fix:** Phone → Local APK Folder → Phone transitions no longer leave stale Local APK state or columns behind.
 - `Installer Category` no longer duplicates the useful `Installer Source` field in views or column customization.
 - Personal Device ownership and recapture guards prevent stale or partial profiles from replacing valid evidence.
 
@@ -94,13 +94,13 @@ Title: `Store App Audit v2.0.0` · [Published 2026-09-15](https://github.com/mrc
 ## What's New / Highlights
 
 ### Added
-- Audit individual `.apk`, `.apks`, `.apkm`, and `.xapk` files or recursively scan a folder while keeping each physical artifact distinct.
-- Compare Local APK versions with Google Play evidence without writing phone inventory history.
-- Changes & History now separates Play Store listing tracking, device inventory tracking, and manual snapshots.
-- About owns manual update checks, with an optional quiet startup check.
+- **Local APK auditing:** Audit individual `.apk`, `.apks`, `.apkm`, and `.xapk` files or recursively scan a folder while keeping each physical artifact distinct.
+- **Store comparison:** Compare Local APK versions with Google Play evidence without writing phone inventory history.
+- **Changes & History:** Separates Play Store listing tracking, device inventory tracking, and manual snapshots.
+- **Update checks:** About owns manual update checks, with an optional quiet startup check.
 
 ### Changed
-- File and view controls are source-aware, and contextual columns appear only when applicable.
+- **Source-aware views:** File and view controls are source-aware, and contextual columns appear only when applicable.
 - Checked-country Store absence is presented conservatively rather than as proof of global removal.
 - v2.0 returns to six-platform distribution and moves the release baseline to CPython 3.14.
 
@@ -134,13 +134,13 @@ Title: `Play Store App Audit v1.99.0 (Win x64 Only)` · [Published 2026-09-09](h
 ## What's New / Highlights
 
 ### Added
-- Scan Phone captures one coherent package snapshot with installed version, installer, enabled state, and system-app metadata.
-- Optional Advanced scanning can reuse complete device metadata during Run, even after the phone disconnects.
-- Alternative Distribution Discovery adds exact-package evidence from F-Droid main and optional authorized Aptoide when Google Play is conclusively unavailable in checked countries.
-- Cooperative Stop preserves completed results and independent cache entries while marking the audit incomplete.
+- **Coherent phone snapshot:** Scan Phone captures one coherent package snapshot with installed version, installer, enabled state, and system-app metadata.
+- **Advanced Scan reuse:** Optional Advanced scanning can reuse complete device metadata during Run, even after the phone disconnects.
+- **Alternative distribution evidence:** Alternative Distribution Discovery adds exact-package evidence from F-Droid main and optional authorized Aptoide when Google Play is conclusively unavailable in checked countries.
+- **Cooperative Stop:** Preserves completed results and independent cache entries while marking the audit incomplete.
 
 ### Changed
-- Maintenance Score now distinguishes checked-market absence from regional or inconclusive outcomes and applies only bounded alternative-store recovery.
+- **Maintenance Score:** Distinguishes checked-market absence from regional or inconclusive outcomes and applies only bounded alternative-store recovery.
 - Results actions, progress, source-aware layouts, Details presentation, and warning emphasis are clearer and more consistent.
 - Device Inventory comparison uses the same coherent snapshot as the audit.
 
@@ -175,16 +175,16 @@ Title: `Play Store App Audit v1.9.0 (Win x64 Only)` · [Published 2026-08-25](ht
 ## What's New / Highlights
 
 ### Added
-- The Details Panel gains an automatic extra-wide layout for wide viewports.
-- A native status bar shows operational state and active progress without duplicating source context.
+- **Extra-wide Details:** The Details Panel gains an automatic extra-wide layout for wide viewports.
+- **Native status bar:** A native status bar shows operational state and active progress without duplicating source context.
 
 ### Changed
-- Friendly Notes now appear consistently across the table, tooltip, Details Panel, and HTML report while raw export values remain unchanged.
-- **Maintenance Score** replaces **Health Score** in user-facing text without changing the algorithm or `health_score` compatibility identifier.
+- **Friendly Notes:** Now appear consistently across the table, tooltip, Details Panel, and HTML report while raw export values remain unchanged.
+- **Maintenance Score naming:** Replaces **Health Score** in user-facing text without changing the algorithm or `health_score` compatibility identifier.
 - Warning colours, About hierarchy, action icons, and the main action row are clearer and more consistent.
 
 ### Fixed
-- Fixed Display Settings crashes and preserved Custom layout, selection, Details content, and column widths across repeated changes and restart.
+- **Display Settings stability:** Fixed crashes and preserved Custom layout, selection, Details content, and column widths across repeated changes and restart.
 
 ## Compatibility and distribution
 - Version `1.9.0`; Windows File/Product version `1.9.0.0`.
@@ -211,15 +211,15 @@ Title: `Play Store App Audit v1.8.0 (Win x64 Only)` · [Published 2026-08-24](ht
 ## What's New / Highlights
 
 ### Added
-- Saved Smart Queries with a one-level All/Any builder and versioned persistence.
-- Hidden Details mode and a focused Display Settings dialog for icons, dates, and Custom columns.
+- **Saved Smart Queries:** Use a one-level All/Any builder and versioned persistence.
+- **Display controls:** Hidden Details mode and a focused Display Settings dialog cover icons, dates, and Custom columns.
 
 ### Changed
-- One compact Details control replaces permanent position buttons while preserving Auto, Right, and Below layouts.
+- **Details layout control:** One compact control replaces permanent position buttons while preserving Auto, Right, and Below layouts.
 - Advanced Settings, optional Store icons, exports, action availability, naming, and contextual help are more consistent.
 
 ### Fixed
-- Busy operations now block incompatible settings/profile actions without overwriting active status messages.
+- **Busy-state safety:** Incompatible settings/profile actions are blocked without overwriting active status messages.
 
 ## Compatibility and distribution
 - Version `1.8.0`; Windows File/Product version `1.8.0.0`.
@@ -246,14 +246,14 @@ Title: `Play Store App Audit v1.7.0 (Win x64 Only)` · [Published 2026-08-23](ht
 ## What's New / Highlights
 
 ### Added
-- Responsive Details layouts, structured Store request evidence, installer/source and SDK filters, versioned JSON export, reusable audit profiles, and conservative smart re-audits.
+- **Audit workflow expansion:** Added responsive Details layouts, structured Store request evidence, installer/source and SDK filters, versioned JSON export, reusable audit profiles, and conservative smart re-audits.
 
 ### Changed
-- Store country/language resolution, market notes, and separate Store/device history are clearer and more conservative.
-- Health Score is an optional maintenance heuristic, disabled by default and explicitly not a malware/security score.
+- **Store context and history:** Country/language resolution, market notes, and separate Store/device history are clearer and more conservative.
+- **Health Score guardrails:** The optional maintenance heuristic is disabled by default and explicitly not a malware/security score.
 
 ### Fixed
-- File/list audits no longer inherit phone language; first audits no longer imply prior inventory changes; not-found evidence remains distinct from transient failures.
+- **Context correctness:** File/list audits no longer inherit phone language, first audits no longer imply prior inventory changes, and not-found evidence remains distinct from transient failures.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
@@ -279,14 +279,14 @@ Title: `Play Store App Audit v1.6.0 (Win x64 Only)` · [Published 2026-08-22](ht
 ## What's New / Highlights
 
 ### Added
-- Automatic Store language can follow the connected phone, and file/list audits use the selected Store country's language.
-- Added remembered Right/Below Details layouts, structured Store country/language evidence, developer metadata, and grouped previous-audit changes.
+- **Source-aware Store language:** Can follow the connected phone, while file/list audits use the selected Store country's language.
+- **Details and history:** Added remembered Right/Below layouts, structured Store country/language evidence, developer metadata, and grouped previous-audit changes.
 
 ### Changed
-- Consolidated bounded country fallback, aligned Store icons with titles, retained structured change events, and treated the first phone inventory as a baseline.
+- **Consistent audit context:** Consolidated bounded country fallback, aligned Store icons with titles, retained structured change events, and treated the first phone inventory as a baseline.
 
 ### Fixed
-- Hardened icon-cache failures, avoided language-only retries for conclusive not-found results, and prevented file/list audits from inheriting phone locale.
+- **Cache and locale reliability:** Hardened icon-cache failures, avoided language-only retries for conclusive not-found results, and prevented file/list audits from inheriting phone locale.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
@@ -312,13 +312,13 @@ Title: `Play Store App Audit v1.5.0 (Win x64 Only)` · [Published 2026-08-21](ht
 ## What's New / Highlights
 
 ### Added
-- Configurable concurrent Store workers, live regional-verification progress, optional cached Store icons, and connected-device summaries.
+- **Faster Store audits:** Added configurable concurrent Store workers, live regional-verification progress, optional cached Store icons, and connected-device summaries.
 
 ### Changed
-- Faster bounded multi-country checks, a 25-second transport timeout, clearer progress/actions/sorting, and system-app exclusion enabled by default.
+- **Audit responsiveness:** Faster bounded multi-country checks, a 25-second transport timeout, clearer progress/actions/sorting, and system-app exclusion enabled by default.
 
 ### Fixed
-- Definitive not-found results no longer receive deterministic retries; network uncertainty remains distinct; unavailable rows no longer show stale icons.
+- **Not-found reliability:** Definitive results no longer receive deterministic retries, network uncertainty remains distinct, and unavailable rows no longer show stale icons.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
@@ -344,7 +344,7 @@ Title: `Play Store App Audit v1.4.0 (Win x64 Only)` · [Published 2026-08-19](ht
 ## What's New / Highlights
 
 ### Changed
-- Qt now uses the system-default style, font, and generic scrollbar presentation while retaining the established semantic colours and branded actions.
+- **Native styling:** Qt now uses the system-default style, font, and generic scrollbar presentation while retaining the established semantic colours and branded actions.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
@@ -370,7 +370,7 @@ Title: `Play Store App Audit v1.3.0 (Win x64 Only)` · [Published 2026-08-19](ht
 ## What's New / Highlights
 
 ### Changed
-- Moved Windows distribution to a native standalone package with Qt/PySide6 6.11.1, managed ADB where available, bundled third-party source material, and release-wide checksums.
+- **Standalone packaging:** Moved Windows distribution to a native standalone package with Qt/PySide6 6.11.1, managed ADB where available, bundled third-party source material, and release-wide checksums.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned.
@@ -395,12 +395,12 @@ Title: `Play Store App Audit v1.2.0 (Win x64 Only)` · [Published 2026-08-18](ht
 ## What's New / Highlights
 
 ### Added
-- Scan a connected Android phone and export its package inventory as CSV.
-- Added Health Score methodology/limitations guidance and version details in About and support diagnostics.
+- **Phone inventory:** Scan a connected Android phone and export its package inventory as CSV.
+- **Health Score guidance:** Added Health Score methodology/limitations guidance and version details in About and support diagnostics.
 
 ### Changed
 - Reorganized File, Tools, Help, export, and data-maintenance actions.
-- Distributed Windows x64 as a validated standalone ZIP; project code uses GPL-3.0-only with separate commercial licensing available.
+- **Standalone distribution:** Windows x64 is distributed as a validated standalone ZIP; project code uses GPL-3.0-only with separate commercial licensing available.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned and may trigger SmartScreen or unknown-publisher warnings.
@@ -423,10 +423,10 @@ Title: `Play Store App Audit v1.1.0 (Win x64 Only)` · [Published 2026-08-17](ht
 ## What's New / Highlights
 
 ### Added
-- Added Recent Sources, easier-to-reach File/export/audit actions, and clearer ADB and app-list import guides.
+- **Navigation and guidance:** Added Recent Sources, easier-to-reach File/export/audit actions, and clearer ADB and app-list import guides.
 
 ### Changed
-- Made the main window more compact, improved icon sizing, and simplified About.
+- **Compact UI:** Made the main window more compact, improved icon sizing, and simplified About.
 
 ## Compatibility and distribution
 - Windows x64 only; unsigned.
@@ -449,15 +449,15 @@ Title: `Play Store App Audit v1.0.0 (Win x64 Only)` · [Published 2026-08-17](ht
 ## What's New / Highlights
 
 ### Added
-- First stable Qt desktop release, with portable application-data handling, platform-aware Store/ADB paths, and bulk read-only Android package metadata collection.
+- **Stable Qt release:** First stable Qt desktop release, with portable application-data handling, platform-aware Store/ADB paths, and bulk read-only Android package metadata collection.
 - Added a stable table schema, explicit UI extension points, regression coverage, and pull-request Quality checks.
 
 ### Changed
 - Consolidated runtime/state/version ownership and replaced historical module aliases and runtime monkey-patching with explicit canonical interfaces.
-- Bulk device metadata avoids hundreds of individual package subprocesses on large inventories.
+- **Faster device metadata:** Bulk device metadata avoids hundreds of individual package subprocesses on large inventories.
 
 ### Fixed
-- Google Play `datePublished` is no longer accepted as the latest-update date.
+- **Store update-date correctness:** Google Play `datePublished` is no longer accepted as the latest-update date.
 - ADB subprocesses no longer flash console windows on Windows.
 
 ## Compatibility and distribution
