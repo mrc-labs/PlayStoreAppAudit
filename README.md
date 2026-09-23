@@ -8,7 +8,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** v2.2 planning. Source-aware table layouts and presets are explicitly scoped in [issue #208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208); no v2.2 implementation is part of the v2.1 closure work.
+**Current development line:** v2.2 planning, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). The approved pillars are source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
@@ -78,11 +78,15 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 ### v2.2 and later planning
 
-v2.1 release work is complete. [Issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) remains open through the final editorial PR and post-merge synchronization.
+The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is the active planning line, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
-Explicit v2.2 UX scope in [issue #208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208) covers automatic Local APK columns, separate persistent Custom layouts for phone/App List and Local APK sources, and source-aware built-in presets. Broader arbitrary Named Custom Views remain separate [issue #147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
+Three product pillars are approved for v2.2:
 
-CLI/headless remains planned for v2.2 through the existing service/domain boundaries. Persistent Personal Device profiles remain separate post-v2.1 issue #200. Safe update delivery is later-2.x issue [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209), linked to signing/notarization trust issue #154; automatic installation is not v2.2 scope.
+- [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views and two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving user control of ordinary columns and keeping contextual overlays outside saved Custom definitions.
+- [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.
+- [#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211): CLI/headless auditing that reuses the existing service/domain layer rather than driving Qt or duplicating Store/ADB logic.
+
+Broader arbitrary Named Custom Views remain separate [issue #147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147). Safe update delivery remains later-2.x [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209), linked to signing/notarization trust [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154); automatic installation is not v2.2 scope.
 
 ## Download and installation
 

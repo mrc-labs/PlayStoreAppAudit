@@ -331,28 +331,55 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 - The annotated `v2.1.0` tag was created only after canonical assembly/checksum acceptance; the public assets were then independently re-downloaded and reverified.
 - Production signing was not claimed: Windows/Linux are unsigned and macOS is ad-hoc engineering signed only. Published v2.0.0 and v2.1.0 remain immutable.
 
-## v2.2 scoped work
+## v2.2 active scope
 
-No v2.2 implementation is part of v2.1 closure. The following scope is approved for v2.2 planning:
+v2.2 is the current active planning line, coordinated by master issue `#212`. The v2.1 release cycle is closed; implementation should proceed through focused issues and small PRs rather than reopening v2.1 release work.
 
 ### Source-aware views and layouts — issue #208
 
-Issue `#208` defines the required source-aware baseline:
+Issue `#208` owns the v2.2 source-aware layout baseline.
 
-- Local APK sources automatically show useful fields such as Local APK Version and APK Filename where applicable.
-- Phone-only fields such as Installed Version and Installed vs Store automatically disappear when they do not apply.
-- Automatic/contextual columns remain distinct from user-owned columns and are not persisted into Custom definitions.
-- Phone/phone-derived App List workflows and Local APK file/folder workflows keep separate persistent Custom layouts; changing source family restores the corresponding layout instead of rewriting one shared layout.
-- Every built-in preset is reviewed for source relevance. Where one preset cannot serve both source families cleanly, labels/grouping and source-specific variants must make the intended source clear and provide a suitable default.
-- Existing single-Custom settings require a safe migration path.
+- Keep the existing source-aware `Basic`, `Source Details` and `Technical` preset architecture rather than reimplementing it.
+- Local APK source defaults expose useful fields such as Local APK Version and APK Filename where applicable.
+- Phone-only fields such as Installed Version and Installed vs Store disappear when they do not apply.
+- Ordinary Local APK metadata remains user-owned/configurable; automatic/contextual overlays remain separate and are not serialized into Custom definitions.
+- Replace the single shared Custom layout with two explicit persistent user-facing layouts:
+  - **Custom (Phone / App List)**
+  - **Custom (Local APK)**
+- Both Custom concepts should remain discoverable in `View > Column Preset`; the non-applicable one may remain visible but disabled for the current source rather than disappearing.
+- Phone/App List and Local APK layouts persist independently across restart and source switching restores the matching layout without rewriting the other.
+- Existing single-Custom settings require a conservative migration path with no silent loss.
+- Broader arbitrary named Custom Views remain separate issue `#147`.
 
-This is intentionally narrower than arbitrary named Custom Views. Issue `#147` remains open as the broader future create/select/rename/delete named-view enhancement and must not be silently redefined by #208.
+Recommended implementation sequence:
 
-### CLI/headless
+1. source-family Custom persistence foundation and migration;
+2. source-aware Custom defaults and transition behavior;
+3. final built-in preset/menu presentation and UX polish.
 
-CLI/headless remains planned for v2.2 and must reuse service/domain boundaries rather than driving Qt or duplicating Store/ADB logic.
+### Persistent Personal Device profiles — issue #200
 
-Persistent Personal Device profile storage/library issue `#200` remains separate post-v2.1 work and must preserve the v2.1 privacy boundary.
+Persistent Personal Device profiles are approved v2.2 scope.
+
+- Allow explicit saving of multiple privacy-safe user-captured Device Specific profiles.
+- Let users assign friendly local names and select, refresh/replace, rename and delete saved profiles.
+- Keep built-in validated reference profiles visually and semantically distinct from user-captured personal profiles.
+- A saved profile must remain usable without the physical phone connected.
+- Persistence is opt-in and must never silently convert v2.1 transient session state into durable storage.
+- Design and validate the persisted schema before implementation.
+- Never persist raw ADB serial, durable device-correlation hashes, Android ID, GSF device ID, IMEI/MEID, SIM/subscriber identifiers, Google identity, OAuth/AAS/bearer tokens, cookies, check-in ID or profile hashes derived from sensitive identifiers.
+- Device Specific evidence remains additive; raw public Store evidence remains authoritative.
+
+### CLI/headless auditing — issue #211
+
+CLI/headless is approved v2.2 scope.
+
+- Reuse existing domain/service boundaries instead of driving Qt widgets or duplicating Store/ADB logic.
+- Target the existing source families where coherent: App List files, Local APK files/folders and connected-phone inventory through read-only ADB.
+- Provide deterministic scriptable output, including versioned JSON and canonical CSV where applicable.
+- Preserve Store, Not Found, Anomaly, Device Specific, cache, scoring, privacy and read-only ADB semantics.
+- Normal CLI operation should not require a visible GUI or a parallel business-logic implementation.
+- Keep interactive TUI, background daemon/server mode and scheduled monitoring out of scope.
 
 ## Later 2.x update delivery
 
@@ -392,4 +419,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` records the completed release and final editorial continuation point. Do not generate a final continuation ZIP or `REPOSITORY_SNAPSHOT.md` until the final editorial PR is merged and the normal local checkout is clean and synchronized to that later documentation-only `main` SHA. Future work follows the explicitly scoped issues above rather than being inferred from release prose.
+`HANDOFF_V2.1.md` remains the completed v2.1 release record. `HANDOFF_V2.2.md` is the current development handoff for the active v2.2 cycle. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.

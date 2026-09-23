@@ -153,7 +153,7 @@ The post-publication review found exactly the two canonical v1.99 artifacts and 
 - Accepted combined Windows artifact ID: `10665003533`; verified inner ZIP SHA-256: `4b26dac70281d01fef4fe08038a9a6d3ab0b48cce847fdb315eeb12ec96f0a31`.
 - Mandatory release-entry component freshness gate passed and merged through PR #203; Ruff advanced to 0.16.8 and the one-shot clean Python 3.14 audit returned `pip check` clean and `pip list --outdated --format=json == []`.
 - Post-merge Quality #582 / workflow run `35699222465` passed on exact `main` SHA `64de5e71a6f49c405b6ad5b370f9f063c75cbdec`.
-- Release coordination issue `#153` remains open only through permanent closure; persistent Personal Device profile library issue `#200` remains explicitly post-v2.1 and was not included.
+- Release coordination issue `#153` is closed as completed after publication, post-release documentation, local synchronization and final handoff generation; persistent Personal Device profile library issue `#200` was not included in v2.1 and is now approved v2.2 scope.
 - Python release-packaging and Quality baseline: 3.14.
 - `PySide6-Essentials`: 6.11.2; Nuitka: 4.2.2; Ruff: 0.16.8.
 - Local credential protection dependency: `cryptography==50.0.1` (AES-GCM/HKDF-SHA256).
@@ -254,6 +254,18 @@ The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` 
 - keep a richer Dashboard out of v1.99 and the v2.0 core; revisit it only in later v2.x or v3.0 when mature multi-source/history workflows justify it.
 
 Concrete bugs and polish found through actual v1.9 use may be reviewed individually. They are not automatically accepted scope.
+
+## Current v2.2 planning baseline
+
+The v2.1.0 release cycle is fully closed. Release coordination issue `#153` is closed as completed; the immutable v2.1.0 release remains frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. The final post-release documentation baseline before v2.2 kickoff is `fca18639480b2ce90396d860cfea34d3a9ed2771`, with post-merge Quality #597 / run `35803473823` passing on that exact SHA.
+
+v2.2 is the active planning/development line, coordinated by master issue `#212`, with three approved pillars:
+
+- `#208`: source-aware views with two explicit persistent Custom layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving the existing source-aware built-in preset architecture and keeping contextual overlays outside user-owned saved layouts;
+- `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
+- `#211`: CLI/headless auditing through shared service/domain boundaries rather than Qt-driven or duplicated Store/ADB logic.
+
+The current application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
 
 ## v2.0 and later direction
 
@@ -416,4 +428,4 @@ Do not reintroduce without a new explicit product decision:
 - v1.99's user-tested packaged-RC requirement is satisfied by RC8; its ZIP remains acceptance evidence and is not the official final release artifact.
 - Complete every release through `RELEASE_CLOSURE.md`, including post-release context, safe local synchronization and handoff generation only from clean synchronized `main`.
 
-See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, historical handoffs, and `HANDOFF_V2.1.md` for durable policy, release history and current continuation context.
+See `PROJECT_DECISIONS.md`, `ROADMAP.md`, `BUILDING.md`, `RELEASE_NOTES.md`, `CI_MAINTENANCE.md`, historical handoffs, and `HANDOFF_V2.2.md` for durable policy, release history and current continuation context. `HANDOFF_V2.1.md` remains the completed v2.1 release handoff.
