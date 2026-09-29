@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui.column_presets import CustomLayoutFamily
+from playstore_app_audit.ui.column_presets import CustomLayoutFamily, visible_columns
 from playstore_app_audit.ui.main_window import MainWindow
 
 
@@ -137,7 +137,14 @@ def test_missing_target_family_uses_basic_fallback_without_persisting_it(
     window.source_mode = "local_apk"
     window._apply_established_source_defaults()
 
-    visible = set(_visible(window))
+    visible = _visible(window)
+    assert visible == visible_columns(
+        "Basic",
+        "local_apk",
+        compare_previous=False,
+        device_inventory_history=False,
+        health_score_enabled=False,
+    )
     assert {"local_apk_file_name", "local_apk_version_name"}.issubset(visible)
     assert not {
         "installed_version",
@@ -147,10 +154,51 @@ def test_missing_target_family_uses_basic_fallback_without_persisting_it(
     assert settings["view_preset"] == "Custom"
     assert not _family(settings, CustomLayoutFamily.LOCAL_APK)["exists"]
     assert _family(settings, CustomLayoutFamily.PHONE_APP_LIST) == phone
+    actions = _custom_actions(window)
+    basic = next(action for action in window.view_preset_actions if action.data() == "Basic")
+    assert basic.isChecked()
+    assert not actions[CustomLayoutFamily.LOCAL_APK.value].isChecked()
 
     window.source_mode = "device"
     window._apply_established_source_defaults()
     assert _family(settings, CustomLayoutFamily.PHONE_APP_LIST) == phone
+    assert actions[CustomLayoutFamily.PHONE_APP_LIST.value].isChecked()
+    assert not basic.isChecked()
+
+
+def test_inverse_missing_phone_family_checks_basic_then_restores_local_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    window = create_window()
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+    window._persist_current_custom_layout()
+    local = _family(settings, CustomLayoutFamily.LOCAL_APK)
+
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+
+    actions = _custom_actions(window)
+    basic = next(action for action in window.view_preset_actions if action.data() == "Basic")
+    assert _visible(window) == visible_columns(
+        "Basic",
+        "device",
+        compare_previous=False,
+        device_inventory_history=False,
+        health_score_enabled=False,
+    )
+    assert basic.isChecked()
+    assert not actions[CustomLayoutFamily.PHONE_APP_LIST.value].isChecked()
+    assert not _family(settings, CustomLayoutFamily.PHONE_APP_LIST)["exists"]
+    assert _family(settings, CustomLayoutFamily.LOCAL_APK) == local
+
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+
+    assert actions[CustomLayoutFamily.LOCAL_APK.value].isChecked()
+    assert not basic.isChecked()
+    assert _family(settings, CustomLayoutFamily.LOCAL_APK) == local
 
 
 def test_phone_and_local_custom_layouts_round_trip_and_survive_restart(

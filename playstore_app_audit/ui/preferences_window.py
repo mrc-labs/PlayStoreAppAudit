@@ -446,16 +446,23 @@ class PreferencesWindow(table_ui.TableWindow):
         group = getattr(self, "_view_action_group", None)
         if not isinstance(group, QActionGroup):
             return
+        effective_name = name
+        if name == "Custom" and not self._has_custom_table_layout(
+            state.load_settings()
+        ):
+            effective_name = "Basic"
         active_family = custom_layout_family(self.source_mode)
         for action in group.actions():
             action_family = action.property("customLayoutFamily")
-            if name == "Custom":
+            if effective_name == "Custom":
                 action.setChecked(
                     action.data() == "Custom"
                     and action_family == active_family.value
                 )
             else:
-                action.setChecked(action_family is None and action.data() == name)
+                action.setChecked(
+                    action_family is None and action.data() == effective_name
+                )
 
     def _sync_custom_preset_availability(self) -> None:
         active_family = custom_layout_family(self.source_mode)
