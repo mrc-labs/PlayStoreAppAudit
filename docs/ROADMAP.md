@@ -357,6 +357,16 @@ Recommended implementation sequence:
 2. source-aware Custom defaults and transition behavior;
 3. final built-in preset/menu presentation and UX polish.
 
+Implementation checkpoint: all three steps are complete in the focused #208
+change. The menu exposes both exact Custom labels and disables the inactive
+family. A versioned two-family settings schema preserves independent existence,
+visibility, order and widths; valid v2.1 single-Custom state migrates once into
+both families with source-safe filtering and without deleting legacy keys.
+Phone/App List share one family while concrete applicability remains enforced,
+and Local APK retains its independent user-owned metadata layout. Basic, Source
+Details and Technical required no semantic definition changes after the
+three-source audit.
+
 ### Persistent Personal Device profiles — issue #200
 
 Persistent Personal Device profiles are approved v2.2 scope.

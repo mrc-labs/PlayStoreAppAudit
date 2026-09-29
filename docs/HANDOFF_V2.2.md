@@ -50,7 +50,9 @@ Recommended implementation sequence:
 2. source-aware Custom defaults and repeated source-transition behavior;
 3. final Column Preset labels/disabled states/tooltips and built-in preset UX polish.
 
-The first implementation PR of v2.2 should start with step 1, not with broad UI redesign.
+The focused #208 implementation now completes all three steps without a broad UI redesign. It uses versioned `custom_view_layouts` schema v1 with `phone_app_list` and `local_apk` entries, preserves the stable `view_preset == "Custom"` identifier, and retains the v2.1 keys as migration/compatibility evidence. A valid legacy single Custom seeds both families once after source-safe filtering because the old schema cannot identify its originating source reliably.
+
+Source transitions restore the matching entry under suspended header tracking. Phone and App List share one stored family, while concrete-source applicability hides phone-only fields in App List without deleting their saved widths/order. A missing family renders the active source's Basic fallback without creating a fake Custom; Reset Table Layout affects only the active family/effective layout. The three built-ins required no semantic changes.
 
 ### 2. Persistent Personal Device profile library — #200
 
@@ -132,17 +134,10 @@ Preserve:
 
 ## Immediate next implementation
 
-Start with issue `#208`, source-family Custom persistence foundation.
-
-Before editing:
-
-1. synchronize a clean normal checkout to current `origin/main`;
-2. verify no user work is dirty;
-3. create a short-lived feature branch;
-4. inspect `playstore_app_audit/ui/column_presets.py`, `compact_window.py`, `main_window.py`, state/settings normalization and existing preset tests;
-5. implement the smallest durable settings/migration layer for the two source-family Custom layouts;
-6. add focused migration/restart/source-switch tests;
-7. do not mix #200 or #211 implementation into that first PR.
+After the focused #208 PR passes review and merges normally, continue with one
+of the remaining v2.2 pillars through its own issue and branch. Do not mix #200
+or #211 into the source-aware layout PR, and keep #147 as the separate arbitrary
+Named Custom Views scope.
 
 ## Continuation
 

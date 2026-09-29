@@ -204,6 +204,25 @@ Issue `#208` is explicit v2.2 UX scope.
 - The existing single Custom layout requires conservative migration with no silent loss.
 - Broader arbitrary named views remain separate issue `#147`; #208 must not silently redefine or close it.
 
+The v2.2 implementation stores the authoritative state in
+`custom_view_layouts`, schema version 1, with independent `phone_app_list` and
+`local_apk` entries. Each entry owns an explicit `exists` flag plus ordinary
+user-owned `columns`, complete family order and family widths. `view_preset`
+retains the stable `Custom` identifier. The v2.1 `custom_view_*` values and
+`qt_header_state` remain non-destructive compatibility/migration inputs and are
+not used to collapse the two new entries.
+
+Because the legacy record does not identify its source reliably, a valid old
+Custom is seeded into both new families after deterministic family-safe
+filtering. Contextual columns are excluded, applicable widths/order are retained,
+old keys are kept, and a completion marker makes the migration one-shot. A
+missing or malformed family falls back to the active source's Basic definition
+without creating a Custom. Phone and App List share one stored family, while
+concrete-source applicability hides phone-only fields for App List without
+discarding their selection, order or widths. Programmatic restore/source
+switching stays under suspended header tracking, and Reset Table Layout updates
+only the active effective family.
+
 Rationale: two explicit deterministic source-family layouts solve the immediate semantic mismatch and make the behavior understandable without prematurely committing to a general named-view manager.
 
 ## v2.2 persistent Personal Device profile library
