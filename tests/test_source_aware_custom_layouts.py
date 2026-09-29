@@ -367,4 +367,3 @@ def test_reset_changes_only_active_custom_family(
 
     assert _family(settings, CustomLayoutFamily.PHONE_APP_LIST) == phone
     assert _family(settings, CustomLayoutFamily.LOCAL_APK) != before_local
-
