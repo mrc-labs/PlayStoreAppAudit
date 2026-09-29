@@ -789,9 +789,33 @@ def test_custom_view_can_include_location(
         "load_settings",
         lambda: {
             "view_preset": "Custom",
-            "custom_view_columns": ["criticality", "package_name", "local_apk_location"],
+            "custom_view_layouts_migrated_v1": True,
+            "custom_view_layouts": {
+                "schema_version": 1,
+                "phone_app_list": {
+                    "exists": False,
+                    "columns": [],
+                    "order": [],
+                    "widths": {},
+                },
+                "local_apk": {
+                    "exists": True,
+                    "columns": [
+                        "criticality",
+                        "package_name",
+                        "local_apk_location",
+                    ],
+                    "order": [
+                        "criticality",
+                        "package_name",
+                        "local_apk_location",
+                    ],
+                    "widths": {},
+                },
+            },
         },
     )
+    window.source_mode = "local_apk"
     assert "local_apk_location" in window._visible_column_order()
 
 

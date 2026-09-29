@@ -18,6 +18,7 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
+import playstore_app_audit.ui.column_presets as column_presets
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 import playstore_app_audit.ui.main_window as main_ui
@@ -350,27 +351,45 @@ def test_device_source_transition_preserves_custom_user_column_order(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = {
-        "view_preset": "Custom",
-        "custom_columns": ["criticality", "package_name", "play_title"],
-        "recent_sources": [],
-    }
-    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
     header = window.table.horizontalHeader()
     package_column = window.model.columns.index("package_name")
     title_column = window.model.columns.index("play_title")
     header.moveSection(header.visualIndex(title_column), header.visualIndex(package_column))
+    applicable = column_presets.custom_family_user_columns(
+        column_presets.CustomLayoutFamily.PHONE_APP_LIST
+    )
+    order_names = [
+        window.model.columns[header.logicalIndex(index)]
+        for index in range(header.count())
+        if window.model.columns[header.logicalIndex(index)] in applicable
+    ]
     order_before = [
         header.logicalIndex(index)
         for index in range(header.count())
-        if header.logicalIndex(index)
-        not in {
-            window.model.columns.index("change"),
-            window.model.columns.index("device_change"),
-            window.model.columns.index("local_apk_version_comparison"),
-            window.model.columns.index("criticality"),
-        }
+        if window.model.columns[header.logicalIndex(index)] in applicable
     ]
+    settings = {
+        "view_preset": "Custom",
+        "custom_view_layouts_migrated_v1": True,
+        "custom_view_layouts": {
+            "schema_version": 1,
+            "phone_app_list": {
+                "exists": True,
+                "columns": ["criticality", "package_name", "play_title"],
+                "order": order_names,
+                "widths": {},
+            },
+            "local_apk": {
+                "exists": False,
+                "columns": [],
+                "order": [],
+                "widths": {},
+            },
+        },
+        "recent_sources": [],
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
 
     window.source_mode = "device"
     window._establish_source_presentation()
@@ -378,13 +397,7 @@ def test_device_source_transition_preserves_custom_user_column_order(
     order_after = [
         header.logicalIndex(index)
         for index in range(header.count())
-        if header.logicalIndex(index)
-        not in {
-            window.model.columns.index("change"),
-            window.model.columns.index("device_change"),
-            window.model.columns.index("local_apk_version_comparison"),
-            window.model.columns.index("criticality"),
-        }
+        if window.model.columns[header.logicalIndex(index)] in applicable
     ]
     assert order_after == order_before
     assert header.sortIndicatorOrder() == Qt.SortOrder.AscendingOrder

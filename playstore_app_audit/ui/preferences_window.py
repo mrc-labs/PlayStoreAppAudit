@@ -65,7 +65,11 @@ from playstore_app_audit.ui.column_presets import (
     CUSTOM_CONTEXTUAL_COLUMNS,
     SOURCE_DEVICE,
     SOURCE_LOCAL_APK,
+    custom_family_user_columns,
+    custom_layout_family,
+    custom_source_user_columns,
     normalise_source_mode,
+    visible_columns,
 )
 
 ADVANCED_CUSTOM_COLUMNS = frozenset(
@@ -144,11 +148,21 @@ def customize_view_dialog_sizes(
     return minimum, initial
 
 
-def custom_column_groups() -> tuple[tuple[str, ...], tuple[str, ...]]:
+_ALL_CUSTOM_SOURCES = object()
+
+
+def custom_column_groups(
+    source_mode: object = _ALL_CUSTOM_SOURCES,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    applicable = (
+        frozenset(insights_ui.V9_MODEL_COLUMNS)
+        if source_mode is _ALL_CUSTOM_SOURCES
+        else custom_source_user_columns(source_mode)
+    )
     choices = tuple(
         column
         for column in insights_ui.V9_MODEL_COLUMNS
-        if column not in CUSTOM_AUTOMATIC_COLUMNS
+        if column not in CUSTOM_AUTOMATIC_COLUMNS and column in applicable
     )
     common = tuple(column for column in choices if column not in ADVANCED_CUSTOM_COLUMNS)
     advanced = tuple(column for column in choices if column in ADVANCED_CUSTOM_COLUMNS)
@@ -270,8 +284,16 @@ class PreferencesWindow(table_ui.TableWindow):
                 columns.append("health_score")
             columns.append("notes")
         elif preset == "Custom":
-            configured = self._normalise_custom_columns(settings.get("custom_view_columns"))
-            columns = configured or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+            configured = self._custom_layout_columns(settings)
+            columns = configured or visible_columns(
+                "Basic",
+                self.source_mode,
+                compare_previous=compare,
+                device_inventory_history=state.device_inventory_history_enabled(settings),
+                health_score_enabled=health,
+            )
+            applicable = custom_source_user_columns(self.source_mode)
+            columns = [column for column in columns if column in applicable]
         else:
             columns = ["criticality"]
             if compare:
@@ -424,18 +446,36 @@ class PreferencesWindow(table_ui.TableWindow):
         group = getattr(self, "_view_action_group", None)
         if not isinstance(group, QActionGroup):
             return
+        active_family = custom_layout_family(self.source_mode)
         for action in group.actions():
-            action.setChecked(action.data() == name)
+            action_family = action.property("customLayoutFamily")
+            if name == "Custom":
+                action.setChecked(
+                    action.data() == "Custom"
+                    and action_family == active_family.value
+                )
+            else:
+                action.setChecked(action_family is None and action.data() == name)
 
     def _sync_custom_preset_availability(self) -> None:
-        for action in getattr(self, "view_preset_actions", []) or []:
-            if action.data() == "Custom":
-                action.setEnabled(True)
+        active_family = custom_layout_family(self.source_mode)
+        actions = list(getattr(self, "view_preset_actions", []) or [])
         group = getattr(self, "_view_action_group", None)
         if isinstance(group, QActionGroup):
-            for action in group.actions():
-                if action.data() == "Custom":
-                    action.setEnabled(True)
+            actions.extend(action for action in group.actions() if action not in actions)
+        for action in actions:
+            raw_family = action.property("customLayoutFamily")
+            if raw_family is None:
+                continue
+            enabled = raw_family == active_family.value
+            action.setEnabled(enabled)
+            action.setToolTip(
+                "Edit or restore this source family's independent Custom layout."
+                if enabled
+                else "Available when this source family is active."
+            )
+            if not enabled:
+                action.setChecked(False)
 
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
@@ -587,9 +627,21 @@ class PreferencesWindow(table_ui.TableWindow):
         advanced_layout = QVBoxLayout(advanced_group)
         groups_layout.addWidget(common_group, 1)
         groups_layout.addWidget(advanced_group, 1)
-        stored_custom = self._normalise_custom_columns(
-            self.user_settings.get("custom_view_columns")
-        ) or list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+        custom_entry = self._custom_layout_entry(self.user_settings)
+        source_defaults = visible_columns(
+            "Basic",
+            self.source_mode,
+            compare_previous=state.store_history_enabled(self.user_settings),
+            device_inventory_history=state.device_inventory_history_enabled(
+                self.user_settings
+            ),
+            health_score_enabled=bool(
+                self.user_settings.get("health_score_enabled", False)
+            ),
+        )
+        stored_custom = (
+            list(custom_entry[0]) if custom_entry is not None else source_defaults
+        )
         ordinary_stored_custom = [
             column for column in stored_custom if column not in CUSTOM_CONTEXTUAL_COLUMNS
         ]
@@ -603,9 +655,10 @@ class PreferencesWindow(table_ui.TableWindow):
                 if column not in CUSTOM_CONTEXTUAL_COLUMNS
             ]
         )
-        configured = set(initial_columns)
+        applicable_source = custom_source_user_columns(self.source_mode)
+        configured = set(initial_columns).intersection(applicable_source)
         custom_checks: dict[str, QCheckBox] = {}
-        common_columns, advanced_columns = custom_column_groups()
+        common_columns, advanced_columns = custom_column_groups(self.source_mode)
         common_set = set(common_columns)
         for key in (*common_columns, *advanced_columns):
             label = base_ui.COLUMN_LABELS.get(key, key)
@@ -650,7 +703,19 @@ class PreferencesWindow(table_ui.TableWindow):
         def reset_controls() -> None:
             show_icons.setChecked(app_icon_metadata.DEFAULT_SHOW_APP_ICONS)
             date_format.setCurrentText(presentation.DEFAULT_DATE_FORMAT)
-            defaults = set(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS)
+            defaults = set(
+                visible_columns(
+                    "Basic",
+                    self.source_mode,
+                    compare_previous=state.store_history_enabled(self.user_settings),
+                    device_inventory_history=state.device_inventory_history_enabled(
+                        self.user_settings
+                    ),
+                    health_score_enabled=bool(
+                        self.user_settings.get("health_score_enabled", False)
+                    ),
+                )
+            )
             for key, check in custom_checks.items():
                 check.setChecked(key in defaults)
 
@@ -678,14 +743,37 @@ class PreferencesWindow(table_ui.TableWindow):
         }
         if save_custom:
             _visible, live_order, live_widths, encoded = self._current_table_layout()
+            family = custom_layout_family(self.source_mode)
+            applicable_family = custom_family_user_columns(family)
             live_order = [
                 column
                 for column in live_order
                 if column not in CUSTOM_CONTEXTUAL_COLUMNS
+                and column in applicable_family
             ]
-            stored_widths = self._normalise_custom_widths(
-                self.user_settings.get("custom_view_widths")
+            existing_columns = custom_entry[0] if custom_entry is not None else []
+            existing_order = custom_entry[1] if custom_entry is not None else []
+            stored_widths = custom_entry[2] if custom_entry is not None else {}
+            retained_columns = [
+                column
+                for column in existing_columns
+                if column not in applicable_source
+            ]
+            selected_columns = set(retained_columns) | set(custom_columns)
+            family_order = list(
+                dict.fromkeys(
+                    live_order
+                    + existing_order
+                    + [
+                        column
+                        for column in self.model.columns
+                        if column in applicable_family
+                    ]
+                )
             )
+            family_columns = [
+                column for column in family_order if column in selected_columns
+            ]
             preserved_widths = {
                 column: (
                     live_widths[column]
@@ -696,12 +784,20 @@ class PreferencesWindow(table_ui.TableWindow):
                     )
                 )
                 for column in self.model.columns
+                if column in applicable_family
             }
+            self._store_custom_layout_entry(
+                self.user_settings,
+                family,
+                columns=family_columns,
+                order=family_order,
+                widths=preserved_widths,
+            )
             updates.update(
                 {
-                    "custom_view_columns": custom_columns,
+                    "custom_view_columns": family_columns,
                     "custom_view_exists": True,
-                    "custom_view_order": live_order,
+                    "custom_view_order": family_order,
                     "custom_view_widths": preserved_widths,
                     "qt_header_state": encoded,
                     "view_preset": "Custom",

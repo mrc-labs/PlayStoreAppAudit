@@ -85,6 +85,22 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "view_preset": "Basic",
     "technical_columns": [],
     "custom_view_exists": False,
+    "custom_view_layouts_migrated_v1": False,
+    "custom_view_layouts": {
+        "schema_version": 1,
+        "phone_app_list": {
+            "exists": False,
+            "columns": [],
+            "order": [],
+            "widths": {},
+        },
+        "local_apk": {
+            "exists": False,
+            "columns": [],
+            "order": [],
+            "widths": {},
+        },
+    },
     "qt_header_state": "",
     "ctk_column_widths": {},
     "alternative_distribution": {

@@ -5,6 +5,7 @@ import sys
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
+from copy import deepcopy
 
 from PySide6.QtCore import QByteArray, QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
@@ -52,7 +53,15 @@ from playstore_app_audit.services.state import (
 )
 from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.audit_window import AuditWindow
-from playstore_app_audit.ui.column_presets import CUSTOM_CONTEXTUAL_COLUMNS
+from playstore_app_audit.ui.column_presets import (
+    CUSTOM_CONTEXTUAL_COLUMNS,
+    CUSTOM_LAYOUT_FAMILIES,
+    CUSTOM_LAYOUTS_SCHEMA_VERSION,
+    CustomLayoutFamily,
+    custom_family_user_columns,
+    custom_layout_family,
+    custom_source_user_columns,
+)
 
 PRIMARY_COLUMNS = schema.PRIMARY_COLUMNS
 MODEL_COLUMNS = schema.MODEL_COLUMNS
@@ -445,11 +454,81 @@ class CompactWindow(AuditWindow):
                 widths[column] = width
         return widths
 
+    def _current_custom_layout_family(self) -> CustomLayoutFamily:
+        return custom_layout_family(self.source_mode)
+
+    def _custom_layout_entry(
+        self,
+        settings: dict[str, object],
+        family: CustomLayoutFamily | None = None,
+    ) -> tuple[list[str], list[str], dict[str, int]] | None:
+        selected_family = family or self._current_custom_layout_family()
+        layouts = settings.get("custom_view_layouts")
+        if not isinstance(layouts, dict):
+            return None
+        raw_entry = layouts.get(selected_family.value)
+        if not isinstance(raw_entry, dict) or raw_entry.get("exists") is not True:
+            return None
+        columns = self._normalise_custom_columns(raw_entry.get("columns"))
+        if columns is None:
+            return None
+        applicable = custom_family_user_columns(selected_family)
+        columns = [column for column in columns if column in applicable]
+        if not columns:
+            return None
+        if "criticality" not in columns:
+            columns.insert(0, "criticality")
+        if "package_name" not in columns:
+            columns.insert(1, "package_name")
+        order = [
+            column
+            for column in self._normalise_custom_order(raw_entry.get("order"), columns)
+            if column in applicable
+        ]
+        widths = {
+            column: width
+            for column, width in self._normalise_custom_widths(
+                raw_entry.get("widths")
+            ).items()
+            if column in applicable
+        }
+        return columns, order, widths
+
+    def _store_custom_layout_entry(
+        self,
+        settings: dict[str, object],
+        family: CustomLayoutFamily,
+        *,
+        columns: list[str],
+        order: list[str],
+        widths: dict[str, int],
+    ) -> None:
+        raw_layouts = settings.get("custom_view_layouts")
+        layouts = deepcopy(raw_layouts) if isinstance(raw_layouts, dict) else {}
+        layouts["schema_version"] = CUSTOM_LAYOUTS_SCHEMA_VERSION
+        for known_family in CUSTOM_LAYOUT_FAMILIES:
+            layouts.setdefault(
+                known_family.value,
+                {"exists": False, "columns": [], "order": [], "widths": {}},
+            )
+        layouts[family.value] = {
+            "exists": True,
+            "columns": list(columns),
+            "order": list(order),
+            "widths": dict(widths),
+        }
+        settings["custom_view_layouts"] = layouts
+
+    def _custom_layout_columns(
+        self, settings: dict[str, object] | None = None
+    ) -> list[str] | None:
+        current = settings if settings is not None else self.user_settings
+        entry = self._custom_layout_entry(current)
+        return None if entry is None else list(entry[0])
+
     def _has_custom_table_layout(self, settings: dict[str, object] | None = None) -> bool:
         current = settings if settings is not None else self.user_settings
-        return bool(current.get("custom_view_exists")) and self._normalise_custom_columns(
-            current.get("custom_view_columns")
-        ) is not None
+        return self._custom_layout_entry(current) is not None
 
     def _current_table_layout(self) -> tuple[list[str], list[str], dict[str, int], str]:
         header = self.table.horizontalHeader()
@@ -476,12 +555,57 @@ class CompactWindow(AuditWindow):
         visible = [column for column in visible if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         order = [column for column in order if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         settings = load_settings()
+        family = self._current_custom_layout_family()
+        applicable_family = custom_family_user_columns(family)
+        applicable_source = custom_source_user_columns(self.source_mode)
+        existing = self._custom_layout_entry(settings, family)
+        existing_columns = existing[0] if existing is not None else []
+        retained_columns = [
+            column for column in existing_columns if column not in applicable_source
+        ]
+        selected = set(retained_columns) | {
+            column for column in visible if column in applicable_source
+        }
+        family_order = [column for column in order if column in applicable_family]
+        family_defaults = [
+            column for column in MODEL_COLUMNS if column in applicable_family
+        ]
+        if existing is not None:
+            family_order = list(
+                dict.fromkeys(family_order + existing[1] + family_defaults)
+            )
+        else:
+            family_order = list(dict.fromkeys(family_order + family_defaults))
+        family_columns = [column for column in family_order if column in selected]
+        if "criticality" not in family_columns:
+            family_columns.insert(0, "criticality")
+        if "package_name" not in family_columns:
+            family_columns.insert(1, "package_name")
+        family_widths = (
+            dict(existing[2]) if existing is not None else {}
+        )
+        family_widths.update(
+            {
+                column: width
+                for column, width in widths.items()
+                if column in applicable_family and width >= 20
+            }
+        )
+        self._store_custom_layout_entry(
+            settings,
+            family,
+            columns=family_columns,
+            order=family_order,
+            widths=family_widths,
+        )
         settings.update(
             {
+                # v2.1 aliases remain available for rollback/inspection, but the
+                # versioned family schema above is authoritative in v2.2.
                 "custom_view_exists": True,
-                "custom_view_columns": visible,
-                "custom_view_order": order,
-                "custom_view_widths": widths,
+                "custom_view_columns": family_columns,
+                "custom_view_order": family_order,
+                "custom_view_widths": family_widths,
                 # Preserve the RC2/Phase A header blob as a compatibility alias.
                 "qt_header_state": encoded,
             }
@@ -498,13 +622,14 @@ class CompactWindow(AuditWindow):
 
     def _restore_custom_table_layout(self) -> bool:
         self.user_settings = load_settings()
-        visible = self._normalise_custom_columns(self.user_settings.get("custom_view_columns"))
-        if not self.user_settings.get("custom_view_exists") or visible is None:
+        entry = self._custom_layout_entry(self.user_settings)
+        if entry is None:
             return False
-        order = self._normalise_custom_order(self.user_settings.get("custom_view_order"), visible)
-        widths = self._normalise_custom_widths(self.user_settings.get("custom_view_widths"))
+        visible, order, widths = entry
+        source_applicable = custom_source_user_columns(self.source_mode)
+        source_visible = [column for column in visible if column in source_applicable]
         with self._suspend_table_layout_tracking():
-            visible_set = set(visible)
+            visible_set = set(source_visible)
             for logical, column in enumerate(MODEL_COLUMNS):
                 self.table.setColumnHidden(logical, column not in visible_set)
             header = self.table.horizontalHeader()
@@ -526,6 +651,8 @@ class CompactWindow(AuditWindow):
         self._custom_layout_migration_checked = True
 
         self.user_settings = load_settings()
+        if self.user_settings.get("custom_view_layouts_migrated_v1") is True:
+            return False
         legacy_columns = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
         )
@@ -534,6 +661,7 @@ class CompactWindow(AuditWindow):
         )
         legacy_state = str(self.user_settings.get("qt_header_state") or "")
         current_preset = str(self.user_settings.get("view_preset") or "Basic")
+        explicit_exists = self.user_settings.get("custom_view_exists") is True
 
         # Before persistent Custom layouts existed, every normal close saved a
         # header blob. Establish the built-in layout first so only semantic
@@ -572,7 +700,23 @@ class CompactWindow(AuditWindow):
             and legacy_columns != default_columns
         )
         preset_is_custom = current_preset == "Custom" and legacy_columns is not None
-        if not (header_is_custom or columns_are_custom or preset_is_custom):
+        has_legacy_custom = bool(
+            (explicit_exists and legacy_columns is not None)
+            or header_is_custom
+            or columns_are_custom
+            or preset_is_custom
+        )
+
+        existing_families = {
+            family
+            for family in CUSTOM_LAYOUT_FAMILIES
+            if self._custom_layout_entry(self.user_settings, family) is not None
+        }
+        if not has_legacy_custom:
+            if current_preset == "Custom" and not existing_families:
+                self.user_settings["view_preset"] = "Basic"
+            self.user_settings["custom_view_layouts_migrated_v1"] = True
+            self.user_settings = save_settings(self.user_settings)
             return False
 
         with self._suspend_table_layout_tracking():
@@ -581,11 +725,68 @@ class CompactWindow(AuditWindow):
                 for logical, column in enumerate(MODEL_COLUMNS):
                     self.table.setColumnHidden(logical, column not in visible)
 
+        recovered_visible, recovered_order, recovered_widths, encoded = (
+            self._current_table_layout()
+        )
+        if legacy_columns is not None:
+            recovered_visible = legacy_columns
+        configured_order = self.user_settings.get("custom_view_order")
+        if isinstance(configured_order, list):
+            recovered_order = self._normalise_custom_order(
+                configured_order, recovered_visible
+            )
+        configured_widths = self._normalise_custom_widths(
+            self.user_settings.get("custom_view_widths")
+        )
+        recovered_widths.update(configured_widths)
+
+        # The old schema cannot reliably identify its source. Seed both families
+        # after filtering to each family's user-owned fields, preserving every
+        # applicable column, order and width without guessing the old source.
+        for family in CUSTOM_LAYOUT_FAMILIES:
+            if family in existing_families:
+                continue
+            applicable = custom_family_user_columns(family)
+            family_visible = [
+                column for column in recovered_visible if column in applicable
+            ]
+            if "criticality" not in family_visible:
+                family_visible.insert(0, "criticality")
+            if "package_name" not in family_visible:
+                family_visible.insert(1, "package_name")
+            family_order = [
+                column for column in recovered_order if column in applicable
+            ]
+            family_order = list(
+                dict.fromkeys(
+                    family_order
+                    + family_visible
+                    + [column for column in MODEL_COLUMNS if column in applicable]
+                )
+            )
+            family_widths = {
+                column: width
+                for column, width in recovered_widths.items()
+                if column in applicable
+            }
+            self._store_custom_layout_entry(
+                self.user_settings,
+                family,
+                columns=family_visible,
+                order=family_order,
+                widths=family_widths,
+            )
+
         # An old explicit Custom column list remains available while the user's
         # last built-in selection stays active. A semantically changed legacy
         # header represents the formerly active manual layout and becomes Custom.
         activate = preset_is_custom or header_is_custom
-        self._persist_current_custom_layout(activate=activate)
+        self.user_settings["custom_view_layouts_migrated_v1"] = True
+        self.user_settings["custom_view_exists"] = True
+        self.user_settings["qt_header_state"] = encoded
+        if activate:
+            self.user_settings["view_preset"] = "Custom"
+        self.user_settings = save_settings(self.user_settings)
         return True
 
     def _enable_table_layout_tracking(self) -> None:
@@ -606,33 +807,23 @@ class CompactWindow(AuditWindow):
 
     def _restore_table_layout(self) -> None:
         self.user_settings = load_settings()
+        migrated = self._migrate_legacy_custom_layout()
+        self.user_settings = load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
         if self._has_custom_table_layout() and preset == "Custom":
             if self._restore_custom_table_layout():
                 return
-        elif (
-            not self._has_custom_table_layout()
-            and self._migrate_legacy_custom_layout()
-            and str(self.user_settings.get("view_preset") or "Basic") == "Custom"
-        ):
+        elif migrated and str(self.user_settings.get("view_preset") or "Basic") == "Custom":
             self._restore_custom_table_layout()
             return
 
-        if preset == "Custom":
-            self.user_settings["view_preset"] = "Basic"
-            self.user_settings = save_settings(self.user_settings)
         self._apply_column_visibility(reset_order=True)
 
     def _save_table_layout(self) -> None:
-        try:
-            self.user_settings = load_settings()
-            if (
-                str(self.user_settings.get("view_preset") or "Basic") == "Custom"
-                and self._has_custom_table_layout()
-            ):
-                self._persist_current_custom_layout()
-        except Exception:
-            pass
+        # Header resize/reorder signals and Customize View persist immediately.
+        # Saving again during close can capture a source-applicability overlay
+        # (including zero-width hidden columns) as user intent.
+        return
 
     def _reset_table_layout(self) -> None:
         self._apply_column_visibility(reset_order=True)
