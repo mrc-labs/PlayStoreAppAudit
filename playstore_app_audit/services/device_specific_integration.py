@@ -24,6 +24,7 @@ from playstore_app_audit.services import (
     device_specific_personal_auth,
     device_specific_personal_session,
     device_specific_settings,
+    personal_device_library,
 )
 from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.device_specific_cache import (
@@ -141,7 +142,11 @@ def _apply_result(
     profile_label: str,
 ) -> bool:
     row[PROFILE_FIELD] = profile_label
-    row[PROFILE_ID_FIELD] = result.profile_id
+    row[PROFILE_ID_FIELD] = (
+        "personal_device"
+        if personal_device_library.is_personal_profile_id(result.profile_id)
+        else result.profile_id
+    )
     row[STATUS_FIELD] = result.status.value
     if not result.resolved:
         return False
@@ -164,7 +169,7 @@ def _apply_inconclusive(
     profile_label: str,
 ) -> None:
     row[PROFILE_FIELD] = profile_label
-    row[PROFILE_ID_FIELD] = profile_id
+    row[PROFILE_ID_FIELD] = "personal_device" if personal_device_library.is_personal_profile_id(profile_id) else profile_id
     row[STATUS_FIELD] = "inconclusive"
 
 
@@ -176,7 +181,7 @@ def _apply_provider_failure(
     status: ResolverStatus,
 ) -> None:
     row[PROFILE_FIELD] = profile_label
-    row[PROFILE_ID_FIELD] = profile_id
+    row[PROFILE_ID_FIELD] = "personal_device" if personal_device_library.is_personal_profile_id(profile_id) else profile_id
     row[STATUS_FIELD] = status.value
 
 
@@ -255,6 +260,14 @@ def enrich_rows_with_device_specific_resolution(
                 configuration_error="connected_device_profile_unavailable",
             )
         profile = connected_profile
+    elif personal_device_library.is_personal_profile_id(profile_id):
+        try:
+            profile = personal_device_library.get_profile(profile_id)
+        except (KeyError, personal_device_library.PersonalDeviceLibraryError):
+            return ResolverIntegrationSummary(
+                eligible=len(eligible_indices),
+                configuration_error="saved_personal_profile_unavailable",
+            )
     else:
         try:
             profile = load_reference_profile(profile_id)
@@ -292,6 +305,7 @@ def enrich_rows_with_device_specific_resolution(
         )
 
     profile_label = (
+        f"{'Personal Device — ' if personal_device_library.is_personal_profile_id(profile_id) else ''}"
         f"{profile.display_name} — Android {profile.android_release} / API {profile.api_level}"
     )
     misses: list[tuple[int, ResolverCacheIdentity]] = []

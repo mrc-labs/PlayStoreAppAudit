@@ -371,6 +371,8 @@ three-source audit.
 
 Persistent Personal Device profiles are approved v2.2 scope.
 
+The focused #200 development implementation now provides the library and Qt controls described below. It retains the existing session-only capture unless Save Locally is chosen. A matching manufacturer/model permits a confirmed replacement but does not establish physical-device identity; obvious mismatch is blocked. Reset Settings leaves the separate library intact while resetting selection, and cache/history cleanup does not remove profiles. Final acceptance depends on the focused PR review and Quality gate.
+
 - Allow explicit saving of multiple privacy-safe user-captured Device Specific profiles.
 - Let users assign friendly local names and select, refresh/replace, rename and delete saved profiles.
 - Keep built-in validated reference profiles visually and semantically distinct from user-captured personal profiles.

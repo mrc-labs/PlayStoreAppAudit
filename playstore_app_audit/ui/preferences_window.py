@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -40,6 +41,7 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.device_specific_personal_session as device_specific_personal_session
 import playstore_app_audit.services.device_specific_settings as device_specific_settings
+import playstore_app_audit.services.personal_device_library as personal_device_library
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.smart_queries as smart_queries
@@ -1083,10 +1085,26 @@ class PreferencesWindow(table_ui.TableWindow):
                 device_specific_integration.CONNECTED_DEVICE_PROFILE_ID,
             )
 
+        try:
+            saved_profiles = personal_device_library.list_profiles()
+        except personal_device_library.PersonalDeviceLibraryError:
+            saved_profiles = ()
+            library_unavailable = True
+        else:
+            library_unavailable = False
+        for saved in saved_profiles:
+            resolver_profile.addItem(
+                f"Saved Personal Device — {saved.display_name} — "
+                f"{saved.manufacturer} {saved.model} — Android "
+                f"{saved.android_release} / API {saved.api_level} "
+                f"(updated {saved.updated_at[:10]})",
+                saved.profile_id,
+            )
+
         for profile_id, label in (
             device_specific_integration.profile_choices()
         ):
-            resolver_profile.addItem(label, profile_id)
+            resolver_profile.addItem(f"Built-in validated — {label}", profile_id)
 
         configured_profile = str(
             self.user_settings.get(
@@ -1095,6 +1113,23 @@ class PreferencesWindow(table_ui.TableWindow):
             or device_specific_integration.DEFAULT_PROFILE_ID
         )
         profile_index = resolver_profile.findData(configured_profile)
+        if (
+            profile_index < 0
+            and personal_device_library.is_personal_profile_id(configured_profile)
+        ):
+            # Keep a newer or malformed library's selected ID intact when this
+            # build cannot represent its record. Choosing another item or Reset
+            # All to Defaults remains an explicit replacement.
+            resolver_profile.insertItem(
+                0,
+                (
+                    "Saved Personal Device — unavailable in this build (selection retained)"
+                    if library_unavailable
+                    else "Saved Personal Device — unavailable or missing (selection retained)"
+                ),
+                configured_profile,
+            )
+            profile_index = 0
         if profile_index < 0:
             profile_index = resolver_profile.findData(
                 device_specific_integration.DEFAULT_PROFILE_ID
@@ -1109,18 +1144,32 @@ class PreferencesWindow(table_ui.TableWindow):
         resolver_form.addRow("Device Profile", resolver_profile)
         get_phone_data = QPushButton("Get Phone Data")
         get_phone_data.setObjectName("DeviceSpecificGetPhoneDataButton")
+        save_phone_data = QPushButton("Save Locally…")
+        save_phone_data.setObjectName("DeviceSpecificSavePersonalProfileButton")
+        rename_phone_data = QPushButton("Rename…")
+        rename_phone_data.setObjectName("DeviceSpecificRenamePersonalProfileButton")
+        delete_phone_data = QPushButton("Delete…")
+        delete_phone_data.setObjectName("DeviceSpecificDeletePersonalProfileButton")
+        refresh_phone_data = QPushButton("Refresh…")
+        refresh_phone_data.setObjectName("DeviceSpecificRefreshPersonalProfileButton")
         phone_data_status = QLabel()
         phone_data_status.setObjectName("DeviceSpecificPhoneDataStatus")
         phone_data_status.setWordWrap(True)
+        if library_unavailable:
+            phone_data_status.setText("Saved profile library unavailable; file preserved.")
         phone_data_controls = QWidget()
         phone_data_layout = QHBoxLayout(phone_data_controls)
         phone_data_layout.setContentsMargins(0, 0, 0, 0)
         phone_data_layout.addWidget(get_phone_data)
+        phone_data_layout.addWidget(save_phone_data)
+        phone_data_layout.addWidget(rename_phone_data)
+        phone_data_layout.addWidget(refresh_phone_data)
+        phone_data_layout.addWidget(delete_phone_data)
         phone_data_layout.addWidget(phone_data_status, 1)
         personal_device_note = self._settings_note(
             "Reads only the Device Specific profile from one connected Android "
             "phone via ADB. No app scan. Adds it as Personal Device for this app "
-            "session."
+            "session. Save Locally explicitly stores a named profile for later use."
         )
         personal_device_note.setObjectName("DeviceSpecificPersonalDeviceNote")
         phone_data_section = QWidget()
@@ -1194,6 +1243,106 @@ class PreferencesWindow(table_ui.TableWindow):
         )
 
         capture_signals = DeviceProfileCaptureSignals(dialog)
+        pending_refresh_id: str | None = None
+
+        def saved_label(saved: personal_device_library.SavedPersonalDeviceProfile) -> str:
+            return (
+                f"Saved Personal Device — {saved.display_name} — "
+                f"{saved.manufacturer} {saved.model} — Android "
+                f"{saved.android_release} / API {saved.api_level} "
+                f"(updated {saved.updated_at[:10]})"
+            )
+
+        def selected_saved() -> personal_device_library.SavedPersonalDeviceProfile | None:
+            selected_id = resolver_profile.currentData()
+            if not personal_device_library.is_personal_profile_id(selected_id):
+                return None
+            try:
+                return personal_device_library.get_profile(selected_id)
+            except (KeyError, personal_device_library.PersonalDeviceLibraryError):
+                return None
+
+        def sync_library_buttons() -> None:
+            saved = selected_saved()
+            rename_phone_data.setEnabled(saved is not None)
+            refresh_phone_data.setEnabled(saved is not None)
+            delete_phone_data.setEnabled(saved is not None)
+            transient = getattr(self, "_device_specific_connected_profile", None)
+            save_phone_data.setEnabled(bool(transient is not None and transient.complete))
+
+        def library_error() -> None:
+            QMessageBox.warning(dialog, "Personal Device Profiles", "The local profile library could not be changed safely.")
+
+        def save_personal_profile() -> None:
+            transient = getattr(self, "_device_specific_connected_profile", None)
+            if transient is None or not transient.complete:
+                return
+            name, accepted = QInputDialog.getText(
+                dialog, "Save Personal Device Locally",
+                "Local name for this saved Device Specific profile:",
+                text=transient.display_name,
+            )
+            if not accepted:
+                return
+            try:
+                saved = personal_device_library.save_capture(transient, name)
+            except personal_device_library.PersonalDeviceLibraryError:
+                library_error()
+                return
+            resolver_profile.insertItem(max(0, resolver_profile.count() - len(device_specific_integration.profile_choices())), saved_label(saved), saved.profile_id)
+            resolver_profile.setCurrentIndex(resolver_profile.findData(saved.profile_id))
+            phone_data_status.setText("Personal Device profile saved locally.")
+
+        def rename_personal_profile() -> None:
+            saved = selected_saved()
+            if saved is None:
+                return
+            name, accepted = QInputDialog.getText(
+                dialog, "Rename Personal Device", "Local profile name:",
+                text=saved.display_name,
+            )
+            if not accepted:
+                return
+            try:
+                renamed = personal_device_library.rename_profile(saved.profile_id, name)
+            except personal_device_library.PersonalDeviceLibraryError:
+                library_error()
+                return
+            resolver_profile.setItemText(resolver_profile.currentIndex(), saved_label(renamed))
+            phone_data_status.setText("Personal Device profile renamed.")
+
+        def delete_personal_profile() -> None:
+            saved = selected_saved()
+            if saved is None:
+                return
+            if QMessageBox.question(
+                dialog, "Delete Personal Device Profile",
+                f"Delete the locally saved profile ‘{saved.display_name}’?",
+            ) != QMessageBox.StandardButton.Yes:
+                return
+            try:
+                personal_device_library.delete_profile(saved.profile_id)
+            except personal_device_library.PersonalDeviceLibraryError:
+                library_error()
+                return
+            resolver_profile.removeItem(resolver_profile.currentIndex())
+            fallback = device_specific_integration.DEFAULT_PROFILE_ID
+            resolver_profile.setCurrentIndex(resolver_profile.findData(fallback))
+            if self.user_settings.get(device_specific_integration.SETTING_PROFILE_ID) == saved.profile_id:
+                self.user_settings[device_specific_integration.SETTING_PROFILE_ID] = fallback
+                self.user_settings = state.save_settings(self.user_settings)
+            phone_data_status.setText("Saved profile deleted; built-in default selected.")
+
+        def refresh_personal_profile() -> None:
+            nonlocal pending_refresh_id
+            saved = selected_saved()
+            if saved is None:
+                return
+            pending_refresh_id = saved.profile_id
+            get_phone_data.setEnabled(False)
+            refresh_phone_data.setEnabled(False)
+            phone_data_status.setText("Reading connected phone for replacement…")
+            threading.Thread(target=collect_phone_data_worker, daemon=True).start()
 
         def upsert_personal_device(profile: object) -> None:
             profile_id = device_specific_integration.CONNECTED_DEVICE_PROFILE_ID
@@ -1211,6 +1360,39 @@ class PreferencesWindow(table_ui.TableWindow):
             resolver_profile.setCurrentIndex(index)
 
         def finish_phone_capture(capture: object) -> None:
+            nonlocal pending_refresh_id
+            if pending_refresh_id is not None:
+                target_id = pending_refresh_id
+                pending_refresh_id = None
+                get_phone_data.setEnabled(True)
+                saved = selected_saved()
+                profile = getattr(capture, "profile", None)
+                if saved is None or saved.profile_id != target_id or profile is None:
+                    phone_data_status.setText("Replacement was cancelled.")
+                    sync_library_buttons()
+                    return
+                if not personal_device_library.refresh_compatibility(saved, profile):
+                    phone_data_status.setText("Replacement blocked: manufacturer or model differs.")
+                    sync_library_buttons()
+                    return
+                context = (
+                    f"Saved: {saved.manufacturer} {saved.model}, Android {saved.android_release} / API {saved.api_level}\n"
+                    f"Connected: {profile.profile.get('Build.MANUFACTURER', '')} "
+                    f"{profile.profile.get('Build.MODEL', '')}, Android {profile.android_release} / API {profile.api_level}\n\n"
+                    "Matching model does not prove this is the same physical phone. Replace this saved profile?"
+                )
+                if QMessageBox.question(dialog, "Replace Personal Device Profile", context) == QMessageBox.StandardButton.Yes:
+                    try:
+                        refreshed = personal_device_library.refresh_profile(target_id, profile)
+                    except personal_device_library.PersonalDeviceLibraryError:
+                        library_error()
+                    else:
+                        resolver_profile.setItemText(resolver_profile.currentIndex(), saved_label(refreshed))
+                        phone_data_status.setText("Saved profile refreshed.")
+                else:
+                    phone_data_status.setText("Replacement cancelled.")
+                sync_library_buttons()
+                return
             try:
                 profile = self._store_direct_personal_device_capture(capture)
             except Exception as exc:
@@ -1219,10 +1401,14 @@ class PreferencesWindow(table_ui.TableWindow):
             upsert_personal_device(profile)
             get_phone_data.setEnabled(True)
             phone_data_status.setText("Phone data ready for this app session.")
+            sync_library_buttons()
 
         def fail_phone_capture(error: object) -> None:
+            nonlocal pending_refresh_id
+            pending_refresh_id = None
             get_phone_data.setEnabled(True)
             phone_data_status.setText(safe_phone_capture_error(error))
+            sync_library_buttons()
 
         capture_signals.completed.connect(finish_phone_capture)
         capture_signals.failed.connect(fail_phone_capture)
@@ -1241,6 +1427,12 @@ class PreferencesWindow(table_ui.TableWindow):
             threading.Thread(target=collect_phone_data_worker, daemon=True).start()
 
         get_phone_data.clicked.connect(get_phone_data_now)
+        save_phone_data.clicked.connect(save_personal_profile)
+        rename_phone_data.clicked.connect(rename_personal_profile)
+        delete_phone_data.clicked.connect(delete_personal_profile)
+        refresh_phone_data.clicked.connect(refresh_personal_profile)
+        resolver_profile.currentIndexChanged.connect(sync_library_buttons)
+        sync_library_buttons()
 
         def sync_resolver_controls() -> None:
             provider_value = str(resolver_provider.currentData() or "")

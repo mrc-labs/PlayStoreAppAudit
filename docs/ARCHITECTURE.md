@@ -4,6 +4,10 @@ Store App Audit is a Qt 6 / PySide6 desktop application with one shared source t
 
 Durable engineering constraints are recorded in `PROJECT_DECISIONS.md`. Current release state and the active maintenance queue are recorded in `PROJECT_STATUS.md`. Mandatory release component freshness verification is defined in `RELEASE_COMPONENT_FRESHNESS.md`.
 
+## Personal Device profile library (v2.2 development)
+
+`services/personal_device_library.py` owns the versioned `personal_device_profiles.json` file in the active application-data directory. It accepts complete results from the existing read-only connected-device collector, stores only the allowlisted resolver mapping and safe display context, and generates random local record and cache-revision UUIDs. The UI only invokes this service. The existing Device Specific integration loads a selected `personal:` profile and passes it to the same resolver/cache path as built-in references; no ADB connection is needed after saving. The `connected_device` selector keeps its process-local semantics. A saved profile's cache digest derives from the random local record/revision pair and rotates on refresh, while rename does not change it. Public Store evidence remains authoritative.
+
 ## Entry points and package layout
 
 `main.py` is the repository entry point and delegates to `playstore_app_audit.app`. The installed console entry point resolves to the same `main()` function.
