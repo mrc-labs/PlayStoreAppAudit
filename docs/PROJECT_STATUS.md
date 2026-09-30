@@ -6,6 +6,8 @@ The merged #211 implementation provides the distinct `playstore-app-audit-cli` s
 
 The merged implementation also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
 
+The entry freshness gate is **BLOCKED**, not passed: Qt 6.12.0 is now stable but matching stable PySide/Shiboken packages are unavailable, and native OpenSSL/compiler/runner findings require resolution. Cryptography is updated to 50.0.2 and Ruff to 0.16.9; the complete evidence and remaining work are in the entry record below.
+
 Last updated: 2026-09-30
 
 The exact `main` baseline before this freshness work is `e204d68e2d969f7d0a30ca166243020fc115ae44`, with post-merge Quality #607 / run `36754783824` passing. The [v2.2 entry freshness record](V2_2_RELEASE_ENTRY_FRESHNESS.md) tracks component updates and validation. The final pre-release freshness gate remains pending and must be repeated immediately before release SHA freeze. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.

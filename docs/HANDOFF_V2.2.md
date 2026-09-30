@@ -142,6 +142,8 @@ Preserve:
 
 ## Active release-entry validation
 
+The entry gate is **BLOCKED** by the Qt 6.12.0 / available PySide 6.11.2 release mismatch and the native OpenSSL/compiler/runner findings in its evidence record. The dependency updates do not constitute a gate pass.
+
 Complete the [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md), including required native/package evidence for dependency updates. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
 
 ## Continuation

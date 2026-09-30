@@ -31,7 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Current v2.1 release/development baseline: stable Python 3.14.
+- Current v2.2 development/release baseline: stable Python 3.14.
 - Quality CI: Python 3.14.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
 - Current release compiler pin: `Nuitka==4.2.2`.
