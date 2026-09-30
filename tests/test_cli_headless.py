@@ -210,6 +210,93 @@ def test_device_specific_builtin_saved_and_unavailable(monkeypatch: pytest.Monke
         headless_audit.validate_device_specific(settings, headless_audit.AuditSource("app_list"))
 
 
+@pytest.mark.parametrize("play_version", ["1.0", "Varies with device"])
+def test_inherited_expired_personal_session_does_not_block_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str], play_version: str,
+) -> None:
+    source = tmp_path / "apps.txt"
+    source.write_text("com.example.app\n", encoding="utf-8")
+    settings = _settings()
+    settings["device_specific_provider"] = "personal_google_session"
+    settings["private_marker"] = "secret-session-material"
+    monkeypatch.setattr(cli.state, "load_settings", lambda **_k: dict(settings))
+    monkeypatch.setattr(headless_audit.PlayStoreService, "audit", lambda _self, _apps, _config, **_k: [
+        {**_store_row("com.example.app"), "play_version": play_version}
+    ])
+    monkeypatch.setattr(headless_audit.alternative_distribution, "run_alternative_distribution_phase", lambda *_a, **_k: [])
+    monkeypatch.setattr(
+        headless_audit.device_specific_integration.device_specific_personal_session,
+        "personal_session_status", lambda: SimpleNamespace(signed_in=False, context_hash=""),
+    )
+
+    assert cli.main(["audit", "app-list", str(source), "--country", "it"]) == 0
+    output = capsys.readouterr().out
+    assert "secret-session-material" not in output
+    document = json.loads(output)
+    assert document["results"][0]["play_version"] == play_version
+    assert document["results"][0]["play_status"] == "available"
+
+
+@pytest.mark.parametrize("profile_id", [
+    "personal:11111111-1111-4111-8111-111111111111", "connected_device",
+])
+def test_inherited_unavailable_profile_is_optional_for_app_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str], profile_id: str,
+) -> None:
+    source = tmp_path / "apps.txt"
+    source.write_text("com.example.app\n", encoding="utf-8")
+    settings = _settings()
+    settings["device_specific_provider"] = "custom_dispenser"
+    settings["device_specific_resolver_profile"] = profile_id
+    settings["device_specific_resolver_endpoint"] = "https://example.com/resolve"
+    monkeypatch.setattr(cli.state, "load_settings", lambda **_k: dict(settings))
+    monkeypatch.setattr(headless_audit.PlayStoreService, "audit", lambda _self, _apps, _config, **_k: [
+        {**_store_row("com.example.app"), "play_version": "Varies with device"}
+    ])
+    monkeypatch.setattr(headless_audit.alternative_distribution, "run_alternative_distribution_phase", lambda *_a, **_k: [])
+    if profile_id.startswith("personal:"):
+        monkeypatch.setattr(headless_audit.personal_device_library, "get_profile", lambda _id: (_ for _ in ()).throw(KeyError("missing")))
+
+    assert cli.main(["audit", "app-list", str(source), "--country", "it"]) == 0
+    assert json.loads(capsys.readouterr().out)["results"][0]["play_status"] == "available"
+    assert settings["device_specific_resolver_profile"] == profile_id
+
+
+@pytest.mark.parametrize("overrides", [
+    ["--device-provider", "custom_dispenser", "--device-profile", "unknown"],
+    ["--device-provider", "custom_dispenser", "--device-endpoint", "http://invalid"],
+    ["--device-provider", "personal_google_session", "--device-endpoint", "https://example.com/resolve"],
+    ["--device-provider", "custom_dispenser", "--device-profile", "connected_device"],
+])
+def test_explicit_invalid_device_options_exit_two(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overrides: list[str],
+) -> None:
+    source = tmp_path / "apps.txt"
+    source.write_text("com.example.app\n", encoding="utf-8")
+    monkeypatch.setattr(cli.state, "load_settings", lambda **_k: _settings())
+    monkeypatch.setattr(headless_audit.PlayStoreService, "audit", lambda *_a, **_k: pytest.fail("Store audit should not run"))
+    assert cli.main(["audit", "app-list", str(source), *overrides]) == 2
+
+
+def test_explicit_valid_device_options_run_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = tmp_path / "apps.txt"
+    source.write_text("com.example.app\n", encoding="utf-8")
+    monkeypatch.setattr(cli.state, "load_settings", lambda **_k: _settings())
+    monkeypatch.setattr(headless_audit.PlayStoreService, "audit", lambda *_a, **_k: [_store_row("com.example.app")])
+    monkeypatch.setattr(headless_audit.alternative_distribution, "run_alternative_distribution_phase", lambda *_a, **_k: [])
+    assert cli.main([
+        "audit", "app-list", str(source), "--device-provider", "custom_dispenser",
+        "--device-profile", "android10_api29_oneplus8pro",
+        "--device-endpoint", "https://example.com/resolve",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["results"][0]["package_name"] == "com.example.app"
+
+
 def test_fresh_bypasses_only_result_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     cached_calls: list[int] = []
     store_calls: list[int] = []
@@ -338,3 +425,35 @@ def test_cli_import_graph_is_headless() -> None:
         capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_source_binary_entry_dispatches_cli_without_qt() -> None:
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import runpy, sys; sys.argv=['main.py', 'cli', 'audit', '--help']\n"
+         "try:\n runpy.run_path('main.py', run_name='__main__')\n"
+         "except SystemExit as exc:\n assert exc.code == 0\n"
+         "assert 'PySide6' not in sys.modules; "
+         "assert not any(name.startswith('playstore_app_audit.ui') for name in sys.modules)"],
+        cwd=root, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "app-list" in result.stdout
+
+
+def test_all_standalone_builds_expose_the_dispatcher() -> None:
+    root = Path(__file__).resolve().parents[1]
+    windows = (root / ".github/scripts/build_windows_standalone.ps1").read_text(encoding="utf-8")
+    windows_validator = (root / ".github/scripts/validate_windows_standalone.py").read_text(encoding="utf-8")
+    linux = (root / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")
+    macos = (root / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
+    assert '"--windows-console-mode=attach"' in windows
+    assert '$NuitkaArgs += "main.py"' in windows
+    assert '& $Exe.FullName cli audit --help' in windows
+    assert '$CliHelp -join' in windows
+    assert 'root / "PlayStoreAppAudit.exe"' in windows_validator
+    assert 'pyside6-deploy main.py' in linux
+    assert '"$ROUNDTRIP_BIN" cli audit --help' in linux
+    assert 'pyside6-deploy main.py' in macos
+    assert '"$REXEC" cli audit --help' in macos

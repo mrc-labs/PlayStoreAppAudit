@@ -161,6 +161,14 @@ def main(argv: list[str] | None = None) -> int:
             is device_specific_settings.DeviceSpecificProvider.DISABLED
         ):
             raise InvalidAuditInput("Device Specific options require an enabled provider.")
+        explicit_device_options = any(value is not None for value in (
+            args.device_provider, args.device_profile, args.device_endpoint,
+        ))
+        if args.device_endpoint is not None and (
+            device_specific_settings.provider_from_settings(settings)
+            is not device_specific_settings.DeviceSpecificProvider.CUSTOM_DISPENSER
+        ):
+            raise InvalidAuditInput("A Device Specific endpoint requires the Custom Dispenser provider.")
 
         def interrupt(_signum: int, _frame: object) -> None:
             cancelled.set()
@@ -176,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
             source, settings, cancelled,
             country=args.country, language=args.language, workers=args.workers,
             fresh=args.fresh, progress=progress,
+            validate_device_options=explicit_device_options,
         )
         if cancelled.is_set():
             return EXIT_INTERRUPTED

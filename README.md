@@ -116,6 +116,14 @@ A file may contain a `package_name` column, optionally with an `app_name` column
 
 A Python installation provides `playstore-app-audit-cli`; `playstore-app-audit` remains the Qt GUI command. The CLI does not import the Qt UI or create a `QApplication`. This command replaces the older positional `python -m playstore_app_audit.cli <file>` interface, whose timestamped CSV and separate problems file were based on the retired simple audit path.
 
+In the v2.2 standalone packages, run the existing executable with `cli` before `audit` from a terminal. No separate Python installation is needed. The normal executable launch still opens the GUI:
+
+```text
+Windows (inside the extracted package): .\PlayStoreAppAudit.exe cli audit app-list sample_packages.csv --output results.json
+Linux (inside the extracted package):   ./PlayStoreAppAudit cli audit app-list sample_packages.csv --output results.json
+macOS (beside the extracted app):        ./PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit cli audit app-list sample_packages.csv --output results.json
+```
+
 ```text
 playstore-app-audit-cli audit app-list sample_packages.csv --country it --output results.json
 playstore-app-audit-cli audit apk-files archive/a.apk archive/b.xapk --format csv --output apks.csv
@@ -126,6 +134,8 @@ playstore-app-audit-cli audit phone --country it --output phone.json
 The source commands are `app-list`, `apk-files`, `apk-folder` and `phone`. All accept `--country`, `--language`, `--workers`, `--fresh`, `--format json|csv`, `--output` and `--force`. Phone additionally accepts `--include-system`; by default its read-only ScanSession excludes system packages. JSON is the default format. Without `--output`, the payload goes to stdout and progress goes to stderr. JSON reuses the versioned GUI result schema; CSV uses the GUI field order and date formatting. Files are written through a temporary sibling and replaced only after a successful audit. An existing output requires `--force`, and an input file cannot be its own output.
 
 The CLI reads relevant saved defaults without saving command-line overrides. `--fresh` bypasses reusable healthy Store results and refreshes the existing alternative-provider path without deleting caches. `--device-provider`, `--device-profile` and `--device-endpoint` select the existing Device Specific provider, built-in or saved Personal Device profile, and validated Custom Dispenser endpoint. Personal Google Session uses an already signed-in session; credentials are never CLI flags. Saved Personal Device profiles work without a connected phone. CLI audits do not write audit history or change Personal Device library records. File locations, raw ADB serials, ScanSession identifiers, secret/auth material and local Personal Device UUIDs are omitted or masked in output. Ctrl+C signals cooperative cancellation and produces no final output.
+
+Explicit Device Specific CLI overrides are validated before the audit. If saved Device Specific defaults have become unavailable, the CLI still completes the public Store audit and leaves those defaults unchanged; Device Specific evidence remains optional.
 
 Exit status is `0` for a completed audit (including ordinary Not Found results), `2` for invalid input/configuration, `3` for runtime failure and `130` for Ctrl+C. Runtime diagnostics are intentionally generic to avoid exposing credentials or device identifiers; progress and completion counts are on stderr.
 

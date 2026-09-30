@@ -170,7 +170,7 @@ $NuitkaArgs = @(
     "--noinclude-qt-translations",
     "--include-package-data=playstore_app_audit.device_profiles:*.json",
     "--include-data-dir=docs/images=help-images",
-    "--windows-console-mode=disable",
+    "--windows-console-mode=attach",
     "--nofollow-import-to=PIL",
     "--assume-yes-for-downloads",
     "--windows-icon-from-ico=$IconPath",
@@ -296,6 +296,14 @@ finally {
     $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = $OldSmoke
 }
 Write-Host "Packaged smoke test: PASS"
+
+Write-Host ""
+Write-Host "=== PACKAGED CLI SMOKE TEST ==="
+$CliHelp = & $Exe.FullName cli audit --help
+if ($LASTEXITCODE -ne 0 -or ($CliHelp -join "`n") -notmatch "app-list") {
+    Fail "Packaged CLI smoke test failed."
+}
+Write-Host "Packaged CLI smoke test: PASS"
 
 Write-Host ""
 Write-Host "=== CREATE VERSIONED PACKAGE ==="

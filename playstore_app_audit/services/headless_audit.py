@@ -141,11 +141,13 @@ def run_audit(
     *, country: str | None = None, language: str | None = None,
     workers: int | None = None, fresh: bool = False,
     progress: Progress | None = None,
+    validate_device_options: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Run one audit without writing GUI settings, history, or result files."""
     if source.kind not in {"app_list", "local_files", "local_folder", "phone"}:
         raise InvalidAuditInput("Unknown audit source.")
-    validate_device_specific(settings, source)
+    if validate_device_options:
+        validate_device_specific(settings, source)
     session: scan_session.ScanSession | None = None
     adb: str | None = None
     if source.kind == "phone":

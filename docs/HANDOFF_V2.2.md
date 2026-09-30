@@ -95,6 +95,8 @@ Advanced Settings preserves a configured `personal:` selection as an unavailable
 
 The focused #211 implementation branch now contains the separate `playstore-app-audit-cli audit` command for App List, explicit local package files, recursive Local APK folders and connected-phone ScanSession. It replaces the legacy positional `cli.py` behavior, keeps the GUI installed command unchanged and does not bump the application version. Canonical services handle Store lookup/fallback, local package fan-out, Device Specific/Alternative Distribution, classification/scoring and JSON/CSV export. CLI overrides do not persist settings or history. Review and exact-head Quality on the PR are still required before marking this pillar complete.
 
+The same pending branch makes normal standalone packages invoke the CLI as `PlayStoreAppAudit[.exe] cli audit ...` on Windows/Linux or `PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit cli audit ...` on macOS; default invocation remains GUI. Expired or unavailable inherited Device Specific settings do not block public Store evidence, while explicit CLI overrides are checked before audit.
+
 Add a scriptable non-GUI entry point that reuses existing domain/service logic.
 
 Direction:
