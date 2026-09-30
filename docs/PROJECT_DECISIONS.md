@@ -239,6 +239,8 @@ Implementation uses a dedicated `personal_device_profiles.json` application-data
 
 The existing `connected_device` selection retains session-only meaning and is never migrated into the library. Built-in IDs, `connected_device`, and `personal:` IDs have distinct namespaces. The transient capture's content-derived ID/hash and ownership token are never written to library records. A saved profile's resolver cache digest derives solely from its random local record ID and random cache revision; rename leaves it unchanged, while an explicit refresh rotates the revision. Exported row evidence uses a generic `personal_device` source ID rather than the local record ID. Refresh rejects a different manufacturer/model and requires explicit confirmation even for matching context, which cannot prove physical-device identity. Reset Settings clears the selection but retains the separate library; cache/history maintenance never deletes it. No automatic v2.1 migration occurs.
 
+When a configured `personal:` profile cannot be represented because the library is from a future schema, unreadable, or missing that record, Advanced Settings shows an unavailable selection placeholder carrying the configured ID. Saving unrelated settings preserves it. Explicit built-in selection or Reset All to Defaults may replace it; none of these paths writes the unsupported library.
+
 Never persist or expose raw ADB serial, durable device-correlation identifiers/hashes, Android ID, GSF device ID, IMEI/MEID, SIM/subscriber identifiers, Google identity, OAuth/AAS/Play bearer tokens, cookies, check-in ID or profile hashes derived from sensitive identifiers.
 
 Raw public Store evidence remains authoritative; Personal Device/Device Specific evidence remains additive.

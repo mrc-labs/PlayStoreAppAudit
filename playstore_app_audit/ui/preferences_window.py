@@ -1113,6 +1113,23 @@ class PreferencesWindow(table_ui.TableWindow):
             or device_specific_integration.DEFAULT_PROFILE_ID
         )
         profile_index = resolver_profile.findData(configured_profile)
+        if (
+            profile_index < 0
+            and personal_device_library.is_personal_profile_id(configured_profile)
+        ):
+            # Keep a newer or malformed library's selected ID intact when this
+            # build cannot represent its record. Choosing another item or Reset
+            # All to Defaults remains an explicit replacement.
+            resolver_profile.insertItem(
+                0,
+                (
+                    "Saved Personal Device — unavailable in this build (selection retained)"
+                    if library_unavailable
+                    else "Saved Personal Device — unavailable or missing (selection retained)"
+                ),
+                configured_profile,
+            )
+            profile_index = 0
         if profile_index < 0:
             profile_index = resolver_profile.findData(
                 device_specific_integration.DEFAULT_PROFILE_ID

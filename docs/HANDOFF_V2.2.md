@@ -89,6 +89,8 @@ Raw public Store evidence remains authoritative. Device Specific evidence is add
 
 The focused #200 development implementation uses `personal_device_profiles.json` schema v1 in the active application-data directory. Each complete saved profile has a random `personal:` UUID4 record ID, a random UUID4 cache revision, local name, UTC capture/update times, safe manufacturer/model/Android/API context and only the allowlisted resolver mapping. Explicit Save Locally follows the existing transient Get Phone Data capture. Saved profiles work without ADB and are visually separated from built-in validated references and `connected_device` session capture. Rename leaves cache identity stable; confirmed refresh rotates the random revision and blocks obvious manufacturer/model mismatch, while explaining that matching context cannot prove device identity. Delete falls back to the built-in default. Reset Settings retains the separate library but resets selection; cache/history maintenance retains it. There is no v2.1 transient migration. The #200 PR and exact-head Quality gate remain the acceptance checkpoint.
 
+Advanced Settings preserves a configured `personal:` selection as an unavailable placeholder if this build cannot load its library or selected record. Unrelated settings saves retain that ID without touching future-schema bytes; explicit built-in selection and Reset All may replace it.
+
 ### 3. CLI/headless auditing — #211
 
 Add a scriptable non-GUI entry point that reuses existing domain/service logic.

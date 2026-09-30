@@ -2181,6 +2181,120 @@ def test_saved_personal_device_ui_handles_unavailable_library(
     assert path.read_text(encoding="utf-8") == '{"schema_version": 2, "profiles": []}'
 
 
+_FUTURE_PERSONAL_PROFILE_ID = "personal:11111111-1111-4111-8111-111111111111"
+
+
+def _unavailable_personal_ui_settings(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    library_bytes: bytes,
+) -> tuple[Path, dict[str, object]]:
+    path = tmp_path / "personal_device_profiles.json"
+    path.write_bytes(library_bytes)
+    monkeypatch.setattr(personal_device_library, "library_path", lambda: path)
+    backing = dict(window.user_settings)
+    backing.update({
+        device_specific_integration.SETTING_PROVIDER: "custom_dispenser",
+        device_specific_integration.SETTING_ENDPOINT: "https://resolver.example/api/auth",
+        device_specific_integration.SETTING_PROFILE_ID: _FUTURE_PERSONAL_PROFILE_ID,
+    })
+    monkeypatch.setattr(state, "load_settings", lambda: dict(backing))
+
+    def remember(values: dict[str, object]) -> dict[str, object]:
+        backing.update(values)
+        return dict(backing)
+
+    monkeypatch.setattr(state, "save_settings", remember)
+    monkeypatch.setattr(state, "clear_cache", lambda: None)
+    return path, backing
+
+
+@pytest.mark.parametrize(
+    ("library_bytes", "unavailable_label"),
+    [
+        (b'{"schema_version": 2, "profiles": [{"future": true}]}', "unavailable in this build"),
+        (b'{"profiles": []}', "unavailable in this build"),
+        (b'{"schema_version": 1, "profiles": []}', "unavailable or missing"),
+    ],
+)
+def test_unavailable_saved_selection_survives_unrelated_advanced_save(
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    library_bytes: bytes,
+    unavailable_label: str,
+) -> None:
+    path, backing = _unavailable_personal_ui_settings(
+        window, monkeypatch, tmp_path, library_bytes,
+    )
+
+    def save_unrelated(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        language = dialog.findChild(QLineEdit, "StoreLanguageEdit")
+        assert combo is not None and language is not None
+        assert combo.currentData() == _FUTURE_PERSONAL_PROFILE_ID
+        assert unavailable_label in combo.currentText()
+        assert _FUTURE_PERSONAL_PROFILE_ID not in combo.currentText()
+        language.setText("it")
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", save_unrelated)
+    window._show_advanced_settings()
+    assert backing["store_language"] == "it"
+    assert backing[device_specific_integration.SETTING_PROFILE_ID] == _FUTURE_PERSONAL_PROFILE_ID
+    assert path.read_bytes() == library_bytes
+
+
+def test_explicit_builtin_selection_replaces_unavailable_personal_id(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    library_bytes = b'{"schema_version": 2, "profiles": [{"future": true}]}'
+    path, backing = _unavailable_personal_ui_settings(
+        window, monkeypatch, tmp_path, library_bytes,
+    )
+    built_in_id = device_specific_integration.profile_choices()[0][0]
+
+    def select_builtin(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        assert combo is not None
+        assert combo.currentData() == _FUTURE_PERSONAL_PROFILE_ID
+        combo.setCurrentIndex(combo.findData(built_in_id))
+        assert combo.currentData() == built_in_id
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", select_builtin)
+    window._show_advanced_settings()
+    assert backing[device_specific_integration.SETTING_PROFILE_ID] == built_in_id
+    assert path.read_bytes() == library_bytes
+
+
+def test_explicit_reset_replaces_unavailable_personal_id(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    library_bytes = b'{"schema_version": 2, "profiles": [{"future": true}]}'
+    path, backing = _unavailable_personal_ui_settings(
+        window, monkeypatch, tmp_path, library_bytes,
+    )
+
+    def reset_and_save(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        reset = next(
+            button for button in dialog.findChildren(QPushButton)
+            if button.text() == "Reset All to Defaults"
+        )
+        assert combo is not None
+        assert combo.currentData() == _FUTURE_PERSONAL_PROFILE_ID
+        reset.click()
+        assert combo.currentData() == device_specific_integration.DEFAULT_PROFILE_ID
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", reset_and_save)
+    window._show_advanced_settings()
+    assert backing[device_specific_integration.SETTING_PROFILE_ID] == device_specific_integration.DEFAULT_PROFILE_ID
+    assert path.read_bytes() == library_bytes
+
+
 def test_custom_dispenser_help_is_owned_explanation_with_verified_links(
     window: MainWindow,
     monkeypatch: pytest.MonkeyPatch,
