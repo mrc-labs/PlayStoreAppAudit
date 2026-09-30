@@ -203,7 +203,7 @@ def _resolve_initial_changes_history_setting(data: dict[str, Any]) -> bool:
     ) or device_insights.has_device_snapshots(data_root)
 
 
-def load_settings() -> dict[str, Any]:
+def load_settings(*, persist_migrations: bool = True) -> dict[str, Any]:
     data = _read_json(settings_path(), {})
     raw_settings = data if isinstance(data, dict) else {}
     settings = deepcopy(DEFAULT_SETTINGS)
@@ -309,7 +309,7 @@ def load_settings() -> dict[str, Any]:
         default_alternative["aptoide"].get("api_key_protected") or ""
     ).strip()
     settings["alternative_distribution"] = default_alternative
-    if migrate_legacy_cache_default or migrate_changes_history or migrate_device_specific:
+    if persist_migrations and (migrate_legacy_cache_default or migrate_changes_history or migrate_device_specific):
         _write_json(settings_path(), settings)
     return settings
 

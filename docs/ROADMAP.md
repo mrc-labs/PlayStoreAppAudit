@@ -386,6 +386,8 @@ The focused #200 development implementation now provides the library and Qt cont
 
 CLI/headless is approved v2.2 scope.
 
+The focused development implementation uses a separate `playstore-app-audit-cli audit` command with App List, Local APK file/folder and connected-phone sources. Acceptance still requires PR review and exact-head Quality before this pillar is considered merged. The GUI remains the default installed command, and no v2.2 release work is implied by this checkpoint.
+
 - Reuse existing domain/service boundaries instead of driving Qt widgets or duplicating Store/ADB logic.
 - Target the existing source families where coherent: App List files, Local APK files/folders and connected-phone inventory through read-only ADB.
 - Provide deterministic scriptable output, including versioned JSON and canonical CSV where applicable.

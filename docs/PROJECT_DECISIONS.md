@@ -249,6 +249,8 @@ Raw public Store evidence remains authoritative; Personal Device/Device Specific
 
 Issue `#211` is approved v2.2 scope.
 
+The focused implementation replaces the old positional `cli.py` behavior with `audit app-list|apk-files|apk-folder|phone` under the distinct `playstore-app-audit-cli` script. The original `playstore-app-audit` GUI script is unchanged. Headless operation reuses the canonical Store, Local APK, ScanSession, Device Specific, Alternative Distribution, scoring and export services. The CLI reads settings without persisting migrations or command overrides and never promotes CLI results to history. JSON keeps `result_json` schema v2; CSV uses the GUI export field order and presentation. Output files require explicit overwrite and are replaced atomically after success; cancellation returns 130 without writing a final file.
+
 - Reuse domain/service boundaries and canonical result/export semantics.
 - Do not drive Qt widgets or duplicate Store/ADB business logic.
 - Preserve Store correctness, cache, scoring, Device Specific, privacy and read-only ADB behavior.

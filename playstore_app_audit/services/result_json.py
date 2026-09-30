@@ -7,9 +7,26 @@ from typing import Any
 
 from playstore_app_audit import __version__
 from playstore_app_audit.services import alternative_distribution
+from playstore_app_audit.services.personal_device_library import is_personal_profile_id
 
 FORMAT_ID = "play-store-app-audit/results"
 SCHEMA_VERSION = 2
+
+_PRIVATE_ROW_FIELDS = frozenset({
+    "local_apk_location", "source_id", "session_id", "device_id",
+    "serial", "serial_masked", "ownership_token", "android_id", "gsf_id",
+})
+
+
+def privacy_filter_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Remove local correlation data before any machine-readable export."""
+    exported = {key: value for key, value in row.items() if key not in _PRIVATE_ROW_FIELDS}
+    profile_id = exported.get("device_specific_profile_id")
+    if is_personal_profile_id(profile_id):
+        exported["device_specific_profile_id"] = "personal_device"
+    elif str(profile_id or "").startswith("connected_device_"):
+        exported["device_specific_profile_id"] = "connected_device"
+    return exported
 
 
 def _json_safe(value: Any) -> Any:
@@ -50,8 +67,7 @@ def build_results_document(
     export_scope = "visible" if str(scope).casefold() == "visible" else "all"
     safe_rows: list[dict[str, Any]] = []
     for row in rows:
-        exported = dict(row)
-        exported.pop("local_apk_location", None)
+        exported = privacy_filter_row(row)
         providers = alternative_distribution.serialize_provider_results(exported)
         exported.pop(alternative_distribution.ROW_FIELD, None)
         if providers:

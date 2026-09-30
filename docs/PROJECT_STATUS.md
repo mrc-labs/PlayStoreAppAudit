@@ -1,8 +1,12 @@
 # Project Status
 
-Last updated: 2026-09-23
+## v2.2 CLI development checkpoint — issue #211
 
-Current canonical post-release `main`: `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679`; post-merge Quality #594 / run `35796651559`: PASS. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
+The focused #211 branch adds the distinct `playstore-app-audit-cli` script for App List, Local APK file/folder and connected-phone audits. It uses the modern Store service, bounded local parser and package fan-out, read-only ScanSession, existing Device Specific providers/profiles and canonical JSON/CSV output without Qt UI imports. Audit history and settings are read-only from the CLI; normal caches retain their existing update policy. This is development work pending PR review and exact-head Quality, not a published v2.2 release. The application version remains 2.1.0.
+
+Last updated: 2026-09-30
+
+The exact `main` baseline before the #211 branch is `4394d6a8a665f26b3a9245eaa95a92c2be5a52d7`. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
 
 ## Published v2.1.0 release
 

@@ -74,24 +74,12 @@ OPERATION_STATUS_RIGHT_INSET = 12
 OPERATION_STATUS_MIN_VERTICAL_PADDING = 2
 PROGRESSIVE_REFRESH_INTERVAL_MS = 75
 
-_original_classify_criticality = base_ui.classify_criticality
-
-
 def _classify_criticality_multicountry(
     row: dict[str, object], settings: dict[str, object] | None = None
 ) -> None:
-    status = str(row.get("play_status") or "").strip()
-    if status == "not_found_in_checked_countries":
-        key = "red"
-    elif status == "available_in_other_country" or status == "multi_country_check_inconclusive":
-        key = "blue"
-    else:
-        _original_classify_criticality(row, settings)
-        return
-    row["criticality_key"] = key
-    row["criticality"] = base_ui.CRITICALITY[key]["label"]
-    row["criticality_rank"] = base_ui.CRITICALITY[key]["rank"]
-    row["age_days"] = ""
+    from playstore_app_audit.services.result_classification import classify_store_row
+
+    classify_store_row(row, settings or {})
 
 
 def _find_layout_containing(layout, target_widget):
