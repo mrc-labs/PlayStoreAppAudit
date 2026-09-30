@@ -162,9 +162,12 @@ def test_column_preset_naming_and_custom_starts_enabled(
         "Basic",
         "Source Details",
         "Technical",
-        "Custom…",
+        "Custom (Phone / App List)",
+        "Custom (Local APK)",
     ]
     assert _custom_action(window).data() == "Custom"
+    assert _custom_action(window).isEnabled()
+    assert not window.view_preset_actions[-1].isEnabled()
     assert all(action.text() != "Customize View…" for action in window.view_menu.actions())
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
@@ -538,7 +541,10 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     persisted_order = [
         column
         for column in _visual_order(window)
-        if column not in column_presets.CUSTOM_CONTEXTUAL_COLUMNS
+        if column
+        in column_presets.custom_family_user_columns(
+            column_presets.CustomLayoutFamily.PHONE_APP_LIST
+        )
     ]
 
     def hide_notes(dialog: QDialog) -> int:
@@ -572,7 +578,12 @@ def test_manual_order_width_and_customize_visibility_round_trip(
     window._set_view_preset("Custom")
 
     assert _visible_order(window) == expected_visible
-    assert _visual_order(window) == expected_order
+    applicable = column_presets.custom_family_user_columns(
+        column_presets.CustomLayoutFamily.PHONE_APP_LIST
+    )
+    assert [column for column in _visual_order(window) if column in applicable] == [
+        column for column in expected_order if column in applicable
+    ]
     assert _widths(window) == expected_widths
 
 
@@ -673,6 +684,8 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     legacy_order = _visual_order(first)
     settings.pop("custom_view_order", None)
     settings.pop("custom_view_widths", None)
+    settings.pop("custom_view_layouts", None)
+    settings.pop("custom_view_layouts_migrated_v1", None)
     settings.update(
         {
             "custom_view_exists": False,
@@ -689,10 +702,16 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert settings["view_preset"] == "Custom"
     assert settings["custom_view_exists"] is True
     assert migrated.table.columnWidth(package) == 361
-    assert _ordinary_visual_order(migrated) == [
+    applicable = column_presets.custom_family_user_columns(
+        column_presets.CustomLayoutFamily.PHONE_APP_LIST
+    )
+    assert [
+        column for column in _ordinary_visual_order(migrated) if column in applicable
+    ] == [
         column
         for column in legacy_order
         if column not in column_presets.CUSTOM_AUTOMATIC_COLUMNS
+        and column in applicable
     ]
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
@@ -974,13 +993,18 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
     monkeypatch.setattr(QDialog, "exec", accept_without_history_checks)
     window._show_display_settings()
 
-    assert settings["custom_view_columns"] == [
+    assert settings["custom_view_columns"] == legacy_columns
+    layouts = settings["custom_view_layouts"]
+    assert isinstance(layouts, dict)
+    phone_layout = layouts["phone_app_list"]
+    assert isinstance(phone_layout, dict)
+    assert phone_layout["columns"] == [
         "criticality",
         "package_name",
         "play_title",
     ]
     assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
-        settings["custom_view_order"]  # type: ignore[arg-type]
+        phone_layout["order"]  # type: ignore[arg-type]
     )
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 

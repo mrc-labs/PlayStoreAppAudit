@@ -265,6 +265,17 @@ v2.2 is the active planning/development line, coordinated by master issue `#212`
 - `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
 - `#211`: CLI/headless auditing through shared service/domain boundaries rather than Qt-driven or duplicated Store/ADB logic.
 
+Issue `#208` is implemented in the current focused development change. Column
+Preset now shows **Custom (Phone / App List)** and **Custom (Local APK)** at all
+times, with only the active source family enabled. The versioned
+`custom_view_layouts` schema keeps independent exists/columns/order/widths state;
+valid v2.1 single-Custom settings seed both families once after source-safe
+normalization while legacy keys remain intact. Source switches restore rather
+than capture layouts, App List applicability hides phone-only fields without
+losing their saved metadata, Local APK never inherits phone fields, and reset is
+family-scoped. The source audit found no required changes to the existing Basic,
+Source Details or Technical definitions.
+
 The current application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
 
 ## v2.0 and later direction

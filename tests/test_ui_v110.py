@@ -598,6 +598,7 @@ def test_display_settings_save_existing_presentation_keys(
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", accept_display)
+    window.source_mode = "device"
     window._show_display_settings()
 
     assert saved[-1]["show_app_icons"] is True
@@ -814,6 +815,9 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
             logical = restarted.model.columns.index(key)
             assert restarted.table.isColumnHidden(logical)
         compatibility = restarted.model.columns.index("compatibility_status")
+        assert restarted.table.isColumnHidden(compatibility)
+        restarted.source_mode = "device"
+        restarted._apply_established_source_defaults()
         assert not restarted.table.isColumnHidden(compatibility)
 
         def inspect_display(dialog: QDialog) -> int:

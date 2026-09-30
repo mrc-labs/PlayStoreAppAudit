@@ -30,7 +30,12 @@ import playstore_app_audit.ui.smart_queries as smart_queries_ui
 from playstore_app_audit import help_texts
 from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
-from playstore_app_audit.ui.column_presets import BUILTIN_PRESETS, normalise_view_preset
+from playstore_app_audit.ui.column_presets import (
+    BUILTIN_PRESETS,
+    CustomLayoutFamily,
+    custom_layout_family,
+    normalise_view_preset,
+)
 from playstore_app_audit.ui.file_menu import (
     ResultActions,
     populate_result_export_menu,
@@ -164,9 +169,8 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.view_action_group.setExclusive(True)
         current = str(state.load_settings().get("view_preset") or "Basic")
         self.view_preset_actions = []
-        for name in presentation.VIEW_PRESETS:
-            label = "Custom…" if name == "Custom" else name
-            action = QAction(label, self, checkable=True)
+        for name in BUILTIN_PRESETS:
+            action = QAction(name, self, checkable=True)
             action.setData(name)
             action.setChecked(name == current)
             action.triggered.connect(
@@ -175,7 +179,29 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self.view_action_group.addAction(action)
             self.view_presets_menu.addAction(action)
             self.view_preset_actions.append(action)
+        active_family = custom_layout_family(self.source_mode)
+        for family, label in (
+            (CustomLayoutFamily.PHONE_APP_LIST, "Custom (Phone / App List)"),
+            (CustomLayoutFamily.LOCAL_APK, "Custom (Local APK)"),
+        ):
+            action = QAction(label, self, checkable=True)
+            action.setData("Custom")
+            action.setProperty("customLayoutFamily", family.value)
+            action.setChecked(current == "Custom" and family is active_family)
+            action.setEnabled(family is active_family)
+            action.setToolTip(
+                "Edit or restore this source family's independent Custom layout."
+                if family is active_family
+                else "Available when this source family is active."
+            )
+            action.triggered.connect(
+                lambda _checked=False, a=action: self._select_column_preset(str(a.data()))
+            )
+            self.view_action_group.addAction(action)
+            self.view_presets_menu.addAction(action)
+            self.view_preset_actions.append(action)
         self._view_action_group = self.view_action_group
+        self._sync_view_preset_action(current)
 
         self.reset_layout_action = self.view_menu.addAction(
             "Reset Table Layout", self._reset_table_layout

@@ -534,7 +534,14 @@ class MainWindow(results_ui.ResultsWindow):
     def _apply_established_source_defaults(self) -> None:
         settings = state.load_settings()
         preset = normalise_view_preset(settings.get("view_preset"))
-        self._apply_column_visibility(reset_order=preset in BUILTIN_PRESETS)
+        if preset == "Custom" and self._restore_custom_table_layout():
+            self._apply_column_visibility(reset_order=False)
+        else:
+            self._apply_column_visibility(
+                reset_order=preset in BUILTIN_PRESETS or preset == "Custom"
+            )
+        self._sync_custom_preset_availability()
+        self._sync_view_preset_action(preset)
         self._apply_source_default_sort()
 
     def _clear_local_apk_relationship_context(self) -> None:

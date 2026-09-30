@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from enum import StrEnum
 
 from playstore_app_audit.ui import schema
 
 SOURCE_FILE = "file"
 SOURCE_DEVICE = "device"
 SOURCE_LOCAL_APK = "local_apk"
+
+
+class CustomLayoutFamily(StrEnum):
+    PHONE_APP_LIST = "phone_app_list"
+    LOCAL_APK = "local_apk"
+
+
+CUSTOM_LAYOUT_FAMILIES = tuple(CustomLayoutFamily)
+CUSTOM_LAYOUTS_SCHEMA_VERSION = 1
 
 BUILTIN_PRESETS = ("Basic", "Source Details", "Technical")
 CUSTOM_FIXED_COLUMNS = frozenset({"criticality", "package_name"})
@@ -205,6 +215,40 @@ _LAYOUTS = {
     "Source Details": _SOURCE_DETAILS,
     "Technical": _TECHNICAL,
 }
+
+
+def custom_layout_family(source_mode: object) -> CustomLayoutFamily:
+    if normalise_source_mode(source_mode) == SOURCE_LOCAL_APK:
+        return CustomLayoutFamily.LOCAL_APK
+    return CustomLayoutFamily.PHONE_APP_LIST
+
+
+def custom_family_user_columns(
+    family: CustomLayoutFamily | str,
+) -> frozenset[str]:
+    """Return user-owned columns that can apply anywhere in one family."""
+
+    try:
+        canonical = CustomLayoutFamily(family)
+    except ValueError:
+        canonical = CustomLayoutFamily.PHONE_APP_LIST
+    sources = (
+        (SOURCE_LOCAL_APK,)
+        if canonical is CustomLayoutFamily.LOCAL_APK
+        else (SOURCE_FILE, SOURCE_DEVICE)
+    )
+    applicable = CUSTOM_FIXED_COLUMNS | frozenset(
+        column for source in sources for column in _TECHNICAL[source]
+    )
+    return frozenset(applicable - CUSTOM_AUTOMATIC_COLUMNS) | CUSTOM_FIXED_COLUMNS
+
+
+def custom_source_user_columns(source_mode: object) -> frozenset[str]:
+    """Return ordinary Custom columns applicable to one concrete source."""
+
+    source = normalise_source_mode(source_mode)
+    applicable = CUSTOM_FIXED_COLUMNS | frozenset(_TECHNICAL[source])
+    return frozenset(applicable - CUSTOM_AUTOMATIC_COLUMNS) | CUSTOM_FIXED_COLUMNS
 
 
 def normalise_source_mode(value: object) -> str:

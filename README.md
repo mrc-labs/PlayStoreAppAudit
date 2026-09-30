@@ -62,7 +62,7 @@ These screenshots are included in the immutable v2.1.0 source and packages.
 - Review grouped changes such as app inventory changes, Store availability changes, reappeared listings and Store version/update changes.
 - Optionally show Play Store icons and calculate a transparent Maintenance Score heuristic.
 - Filter results with search, status chips, Quick Filters and saved one-level All/Any Smart Queries.
-- Switch between source-aware Basic, Source Details, Technical and user-controlled Custom column layouts.
+- Switch between source-aware Basic, Source Details and Technical presets plus independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts; inapplicable source fields stay hidden without rewriting either saved layout.
 - Use conservative cache/recheck behavior, targeted rechecks or an explicit full refresh.
 - Compare previous audits and device snapshots under **Tools > Changes & History**.
 - Export all or visible results as CSV, HTML or versioned JSON.
@@ -82,7 +82,7 @@ The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs
 
 Three product pillars are approved for v2.2:
 
-- [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views and two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving user control of ordinary columns and keeping contextual overlays outside saved Custom definitions.
+- [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
 - [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.
 - [#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211): CLI/headless auditing that reuses the existing service/domain layer rather than driving Qt or duplicating Store/ADB logic.
 

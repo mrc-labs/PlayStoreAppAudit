@@ -140,6 +140,22 @@ def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
             "custom_view_columns": ["criticality", "package_name", "play_title"],
             "custom_view_order": ["package_name", "play_title", "criticality"],
             "custom_view_widths": {"package_name": 319, "play_title": 281},
+                "custom_view_layouts_migrated_v1": True,
+                "custom_view_layouts": {
+                    "schema_version": 1,
+                    "phone_app_list": {
+                        "exists": True,
+                        "columns": ["criticality", "package_name", "play_title"],
+                        "order": ["package_name", "play_title", "criticality"],
+                        "widths": {"package_name": 319, "play_title": 281},
+                    },
+                    "local_apk": {
+                        "exists": False,
+                        "columns": [],
+                        "order": [],
+                        "widths": {},
+                    },
+                },
             "details_panel_position": "hidden",
             "show_app_icons": False,
             "date_format": "DD.MM.YYYY",
