@@ -5,11 +5,12 @@ from collections.abc import Callable, Iterator
 from copy import deepcopy
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit.ui.column_presets import CustomLayoutFamily, visible_columns
 from playstore_app_audit.ui.main_window import MainWindow
 
@@ -85,6 +86,172 @@ def _custom_actions(window: MainWindow) -> dict[str, object]:
         for action in window.view_preset_actions
         if action.data() == "Custom"
     }
+
+
+def _preset_action(window: MainWindow, preset: str) -> object:
+    return next(action for action in window.view_preset_actions if action.data() == preset)
+
+
+def _phone_layout_payload() -> dict[str, object]:
+    return {
+        "exists": True,
+        "columns": ["criticality", "package_name", "play_title"],
+        "order": ["play_title", "criticality", "package_name"],
+        "widths": {"package_name": 319},
+    }
+
+
+def test_supported_schema_v1_restores_saved_family_and_checks_custom(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    layouts = settings["custom_view_layouts"]
+    assert isinstance(layouts, dict)
+    layouts["phone_app_list"] = _phone_layout_payload()
+    settings["view_preset"] = "Custom"
+
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+
+    assert set(_visible(window)) == {"play_title", "criticality", "package_name"}
+    assert window.table.columnWidth(window.model.columns.index("package_name")) == 319
+    actions = _custom_actions(window)
+    assert actions[CustomLayoutFamily.PHONE_APP_LIST.value].isChecked()
+    assert not _preset_action(window, "Basic").isChecked()
+
+
+@pytest.mark.parametrize(
+    "schema_metadata",
+    [
+        pytest.param({}, id="missing"),
+        pytest.param({"schema_version": "1"}, id="string"),
+        pytest.param({"schema_version": True}, id="boolean"),
+    ],
+)
+def test_missing_or_malformed_schema_is_not_consumed_as_v1(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    schema_metadata: dict[str, object],
+) -> None:
+    settings, create_window = window_store
+    raw_layouts = {
+        **schema_metadata,
+        "phone_app_list": _phone_layout_payload(),
+        "opaque": {"preserve": [1, 2, 3]},
+    }
+    settings["custom_view_layouts"] = deepcopy(raw_layouts)
+    settings["view_preset"] = "Custom"
+
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+
+    assert _visible(window) == visible_columns(
+        "Basic",
+        "device",
+        compare_previous=False,
+        device_inventory_history=False,
+        health_score_enabled=False,
+    )
+    actions = _custom_actions(window)
+    assert _preset_action(window, "Basic").isChecked()
+    assert not actions[CustomLayoutFamily.PHONE_APP_LIST.value].isChecked()
+    assert not window._persist_current_custom_layout()
+    assert settings["custom_view_layouts"] == raw_layouts
+
+
+def test_future_schema_falls_back_and_all_layout_paths_preserve_raw_data(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    future_layouts = {
+        "schema_version": 2,
+        "phone_app_list": {
+            **_phone_layout_payload(),
+            "future_phone_value": {"mode": "adaptive"},
+        },
+        "local_apk": {
+            "exists": True,
+            "columns": ["criticality", "package_name", "local_apk_file_name"],
+            "order": ["local_apk_file_name", "criticality", "package_name"],
+            "widths": {"local_apk_file_name": 411},
+        },
+        "future_top_level": ["must", "survive"],
+    }
+    expected = deepcopy(future_layouts)
+    settings.update(
+        {
+            "custom_view_layouts": deepcopy(future_layouts),
+            "custom_view_layouts_migrated_v1": False,
+            "view_preset": "Custom",
+            "custom_view_exists": True,
+            "custom_view_columns": [
+                "criticality",
+                "package_name",
+                "installed_version",
+            ],
+            "custom_view_order": [
+                "installed_version",
+                "criticality",
+                "package_name",
+            ],
+            "custom_view_widths": {"installed_version": 777},
+        }
+    )
+
+    window = create_window()
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+
+    actions = _custom_actions(window)
+    basic = _preset_action(window, "Basic")
+    assert _visible(window) == visible_columns(
+        "Basic",
+        "device",
+        compare_previous=False,
+        device_inventory_history=False,
+        health_score_enabled=False,
+    )
+    assert basic.isChecked()
+    assert not actions[CustomLayoutFamily.PHONE_APP_LIST.value].isChecked()
+    assert settings["custom_view_layouts"] == expected
+    assert settings["custom_view_layouts_migrated_v1"] is False
+
+    package = window.model.columns.index("package_name")
+    window.table.setColumnWidth(package, window.table.columnWidth(package) + 17)
+    app.processEvents()
+    assert settings["custom_view_layouts"] == expected
+
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+    assert _visible(window) == visible_columns(
+        "Basic",
+        "local_apk",
+        compare_previous=False,
+        device_inventory_history=False,
+        health_score_enabled=False,
+    )
+    assert basic.isChecked()
+    assert not actions[CustomLayoutFamily.LOCAL_APK.value].isChecked()
+    assert settings["custom_view_layouts"] == expected
+
+    window._reset_table_layout()
+    assert settings["custom_view_layouts"] == expected
+
+    monkeypatch.setattr(
+        preferences_ui.QDialog,
+        "exec",
+        lambda _dialog: QDialog.DialogCode.Accepted,
+    )
+    window._show_display_settings()
+    assert settings["custom_view_layouts"] == expected
+    assert settings["custom_view_layouts_migrated_v1"] is False
+
+    window.close()
+    app.processEvents()
+    assert settings["custom_view_layouts"] == expected
 
 
 def test_two_custom_actions_are_explicit_and_source_enabled(

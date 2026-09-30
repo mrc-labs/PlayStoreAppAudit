@@ -457,15 +457,27 @@ class CompactWindow(AuditWindow):
     def _current_custom_layout_family(self) -> CustomLayoutFamily:
         return custom_layout_family(self.source_mode)
 
+    @staticmethod
+    def _custom_layouts_schema_supported(settings: dict[str, object]) -> bool:
+        layouts = settings.get("custom_view_layouts")
+        if not isinstance(layouts, dict):
+            return False
+        version = layouts.get("schema_version")
+        return (
+            type(version) is int
+            and version == CUSTOM_LAYOUTS_SCHEMA_VERSION
+        )
+
     def _custom_layout_entry(
         self,
         settings: dict[str, object],
         family: CustomLayoutFamily | None = None,
     ) -> tuple[list[str], list[str], dict[str, int]] | None:
         selected_family = family or self._current_custom_layout_family()
-        layouts = settings.get("custom_view_layouts")
-        if not isinstance(layouts, dict):
+        if not self._custom_layouts_schema_supported(settings):
             return None
+        layouts = settings.get("custom_view_layouts")
+        assert isinstance(layouts, dict)
         raw_entry = layouts.get(selected_family.value)
         if not isinstance(raw_entry, dict) or raw_entry.get("exists") is not True:
             return None
@@ -502,8 +514,12 @@ class CompactWindow(AuditWindow):
         columns: list[str],
         order: list[str],
         widths: dict[str, int],
-    ) -> None:
+    ) -> bool:
         raw_layouts = settings.get("custom_view_layouts")
+        if "custom_view_layouts" in settings and not self._custom_layouts_schema_supported(
+            settings
+        ):
+            return False
         layouts = deepcopy(raw_layouts) if isinstance(raw_layouts, dict) else {}
         layouts["schema_version"] = CUSTOM_LAYOUTS_SCHEMA_VERSION
         for known_family in CUSTOM_LAYOUT_FAMILIES:
@@ -518,6 +534,7 @@ class CompactWindow(AuditWindow):
             "widths": dict(widths),
         }
         settings["custom_view_layouts"] = layouts
+        return True
 
     def _custom_layout_columns(
         self, settings: dict[str, object] | None = None
@@ -550,7 +567,7 @@ class CompactWindow(AuditWindow):
         encoded = bytes(header.saveState().toBase64()).decode("ascii")
         return visible, order, widths, encoded
 
-    def _persist_current_custom_layout(self, *, activate: bool = True) -> None:
+    def _persist_current_custom_layout(self, *, activate: bool = True) -> bool:
         visible, order, widths, encoded = self._current_table_layout()
         visible = [column for column in visible if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         order = [column for column in order if column not in CUSTOM_CONTEXTUAL_COLUMNS]
@@ -591,13 +608,14 @@ class CompactWindow(AuditWindow):
                 if column in applicable_family and width >= 20
             }
         )
-        self._store_custom_layout_entry(
+        if not self._store_custom_layout_entry(
             settings,
             family,
             columns=family_columns,
             order=family_order,
             widths=family_widths,
-        )
+        ):
+            return False
         settings.update(
             {
                 # v2.1 aliases remain available for rollback/inspection, but the
@@ -619,6 +637,7 @@ class CompactWindow(AuditWindow):
         availability = getattr(self, "_sync_custom_preset_availability", None)
         if callable(availability):
             availability()
+        return True
 
     def _restore_custom_table_layout(self) -> bool:
         self.user_settings = load_settings()
@@ -652,6 +671,11 @@ class CompactWindow(AuditWindow):
 
         self.user_settings = load_settings()
         if self.user_settings.get("custom_view_layouts_migrated_v1") is True:
+            return False
+        if (
+            "custom_view_layouts" in self.user_settings
+            and not self._custom_layouts_schema_supported(self.user_settings)
+        ):
             return False
         legacy_columns = self._normalise_custom_columns(
             self.user_settings.get("custom_view_columns")
@@ -769,13 +793,15 @@ class CompactWindow(AuditWindow):
                 for column, width in recovered_widths.items()
                 if column in applicable
             }
-            self._store_custom_layout_entry(
+            stored = self._store_custom_layout_entry(
                 self.user_settings,
                 family,
                 columns=family_visible,
                 order=family_order,
                 widths=family_widths,
             )
+            if not stored:
+                return False
 
         # An old explicit Custom column list remains available while the user's
         # last built-in selection stays active. A semantically changed legacy

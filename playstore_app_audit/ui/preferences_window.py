@@ -748,6 +748,7 @@ class PreferencesWindow(table_ui.TableWindow):
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
         }
+        custom_saved = False
         if save_custom:
             _visible, live_order, live_widths, encoded = self._current_table_layout()
             family = custom_layout_family(self.source_mode)
@@ -793,23 +794,24 @@ class PreferencesWindow(table_ui.TableWindow):
                 for column in self.model.columns
                 if column in applicable_family
             }
-            self._store_custom_layout_entry(
+            custom_saved = self._store_custom_layout_entry(
                 self.user_settings,
                 family,
                 columns=family_columns,
                 order=family_order,
                 widths=preserved_widths,
             )
-            updates.update(
-                {
-                    "custom_view_columns": family_columns,
-                    "custom_view_exists": True,
-                    "custom_view_order": family_order,
-                    "custom_view_widths": preserved_widths,
-                    "qt_header_state": encoded,
-                    "view_preset": "Custom",
-                }
-            )
+            if custom_saved:
+                updates.update(
+                    {
+                        "custom_view_columns": family_columns,
+                        "custom_view_exists": True,
+                        "custom_view_order": family_order,
+                        "custom_view_widths": preserved_widths,
+                        "qt_header_state": encoded,
+                        "view_preset": "Custom",
+                    }
+                )
         self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
         if hasattr(self.model, "set_app_icons_enabled"):
@@ -820,7 +822,7 @@ class PreferencesWindow(table_ui.TableWindow):
                     )
                 )
             )
-        if save_custom:
+        if save_custom and custom_saved:
             self._sync_view_preset_action("Custom")
             self._sync_custom_preset_availability()
             self._apply_column_visibility(reset_order=False)

@@ -201,6 +201,7 @@ class MenuWindow(preferences_ui.PreferencesWindow):
             self.view_presets_menu.addAction(action)
             self.view_preset_actions.append(action)
         self._view_action_group = self.view_action_group
+        self._sync_view_preset_action(current)
 
         self.reset_layout_action = self.view_menu.addAction(
             "Reset Table Layout", self._reset_table_layout
