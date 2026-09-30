@@ -16,7 +16,7 @@ dependencies = [
     "google-play-scraper==1.2.7",
     "requests==2.34.2",
     "beautifulsoup4==4.15.0",
-    "cryptography==50.0.1",
+    "cryptography==50.0.2",
     "PySide6-Essentials==6.11.2",
     "websocket-client==1.9.2",
 ]

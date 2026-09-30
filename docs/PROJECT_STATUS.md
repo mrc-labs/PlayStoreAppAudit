@@ -1,14 +1,14 @@
 # Project Status
 
-## v2.2 CLI development checkpoint — issue #211
+## v2.2 release-phase entry freshness gate
 
-The focused #211 branch adds the distinct `playstore-app-audit-cli` script for App List, Local APK file/folder and connected-phone audits. It uses the modern Store service, bounded local parser and package fan-out, read-only ScanSession, existing Device Specific providers/profiles and canonical JSON/CSV output without Qt UI imports. Audit history and settings are read-only from the CLI; normal caches retain their existing update policy. This is development work pending PR review and exact-head Quality, not a published v2.2 release. The application version remains 2.1.0.
+The merged #211 implementation provides the distinct `playstore-app-audit-cli` script for App List, Local APK file/folder and connected-phone audits. It uses the modern Store service, bounded local parser and package fan-out, read-only ScanSession, existing Device Specific providers/profiles and canonical JSON/CSV output without Qt UI imports. Audit history and settings are read-only from the CLI; normal caches retain their existing update policy. All three approved v2.2 pillars are merged: #208 through PR #214, #200 through PR #215 and #211 through PR #216. Release-entry component freshness is the active phase; v2.2 is not published. The application version remains 2.1.0.
 
-The pending PR also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
+The merged implementation also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
 
 Last updated: 2026-09-30
 
-The exact `main` baseline before the #211 branch is `4394d6a8a665f26b3a9245eaa95a92c2be5a52d7`. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
+The exact `main` baseline before this freshness work is `e204d68e2d969f7d0a30ca166243020fc115ae44`, with post-merge Quality #607 / run `36754783824` passing. The [v2.2 entry freshness record](V2_2_RELEASE_ENTRY_FRESHNESS.md) tracks component updates and validation. The final pre-release freshness gate remains pending and must be repeated immediately before release SHA freeze. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
 
 ## Published v2.1.0 release
 
@@ -261,17 +261,17 @@ The feature-complete scope is canonical in `ROADMAP.md`, `PROJECT_DECISIONS.md` 
 
 Concrete bugs and polish found through actual v1.9 use may be reviewed individually. They are not automatically accepted scope.
 
-## Current v2.2 planning baseline
+## Current v2.2 feature-complete baseline
 
 The v2.1.0 release cycle is fully closed. Release coordination issue `#153` is closed as completed; the immutable v2.1.0 release remains frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. The final post-release documentation baseline before v2.2 kickoff is `fca18639480b2ce90396d860cfea34d3a9ed2771`, with post-merge Quality #597 / run `35803473823` passing on that exact SHA.
 
-v2.2 is the active planning/development line, coordinated by master issue `#212`, with three approved pillars:
+v2.2 is in release-entry validation, coordinated by open master issue `#212`, with all three approved implementation pillars complete:
 
 - `#208`: source-aware views with two explicit persistent Custom layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving the existing source-aware built-in preset architecture and keeping contextual overlays outside user-owned saved layouts;
 - `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
 - `#211`: CLI/headless auditing through shared service/domain boundaries rather than Qt-driven or duplicated Store/ADB logic.
 
-Issue `#208` is implemented in the current focused development change. Column
+Issue `#208` is complete and merged through PR #214. Column
 Preset now shows **Custom (Phone / App List)** and **Custom (Local APK)** at all
 times, with only the active source family enabled. The versioned
 `custom_view_layouts` schema keeps independent exists/columns/order/widths state;
@@ -282,7 +282,7 @@ losing their saved metadata, Local APK never inherits phone fields, and reset is
 family-scoped. The source audit found no required changes to the existing Basic,
 Source Details or Technical definitions.
 
-Issue `#200` now has a focused development implementation: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. The current PR/Quality review is the remaining acceptance gate; the application version stays `2.1.0`.
+Issue `#200` is complete and merged through PR #215: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. Its exact-main Quality gate passed. Issue #211 is also complete through PR #216; the application version stays `2.1.0`.
 
 The current application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
 

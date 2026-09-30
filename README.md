@@ -8,7 +8,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** v2.2 planning, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). The approved pillars are source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
+**Current development line:** v2.2 release-entry validation, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). All three implementation pillars are merged: source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
@@ -78,9 +78,9 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 ### v2.2 and later planning
 
-The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is the active planning line, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
+The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release-entry validation, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
-Three product pillars are approved for v2.2:
+Three product pillars are complete on main for v2.2. The application version remains 2.1.0 while the [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) is validated; the final pre-release gate remains pending:
 
 - [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
 - [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.

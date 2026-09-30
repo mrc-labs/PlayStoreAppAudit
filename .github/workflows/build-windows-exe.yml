@@ -35,7 +35,7 @@ jobs:
       EXPECTED_PE_MACHINE: ${{ matrix.arch == 'x64' && '0x8664' || '0xAA64' }}
       PYSIDE_WHEEL_PLATFORM: ${{ matrix.arch == 'x64' && 'win_amd64' || 'win_arm64' }}
       RUNNER_LABEL: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
-      RUNNER_STATUS: ${{ matrix.arch == 'x64' && 'generally available' || 'public preview' }}
+      RUNNER_STATUS: generally available
 
     steps:
       - name: Checkout repository
@@ -191,7 +191,7 @@ jobs:
         if: ${{ matrix.arch == 'arm64' }}
         shell: pwsh
         run: |
-          python -c "import cryptography; from cryptography.hazmat.backends.openssl.backend import backend; print('cryptography', cryptography.__version__); print(backend.openssl_version_text()); assert cryptography.__version__ == '50.0.1'"
+          python -c "import cryptography; from cryptography.hazmat.backends.openssl.backend import backend; print('cryptography', cryptography.__version__); print(backend.openssl_version_text()); assert cryptography.__version__ == '50.0.2'"
           if ($LASTEXITCODE -ne 0) { throw 'ARM64 cryptography import or OpenSSL runtime verification failed.' }
           $rustBinary = python -c "from cryptography.hazmat.bindings import _rust; print(_rust.__file__)"
           if ($LASTEXITCODE -ne 0) { throw 'Could not locate the cryptography Rust extension.' }
