@@ -26,12 +26,14 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QWidget,
 )
+from test_connected_device_profile import build_complete_profile
 
 import playstore_app_audit.services.change_overview as change_service
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.device_specific_personal_session as personal_session
+import playstore_app_audit.services.personal_device_library as personal_device_library
 import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
@@ -2024,6 +2026,159 @@ def test_get_phone_data_failure_preserves_previous_complete_profile(
 
     assert window._device_specific_connected_profile is previous
     assert window._device_specific_connected_profile_device_id == "previous-owner"
+
+
+def test_saved_personal_device_ui_save_restart_rename_delete(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    path = tmp_path / "personal_device_profiles.json"
+    monkeypatch.setattr(personal_device_library, "library_path", lambda: path)
+    backing = dict(window.user_settings)
+    monkeypatch.setattr(state, "load_settings", lambda: dict(backing))
+    def remember(values: dict[str, object]) -> dict[str, object]:
+        backing.update(values)
+        return dict(backing)
+    monkeypatch.setattr(state, "save_settings", remember)
+    window._scan_session = None
+    window._device_specific_connected_profile = build_complete_profile()
+    window._device_specific_connected_profile_device_id = "process-only-owner"
+    names = iter([("Travel phone", True), ("Renamed phone", True)])
+    monkeypatch.setattr(preferences_ui.QInputDialog, "getText", lambda *_args, **_kwargs: next(names))
+    monkeypatch.setattr(QMessageBox, "question", lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes)
+    selected: list[str] = []
+
+    def save_dialog(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        save = dialog.findChild(QPushButton, "DeviceSpecificSavePersonalProfileButton")
+        assert combo is not None and save is not None
+        assert any("Built-in validated" in combo.itemText(i) for i in range(combo.count()))
+        save.click()
+        selected.append(str(combo.currentData()))
+        assert "Saved Personal Device — Travel phone" in combo.currentText()
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", save_dialog)
+    window._show_advanced_settings()
+    assert len(personal_device_library.list_profiles()) == 1
+    assert "process-only-owner" not in path.read_text(encoding="utf-8")
+
+    window._device_specific_connected_profile = None
+    window._device_specific_connected_profile_device_id = None
+
+    def rename_dialog(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        rename = dialog.findChild(QPushButton, "DeviceSpecificRenamePersonalProfileButton")
+        assert combo is not None and rename is not None
+        assert combo.currentData() == selected[0]
+        rename.click()
+        assert combo.currentData() == selected[0]
+        assert "Renamed phone" in combo.currentText()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", rename_dialog)
+    window._show_advanced_settings()
+    assert personal_device_library.get_profile(selected[0]).display_name == "Renamed phone"
+
+    def delete_dialog(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        delete = dialog.findChild(QPushButton, "DeviceSpecificDeletePersonalProfileButton")
+        assert combo is not None and delete is not None
+        assert combo.currentData() == selected[0]
+        delete.click()
+        assert combo.currentData() == device_specific_integration.DEFAULT_PROFILE_ID
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", delete_dialog)
+    window._show_advanced_settings()
+    assert personal_device_library.list_profiles() == ()
+    assert window.user_settings[device_specific_integration.SETTING_PROFILE_ID] == device_specific_integration.DEFAULT_PROFILE_ID
+
+
+def test_saved_personal_device_ui_refresh_requires_confirmation_and_blocks_mismatch(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    path = tmp_path / "personal_device_profiles.json"
+    monkeypatch.setattr(personal_device_library, "library_path", lambda: path)
+    original = build_complete_profile()
+    saved = personal_device_library.save_capture(original, "Phone")
+    backing = dict(window.user_settings)
+    backing[device_specific_integration.SETTING_PROFILE_ID] = saved.profile_id
+    monkeypatch.setattr(state, "load_settings", lambda: dict(backing))
+    window._device_specific_connected_profile = None
+    window._scan_session = None
+    changed = ConnectedDeviceProfile(
+        profile_id=original.profile_id, display_name=original.display_name,
+        android_release=original.android_release, api_level=original.api_level,
+        profile_hash=original.profile_hash,
+        profile={**original.profile, "Vending.version": "999"},
+        complete=True, missing_fields=(),
+    )
+    mismatch = ConnectedDeviceProfile(
+        profile_id=original.profile_id, display_name=original.display_name,
+        android_release=original.android_release, api_level=original.api_level,
+        profile_hash=original.profile_hash,
+        profile={**original.profile, "Build.MODEL": "Other Model"},
+        complete=True, missing_fields=(),
+    )
+    captures = iter([mismatch, changed])
+    prompts: list[str] = []
+
+    class ImmediateThread:
+        def __init__(self, *, target, daemon: bool) -> None:
+            self.target = target
+
+        def start(self) -> None:
+            self.target()
+
+    monkeypatch.setattr(preferences_ui.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(
+        window, "_collect_personal_device_profile_direct",
+        lambda: ConnectedDeviceProfileCapture(next(captures), "process-only-owner"),
+    )
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        lambda _parent, _title, message: prompts.append(message) or QMessageBox.StandardButton.Yes,
+    )
+
+    def refresh_dialog(dialog: QDialog) -> int:
+        button = dialog.findChild(QPushButton, "DeviceSpecificRefreshPersonalProfileButton")
+        status = dialog.findChild(QLabel, "DeviceSpecificPhoneDataStatus")
+        assert button is not None and status is not None
+        button.click()
+        assert "mismatch" in status.text().casefold() or "differs" in status.text().casefold()
+        assert personal_device_library.get_profile(saved.profile_id).profile_hash == saved.profile_hash
+        assert prompts == []
+        button.click()
+        assert "refreshed" in status.text().casefold()
+        assert "does not prove" in prompts[0]
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", refresh_dialog)
+    window._show_advanced_settings()
+    refreshed = personal_device_library.get_profile(saved.profile_id)
+    assert refreshed.profile_id == saved.profile_id
+    assert refreshed.profile["Vending.version"] == "999"
+    assert refreshed.profile_hash != saved.profile_hash
+
+
+def test_saved_personal_device_ui_handles_unavailable_library(
+    window: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    path = tmp_path / "personal_device_profiles.json"
+    path.write_text('{"schema_version": 2, "profiles": []}', encoding="utf-8")
+    monkeypatch.setattr(personal_device_library, "library_path", lambda: path)
+
+    def inspect(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "DeviceSpecificResolverProfileCombo")
+        status = dialog.findChild(QLabel, "DeviceSpecificPhoneDataStatus")
+        assert combo is not None and status is not None
+        assert combo.findData(device_specific_integration.DEFAULT_PROFILE_ID) >= 0
+        assert "unavailable" in status.text()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_advanced_settings()
+    assert path.read_text(encoding="utf-8") == '{"schema_version": 2, "profiles": []}'
 
 
 def test_custom_dispenser_help_is_owned_explanation_with_verified_links(

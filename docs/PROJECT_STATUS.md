@@ -276,6 +276,8 @@ losing their saved metadata, Local APK never inherits phone fields, and reset is
 family-scoped. The source audit found no required changes to the existing Basic,
 Source Details or Technical definitions.
 
+Issue `#200` now has a focused development implementation: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. The current PR/Quality review is the remaining acceptance gate; the application version stays `2.1.0`.
+
 The current application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
 
 ## v2.0 and later direction

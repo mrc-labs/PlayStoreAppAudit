@@ -87,6 +87,8 @@ Never persist or expose:
 
 Raw public Store evidence remains authoritative. Device Specific evidence is additive.
 
+The focused #200 development implementation uses `personal_device_profiles.json` schema v1 in the active application-data directory. Each complete saved profile has a random `personal:` UUID4 record ID, a random UUID4 cache revision, local name, UTC capture/update times, safe manufacturer/model/Android/API context and only the allowlisted resolver mapping. Explicit Save Locally follows the existing transient Get Phone Data capture. Saved profiles work without ADB and are visually separated from built-in validated references and `connected_device` session capture. Rename leaves cache identity stable; confirmed refresh rotates the random revision and blocks obvious manufacturer/model mismatch, while explaining that matching context cannot prove device identity. Delete falls back to the built-in default. Reset Settings retains the separate library but resets selection; cache/history maintenance retains it. There is no v2.1 transient migration. The #200 PR and exact-head Quality gate remain the acceptance checkpoint.
+
 ### 3. CLI/headless auditing — #211
 
 Add a scriptable non-GUI entry point that reuses existing domain/service logic.
@@ -134,10 +136,7 @@ Preserve:
 
 ## Immediate next implementation
 
-After the focused #208 PR passes review and merges normally, continue with one
-of the remaining v2.2 pillars through its own issue and branch. Do not mix #200
-or #211 into the source-aware layout PR, and keep #147 as the separate arbitrary
-Named Custom Views scope.
+After #208, complete the focused #200 PR review and exact-head Quality gate before any merge. Keep #211 and the separate arbitrary Named Custom Views #147 outside this PR.
 
 ## Continuation
 

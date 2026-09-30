@@ -16,7 +16,7 @@ The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonic
 
 - **Local APK file management:** Rename or remove individual files, preview collision-safe Mass Rename operations, and guard bulk removal of exact Outdated or Unknown results.
 - **Device Specific resolution:** Resolve Store versions through validated profiles and configurable metadata providers without replacing the raw public Store result.
-- **Get Phone Data:** Capture a privacy-safe, session-only Personal Device profile through read-only ADB.
+- **Personal Device profiles (v2.2 development):** Get Phone Data captures a session-only profile through read-only ADB. Save Locally explicitly stores named profiles for later selection without a connected phone; saved profiles can be renamed, refreshed and deleted.
 - **Source-aware Local APK UX:** Review clearer comparison states and corrected transitions between phone and Local APK sources.
 - **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
 

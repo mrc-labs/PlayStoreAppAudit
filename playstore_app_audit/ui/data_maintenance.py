@@ -110,7 +110,8 @@ HISTORY_ACTIONS = (
 CLEAR_ALL_CONFIRMATION = (
     "Delete Store results, Device Specific resolver, app icon, "
     "alternative-store and local package metadata caches? History, "
-    "Device Snapshots, settings and current results will not be deleted."
+    "Device Snapshots, saved Personal Device profiles, settings and current "
+    "results will not be deleted."
 )
 
 
