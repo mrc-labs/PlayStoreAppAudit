@@ -28,6 +28,7 @@ Documentation = "https://github.com/mrc-labs/PlayStoreAppAudit/tree/main/docs"
 
 [project.scripts]
 playstore-app-audit = "playstore_app_audit.app:main"
+playstore-app-audit-cli = "playstore_app_audit.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["playstore_app_audit*"]

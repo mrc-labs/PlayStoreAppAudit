@@ -454,6 +454,7 @@ jobs:
           fi
 
           "$EXEC"
+          "$EXEC" cli audit --help >/dev/null
 
           python .github/scripts/prepare_release_legal_bundle.py \
             --package-dir "$APP" \
@@ -536,6 +537,7 @@ jobs:
           fi
 
           "$REXEC"
+          "$REXEC" cli audit --help >/dev/null
           shasum -a 256 "$ZIP"
           ls -lh artifact/*
 

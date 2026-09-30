@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 REQUIRED_FILES = {
+    "playstoreappaudit.exe",
     "qt6core.dll",
     "qt6gui.dll",
     "qt6widgets.dll",
@@ -82,6 +83,8 @@ def main() -> int:
         errors.append(
             "Missing required runtime files: " + ", ".join(missing)
         )
+    if not (root / "PlayStoreAppAudit.exe").is_file():
+        errors.append("The GUI/CLI dispatcher must be a top-level PlayStoreAppAudit.exe.")
     if forbidden:
         errors.append(
             "Forbidden runtime files found:\n  "

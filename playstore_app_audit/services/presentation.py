@@ -418,6 +418,11 @@ def _parse_date(value: object):
     return None
 
 
+def parse_date_value(value: object):
+    """Parse the same Store and device date forms used by result presentation."""
+    return _parse_date(value)
+
+
 def format_date_value(value: object, style: str | None = None) -> str:
     text = str(value or "").strip()
     if not text:

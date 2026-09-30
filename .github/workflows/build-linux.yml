@@ -208,6 +208,7 @@ jobs:
           export PACKAGE_ELF_MACHINE="$ELF_MACHINE"
 
           "$BIN"
+          "$BIN" cli audit --help >/dev/null
 
           PACKAGE_NAME="PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}"
           PACKAGE_DIR="package/$PACKAGE_NAME"
@@ -338,6 +339,7 @@ jobs:
           test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
 
           timeout 30s xvfb-run -a             env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+          "$ROUNDTRIP_BIN" cli audit --help >/dev/null
 
           sha256sum "$ARCHIVE"
           ls -lh artifact/*

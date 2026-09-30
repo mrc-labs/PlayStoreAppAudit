@@ -52,7 +52,7 @@ import playstore_app_audit.ui.theme as theme_ui
 from playstore_app_audit import __version__
 from playstore_app_audit.platform import runtime
 from playstore_app_audit.product_identity import DISPLAY_NAME, TECHNICAL_NAME
-from playstore_app_audit.services import presentation
+from playstore_app_audit.services import app_list_system, presentation, result_csv
 from playstore_app_audit.services.audit_engine import OUTPUT_FIELDS, AuditConfig, audit_apps, load_apps
 from playstore_app_audit.services.store_freshness import StoreFreshnessThresholds
 from playstore_app_audit.ui import schema
@@ -296,7 +296,7 @@ def apply_semantic_label_presentation(
 
 COLUMNS = schema.MODEL_COLUMNS
 COLUMN_LABELS = dict(schema.COLUMN_LABELS)
-EXPORT_FIELDS = list(dict.fromkeys(list(OUTPUT_FIELDS) + list(schema.EXPORT_EXTRA_FIELDS)))
+EXPORT_FIELDS = list(result_csv.EXPORT_FIELDS)
 
 
 def normalise_header(value: str) -> str:
@@ -903,41 +903,7 @@ class BaseWindow(QMainWindow):
     def _read_system_metadata_from_file(
         self, path: str | Path, apps: list[dict[str, str]]
     ) -> dict[str, bool]:
-        file_path = Path(path)
-        if file_path.suffix.lower() not in {".csv", ".tsv"}:
-            return {}
-        raw = file_path.read_text(encoding="utf-8-sig", errors="replace")
-        if not raw.strip():
-            return {}
-        try:
-            delimiter = csv.Sniffer().sniff(raw[:5000], delimiters=",;\t|").delimiter
-        except csv.Error:
-            delimiter = "\t" if file_path.suffix.lower() == ".tsv" else ","
-
-        reader = csv.DictReader(raw.splitlines(), delimiter=delimiter)
-        fieldnames = reader.fieldnames or []
-        normalised = {normalise_header(name): name for name in fieldnames if name is not None}
-        package_column = next(
-            (original for name, original in normalised.items() if name in PACKAGE_COLUMN_NAMES),
-            None,
-        )
-        system_column = next(
-            (original for name, original in normalised.items() if name in SYSTEM_COLUMN_NAMES),
-            None,
-        )
-        if not package_column or not system_column:
-            return {}
-
-        valid_packages = {app["package_name"] for app in apps}
-        metadata: dict[str, bool] = {}
-        for row in reader:
-            package_name = (row.get(package_column) or "").strip()
-            if package_name not in valid_packages:
-                continue
-            value = parse_bool(row.get(system_column) or "")
-            if value is not None:
-                metadata[package_name] = value
-        return metadata
+        return app_list_system.read_system_metadata(path, apps)
 
     def _find_adb(self) -> str | None:
         candidates: list[str | None] = [
@@ -1175,43 +1141,36 @@ class BaseWindow(QMainWindow):
         self._on_worker_failed(message)
 
     def _classify_file_system_packages(self, apps: list[dict[str, str]]) -> tuple[set[str], str]:
-        system_packages = {
-            package_name for package_name, is_system in self.file_system_metadata.items() if is_system
-        }
-        known_user_packages = {
-            package_name for package_name, is_system in self.file_system_metadata.items() if not is_system
-        }
         method_parts: list[str] = []
         if self.file_system_metadata:
             method_parts.append("CSV system flag")
 
         adb = self._get_authorised_adb()
+        exact_system: set[str] | None = None
         if adb:
             try:
-                system_packages.update(self._get_system_packages_from_adb(adb))
+                exact_system = self._get_system_packages_from_adb(adb)
                 method_parts.append("ADB exact match")
             except Exception:
                 adb = None
-
-        heuristic_count = 0
         if not adb:
-            for app in apps:
-                package_name = app["package_name"]
-                if package_name in system_packages or package_name in known_user_packages:
-                    continue
-                if is_definite_system_package(package_name):
-                    system_packages.add(package_name)
-                    heuristic_count += 1
-            if heuristic_count:
+            if any(
+                app_list_system.is_definite_system_package(app["package_name"])
+                and app["package_name"] not in self.file_system_metadata
+                for app in apps
+            ):
                 method_parts.append("conservative package-name fallback")
+
+        system_packages = app_list_system.classify_packages(
+            apps, self.file_system_metadata, exact_system=exact_system
+        )
 
         method = (
             " + ".join(method_parts)
             if method_parts
             else "no exact classifier available; connect the source phone via ADB or add an is_system column"
         )
-        valid_packages = {app["package_name"] for app in apps}
-        return system_packages.intersection(valid_packages), method
+        return system_packages, method
 
     def _get_apps_to_audit(self) -> tuple[list[dict[str, str]], set[str], str]:
         if self.source_mode == "device" and self.device_apps_all:

@@ -4,9 +4,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
+from playstore_app_audit.services import result_csv
+
 # Canonical table schema for every UI layer. Older releases progressively
 # mutated module globals while importing successive window classes. Keeping one
 # immutable source of truth prevents import order from changing the model.
+EXPORT_EXTRA_FIELDS = result_csv.EXPORT_EXTRA_FIELDS
+
 PRIMARY_COLUMNS = (
     "criticality",
     "package_name",
@@ -247,33 +251,3 @@ def semantic_default_width(
         # table-width change.
         return max(semantic_width, min(policy.maximum, header_width))
     return semantic_width
-
-EXPORT_EXTRA_FIELDS = (
-    "is_system",
-    "criticality",
-    "age_days",
-    "change",
-    "cache_hit",
-    "play_version",
-    "installed_version",
-    "installed_version_code",
-    "version_comparison",
-    *DEVICE_SPECIFIC_RESOLVER_COLUMNS,
-    "device_specific_profile_id",
-    "installer_source",
-    "installer_category",
-    "installer_package",
-    *INSIGHTS_EXTRA_COLUMNS,
-    "source_mode",
-    *(column for column in LOCAL_APK_EXTRA_COLUMNS if column != "local_apk_location"),
-    "local_apk_long_version_code",
-    "local_apk_file_size",
-    "local_apk_modified_at",
-    "local_apk_min_sdk",
-    "local_apk_target_sdk",
-    "local_apk_compile_sdk",
-    "local_apk_debuggable",
-    "local_apk_permissions",
-    "local_apk_features",
-    "local_apk_warnings",
-)
