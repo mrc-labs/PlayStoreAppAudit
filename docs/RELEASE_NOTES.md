@@ -32,6 +32,16 @@ Every public GitHub Release body uses these four sections, in this order:
 
 `Compatibility and distribution` states the actual platform, architecture, signing, notarization, and important compatibility limitations. `Release assets` identifies the project-defined deliverables without duplicating GitHub's Assets UI unnecessarily. `Verification` retains the frozen source SHA and the essential package, provenance, legal, and checksum evidence that actually passed.
 
+## Optional sponsorship footer (v2.2 onward)
+
+Starting with v2.2, future release bodies may end with this compact, optional footer after the complete `Verification` section:
+
+```markdown
+🍺 Enjoying Store App Audit? [Sponsor its development on GitHub](https://github.com/sponsors/mrc-labs) and help support testing and development tools.
+```
+
+This is a footer, not a fifth required section. The four mandatory sections and their order remain unchanged. Do not add sponsorship to historical published v2.1, v2.0 or earlier release bodies; preserve their historical prose.
+
 ## Immutability and editorial maintenance
 
 The following published release material is immutable:
