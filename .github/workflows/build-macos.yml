@@ -131,15 +131,25 @@ jobs:
         if: ${{ matrix.arch == 'x64' }}
         run: |
           set -euo pipefail
-          # Hosted rustup is owned by Homebrew and disables self-update.
-          brew update
-          brew install rustup
-          brew upgrade rustup
+          # Homebrew's current rustup has no Intel macOS bottle. Use the
+          # official native installer in an isolated runner tool directory.
+          export CARGO_HOME="$RUNNER_TEMP/cryptography-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/cryptography-rustup"
+          rust_installer="$RUNNER_TEMP/rustup-init"
+          curl --fail --location --retry 3 --output "$rust_installer" \
+            https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-apple-darwin/rustup-init
+          echo "259e2b84274434085163fe8d556510571772cda2aa6d87ca6aa664f57bc644e3  $rust_installer" | shasum -a 256 -c -
+          chmod +x "$rust_installer"
+          "$rust_installer" -y --no-modify-path --profile minimal --default-toolchain 1.98.1
+          export PATH="$CARGO_HOME/bin:$PATH"
+          echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
+          echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           rustup --version
-          rustup toolchain install 1.98.1 --profile minimal
-          rustup override set 1.98.1
           rustc --version
           cargo --version
+          [[ "$(rustup --version)" == "rustup 1.29.1 "* ]]
+          [[ "$(rustc --version)" == "rustc 1.98.1 "* ]]
           # Build static OpenSSL with the existing deployment target rather
           # than import a host-OS-specific Homebrew binary into the package.
           work="$RUNNER_TEMP/openssl-4.0.3-source"

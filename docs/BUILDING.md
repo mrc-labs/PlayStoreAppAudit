@@ -295,7 +295,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 Both select Xcode **26.6** explicitly. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
 
-Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and official OpenSSL 4.0.3 sources verified by SHA-256. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
+Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
 
 It accepts:
 
