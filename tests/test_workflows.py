@@ -62,7 +62,12 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
         assert "workflow_dispatch:" in workflow
         assert "\n  push:" not in workflow
         assert "\n  pull_request:" not in workflow
-        assert "target:" not in workflow
+        if name == "build-linux.yml":
+            assert "\n      target:" not in workflow
+        else:
+            assert "default: both" in workflow
+            assert "inputs.target == 'x64'" in workflow
+            assert "inputs.target == 'arm64'" in workflow
 
         assert "expected_sha:" in workflow
         assert "required: true" in workflow
@@ -78,8 +83,13 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
         assert workflow.count("Verify requested build commit") == 1
         assert "STOP before expensive build work." in workflow
 
-        assert "arch: x64" in workflow
-        assert "arch: arm64" in workflow
+        if name == "build-linux.yml":
+            assert "arch: x64" in workflow
+            assert "arch: arm64" in workflow
+        else:
+            assert '["arm64", "x64"]' in workflow
+            assert "macos-26-intel" in workflow
+            assert "EXPECTED_MACHO_ARCH" in workflow
 
 
 def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:

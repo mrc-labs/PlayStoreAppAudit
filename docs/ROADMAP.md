@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-23
+Last updated: 2026-10-01
 
 ## Purpose
 
@@ -333,7 +333,7 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 
 ## v2.2 active scope
 
-v2.2 is the current active planning line, coordinated by master issue `#212`. The v2.1 release cycle is closed; implementation should proceed through focused issues and small PRs rather than reopening v2.1 release work.
+v2.2 has completed all three approved implementation pillars through PRs #214, #215 and #216. The [release-entry component freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) passed on draft PR #217, starting from exact main `e204d68e2d969f7d0a30ca166243020fc115ae44`; control-tower review and merge remain pending. Master issue `#212` remains open; the application remains 2.1.0 and the final pre-release freshness gate is still pending. The v2.1 release cycle remains closed.
 
 ### Source-aware views and layouts — issue #208
 
@@ -357,8 +357,7 @@ Recommended implementation sequence:
 2. source-aware Custom defaults and transition behavior;
 3. final built-in preset/menu presentation and UX polish.
 
-Implementation checkpoint: all three steps are complete in the focused #208
-change. The menu exposes both exact Custom labels and disables the inactive
+Implementation checkpoint: all three steps are complete and merged via PR #214. The menu exposes both exact Custom labels and disables the inactive
 family. A versioned two-family settings schema preserves independent existence,
 visibility, order and widths; valid v2.1 single-Custom state migrates once into
 both families with source-safe filtering and without deleting legacy keys.
@@ -371,7 +370,7 @@ three-source audit.
 
 Persistent Personal Device profiles are approved v2.2 scope.
 
-The focused #200 development implementation now provides the library and Qt controls described below. It retains the existing session-only capture unless Save Locally is chosen. A matching manufacturer/model permits a confirmed replacement but does not establish physical-device identity; obvious mismatch is blocked. Reset Settings leaves the separate library intact while resetting selection, and cache/history cleanup does not remove profiles. Final acceptance depends on the focused PR review and Quality gate.
+The focused #200 development implementation now provides the library and Qt controls described below. It retains the existing session-only capture unless Save Locally is chosen. A matching manufacturer/model permits a confirmed replacement but does not establish physical-device identity; obvious mismatch is blocked. Reset Settings leaves the separate library intact while resetting selection, and cache/history cleanup does not remove profiles. PR #215 is merged and its exact-main Quality gate passed.
 
 - Allow explicit saving of multiple privacy-safe user-captured Device Specific profiles.
 - Let users assign friendly local names and select, refresh/replace, rename and delete saved profiles.
@@ -386,7 +385,7 @@ The focused #200 development implementation now provides the library and Qt cont
 
 CLI/headless is approved v2.2 scope.
 
-The focused development implementation uses a separate `playstore-app-audit-cli audit` command with App List, Local APK file/folder and connected-phone sources. Acceptance still requires PR review and exact-head Quality before this pillar is considered merged. The GUI remains the default installed command, and no v2.2 release work is implied by this checkpoint.
+The focused development implementation uses a separate `playstore-app-audit-cli audit` command with App List, Local APK file/folder and connected-phone sources. PR #216 is merged, with post-merge Quality #607 / run `36754783824` passing on the baseline above. The GUI remains the default installed command; release-entry validation is now active.
 
 - Reuse existing domain/service boundaries instead of driving Qt widgets or duplicating Store/ADB logic.
 - Target the existing source families where coherent: App List files, Local APK files/folders and connected-phone inventory through read-only ADB.

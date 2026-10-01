@@ -299,9 +299,19 @@ Write-Host "Packaged smoke test: PASS"
 
 Write-Host ""
 Write-Host "=== PACKAGED CLI SMOKE TEST ==="
-$CliHelp = & $Exe.FullName cli audit --help
-if ($LASTEXITCODE -ne 0 -or ($CliHelp -join "`n") -notmatch "app-list") {
-    Fail "Packaged CLI smoke test failed."
+# This is a GUI-subsystem executable. Explicitly wait and retain redirected
+# handles until exit; direct PowerShell invocation can return before it writes.
+$CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
+$CliStderr = Join-Path $BuildRoot "packaged-cli-stderr.txt"
+$CliProcess = Start-Process -FilePath $Exe.FullName `
+    -ArgumentList @("cli", "audit", "--help") `
+    -WindowStyle Hidden -Wait -PassThru `
+    -RedirectStandardOutput $CliStdout -RedirectStandardError $CliStderr
+$CliHelp = Get-Content -LiteralPath $CliStdout -Raw
+if ($CliProcess.ExitCode -ne 0 -or $CliHelp -notmatch "app-list") {
+    Get-Content -LiteralPath $CliStdout
+    Get-Content -LiteralPath $CliStderr
+    Fail "Packaged CLI smoke test failed (exit $($CliProcess.ExitCode))."
 }
 Write-Host "Packaged CLI smoke test: PASS"
 

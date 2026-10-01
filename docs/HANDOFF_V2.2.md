@@ -1,4 +1,4 @@
-# Store App Audit v2.2 Development Handoff
+# Store App Audit v2.2 Release-entry Handoff
 
 ## Current state
 
@@ -18,9 +18,9 @@ Published v2.1 source, tag and assets remain immutable.
 
 The application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step.
 
-## v2.2 approved product pillars
+## v2.2 completed product pillars
 
-v2.2 has three approved pillars coordinated through master issue `#212`. Do not silently add unrelated deferred work to the release.
+All three v2.2 implementation pillars are complete and merged through PRs #214 (#208), #215 (#200) and #216 (#211). The exact main baseline before freshness work is `e204d68e2d969f7d0a30ca166243020fc115ae44`; post-merge Quality #607 / run `36754783824` passed. Master issue `#212` remains open for release validation. Do not silently add unrelated deferred work to the release.
 
 ### 1. Source-aware views and two explicit Custom layouts — #208
 
@@ -87,15 +87,15 @@ Never persist or expose:
 
 Raw public Store evidence remains authoritative. Device Specific evidence is additive.
 
-The focused #200 development implementation uses `personal_device_profiles.json` schema v1 in the active application-data directory. Each complete saved profile has a random `personal:` UUID4 record ID, a random UUID4 cache revision, local name, UTC capture/update times, safe manufacturer/model/Android/API context and only the allowlisted resolver mapping. Explicit Save Locally follows the existing transient Get Phone Data capture. Saved profiles work without ADB and are visually separated from built-in validated references and `connected_device` session capture. Rename leaves cache identity stable; confirmed refresh rotates the random revision and blocks obvious manufacturer/model mismatch, while explaining that matching context cannot prove device identity. Delete falls back to the built-in default. Reset Settings retains the separate library but resets selection; cache/history maintenance retains it. There is no v2.1 transient migration. The #200 PR and exact-head Quality gate remain the acceptance checkpoint.
+The focused #200 development implementation uses `personal_device_profiles.json` schema v1 in the active application-data directory. Each complete saved profile has a random `personal:` UUID4 record ID, a random UUID4 cache revision, local name, UTC capture/update times, safe manufacturer/model/Android/API context and only the allowlisted resolver mapping. Explicit Save Locally follows the existing transient Get Phone Data capture. Saved profiles work without ADB and are visually separated from built-in validated references and `connected_device` session capture. Rename leaves cache identity stable; confirmed refresh rotates the random revision and blocks obvious manufacturer/model mismatch, while explaining that matching context cannot prove device identity. Delete falls back to the built-in default. Reset Settings retains the separate library but resets selection; cache/history maintenance retains it. There is no v2.1 transient migration. PR #215 is merged and its exact-main Quality gate passed.
 
 Advanced Settings preserves a configured `personal:` selection as an unavailable placeholder if this build cannot load its library or selected record. Unrelated settings saves retain that ID without touching future-schema bytes; explicit built-in selection and Reset All may replace it.
 
 ### 3. CLI/headless auditing — #211
 
-The focused #211 implementation branch now contains the separate `playstore-app-audit-cli audit` command for App List, explicit local package files, recursive Local APK folders and connected-phone ScanSession. It replaces the legacy positional `cli.py` behavior, keeps the GUI installed command unchanged and does not bump the application version. Canonical services handle Store lookup/fallback, local package fan-out, Device Specific/Alternative Distribution, classification/scoring and JSON/CSV export. CLI overrides do not persist settings or history. Review and exact-head Quality on the PR are still required before marking this pillar complete.
+The merged #211 implementation contains the separate `playstore-app-audit-cli audit` command for App List, explicit local package files, recursive Local APK folders and connected-phone ScanSession. It replaces the legacy positional `cli.py` behavior, keeps the GUI installed command unchanged and does not bump the application version. Canonical services handle Store lookup/fallback, local package fan-out, Device Specific/Alternative Distribution, classification/scoring and JSON/CSV export. CLI overrides do not persist settings or history. PR #216 and post-merge Quality #607 complete this implementation pillar.
 
-The same pending branch makes normal standalone packages invoke the CLI as `PlayStoreAppAudit[.exe] cli audit ...` on Windows/Linux or `PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit cli audit ...` on macOS; default invocation remains GUI. Expired or unavailable inherited Device Specific settings do not block public Store evidence, while explicit CLI overrides are checked before audit.
+The merged implementation makes normal standalone packages invoke the CLI as `PlayStoreAppAudit[.exe] cli audit ...` on Windows/Linux or `PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit cli audit ...` on macOS; default invocation remains GUI. Expired or unavailable inherited Device Specific settings do not block public Store evidence, while explicit CLI overrides are checked before audit.
 
 Add a scriptable non-GUI entry point that reuses existing domain/service logic.
 
@@ -140,9 +140,11 @@ Preserve:
 - Qt Widgets/platform-default style;
 - the established technical slug/repository/executable naming `PlayStoreAppAudit`; no v2.2 naming migration is planned.
 
-## Immediate next implementation
+## Active release-entry validation
 
-Review the focused #211 CLI PR and its exact-head Quality gate before merge. Keep arbitrary Named Custom Views #147 and release preparation outside this PR.
+The entry freshness gate **PASSED on the draft PR #217 branch**, under the explicit 2026-10-01 ownership/compatibility policy; control-tower review and merge remain pending. Hosted Quality uses Python 3.14.8. Windows ARM64 and macOS Intel cryptography source builds, plus both macOS Xcode 26.6/macOS 26 packages, passed native architecture, GUI/CLI and strict legal/source validation. Supported parent bundles and non-overridable vendor internals retain their documented observations; all six release targets remain required. Exact diagnostic SHAs, failed-attempt history and before/after classification are in the detailed entry record; final-head Quality is recorded in PR #217.
+
+Review the completed [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) in draft PR #217 before authorizing further release work. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
 
 ## Continuation
 

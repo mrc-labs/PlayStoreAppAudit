@@ -172,6 +172,7 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
+          check-latest: true
 
       - name: Read canonical project version
         id: project_version
@@ -233,6 +234,7 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
+          check-latest: true
           architecture: x64
           cache: pip
           cache-dependency-path: |
@@ -525,6 +527,7 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
+          check-latest: true
           architecture: ${{ matrix.python_arch }}
 
       - name: Download signed Windows release candidate

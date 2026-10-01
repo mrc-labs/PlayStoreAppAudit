@@ -3,6 +3,15 @@ name: Build macOS - Qt6 (manual)
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Both for release validation; one architecture for deliberate diagnostics
+        required: false
+        default: both
+        type: choice
+        options:
+          - both
+          - x64
+          - arm64
       expected_sha:
         description: Exact commit SHA expected for this deliberate build
         required: true
@@ -25,14 +34,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-15
-            arch: arm64
-            expected_macho_arch: arm64
-          - os: macos-15-intel
-            arch: x64
-            expected_macho_arch: x86_64
-    runs-on: ${{ matrix.os }}
+        arch: ${{ fromJSON(inputs.target == 'x64' && '["x64"]' || inputs.target == 'arm64' && '["arm64"]' || '["arm64", "x64"]') }}
+    runs-on: ${{ matrix.arch == 'x64' && 'macos-26-intel' || 'macos-26' }}
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.arch == 'x64' && '10.15' || '11.0' }}
+      EXPECTED_MACHO_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -67,6 +74,15 @@ jobs:
 
           echo "Release-candidate source SHA verified: $actual"
 
+      - name: Verify supported native Xcode toolchain
+        run: |
+          set -euo pipefail
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version
+          test "$(xcodebuild -version | head -n 1)" = "Xcode 26.6"
+          xcrun clang --version
+          test "$(uname -m)" = "$EXPECTED_MACHO_ARCH"
+
       - name: Verify production signing configuration
         if: ${{ inputs.signing_mode == 'production' }}
         env:
@@ -97,6 +113,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
+          check-latest: true
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -110,10 +127,63 @@ jobs:
           VERSION="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
           test -n "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Provision Intel cryptography source prerequisites
+        if: ${{ matrix.arch == 'x64' }}
+        run: |
+          set -euo pipefail
+          # Homebrew's current rustup has no Intel macOS bottle. Use the
+          # official native installer in an isolated runner tool directory.
+          export CARGO_HOME="$RUNNER_TEMP/cryptography-cargo"
+          export RUSTUP_HOME="$RUNNER_TEMP/cryptography-rustup"
+          rust_installer="$RUNNER_TEMP/rustup-init"
+          curl --fail --location --retry 3 --output "$rust_installer" \
+            https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-apple-darwin/rustup-init
+          echo "259e2b84274434085163fe8d556510571772cda2aa6d87ca6aa664f57bc644e3  $rust_installer" | shasum -a 256 -c -
+          chmod +x "$rust_installer"
+          "$rust_installer" -y --no-modify-path --profile minimal --default-toolchain 1.98.1
+          export PATH="$CARGO_HOME/bin:$PATH"
+          echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
+          echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          rustup --version
+          rustc --version
+          cargo --version
+          [[ "$(rustup --version)" == "rustup 1.29.1 "* ]]
+          [[ "$(rustc --version)" == "rustc 1.98.1 "* ]]
+          # Build static OpenSSL with the existing deployment target rather
+          # than import a host-OS-specific Homebrew binary into the package.
+          work="$RUNNER_TEMP/openssl-4.0.3-source"
+          prefix="$RUNNER_TEMP/openssl-4.0.3-static"
+          mkdir -p "$work"
+          cd "$work"
+          curl --fail --location --retry 3 --output openssl-4.0.3.tar.gz \
+            https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz
+          echo '325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9  openssl-4.0.3.tar.gz' | shasum -a 256 -c -
+          tar -xzf openssl-4.0.3.tar.gz
+          cd openssl-4.0.3
+          ./Configure darwin64-x86_64-cc no-shared --prefix="$prefix" \
+            "-mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+          make -j "$(sysctl -n hw.ncpu)"
+          make install_sw
+          "$prefix/bin/openssl" version
+          test "$(lipo -archs "$prefix/bin/openssl")" = x86_64
+          echo "OPENSSL_DIR=$prefix" >> "$GITHUB_ENV"
+          echo 'OPENSSL_STATIC=1' >> "$GITHUB_ENV"
+          echo 'OPENSSL_NO_VENDOR=1' >> "$GITHUB_ENV"
+          echo 'PIP_NO_BINARY=cryptography' >> "$GITHUB_ENV"
+          echo 'PIP_NO_CACHE_DIR=1' >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt "Nuitka==4.2.2"
+      - name: Verify Intel cryptography source runtime
+        if: ${{ matrix.arch == 'x64' }}
+        run: |
+          set -euo pipefail
+          python -c "import cryptography; from cryptography.hazmat.backends.openssl.backend import backend; print('cryptography', cryptography.__version__); print(backend.openssl_version_text()); assert cryptography.__version__ == '50.0.2'; assert backend.openssl_version_text().startswith('OpenSSL 4.0.3 ')"
+          rust_binary="$(python -c 'from cryptography.hazmat.bindings import _rust; print(_rust.__file__)')"
+          test "$(lipo -archs "$rust_binary")" = x86_64
       - name: Verify Python and Qt baseline
         run: |
           python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
@@ -327,7 +397,7 @@ jobs:
           file "$EXEC"
           MACHO_ARCHES="$(lipo -archs "$EXEC")"
           echo "Mach-O architecture: $MACHO_ARCHES"
-          test "$MACHO_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          test "$MACHO_ARCHES" = "$EXPECTED_MACHO_ARCH"
           BUILD_INFO=$(xcrun vtool -show-build "$EXEC"); echo "$BUILD_INFO"
           MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "minos" { print $2; exit }')
           MINOS_METADATA="LC_BUILD_VERSION/minos"
@@ -339,6 +409,7 @@ jobs:
             MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
           fi
           test -n "$MINOS"
+          python -c "import sys; normal=lambda s: tuple(map(int, s.split('.'))) + (0,) * (3-len(s.split('.'))); assert normal(sys.argv[1]) == normal(sys.argv[2]), sys.argv" "$MINOS" "$MACOSX_DEPLOYMENT_TARGET"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
 
           BUNDLE_BUILD_INFO="$APP/Contents/Resources/BUILD-INFO.txt"
@@ -362,6 +433,8 @@ jobs:
           print('Runner image version:', os.environ.get('ImageVersion', 'unavailable'))
           print('Build/test host OS:', platform.platform())
           print('Build host macOS version:', platform.mac_ver()[0])
+          print('Selected Xcode:', '26.6')
+          print('Requested deployment target:', os.environ['MACOSX_DEPLOYMENT_TARGET'])
           print('Package architecture:', os.environ['PACKAGE_ARCH'])
           print('Mach-O executable architecture:', os.environ['PACKAGE_MACHO_ARCHES'])
           print('Main executable minimum-version metadata:', os.environ['PACKAGE_MINIMUM_MACOS_METADATA'])
@@ -528,7 +601,7 @@ jobs:
           test -f "$REXEC"
           test -x "$REXEC"
           ROUNDTRIP_ARCHES="$(lipo -archs "$REXEC")"
-          test "$ROUNDTRIP_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          test "$ROUNDTRIP_ARCHES" = "$EXPECTED_MACHO_ARCH"
           codesign --verify --deep --strict --verbose=2 "$RAPP"
 
           if [ "$RELEASE_SIGNING_MODE" = "production" ]; then

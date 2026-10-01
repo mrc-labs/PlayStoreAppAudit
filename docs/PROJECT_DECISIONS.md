@@ -285,6 +285,14 @@ The release-wide source archive centralizes corresponding-source material requir
 
 ## Runtime policy
 
+### 2026-10-01: component ownership, compatibility and Python patch reproducibility
+
+The v2.2 entry audit exposed that a comparison against every globally newest independent subcomponent could make the six-target release permanently impossible. The explicit engineering decision is to evaluate freshness at the repository's actual supported control boundary, using the four categories in [RELEASE_COMPONENT_FRESHNESS.md](RELEASE_COMPONENT_FRESHNESS.md): (A) latest stable compatible directly selected components; (B) supported upstream parent bundles with embedded versions recorded; (C) current supported vendor integrations with non-overridable internals recorded as observations; and (D) current supported OS/compiler baselines preserving required architectures and binary compatibility floors.
+
+This does not permit convenient old pins: newer compatible directly controlled releases require adoption and validation. Stale/unsupported parents, applicable security/trust advisories, safe repository overrides left outdated, broken integrations and missing required validation remain blockers. A supported PySide/Shiboken/Qt set is not binary-swapped for a newer independent Qt; official CPython is not rebuilt merely because its maintained OpenSSL branch differs from the newest independent major; vendor Actions are not forked for internal version arithmetic. Incompatible newer toolchains require concrete evidence and a maintained alternative, not removal of Intel or another required target. Historical release records remain unchanged.
+
+Development may follow stable `3.14` with `check-latest: true`. Before final release SHA freeze, the final freshness gate must resolve one exact current stable patch, replace development selectors with full-version YAML literals in existing release-producing and final Quality/signing/assembly workflows, and enforce exact runtime equality. The six final candidates must share that approved patch unless a documented upstream platform limitation is explicitly accepted. This deliberately small mechanism requires no new configuration subsystem and is not activated by the entry audit itself.
+
 - Stable Python 3.14 is the release-packaging and Quality baseline.
 - Python pre-releases, including Python 3.15 release candidates, are not release baselines without a deliberate engineering decision.
 - Current Qt/PySide baseline is `PySide6-Essentials==6.11.2`.
