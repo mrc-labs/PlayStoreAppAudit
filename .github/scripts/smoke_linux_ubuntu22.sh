@@ -5,6 +5,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
   ca-certificates binutils libegl1 libfontconfig1 libgl1 libx11-xcb1 \
+  libglib2.0-0 libdbus-1-3 libopengl0 libxrender1 libxext6 libsm6 libice6 libatspi2.0-0 \
   libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
   libxcb-randr0 libxcb-render0 libxcb-render-util0 libxcb-shape0 \
   libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 \
