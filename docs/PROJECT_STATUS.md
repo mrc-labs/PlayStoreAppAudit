@@ -6,7 +6,7 @@ The merged #211 implementation provides the distinct `playstore-app-audit-cli` s
 
 The merged implementation also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
 
-The entry freshness gate is **BLOCKED**, not passed: Qt 6.12.0 is stable but matching stable PySide/Shiboken packages are unavailable, and native OpenSSL/compiler/runner plus embedded signing-provider findings require resolution. Cryptography is updated to 50.0.2 and Ruff to 0.16.9. Resumed validation on 1 October passes locally on newly released Python 3.14.8, while GitHub's Python build manifest still needs to publish it. All setup-python steps now check for the latest patch. The Windows packaged CLI smoke's process-wait failure has a regression-tested packaging fix; no product feature scope changed. The complete evidence and remaining work are in the entry record below.
+The entry freshness gate is **BLOCKED pending native and exact-head validation**, under the explicit 2026-10-01 ownership/compatibility policy. Current supported parent bundles and non-overridable vendor internals are distinguished from directly controlled compatible updates. Hosted Python 3.14.8 is now available. Windows ARM64 source-built cryptography and the Xcode 26.6/macOS 26 migration require diagnostic evidence; the six-target matrix is preserved. See the detailed entry record for the before/after classification.
 
 Last updated: 2026-09-30
 

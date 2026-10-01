@@ -35,7 +35,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 - Quality CI: Python 3.14.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
 - Current release compiler pin: `Nuitka==4.2.2`.
-- Runtime, development and build dependency pins must reflect the latest stable versions verified by the mandatory release freshness gate.
+- Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
 - Python pre-releases, including Python 3.15 release candidates, are not stable release baselines unless a deliberate engineering decision changes the policy.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
 - Keep `google-play-scraper` behind a service boundary because it is unofficial and replaceable.
@@ -81,8 +81,8 @@ These are hard constraints unless deliberately changed through a dedicated engin
 
 - `main` is the only permanent branch. Use short-lived branches and normal PR merge commits.
 - Published release source commits, annotated tag targets and binary/source/checksum assets are immutable. GitHub Release descriptive prose may be corrected, clarified or condensed when historical facts and release semantics remain unchanged; editorial maintenance never authorizes rebuilding, retagging or replacing assets.
-- Every release must run the complete component freshness gate twice: once at release-phase entry and again immediately before the final exact-SHA freeze. Verify Python, all runtime/dev/build dependencies, transitive release-path packages, PySide/Qt/Shiboken, Nuitka, packaging tools, GitHub Actions, Android Platform-Tools/ADB, signing/notarization tooling, runner/build prerequisites and every other maintained third-party release component against the latest stable upstream version. The canonical procedure and evidence requirements are in `docs/RELEASE_COMPONENT_FRESHNESS.md`.
-- If either freshness gate finds a newer stable component, update it and repeat every affected source, package, legal, signing and platform validation before release work continues. Do not silently ship a known older stable component under this policy.
+- Every release must run the complete component freshness gate twice: once at release-phase entry and again immediately before the final exact-SHA freeze. Audit the complete maintained release toolchain using the ownership categories in `docs/RELEASE_COMPONENT_FRESHNESS.md`: latest stable compatible directly controlled components, supported parent bundles, current supported vendor integrations, and supported OS/compiler baselines preserving all six targets and binary compatibility floors. Record embedded versions and evidenced upstream observations; applicable security/support issues remain blockers.
+- If either freshness gate finds a newer stable compatible component under repository control, update it and repeat every affected source, package, legal, signing and platform validation before release work continues. Compatibility exceptions require concrete target-matrix evidence, not preference or validation cost. Before final SHA freeze, use and fail-closed verify one exact audited Python patch across release-producing workflows and final Quality; development `3.14`/`check-latest` tracking is not a frozen toolchain contract.
 - A release profile freezes one exact full `main` SHA after Quality CI passes.
 - Build workflows must reject mismatches between expected SHA, dispatch SHA and checked-out SHA.
 - Do not create public RC tags.

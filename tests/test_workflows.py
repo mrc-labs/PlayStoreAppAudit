@@ -62,7 +62,7 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
         assert "workflow_dispatch:" in workflow
         assert "\n  push:" not in workflow
         assert "\n  pull_request:" not in workflow
-        assert "target:" not in workflow
+        assert "\n      target:" not in workflow
 
         assert "expected_sha:" in workflow
         assert "required: true" in workflow

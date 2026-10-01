@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-Python 3.14 is the current v2.2 release-packaging and Quality CI baseline. Every setup-python step checks the latest available stable patch; release freshness must still verify that GitHub's build manifest has caught up with python.org. Future toolchain changes require the release component freshness gate and affected package validation.
+Python 3.14 is the current v2.2 release-packaging and Quality CI baseline. During development every setup-python step checks the latest available stable patch; freshness still verifies GitHub's build manifest against python.org and records the actual full runtime version. This rolling selection is not a frozen release contract. Before final SHA freeze, replace release-producing workflow selectors with the exact audited `major.minor.patch`, use exact runtime equality assertions, and align final Quality/signing/assembly Python with that same patch. All six final candidates must use it unless an upstream platform limitation is explicitly documented and accepted. The mechanism is ordinary YAML literals/assertions in existing workflows; no patch is frozen during entry validation. See [the canonical freshness policy](RELEASE_COMPONENT_FRESHNESS.md#development-tracking-and-final-python-patch-freeze).
 
 ## Run from source
 
@@ -278,6 +278,8 @@ After Authenticode signing, the workflow requires a valid signature and timestam
 - x64 on `ubuntu-22.04`
 - ARM64 on `ubuntu-24.04-arm`
 
+These supported LTS hosts preserve the established architecture-specific build/ABI baseline. Ubuntu 22.04 standard support lasts to May 2027 and 24.04 to May 2029; both remain available supported GitHub images. Moving to 26.04 solely for its version number could raise the glibc/system-library floor and requires an explicit product compatibility decision plus native validation. Freshness still checks current packages within the selected supported distro and runner maintenance status.
+
 Its only release input is the required exact `expected_sha`.
 
 Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the complete standalone tree so Qt/PySide/Shiboken shared libraries remain individually replaceable. Linux x64 can use the managed Google Platform-Tools archive; Linux ARM64 requires a native compatible ADB.
@@ -288,8 +290,12 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 `.github/workflows/build-macos.yml` always builds both release architectures from one manual dispatch:
 
-- Apple Silicon / ARM64 on `macos-15`
-- Intel / x64 on `macos-15-intel`
+- Apple Silicon / ARM64 on `macos-26`
+- Intel / x64 on `macos-26-intel`
+
+Both select Xcode **26.6** explicitly. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
+
+Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and official OpenSSL 4.0.3 sources verified by SHA-256. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
 
 It accepts:
 

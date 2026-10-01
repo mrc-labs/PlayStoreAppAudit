@@ -142,7 +142,7 @@ Preserve:
 
 ## Active release-entry validation
 
-The entry gate is **BLOCKED** by the Qt 6.12.0 / available PySide 6.11.2 release mismatch, hosted Python 3.14.8 propagation, and the native OpenSSL/compiler/runner plus embedded signing-provider findings in its evidence record. Local source validation passes on new Python 3.14.8; all setup-python steps check the latest patch. The Windows packaged CLI smoke now explicitly waits for its GUI-subsystem process, with a native regression test. These updates do not constitute a gate pass.
+The entry freshness gate is **BLOCKED pending native and exact-head validation**, under the explicit 2026-10-01 ownership/compatibility policy. Current supported parent bundles and non-overridable vendor internals are distinguished from directly controlled compatible updates. Hosted Python 3.14.8 is now available. Windows ARM64 source-built cryptography and the Xcode 26.6/macOS 26 migration require diagnostic evidence; the six-target matrix is preserved. See the detailed entry record for the before/after classification.
 
 Complete the [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md), including required native/package evidence for dependency updates. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
 
