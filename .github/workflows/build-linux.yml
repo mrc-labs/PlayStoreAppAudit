@@ -108,6 +108,7 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xkb1 \
             libxkbcommon-x11-0 \
+            patchelf \
             unzip \
             xauth \
             xvfb \
@@ -178,6 +179,27 @@ jobs:
 
           STANDALONE_DIR="$(find dist -maxdepth 1 -type d -name '*.dist' -print -quit)"
           test -n "$STANDALONE_DIR"
+
+          if [ "$PACKAGE_ARCH" = x64 ]; then
+            # QtNetwork's Nuitka plugin explicitly locates crypto via host
+            # ldconfig, overriding ldd's target selection. Normalize the two
+            # existing same-SONAME files to the declared vendor integration
+            # before every package smoke, legal/hash check and ZIP roundtrip.
+            test -n "$LINUX_COMPAT_RUNTIME"
+            mkdir -p linux-diagnostics
+            for library in libcrypto.so.3 libssl.so.3; do
+              source="$LINUX_COMPAT_RUNTIME/$library"
+              destination="$STANDALONE_DIR/$library"
+              test -s "$source" && test -s "$destination"
+              readelf -d "$source" | grep -F "[$library]"
+              readelf -d "$destination" | grep -F "[$library]"
+              sha256sum "$source" "$destination" >> linux-diagnostics/openssl-runtime-normalization.txt
+              cp -L "$source" "$destination"
+              cmp "$source" "$destination"
+              patchelf --set-rpath '$ORIGIN' "$destination"
+              sha256sum "$destination" >> linux-diagnostics/openssl-runtime-normalization.txt
+            done
+          fi
 
           python .github/scripts/validate_device_specific_profile_resources.py "$STANDALONE_DIR"
           python .github/scripts/validate_canonical_help_resources.py "$STANDALONE_DIR" --canonical-dir "$PWD/docs/images"

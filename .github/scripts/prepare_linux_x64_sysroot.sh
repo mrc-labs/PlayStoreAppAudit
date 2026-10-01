@@ -49,16 +49,22 @@ export LD_LIBRARY_PATH="$compat_libs:${LD_LIBRARY_PATH:-}"
 sysroot="$compat_root/sysroot"
 cat > "$compat_root/probe.c" <<'C'
 #define _GNU_SOURCE
+#include <math.h>
 #include <stdlib.h>
-int main(int argc, char **argv) { return argc > 1 ? (int)strtol(argv[1], 0, 10) : 0; }
+int main(int argc, char **argv) {
+    return argc != 2 || fmod((double)strtol(argv[1], 0, 10), 2.0) != 1.0;
+}
 C
 gcc --version | tee linux-diagnostics/compiler.txt
-gcc --sysroot="$sysroot" "$compat_root/probe.c" -o "$compat_root/probe"
+gcc --sysroot="$sysroot" -L"$sysroot/usr/lib/x86_64-linux-gnu" \
+  -L"$sysroot/lib/x86_64-linux-gnu" -fno-builtin-fmod \
+  "$compat_root/probe.c" -lm -o "$compat_root/probe"
 readelf --version-info "$compat_root/probe" > linux-diagnostics/sysroot-probe-versions.txt
-docker run --rm -v "$compat_root/probe:/probe:ro" ubuntu:22.04 /probe
+docker run --rm -v "$compat_root/probe:/probe:ro" ubuntu:22.04 /probe 5
 {
   echo "CCFLAGS=--sysroot=$sysroot"
-  echo "LDFLAGS=--sysroot=$sysroot -Wl,-rpath-link,$sysroot/usr/lib/x86_64-linux-gnu -Wl,-rpath-link,$sysroot/lib/x86_64-linux-gnu"
+  echo "LDFLAGS=--sysroot=$sysroot -L$sysroot/usr/lib/x86_64-linux-gnu -L$sysroot/lib/x86_64-linux-gnu -Wl,-rpath-link,$sysroot/usr/lib/x86_64-linux-gnu -Wl,-rpath-link,$sysroot/lib/x86_64-linux-gnu"
   echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+  echo "LINUX_COMPAT_RUNTIME=$compat_libs"
   echo "LINUX_COMPAT_SYSROOT=Ubuntu 22.04 x64 (native Ubuntu 24.04 compiler)"
 } >> "$GITHUB_ENV"
