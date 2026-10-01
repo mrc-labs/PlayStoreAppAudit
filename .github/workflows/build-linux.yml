@@ -72,6 +72,11 @@ jobs:
       - name: Verify Python 3.14 baseline
         run: |
           python -c "import sys; print(sys.version); assert sys.version_info[:2] == (3, 14)"
+      - name: Prepare x64 compatibility target on native Ubuntu 24.04
+        if: ${{ matrix.arch == 'x64' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/prepare_linux_x64_sysroot.sh
       - name: Read canonical project version
         id: project_version
         run: |
@@ -268,6 +273,7 @@ jobs:
               os.environ['PACKAGE_ELF_MACHINE'],
           )
           print('Build host architecture:', platform.machine())
+          print('Compatibility target:', os.environ.get('LINUX_COMPAT_SYSROOT', 'native host ABI'))
           print('Python:', sys.version.replace('\n', ' '))
           print('PySide6:', PySide6.__version__)
           print('Nuitka:', version('Nuitka'))

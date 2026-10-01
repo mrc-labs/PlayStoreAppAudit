@@ -4,6 +4,7 @@ from pathlib import Path
 
 import inspect_linux_abi as abi
 import pytest
+from download_linux_compat_python import select_distribution
 
 
 def test_version_needs_exclude_newer_exported_definitions() -> None:
@@ -51,3 +52,21 @@ def test_linux_migration_requires_real_old_runtime_smoke() -> None:
     assert "./PlayStoreAppAudit cli audit --help" in smoke
     assert 'timeout 60s ./PlayStoreAppAudit\n' in smoke
     assert "QT_QPA_PLATFORM=xcb" in smoke
+
+
+def test_compat_python_preserves_resolved_patch_and_rejects_prerelease() -> None:
+    file = {
+        "platform": "linux", "platform_version": "22.04", "arch": "x64",
+        "filename": "python-3.14.8-linux-22.04-x64.tar.gz",
+        "download_url": "https://github.com/actions/python-versions/releases/download/tag/python.tar.gz",
+    }
+    manifest = [{"version": "3.14.8", "stable": True, "files": [file]}]
+    assert select_distribution(manifest, "3.14.8") == file
+    with pytest.raises(ValueError, match="Exactly one"):
+        select_distribution(manifest, "3.14.9")
+    with pytest.raises(ValueError, match="stable, full"):
+        select_distribution(manifest, "3.14.8rc1")
+    with pytest.raises(ValueError, match="Exactly one"):
+        select_distribution([{**manifest[0], "stable": False}], "3.14.8")
+    with pytest.raises(ValueError, match="Unofficial"):
+        select_distribution([{**manifest[0], "files": [{**file, "download_url": "https://example.org/python"}]}], "3.14.8")

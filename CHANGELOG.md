@@ -18,7 +18,6 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 ### Fixed
 
 - Preserve unavailable saved Personal Device selections during unrelated settings saves without overwriting future-schema profile data.
-- Harden standalone Windows CLI smoke validation by waiting for the GUI-subsystem process and checking captured help output and exit status.
 
 ### Compatibility
 

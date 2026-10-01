@@ -291,6 +291,8 @@ Do not wait for unsupported status when upstream announces a concrete deprecatio
 
 Linux migration acceptance requires complete packaged ELF architecture/GLIBC/GLIBCXX/loader evidence and x64 Ubuntu 22.04 packaged GUI/CLI smoke. A failed old-runtime smoke remains unresolved compatibility evidence; neither build success nor a new host silently changes the product floor. macOS stays on maintained macOS 26/Xcode 26.6 for Intel and ARM64; Xcode 27 preview is a watch item. Re-evaluate after stable hosted availability, maintained architecture coverage and successful package validation. No production signing is activated, no exact Python patch is selected and no release SHA is frozen by this decision.
 
+The first native 24.04 x64 diagnostic exposed GLIBC 2.38 requirements and failed the 22.04 runtime test. Preserve the earlier x64 floor using a supported 22.04 target sysroot and the official 22.04 Python distribution of the identical resolved stable patch, compiled by the native 24.04 compiler. Archive digest/size, sysroot packages/image and compiler provenance are required; host tools retain host libc. This changes the target ABI integration, not the chosen runner/build host. No older Python patch, custom distribution, bundled replacement libc or weakened source/legal validation is authorized. Repeat both architecture diagnostics and actual x64 old-runtime smoke. See [v2.2 prep evidence](V2_2_RELEASE_PREP.md) for the failure and acceptance state.
+
 ## Runtime policy
 
 ### 2026-10-01: component ownership, compatibility and Python patch reproducibility

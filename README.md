@@ -10,7 +10,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** v2.2 release-entry validation, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). All three implementation pillars are merged: source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
+**Current development line:** v2.2.0 release preparation after passed entry freshness, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). All three implementation pillars are merged: source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
@@ -80,7 +80,7 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 ### v2.2 and later planning
 
-The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release-entry validation, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
+The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release preparation after passed entry freshness, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
 Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed and [PR #217](https://github.com/mrc-labs/PlayStoreAppAudit/pull/217) is merged, with post-merge Quality successful. Release preparation is active on source version **2.2.0**; Sponsors is integrated through PR #218. The final pre-release freshness gate, exact Python patch and release SHA remain pending:
 
