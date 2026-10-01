@@ -27,7 +27,7 @@ def test_artifact_uploads_use_repository_default_retention() -> None:
         "ui-style-audit.yml": [0],
         "build-windows-exe.yml": [0],
         "assemble-windows-engineering-release.yml": [0],
-        "build-linux.yml": [0],
+        "build-linux.yml": [0, 0],
         "build-macos.yml": [0, 0],
         "sign-windows.yml": [0],
         "assemble-release.yml": [0],

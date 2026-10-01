@@ -1,16 +1,14 @@
 # Project Status
 
-## v2.2 release-phase entry freshness gate
+## v2.2.0 release preparation
 
-The merged #211 implementation provides the distinct `playstore-app-audit-cli` script for App List, Local APK file/folder and connected-phone audits. It uses the modern Store service, bounded local parser and package fan-out, read-only ScanSession, existing Device Specific providers/profiles and canonical JSON/CSV output without Qt UI imports. Audit history and settings are read-only from the CLI; normal caches retain their existing update policy. All three approved v2.2 pillars are merged: #208 through PR #214, #200 through PR #215 and #211 through PR #216. Release-entry component freshness is the active phase; v2.2 is not published. The application version remains 2.1.0.
+Last updated: 2026-10-01 CEST
 
-The merged implementation also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
+Release preparation is active from exact main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. All three v2.2 product pillars are complete (#214/#208, #215/#200, #216/#211). Entry freshness passed through PR #217, merge `aea0382802edb27237fa25950e01b75c0ef4ad36`, followed by Quality #618 / `36870324623`; Sponsors PR #218 merged at the starting SHA, followed by Quality #620 / `36875676207`.
 
-The entry freshness gate **PASSED on the draft PR #217 branch**, under the explicit 2026-10-01 ownership/compatibility policy; control-tower review and merge remain pending. Hosted Quality uses Python 3.14.8. Windows ARM64 and macOS Intel cryptography source builds, plus both macOS Xcode 26.6/macOS 26 packages, passed native architecture, GUI/CLI and strict legal/source validation. Supported parent bundles and non-overridable vendor internals retain their documented observations; all six release targets remain required. Exact diagnostic SHAs, failed-attempt history and before/after classification are in the detailed entry record; final-head Quality is recorded in PR #217.
+Canonical source/package version is **2.2.0** (Windows File/Product **2.2.0.0**). Linux release builds use Ubuntu **24.04 for x64 and ARM64**, with full packaged ELF inspection and deliberate Ubuntu 22.04 x64 runtime smoke. macOS remains macOS 26 / Xcode 26.6 on both architectures; Xcode 27 preview is excluded. Six targets and the eight-file public asset set remain required. Production signing/notarization stays outside scope under #154.
 
-Last updated: 2026-10-01
-
-The exact `main` baseline before this freshness work is `e204d68e2d969f7d0a30ca166243020fc115ae44`, with post-merge Quality #607 / run `36754783824` passing. The [v2.2 entry freshness record](V2_2_RELEASE_ENTRY_FRESHNESS.md) tracks component updates and validation. The final pre-release freshness gate remains pending and must be repeated immediately before release SHA freeze. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
+The [release-preparation record](V2_2_RELEASE_PREP.md) and [draft release body](V2_2_RELEASE_BODY_DRAFT.md) track this work. The final pre-release freshness gate, exact Python patch selection/assertions, release SHA freeze, final six-platform candidates, assembly, tag, publication and public re-download verification remain **pending**. Development/prep continues to track stable Python 3.14. No candidate is frozen; #212 remains open; #147 and #209 remain outside scope.
 
 ## Published v2.1.0 release
 
@@ -267,7 +265,7 @@ Concrete bugs and polish found through actual v1.9 use may be reviewed individua
 
 The v2.1.0 release cycle is fully closed. Release coordination issue `#153` is closed as completed; the immutable v2.1.0 release remains frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. The final post-release documentation baseline before v2.2 kickoff is `fca18639480b2ce90396d860cfea34d3a9ed2771`, with post-merge Quality #597 / run `35803473823` passing on that exact SHA.
 
-v2.2 is in release-entry validation, coordinated by open master issue `#212`, with all three approved implementation pillars complete:
+v2.2 is in release preparation after passed entry freshness, coordinated by open master issue `#212`, with all three approved implementation pillars complete:
 
 - `#208`: source-aware views with two explicit persistent Custom layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving the existing source-aware built-in preset architecture and keeping contextual overlays outside user-owned saved layouts;
 - `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
@@ -284,9 +282,9 @@ losing their saved metadata, Local APK never inherits phone fields, and reset is
 family-scoped. The source audit found no required changes to the existing Basic,
 Source Details or Technical definitions.
 
-Issue `#200` is complete and merged through PR #215: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. Its exact-main Quality gate passed. Issue #211 is also complete through PR #216; the application version stays `2.1.0`.
+Issue `#200` is complete and merged through PR #215: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. Its exact-main Quality gate passed. Issue #211 is also complete through PR #216; canonical source/package version is now `2.2.0`.
 
-The current application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
+The current application/package version is `2.2.0` in active release preparation. Final freshness, exact Python patch and release SHA freeze remain pending. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
 
 ## v2.0 and later direction
 

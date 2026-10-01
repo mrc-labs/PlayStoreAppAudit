@@ -163,6 +163,12 @@ v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platf
 - The unchanged canonical `assemble_release_assets.py` and `release_asset_layout.py` logic assembled and validated the exact-run artifacts directly; all six platform ZIPs remained byte-for-byte unchanged.
 - The published eight-file set passed clean re-download, size, checksum and byte-for-byte validation. Never rebuild or replace it.
 
+### v2.2.0 release preparation and engineering assembly
+
+Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. Final freshness, exact Python patch/full equality assertions and exact release SHA are pending; no final candidate is frozen.
+
+The intended six-platform unsigned Windows/Linux and ad-hoc macOS profile reuses the explicitly documented [canonical direct engineering assembly procedure](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness) used for v2.1. Preserve the production assembler's signing requirements and the Windows ETB assembler's x64-only contract. No signing or assembly workflow is activated by prep; exact-run lineage, all six native checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
+
 ## GitHub Actions retention
 
 Artifact-producing workflows use repository-default retention as their hard safety ceiling. `.github/workflows/actions-retention.yml` applies the generational cleanup policy documented in `CI_MAINTENANCE.md`.
@@ -275,10 +281,14 @@ After Authenticode signing, the workflow requires a valid signature and timestam
 
 `.github/workflows/build-linux.yml` always builds both release architectures from one manual dispatch:
 
-- x64 on `ubuntu-22.04`
+- x64 on `ubuntu-24.04`
 - ARM64 on `ubuntu-24.04-arm`
 
-These supported LTS hosts preserve the established architecture-specific build/ABI baseline. Ubuntu 22.04 standard support lasts to May 2027 and 24.04 to May 2029; both remain available supported GitHub images. Moving to 26.04 solely for its version number could raise the glibc/system-library floor and requires an explicit product compatibility decision plus native validation. Freshness still checks current packages within the selected supported distro and runner maintenance status.
+The explicit v2.2 decision uses one Ubuntu 24.04 build baseline. GitHub [announced Ubuntu 22 runner deprecation from 2026-09-17 and retirement on 2027-04-17](https://github.com/actions/runner-images/issues/14254); distro lifecycle and hosted-runner lifecycle are separate. Do not switch to 26.04 solely because it is newer.
+
+Build success does not establish runtime compatibility. `inspect_linux_abi.py` scans every packaged ELF after ZIP roundtrip, rejects wrong architecture and records SHA-256, GLIBC/GLIBCXX version **needs**, interpreter, NEEDED and RPATH/RUNPATH, including Qt/PySide/Shiboken, plugins and extensions. Exported version definitions are excluded from the requirements calculation. The JSON is diagnostic evidence outside the public package.
+
+The x64 workflow also runs the roundtripped package in the official `ubuntu:22.04` container with 22.04 runtime/display packages only: offscreen GUI, Xvfb/xcb GUI and CLI `audit --help`, all bounded and fail closed. It records the image digest, libc/libstdc++ versions and loader output. No 24.04 system-library bind mount is supplied. Failure requires investigation; never claim 22.04 compatibility from build success or ELF analysis alone. This tests these smoke paths, not every optional platform/ADB path. Diagnostic prep runs are distinct from final candidates. ARM64 has 24.04 native package smoke and full ELF evidence; no 22.04 ARM64 compatibility claim is implied.
 
 Its only release input is the required exact `expected_sha`.
 
@@ -293,7 +303,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 - Apple Silicon / ARM64 on `macos-26`
 - Intel / x64 on `macos-26-intel`
 
-Both select Xcode **26.6** explicitly. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
+Both select Xcode **26.6** explicitly. The hosted `xcode-27` path is [public preview](https://github.com/actions/runner-images/issues/14404), not the v2.2 GA baseline; re-evaluate only after stable hosted availability and six-target compatibility/package validation. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
 
 Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
 
@@ -443,7 +453,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.1.0`; a future version change requires deliberate next-cycle scope.
+v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.2.0` for active release preparation; the final freshness gate, full Python patch pin/assertions and exact release SHA remain pending.
 
 ## Packaged smoke tests
 

@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             arch: x64
             expected_elf_machine: Advanced Micro Devices X86-64
             managed_adb: true
@@ -344,6 +344,40 @@ jobs:
 
           sha256sum "$ARCHIVE"
           ls -lh artifact/*
+
+      - name: Inspect all packaged ELF runtime requirements
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
+          PACKAGE_ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p linux-diagnostics
+          python .github/scripts/inspect_linux_abi.py \
+            "roundtrip/PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}" \
+            --arch "$PACKAGE_ARCH" \
+            --output "linux-diagnostics/linux-abi-${PACKAGE_ARCH}.json"
+
+      - name: Test x64 package on Ubuntu 22.04 runtime
+        if: ${{ matrix.arch == 'x64' }}
+        env:
+          APP_VERSION: ${{ steps.project_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker pull ubuntu:22.04
+          docker image inspect ubuntu:22.04 --format '{{json .RepoDigests}}' > linux-diagnostics/ubuntu22-image.json
+          docker run --rm \
+            -v "$PWD/roundtrip:/packages:ro" \
+            -v "$PWD/.github/scripts/smoke_linux_ubuntu22.sh:/smoke.sh:ro" \
+            -e PACKAGE_DIR="/packages/PlayStoreAppAudit-v${APP_VERSION}-linux-x64" \
+            ubuntu:22.04 bash /smoke.sh 2>&1 | tee linux-diagnostics/ubuntu22-x64-smoke.log
+
+      - name: Upload Linux compatibility evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-compatibility-${{ matrix.arch }}-${{ github.sha }}
+          path: linux-diagnostics/
+          if-no-files-found: warn
+          retention-days: 0
 
       - uses: actions/upload-artifact@v7
         with:

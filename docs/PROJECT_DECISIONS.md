@@ -283,6 +283,14 @@ Linux remains standalone because the bundled LGPL-covered Qt/PySide/Shiboken lib
 
 The release-wide source archive centralizes corresponding-source material required by the published binary packages. The source union is profile-specific: Windows x64 ETB profiles use the exact source evidence from their Windows x64 candidate; the future full production profile merges all six platform candidates.
 
+## 2026-10-01: v2.2 Linux baseline and proactive deprecation policy
+
+v2.2 release preparation adopts `ubuntu-24.04` for x64 and `ubuntu-24.04-arm` for ARM64. GitHub's [Ubuntu 22 runner announcement](https://github.com/actions/runner-images/issues/14254) starts deprecation on 2026-09-17 and retires the images on 2027-04-17. Ubuntu 24.04 is the deliberate common baseline; Ubuntu 26.04 is not adopted. Historical v2.0/v2.1 runner evidence is unchanged.
+
+Do not wait for unsupported status when upstream announces a concrete deprecation/retirement, a stable supported successor exists, migration preserves all six targets and the intended runtime compatibility floor, and the migration can be validated during this release cycle. Migrate proactively in that case. Preview/beta/RC successors, missing architectures or an unapproved compatibility-floor increase prevent early adoption. Distinguish **current blocker**, **proactive migration required for v2.2**, **future migration watch** and **non-actionable upstream observation** in the release record.
+
+Linux migration acceptance requires complete packaged ELF architecture/GLIBC/GLIBCXX/loader evidence and x64 Ubuntu 22.04 packaged GUI/CLI smoke. A failed old-runtime smoke remains unresolved compatibility evidence; neither build success nor a new host silently changes the product floor. macOS stays on maintained macOS 26/Xcode 26.6 for Intel and ARM64; Xcode 27 preview is a watch item. Re-evaluate after stable hosted availability, maintained architecture coverage and successful package validation. No production signing is activated, no exact Python patch is selected and no release SHA is frozen by this decision.
+
 ## Runtime policy
 
 ### 2026-10-01: component ownership, compatibility and Python patch reproducibility

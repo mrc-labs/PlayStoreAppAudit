@@ -333,7 +333,11 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 
 ## v2.2 active scope
 
-v2.2 has completed all three approved implementation pillars through PRs #214, #215 and #216. The [release-entry component freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) passed on draft PR #217, starting from exact main `e204d68e2d969f7d0a30ca166243020fc115ae44`; control-tower review and merge remain pending. Master issue `#212` remains open; the application remains 2.1.0 and the final pre-release freshness gate is still pending. The v2.1 release cycle remains closed.
+Release preparation is active from exact main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. All three v2.2 product pillars are complete (#214/#208, #215/#200, #216/#211). Entry freshness passed through PR #217, merge `aea0382802edb27237fa25950e01b75c0ef4ad36`, followed by Quality #618 / `36870324623`; Sponsors PR #218 merged at the starting SHA, followed by Quality #620 / `36875676207`.
+
+Canonical source/package version is **2.2.0** (Windows File/Product **2.2.0.0**). Linux release builds use Ubuntu **24.04 for x64 and ARM64**, with full packaged ELF inspection and deliberate Ubuntu 22.04 x64 runtime smoke. macOS remains macOS 26 / Xcode 26.6 on both architectures; Xcode 27 preview is excluded. Six targets and the eight-file public asset set remain required. Production signing/notarization stays outside scope under #154.
+
+The [release-preparation record](V2_2_RELEASE_PREP.md) and [draft release body](V2_2_RELEASE_BODY_DRAFT.md) track this work. The final pre-release freshness gate, exact Python patch selection/assertions, release SHA freeze, final six-platform candidates, assembly, tag, publication and public re-download verification remain **pending**. Development/prep continues to track stable Python 3.14. No candidate is frozen; #212 remains open; #147 and #209 remain outside scope.
 
 ### Source-aware views and layouts — issue #208
 
