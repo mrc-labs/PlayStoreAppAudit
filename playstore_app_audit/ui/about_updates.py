@@ -143,6 +143,17 @@ class AboutUpdatesDialog(QDialog):
         about_text.setObjectName("AboutProductInfo")
         about_text.setWordWrap(True)
         root.addWidget(about_text)
+
+        sponsor = QLabel(
+            f'Enjoying {DISPLAY_NAME}? 🍺 '
+            '<a href="https://github.com/sponsors/mrc-labs">Sponsor development on GitHub</a> '
+            'to help support testing and development tools.'
+        )
+        sponsor.setObjectName("AboutSponsorLink")
+        sponsor.setTextFormat(Qt.TextFormat.RichText)
+        sponsor.setWordWrap(True)
+        sponsor.setOpenExternalLinks(True)
+        root.addWidget(sponsor)
         root.addStretch(1)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)

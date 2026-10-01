@@ -25,6 +25,7 @@ dependencies = [
 Repository = "https://github.com/mrc-labs/PlayStoreAppAudit"
 Releases = "https://github.com/mrc-labs/PlayStoreAppAudit/releases"
 Documentation = "https://github.com/mrc-labs/PlayStoreAppAudit/tree/main/docs"
+Sponsor = "https://github.com/sponsors/mrc-labs"
 
 [project.scripts]
 playstore-app-audit = "playstore_app_audit.app:main"

@@ -28,6 +28,7 @@ def test_project_and_update_checker_use_canonical_github_repository() -> None:
         "Repository": repository_url,
         "Releases": f"{repository_url}/releases",
         "Documentation": f"{repository_url}/tree/main/docs",
+        "Sponsor": "https://github.com/sponsors/mrc-labs",
     }
     assert repository == device_insights.GITHUB_REPOSITORY
     assert (

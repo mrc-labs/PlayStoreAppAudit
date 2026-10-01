@@ -2,6 +2,8 @@
 
 *Android App Inventory, Store Analysis & Maintenance Toolkit*
 
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/mrc-labs)
+
 Store App Audit is a cross-platform desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for imported app lists, local Android package files and packages installed on an Android phone.
 
 The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
@@ -80,7 +82,7 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release-entry validation, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
-Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed on draft PR #217, pending review and merge. The application version remains 2.1.0 and the final pre-release gate remains pending:
+Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed and [PR #217](https://github.com/mrc-labs/PlayStoreAppAudit/pull/217) is merged, with post-merge Quality successful. The application version remains 2.1.0 and the final pre-release gate remains pending:
 
 - [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
 - [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.
@@ -222,6 +224,16 @@ python tools/profile_local_apk_cold_load.py PATH_TO_APK_FOLDER
 ```
 
 The profiler uses a temporary empty metadata cache and does not clear the application's normal cache.
+
+## 🍺 Support the project
+
+Store App Audit is free and open source.
+
+If it saved you some time, helped you clean up your Android apps, or simply spared you a few ADB commands, you can [sponsor the project on GitHub](https://github.com/sponsors/mrc-labs).
+
+Think of it as offering me a virtual beer 🍺 or helping cover some of the costs around development, CI/testing and developer tools.
+
+No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
 
 ## Development
 
