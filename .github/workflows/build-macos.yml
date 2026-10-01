@@ -3,6 +3,15 @@ name: Build macOS - Qt6 (manual)
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Both for release validation; one architecture for deliberate diagnostics
+        required: false
+        default: both
+        type: choice
+        options:
+          - both
+          - x64
+          - arm64
       expected_sha:
         description: Exact commit SHA expected for this deliberate build
         required: true
@@ -25,19 +34,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-26
-            arch: arm64
-            expected_macho_arch: arm64
-            deployment_target: "11.0"
-          - os: macos-26-intel
-            arch: x64
-            expected_macho_arch: x86_64
-            deployment_target: "10.15"
-    runs-on: ${{ matrix.os }}
+        arch: ${{ fromJSON(inputs.target == 'x64' && '["x64"]' || inputs.target == 'arm64' && '["arm64"]' || '["arm64", "x64"]') }}
+    runs-on: ${{ matrix.arch == 'x64' && 'macos-26-intel' || 'macos-26' }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.arch == 'x64' && '10.15' || '11.0' }}
+      EXPECTED_MACHO_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -79,7 +81,7 @@ jobs:
           xcodebuild -version
           test "$(xcodebuild -version | head -n 1)" = "Xcode 26.6"
           xcrun clang --version
-          test "$(uname -m)" = "${{ matrix.expected_macho_arch }}"
+          test "$(uname -m)" = "$EXPECTED_MACHO_ARCH"
 
       - name: Verify production signing configuration
         if: ${{ inputs.signing_mode == 'production' }}
@@ -129,7 +131,11 @@ jobs:
         if: ${{ matrix.arch == 'x64' }}
         run: |
           set -euo pipefail
-          rustup self update
+          # Hosted rustup is owned by Homebrew and disables self-update.
+          brew update
+          brew install rustup
+          brew upgrade rustup
+          rustup --version
           rustup toolchain install 1.98.1 --profile minimal
           rustup override set 1.98.1
           rustc --version
@@ -381,7 +387,7 @@ jobs:
           file "$EXEC"
           MACHO_ARCHES="$(lipo -archs "$EXEC")"
           echo "Mach-O architecture: $MACHO_ARCHES"
-          test "$MACHO_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          test "$MACHO_ARCHES" = "$EXPECTED_MACHO_ARCH"
           BUILD_INFO=$(xcrun vtool -show-build "$EXEC"); echo "$BUILD_INFO"
           MINOS=$(printf '%s\n' "$BUILD_INFO" | awk '$1 == "minos" { print $2; exit }')
           MINOS_METADATA="LC_BUILD_VERSION/minos"
@@ -585,7 +591,7 @@ jobs:
           test -f "$REXEC"
           test -x "$REXEC"
           ROUNDTRIP_ARCHES="$(lipo -archs "$REXEC")"
-          test "$ROUNDTRIP_ARCHES" = "${{ matrix.expected_macho_arch }}"
+          test "$ROUNDTRIP_ARCHES" = "$EXPECTED_MACHO_ARCH"
           codesign --verify --deep --strict --verbose=2 "$RAPP"
 
           if [ "$RELEASE_SIGNING_MODE" = "production" ]; then

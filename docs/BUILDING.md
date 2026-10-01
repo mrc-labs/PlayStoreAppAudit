@@ -288,7 +288,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 ### macOS
 
-`.github/workflows/build-macos.yml` always builds both release architectures from one manual dispatch:
+`.github/workflows/build-macos.yml` defaults to both release architectures from one manual dispatch:
 
 - Apple Silicon / ARM64 on `macos-26`
 - Intel / x64 on `macos-26-intel`
@@ -299,6 +299,7 @@ Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and offi
 
 It accepts:
 
+- `target`: `both` (default and required for final release validation), or `x64`/`arm64` for deliberate single-architecture diagnostics
 - `expected_sha`: the exact frozen source commit
 - `signing_mode`: `engineering` or `production`
 
