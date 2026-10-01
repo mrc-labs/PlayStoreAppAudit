@@ -54,6 +54,10 @@ GitHub Release descriptive prose is editorially maintainable. It may be correcte
 
 The body published on GitHub remains the primary historical source. Repository changelogs, tags, checksums, and preserved CI evidence may supplement only clearly supported missing detail. Obvious encoding and formatting corruption may be fixed without changing meaning.
 
+## v2.2.0 draft release body
+
+The canonical unpublished draft is [V2_2_RELEASE_BODY_DRAFT.md](V2_2_RELEASE_BODY_DRAFT.md). Verification placeholders must be replaced only by actual accepted final evidence after the final freshness gate and freeze. Do not publish this draft during release preparation.
+
 ## Published v2.1.0 release body
 
 Title: `Store App Audit v2.1.0` · [Published 2026-09-22](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0)

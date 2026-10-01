@@ -1,4 +1,4 @@
-# Store App Audit v2.2 Release-entry Handoff
+# Store App Audit v2.2.0 Release-preparation Handoff
 
 ## Current state
 
@@ -16,7 +16,7 @@ v2.1.0 is published, independently verified and fully closed.
 
 Published v2.1 source, tag and assets remain immutable.
 
-The application version remains `2.1.0` until a deliberate v2.2 release-preparation/version-bump step.
+The canonical application/package version is now `2.2.0`; Windows File/Product version derives as `2.2.0.0`. The published v2.1.0 version remains historical.
 
 ## v2.2 completed product pillars
 
@@ -140,11 +140,15 @@ Preserve:
 - Qt Widgets/platform-default style;
 - the established technical slug/repository/executable naming `PlayStoreAppAudit`; no v2.2 naming migration is planned.
 
-## Active release-entry validation
+## Active release preparation
 
-The entry freshness gate **PASSED on the draft PR #217 branch**, under the explicit 2026-10-01 ownership/compatibility policy; control-tower review and merge remain pending. Hosted Quality uses Python 3.14.8. Windows ARM64 and macOS Intel cryptography source builds, plus both macOS Xcode 26.6/macOS 26 packages, passed native architecture, GUI/CLI and strict legal/source validation. Supported parent bundles and non-overridable vendor internals retain their documented observations; all six release targets remain required. Exact diagnostic SHAs, failed-attempt history and before/after classification are in the detailed entry record; final-head Quality is recorded in PR #217.
+Release preparation is active from exact main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. All three v2.2 product pillars are complete (#214/#208, #215/#200, #216/#211). Entry freshness passed through PR #217, merge `aea0382802edb27237fa25950e01b75c0ef4ad36`, followed by Quality #618 / `36870324623`; Sponsors PR #218 merged at the starting SHA, followed by Quality #620 / `36875676207`.
 
-Review the completed [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) in draft PR #217 before authorizing further release work. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
+Canonical source/package version is **2.2.0** (Windows File/Product **2.2.0.0**). Linux release builds use Ubuntu **24.04 for x64 and ARM64**, with full packaged ELF inspection and deliberate Ubuntu 22.04 x64 runtime smoke. macOS remains macOS 26 / Xcode 26.6 on both architectures; Xcode 27 preview is excluded. Six targets and the eight-file public asset set remain required. Production signing/notarization stays outside scope under #154.
+
+The [release-preparation record](V2_2_RELEASE_PREP.md) and [draft release body](V2_2_RELEASE_BODY_DRAFT.md) track this work in open/unmerged [draft PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219). Linux diagnostic #13 / `36930784495` passed both architectures at `fbc19d0de4774b6ab83aff6ed709b965bcd9c47a`, observed Python 3.14.8: x64's tested Ubuntu 22.04 GUI/CLI paths passed after ABI remediation (maximum GLIBC 2.35 / GLIBCXX 3.4.29); native ARM64 retained its 24.04 target (2.38 / 3.4.32). These are prep diagnostics, not final candidates; the record preserves the failed intermediate evidence and ARM64 retry observation. Final documentation-head Quality must be read from the PR's exact-SHA validation evidence.
+
+The final pre-release freshness gate, exact Python patch selection/assertions, release SHA freeze, final six-platform candidates, assembly, tag, publication and public re-download verification remain **pending**. Development/prep continues to track stable Python 3.14. No candidate is frozen; #212 remains open; #147 and #209 remain outside scope.
 
 ## Continuation
 

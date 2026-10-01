@@ -2,6 +2,29 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [2.2.0] - Unreleased
+
+### Added
+
+- Persistent, opt-in privacy-safe Personal Device profile library with friendly names, offline selection and explicit refresh, rename and delete controls.
+- CLI/headless audits for App Lists, Local APK files/folders and connected phones through `playstore-app-audit-cli` or packaged `cli audit`, reusing canonical services and JSON/CSV exports without Qt UI imports.
+- GitHub Sponsors support in About and repository surfaces.
+
+### Changed
+
+- Independent source-aware **Custom (Phone / App List)** and **Custom (Local APK)** layouts preserve each family's columns, order and widths across source changes and restart, with conservative migration of the earlier shared Custom layout.
+- Linux x64 and ARM64 release builds share Ubuntu 24.04; runtime compatibility evidence remains separate from the build baseline.
+
+### Fixed
+
+- Preserve unavailable saved Personal Device selections during unrelated settings saves without overwriting future-schema profile data.
+
+### Compatibility
+
+- Source version 2.2.0; Windows File/Product version 2.2.0.0; stable Python 3.14 remains the baseline, with the exact patch pending the final freshness gate.
+- Six platform targets remain required. Expected distribution is unsigned Windows/Linux and ad-hoc engineering-signed macOS; production trust remains separate issue #154.
+- This is release preparation: no frozen release SHA, final candidate set, tag or publication yet. Published v2.1 evidence remains immutable.
+
 ## [2.1.0] - 2026-09-22
 
 ### Added
