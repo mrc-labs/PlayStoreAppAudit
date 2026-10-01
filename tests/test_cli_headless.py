@@ -450,8 +450,8 @@ def test_all_standalone_builds_expose_the_dispatcher() -> None:
     macos = (root / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
     assert '"--windows-console-mode=attach"' in windows
     assert '$NuitkaArgs += "main.py"' in windows
-    assert '& $Exe.FullName cli audit --help' in windows
-    assert '$CliHelp -join' in windows
+    assert '-ArgumentList @("cli", "audit", "--help")' in windows
+    assert '$CliProcess.ExitCode -ne 0' in windows
     assert 'root / "PlayStoreAppAudit.exe"' in windows_validator
     assert 'pyside6-deploy main.py' in linux
     assert '"$ROUNDTRIP_BIN" cli audit --help' in linux
