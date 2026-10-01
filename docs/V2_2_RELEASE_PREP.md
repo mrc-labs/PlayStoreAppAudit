@@ -72,6 +72,8 @@ This target ABI is a supported-OS integration, not selection of an obsolete host
 
 **Corrected diagnostic evidence: pending repeat dispatch.** Both architectures must pass before prep is ready. These builds are prep diagnostics, never final candidates. Ubuntu 22.04 runtime compatibility is not claimed before passing evidence.
 
+Intermediate [Linux #10 / 36921057381](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36921057381), SHA `6c7b73f4d888e0eb88e5d879acb592d91f68cf0f`: the native sysroot compiler probe passed on 22.04, as did x64 source tests/Qt smoke/legal preflight. Deployment configuration then rejected an intentionally non-UTF-8 CPython test fixture because the extracted installer was inside the project scan directory. Compatibility preparation now lives in `RUNNER_TEMP` outside that scan. No package validation was skipped to address this staging error. Quality #622 / [36920410326](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36920410326) passed that head.
+
 ## Source and workflow validation
 
 Local Python **3.14.8** validation:

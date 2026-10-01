@@ -3,8 +3,11 @@
 set -euo pipefail
 test "$(uname -m)" = x86_64
 test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
-mkdir -p linux-diagnostics linux-compat-build
-compat_root="$PWD/linux-compat-build"
+mkdir -p linux-diagnostics
+# Qt's deployment scanner walks the project directory. Keep the downloaded
+# interpreter (including intentionally non-UTF-8 CPython fixtures) outside it.
+compat_root="$RUNNER_TEMP/linux-compat-build"
+mkdir "$compat_root"
 resolved_python="$(python -c 'import platform; print(platform.python_version())')"
 python .github/scripts/download_linux_compat_python.py \
   --version "$resolved_python" --output-dir "$compat_root"
