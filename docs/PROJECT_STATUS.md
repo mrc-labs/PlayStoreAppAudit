@@ -6,9 +6,9 @@ The merged #211 implementation provides the distinct `playstore-app-audit-cli` s
 
 The merged implementation also exposes `cli audit ...` through the normal standalone executable on all six package targets. Explicit Device Specific CLI overrides are validated; unavailable inherited enrichment settings do not block raw Store results.
 
-The entry freshness gate is **BLOCKED pending native and exact-head validation**, under the explicit 2026-10-01 ownership/compatibility policy. Current supported parent bundles and non-overridable vendor internals are distinguished from directly controlled compatible updates. Hosted Python 3.14.8 is now available. Windows ARM64 source-built cryptography and the Xcode 26.6/macOS 26 migration require diagnostic evidence; the six-target matrix is preserved. See the detailed entry record for the before/after classification.
+The entry freshness gate **PASSED on the draft PR #217 branch**, under the explicit 2026-10-01 ownership/compatibility policy; control-tower review and merge remain pending. Hosted Quality uses Python 3.14.8. Windows ARM64 and macOS Intel cryptography source builds, plus both macOS Xcode 26.6/macOS 26 packages, passed native architecture, GUI/CLI and strict legal/source validation. Supported parent bundles and non-overridable vendor internals retain their documented observations; all six release targets remain required. Exact diagnostic SHAs, failed-attempt history and before/after classification are in the detailed entry record; final-head Quality is recorded in PR #217.
 
-Last updated: 2026-09-30
+Last updated: 2026-10-01
 
 The exact `main` baseline before this freshness work is `e204d68e2d969f7d0a30ca166243020fc115ae44`, with post-merge Quality #607 / run `36754783824` passing. The [v2.2 entry freshness record](V2_2_RELEASE_ENTRY_FRESHNESS.md) tracks component updates and validation. The final pre-release freshness gate remains pending and must be repeated immediately before release SHA freeze. The prior post-release documentation baseline `6c7d705f04cae4e4d497c14cc4b81d2d2a50b679` passed Quality #594 / run `35796651559`; it is historical evidence. The immutable v2.1.0 release source remains the separate frozen SHA recorded below.
 

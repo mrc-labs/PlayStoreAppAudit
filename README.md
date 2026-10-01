@@ -80,7 +80,7 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release-entry validation, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
-Three product pillars are complete on main for v2.2. The application version remains 2.1.0 while the [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) is validated; the final pre-release gate remains pending:
+Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed on draft PR #217, pending review and merge. The application version remains 2.1.0 and the final pre-release gate remains pending:
 
 - [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
 - [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.

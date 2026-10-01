@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-09-23
+Last updated: 2026-10-01
 
 ## Purpose
 
@@ -333,7 +333,7 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 
 ## v2.2 active scope
 
-v2.2 has completed all three approved implementation pillars through PRs #214, #215 and #216. The active phase is the [release-entry component freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md), starting from exact main `e204d68e2d969f7d0a30ca166243020fc115ae44`. Master issue `#212` remains open; the application remains 2.1.0 and the final pre-release freshness gate is still pending. The v2.1 release cycle remains closed.
+v2.2 has completed all three approved implementation pillars through PRs #214, #215 and #216. The [release-entry component freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) passed on draft PR #217, starting from exact main `e204d68e2d969f7d0a30ca166243020fc115ae44`; control-tower review and merge remain pending. Master issue `#212` remains open; the application remains 2.1.0 and the final pre-release freshness gate is still pending. The v2.1 release cycle remains closed.
 
 ### Source-aware views and layouts — issue #208
 

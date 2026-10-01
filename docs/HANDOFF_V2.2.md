@@ -142,9 +142,9 @@ Preserve:
 
 ## Active release-entry validation
 
-The entry freshness gate is **BLOCKED pending native and exact-head validation**, under the explicit 2026-10-01 ownership/compatibility policy. Current supported parent bundles and non-overridable vendor internals are distinguished from directly controlled compatible updates. Hosted Python 3.14.8 is now available. Windows ARM64 source-built cryptography and the Xcode 26.6/macOS 26 migration require diagnostic evidence; the six-target matrix is preserved. See the detailed entry record for the before/after classification.
+The entry freshness gate **PASSED on the draft PR #217 branch**, under the explicit 2026-10-01 ownership/compatibility policy; control-tower review and merge remain pending. Hosted Quality uses Python 3.14.8. Windows ARM64 and macOS Intel cryptography source builds, plus both macOS Xcode 26.6/macOS 26 packages, passed native architecture, GUI/CLI and strict legal/source validation. Supported parent bundles and non-overridable vendor internals retain their documented observations; all six release targets remain required. Exact diagnostic SHAs, failed-attempt history and before/after classification are in the detailed entry record; final-head Quality is recorded in PR #217.
 
-Complete the [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md), including required native/package evidence for dependency updates. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
+Review the completed [v2.2 release-phase entry freshness gate](V2_2_RELEASE_ENTRY_FRESHNESS.md) in draft PR #217 before authorizing further release work. The application remains 2.1.0. The final pre-release freshness gate is still pending and must run immediately before any future release SHA freeze. No release SHA is frozen by this entry gate. Keep #147, #154 and #209 outside this work.
 
 ## Continuation
 
