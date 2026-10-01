@@ -1,6 +1,6 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.1 release/development Python baseline is 3.14.
+Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.2 development/release Python baseline is stable 3.14.
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-Python 3.14 is the current v2.1 release-packaging and Quality CI baseline. Future toolchain changes require the release component freshness gate and affected package validation.
+Python 3.14 is the current v2.2 release-packaging and Quality CI baseline. Every setup-python step checks the latest available stable patch; release freshness must still verify that GitHub's build manifest has caught up with python.org. Future toolchain changes require the release component freshness gate and affected package validation.
 
 ## Run from source
 
@@ -56,7 +56,7 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-For the current v2.1 baseline and later release work:
+For the current v2.2 baseline and later release work:
 
 - Packaging Python: 3.14
 - Quality CI: Python 3.14
