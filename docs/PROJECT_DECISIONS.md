@@ -295,6 +295,12 @@ The first native 24.04 x64 diagnostic exposed GLIBC 2.38 requirements and failed
 
 ## Runtime policy
 
+### 2026-10-02: v2.2 final-gate Python selection and development restoration
+
+The final gate independently selects exact stable **Python 3.14.8**, available for all six native targets and the official Ubuntu 22.04 x64 compatibility path. Use full YAML literals in all 11 setup environments across the nine maintained workflows, with full runtime equality immediately after setup; duplicated build/Quality/native-helper checks require the same patch. This intentionally temporary release window also aligns manual audit and maintenance Python. After permanent v2.2 closure restore rolling `3.14`/latest development tracking and corresponding assertions/tests in a focused change, preserving the immutable release source and final audit record. Language metadata and developer launchers remain at the minor-line boundary. No new configuration subsystem or final release SHA freeze is implied.
+
+Fresh upstream queries require Ruff 0.16.10, mypy 2.4.0 and stable Rust 1.99.0 in Windows ARM64/macOS Intel cryptography source-build paths. Native diagnostics must pass after those changes. The supported Linux 24.04 host/22.04 x64 runtime and macOS 26/Xcode 26.6 compatibility choices remain; preview runners and architecture-dropping successors remain excluded. See [the final audit](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) for current gate status, ownership categories and evidence.
+
 ### 2026-10-01: component ownership, compatibility and Python patch reproducibility
 
 The v2.2 entry audit exposed that a comparison against every globally newest independent subcomponent could make the six-target release permanently impossible. The explicit engineering decision is to evaluate freshness at the repository's actual supported control boundary, using the four categories in [RELEASE_COMPONENT_FRESHNESS.md](RELEASE_COMPONENT_FRESHNESS.md): (A) latest stable compatible directly selected components; (B) supported upstream parent bundles with embedded versions recorded; (C) current supported vendor integrations with non-overridable internals recorded as observations; and (D) current supported OS/compiler baselines preserving required architectures and binary compatibility floors.

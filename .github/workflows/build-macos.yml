@@ -112,15 +112,21 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.8"
           cache: pip
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+
+      - name: Verify exact v2.2 Python patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
+
       - name: Verify Python 3.14 baseline
         run: |
-          python -c "import sys; print(sys.version); assert sys.version_info[:2] == (3, 14)"
+          python -c "import platform, sys; print(sys.version); assert platform.python_version() == '3.14.8'"
       - name: Read canonical project version
         id: project_version
         run: |
@@ -140,7 +146,7 @@ jobs:
             https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-apple-darwin/rustup-init
           echo "259e2b84274434085163fe8d556510571772cda2aa6d87ca6aa664f57bc644e3  $rust_installer" | shasum -a 256 -c -
           chmod +x "$rust_installer"
-          "$rust_installer" -y --no-modify-path --profile minimal --default-toolchain 1.98.1
+          "$rust_installer" -y --no-modify-path --profile minimal --default-toolchain 1.99.0
           export PATH="$CARGO_HOME/bin:$PATH"
           echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
           echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"
@@ -149,7 +155,7 @@ jobs:
           rustc --version
           cargo --version
           [[ "$(rustup --version)" == "rustup 1.29.1 "* ]]
-          [[ "$(rustc --version)" == "rustc 1.98.1 "* ]]
+          [[ "$(rustc --version)" == "rustc 1.99.0 "* ]]
           # Build static OpenSSL with the existing deployment target rather
           # than import a host-OS-specific Homebrew binary into the package.
           work="$RUNNER_TEMP/openssl-4.0.3-source"
@@ -186,7 +192,7 @@ jobs:
           test "$(lipo -archs "$rust_binary")" = x86_64
       - name: Verify Python and Qt baseline
         run: |
-          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
+          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert platform.python_version() == '3.14.8'; assert PySide6.__version__ == '6.11.2'"
       - name: Preflight release legal material
         run: |
           python .github/scripts/preflight_release_legal_material.py \

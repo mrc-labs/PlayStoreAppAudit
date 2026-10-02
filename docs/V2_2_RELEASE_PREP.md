@@ -1,8 +1,8 @@
 # Store App Audit v2.2.0 release preparation
 
-Date opened: **2026-10-01 CEST**. Status: **ACTIVE; no release SHA frozen.**
+Date opened: **2026-10-01 CEST**. Status: **PREPARATION MERGED; no release SHA frozen.**
 
-Branch: `v2/release-prep-2.2.0`, from exact clean local/remote main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. [Draft PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219) remains open/unmerged for control-tower review; normal merge commit only, no squash/rebase or auto-merge. Keep coordination [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) open.
+Branch: `v2/release-prep-2.2.0`, from exact clean local/remote main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. [PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219) was merged normally at `486ef062548cab2dee5960c38f02dbfbca226640`; post-merge Quality #628 / [36938816496](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36938816496) passed. The separate [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) now selects exact Python 3.14.8 and is in progress; this preparation evidence remains historical. Keep coordination [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) open.
 
 ## Accepted entry evidence
 
@@ -112,7 +112,7 @@ Supporting outputs are in ignored `build/v2.2-release-prep/`; durable findings l
 ## Pending final release sequence
 
 - [x] Prep Linux diagnostic acceptance on both architectures, including actual x64 22.04 runtime execution.
-- [ ] Control-tower review and normal merge of this open PR.
+- [x] Control-tower review and normal merge of PR #219; post-merge Quality passed.
 - [ ] Complete mandatory **final pre-release freshness gate**, including support/security and deprecation facts.
 - [ ] Select one exact compatible stable Python patch; update full literals in release-producing, final Quality, signing and assembly jobs; disable rolling resolution and assert full-version equality fail closed. Repeat affected validation.
 - [ ] Select exact full **main** release SHA only after final gate and exact-head Quality pass.
