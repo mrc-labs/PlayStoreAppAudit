@@ -54,9 +54,52 @@ GitHub Release descriptive prose is editorially maintainable. It may be correcte
 
 The body published on GitHub remains the primary historical source. Repository changelogs, tags, checksums, and preserved CI evidence may supplement only clearly supported missing detail. Obvious encoding and formatting corruption may be fixed without changing meaning.
 
-## v2.2.0 draft release body
+## Published v2.2.0 release body
 
-The canonical unpublished draft is [V2_2_RELEASE_BODY_DRAFT.md](V2_2_RELEASE_BODY_DRAFT.md). Verification placeholders must be replaced only by actual accepted final evidence after the final freshness gate and freeze. Do not publish this draft during release preparation.
+Title: `Store App Audit v2.2.0` · [Published 2026-10-02](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0)
+
+Release ID `401714084`; annotated tag object `95a402b25f65bf22db58f831076bca747e2c9103`.
+The body below is copied from the published GitHub Release, the primary historical source.
+The former [draft file](V2_2_RELEASE_BODY_DRAFT.md) is superseded.
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Personal Device library:** Explicitly save multiple privacy-safe profiles with friendly names; select them offline, refresh, rename or delete them while keeping built-in profiles separate.
+- **CLI/headless audits:** Audit App Lists, Local APK files/folders and connected phones with canonical JSON/CSV output, through `playstore-app-audit-cli` or the packaged `cli audit` command.
+- Optional GitHub Sponsors support is available in About and repository surfaces.
+
+### Changed
+- **Independent Custom layouts:** Custom (Phone / App List) and Custom (Local APK) remember their own columns, order and widths across source switching and restart, with conservative migration from the earlier shared layout.
+
+### Fixed
+- Unavailable saved Personal Device selections survive unrelated settings saves without overwriting future-schema profile data.
+
+## Compatibility and distribution
+- Version `2.2.0`; Windows File/Product version `2.2.0.0`; exact stable CPython `3.14.8`.
+- Prebuilt for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+- Windows and Linux packages are unsigned. macOS packages use engineering ad-hoc signing; they are not Developer ID signed and are not notarized.
+- Linux builds use Ubuntu 24.04 on both architectures. The x64 ZIP-roundtripped package passed offscreen GUI, xcb GUI and CLI smoke tests on Ubuntu 22.04. Inspection of all packaged ELF requirements reported x64 `GLIBC_2.35` / `GLIBCXX_3.4.29` and ARM64 `GLIBC_2.38` / `GLIBCXX_3.4.32`; bundled providers and the tested runtime must also be considered. A build baseline alone is not a runtime compatibility guarantee.
+- Managed ADB remains read-only. Personal Device persistence is explicit and excludes sensitive identifiers/account credentials; Device Specific evidence remains additive to raw public Store evidence.
+
+## Release assets
+- Six platform ZIPs for Windows, Linux and macOS on x64/ARM64.
+- `PlayStoreAppAudit-v2.2.0-third-party-sources.tar.xz`.
+- `SHA256SUMS.txt`.
+
+## Verification
+- Frozen source SHA: `21b6646571b7e93044b76fe4d18a04eeec092f18`.
+- [Quality #637 / run `36987000922`](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36987000922): PASS at the exact frozen SHA.
+- [Windows #150 / run `36988301118`](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988301118): x64 + ARM64 PASS.
+- [Linux #18 / run `36988304138`](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988304138): x64 + ARM64 PASS, including all-ELF inspection and the x64 Ubuntu 22.04 compatibility smoke tests.
+- [macOS #15 / run `36988307201`](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988307201): Intel + Apple Silicon PASS with Xcode 26.6 and engineering ad-hoc signatures.
+- [Canonical assembly #2 / run `36993205418`](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36993205418): exact eight-file assembly PASS on Python 3.14.8. All six platform ZIPs match the new accepted build artifacts byte-for-byte; BUILD-INFO, architecture, startup, provenance and legal/source validation passed.
+- Consolidated third-party source archive validation PASS; all seven payload hashes match `SHA256SUMS.txt` in the independently downloaded assembly.
+- A fresh download of all eight published release assets matched canonical filenames, byte sizes, SHA-256 and the accepted assembly files byte-for-byte; the publicly downloaded `SHA256SUMS.txt` verified all seven public payloads: PASS.
+
+🍺 Enjoying Store App Audit? [Sponsor its development on GitHub](https://github.com/sponsors/mrc-labs) and help support testing and development tools.
+```
 
 ## Published v2.1.0 release body
 

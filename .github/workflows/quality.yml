@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.14.8"
+          - "3.14"
     runs-on: windows-latest
 
     steps:
@@ -46,16 +46,17 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          check-latest: true
           cache: pip
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
 
-      - name: Verify exact v2.2 Python patch
+      - name: Verify stable Python 3.14 baseline
         shell: pwsh
         run: |
-          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
-          if ($LASTEXITCODE -ne 0) { throw 'Exact Python 3.14.8 verification failed.' }
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable Python 3.14 verification failed.' }
 
       - name: Install dependencies
         shell: pwsh
@@ -68,7 +69,7 @@ jobs:
         env:
           EXPECTED_PYTHON: ${{ matrix.python-version }}
         run: |
-          python -c "import os, platform, sys, PySide6; expected=os.environ['EXPECTED_PYTHON']; print(sys.version); print('PySide6', PySide6.__version__); assert platform.python_version() == expected; assert PySide6.__version__ == '6.11.2'"
+          python -c "import os, platform, sys, PySide6; expected=tuple(map(int, os.environ['EXPECTED_PYTHON'].split('.'))); print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == expected and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.11.2'"
           if ($LASTEXITCODE -ne 0) { throw 'Python/Qt runtime verification failed.' }
 
       - name: Validate PowerShell helper syntax

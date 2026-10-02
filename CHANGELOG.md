@@ -2,7 +2,7 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
-## [2.2.0] - Unreleased
+## [2.2.0] - 2026-10-02
 
 ### Added
 
@@ -21,9 +21,9 @@ Notable user-facing and compatibility changes to Play Store App Audit are record
 
 ### Compatibility
 
-- Source version 2.2.0; Windows File/Product version 2.2.0.0; stable Python 3.14 remains the baseline, with the exact patch pending the final freshness gate.
-- Six platform targets remain required. Expected distribution is unsigned Windows/Linux and ad-hoc engineering-signed macOS; production trust remains separate issue #154.
-- This is release preparation: no frozen release SHA, final candidate set, tag or publication yet. Published v2.1 evidence remains immutable.
+- Source version 2.2.0; Windows File/Product version 2.2.0.0; immutable release Python is exact stable 3.14.8, with PySide/Shiboken/Qt 6.11.2 and Nuitka 4.2.2.
+- Six platform packages are published: Windows/Linux unsigned and macOS engineering ad-hoc signed only, without Developer ID signing or notarization; production trust remains separate issue #154.
+- Published from immutable source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18` with exactly eight assets; independent public re-download verified names, sizes, SHA-256 and byte-for-byte identity. Linux x64 passed Ubuntu 22.04 packaged GUI/CLI backward smoke from the Ubuntu 24.04 build baseline. Published v2.1 evidence remains immutable.
 
 ## [2.1.0] - 2026-09-22
 

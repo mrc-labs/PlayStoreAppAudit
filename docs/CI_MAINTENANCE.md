@@ -85,6 +85,18 @@ Post-release housekeeping run `35793158003` applied the unchanged policy success
 - The v2.1.0 GitHub Release still contains exactly eight unchanged assets; the annotated tag and frozen source commit remain unchanged.
 - No retention setting, cleanup algorithm, source workflow or published release asset changed.
 
+### v2.2.0 closure snapshot
+
+The 2026-10-02 review followed immutable source `21b6646571b7e93044b76fe4d18a04eeec092f18` and the canonical final lineage: Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, macOS `36988307201`, assembly `36993205418`, all attempt 1 / SUCCESS / exact SHA.
+
+- Automatic retention `36993339377` succeeded after assembly but before public publication. Deliberate post-publication run [36998852473](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36998852473) succeeded from the same canonical main before development Python restoration. Both passes saw 36 active artifacts and selected no deletion under the unchanged generational policy.
+- Assembly logs identify only the three final platform runs above; no signing/assembly/publication consumer was active or queued at cleanup. Retired-freeze runs `36970928815`, `36970930873`, `36970933130` at `80d56fe88a2bd998d3ac79bf0726eabf8ed66dee` were fully superseded and explicitly deleted, removing eight redundant platform/compatibility artifacts. They were never public-release inputs.
+- Remaining active Actions artifacts: **28 / 2,882,645,224 compressed bytes (2,749.10 MiB / 2.685 GiB)**. The complete inventory is in [the closure audit](V2_2_POST_RELEASE_CLOSURE.md#actions-artifact-inventory).
+- Retained canonical v2.2 evidence: six platform artifacts, two Linux compatibility reports and the final assembler artifact (nine artifacts / 1,663,882,399 bytes). Canonical Quality/build/assembly runs remain available.
+- Older evidence intentionally remains under existing policy: small prep/final-freshness Linux compatibility reports, four partial/failed/cancelled Linux ARM64 package copies within seven days, one entry-freshness macOS ARM64 artifact, and historical v1.99 assembler `10123756577`. The four Linux copies total 914,496,943 bytes; they are diagnostic duplicates, not final release candidates. No extra generation changes the algorithm.
+- The separate cache snapshot contains **23 pip caches / 2,706,260,081 bytes (2.520 GiB)**, including repeated branch-scoped keys and older 3.14.7 entries. Caches were inspected but not purged; these bytes are separate from compressed artifact storage.
+- Release `401714084`, its body, annotated tag object `95a402b25f65bf22db58f831076bca747e2c9103`, source and exactly eight public assets were rechecked unchanged. No retention setting, cleanup algorithm, release workflow build, signing operation, tag or published asset changed during housekeeping.
+
 ## Public release naming
 
 Do not use **Engineering Test Build** or **ETB** in public GitHub Release titles, release-body headings or public compatibility labels. Build validation and signing status should be stated directly instead of encoded in a build-class label.

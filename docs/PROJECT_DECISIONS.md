@@ -171,7 +171,7 @@ For normal feature development after v2.1:
 - shared-code defects discovered in that phase are fixed before freeze, relevant Windows x64 regressions are rerun and affected targets are revalidated;
 - all six final artifacts are rebuilt/validated from the final one exact frozen SHA.
 
-CLI/headless is deferred to v2.2. When implemented, it must reuse domain/service boundaries rather than driving Qt or duplicating Store/ADB behavior.
+CLI/headless shipped in v2.2.0 and must continue to reuse domain/service boundaries rather than driving Qt or duplicating Store/ADB behavior.
 
 Rationale: six-target release integrity is preserved without spending all platform build cycles during every feature PR or making unsupported public-trust signing claims.
 
@@ -285,7 +285,7 @@ The release-wide source archive centralizes corresponding-source material requir
 
 ## 2026-10-01: v2.2 Linux baseline and proactive deprecation policy
 
-v2.2 release preparation adopts `ubuntu-24.04` for x64 and `ubuntu-24.04-arm` for ARM64. GitHub's [Ubuntu 22 runner announcement](https://github.com/actions/runner-images/issues/14254) starts deprecation on 2026-09-17 and retires the images on 2027-04-17. Ubuntu 24.04 is the deliberate common baseline; Ubuntu 26.04 is not adopted. Historical v2.0/v2.1 runner evidence is unchanged.
+v2.2 adopted `ubuntu-24.04` for x64 and `ubuntu-24.04-arm` for ARM64. GitHub's [Ubuntu 22 runner announcement](https://github.com/actions/runner-images/issues/14254) starts deprecation on 2026-09-17 and retires the images on 2027-04-17. Ubuntu 24.04 is the deliberate common baseline; Ubuntu 26.04 is not adopted. Historical v2.0/v2.1 runner evidence is unchanged.
 
 Do not wait for unsupported status when upstream announces a concrete deprecation/retirement, a stable supported successor exists, migration preserves all six targets and the intended runtime compatibility floor, and the migration can be validated during this release cycle. Migrate proactively in that case. Preview/beta/RC successors, missing architectures or an unapproved compatibility-floor increase prevent early adoption. Distinguish **current blocker**, **proactive migration required for v2.2**, **future migration watch** and **non-actionable upstream observation** in the release record.
 
@@ -297,9 +297,11 @@ The first native 24.04 x64 diagnostic exposed GLIBC 2.38 requirements and failed
 
 ### 2026-10-02: v2.2 final-gate Python selection and development restoration
 
-The final gate independently selects exact stable **Python 3.14.8**, available for all six native targets and the official Ubuntu 22.04 x64 compatibility path. Use full YAML literals in all 11 setup environments across the nine maintained workflows, with full runtime equality immediately after setup; duplicated build/Quality/native-helper checks require the same patch. This intentionally temporary release window also aligns manual audit and maintenance Python. After permanent v2.2 closure restore rolling `3.14`/latest development tracking and corresponding assertions/tests in a focused change, preserving the immutable release source and final audit record. Language metadata and developer launchers remain at the minor-line boundary. No new configuration subsystem or final release SHA freeze is implied. Final-gate validation is recorded in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) and the dedicated final freshness record, including Rust 1.99.0 source builds and mandatory Jammy/Noble OpenSSL vendor security floors. Normal merge and successful post-merge Quality precede any main-SHA freeze.
+The immutable v2.2 release used exact stable **Python 3.14.8** in all 11 setup environments across nine maintained workflows and both native helpers, with fail-closed full runtime equality. The final gate and affected native validation are historical release evidence in [V2_2_FINAL_PRE_RELEASE_FRESHNESS.md](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md); PR #220 is merged.
 
-Fresh upstream queries require Ruff 0.16.10, mypy 2.4.0 and stable Rust 1.99.0 in Windows ARM64/macOS Intel cryptography source-build paths. Native diagnostics must pass after those changes. The supported Linux 24.04 host/22.04 x64 runtime and macOS 26/Xcode 26.6 compatibility choices remain; preview runners and architecture-dropping successors remain excluded. See [the final audit](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) for current gate status, ownership categories and evidence.
+Post-release closure restores rolling stable `3.14`/`check-latest: true` in those maintained workflows, stable major/minor assertions and actual full-version logging. Windows retains standard-GIL/64-bit/native architecture checks; Linux x64 continues selecting the identical resolved patch for its official Ubuntu 22.04 compatibility distribution. Language metadata remains `requires-python >=3.14`. No Python 3.15 migration or configuration subsystem is introduced. Immediately before each future frozen release SHA, repeat final freshness, pin one audited exact full patch across producing workflows and final Quality, and require full equality again.
+
+Ruff 0.16.10, mypy 2.4.0, Rust 1.99.0 source-build paths and supported Ubuntu vendor OpenSSL security floors remain maintained. Ubuntu 24.04 build hosts, intentional Ubuntu 22.04 x64 compatibility containers and macOS 26/Xcode 26.6 remain separate from local workstation Docker hygiene. Permanent closure also verifies live GitHub About metadata and the rendered README; README reconciliation alone does not satisfy repository-page closure. Review local Docker resources read-only and preserve ambiguous/shared resources. See [RELEASE_CLOSURE.md](RELEASE_CLOSURE.md).
 
 ### 2026-10-01: component ownership, compatibility and Python patch reproducibility
 
@@ -594,7 +596,7 @@ Audit history stores neither Maintenance Score nor provider evidence, so its bas
 - A richer Dashboard/status overview is not part of v1.99 or required for the v2.0 core. Revisit it in later v2.x or v3.0 only when mature multi-source and longitudinal/history workflows justify it.
 - Concrete bugs and polish found through real v1.9 use may be considered individually; they are not automatically in scope.
 
-The six-platform release architecture is established as of v2.0.0. Production-trust signing remains conditional later-2.x work, while CLI/headless is deferred to v2.2.
+The six-platform release architecture is established as of v2.0.0. Production-trust signing remains conditional later-2.x work; CLI/headless shipped in v2.2.0.
 
 ### v2.0 Local APK Library pillar
 

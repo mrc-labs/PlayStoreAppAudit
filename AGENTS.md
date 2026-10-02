@@ -31,7 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Current v2.2 release-window Python/Quality pin: exact stable Python 3.14.8, with fail-closed full-version equality. Restore rolling development tracking only after permanent v2.2 closure; see `docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md`.
+- Current development Python/Quality baseline: rolling stable Python 3.14 with `check-latest: true` and fail-closed stable major/minor checks. Immutable v2.2 release Python is exact 3.14.8. Immediately before every future release SHA freeze, pin and verify one audited full patch again; see `docs/RELEASE_COMPONENT_FRESHNESS.md` and the historical `docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md`.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
 - Current release compiler pin: `Nuitka==4.2.2`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
@@ -74,9 +74,11 @@ Put platform-specific behaviour behind `playstore_app_audit.platform` or `playst
 
 Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths or Windows-only console flags in shared UI/service code.
 
-## v2.2.0 release preparation
+## v2.2.0 published baseline and closure
 
-Canonical source/package version is 2.2.0; Windows File/Product version derives as 2.2.0.0. Product pillars and release-entry freshness are complete; Sponsors is integrated. Linux release builds use Ubuntu 24.04 on both x64 and ARM64, with full ELF requirement evidence and x64 Ubuntu 22.04 packaged GUI/CLI backward smoke. macOS remains macOS 26/Xcode 26.6; do not adopt Xcode 27 preview or Ubuntu 26.04. Final freshness is validated on open/draft PR #220 with exact Python 3.14.8, Ruff 0.16.10, mypy 2.4.0, Rust 1.99.0 and current Ubuntu vendor OpenSSL security packages; exact release SHA freeze remains pending normal merge and post-merge Quality. Freshness/prep diagnostics are not final release candidates. See `docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md`. Keep #212 open and #147/#154/#209 outside this phase. See `docs/V2_2_RELEASE_PREP.md`.
+v2.2.0 was published 2026-10-02 and is immutable at `21b6646571b7e93044b76fe4d18a04eeec092f18`; annotated tag object `95a402b25f65bf22db58f831076bca747e2c9103`, GitHub Release ID `401714084`. Its three shipped pillars are source-aware independent Custom layouts, the persistent privacy-safe Personal Device profile library and CLI/headless audit mode; Sponsors is integrated. The exact release toolchain is Python 3.14.8, PySide/Shiboken/Qt 6.11.2 and Nuitka 4.2.2. Linux uses Ubuntu 24.04 build hosts on both architectures, with x64 Ubuntu 22.04 packaged GUI/CLI backward smoke passed; macOS uses macOS 26/Xcode 26.6. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization.
+
+Canonical Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, macOS `36988307201` and assembly `36993205418` all passed on attempt 1 at the exact release SHA. Exactly eight assets were independently re-downloaded and verified by names, sizes, SHA-256 and byte identity. Do not rebuild, retag or replace them. Current source version remains 2.2.0; development Python returns to rolling stable 3.14 through the focused closure PR. Keep #212 open until control-tower merge, local synchronization and final confirmation; #147/#154/#209 remain deferred, with no v2.3 scope assigned. See `docs/V2_2_POST_RELEASE_CLOSURE.md`, `docs/PROJECT_STATUS.md` and `docs/HANDOFF_V2.2.md`.
 
 Proactively migrate concretely announced deprecations when a stable supported successor preserves all six targets and intended compatibility floors and can be validated in the active release cycle. Preview successors and implicit floor increases are excluded; classify blockers, required migrations, watches and upstream observations explicitly.
 
@@ -107,6 +109,8 @@ These are hard constraints unless deliberately changed through a dedicated engin
 For every current and future release:
 
 - review and update all maintained project-context Markdown whose facts changed, including the current version-specific handoff;
+- verify the live GitHub repository/About description, homepage, topics and rendered README; file reconciliation alone is insufficient;
+- review local Docker resources read-only, separately from intentional CI Ubuntu 22.04 compatibility containers; delete no ambiguous/shared resources;
 - keep release history and the newer post-release `main` context clearly distinguished;
 - before any local pull run `git status --short`; if dirty, stop and never reset/stash/discard automatically;
 - on a clean local VS Code checkout use `git fetch --prune origin`, switch to `main`, and use `git pull --ff-only origin main`;

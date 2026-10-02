@@ -171,13 +171,14 @@ jobs:
       - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14.8"
+          python-version: "3.14"
+          check-latest: true
 
-      - name: Verify exact v2.2 Python patch
+      - name: Verify stable Python 3.14 baseline
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
 
       - name: Read canonical project version
         id: project_version
@@ -238,18 +239,19 @@ jobs:
       - name: Set up Python 3.14 signing environment
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14.8"
+          python-version: "3.14"
+          check-latest: true
           architecture: x64
           cache: pip
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
 
-      - name: Verify exact v2.2 Python patch
+      - name: Verify stable Python 3.14 baseline
         shell: pwsh
         run: |
-          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
-          if ($LASTEXITCODE -ne 0) { throw 'Exact Python 3.14.8 verification failed.' }
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable Python 3.14 verification failed.' }
 
       - name: Install legal-validation dependencies
         shell: pwsh
@@ -536,14 +538,15 @@ jobs:
       - name: Set up native Python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14.8"
+          python-version: "3.14"
+          check-latest: true
           architecture: ${{ matrix.python_arch }}
 
-      - name: Verify exact v2.2 Python patch
+      - name: Verify stable Python 3.14 baseline
         shell: pwsh
         run: |
-          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
-          if ($LASTEXITCODE -ne 0) { throw 'Exact Python 3.14.8 verification failed.' }
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable Python 3.14 verification failed.' }
 
       - name: Download signed Windows release candidate
         uses: actions/download-artifact@v8
