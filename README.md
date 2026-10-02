@@ -105,7 +105,7 @@ Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity ma
 
 A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. `sample_packages.csv` shows the simplest supported CSV format.
 
-### Headless CLI (v2.2 development)
+### Headless CLI (v2.2)
 
 A Python installation provides `playstore-app-audit-cli`; `playstore-app-audit` remains the Qt GUI command. The CLI does not import the Qt UI or create a `QApplication`. This command replaces the older positional `python -m playstore_app_audit.cli <file>` interface, whose timestamped CSV and separate problems file were based on the retired simple audit path.
 
@@ -134,7 +134,7 @@ Exit status is `0` for a completed audit (including ordinary Not Found results),
 
 ## Local APK / package workflows
 
-The published v2.1.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
+The published v2.2.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
 
 The local-package path reuses the same Store/provider evidence and result presentation used elsewhere while keeping local metadata such as filename, path, label, local version, SHA-256 and SDK information available in the table and Details Panel.
 
@@ -181,7 +181,7 @@ Diagnostic bundles are created only when explicitly requested and are not upload
 
 ## Platform support
 
-| Platform | Published v2.1.0 | Distribution state |
+| Platform | Published v2.2.0 | Distribution state |
 | --- | --- | --- |
 | Windows x64 | ZIP published | Unsigned |
 | Windows ARM64 | ZIP published | Unsigned |
@@ -271,7 +271,7 @@ The application's own code is licensed under the [GNU General Public License ver
 
 GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
 
-Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.1.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
+Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.2.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
 
 ## Contributing
 
