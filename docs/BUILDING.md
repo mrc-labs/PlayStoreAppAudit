@@ -167,7 +167,7 @@ v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platf
 
 Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. The [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8/full equality assertions and affected native diagnostics validated; exact release SHA remains pending normal merge and post-merge Quality; no final candidate is frozen.
 
-The intended six-platform unsigned Windows/Linux and ad-hoc macOS profile reuses the explicitly documented [canonical direct engineering assembly procedure](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness) used for v2.1. Preserve the production assembler's signing requirements and the Windows ETB assembler's x64-only contract. No signing or assembly workflow is activated by prep; exact-run lineage, all six native checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
+The six-platform unsigned Windows/Linux and ad-hoc macOS profile now uses `assemble-release.yml`: Windows input must be a successful `Build Windows - Qt6` run containing both architectures, and macOS downloads use the engineering Actions artifact prefix while public ZIP names remain canonical. This supersedes the direct-assembly routing in the historical [prep record](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness). The Windows ETB assembler remains x64-only; exact-run lineage, all six candidate checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
 
 ## GitHub Actions retention
 
@@ -216,7 +216,7 @@ Future production Windows trust uses:
 Assembly is profile-specific:
 
 - `.github/workflows/assemble-windows-engineering-release.yml` for Windows x64 ETB releases including the Windows x64 ETB profiles through v1.99;
-- `.github/workflows/assemble-release.yml` for a six-platform production-trust release whose signed input requirements are actually satisfied.
+- `.github/workflows/assemble-release.yml` for the v2.2 six-platform unsigned Windows/Linux and engineering ad-hoc macOS profile.
 
 Every package/signing/assembly workflow verifies the required exact `expected_sha`. Package workflows verify dispatch and checkout identity before expensive build work. The Windows signing workflow additionally verifies that its unsigned source run is a successful `Build Windows - Qt6` run from the same repository and exact SHA.
 
@@ -430,7 +430,7 @@ For the frozen v1.6.0 Windows x64 ETB profile, the generic procedure above speci
 
 ## Frozen-SHA full production-trust procedure
 
-The production-trust profile uses one exact immutable source revision for all six platform packages.
+The future production-trust profile uses one exact immutable source revision for all six platform packages. Before using step 10, a dedicated validated change must give `assemble-release.yml` a production-trust input contract; its current v2.2 contract consumes unsigned Windows build runs and engineering macOS artifacts.
 
 1. Finish source, version and changelog changes through normal PRs.
 2. Merge the final release PR to `main` with a normal merge commit.
