@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       windows_run_id:
-        description: Successful Sign Windows release candidates run ID containing signed x64 and ARM64 artifacts
+        description: Successful unsigned final Build Windows - Qt6 run ID containing x64 and ARM64 artifacts
         required: true
         type: string
       linux_run_id:
@@ -119,7 +119,7 @@ jobs:
               (
                   "Windows",
                   os.environ["WINDOWS_RUN_ID"].strip(),
-                  "Sign Windows release candidates",
+                  "Build Windows - Qt6",
               ),
               (
                   "Linux",
@@ -245,7 +245,7 @@ jobs:
       - name: Download macOS release candidates
         uses: actions/download-artifact@v8
         with:
-          pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-*
+          pattern: PlayStoreAppAudit-engineering-v${{ steps.project_version.outputs.version }}-macos-*
           path: rc-input/macos
           merge-multiple: false
           github-token: ${{ github.token }}
@@ -298,7 +298,7 @@ jobs:
             echo "### Store App Audit v${VERSION} release assembly"
             echo
             echo "- Exact final-main SHA: \`${EXPECTED_SHA}\`"
-            echo "- Windows signed RC run: \`${WINDOWS_RUN_ID}\`"
+            echo "- Windows RC run: \`${WINDOWS_RUN_ID}\`"
             echo "- Linux RC run: \`${LINUX_RUN_ID}\`"
             echo "- macOS RC run: \`${MACOS_RUN_ID}\`"
             echo "- Final asset count: 8"
