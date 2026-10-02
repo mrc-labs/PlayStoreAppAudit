@@ -165,7 +165,7 @@ v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platf
 
 ### v2.2.0 release preparation and engineering assembly
 
-Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. The [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) is in progress with exact Python 3.14.8/full equality assertions selected; exact release SHA remains pending; no final candidate is frozen.
+Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. The [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8/full equality assertions and affected native diagnostics validated; exact release SHA remains pending normal merge and post-merge Quality; no final candidate is frozen.
 
 The intended six-platform unsigned Windows/Linux and ad-hoc macOS profile reuses the explicitly documented [canonical direct engineering assembly procedure](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness) used for v2.1. Preserve the production assembler's signing requirements and the Windows ETB assembler's x64-only contract. No signing or assembly workflow is activated by prep; exact-run lineage, all six native checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
 
@@ -181,7 +181,7 @@ This housekeeping never alters GitHub Release assets, tags or source commits.
 
 `build_windows_exe.bat` is the supported local Windows x64 helper. It:
 
-- requires native x64 Python 3.14 through the Windows Python launcher;
+- locates native x64 Python through the Windows Python launcher's 3.14 selector and requires exact 3.14.8 during the v2.2 release window;
 - creates or reuses `.venv` and installs `requirements-dev.txt`;
 - runs compileall, pytest, Ruff and Qt source smoke checks;
 - derives package and Windows version metadata from `playstore_app_audit.__version__`;
@@ -309,7 +309,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 Both select Xcode **26.6** explicitly. The hosted `xcode-27` path is [public preview](https://github.com/actions/runner-images/issues/14404), not the v2.2 GA baseline; re-evaluate only after stable hosted availability and six-target compatibility/package validation. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
 
-Intel cryptography 50.0.2 is deliberately source-built with Rust 1.99.0 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
+Intel cryptography 50.0.2 is deliberately source-built with Rust 1.99.0 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the entry gate validated the host/compiler migration on both architectures, and the final gate repeats the affected Intel source/package path after the Rust update.
 
 It accepts:
 
@@ -457,7 +457,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.2.0` for active release preparation; the final freshness gate is in progress with Python 3.14.8 pinned/asserted; exact release SHA remains pending.
+v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.2.0` for active release preparation; the final freshness gate passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with Python 3.14.8 pinned/asserted; exact release SHA remains pending normal merge and post-merge Quality.
 
 ## Packaged smoke tests
 

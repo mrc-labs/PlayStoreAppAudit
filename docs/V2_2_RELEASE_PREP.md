@@ -2,7 +2,7 @@
 
 Date opened: **2026-10-01 CEST**. Status: **PREPARATION MERGED; no release SHA frozen.**
 
-Branch: `v2/release-prep-2.2.0`, from exact clean local/remote main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. [PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219) was merged normally at `486ef062548cab2dee5960c38f02dbfbca226640`; post-merge Quality #628 / [36938816496](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36938816496) passed. The separate [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) now selects exact Python 3.14.8 and is in progress; this preparation evidence remains historical. Keep coordination [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) open.
+Branch: `v2/release-prep-2.2.0`, from exact clean local/remote main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. [PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219) was merged normally at `486ef062548cab2dee5960c38f02dbfbca226640`; post-merge Quality #628 / [36938816496](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36938816496) passed. The separate [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 and affected native diagnostics; this preparation evidence remains historical. Keep coordination [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) open.
 
 ## Accepted entry evidence
 
@@ -113,8 +113,8 @@ Supporting outputs are in ignored `build/v2.2-release-prep/`; durable findings l
 
 - [x] Prep Linux diagnostic acceptance on both architectures, including actual x64 22.04 runtime execution.
 - [x] Control-tower review and normal merge of PR #219; post-merge Quality passed.
-- [ ] Complete mandatory **final pre-release freshness gate**, including support/security and deprecation facts.
-- [ ] Select one exact compatible stable Python patch; update full literals in release-producing, final Quality, signing and assembly jobs; disable rolling resolution and assert full-version equality fail closed. Repeat affected validation.
+- [x] Complete mandatory **final pre-release freshness gate**, including support/security and deprecation facts, in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220); normal merge/post-merge Quality remain required.
+- [x] Select exact compatible stable Python **3.14.8**; update all 11 setup environments and native helpers, disable rolling resolution and assert full-version equality fail closed. Affected native diagnostics passed; final-head Quality is recorded in PR #220 before handoff.
 - [ ] Select exact full **main** release SHA only after final gate and exact-head Quality pass.
 - [ ] Build/validate all six final candidates from that single SHA and patch.
 - [ ] Assemble using the established six-target engineering procedure below; no production-trust workflow dispatch or weakened signing check.
