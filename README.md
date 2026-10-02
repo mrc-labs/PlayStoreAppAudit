@@ -8,21 +8,20 @@ Store App Audit is a cross-platform desktop utility for checking Android package
 
 The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
 
-**Latest published release:** [v2.1.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0), published for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+**Latest published release:** [v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0), published 2026-10-02 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development line:** v2.2.0 release preparation after passed entry freshness, coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212). All three implementation pillars are merged: source-aware views and two explicit Custom layouts ([#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208)), persistent Personal Device profiles ([#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200)), and CLI/headless auditing ([#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211)).
+**Current development baseline:** source version remains 2.2.0 after publication. Permanent post-release closure is coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212); later feature scope has not been assigned.
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
-## What's new in v2.1
+## What's new in v2.2
 
-- **Local APK file management:** Rename or remove individual files, preview collision-safe Mass Rename operations, and guard bulk removal of exact Outdated or Unknown results.
-- **Device Specific resolution:** Resolve Store versions through validated profiles and configurable metadata providers without replacing the raw public Store result.
-- **Personal Device profiles (v2.2 development):** Get Phone Data captures a session-only profile through read-only ADB. Save Locally explicitly stores named profiles for later selection without a connected phone; saved profiles can be renamed, refreshed and deleted.
-- **Source-aware Local APK UX:** Review clearer comparison states and corrected transitions between phone and Local APK sources.
-- **Dark-mode readability:** Improved theme-aware status, comparison, and warning colours for clearer light- and dark-mode presentation.
+- **Independent Custom layouts:** Phone / App List and Local APK each remember their own columns, order and widths across source changes and restart.
+- **Personal Device library:** Explicitly save multiple privacy-safe profiles, select them offline, and refresh, rename or delete them while keeping built-in profiles separate.
+- **CLI/headless audits:** Audit App Lists, Local APK files/folders and connected phones through canonical services with JSON/CSV output.
+- Discreet GitHub Sponsors support is available in About and repository surfaces.
 
-See the [v2.1.0 GitHub Release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0) for the complete notes and verified downloads.
+See the [v2.2.0 GitHub Release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) for the complete notes and verified downloads.
 
 ## What can you use Store App Audit for?
 
@@ -72,33 +71,25 @@ These screenshots are included in the immutable v2.1.0 source and packages.
 
 ## Current project status
 
-### Published v2.1.0
+### Published v2.2.0
 
-v2.1.0 is the current public release, frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. It provides Windows, Linux, and macOS packages for x64 and ARM64 plus consolidated third-party sources and `SHA256SUMS.txt`. Windows/Linux are unsigned; macOS is ad-hoc engineering signed and is not Developer ID signed or notarized. Canonical assembly, checksum validation, and public byte-for-byte re-download verification passed.
+v2.2.0 is the current public release, frozen at `21b6646571b7e93044b76fe4d18a04eeec092f18`. It provides six Windows, Linux and macOS x64/ARM64 packages plus consolidated third-party sources and `SHA256SUMS.txt`, exactly eight assets. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization. Independent public re-download verified names, byte sizes, SHA-256 and byte-for-byte identity.
 
-See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
+Linux builds use Ubuntu 24.04 for both architectures; the x64 package passed Ubuntu 22.04 GUI/CLI backward smoke. Build hosts alone do not establish every runtime compatibility path. See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
 
-### v2.2 and later planning
+### Post-release continuation
 
-The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release preparation after passed entry freshness, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
-
-Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed and [PR #217](https://github.com/mrc-labs/PlayStoreAppAudit/pull/217) is merged, with post-merge Quality successful. Release preparation is active on source version **2.2.0**; Sponsors is integrated through PR #218. The [final pre-release freshness gate](docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 selected and affected native diagnostics validated; release SHA remains pending normal merge and post-merge Quality:
-
-- [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
-- [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.
-- [#211](https://github.com/mrc-labs/PlayStoreAppAudit/issues/211): CLI/headless auditing that reuses the existing service/domain layer rather than driving Qt or duplicating Store/ADB logic.
-
-Broader arbitrary Named Custom Views remain separate [issue #147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147). Safe update delivery remains later-2.x [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209), linked to signing/notarization trust [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154); automatic installation is not v2.2 scope.
+The three v2.2 pillars are shipped. [Issue #212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open for closure merge, local synchronization and final confirmation. Broader Named Custom Views [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147), production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and safe update/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain deferred. No v2.3 feature scope is assigned.
 
 ## Download and installation
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-For v2.1.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
+For v2.2.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
 
 On Windows, the packaged executable intentionally keeps the compatibility filename `PlayStoreAppAudit.exe`.
 
-Because the Windows v2.1.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.1.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
+Because the Windows v2.2.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.2.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
 
 Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity matters.
 
@@ -237,9 +228,9 @@ No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
 
 ## Development
 
-The current source version is `2.2.0` in [release preparation](docs/V2_2_RELEASE_PREP.md); the latest published release remains v2.1.0. Linux release builds now share Ubuntu 24.04 on x64 and ARM64; runtime compatibility is checked separately through ELF inspection and x64 Ubuntu 22.04 package smoke. Final freshness passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 and affected native diagnostics validated; release SHA freeze remains pending normal merge and post-merge Quality. The v2.1.0 source, tag and assets remain immutable.
+The current source version remains `2.2.0` after publication of the latest release, [v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0). Linux builds use Ubuntu 24.04 on x64 and ARM64; the x64 package passed Ubuntu 22.04 backward GUI/CLI smoke and all packaged ELF requirements were inspected. Published source, tag and assets remain immutable; post-release development context is tracked in [Project Status](docs/PROJECT_STATUS.md).
 
-The current v2.2 release-window pin uses exact Python 3.14.8, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Python 3.15 pre-releases are outside the stable release baseline.
+Normal development tracks stable Python 3.14 with `check-latest: true`, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. The immutable v2.2 release used exact Python 3.14.8; every future final freshness gate must pin one audited exact patch again before SHA freeze. No Python 3.15 migration is part of this closure. Docker is not required for normal local source development.
 
 Install the development dependencies, run the application and execute the main source checks with:
 
@@ -266,7 +257,7 @@ Useful references:
 
 ## Building from source
 
-The current v2.2 release toolchain uses exact Python 3.14.8 and Nuitka standalone packaging. Release artifacts follow an exact-SHA model: source is frozen, platform builds and release assets are validated from that SHA, and tagging/publication happen only after acceptance.
+Development uses rolling stable Python 3.14 and Nuitka standalone packaging; the published v2.2 release used exact Python 3.14.8. Release artifacts follow an exact-SHA model: source is frozen after the final exact-patch freshness gate, platform builds and assets are validated from that SHA, and tagging/publication happen only after acceptance.
 
 Normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. The final release gate validates all six targets from one exact frozen SHA.
 

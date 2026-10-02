@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 ## Purpose
 
@@ -331,72 +331,33 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 - The annotated `v2.1.0` tag was created only after canonical assembly/checksum acceptance; the public assets were then independently re-downloaded and reverified.
 - Production signing was not claimed: Windows/Linux are unsigned and macOS is ad-hoc engineering signed only. Published v2.0.0 and v2.1.0 remain immutable.
 
-## v2.2 active scope
+## v2.2 published baseline
 
-Final pre-release freshness work starts from exact main `486ef062548cab2dee5960c38f02dbfbca226640`, the normal PR #219 merge with successful post-merge Quality #628 / `36938816496`. All three v2.2 product pillars are complete (#214/#208, #215/#200, #216/#211). Entry freshness passed through PR #217, merge `aea0382802edb27237fa25950e01b75c0ef4ad36`, followed by Quality #618 / `36870324623`; Sponsors PR #218 merged at `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`, followed by Quality #620 / `36875676207`.
+v2.2.0 was published on **2026-10-02** as [Store App Audit v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) and is immutable at source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Annotated tag `v2.2.0` has object `95a402b25f65bf22db58f831076bca747e2c9103`; GitHub Release ID is `401714084`.
 
-Canonical source/package version is **2.2.0** (Windows File/Product **2.2.0.0**). Linux release builds use Ubuntu **24.04 for x64 and ARM64**, with full packaged ELF inspection and deliberate Ubuntu 22.04 x64 runtime smoke. macOS remains macOS 26 / Xcode 26.6 on both architectures; Xcode 27 preview is excluded. Six targets and the eight-file public asset set remain required. Production signing/notarization stays outside scope under #154.
+The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Arbitrary Named Custom Views #147, production signing/notarization #154 and safe update/self-update #209 remain deferred; no v2.3 scope is assigned.
 
-The [release-preparation record](V2_2_RELEASE_PREP.md) and [draft release body](V2_2_RELEASE_BODY_DRAFT.md) track this work. The [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python **3.14.8**, full fail-closed runtime equality and affected native diagnostics. Final-head Quality evidence is recorded in that PR before handoff; normal merge/post-merge Quality, release SHA freeze, final six-platform candidates, assembly, tag, publication and public re-download verification remain **pending**. Restore rolling stable Python 3.14 development tracking after permanent v2.2 closure as documented in the final record. No candidate is frozen; #212 remains open; #147 and #209 remain outside scope.
+All six packages use exact stable Python **3.14.8**, PySide/Shiboken/Qt **6.11.2** and Nuitka **4.2.2**. Linux x64/ARM64 build hosts are Ubuntu **24.04**; x64 passed Ubuntu **22.04** packaged offscreen/xcb GUI and CLI backward smoke, with all-ELF maxima GLIBC 2.35 / GLIBCXX 3.4.29 (ARM64 2.38 / 3.4.32). macOS uses macOS 26 / Xcode 26.6. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization.
 
-### Source-aware views and layouts — issue #208
+Canonical evidence, all **attempt 1 / SUCCESS / exact release SHA**:
 
-Issue `#208` owns the v2.2 source-aware layout baseline.
+| Gate | Run |
+| --- | --- |
+| Quality #637 | [36987000922](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36987000922) |
+| Windows #150, x64 + ARM64 | [36988301118](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988301118) |
+| Linux #18, x64 + ARM64 | [36988304138](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988304138) |
+| macOS #15, Intel + Apple Silicon | [36988307201](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988307201) |
+| Assembly #2 | [36993205418](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36993205418) |
 
-- Keep the existing source-aware `Basic`, `Source Details` and `Technical` preset architecture rather than reimplementing it.
-- Local APK source defaults expose useful fields such as Local APK Version and APK Filename where applicable.
-- Phone-only fields such as Installed Version and Installed vs Store disappear when they do not apply.
-- Ordinary Local APK metadata remains user-owned/configurable; automatic/contextual overlays remain separate and are not serialized into Custom definitions.
-- Replace the single shared Custom layout with two explicit persistent user-facing layouts:
-  - **Custom (Phone / App List)**
-  - **Custom (Local APK)**
-- Both Custom concepts should remain discoverable in `View > Column Preset`; the non-applicable one may remain visible but disabled for the current source rather than disappearing.
-- Phone/App List and Local APK layouts persist independently across restart and source switching restores the matching layout without rewriting the other.
-- Existing single-Custom settings require a conservative migration path with no silent loss.
-- Broader arbitrary named Custom Views remain separate issue `#147`.
+Exactly eight public assets were independently re-downloaded: six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`. Names, byte sizes, SHA-256 and byte-for-byte identity against accepted assembly files passed. The public checksum file verified all seven payloads. Published source, tag and assets must never be rebuilt, retagged or replaced.
 
-Recommended implementation sequence:
+### Post-release continuation
 
-1. source-family Custom persistence foundation and migration;
-2. source-aware Custom defaults and transition behavior;
-3. final built-in preset/menu presentation and UX polish.
+Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). This closure PR restores stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
 
-Implementation checkpoint: all three steps are complete and merged via PR #214. The menu exposes both exact Custom labels and disables the inactive
-family. A versioned two-family settings schema preserves independent existence,
-visibility, order and widths; valid v2.1 single-Custom state migrates once into
-both families with source-safe filtering and without deleting legacy keys.
-Phone/App List share one family while concrete applicability remains enforced,
-and Local APK retains its independent user-owned metadata layout. Basic, Source
-Details and Technical required no semantic definition changes after the
-three-source audit.
+Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
 
-### Persistent Personal Device profiles — issue #200
-
-Persistent Personal Device profiles are approved v2.2 scope.
-
-The focused #200 development implementation now provides the library and Qt controls described below. It retains the existing session-only capture unless Save Locally is chosen. A matching manufacturer/model permits a confirmed replacement but does not establish physical-device identity; obvious mismatch is blocked. Reset Settings leaves the separate library intact while resetting selection, and cache/history cleanup does not remove profiles. PR #215 is merged and its exact-main Quality gate passed.
-
-- Allow explicit saving of multiple privacy-safe user-captured Device Specific profiles.
-- Let users assign friendly local names and select, refresh/replace, rename and delete saved profiles.
-- Keep built-in validated reference profiles visually and semantically distinct from user-captured personal profiles.
-- A saved profile must remain usable without the physical phone connected.
-- Persistence is opt-in and must never silently convert v2.1 transient session state into durable storage.
-- Design and validate the persisted schema before implementation.
-- Never persist raw ADB serial, durable device-correlation hashes, Android ID, GSF device ID, IMEI/MEID, SIM/subscriber identifiers, Google identity, OAuth/AAS/bearer tokens, cookies, check-in ID or profile hashes derived from sensitive identifiers.
-- Device Specific evidence remains additive; raw public Store evidence remains authoritative.
-
-### CLI/headless auditing — issue #211
-
-CLI/headless is approved v2.2 scope.
-
-The focused development implementation uses a separate `playstore-app-audit-cli audit` command with App List, Local APK file/folder and connected-phone sources. PR #216 is merged, with post-merge Quality #607 / run `36754783824` passing on the baseline above. The GUI remains the default installed command; release preparation is now active after passed entry freshness.
-
-- Reuse existing domain/service boundaries instead of driving Qt widgets or duplicating Store/ADB logic.
-- Target the existing source families where coherent: App List files, Local APK files/folders and connected-phone inventory through read-only ADB.
-- Provide deterministic scriptable output, including versioned JSON and canonical CSV where applicable.
-- Preserve Store, Not Found, Anomaly, Device Specific, cache, scoring, privacy and read-only ADB semantics.
-- Normal CLI operation should not require a visible GUI or a parallel business-logic implementation.
-- Keep interactive TUI, background daemon/server mode and scheduled monitoring out of scope.
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open until control-tower normal merge, successful post-merge Quality, safe local synchronization and final closure confirmation. The closure PR must stay draft without auto-merge; no squash/rebase. Its future merge SHA is not known yet. Immutable release history remains at the release SHA above; post-release `main` will advance only when this focused PR is merged. Do not generate `REPOSITORY_SNAPSHOT.md` or the final handoff export before that merge and clean synchronization.
 
 ## Later 2.x update delivery
 
@@ -436,4 +397,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` remains the completed v2.1 release record. `HANDOFF_V2.2.md` is the current development handoff for the active v2.2 cycle. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.
+`HANDOFF_V2.1.md` remains the completed v2.1 release record. `HANDOFF_V2.2.md` is the current published-v2.2 / post-release continuation handoff until a later cycle is approved. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.

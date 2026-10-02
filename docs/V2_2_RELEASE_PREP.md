@@ -1,5 +1,7 @@
 # Store App Audit v2.2.0 release preparation
 
+> **Historical preparation/freshness evidence, superseded by published v2.2.0.** PR #220 is merged. The release was published on 2026-10-02 at `21b6646571b7e93044b76fe4d18a04eeec092f18` with exact Python 3.14.8. Statements below about pending freeze/publication or open PRs describe the gate-time checkpoint, not current state. Development restores rolling stable 3.14 through the closure PR. See [Project Status](PROJECT_STATUS.md), [published release notes](RELEASE_NOTES.md#published-v220-release-body) and [closure audit](V2_2_POST_RELEASE_CLOSURE.md).
+
 Date opened: **2026-10-01 CEST**. Status: **PREPARATION MERGED; no release SHA frozen.**
 
 Branch: `v2/release-prep-2.2.0`, from exact clean local/remote main `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`. [PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219) was merged normally at `486ef062548cab2dee5960c38f02dbfbca226640`; post-merge Quality #628 / [36938816496](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36938816496) passed. The separate [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 and affected native diagnostics; this preparation evidence remains historical. Keep coordination [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) open.

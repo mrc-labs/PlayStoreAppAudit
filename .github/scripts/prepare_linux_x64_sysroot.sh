@@ -8,8 +8,7 @@ mkdir -p linux-diagnostics
 # interpreter (including intentionally non-UTF-8 CPython fixtures) outside it.
 compat_root="$RUNNER_TEMP/linux-compat-build"
 mkdir "$compat_root"
-resolved_python="$(python -c 'import platform; print(platform.python_version())')"
-test "$resolved_python" = 3.14.8
+resolved_python="$(python -c 'import platform, sys; assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == "final"; print(platform.python_version())')"
 python .github/scripts/download_linux_compat_python.py \
   --version "$resolved_python" --output-dir "$compat_root"
 cp "$compat_root/python-distribution.json" linux-diagnostics/

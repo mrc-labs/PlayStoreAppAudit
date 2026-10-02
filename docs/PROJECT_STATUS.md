@@ -1,20 +1,51 @@
 # Project Status
 
-## v2.2.0 release preparation
+## Published v2.2.0 release
 
 Last updated: 2026-10-02 CEST
 
-Final pre-release freshness is active from exact main `486ef062548cab2dee5960c38f02dbfbca226640`, the normal merge of PR #219, with post-merge Quality #628 / `36938816496` successful. All three v2.2 product pillars are complete (#214/#208, #215/#200, #216/#211). Entry freshness passed through PR #217, merge `aea0382802edb27237fa25950e01b75c0ef4ad36`, followed by Quality #618 / `36870324623`; Sponsors PR #218 merged at `fd104c13bcaf2ff4af4b3a3746f87044554b9fa0`, followed by Quality #620 / `36875676207`.
+v2.2.0 was published on **2026-10-02** as [Store App Audit v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) and is immutable at source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Annotated tag `v2.2.0` has object `95a402b25f65bf22db58f831076bca747e2c9103`; GitHub Release ID is `401714084`.
 
-Canonical source/package version is **2.2.0** (Windows File/Product **2.2.0.0**). Linux release builds use Ubuntu **24.04 for x64 and ARM64**, with full packaged ELF inspection and deliberate Ubuntu 22.04 x64 runtime smoke. macOS remains macOS 26 / Xcode 26.6 on both architectures; Xcode 27 preview is excluded. Six targets and the eight-file public asset set remain required. Production signing/notarization stays outside scope under #154.
+The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Arbitrary Named Custom Views #147, production signing/notarization #154 and safe update/self-update #209 remain deferred; no v2.3 scope is assigned.
 
-The [release-preparation record](V2_2_RELEASE_PREP.md) and [draft release body](V2_2_RELEASE_BODY_DRAFT.md) record preparation merged through [PR #219](https://github.com/mrc-labs/PlayStoreAppAudit/pull/219). Linux diagnostic #13 / `36930784495` passed both architectures at `fbc19d0de4774b6ab83aff6ed709b965bcd9c47a`, observed Python 3.14.8: x64's tested Ubuntu 22.04 GUI/CLI paths passed after ABI remediation (maximum GLIBC 2.35 / GLIBCXX 3.4.29); native ARM64 retained its 24.04 target (2.38 / 3.4.32). These are prep diagnostics, not final candidates; the record preserves the failed intermediate evidence and ARM64 retry observation.
+All six packages use exact stable Python **3.14.8**, PySide/Shiboken/Qt **6.11.2** and Nuitka **4.2.2**. Linux x64/ARM64 build hosts are Ubuntu **24.04**; x64 passed Ubuntu **22.04** packaged offscreen/xcb GUI and CLI backward smoke, with all-ELF maxima GLIBC 2.35 / GLIBCXX 3.4.29 (ARM64 2.38 / 3.4.32). macOS uses macOS 26 / Xcode 26.6. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization.
 
-The [final pre-release freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) is **PASSED** on `v2/final-freshness-2.2.0` in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220), which remains open/unmerged for control-tower review. Exact Python **3.14.8** is pinned and checked in all 11 workflow setup environments; Ruff **0.16.10**, mypy **2.4.0**, Rust **1.99.0** and current Ubuntu vendor OpenSSL security packages are validated. Affected Linux x64/ARM64, Windows ARM64 and macOS Intel diagnostics passed; final documentation-head Quality evidence is recorded in the PR before handoff. Normal merge and post-merge Quality remain prerequisites to release-SHA selection. After permanent v2.2 closure restore rolling development Python tracking as documented in the final record. Release SHA freeze, final six-platform candidates, assembly, tag, publication and public re-download verification remain **pending**. No release SHA is frozen; #212 remains open; #147/#154/#209 remain outside scope.
+Canonical evidence, all **attempt 1 / SUCCESS / exact release SHA**:
+
+| Gate | Run |
+| --- | --- |
+| Quality #637 | [36987000922](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36987000922) |
+| Windows #150, x64 + ARM64 | [36988301118](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988301118) |
+| Linux #18, x64 + ARM64 | [36988304138](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988304138) |
+| macOS #15, Intel + Apple Silicon | [36988307201](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36988307201) |
+| Assembly #2 | [36993205418](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/36993205418) |
+
+Exactly eight public assets were independently re-downloaded: six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`. Names, byte sizes, SHA-256 and byte-for-byte identity against accepted assembly files passed. The public checksum file verified all seven payloads. Published source, tag and assets must never be rebuilt, retagged or replaced.
+
+Published project-defined assets:
+
+- `PlayStoreAppAudit-v2.2.0-linux-arm64.zip`: 82,491,973 bytes; SHA-256 `0880a7cd160a34f4b72f9bcf5187b0a94d0ae6f8438c72b3c73550b37d7ed148`
+- `PlayStoreAppAudit-v2.2.0-linux-x64.zip`: 85,425,333 bytes; SHA-256 `c36854d023ee5a38e9f23a52221b355c8e6b6248d409a5169ee5a4b0a3880891`
+- `PlayStoreAppAudit-v2.2.0-macos-arm64.zip`: 46,275,137 bytes; SHA-256 `34e462e63d73b5a4fc86c3a63e82f6b4af6b048a85c14926ba1e824b7034ce70`
+- `PlayStoreAppAudit-v2.2.0-macos-x64.zip`: 52,540,207 bytes; SHA-256 `4cd3181790c2e20a3425f384caca951a17e1ddbed0b632f3537b718fd9f3fd4f`
+- `PlayStoreAppAudit-v2.2.0-third-party-sources.tar.xz`: 73,174,984 bytes; SHA-256 `c10c2337db15cc92ea8c236ac7bde50f9594fdfb1d24ea6a95b7ee2c0d3aa033`
+- `PlayStoreAppAudit-v2.2.0-windows-arm64.zip`: 43,487,439 bytes; SHA-256 `255f588e972aa79d411e042aea2570cf3d05076cc4905366c6df5872974fc188`
+- `PlayStoreAppAudit-v2.2.0-windows-x64.zip`: 46,996,491 bytes; SHA-256 `a4734d24d697673c8c4ee7265abbeccced38895ec1c5cf9d337cfbf20a88595e`
+- `SHA256SUMS.txt`: 758 bytes; SHA-256 `ba2417e067933da9183ca5f861285cf559a9c8f8065de486b5e7a18c334ee04c`
+
+## Post-release development and closure
+
+Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). This closure PR restores stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
+
+Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
+
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open until control-tower normal merge, successful post-merge Quality, safe local synchronization and final closure confirmation. The closure PR must stay draft without auto-merge; no squash/rebase. Its future merge SHA is not known yet. Immutable release history remains at the release SHA above; post-release `main` will advance only when this focused PR is merged. Do not generate `REPOSITORY_SNAPSHOT.md` or the final handoff export before that merge and clean synchronization.
+
+Actions storage and local hygiene are recorded in [the closure audit](V2_2_POST_RELEASE_CLOSURE.md) and [CI maintenance](CI_MAINTENANCE.md#v220-closure-snapshot). Live GitHub About now uses Store App Audit; homepage remains empty and relevant topics are unchanged. Docker is installed but its daemon is stopped, so no local resource inventory or deletion is claimed.
 
 ## Published v2.1.0 release
 
-- Latest published version: `v2.1.0`
+- Historical published version: `v2.1.0`
 - Published: `2026-09-22T22:11:47Z`
 - GitHub Release: https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.1.0
 - GitHub Release ID: `394150624`
@@ -267,7 +298,7 @@ Concrete bugs and polish found through actual v1.9 use may be reviewed individua
 
 The v2.1.0 release cycle is fully closed. Release coordination issue `#153` is closed as completed; the immutable v2.1.0 release remains frozen at `df2726b959963e5dbb096638d5072bd15eb1de92`. The final post-release documentation baseline before v2.2 kickoff is `fca18639480b2ce90396d860cfea34d3a9ed2771`, with post-merge Quality #597 / run `35803473823` passing on that exact SHA.
 
-v2.2 is in release preparation after passed entry freshness, coordinated by open master issue `#212`, with all three approved implementation pillars complete:
+v2.2.0 is published with all three approved implementation pillars shipped; open master issue `#212` now coordinates permanent post-release closure:
 
 - `#208`: source-aware views with two explicit persistent Custom layouts, **Custom (Phone / App List)** and **Custom (Local APK)**, while preserving the existing source-aware built-in preset architecture and keeping contextual overlays outside user-owned saved layouts;
 - `#200`: a privacy-safe persistent Personal Device profile library with explicit save/name/select/refresh/rename/delete behavior and multiple reusable profiles;
@@ -286,11 +317,11 @@ Source Details or Technical definitions.
 
 Issue `#200` is complete and merged through PR #215: explicit local save of multiple complete Personal Device captures, friendly names, offline selection, rename, confirmed delete and explicit refresh. The profile library is a separate versioned application-data file with random record/cache-revision IDs and strictly allowlisted resolver fields. Built-in references and transient `connected_device` remain separate. Its exact-main Quality gate passed. Issue #211 is also complete through PR #216; canonical source/package version is now `2.2.0`.
 
-The current application/package version is `2.2.0` in active release preparation. Final freshness and exact Python **3.14.8** selection are complete in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220); release SHA freeze remains pending normal merge and post-merge Quality. Broader arbitrary Named Custom Views remain issue `#147`. Production signing/notarization remains issue `#154`, and safe update/self-update delivery remains later-2.x issue `#209`; automatic installation is not v2.2 scope.
+The current application/package version remains `2.2.0` after publication. PR #220 is merged; final freshness and exact Python **3.14.8** selection form immutable release evidence. Post-release development restores rolling stable Python 3.14. Broader Named Custom Views #147, production signing/notarization #154 and safe update/self-update #209 remain deferred.
 
 ## v2.0 and later direction
 
-v2.0.0 completed the return to Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 release distribution. Windows and Linux shipped unsigned; macOS shipped with ad-hoc engineering signing only. Production-trust signing/notarization remains conditional later-2.x work. CLI/headless is deferred to v2.2.
+v2.0.0 completed the return to Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 release distribution. Windows and Linux shipped unsigned; macOS shipped with ad-hoc engineering signing only. Production-trust signing/notarization remains conditional later-2.x work. CLI/headless shipped in v2.2.0.
 
 The Local APK / modern LocalAPK successor foundation was established through the v2.0 checkpoints below. v2.1 Track B subsequently added safe single-file Rename/Remove, Mass Rename with validated metadata templates and collision-safe execution, and safeguarded exact Outdated/Unknown Mass Remove. Duplicate APK detection/management, custom integrations and Windows Explorer integration remain later candidates.
 
@@ -370,7 +401,7 @@ The core makes no Store/provider/cache calls and persists no remote evidence.
 Its audit projection reconstructs one deterministic present `LocalArtifact` per
 exact SHA for the existing package-deduplicated fan-out boundary. This core
 remains available as future infrastructure and is not mutated by the current
-session-local source. v2.0.0 is the current published release.
+session-local source. v2.0.0 is an immutable historical release; v2.2.0 is the latest published release.
 
 ### v2.0 Local APK source UX/correctness checkpoint
 
@@ -427,7 +458,7 @@ semantics and source-aware scoring. Outdated costs 10 Maintenance Score points;
 Local Unknown costs 15 only when local evidence is missing while a usable Store
 version exists, so Store-side absence is not double-counted. Structured update dates win over localized
 visible text, and `--debug` creates an opt-in per-session app-data log. The
-persistent Library core/data remains intact as future infrastructure. v2.0.0 is an immutable historical release; v2.1.0 is the current published release.
+persistent Library core/data remains intact as future infrastructure. v2.0.0 is an immutable historical release; v2.2.0 is the latest published release.
 
 ## Explicitly removed / rejected
 

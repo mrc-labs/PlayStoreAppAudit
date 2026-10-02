@@ -17,6 +17,8 @@ Every release must end with all of the following completed:
 5. The local checkout is verified clean and at the expected canonical SHA after synchronization.
 6. The maintained Markdown/context files are reviewed and updated so future VS Code/Codex work and future chat handoffs start from current facts rather than stale release assumptions.
 7. A fresh handoff/context export is generated from that clean, synchronized local checkout when a handoff package is needed.
+8. The live GitHub repository/About metadata and rendered homepage README agree with the published product identity, latest release, supported platforms and signing state.
+9. Local Docker availability/resources and local repository hygiene are reviewed without deleting ambiguous or shared resources.
 
 Do not mark a release cycle closed while any of these steps is still pending.
 
@@ -61,6 +63,28 @@ Before closing a release, the maintained context must make the following unambig
 - the correct handoff file and continuation instructions for subsequent VS Code/Codex/chat work.
 
 Do not leave a previous release described as the active development cycle after the next cycle begins.
+
+Restore deliberately temporary release-window Python pins to rolling stable development tracking through the focused closure change when the final freshness record requires it. Keep the exact patch in immutable release evidence. Immediately before every future frozen release SHA, repeat final freshness and pin/assert one audited exact full patch across release-producing workflows and final Quality again.
+
+## Live GitHub repository-page reconciliation
+
+README/file updates alone do not complete repository-page reconciliation. At every release closure:
+
+1. Inspect authenticated live repository metadata and the visible GitHub homepage: About description, homepage URL, topics, rendered README, latest published Release and Sponsors link.
+2. Align the About description and README product identity with **Store App Audit**, latest published version, actual platforms/support and actual signing/notarization state; remove current-looking release-preparation claims after publication.
+3. Preserve the technical `PlayStoreAppAudit` repository/executable/package slug and historical URLs. Review topics for relevance without cosmetic churn. Leave homepage empty unless a real canonical project website exists.
+4. Record description, homepage and topics before/after. Use authenticated CLI/API for authorized metadata changes, then verify the live values; if unavailable, report the exact remaining manual change.
+5. After the closure PR merges, inspect the rendered default-branch README again. A branch README preview does not establish that public `main` has already changed.
+
+## Local Docker and repository hygiene
+
+First determine whether Docker is installed and its daemon is running. When available, inspect `docker ps -a`, `docker images` and `docker system df`, plus volume/build-cache inventories where relevant. Record Ubuntu tags (especially 20.04/22.04/24.04), stopped containers, dangling images, packaging resources and possible dependencies from other local projects. If the daemon is unavailable, record that limitation and repeat the read-only inventory when it is running; do not infer an empty inventory.
+
+Docker is not required for normal local Store App Audit source development or source Quality/smoke checks. Repository CI deliberately uses `ubuntu:22.04` containers for the x64 compatibility sysroot/probe and Ubuntu 22.04 packaged GUI/CLI backward smoke. The retired release-path component is the GitHub-hosted Ubuntu 22.04 **build runner**, not these compatibility containers. Ubuntu 24.04 build hosts do not justify removing them.
+
+Prefer reporting individual cleanup candidates for maintainer/control-tower review. Do not run broad system/image/volume pruning or blind deletion. Delete a resource only with conclusive evidence that it is disposable and unshared; leave ambiguous resources intact.
+
+Also inspect local branches and which are merged into `main`, worktrees, ignored `release-v*-candidate-*` directories and version-specific freshness/preparation/release working directories. Report candidates without automatic branch deletion, reset, stash, clean or discard. Keep release working material until durable evidence is recorded and closure review permits cleanup; preserve environments or archives still needed by other work.
 
 ## Actions storage closure
 

@@ -1,5 +1,7 @@
 # v2.2.0 final pre-release component freshness gate
 
+> **Historical preparation/freshness evidence, superseded by published v2.2.0.** PR #220 is merged. The release was published on 2026-10-02 at `21b6646571b7e93044b76fe4d18a04eeec092f18` with exact Python 3.14.8. Statements below about pending freeze/publication or open PRs describe the gate-time checkpoint, not current state. Development restores rolling stable 3.14 through the closure PR. See [Project Status](PROJECT_STATUS.md), [published release notes](RELEASE_NOTES.md#published-v220-release-body) and [closure audit](V2_2_POST_RELEASE_CLOSURE.md).
+
 Audit started **2026-10-02 CEST**, from exact main
 `486ef062548cab2dee5960c38f02dbfbca226640` (PR #219 merge).
 Before editing, the clean local checkout was synchronized by fast-forward;
