@@ -1,8 +1,8 @@
 # v2.2.0 post-release closure audit
 
-Audit date: **2026-10-02 CEST**. Scope: repository/context housekeeping and development-baseline restoration. Branch: `chore/v2.2-permanent-closure`. This is a reviewable closure PR, not a declaration that the unmerged release cycle is already closed. PR/head/Quality evidence is recorded after the final commit in the PR description and control-tower report to avoid a self-referential commit.
+Audit date: **2026-10-02 CEST**. Scope: repository/context housekeeping and development-baseline restoration completed by PR #222 (`chore/v2.2-permanent-closure`), followed by final documentation-only confirmation (`docs/v2.2-final-closure-confirmation`). The original inspection and validation records below are historical evidence; the completed merge, public-page and Docker results supersede the initial limitations. #212 remains open for final local synchronization, fresh handoff/snapshot export and final closure confirmation.
 
-## Verified starting point and immutable release
+## PR #222 historical starting point and immutable release
 
 Before any change the working tree was clean on `main`; local HEAD/main, origin/main and live GitHub main all equalled `21b6646571b7e93044b76fe4d18a04eeec092f18`. Local and remote `v2.2.0` are annotated, object `95a402b25f65bf22db58f831076bca747e2c9103`, peeling to that SHA. Public stable Release `401714084` contains exactly eight uploaded assets; [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open.
 
@@ -75,19 +75,45 @@ Live metadata was safely updated and re-read through authenticated GitHub API:
 
 Technical repository slug/executable/package identifiers and historical URLs remain `PlayStoreAppAudit`. No homepage was invented and no topic changed cosmetically.
 
-The live repository homepage returned HTTP 200 and GitHub's server-rendered README was inspected through authenticated API. About already uses the corrected product description; README heading is Store App Audit and Sponsors links are present. `/releases/latest` resolves stable/public v2.2.0. The default-branch rendered README still advertises v2.1 and v2.2 preparation **until this PR merges**; this is an explicit remaining control-tower dependency, not a claim that a branch edit already updated public main. Branch rendered README verification and exact-head Quality must pass before handoff; default-branch homepage recheck follows merge. No connected browser was available; inspection used live HTML and API, not an unverified visual screenshot.
+The live repository homepage returned HTTP 200 and GitHub's server-rendered README was inspected through authenticated API. Final public default-branch reconciliation is complete: README heading is Store App Audit, v2.2.0 is latest, stale current-facing v2.1/release-preparation wording is removed, and Sponsors remains visible. About description is `Store App Audit - Android App Inventory, Store Analysis & Maintenance Toolkit`; homepage is empty and topics are unchanged. `/releases/latest` resolves stable/public v2.2.0. The completed public-page result supersedes the earlier branch-only preview.
 
-## Read-only local Docker audit
+## PR #222 closure result
 
-Docker is installed: client **29.8.1**, API **1.56**, Windows/amd64. Contexts: `default` (`npipe:////./pipe/docker_engine`) and selected `desktop-linux` (`npipe:////./pipe/dockerDesktopLinuxEngine`). The selected Linux engine pipe does not exist: daemon is not running/reachable. `docker version`, `docker ps -a`, `docker images`, `docker system df`, `docker volume ls` and `docker builder du` were attempted with access to the local configuration and returned the same daemon-unavailable condition.
+PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normally, with final PR head `0bd958c5b10c558a4f56ba5b2831932412f8496c` and merge SHA `fec702dace16efc96d4d0c072acd97bd0f13a90f`. Post-merge Quality **#641 / [37019239185](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37019239185) / SUCCESS** passed at that exact merge SHA. This is the canonical post-release development baseline after #222, distinct from immutable v2.2.0 release SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Rolling stable Python 3.14 development tracking is restored. Public README/About reconciliation is confirmed complete.
 
-Consequently Ubuntu tags (20.04/22.04/24.04), stopped containers, dangling images, Store App Audit packaging resources, volumes/cache and cross-project dependencies **cannot be inventoried yet**. No individual deletion candidate is certified; no image/container/volume/cache was deleted, no daemon was started and no prune was run. When the maintainer has Docker running, repeat those read-only commands and review individual resource ownership with control tower.
+Before final docs-only confirmation edits, the local working tree was clean and local `main`, `origin/main` and live GitHub `main` all equalled `fec702dace16efc96d4d0c072acd97bd0f13a90f`. The annotated v2.2 tag still peeled to the immutable release SHA, published Release ID remained `401714084`, exactly eight asset names/sizes/SHA-256 digests matched the recorded public set, and #212 remained open.
 
-Normal local source development/pytest/Qt/CLI smoke does **not** require Docker. Repository CI intentionally retains `ubuntu:22.04` for x64 compatibility sysroot/probe and Ubuntu 22.04 GUI/CLI backward-runtime smoke, separate from Ubuntu 24.04 build hosts. Retired Ubuntu 22.04 hosted build runners do not authorize removing compatibility containers or unrelated local-project resources.
+## Docker final result
 
-## Local repository hygiene inspection
+The initial daemon-unavailable inspection is superseded by the completed local audit and cleanup. Docker Desktop **4.93.0** / Engine **29.8.1** was started successfully with **`desktop-linux`**.
 
-Initial checkout: clean main at the immutable release SHA. Current work uses the focused closure branch. Exactly one registered worktree exists: this normal checkout; no additional Git worktree was registered. All historical local branches below are already merged into local main **except `v2/local-apk-device-specific`**. That branch has local-only ancestry and must be preserved for review, not treated as a merged deletion candidate. The other historical release/feature branches are review candidates only; `main` must remain permanent and the active closure branch is retained.
+Removed historical Store App Audit local images:
+
+- `psaa-remediation:ubuntu22-py313-x64`
+- `psaa-remediation:ubuntu22-py313-x64-v2`
+- `psaa-remediation:ubuntu22-py313-x64-v3`
+- `psaa-remediation:ubuntu24-py313-arm64`
+- `psaa-remediation:ubuntu24-py313-x64-legal`
+- unused local `ubuntu:22.04`
+
+The old `psaa-remediation` images were historical local remediation/build environments and are no longer required for normal Store App Audit local development. `docker builder prune` removed **8.305 GB** of dangling BuildKit cache.
+
+Post-cleanup Docker inventory:
+
+| Resource | Final state |
+| --- | --- |
+| Images | 9 total / 4 active / 4.216 GB / 876 MB reclaimable |
+| Containers | 4 total / 0 active / 137.9 MB; all DDEV `shop-wp` related and retained |
+| Local volumes | 5 / 849.2 MB / 0 reclaimable; all DDEV/shop-wp related and retained |
+| Build cache | 78 entries / 1.152 GB / 0 reclaimable |
+
+No Store App Audit or Ubuntu image remains locally. DDEV/shop-wp resources were deliberately left untouched. No broad `docker system prune -a`, volume prune or unrelated DDEV cleanup was performed.
+
+Normal local source development/pytest/Qt/CLI smoke does not require Docker. Removing local `ubuntu:22.04` does not change repository CI: its `ubuntu:22.04` x64 compatibility sysroot/probe and Ubuntu 22.04 GUI/CLI backward-runtime smoke containers remain intentionally required. Ubuntu 24.04 build hosts are separate from these compatibility containers; this docs-only confirmation changes no CI behavior.
+
+## PR #222 historical local repository hygiene inspection
+
+At the original #222 inspection, the initial checkout was clean main at the immutable release SHA and work used the focused closure branch. Exactly one registered worktree exists: this normal checkout; no additional Git worktree was registered. All historical local branches below are already merged into local main **except `v2/local-apk-device-specific`**. That branch has local-only ancestry and must be preserved for review, not treated as a merged deletion candidate. The other historical release/feature branches are review candidates only; `main` must remain permanent and the active closure branch is retained.
 
 Complete local branch inventory at review:
 
@@ -142,8 +168,10 @@ Relevant ignored directories reviewed:
 
 No root-level `release-v*-candidate-*` directory was present. No branch, worktree or local temporary directory was deleted, reset, stashed, cleaned or discarded.
 
-## Validation and closure dependency
+## PR #222 historical validation and remaining closure steps
 
 Local validation on CPython 3.14.8 x64: **54 focused tests passed; full pytest 1661 passed, 9 skipped**, normal exit. Compileall, canonical Quality Ruff scope (0.16.10), Qt offscreen smoke including status preservation, guarded headless CLI smoke, strict legal preflight with Nuitka 4.2.2, pip check and diff whitespace all passed. Syntax validation passed for nine workflow YAMLs, 17 Python helpers, 12 heredoc/33 inline Python blocks and all workflow/helper Bash/PowerShell. Source application behavior is unchanged. No Windows/Linux/macOS Nuitka build, production signing, tag/Release/asset mutation or #212 closure was performed.
 
-The initial sandbox full-suite run hit three PowerShell WindowsApps process-access errors; the native-access rerun passed without changing/skipping those tests. That run reported one pytest cache-directory collision warning while the focused suite used the same cache; it did not fail any test. The final exact PR-head Quality must pass and is recorded in the PR description/control-tower report. Control tower must merge normally (no squash/rebase/auto-merge), require post-merge Quality, synchronize clean local main with fetch/prune and ff-only pull, verify the actual canonical SHA, recheck the public homepage, and only then export the final repository snapshot/handoff and confirm #212/permanent closure. The future merge SHA is not guessed in this document.
+The initial sandbox full-suite run hit three PowerShell WindowsApps process-access errors; the native-access rerun passed without changing/skipping those tests. That run reported one pytest cache-directory collision warning while the focused suite used the same cache; it did not fail any test. PR #222 subsequently merged normally and its post-merge Quality passed as recorded above; public default-branch verification and Docker hygiene are also complete.
+
+This final documentation confirmation changes no application, dependency, workflow or packaging inputs and runs no native package build. Exact-head Quality SUCCESS, recorded in the PR description/report, is required before a normal merge commit (no squash/rebase or auto-merge). The published v2.2 tag, GitHub Release, release body and all eight assets remain untouched. Once this documentation confirmation is present on canonical `main`, the remaining closure work follows this order: clean local synchronization to canonical `main`; run `scripts/export_chat_handoff.ps1`; verify generated `REPOSITORY_SNAPSHOT.md`; and final #212 closure confirmation. Run `git status --short` before synchronization; stop if dirty, otherwise fetch/prune, switch to `main` and pull ff-only. Verify clean local HEAD equals canonical remote `main` before running the handoff exporter, then verify the generated snapshot records that actual canonical SHA and clean state. The exporter must not run before canonical main synchronization. Source documentation must not predict or hard-code this confirmation PR's own future merge SHA.

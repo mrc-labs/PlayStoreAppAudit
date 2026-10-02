@@ -27,11 +27,13 @@ The actual published body, including its Sponsors footer, is recorded in [RELEAS
 
 ## Current development baseline and closure state
 
-Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). This closure PR restores stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
+Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
 
 Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
 
-Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open until control-tower normal merge, successful post-merge Quality, safe local synchronization and final closure confirmation. The closure PR must stay draft without auto-merge; no squash/rebase. Its future merge SHA is not known yet. Immutable release history remains at the release SHA above; post-release `main` will advance only when this focused PR is merged. Do not generate `REPOSITORY_SNAPSHOT.md` or the final handoff export before that merge and clean synchronization.
+PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normally at canonical post-release development baseline `fec702dace16efc96d4d0c072acd97bd0f13a90f` (final PR head `0bd958c5b10c558a4f56ba5b2831932412f8496c`). Post-merge Quality #641 / [37019239185](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37019239185) completed **SUCCESS** at that exact SHA. Immutable release history remains at the separate release SHA above.
+
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open only for final local synchronization after the docs-only confirmation PR, fresh handoff/snapshot export and final closure confirmation. After that PR merges, synchronize clean local `main` to the latest canonical remote `main`, then run `scripts/export_chat_handoff.ps1`; generated `REPOSITORY_SNAPSHOT.md` records the actual final canonical SHA. Source documentation does not predict that SHA, and this PR does not run the exporter.
 
 
 PySide6-Essentials/Shiboken/Qt 6.11.2, Nuitka 4.2.2, Ruff 0.16.10 and mypy 2.4.0 remain current pins. Rust 1.99.0 remains in native Windows ARM64/macOS Intel cryptography source builds. Do not adopt preview successors, Ubuntu 26.04 or Xcode 27 preview through housekeeping. Required Ubuntu vendor OpenSSL security floors remain fail-closed.
@@ -61,12 +63,15 @@ PySide6-Essentials/Shiboken/Qt 6.11.2, Nuitka 4.2.2, Ruff 0.16.10 and mypy 2.4.0
 
 See [the closure audit](V2_2_POST_RELEASE_CLOSURE.md) and [CI maintenance snapshot](CI_MAINTENANCE.md#v220-closure-snapshot) for retained final artifacts, older diagnostics, measured Actions storage and reviewed local branches/directories. Three retired-freeze runs were safely removed; canonical final runs and all public release assets remain unchanged. Live GitHub About uses Store App Audit; homepage is empty and topics are unchanged.
 
-Docker CLI is installed but Docker Desktop's Linux daemon is stopped. Inventory commands cannot enumerate images/containers/volumes/cache; no cleanup candidate can yet be certified and nothing was deleted or pruned. Docker is not needed for normal local source development. Intentional CI `ubuntu:22.04` sysroot/probe/backward smoke remains required despite Ubuntu 24.04 build hosts.
+Public default-branch README/About reconciliation is complete: v2.2.0 is latest, stale current-facing v2.1/preparation wording is removed and Sponsors remains visible. Local Docker inventory and hygiene are complete with Docker Desktop 4.93.0 / Engine 29.8.1 on `desktop-linux`. Historical `psaa-remediation` images and unused local `ubuntu:22.04` were removed; `docker builder prune` reclaimed **8.305 GB** of dangling BuildKit cache. No Store App Audit or Ubuntu image remains locally; all DDEV/shop-wp resources were deliberately retained. Exact results are in [Docker final result](V2_2_POST_RELEASE_CLOSURE.md#docker-final-result). Docker is not needed for normal local source development. Intentional CI `ubuntu:22.04` sysroot/probe/backward smoke remains required despite Ubuntu 24.04 build hosts.
 
 ## Continuation instructions
 
-1. Review the focused draft closure PR and its exact-head passing Quality. Control tower alone merges normally and confirms #212 closure; no auto-merge.
-2. After merge, require post-merge Quality. Run `git status --short` before synchronization; if dirty, stop without reset/stash/discard.
-3. From a clean checkout, `git fetch --prune origin`, switch to `main`, and `git pull --ff-only origin main`. Verify clean HEAD equals the actual canonical post-release merge/documentation SHA and verify the unchanged v2.2 tag.
-4. Verify live GitHub About and rendered README against the merged published-v2.2 context. When Docker is running, repeat the read-only inventory and let control tower review individual cleanup candidates; review merged local branches/ignored working directories separately.
-5. Only then run `scripts/export_chat_handoff.ps1` to generate `REPOSITORY_SNAPSHOT.md` and the final continuation export. Do not describe publication alone or this unmerged PR as permanent closure.
+PR #222 normal merge, its post-merge Quality, public README/About reconciliation and local Docker hygiene are complete; they do not need to be repeated as pending closure work.
+
+1. After the final docs-only confirmation PR merges, run `git status --short`; if dirty, stop without reset/stash/discard. From a clean checkout, `git fetch --prune origin`, switch to `main`, and `git pull --ff-only origin main`. Verify clean local HEAD equals the latest canonical remote `main` SHA.
+2. Verify immutable annotated `v2.2.0`, Release `401714084` and all eight published assets remain unchanged at the release identity above.
+3. Run `scripts/export_chat_handoff.ps1` from that clean synchronized checkout.
+4. Verify generated `REPOSITORY_SNAPSHOT.md` records the actual final canonical `main` SHA and clean state; it must not use a predicted documentation-PR merge SHA.
+5. Use the exported handoff for subsequent development. Final closure confirmation of #212 follows synchronization and verified export; this PR leaves #212 open.
+6. No v2.3 scope is assumed until explicitly approved; #147/#154/#209 remain deferred.
