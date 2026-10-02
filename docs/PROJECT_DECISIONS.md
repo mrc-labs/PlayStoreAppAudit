@@ -330,11 +330,11 @@ Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: optional Windows production-signing stage, used only after a deliberate credential/provider validation decision;
 - `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.99;
-- `.github/workflows/assemble-release.yml`: six-platform production-trust asset assembly; its signed-Windows and production-macOS requirements must not be weakened to fit an unsigned/ad-hoc release profile.
+- `.github/workflows/assemble-release.yml`: canonical six-platform v2.2 assembly for the deliberately selected unsigned Windows/Linux and engineering ad-hoc macOS profile. It requires exactly `Build Windows - Qt6` for Windows and engineering-prefixed macOS Actions artifacts, preserving canonical public ZIP names and all strict SHA/legal/asset checks. A future production-trust profile requires a dedicated validated input-contract change.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
 
-The full assembler accepts distinct signed-Windows, Linux and production-macOS run IDs, verifies workflow identity/status/repository/exact SHA, validates all six candidates and emits exactly eight files when the future full-production profile is selected.
+The full assembler accepts distinct Windows-build, Linux and engineering-macOS run IDs, verifies workflow identity/status/repository/exact SHA, validates all six candidates and emits exactly eight files for the selected v2.2 profile.
 
 Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while allowing lightweight ETB releases without unnecessary platform/signing work.
 

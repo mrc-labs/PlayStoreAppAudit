@@ -248,7 +248,7 @@ def test_macos_production_credentials_fail_before_expensive_build() -> None:
     assert "Expected exactly one Developer ID Application identity" in macos
 
 
-def test_macos_engineering_artifacts_cannot_match_release_download_pattern() -> None:
+def test_macos_engineering_artifact_names_are_distinct_from_production() -> None:
     macos = _workflow("build-macos.yml")
 
     assert "Upload production macOS release candidate" in macos

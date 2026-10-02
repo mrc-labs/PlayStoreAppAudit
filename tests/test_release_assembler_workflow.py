@@ -1,3 +1,4 @@
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,8 +31,11 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert 'DISPATCH_REF: ${{ github.ref }}' in text
     assert '"refs/heads/main"' in text
 
-    assert "Sign Windows release candidates" in text
-    assert '"Build Windows - Qt6"' not in text
+    assert '"Build Windows - Qt6"' in text
+    assert "Successful unsigned final Build Windows - Qt6 run ID" in text
+    assert "Sign Windows release candidates" not in text
+    assert "Windows RC run:" in text
+    assert "Windows signed RC run:" not in text
     assert "Build Linux - Qt6 (manual)" in text
     assert "Build macOS - Qt6 (manual)" in text
     assert "Build macOS / Linux - Qt6 (manual)" not in text
@@ -39,6 +43,12 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert '"completed"' in text
     assert '"success"' in text
     assert 'run.get("head_sha"' in text
+    assert 'if run.get("name") != expected_name:' in text
+    assert "if actual_sha != expected_sha:" in text
+    assert 'head_repository.get("full_name") != repository' in text
+    assert "if not raw_id.isdigit() or int(raw_id) <= 0:" in text
+    assert 'if [[ "$dispatch" != "$expected" ]]; then' in text
+    assert 'if [[ "$actual" != "$expected" ]]; then' in text
     assert "Windows, Linux and macOS run IDs must be different" in text
 
     assert text.count("actions/download-artifact@v8") == 3
@@ -54,7 +64,7 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
         "steps.project_version.outputs.version }}-linux-*"
     ) in text
     assert (
-        "PlayStoreAppAudit-v${{ "
+        "PlayStoreAppAudit-engineering-v${{ "
         "steps.project_version.outputs.version }}-macos-*"
     ) in text
 
@@ -80,3 +90,23 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     )
     for marker in forbidden:
         assert marker not in text
+
+
+def test_engineering_macos_artifacts_keep_canonical_public_zip_names() -> None:
+    assembler = WORKFLOW.read_text(encoding="utf-8")
+    build = (ROOT / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
+    version = "${{ steps.project_version.outputs.version }}"
+    pattern = f"PlayStoreAppAudit-engineering-v{version}-macos-*"
+    artifact = f"PlayStoreAppAudit-engineering-v{version}-macos-${{{{ matrix.arch }}}}"
+    assert f"pattern: {pattern}" in assembler
+    assert f"name: {artifact}" in build
+    assert 'ZIP="artifact/PlayStoreAppAudit-v${APP_VERSION}-macos-${PACKAGE_ARCH}.zip"' in build
+    for arch in ("x64", "arm64"):
+        assert fnmatchcase(
+            artifact.replace(version, "2.2.0").replace("${{ matrix.arch }}", arch),
+            pattern.replace(version, "2.2.0"),
+        )
+        assert not fnmatchcase(
+            f"PlayStoreAppAudit-v2.2.0-macos-{arch}",
+            pattern.replace(version, "2.2.0"),
+        )
