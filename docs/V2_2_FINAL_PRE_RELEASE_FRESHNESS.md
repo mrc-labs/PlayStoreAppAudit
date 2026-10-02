@@ -87,6 +87,14 @@ Required controlled updates identified by fresh queries:
   First Linux final-gate diagnostic #14 / `36947359456` at `41a1b594...` was
   deliberately cancelled when this required update was discovered; it is not
   acceptance evidence. Repeat both architectures from the corrected checkpoint.
+  Corrected Linux #15 / `36947574138` at `0b70546c...` installed the required
+  Noble `.16` packages and passed the Jammy sysroot security floor, but the
+  new host `openssl version` inspection selected Jammy libraries through the
+  intentional compatibility `LD_LIBRARY_PATH` and failed for missing
+  `OPENSSL_3.0.9`. The inspection now explicitly removes that variable for
+  this host-tool command only; compatibility Python and the package retain
+  their intended target libraries. No update, security or package check is
+  suppressed. The superseded run is cancelled and both architectures repeated.
 
 Stable Rust retains the required native targets and deployment compatibility:
 [stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml),

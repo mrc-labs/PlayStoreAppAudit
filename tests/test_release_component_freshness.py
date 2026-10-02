@@ -116,5 +116,6 @@ def test_linux_vendor_openssl_is_refreshed_and_security_floor_enforced() -> None
     linux = (ROOT / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")
     assert "libssl3t64 \\" in linux
     assert 'dpkg --compare-versions "$ssl_package_version" ge 3.0.13-0ubuntu3.16' in linux
+    assert "env -u LD_LIBRARY_PATH openssl version" in linux
     sysroot = (ROOT / ".github/scripts/prepare_linux_x64_sysroot.sh").read_text(encoding="utf-8")
     assert 'dpkg --compare-versions "$ssl_package_version" ge 3.0.2-0ubuntu1.30' in sysroot

@@ -127,7 +127,9 @@ jobs:
           ssl_package_version="$(dpkg-query -W -f='${Version}' libssl3t64)"
           dpkg --compare-versions "$ssl_package_version" ge 3.0.13-0ubuntu3.16
           printf 'Noble libssl3t64: %s\n' "$ssl_package_version"
-          openssl version
+          # Inspect the host tool with host libraries: x64's deliberate
+          # LD_LIBRARY_PATH selects Jammy libraries for compatibility Python.
+          env -u LD_LIBRARY_PATH openssl version
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt "Nuitka==4.2.2"
