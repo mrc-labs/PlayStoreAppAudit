@@ -353,11 +353,13 @@ Exactly eight public assets were independently re-downloaded: six platform ZIPs,
 
 ### Post-release continuation
 
-Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). This closure PR restores stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
+Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
 
 Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
 
-Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open until control-tower normal merge, successful post-merge Quality, safe local synchronization and final closure confirmation. The closure PR must stay draft without auto-merge; no squash/rebase. Its future merge SHA is not known yet. Immutable release history remains at the release SHA above; post-release `main` will advance only when this focused PR is merged. Do not generate `REPOSITORY_SNAPSHOT.md` or the final handoff export before that merge and clean synchronization.
+PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normally at canonical post-release development baseline `fec702dace16efc96d4d0c072acd97bd0f13a90f` (final PR head `0bd958c5b10c558a4f56ba5b2831932412f8496c`). Post-merge Quality #641 / [37019239185](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37019239185) completed **SUCCESS** at that exact SHA. Immutable release history remains at the separate release SHA above.
+
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open only for final local synchronization after the docs-only confirmation PR, fresh handoff/snapshot export and final closure confirmation. After that PR merges, synchronize clean local `main` to the latest canonical remote `main`, then run `scripts/export_chat_handoff.ps1`; generated `REPOSITORY_SNAPSHOT.md` records the actual final canonical SHA. Source documentation does not predict that SHA, and this PR does not run the exporter.
 
 ## Later 2.x update delivery
 
