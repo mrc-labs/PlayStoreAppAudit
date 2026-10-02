@@ -110,3 +110,11 @@ def test_v22_native_helpers_require_same_release_patch_and_current_rust() -> Non
     windows = (ROOT / ".github/workflows/build-windows-exe.yml").read_text(encoding="utf-8")
     assert "rustup toolchain install 1.99.0 --profile minimal" in windows
     assert "host: aarch64-pc-windows-msvc" in windows
+
+
+def test_linux_vendor_openssl_is_refreshed_and_security_floor_enforced() -> None:
+    linux = (ROOT / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")
+    assert "libssl3t64 \\" in linux
+    assert 'dpkg --compare-versions "$ssl_package_version" ge 3.0.13-0ubuntu3.16' in linux
+    sysroot = (ROOT / ".github/scripts/prepare_linux_x64_sysroot.sh").read_text(encoding="utf-8")
+    assert 'dpkg --compare-versions "$ssl_package_version" ge 3.0.2-0ubuntu1.30' in sysroot

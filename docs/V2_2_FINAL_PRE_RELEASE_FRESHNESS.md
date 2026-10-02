@@ -77,6 +77,16 @@ Required controlled updates identified by fresh queries:
   source-built cryptography paths. rustup 1.29.1 and OpenSSL selections remain current.
   Native Rust target and actual version checks are required; Intel's verified
   official rustup installer and deployment target are retained.
+- Linux Noble OpenSSL runner inventory **3.0.13-0ubuntu3.15 → at least
+  3.0.13-0ubuntu3.16**, by explicitly installing current `libssl3t64`/`openssl`
+  vendor packages before dependency/package work and rejecting a version below
+  the security floor. The Jammy sysroot rejects `libssl3` below
+  **3.0.2-0ubuntu1.30**. These are security floors, not stale apt revision pins:
+  apt still resolves the current supported vendor packages. Required fixes and
+  applicability come from [USN-8847-1](https://ubuntu.com/security/notices/USN-8847-1).
+  First Linux final-gate diagnostic #14 / `36947359456` at `41a1b594...` was
+  deliberately cancelled when this required update was discovered; it is not
+  acceptance evidence. Repeat both architectures from the corrected checkpoint.
 
 Stable Rust retains the required native targets and deployment compatibility:
 [stable channel manifest](https://static.rust-lang.org/dist/channel-rust-stable.toml),

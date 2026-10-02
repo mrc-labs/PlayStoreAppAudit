@@ -27,6 +27,9 @@ docker run --rm -v "$compat_root:/out" ubuntu:22.04 bash -euo pipefail -c '
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     libc6-dev linux-libc-dev libssl-dev libsqlite3-dev uuid-dev libffi-dev \
     libbz2-dev liblzma-dev zlib1g-dev libcrypt-dev
+  # USN-8847-1: the target OpenSSL integration must include the vendor fix.
+  ssl_package_version=$(dpkg-query -W -f="\${Version}" libssl3)
+  dpkg --compare-versions "$ssl_package_version" ge 3.0.2-0ubuntu1.30
   mkdir -p /out/sysroot/usr/lib /out/sysroot/lib /out/sysroot/lib64
   cp -a /usr/include /out/sysroot/usr/
   cp -a /usr/lib/x86_64-linux-gnu /out/sysroot/usr/lib/

@@ -91,12 +91,15 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Install Linux runtime and dependencies
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y \
             binutils \
             libegl1 \
             libfontconfig1 \
             libgl1 \
+            libssl3t64 \
+            openssl \
             libx11-xcb1 \
             libxcb1 \
             libxcb-cursor0 \
@@ -119,6 +122,12 @@ jobs:
             xauth \
             xvfb \
             zip
+          # USN-8847-1: refresh the vendor runtime even when the runner image
+          # predates its security update. Keep the distro integration/ABI.
+          ssl_package_version="$(dpkg-query -W -f='${Version}' libssl3t64)"
+          dpkg --compare-versions "$ssl_package_version" ge 3.0.13-0ubuntu3.16
+          printf 'Noble libssl3t64: %s\n' "$ssl_package_version"
+          openssl version
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt "Nuitka==4.2.2"
