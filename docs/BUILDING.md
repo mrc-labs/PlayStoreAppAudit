@@ -1,6 +1,6 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The current v2.2 development/release Python baseline is stable 3.14.
+Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. The v2.2 release-window Python runtime is exact stable **3.14.8**; the development language baseline remains 3.14.
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-Python 3.14 is the current v2.2 release-packaging and Quality CI baseline. During development every setup-python step checks the latest available stable patch; freshness still verifies GitHub's build manifest against python.org and records the actual full runtime version. This rolling selection is not a frozen release contract. Before final SHA freeze, replace release-producing workflow selectors with the exact audited `major.minor.patch`, use exact runtime equality assertions, and align final Quality/signing/assembly Python with that same patch. All six final candidates must use it unless an upstream platform limitation is explicitly documented and accepted. The mechanism is ordinary YAML literals/assertions in existing workflows; no patch is frozen during entry validation. See [the canonical freshness policy](RELEASE_COMPONENT_FRESHNESS.md#development-tracking-and-final-python-patch-freeze).
+Python 3.14 is the current v2.2 release-packaging and Quality CI baseline. Outside the final release window development setup-python steps check the latest available stable patch; freshness still verifies GitHub's build manifest against python.org and records the actual full runtime version. This rolling selection is not a frozen release contract. Before final SHA freeze, replace release-producing workflow selectors with the exact audited `major.minor.patch`, use exact runtime equality assertions, and align final Quality/signing/assembly Python with that same patch. All six final candidates must use it unless an upstream platform limitation is explicitly documented and accepted. The mechanism is ordinary YAML literals/assertions in existing workflows; no patch is frozen during entry validation. The v2.2 final gate now selects **3.14.8** in all 11 setup environments, removes rolling latest checks, and asserts full runtime equality before use; see [the final pin inventory and post-closure restoration instructions](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md#exact-python-selection-and-checks). The Windows standalone helper and Linux sysroot caller also require that patch; controlled local assembly must assert it. Restore rolling development literals/assertions/tests after permanent v2.2 closure, preserving the immutable release source. See [the canonical freshness policy](RELEASE_COMPONENT_FRESHNESS.md#development-tracking-and-final-python-patch-freeze).
 
 ## Run from source
 
@@ -52,14 +52,14 @@ python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.
 Remove-Item Env:QT_QPA_PLATFORM
 ```
 
-`.github/workflows/quality.yml` runs the cheap pull-request and `main` validation on Python 3.14. It is the normal pre-release correctness gate; it is not a package release workflow.
+`.github/workflows/quality.yml` runs the cheap pull-request and `main` validation on exact Python 3.14.8 during the v2.2 release window. It is the normal pre-release correctness gate; it is not a package release workflow.
 
 ## Release toolchain baseline
 
 For the current v2.2 baseline and later release work:
 
-- Packaging Python: 3.14
-- Quality CI: Python 3.14
+- Packaging Python: **3.14.8** for v2.2
+- Quality CI: Python **3.14.8** for final v2.2 validation
 - `PySide6-Essentials==6.11.2`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
 - `Nuitka==4.2.2`
@@ -165,7 +165,7 @@ v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platf
 
 ### v2.2.0 release preparation and engineering assembly
 
-Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. Final freshness, exact Python patch/full equality assertions and exact release SHA are pending; no final candidate is frozen.
+Source version is 2.2.0; all product pillars and entry freshness are complete. The [prep record](V2_2_RELEASE_PREP.md) tracks Linux diagnostics, the separate deprecation scan and the unpublished release draft. The [final freshness gate](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8/full equality assertions and affected native diagnostics validated; exact release SHA remains pending normal merge and post-merge Quality; no final candidate is frozen.
 
 The intended six-platform unsigned Windows/Linux and ad-hoc macOS profile reuses the explicitly documented [canonical direct engineering assembly procedure](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness) used for v2.1. Preserve the production assembler's signing requirements and the Windows ETB assembler's x64-only contract. No signing or assembly workflow is activated by prep; exact-run lineage, all six native checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
 
@@ -181,7 +181,7 @@ This housekeeping never alters GitHub Release assets, tags or source commits.
 
 `build_windows_exe.bat` is the supported local Windows x64 helper. It:
 
-- requires native x64 Python 3.14 through the Windows Python launcher;
+- locates native x64 Python through the Windows Python launcher's 3.14 selector and requires exact 3.14.8 during the v2.2 release window;
 - creates or reuses `.venv` and installs `requirements-dev.txt`;
 - runs compileall, pytest, Ruff and Qt source smoke checks;
 - derives package and Windows version metadata from `playstore_app_audit.__version__`;
@@ -309,7 +309,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 Both select Xcode **26.6** explicitly. The hosted `xcode-27` path is [public preview](https://github.com/actions/runner-images/issues/14404), not the v2.2 GA baseline; re-evaluate only after stable hosted availability and six-target compatibility/package validation. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
 
-Intel cryptography 50.0.2 is deliberately source-built with Rust 1.98.1 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the host/compiler migration requires diagnostic validation on both architectures.
+Intel cryptography 50.0.2 is deliberately source-built with Rust 1.99.0 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the entry gate validated the host/compiler migration on both architectures, and the final gate repeats the affected Intel source/package path after the Rust update.
 
 It accepts:
 
@@ -457,7 +457,7 @@ Documentation-only changes after a published release do not justify rebuilding, 
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.2.0` for active release preparation; the final freshness gate, full Python patch pin/assertions and exact release SHA remain pending.
+v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.2.0` for active release preparation; the final freshness gate passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with Python 3.14.8 pinned/asserted; exact release SHA remains pending normal merge and post-merge Quality.
 
 ## Packaged smoke tests
 

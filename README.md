@@ -82,7 +82,7 @@ See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and 
 
 The v2.1 release cycle is fully closed; [issue #153](https://github.com/mrc-labs/PlayStoreAppAudit/issues/153) is completed. v2.2 is in release preparation after passed entry freshness, coordinated through master issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212).
 
-Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed and [PR #217](https://github.com/mrc-labs/PlayStoreAppAudit/pull/217) is merged, with post-merge Quality successful. Release preparation is active on source version **2.2.0**; Sponsors is integrated through PR #218. The final pre-release freshness gate, exact Python patch and release SHA remain pending:
+Three product pillars are complete on main for v2.2. The [entry freshness gate](docs/V2_2_RELEASE_ENTRY_FRESHNESS.md) passed and [PR #217](https://github.com/mrc-labs/PlayStoreAppAudit/pull/217) is merged, with post-merge Quality successful. Release preparation is active on source version **2.2.0**; Sponsors is integrated through PR #218. The [final pre-release freshness gate](docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 selected and affected native diagnostics validated; release SHA remains pending normal merge and post-merge Quality:
 
 - [#208](https://github.com/mrc-labs/PlayStoreAppAudit/issues/208): source-aware views now use two explicit persistent layouts, **Custom (Phone / App List)** and **Custom (Local APK)**. The two entries remain visible in Column Preset, only the active family is enabled, ordinary source metadata stays user-controlled, and contextual overlays remain outside saved Custom definitions.
 - [#200](https://github.com/mrc-labs/PlayStoreAppAudit/issues/200): a privacy-safe persistent Personal Device profile library with explicit save/rename/delete/refresh behavior and multiple reusable user-captured profiles.
@@ -237,9 +237,9 @@ No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
 
 ## Development
 
-The current source version is `2.2.0` in [release preparation](docs/V2_2_RELEASE_PREP.md); the latest published release remains v2.1.0. Linux release builds now share Ubuntu 24.04 on x64 and ARM64; runtime compatibility is checked separately through ELF inspection and x64 Ubuntu 22.04 package smoke. Final freshness, exact Python patch and release SHA freeze remain pending. The v2.1.0 source, tag and assets remain immutable.
+The current source version is `2.2.0` in [release preparation](docs/V2_2_RELEASE_PREP.md); the latest published release remains v2.1.0. Linux release builds now share Ubuntu 24.04 on x64 and ARM64; runtime compatibility is checked separately through ELF inspection and x64 Ubuntu 22.04 package smoke. Final freshness passed in [draft PR #220](https://github.com/mrc-labs/PlayStoreAppAudit/pull/220) with exact Python 3.14.8 and affected native diagnostics validated; release SHA freeze remains pending normal merge and post-merge Quality. The v2.1.0 source, tag and assets remain immutable.
 
-The current release-development baseline uses Python 3.14, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Python 3.15 pre-releases are outside the stable release baseline.
+The current v2.2 release-window pin uses exact Python 3.14.8, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Python 3.15 pre-releases are outside the stable release baseline.
 
 Install the development dependencies, run the application and execute the main source checks with:
 
@@ -266,7 +266,7 @@ Useful references:
 
 ## Building from source
 
-The current release toolchain uses Python 3.14 and Nuitka standalone packaging. Release artifacts follow an exact-SHA model: source is frozen, platform builds and release assets are validated from that SHA, and tagging/publication happen only after acceptance.
+The current v2.2 release toolchain uses exact Python 3.14.8 and Nuitka standalone packaging. Release artifacts follow an exact-SHA model: source is frozen, platform builds and release assets are validated from that SHA, and tagging/publication happen only after acceptance.
 
 Normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. The final release gate validates all six targets from one exact frozen SHA.
 

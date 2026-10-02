@@ -31,8 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Current v2.2 development/release baseline: stable Python 3.14.
-- Quality CI: Python 3.14.
+- Current v2.2 release-window Python/Quality pin: exact stable Python 3.14.8, with fail-closed full-version equality. Restore rolling development tracking only after permanent v2.2 closure; see `docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md`.
 - Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
 - Current release compiler pin: `Nuitka==4.2.2`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
@@ -77,7 +76,7 @@ Do not hard-code `adb.exe`, `%LOCALAPPDATA%`, Windows-only SDK paths or Windows-
 
 ## v2.2.0 release preparation
 
-Canonical source/package version is 2.2.0; Windows File/Product version derives as 2.2.0.0. Product pillars and release-entry freshness are complete; Sponsors is integrated. Linux release builds use Ubuntu 24.04 on both x64 and ARM64, with full ELF requirement evidence and x64 Ubuntu 22.04 packaged GUI/CLI backward smoke. macOS remains macOS 26/Xcode 26.6; do not adopt Xcode 27 preview or Ubuntu 26.04. Final freshness, exact Python patch and exact release SHA freeze remain pending. Diagnostic Linux prep builds are not final release candidates. Keep #212 open and #147/#154/#209 outside this phase. See `docs/V2_2_RELEASE_PREP.md`.
+Canonical source/package version is 2.2.0; Windows File/Product version derives as 2.2.0.0. Product pillars and release-entry freshness are complete; Sponsors is integrated. Linux release builds use Ubuntu 24.04 on both x64 and ARM64, with full ELF requirement evidence and x64 Ubuntu 22.04 packaged GUI/CLI backward smoke. macOS remains macOS 26/Xcode 26.6; do not adopt Xcode 27 preview or Ubuntu 26.04. Final freshness is validated on open/draft PR #220 with exact Python 3.14.8, Ruff 0.16.10, mypy 2.4.0, Rust 1.99.0 and current Ubuntu vendor OpenSSL security packages; exact release SHA freeze remains pending normal merge and post-merge Quality. Freshness/prep diagnostics are not final release candidates. See `docs/V2_2_FINAL_PRE_RELEASE_FRESHNESS.md`. Keep #212 open and #147/#154/#209 outside this phase. See `docs/V2_2_RELEASE_PREP.md`.
 
 Proactively migrate concretely announced deprecations when a stable supported successor preserves all six targets and intended compatibility floors and can be validated in the active release cycle. Preview successors and implicit floor increases are excluded; classify blockers, required migrations, watches and upstream observations explicitly.
 

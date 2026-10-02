@@ -70,22 +70,27 @@ jobs:
       - name: Set up native Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.8"
           architecture: ${{ matrix.arch }}
           cache: "pip"
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
 
+      - name: Verify exact v2.2 Python patch
+        shell: pwsh
+        run: |
+          python -c "import platform; actual=platform.python_version(); print(actual); assert actual == '3.14.8', actual"
+          if ($LASTEXITCODE -ne 0) { throw 'Exact Python 3.14.8 verification failed.' }
+
       - name: Verify native Python architecture
         shell: pwsh
         run: |
-          $pythonExe = python -c "import sys; print(sys.executable)"
+          $pythonExe = python -c "import platform, sys; print(sys.executable)"
           $reportedMachine = python -c "import platform; print(platform.machine().upper())"
           $pointerBits = python -c "import struct; print(struct.calcsize('P') * 8)"
           $pythonPlatform = python -c "import sysconfig; print(sysconfig.get_platform())"
-          python -c "import sys, sysconfig; print(sys.version); assert sys.version_info[:2] == (3, 14); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          python -c "import platform, sys, sysconfig; print(sys.version); assert platform.python_version() == '3.14.8'; assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
           if ($LASTEXITCODE -ne 0) { throw 'Standard Python 3.14 verification failed.' }
           if ($env:RUNNER_ARCH -ne $env:EXPECTED_RUNNER_ARCH) {
             throw "Expected runner architecture $env:EXPECTED_RUNNER_ARCH, but RUNNER_ARCH is $env:RUNNER_ARCH."
@@ -123,6 +128,17 @@ jobs:
         shell: pwsh
         run: |
           if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'OpenSSL prerequisite requires a native ARM64 runner.' }
+          rustup toolchain install 1.99.0 --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Could not install audited Rust 1.99.0.' }
+          rustup default 1.99.0
+          if ($LASTEXITCODE -ne 0) { throw 'Could not select audited Rust 1.99.0.' }
+          $rustVersion = rustc --version
+          if ($LASTEXITCODE -ne 0 -or $rustVersion -notmatch '^rustc 1\.99\.0\b') { throw 'Unexpected Rust version.' }
+          $rustHost = rustc -vV
+          if ($LASTEXITCODE -ne 0 -or $rustHost -notcontains 'host: aarch64-pc-windows-msvc') { throw 'Rust must be native ARM64 MSVC.' }
+          Write-Host $rustVersion
+          cargo --version
+          if ($LASTEXITCODE -ne 0) { throw 'Cargo verification failed.' }
           if ([string]::IsNullOrWhiteSpace($env:VCPKG_INSTALLATION_ROOT)) {
             throw 'VCPKG_INSTALLATION_ROOT is not set on the ARM64 runner.'
           }
@@ -221,7 +237,7 @@ jobs:
       - name: Verify native PySide6 runtime
         shell: pwsh
         run: |
-          python -c "import sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14); assert PySide6.__version__ == '6.11.2'"
+          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert platform.python_version() == '3.14.8'; assert PySide6.__version__ == '6.11.2'"
           if ($LASTEXITCODE -ne 0) { throw 'PySide6 import or version verification failed.' }
 
           $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6-Essentials').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
