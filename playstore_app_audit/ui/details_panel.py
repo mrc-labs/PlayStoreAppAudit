@@ -830,6 +830,7 @@ class AppDetailsPanel(QFrame):
         store_fields = [
             ("Package", "package_name"),
             ("Play status", "play_status"),
+            ("Play Store category", "play_category"),
             ("Store version", "play_version"),
             ("Resolved Store version", "resolved_play_version"),
             (
