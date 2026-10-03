@@ -226,6 +226,7 @@ def scraper_request(
                 "title": str(data.get("title") or "").strip(),
                 "updated": core.normalise_updated(data.get("updated")),
                 "version": _normalise_version(data.get("version")),
+                "category": str(data.get("genre") or "").strip(),
                 "icon_url": _normalise_https_url(data.get("icon")),
                 "developer": str(data.get("developer") or "").strip(),
                 "error": "",
@@ -297,6 +298,7 @@ def fetch_locale(
             "title": scraper["title"],
             "updated": scraper["updated"],
             "version": scraper["version"],
+            "category": scraper.get("category", ""),
             "icon_url": scraper.get("icon_url", ""),
             "developer": scraper.get("developer", ""),
             "source": "google_play_scraper",
@@ -334,6 +336,7 @@ def fetch_locale(
                 "title": scraper["title"],
                 "updated": scraper["updated"],
                 "version": scraper["version"],
+                "category": scraper.get("category", ""),
                 "icon_url": scraper.get("icon_url", ""),
                 "developer": scraper.get("developer", ""),
                 "source": "google_play_scraper",
@@ -362,6 +365,7 @@ def fetch_locale(
             "title": title,
             "updated": updated,
             "version": scraper["version"],
+            "category": scraper.get("category", ""),
             "icon_url": scraper.get("icon_url", ""),
             "developer": scraper.get("developer", ""),
             "source": "google_play_scraper"
@@ -588,6 +592,7 @@ def _fetch_app_bounded(
         "play_title": primary.get("title", ""),
         "play_last_update": primary.get("updated", ""),
         "play_version": primary.get("version", ""),
+        "play_category": primary.get("category", ""),
         "play_icon_url": primary.get("icon_url", ""),
         "developer": primary.get("developer", ""),
         "updated_source": primary.get("source", ""),
@@ -718,6 +723,7 @@ def _fetch_app_bounded(
                         alternative.get("updated", "") or result["play_last_update"]
                     )
                     result["play_version"] = alternative.get("version", "") or result["play_version"]
+                    result["play_category"] = alternative.get("category", "")
                     result["play_icon_url"] = (
                         alternative.get("icon_url", "") or result["play_icon_url"]
                     )
