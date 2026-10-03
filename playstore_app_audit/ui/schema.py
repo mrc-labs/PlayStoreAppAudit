@@ -43,7 +43,6 @@ DEVICE_EXTRA_COLUMNS = (
     "installed_version_code",
     "version_comparison",
     "installer_source",
-    "installer_category",
     "installer_package",
 )
 DEVICE_MODEL_COLUMNS = tuple(dict.fromkeys(COMPACT_MODEL_COLUMNS + DEVICE_EXTRA_COLUMNS))
@@ -109,7 +108,6 @@ COLUMN_LABELS = {
     "installed_version_code": "Installed Version Code",
     "version_comparison": "Installed vs Store",
     "installer_source": "Installer Source",
-    "installer_category": "Installer Category",
     "installer_package": "Installer Package",
     "compatibility_status": "Android Compatibility",
     "target_sdk": "Target SDK",
@@ -206,7 +204,6 @@ COLUMN_WIDTH_POLICIES = {
     "installed_version_code": _width(ColumnWidthCategory.COMPACT, 125, 105, 140),
     "version_comparison": _width(ColumnWidthCategory.MEDIUM, 116, 104, 120),
     "installer_source": _width(ColumnWidthCategory.LONG_TEXT, 220, 180, 280),
-    "installer_category": _width(ColumnWidthCategory.MEDIUM, 155, 130, 185),
     "installer_package": _width(ColumnWidthCategory.LONG_TEXT, 240, 200, 300),
     "compatibility_status": _width(ColumnWidthCategory.MEDIUM, 120, 108, 124),
     "target_sdk": _width(ColumnWidthCategory.COMPACT, 74, 66, 78),
