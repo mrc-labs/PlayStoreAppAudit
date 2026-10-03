@@ -76,7 +76,6 @@ def _session(
                 installed_version_code="100",
                 installer_package="com.android.vending",
                 installer_source="Google Play (com.android.vending)",
-                installer_category="google_play",
                 is_enabled=True,
                 is_system=False,
             ),
