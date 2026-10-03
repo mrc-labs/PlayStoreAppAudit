@@ -1121,6 +1121,7 @@ def write_html_report(
                 f"<td>{html.escape(str(row.get('play_version') or ''))}</td>"
                 f"<td>{local_comparison}</td>"
                 f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_category') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('local_apk_sha256') or ''))}</td>"
                 f"<td>{html.escape(presentation.friendly_notes(row))}</td>"
@@ -1132,6 +1133,7 @@ def write_html_report(
                 f"<td>{html.escape(_visible_status(row))}</td>"
                 f"<td>{html.escape(str(row.get('package_name') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_title') or ''))}</td>"
+                f"<td>{html.escape(str(row.get('play_category') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('play_last_update') or ''))}</td>"
                 f"<td>{html.escape(str(row.get('age_days') or ''))}</td>"
                 f"<td>{version_comparison}</td>"
@@ -1179,11 +1181,12 @@ def write_html_report(
     table_header = (
         "<th>Store Status</th><th>APK filename</th><th>Package</th><th>Local version</th>"
         "<th>Local version code</th><th>Play Store version</th>"
-        "<th>Local APK vs Store</th><th>Play Store title</th><th>Last update</th>"
-        "<th>APK SHA-256</th><th>Notes</th>"
+        "<th>Local APK vs Store</th><th>Play Store title</th><th>Play Store category</th>"
+        "<th>Last update</th><th>APK SHA-256</th><th>Notes</th>"
         if local_apk_report
-        else "<th>Store Status</th><th>Package</th><th>Play Store title</th><th>Last update</th>"
-        "<th>Age</th><th>Installed vs Store</th><th>Android compatibility</th>"
+        else "<th>Store Status</th><th>Package</th><th>Play Store title</th>"
+        "<th>Play Store category</th><th>Last update</th><th>Age</th>"
+        "<th>Installed vs Store</th><th>Android compatibility</th>"
         "<th>Device App Inventory Change</th><th>Maintenance Score</th><th>Notes</th>"
     )
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Store App Audit report</title>
