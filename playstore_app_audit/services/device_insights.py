@@ -979,7 +979,6 @@ def _inventory_record(row: dict[str, Any]) -> dict[str, Any]:
         "installed_version_code": row.get("installed_version_code", ""),
         "installer_package": row.get("installer_package", ""),
         "installer_source": row.get("installer_source", ""),
-        "installer_category": row.get("installer_category", ""),
         "app_enabled": row.get("app_enabled", ""),
         "is_system": bool(row.get("is_system")),
         "play_title": row.get("play_title", ""),
