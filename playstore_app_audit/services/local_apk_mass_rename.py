@@ -95,11 +95,7 @@ _TOKEN_FIELDS: dict[str, tuple[str, ...]] = {
     "packagename": ("package_name",),
     "appname": ("local_apk_label", "app_name"),
     "playname": ("play_title",),
-    "category": (
-        "play_category",
-        "play_genre",
-        "store_category",
-    ),
+    "category": ("play_category",),
     "localversion": ("local_apk_version_name",),
 }
 
