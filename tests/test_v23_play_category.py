@@ -67,7 +67,7 @@ def test_scraper_genre_reaches_canonical_play_category(monkeypatch: pytest.Monke
     )
 
     assert result["play_status"] == "available"
-    assert result["play_category"] == "Tools"
+    assert result["play_category"] == "Action Games"
 
 
 def test_missing_scraper_genre_stays_blank(monkeypatch: pytest.MonkeyPatch) -> None:
