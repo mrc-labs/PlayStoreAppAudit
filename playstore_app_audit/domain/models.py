@@ -64,6 +64,7 @@ class AppRecord:
     package_name: str
     app_name: str = ""
     play_title: str = ""
+    play_category: str = ""
     play_status: str = ""
     play_last_update: str = ""
     age_days: int | str = ""
@@ -81,6 +82,7 @@ class AppRecord:
             "package_name",
             "app_name",
             "play_title",
+            "play_category",
             "play_status",
             "play_last_update",
             "age_days",
@@ -95,6 +97,7 @@ class AppRecord:
             package_name=str(row.get("package_name") or ""),
             app_name=str(row.get("app_name") or ""),
             play_title=str(row.get("play_title") or ""),
+            play_category=str(row.get("play_category") or ""),
             play_status=str(row.get("play_status") or ""),
             play_last_update=str(row.get("play_last_update") or ""),
             age_days=row.get("age_days", ""),
