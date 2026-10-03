@@ -16,11 +16,16 @@ _PRIVATE_ROW_FIELDS = frozenset({
     "local_apk_location", "source_id", "session_id", "device_id",
     "serial", "serial_masked", "ownership_token", "android_id", "gsf_id",
 })
+_RETIRED_ROW_FIELDS = frozenset({"installer_category"})
 
 
 def privacy_filter_row(row: dict[str, Any]) -> dict[str, Any]:
-    """Remove local correlation data before any machine-readable export."""
-    exported = {key: value for key, value in row.items() if key not in _PRIVATE_ROW_FIELDS}
+    """Remove local correlation and retired compatibility data before export."""
+    exported = {
+        key: value
+        for key, value in row.items()
+        if key not in _PRIVATE_ROW_FIELDS and key not in _RETIRED_ROW_FIELDS
+    }
     profile_id = exported.get("device_specific_profile_id")
     if is_personal_profile_id(profile_id):
         exported["device_specific_profile_id"] = "personal_device"

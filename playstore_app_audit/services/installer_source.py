@@ -120,7 +120,6 @@ def installer_fields(value: object) -> dict[str, str]:
     return {
         "installer_source": source.label,
         "installer_package": source.package,
-        "installer_category": source.category,
     }
 
 
@@ -243,7 +242,7 @@ def _copy_structured_installer_fields(
     for row in rows:
         package = str(row.get("package_name") or "")
         info = metadata.get(package, {})
-        for key in ("installer_source", "installer_package", "installer_category"):
+        for key in ("installer_source", "installer_package"):
             row[key] = info.get(key, "")
 
 
@@ -282,7 +281,6 @@ def _install_snapshot_fidelity() -> None:
                     continue
                 row = current.get(str(item.get("package_name") or ""), {})
                 item["installer_package"] = row.get("installer_package", "")
-                item["installer_category"] = row.get("installer_category", "")
         return snapshot
 
     device_insights.make_device_snapshot = make_snapshot
@@ -294,7 +292,6 @@ def install_installer_source_extensions() -> None:
         return
 
     _extend_builtin_filters()
-    state.TECHNICAL_COLUMNS.setdefault("installer_category", "Installer category")
     state.TECHNICAL_COLUMNS.setdefault("installer_package", "Installer package")
 
     _install_filter_policy()

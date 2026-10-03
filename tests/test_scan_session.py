@@ -124,7 +124,7 @@ def test_scan_session_reuses_one_device_context_and_has_no_raw_serial(
     assert metadata["com.example.alpha"].installer_source == (
         "Google Play (com.android.vending)"
     )
-    assert metadata["com.example.alpha"].installer_category == "google_play"
+    assert not hasattr(metadata["com.example.alpha"], "installer_category")
     assert metadata["com.example.alpha"].is_enabled
     assert not metadata["com.example.alpha"].is_system
     assert metadata["com.example.beta"].installed_version_code == "202"

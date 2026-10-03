@@ -135,7 +135,11 @@ def test_date_within_last_days_uses_calendar_dates() -> None:
 def test_all_and_any_are_one_level_and_keep_missing_values_explicit() -> None:
     stale = _condition("criticality_key", "is", "orange")
     alternative = _condition("installer_category", "is", "alternative_store")
-    row = {"criticality_key": "orange", "installer_category": "google_play"}
+    row = {
+        "criticality_key": "orange",
+        "installer_package": "com.android.vending",
+        "installer_source": "Google Play (com.android.vending)",
+    }
 
     assert not smart_queries.query_matches(row, _query(stale, alternative))
     assert smart_queries.query_matches(

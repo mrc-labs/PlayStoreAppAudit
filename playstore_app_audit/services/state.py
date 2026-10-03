@@ -394,6 +394,7 @@ def load_fresh_cache(
         if age_hours < 0 or age_hours > ttl_hours:
             continue
         cached_row = dict(row)
+        cached_row.pop("installer_category", None)
         cached_row["app_name"] = app.get("app_name", package_name)
         cached_row["package_name"] = package_name
         cached_row["cache_hit"] = True
@@ -435,6 +436,7 @@ def update_cache(rows: list[dict[str, Any]], country: str, language: str) -> Non
                 "age_days",
                 "change",
                 "cache_hit",
+                "installer_category",
                 AUDIT_CHANGES_FIELD,
             }
         }

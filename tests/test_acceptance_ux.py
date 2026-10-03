@@ -665,7 +665,6 @@ def test_customize_column_groups_partition_the_existing_schema() -> None:
         "change",
         "device_change",
         "local_apk_version_comparison",
-        "installer_category",
     }
 
     assert set(common).isdisjoint(advanced)

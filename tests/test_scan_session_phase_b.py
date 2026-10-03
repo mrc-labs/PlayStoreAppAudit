@@ -45,22 +45,17 @@ def _compact(
 ) -> scan_sessions.CompactPackageMetadata:
     if installer_package is None:
         installer_label = None
-        installer_category = None
     elif installer_package == "com.android.vending":
         installer_label = "Google Play (com.android.vending)"
-        installer_category = "google_play"
     elif installer_package == "com.sec.android.app.samsungapps":
         installer_label = "Galaxy Store (com.sec.android.app.samsungapps)"
-        installer_category = "alternative_store"
     else:
         installer_label = "Unknown / preinstalled"
-        installer_category = "unknown_or_preinstalled"
     return scan_sessions.CompactPackageMetadata(
         package_name=package,
         installed_version_code=version_code,
         installer_package=installer_package,
         installer_source=installer_label,
-        installer_category=installer_category,
         is_enabled=enabled,
         is_system=system,
     )
@@ -130,7 +125,6 @@ def test_compact_model_is_immutable_and_contains_no_rich_fields() -> None:
         "installed_version_code",
         "installer_package",
         "installer_source",
-        "installer_category",
         "is_enabled",
         "is_system",
     }
@@ -179,7 +173,8 @@ def test_unsupported_versioncode_flag_uses_installer_only_aggregate_fallback(
     item = session.package_metadata[0]
     assert item.installed_version_code is None
     assert item.installer_package == "com.android.vending"
-    assert item.installer_category == "google_play"
+    assert item.installer_source == "Google Play (com.android.vending)"
+    assert not hasattr(item, "installer_category")
     assert item.is_enabled is True
     assert calls[-3:] == [
         ("shell", "pm", "list", "packages", "-3", "-i", "--show-versioncode"),
@@ -217,7 +212,7 @@ def test_unsupported_compact_queries_preserve_plain_enumeration_and_unknown_fiel
     assert item.installed_version_code is None
     assert item.installer_package is None
     assert item.installer_source is None
-    assert item.installer_category is None
+    assert not hasattr(item, "installer_category")
     assert item.is_enabled is None
     assert item.is_system is False
     assert not any("dumpsys" in args for args in calls)
@@ -731,7 +726,7 @@ def test_disconnected_run_keeps_t1_compact_values_and_store_audit(
     assert row["installed_version_code"] == "101"
     assert row["installer_package"] == "com.android.vending"
     assert row["installer_source"] == "Google Play (com.android.vending)"
-    assert row["installer_category"] == "google_play"
+    assert "installer_category" not in row
     assert row["app_enabled"] == "Enabled"
     assert row["is_system"] is False
     assert row["installed_version"] == ""
@@ -758,7 +753,6 @@ def test_connected_run_keeps_t1_inventory_fields_and_populates_rich_t2(
                 "installed_version_code": "999",
                 "installer_source": "Galaxy Store (com.sec.android.app.samsungapps)",
                 "installer_package": "com.sec.android.app.samsungapps",
-                "installer_category": "alternative_store",
                 "target_sdk": "35",
                 "min_sdk": "26",
                 "first_install_time": "2026-01-01",
@@ -960,5 +954,7 @@ def test_phone_a_to_phone_b_compact_metadata_isolated(window: MainWindow) -> Non
 
     assert window._scan_session is phone_b
     assert window._scan_session.package_metadata[0].installed_version_code == "202"
-    assert window._scan_session.package_metadata[0].installer_category == "alternative_store"
+    assert window._scan_session.package_metadata[0].installer_source == (
+        "Galaxy Store (com.sec.android.app.samsungapps)"
+    )
     assert window._scan_session.package_metadata[0].is_enabled is False
