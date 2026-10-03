@@ -36,6 +36,7 @@ def test_curated_fields_exclude_technical_internals() -> None:
     assert [field.field_id for field in smart_queries.FIELD_DEFINITIONS] == [
         "package_name",
         "play_title",
+        "play_category",
         "notes",
         "criticality_key",
         "play_status",
