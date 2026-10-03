@@ -208,7 +208,7 @@ def test_source_status_text_names_the_active_source(
             "device",
             [
                 "criticality", "change", "device_change", "package_name", "play_title",
-                "play_category", "version_comparison", "installed_version", "play_version",
+                "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "health_score", "notes",
             ],
         ),
@@ -235,7 +235,7 @@ def test_source_status_text_names_the_active_source(
             "device",
             [
                 "criticality", "change", "device_change", "package_name", "play_title",
-                "version_comparison", "installed_version", "play_version",
+                "play_category", "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
                 "installer_source", "app_enabled", "first_install_time",
                 "last_local_update", "health_score", "notes",
