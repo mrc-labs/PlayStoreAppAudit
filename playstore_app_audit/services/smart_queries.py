@@ -222,7 +222,7 @@ FIELD_DEFINITIONS = (
     ),
     FieldDefinition(
         "installer_category",
-        "Installer Category",
+        "Installer Type",
         FieldType.CHOICE,
         _choices(
             ("google_play", "Google Play"),
@@ -630,6 +630,14 @@ def _boolean(value: object) -> bool | None:
     return None
 
 
+def _condition_value(row: Mapping[str, Any], field_id: str) -> object:
+    if field_id == "installer_category":
+        from playstore_app_audit.services import installer_source
+
+        return installer_source.installer_category(dict(row))
+    return row.get(field_id)
+
+
 def condition_matches(
     row: Mapping[str, Any],
     condition: SmartCondition,
@@ -639,7 +647,7 @@ def condition_matches(
     definition = FIELDS_BY_ID.get(condition.field)
     if definition is None:
         return False
-    raw = row.get(condition.field)
+    raw = _condition_value(row, condition.field)
     missing = _missing(raw, definition.field_type)
     operator = condition.operator
     if operator == Operator.IS_EMPTY:
