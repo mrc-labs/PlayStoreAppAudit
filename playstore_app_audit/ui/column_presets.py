@@ -23,13 +23,7 @@ CUSTOM_FIXED_COLUMNS = frozenset({"criticality", "package_name"})
 CUSTOM_CONTEXTUAL_COLUMNS = frozenset(
     {"change", "device_change", "local_apk_version_comparison"}
 )
-# v2.1 keeps installer_category as an internal compatibility/filter field only.
-# It must not be exposed as a user-selectable table column because it duplicates
-# Installer Source semantically and can be mistaken for the app's Store category.
-CUSTOM_HIDDEN_COLUMNS = frozenset({"installer_category"})
-CUSTOM_AUTOMATIC_COLUMNS = (
-    CUSTOM_FIXED_COLUMNS | CUSTOM_CONTEXTUAL_COLUMNS | CUSTOM_HIDDEN_COLUMNS
-)
+CUSTOM_AUTOMATIC_COLUMNS = CUSTOM_FIXED_COLUMNS | CUSTOM_CONTEXTUAL_COLUMNS
 
 
 _BASIC = {
