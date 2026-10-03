@@ -226,7 +226,7 @@ def scraper_request(
                 "title": str(data.get("title") or "").strip(),
                 "updated": core.normalise_updated(data.get("updated")),
                 "version": _normalise_version(data.get("version")),
-                "category": str(data.get("genre") or "").strip(),
+                "category": " ".join(str(data.get("genre") or "").split()),
                 "icon_url": _normalise_https_url(data.get("icon")),
                 "developer": str(data.get("developer") or "").strip(),
                 "error": "",
