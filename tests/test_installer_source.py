@@ -35,7 +35,8 @@ def test_metadata_keeps_raw_installer_package_separate_from_display_label() -> N
     info = metadata["com.example.app"]
     assert info["installer_source"] == "Huawei AppGallery (com.huawei.appmarket)"
     assert info["installer_package"] == "com.huawei.appmarket"
-    assert info["installer_category"] == installer_source.CATEGORY_ALTERNATIVE_STORE
+    assert "installer_category" not in info
+    assert installer_source.installer_category(info) == installer_source.CATEGORY_ALTERNATIVE_STORE
 
 
 def test_filtering_prefers_structured_category_over_display_text() -> None:
@@ -68,14 +69,14 @@ def test_all_installer_categories_have_builtin_filter_presets() -> None:
         assert preset in device_insights.BUILTIN_FILTERS
 
 
-def test_installer_fields_are_technical_columns_and_exported() -> None:
+def test_installer_category_is_retired_from_schema_and_exports() -> None:
     installer_source.install_installer_source_extensions()
 
-    assert state.TECHNICAL_COLUMNS["installer_category"] == "Installer category"
+    assert "installer_category" not in state.TECHNICAL_COLUMNS
     assert state.TECHNICAL_COLUMNS["installer_package"] == "Installer package"
-    assert "installer_category" in schema.MODEL_COLUMNS
+    assert "installer_category" not in schema.MODEL_COLUMNS
     assert "installer_package" in schema.MODEL_COLUMNS
-    assert "installer_category" in schema.EXPORT_EXTRA_FIELDS
+    assert "installer_category" not in schema.EXPORT_EXTRA_FIELDS
     assert "installer_package" in schema.EXPORT_EXTRA_FIELDS
 
 
@@ -92,4 +93,4 @@ def test_device_snapshot_preserves_structured_installer_fields() -> None:
     app = snapshot["apps"][0]
 
     assert app["installer_package"] == "com.android.vending"
-    assert app["installer_category"] == installer_source.CATEGORY_GOOGLE_PLAY
+    assert "installer_category" not in app
