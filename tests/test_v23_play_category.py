@@ -54,7 +54,7 @@ def test_scraper_genre_reaches_canonical_play_category(monkeypatch: pytest.Monke
             "title": "Example",
             "updated": 1_700_000_000,
             "version": "1.2.3",
-            "genre": "Tools",
+            "genre": "  Action   Games \n",
         }
 
     monkeypatch.setattr(google_play_scraper, "app", available_app)
