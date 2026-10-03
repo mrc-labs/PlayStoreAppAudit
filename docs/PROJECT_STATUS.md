@@ -2,11 +2,11 @@
 
 ## Published v2.2.0 release
 
-Last updated: 2026-10-02 CEST
+Last updated: 2026-10-03 CEST
 
 v2.2.0 was published on **2026-10-02** as [Store App Audit v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) and is immutable at source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Annotated tag `v2.2.0` has object `95a402b25f65bf22db58f831076bca747e2c9103`; GitHub Release ID is `401714084`.
 
-The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Arbitrary Named Custom Views #147, production signing/notarization #154 and safe update/self-update #209 remain deferred; no v2.3 scope is assigned.
+The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Named Custom Views #147, production signing/notarization #154, safe update/self-update #209 and duplicate APK management were not part of the immutable v2.2 release.
 
 All six packages use exact stable Python **3.14.8**, PySide/Shiboken/Qt **6.11.2** and Nuitka **4.2.2**. Linux x64/ARM64 build hosts are Ubuntu **24.04**; x64 passed Ubuntu **22.04** packaged offscreen/xcb GUI and CLI backward smoke, with all-ELF maxima GLIBC 2.35 / GLIBCXX 3.4.29 (ARM64 2.38 / 3.4.32). macOS uses macOS 26 / Xcode 26.6. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization.
 
@@ -33,6 +33,20 @@ Published project-defined assets:
 - `PlayStoreAppAudit-v2.2.0-windows-x64.zip`: 46,996,491 bytes; SHA-256 `a4734d24d697673c8c4ee7265abbeccced38895ec1c5cf9d337cfbf20a88595e`
 - `SHA256SUMS.txt`: 758 bytes; SHA-256 `ba2417e067933da9183ca5f861285cf559a9c8f8065de486b5e7a18c334ee04c`
 
+## Active v2.3 development
+
+v2.3 kickoff is approved and tracked by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) from canonical post-v2.2 `main` baseline `6637b94e0693673650f9005def5b5ed76cb86034`. Quality #644 / run `37033913962` completed **SUCCESS** at that exact SHA. Source/package version intentionally remains **2.2.0** until deliberate v2.3 release preparation.
+
+Approved product tracks:
+
+1. **Track A, #188:** canonical Store-derived Play Store Category plus safe retirement of duplicated persisted `installer_category` state, including Smart Query/export compatibility.
+2. **Track B, #147:** maximum **3 Named Custom Views per source family**, with independent Phone / App List and Local APK families and conservative migration from the two v2.2 Custom layouts.
+3. **Track C, #224:** exact duplicate APK grouping by identical SHA-256 / identical bytes, distinct physical paths, explicit review and conservative path-based cleanup. Same package/version with different SHA-256 is not an exact duplicate.
+
+Kickoff backlog reconciliation is complete in the tracker: #191 is closed as superseded/not planned; #192 and #193 are closed as completed through their replacement v2.1 implementation paths; #188 and #147 now carry the v2.3 contracts; #224 is the dedicated duplicate APK issue.
+
+Preferred implementation order is #188, then #147, then #224. #154 signing/notarization and #209 update/self-update remain outside v2.3. Historical release notes and immutable v2.2 source/tag/assets remain unchanged.
+
 ## Post-release development and closure
 
 Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
@@ -41,7 +55,7 @@ Immediately before every future frozen release SHA, final freshness must replace
 
 PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normally at canonical post-release development baseline `fec702dace16efc96d4d0c072acd97bd0f13a90f` (final PR head `0bd958c5b10c558a4f56ba5b2831932412f8496c`). Post-merge Quality #641 / [37019239185](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37019239185) completed **SUCCESS** at that exact SHA. Immutable release history remains at the separate release SHA above.
 
-Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open only for final local synchronization after the docs-only confirmation PR, fresh handoff/snapshot export and final closure confirmation. After that PR merges, synchronize clean local `main` to the latest canonical remote `main`, then run `scripts/export_chat_handoff.ps1`; generated `REPOSITORY_SNAPSHOT.md` records the actual final canonical SHA. Source documentation does not predict that SHA, and this PR does not run the exporter.
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is closed as completed. The final post-v2.2 documentation baseline is `6637b94e0693673650f9005def5b5ed76cb86034`, with Quality #644 / run `37033913962` SUCCESS at that exact SHA. The immutable v2.2 release remains separately frozen at `21b6646571b7e93044b76fe4d18a04eeec092f18`.
 
 Public repository/About/README reconciliation is complete: About description is `Store App Audit - Android App Inventory, Store Analysis & Maintenance Toolkit`, homepage is empty, topics are unchanged, public default-branch README shows v2.2.0 as latest with stale current-facing v2.1/preparation wording removed, and Sponsors remains visible. Actions housekeeping is complete: retired candidate runs `36970928815`, `36970930873`, `36970933130` were deleted; canonical release lineage and published Release/tag/assets remain retained and unchanged.
 
