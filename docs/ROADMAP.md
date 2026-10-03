@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-02
+Last updated: 2026-10-03
 
 ## Purpose
 
@@ -335,7 +335,7 @@ Completed through #169. Canonical privacy-safe screenshots are generated reprodu
 
 v2.2.0 was published on **2026-10-02** as [Store App Audit v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) and is immutable at source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Annotated tag `v2.2.0` has object `95a402b25f65bf22db58f831076bca747e2c9103`; GitHub Release ID is `401714084`.
 
-The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Arbitrary Named Custom Views #147, production signing/notarization #154 and safe update/self-update #209 remain deferred; no v2.3 scope is assigned.
+The release shipped source-aware independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts, the persistent privacy-safe **Personal Device profile library**, and **CLI/headless audit mode**, plus discreet GitHub Sponsors integration. Named Custom Views #147, production signing/notarization #154, safe update/self-update #209 and duplicate APK management were outside the immutable v2.2 release scope.
 
 All six packages use exact stable Python **3.14.8**, PySide/Shiboken/Qt **6.11.2** and Nuitka **4.2.2**. Linux x64/ARM64 build hosts are Ubuntu **24.04**; x64 passed Ubuntu **22.04** packaged offscreen/xcb GUI and CLI backward smoke, with all-ELF maxima GLIBC 2.35 / GLIBCXX 3.4.29 (ARM64 2.38 / 3.4.32). macOS uses macOS 26 / Xcode 26.6. Windows/Linux are unsigned; macOS is engineering ad-hoc signed only, without Developer ID signing or notarization.
 
@@ -359,7 +359,47 @@ Immediately before every future frozen release SHA, final freshness must replace
 
 PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normally at canonical post-release development baseline `fec702dace16efc96d4d0c072acd97bd0f13a90f` (final PR head `0bd958c5b10c558a4f56ba5b2831932412f8496c`). Post-merge Quality #641 / [37019239185](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37019239185) completed **SUCCESS** at that exact SHA. Immutable release history remains at the separate release SHA above.
 
-Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open only for final local synchronization after the docs-only confirmation PR, fresh handoff/snapshot export and final closure confirmation. After that PR merges, synchronize clean local `main` to the latest canonical remote `main`, then run `scripts/export_chat_handoff.ps1`; generated `REPOSITORY_SNAPSHOT.md` records the actual final canonical SHA. Source documentation does not predict that SHA, and this PR does not run the exporter.
+Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is closed as completed. Final post-v2.2 documentation `main` is `6637b94e0693673650f9005def5b5ed76cb86034`, with Quality #644 / run `37033913962` SUCCESS at that exact SHA. This remains separate from the immutable v2.2 release source SHA.
+
+## v2.3 active development
+
+v2.3 is approved and coordinated by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225). Planning starts from canonical post-v2.2 `main` SHA `6637b94e0693673650f9005def5b5ed76cb86034`; source version remains `2.2.0` until deliberate release preparation.
+
+### Track A: Play Store Category plus installer-category cleanup
+
+Issue [#188](https://github.com/mrc-labs/PlayStoreAppAudit/issues/188).
+
+- Make real Store-derived **Play Store Category** a canonical product field.
+- Integrate it across appropriate views, Details, Customize View, Smart Queries, CSV, HTML, versioned JSON and Mass Rename `{category}`.
+- Do not fabricate category when unavailable and preserve Store locale/fallback evidence semantics.
+- Retire duplicated persisted/exposed `installer_category` row state where safely possible.
+- Preserve existing installer-classification behavior by deriving it from canonical installer evidence.
+- Migrate or compatibly interpret existing Smart Queries/persisted state that reference `installer_category` without silently changing meaning.
+
+### Track B: Named Custom Views
+
+Issue [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
+
+- Maximum **3 named Custom Views per source family**.
+- Phone / App List and Local APK families remain independent.
+- Preserve Basic, Source Details and Technical built-ins.
+- Migrate the two existing v2.2 Custom layouts conservatively without silent loss.
+- Keep automatic/contextual columns outside ordinary saved-view ownership.
+
+### Track C: Duplicate APK management
+
+Issue [#224](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224).
+
+- Exact duplicate means identical artifact bytes / identical SHA-256.
+- Keep physical paths distinct and reviewable.
+- Cleanup is explicit, confirmed, path-based and revalidated.
+- Same package + same version with different SHA-256 is not an exact duplicate and must not be auto-deleted.
+- Multiple historical versions may be grouped informationally; older does not automatically mean disposable.
+- Keep scope focused and do not reintroduce a full APK Library Manager.
+
+Preferred implementation order is **#188 -> #147 -> #224** so the canonical field/schema contract lands before named views depend on it. Track C may remain implementation-independent where branch dependencies are clean and merge order is explicit.
+
+Kickoff tracker hygiene is complete: #191 is closed as superseded/not planned; #192 and #193 are closed as completed through their replacement v2.1 paths. #154 production signing/notarization and #209 update/self-update remain outside v2.3.
 
 ## Later 2.x update delivery
 
@@ -372,7 +412,7 @@ Issue `#209` tracks update delivery after v2.2 and is cross-linked to signing/no
 
 ### Later Local APK candidates
 
-Duplicate APK detection/management, custom commands/integrations and Windows Explorer integration remain later candidates and are not required for v2.1.
+Richer Local APK collection/library management beyond the focused v2.3 duplicate scope, custom commands/integrations and Windows Explorer integration remain later candidates.
 
 ## Explicitly removed / not planned
 
@@ -399,4 +439,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` remains the completed v2.1 release record. `HANDOFF_V2.2.md` is the current published-v2.2 / post-release continuation handoff until a later cycle is approved. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.
+`HANDOFF_V2.1.md` and `HANDOFF_V2.2.md` remain completed release-cycle handoff records. Active v2.3 coordination is tracked by #225 plus the current roadmap/status documents until a dedicated later handoff is deliberately created. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.
