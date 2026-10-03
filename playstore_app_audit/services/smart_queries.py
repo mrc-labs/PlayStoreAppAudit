@@ -153,6 +153,7 @@ def _choices(*items: tuple[str, str]) -> tuple[ChoiceDefinition, ...]:
 FIELD_DEFINITIONS = (
     FieldDefinition("package_name", "Package Name", FieldType.TEXT),
     FieldDefinition("play_title", "Play Store Title", FieldType.TEXT),
+    FieldDefinition("play_category", "Play Store Category", FieldType.TEXT),
     FieldDefinition("notes", "Notes", FieldType.TEXT),
     FieldDefinition(
         "criticality_key",

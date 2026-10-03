@@ -225,8 +225,8 @@ def test_source_status_text_names_the_active_source(
             "Source Details",
             "file",
             [
-                "criticality", "change", "package_name", "play_title", "play_version",
-                "play_last_update", "age_days", "app_name", "store_url",
+                "criticality", "change", "package_name", "play_title", "play_category",
+                "play_version", "play_last_update", "age_days", "app_name", "store_url",
                 "health_score", "notes",
             ],
         ),
@@ -235,7 +235,7 @@ def test_source_status_text_names_the_active_source(
             "device",
             [
                 "criticality", "change", "device_change", "package_name", "play_title",
-                "version_comparison", "installed_version", "play_version",
+                "play_category", "version_comparison", "installed_version", "play_version",
                 "play_last_update", "age_days", "compatibility_status",
                 "installer_source", "app_enabled", "first_install_time",
                 "last_local_update", "health_score", "notes",
@@ -246,7 +246,7 @@ def test_source_status_text_names_the_active_source(
             "local_apk",
             [
                 "local_apk_version_comparison", "criticality", "local_apk_file_name",
-                "local_apk_label", "package_name", "play_title",
+                "local_apk_label", "package_name", "play_title", "play_category",
                 "local_apk_version_name", "play_version",
                 "play_last_update", "age_days", "local_apk_location", "health_score", "notes",
             ],
