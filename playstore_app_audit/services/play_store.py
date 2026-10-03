@@ -880,6 +880,7 @@ def audit_apps(
                                 "play_status": "unexpected_error",
                                 "play_http_status": "",
                                 "play_title": "",
+                                "play_category": "",
                                 "play_last_update": "",
                                 "play_version": "",
                                 "updated_source": "",
