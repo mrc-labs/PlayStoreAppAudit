@@ -15,7 +15,7 @@ def _visible(preset: str, *, optional_columns: tuple[str, ...] = ()) -> list[str
     )
 
 
-def test_installer_category_is_hidden_from_device_builtin_presets() -> None:
+def test_retired_installer_category_is_absent_from_device_builtin_presets() -> None:
     for preset in ("Source Details", "Technical"):
         columns = _visible(preset, optional_columns=("installer_category",))
         assert "installer_category" not in columns
@@ -31,6 +31,6 @@ def test_installer_category_is_not_user_selectable_in_customize_view() -> None:
     assert "installer_category" not in advanced
 
 
-def test_installer_category_remains_internal_for_v21_compatibility() -> None:
-    assert "installer_category" in schema.MODEL_COLUMNS
-    assert "installer_category" in column_presets.CUSTOM_HIDDEN_COLUMNS
+def test_installer_category_no_longer_needs_a_hidden_column_workaround() -> None:
+    assert "installer_category" not in schema.MODEL_COLUMNS
+    assert not hasattr(column_presets, "CUSTOM_HIDDEN_COLUMNS")
