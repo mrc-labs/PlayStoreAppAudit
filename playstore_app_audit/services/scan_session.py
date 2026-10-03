@@ -41,7 +41,6 @@ class CompactPackageMetadata:
     installed_version_code: str | None
     installer_package: str | None
     installer_source: str | None
-    installer_category: str | None
     is_enabled: bool | None
     is_system: bool
 
@@ -212,19 +211,16 @@ def _compact_metadata(
         version_code, raw_installer = package_rows[package]
         if raw_installer is None:
             friendly = None
-            category = None
         else:
             classified = installer_source.classify_installer_package(raw_installer)
             raw_installer = classified.package
             friendly = classified.label
-            category = classified.category
         items.append(
             CompactPackageMetadata(
                 package_name=package,
                 installed_version_code=version_code,
                 installer_package=raw_installer,
                 installer_source=friendly,
-                installer_category=category,
                 is_enabled=(
                     None if disabled_packages is None else package not in disabled_packages
                 ),
@@ -252,7 +248,6 @@ def enrich_rows_with_compact_metadata(
         if compact.installer_package is not None:
             row["installer_package"] = compact.installer_package
             row["installer_source"] = compact.installer_source or ""
-            row["installer_category"] = compact.installer_category or ""
         if compact.is_enabled is not None:
             row["app_enabled"] = compact.app_enabled
         elif not row.get("app_enabled"):
@@ -270,7 +265,6 @@ def inventory_rows(session: ScanSession) -> list[dict[str, object]]:
             "installed_version_code": item.installed_version_code or "",
             "installer_package": item.installer_package or "",
             "installer_source": item.installer_source or "",
-            "installer_category": item.installer_category or "",
             "app_enabled": item.app_enabled if item.is_enabled is not None else "Unknown",
             "is_system": item.is_system,
             "play_title": "",
