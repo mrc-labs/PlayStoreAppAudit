@@ -32,8 +32,6 @@ from playstore_app_audit.resources import ensure_runtime_icon
 from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.column_presets import (
     BUILTIN_PRESETS,
-    CustomLayoutFamily,
-    custom_layout_family,
     normalise_view_preset,
 )
 from playstore_app_audit.ui.file_menu import (
