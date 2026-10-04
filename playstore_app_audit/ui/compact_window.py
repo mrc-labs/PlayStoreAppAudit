@@ -5,7 +5,6 @@ import sys
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from copy import deepcopy
 
 from PySide6.QtCore import QByteArray, QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QDesktopServices, QFont, QIcon
@@ -56,7 +55,6 @@ from playstore_app_audit.ui.audit_window import AuditWindow
 from playstore_app_audit.ui.column_presets import (
     CUSTOM_CONTEXTUAL_COLUMNS,
     CUSTOM_LAYOUT_FAMILIES,
-    CUSTOM_LAYOUTS_SCHEMA_VERSION,
     CustomLayoutFamily,
     custom_family_user_columns,
     custom_layout_family,
