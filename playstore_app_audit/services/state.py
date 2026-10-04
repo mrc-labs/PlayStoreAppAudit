@@ -87,18 +87,14 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "custom_view_exists": False,
     "custom_view_layouts_migrated_v1": False,
     "custom_view_layouts": {
-        "schema_version": 1,
+        "schema_version": 2,
         "phone_app_list": {
-            "exists": False,
-            "columns": [],
-            "order": [],
-            "widths": {},
+            "active_view_id": "",
+            "views": [],
         },
         "local_apk": {
-            "exists": False,
-            "columns": [],
-            "order": [],
-            "widths": {},
+            "active_view_id": "",
+            "views": [],
         },
     },
     "qt_header_state": "",
