@@ -34,18 +34,18 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.device_specific_personal_session as personal_session
 import playstore_app_audit.services.personal_device_library as personal_device_library
-import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.services.connected_device_profile import (
     ConnectedDeviceProfile,
     ConnectedDeviceProfileCapture,
 )
-from playstore_app_audit.ui import named_custom_views, rich_help
+from playstore_app_audit.ui import rich_help
 from playstore_app_audit.ui.main_window import MainWindow
 
 SUBTITLE = (
@@ -617,17 +617,16 @@ def test_display_settings_save_existing_presentation_keys(
 
     assert saved[-1]["show_app_icons"] is True
     assert saved[-1]["date_format"] == "DD/MM/YYYY"
-    assert saved[-1]["custom_view_columns"] == [
+    views = named_custom_views.view_records(
+        saved[-1]["custom_view_layouts"], "phone_app_list"
+    )
+    assert [view["name"] for view in views] == ["Review"]
+    assert views[0]["columns"] == [
         "criticality",
         "package_name",
         "play_title",
         "installed_version_code",
     ]
-    views = named_custom_views.view_records(
-        saved[-1]["custom_view_layouts"], "phone_app_list"
-    )
-    assert [view["name"] for view in views] == ["Review"]
-    assert views[0]["columns"] == saved[-1]["custom_view_columns"]
     assert window.model._icons_enabled is True
     assert window.status_label.text() == "Customize View settings saved"
 

@@ -1,3 +1,8 @@
+"""Pure named-view schema validation and copy-on-write operations.
+
+The UI owns column applicability; callers own disk persistence and commit timing.
+"""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -39,6 +44,8 @@ def normalise_name(value: object) -> str:
 
 
 def _validated_name(value: object) -> str:
+    if not isinstance(value, str):
+        raise NamedViewError("View name must be text.")
     name = normalise_name(value)
     if not name:
         raise NamedViewError("View name cannot be empty.")
@@ -52,7 +59,8 @@ def _valid_uuid(value: object) -> bool:
     if not text:
         return False
     try:
-        return str(UUID(text)) == text.lower()
+        parsed = UUID(text)
+        return parsed.version == 4 and str(parsed) == text.lower()
     except (ValueError, AttributeError):
         return False
 
@@ -62,6 +70,7 @@ def is_supported(layouts: object) -> bool:
         isinstance(layouts, dict)
         and type(layouts.get("schema_version")) is int
         and layouts.get("schema_version") == SCHEMA_VERSION
+        and all(_family_records(layouts.get(family)) is not None for family in ("phone_app_list", "local_apk"))
     )
 
 
@@ -87,36 +96,39 @@ def family_state(layouts: object, family: str) -> dict[str, object] | None:
     return raw
 
 
-def view_records(layouts: object, family: str) -> list[dict[str, Any]]:
-    state = family_state(layouts, family)
-    if state is None:
-        return []
-    raw_views = state.get("views", [])
-    assert isinstance(raw_views, list)
+def _family_records(state: object) -> list[dict[str, Any]] | None:
+    if not isinstance(state, dict) or not isinstance(state.get("active_view_id"), str):
+        return None
+    raw_views = state.get("views")
+    if not isinstance(raw_views, list):
+        return None
     if len(raw_views) > MAX_VIEWS_PER_FAMILY:
-        return []
+        return None
     records: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     seen_names: set[str] = set()
     for raw in raw_views:
         if not isinstance(raw, dict):
-            return []
+            return None
         view_id = str(raw.get("id") or "").strip().lower()
         name = normalise_name(raw.get("name"))
         name_key = name.casefold()
         if (
             not _valid_uuid(view_id)
+            or not isinstance(raw.get("name"), str)
             or not name
             or len(name) > MAX_NAME_LENGTH
             or view_id in seen_ids
             or name_key in seen_names
         ):
-            return []
+            return None
         columns = raw.get("columns")
         order = raw.get("order")
         widths = raw.get("widths")
         if not isinstance(columns, list) or not isinstance(order, list) or not isinstance(widths, dict):
-            return []
+            return None
+        if not columns or any(not isinstance(column, str) for column in columns + order):
+            return None
         seen_ids.add(view_id)
         seen_names.add(name_key)
         records.append(
@@ -129,6 +141,11 @@ def view_records(layouts: object, family: str) -> list[dict[str, Any]]:
             }
         )
     return records
+
+
+def view_records(layouts: object, family: str) -> list[dict[str, Any]]:
+    state = family_state(layouts, family)
+    return _family_records(state) or []
 
 
 def active_view(layouts: object, family: str) -> dict[str, Any] | None:

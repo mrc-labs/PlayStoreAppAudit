@@ -12,7 +12,8 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog, QInpu
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import column_presets, named_custom_views, table_layout
+from playstore_app_audit.domain import named_custom_views
+from playstore_app_audit.ui import column_presets, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION
 
@@ -110,7 +111,7 @@ def _custom_snapshot(settings: dict[str, object]) -> dict[str, object]:
 def _custom_action(window: MainWindow):
     return next(
         (action for action in window.view_preset_actions if action.data() == "Custom"),
-        getattr(window, "customize_view_action"),
+        window.customize_view_action,
     )
 
 
@@ -233,6 +234,7 @@ def test_existing_custom_action_restores_gates_and_opens_editor(
     assert action.isChecked()
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
+@pytest.mark.parametrize("dismissal", ["cancel", "close"])
 def test_new_custom_action_cancel_or_close_keeps_builtin_and_creates_nothing(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     monkeypatch: pytest.MonkeyPatch,
@@ -290,11 +292,11 @@ def test_new_custom_action_save_creates_and_activates_ordinary_custom_base(
     window.customize_view_action.trigger()
 
     assert settings["view_preset"] == "Custom"
-    assert settings["custom_view_exists"] is True
     views = named_custom_views.view_records(
         settings["custom_view_layouts"], "phone_app_list"
     )
     assert [view["name"] for view in views] == ["Review"]
+    assert settings["custom_view_exists"] is False
     assert set(views[0]["columns"]) == expected_ordinary
     assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
         views[0]["columns"]
@@ -325,6 +327,7 @@ def test_programmatic_builtin_presets_do_not_create_custom(
                 window.table, column
             )
 
+@pytest.mark.parametrize("preset", ["Basic", "Source Details", "Technical"])
 def test_builtin_column_presets_remain_immutable_after_manual_resize(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
@@ -351,7 +354,7 @@ def test_builtin_column_presets_remain_immutable_after_manual_resize(
     assert _visual_order(window) == canonical_order
     assert _widths(window) == canonical_widths
 
-def test_manual_reorder_creates_custom(
+def test_manual_reorder_without_active_named_view_creates_nothing(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
 ) -> None:
@@ -401,7 +404,7 @@ def test_manual_layout_capture_keeps_history_out_of_custom_base(
     assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(active["order"])
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
-def test_customize_view_visibility_change_creates_custom(
+def test_customize_view_without_named_selection_does_not_persist_columns(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
     monkeypatch: pytest.MonkeyPatch,
@@ -424,6 +427,15 @@ def test_customize_view_visibility_change_creates_custom(
     assert settings["custom_view_layouts"] == before
     assert "notes" in _visible_order(window)
 
+@pytest.mark.parametrize(
+    ("source_mode", "master", "store", "device", "expected"),
+    [
+        ("file", True, True, True, {"criticality", "package_name", "change"}),
+        ("device", True, True, True, {"criticality", "package_name", "change", "device_change"}),
+        ("local_apk", True, True, True, {"criticality", "package_name", "local_apk_version_comparison"}),
+        ("device", False, True, True, {"criticality", "package_name"}),
+    ],
+)
 def test_customize_view_automatic_columns_reflect_current_context(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     monkeypatch: pytest.MonkeyPatch,
@@ -1017,7 +1029,10 @@ def test_malformed_custom_state_falls_back_safely_to_basic(
     )
     window = create_window()
 
-    assert settings["view_preset"] == "Basic"
+    # The effective Basic fallback must preserve the user's Custom selection
+    # so a later source restoration cannot destroy persisted state.
+    assert settings["view_preset"] == "Custom"
+    assert next(action for action in window.view_preset_actions if action.data() == "Basic").isChecked()
     assert settings["custom_view_layouts"] == malformed
     assert not [action for action in window.view_preset_actions if action.data() == "Custom"]
     assert window.model._icons_enabled is False

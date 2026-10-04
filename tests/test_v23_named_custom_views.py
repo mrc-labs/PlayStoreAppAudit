@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from playstore_app_audit.ui import named_custom_views
+from playstore_app_audit.domain import named_custom_views
 
 
 def _layout() -> dict[str, object]:
@@ -66,13 +66,14 @@ def test_create_select_update_rename_delete_round_trip() -> None:
     assert named_custom_views.view_records(deleted, "phone_app_list") == []
 
 
-def test_three_view_limit_is_independent_per_family() -> None:
+@pytest.mark.parametrize("family", ["phone_app_list", "local_apk"])
+def test_three_view_limit_is_independent_per_family(family: str) -> None:
     layouts = _layout()
     columns, order, widths = _payload()
     for index in range(3):
         layouts, _ = named_custom_views.create_view(
             layouts,
-            "phone_app_list",
+            family,
             name=f"Phone {index + 1}",
             columns=columns,
             order=order,
@@ -82,23 +83,66 @@ def test_three_view_limit_is_independent_per_family() -> None:
     with pytest.raises(named_custom_views.NamedViewLimitError):
         named_custom_views.create_view(
             layouts,
-            "phone_app_list",
+            family,
             name="Phone 4",
             columns=columns,
             order=order,
             widths=widths,
         )
 
+    sibling = "local_apk" if family == "phone_app_list" else "phone_app_list"
     layouts, local_id = named_custom_views.create_view(
         layouts,
-        "local_apk",
+        sibling,
         name="APK 1",
         columns=["criticality", "package_name", "local_apk_file_name"],
         order=["local_apk_file_name", "criticality", "package_name"],
         widths={"local_apk_file_name": 300},
     )
-    assert named_custom_views.active_view(layouts, "local_apk")["id"] == local_id
-    assert len(named_custom_views.view_records(layouts, "phone_app_list")) == 3
+    assert named_custom_views.active_view(layouts, sibling)["id"] == local_id
+    assert len(named_custom_views.view_records(layouts, family)) == 3
+
+
+@pytest.mark.parametrize("field,value", [
+    ("id", "12345678-1234-1234-8234-123456789abc"),
+    ("name", 42), ("name", ""), ("columns", []),
+    ("columns", [{}]), ("order", [[]]), ("widths", []),
+])
+def test_corrupt_records_block_reads_and_mutations_without_rewriting(field: str, value: object) -> None:
+    columns, order, widths = _payload()
+    layouts, view_id = named_custom_views.create_view(
+        _layout(), "phone_app_list", name="Valid", columns=columns, order=order, widths=widths,
+    )
+    layouts["phone_app_list"]["views"][0][field] = value
+    before = deepcopy(layouts)
+    assert not named_custom_views.is_supported(layouts)
+    assert named_custom_views.view_records(layouts, "phone_app_list") == []
+    assert named_custom_views.active_view(layouts, "phone_app_list") is None
+    with pytest.raises(named_custom_views.NamedViewError):
+        named_custom_views.rename_view(layouts, "phone_app_list", view_id, "New name")
+    with pytest.raises(named_custom_views.NamedViewError):
+        named_custom_views.create_view(
+            layouts, "local_apk", name="Sibling", columns=columns, order=order, widths=widths,
+        )
+    assert layouts == before
+
+
+def test_uuid4_identity_and_duplicate_creation_name_validation() -> None:
+    from uuid import UUID
+
+    columns, order, widths = _payload()
+    layouts, view_id = named_custom_views.create_view(
+        _layout(), "phone_app_list", name=" A\t B ", columns=columns, order=order, widths=widths,
+    )
+    assert UUID(view_id).version == 4
+    with pytest.raises(named_custom_views.DuplicateNamedViewError):
+        named_custom_views.create_view(
+            layouts, "phone_app_list", name="a b", columns=columns, order=order, widths=widths,
+        )
+    layouts, sibling = named_custom_views.create_view(
+        layouts, "local_apk", name="a b", columns=columns, order=order, widths=widths,
+    )
+    assert UUID(sibling).version == 4 and sibling != view_id
 
 
 def test_names_are_required_unique_case_insensitively_and_stable_ids_survive_rename() -> None:

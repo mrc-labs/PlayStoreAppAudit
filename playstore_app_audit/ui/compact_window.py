@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 import playstore_app_audit.ui.base_window as base_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.countries import audit_apps_multicountry
@@ -50,7 +51,7 @@ from playstore_app_audit.services.state import (
     store_history_enabled,
     update_cache,
 )
-from playstore_app_audit.ui import named_custom_views, schema, table_layout
+from playstore_app_audit.ui import schema, table_layout
 from playstore_app_audit.ui.audit_window import AuditWindow
 from playstore_app_audit.ui.column_presets import (
     CUSTOM_CONTEXTUAL_COLUMNS,
@@ -434,7 +435,7 @@ class CompactWindow(AuditWindow):
                 continue
             try:
                 width = int(raw_width)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 continue
             if 20 <= width <= 10000:
                 widths[column] = width
@@ -606,6 +607,8 @@ class CompactWindow(AuditWindow):
     def _select_custom_view(self, view_id: str) -> bool:
         settings = load_settings()
         family = self._current_custom_layout_family()
+        if self._custom_view_by_id(settings, view_id, family) is None:
+            return False
         layouts = settings.get("custom_view_layouts")
         try:
             settings["custom_view_layouts"] = named_custom_views.select_view(
@@ -667,7 +670,7 @@ class CompactWindow(AuditWindow):
         if existing is None:
             return False
 
-        visible, order, widths, encoded = self._current_table_layout()
+        visible, order, widths, _encoded = self._current_table_layout()
         visible = [column for column in visible if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         order = [column for column in order if column not in CUSTOM_CONTEXTUAL_COLUMNS]
         applicable_family = custom_family_user_columns(family)
@@ -696,7 +699,7 @@ class CompactWindow(AuditWindow):
             {
                 column: width
                 for column, width in widths.items()
-                if column in applicable_family and width >= 20
+                if column in applicable_source and 20 <= width <= 10000
             }
         )
         if not self._store_custom_layout_entry(
@@ -707,15 +710,7 @@ class CompactWindow(AuditWindow):
             widths=family_widths,
         ):
             return False
-        settings.update(
-            {
-                "custom_view_exists": True,
-                "custom_view_columns": family_columns,
-                "custom_view_order": family_order,
-                "custom_view_widths": family_widths,
-                "qt_header_state": encoded,
-            }
-        )
+        settings["custom_view_layouts_migrated_v1"] = True
         if activate:
             settings["view_preset"] = "Custom"
         self.user_settings = save_settings(settings)
@@ -759,10 +754,16 @@ class CompactWindow(AuditWindow):
         self._custom_layout_migration_checked = True
 
         self.user_settings = load_settings()
+        if "custom_view_layouts" not in self.user_settings:
+            # Absence is a legacy migration input. An explicit malformed value
+            # must instead remain untouched.
+            self.user_settings["custom_view_layouts"] = named_custom_views.empty_layouts()
         layouts = self.user_settings.get("custom_view_layouts")
 
         if named_custom_views.is_legacy_v1(layouts):
             assert isinstance(layouts, dict)
+            if any(not isinstance(layouts.get(family.value), dict) for family in CUSTOM_LAYOUT_FAMILIES):
+                return False
             migrated_layouts = named_custom_views.empty_layouts()
             for family in CUSTOM_LAYOUT_FAMILIES:
                 raw_entry = layouts.get(family.value)
@@ -802,14 +803,6 @@ class CompactWindow(AuditWindow):
                 )
             self.user_settings["custom_view_layouts"] = migrated_layouts
             self.user_settings["custom_view_layouts_migrated_v1"] = True
-            if (
-                str(self.user_settings.get("view_preset") or "Basic") == "Custom"
-                and named_custom_views.active_view(
-                    migrated_layouts, self._current_custom_layout_family().value
-                )
-                is None
-            ):
-                self.user_settings["view_preset"] = "Basic"
             self.user_settings = save_settings(self.user_settings)
             return str(self.user_settings.get("view_preset") or "Basic") == "Custom"
 
@@ -968,16 +961,11 @@ class CompactWindow(AuditWindow):
 
     def _restore_table_layout(self) -> None:
         self.user_settings = load_settings()
-        migrated = self._migrate_legacy_custom_layout()
+        self._migrate_legacy_custom_layout()
         self.user_settings = load_settings()
         preset = str(self.user_settings.get("view_preset") or "Basic")
-        if self._has_custom_table_layout() and preset == "Custom":
-            if self._restore_custom_table_layout():
-                return
-        elif migrated and str(self.user_settings.get("view_preset") or "Basic") == "Custom":
-            self._restore_custom_table_layout()
+        if self._has_custom_table_layout() and preset == "Custom" and self._restore_custom_table_layout():
             return
-
         self._apply_column_visibility(reset_order=True)
 
     def _save_table_layout(self) -> None:

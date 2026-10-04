@@ -165,9 +165,6 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         self.view_menu.addMenu(self.view_presets_menu)
         self.view_preset_actions: list[QAction] = []
         self.named_view_actions: list[QAction] = []
-        self._view_action_group = QActionGroup(self)
-        self._view_action_group.setExclusive(True)
-        self.view_action_group = self._view_action_group
         self._rebuild_named_view_actions()
 
         self.reset_layout_action = self.view_menu.addAction(
@@ -296,6 +293,11 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         if isinstance(old_group, QActionGroup):
             for action in list(old_group.actions()):
                 old_group.removeAction(action)
+                action.deleteLater()
+            old_group.deleteLater()
+        old_customize = getattr(self, "customize_view_action", None)
+        if isinstance(old_customize, QAction):
+            old_customize.deleteLater()
 
         menu.clear()
         group = QActionGroup(self)

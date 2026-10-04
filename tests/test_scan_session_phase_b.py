@@ -22,7 +22,7 @@ import playstore_app_audit.ui.column_presets as column_presets
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 import playstore_app_audit.ui.main_window as main_ui
-from playstore_app_audit.ui import named_custom_views
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.connected_device_profile import (

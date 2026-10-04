@@ -49,12 +49,12 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
-import playstore_app_audit.ui.named_custom_views as named_custom_views
 import playstore_app_audit.ui.rich_help as rich_help
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 import playstore_app_audit.ui.theme as theme_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.services.store_freshness import (
     MAX_THRESHOLD_DAYS,
     StoreFreshnessThresholds,
@@ -732,14 +732,14 @@ class PreferencesWindow(table_ui.TableWindow):
 
         def editor_payload(
             existing_view: dict[str, object] | None,
-        ) -> tuple[list[str], list[str], dict[str, int], str]:
+        ) -> tuple[list[str], list[str], dict[str, int]]:
             custom_columns = ["criticality", "package_name"] + [
                 key for key, check in custom_checks.items() if check.isChecked()
             ]
             custom_columns = self._normalise_custom_columns(
                 list(dict.fromkeys(custom_columns))
             ) or ["criticality", "package_name"]
-            _visible, live_order, live_widths, encoded = self._current_table_layout()
+            _visible, live_order, live_widths, _encoded = self._current_table_layout()
             applicable_family = custom_family_user_columns(family)
             live_order = [
                 column
@@ -758,8 +758,7 @@ class PreferencesWindow(table_ui.TableWindow):
             selected_columns = set(retained_columns) | set(custom_columns)
             family_order = list(
                 dict.fromkeys(
-                    live_order
-                    + existing_order
+                    (existing_order if existing_view is not None else live_order)
                     + [
                         column
                         for column in self.model.columns
@@ -771,18 +770,13 @@ class PreferencesWindow(table_ui.TableWindow):
                 column for column in family_order if column in selected_columns
             ]
             preserved_widths = {
-                column: (
-                    live_widths[column]
-                    if live_widths.get(column, 0) >= 20
-                    else stored_widths.get(
-                        column,
-                        table_layout.default_column_width(self.table, column),
-                    )
-                )
+                column: stored_widths.get(column, table_layout.default_column_width(self.table, column))
+                if existing_view is not None
+                else live_widths.get(column, table_layout.default_column_width(self.table, column))
                 for column in self.model.columns
                 if column in applicable_family
             }
-            return family_columns, family_order, preserved_widths, encoded
+            return family_columns, family_order, self._normalise_custom_widths(preserved_widths)
 
         def new_view() -> None:
             nonlocal draft_layouts, draft_dirty
@@ -798,7 +792,7 @@ class PreferencesWindow(table_ui.TableWindow):
             name, ok = QInputDialog.getText(dialog, "New Custom View", "View name")
             if not ok:
                 return
-            columns, order, widths, _encoded = editor_payload(None)
+            columns, order, widths = editor_payload(selected_view())
             try:
                 draft_layouts, view_id = named_custom_views.create_view(
                     draft_layouts,
@@ -807,7 +801,7 @@ class PreferencesWindow(table_ui.TableWindow):
                     columns=columns,
                     order=order,
                     widths=widths,
-                    activate=True,
+                    activate=False,
                 )
             except named_custom_views.NamedViewError as exc:
                 QMessageBox.warning(dialog, "Named Custom Views", str(exc))
@@ -841,7 +835,6 @@ class PreferencesWindow(table_ui.TableWindow):
                 return
             draft_dirty = True
             refresh_combo(str(view.get("id") or ""))
-            load_selected_view()
 
         def delete_view() -> None:
             nonlocal draft_layouts, draft_dirty
@@ -946,9 +939,8 @@ class PreferencesWindow(table_ui.TableWindow):
         selected_id = selected_view_id()
         selected = selected_view()
         custom_saved = False
-        encoded = ""
         if selected_id and selected is not None and named_custom_views.is_supported(draft_layouts):
-            columns, order, widths, encoded = editor_payload(selected)
+            columns, order, widths = editor_payload(selected)
             try:
                 draft_layouts = named_custom_views.update_view(
                     draft_layouts,
@@ -968,11 +960,7 @@ class PreferencesWindow(table_ui.TableWindow):
             updates.update(
                 {
                     "custom_view_layouts": draft_layouts,
-                    "custom_view_exists": True,
-                    "custom_view_columns": columns,
-                    "custom_view_order": order,
-                    "custom_view_widths": widths,
-                    "qt_header_state": encoded,
+                    "custom_view_layouts_migrated_v1": True,
                     "view_preset": "Custom",
                 }
             )
@@ -983,11 +971,11 @@ class PreferencesWindow(table_ui.TableWindow):
                 draft_layouts, family.value
             )
             if (
-                initial_preset == "Custom"
-                and initial_active_id
+                initial_active_id
                 and persisted_active_still_exists is None
             ):
                 updates["view_preset"] = "Basic"
+            updates["custom_view_layouts_migrated_v1"] = True
 
         self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
@@ -1000,11 +988,11 @@ class PreferencesWindow(table_ui.TableWindow):
                 )
             )
 
-        resulting_preset = str(self.user_settings.get("view_preset") or "Basic")
         if custom_saved:
+            self._restore_custom_table_layout()
             self._sync_view_preset_action("Custom")
             self._apply_column_visibility(reset_order=False)
-        elif resulting_preset == "Basic" and initial_preset == "Custom":
+        elif updates.get("view_preset") == "Basic":
             self._apply_column_visibility(reset_order=True)
         self._sync_custom_preset_availability()
         self._refresh_table_presentation()

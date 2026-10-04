@@ -3,14 +3,23 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterator
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QInputDialog,
+    QMessageBox,
+    QPushButton,
+)
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import named_custom_views
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.ui.column_presets import (
     CustomLayoutFamily,
     custom_family_user_columns,
@@ -167,9 +176,58 @@ def test_v1_family_layouts_migrate_independently_to_custom_1(
     assert set(_visible(window)) == {"criticality", "package_name", "play_title"}
 
 
+@pytest.mark.parametrize("family", list(CustomLayoutFamily))
+@pytest.mark.parametrize("valid", [True, False])
+def test_v1_single_family_migration_is_one_time_and_restores_after_source_switch(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    family: CustomLayoutFamily,
+    valid: bool,
+) -> None:
+    settings, create_window = window_store
+    extra = "installed_version" if family is CustomLayoutFamily.PHONE_APP_LIST else "local_apk_file_name"
+    sibling = CustomLayoutFamily.LOCAL_APK if family is CustomLayoutFamily.PHONE_APP_LIST else CustomLayoutFamily.PHONE_APP_LIST
+    columns = ["criticality", "package_name", extra, "play_category"]
+    order = [extra, "criticality", "package_name", "play_category"]
+    settings.update({
+        "view_preset": "Custom",
+        "custom_view_layouts_migrated_v1": False,
+        "custom_view_layouts": {
+            "schema_version": 1,
+            family.value: {"exists": True, "columns": columns if valid else "bad", "order": order, "widths": {extra: 317}},
+            sibling.value: {"exists": False, "columns": [], "order": [], "widths": {}},
+        },
+    })
+    first = create_window()
+    layouts = settings["custom_view_layouts"]
+    assert named_custom_views.view_records(layouts, sibling.value) == []
+    views = named_custom_views.view_records(layouts, family.value)
+    assert len(views) == int(valid)
+    if valid:
+        assert views[0]["name"] == "Custom 1"
+        assert views[0]["columns"] == columns
+        assert views[0]["order"][:4] == order
+        assert views[0]["widths"] == {extra: 317}
+        assert layouts[family.value]["active_view_id"] == views[0]["id"]
+    before = deepcopy(layouts)
+    first.close()
+    restarted = create_window()
+    restarted.source_mode = "device" if family is CustomLayoutFamily.PHONE_APP_LIST else "local_apk"
+    restarted._apply_established_source_defaults()
+    assert settings["custom_view_layouts"] == before
+    assert settings["view_preset"] == "Custom"
+    if valid:
+        assert extra in _visible(restarted)
+        assert restarted.table.columnWidth(restarted.model.columns.index(extra)) == 317
+    else:
+        assert _builtin(restarted, "Basic").isChecked()
+
+
 @pytest.mark.parametrize(
     "raw_layouts",
     [
+        None,
+        {"schema_version": 1},
+        {"schema_version": 1, "phone_app_list": [], "local_apk": {}},
         {
             "schema_version": 3,
             "phone_app_list": {"opaque": {"keep": True}},
@@ -190,7 +248,7 @@ def test_v1_family_layouts_migrate_independently_to_custom_1(
 )
 def test_future_or_malformed_layout_state_is_preserved_without_rewrite(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
-    raw_layouts: dict[str, object],
+    raw_layouts: object,
 ) -> None:
     settings, create_window = window_store
     expected = deepcopy(raw_layouts)
@@ -391,6 +449,7 @@ def test_manual_header_capture_updates_only_active_named_view(
 
 def test_app_list_hides_phone_only_columns_without_rewriting_shared_view(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings, create_window = window_store
     columns = [
@@ -406,6 +465,7 @@ def test_app_list_hides_phone_only_columns_without_rewriting_shared_view(
         name="Shared",
         columns=columns,
         order=list(columns),
+        widths={"installed_version": 181},
     )
     settings["view_preset"] = "Custom"
     before = deepcopy(settings["custom_view_layouts"])
@@ -418,6 +478,18 @@ def test_app_list_hides_phone_only_columns_without_rewriting_shared_view(
     assert "installer_source" not in _visible(window)
     assert settings["custom_view_layouts"] == before
     assert _active_id(settings, CustomLayoutFamily.PHONE_APP_LIST) == view_id
+
+    # App List manual capture and editor save must retain Phone-only fields.
+    package = window.model.columns.index("package_name")
+    window.table.setColumnWidth(package, 337)
+    monkeypatch.setattr(QDialog, "exec", lambda _dialog: QDialog.DialogCode.Accepted)
+    window._show_display_settings()
+    window.source_mode = "device"
+    window._apply_established_source_defaults()
+    assert "installed_version" in _visible(window)
+    assert "installer_source" in _visible(window)
+    assert window.table.columnWidth(package) == 337
+    assert window.table.columnWidth(window.model.columns.index("installed_version")) == 181
 
 
 def test_named_view_preserves_play_store_category_as_user_owned_field(
@@ -462,3 +534,248 @@ def test_builtin_header_changes_do_not_modify_remembered_named_view(
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_layouts"] == before
     assert _active_id(settings, CustomLayoutFamily.PHONE_APP_LIST) == view_id
+
+
+@pytest.mark.parametrize("rename", [False, True])
+def test_editor_selection_preserves_selected_order_widths_and_checkbox_drafts(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    rename: bool,
+) -> None:
+    settings, create_window = window_store
+    target = _add_view(
+        settings, CustomLayoutFamily.PHONE_APP_LIST, name="Target",
+        columns=["criticality", "package_name", "play_category"],
+        order=["criticality", "play_category", "package_name"],
+        widths={"play_category": 271, "package_name": 381},
+    )
+    other = _add_view(
+        settings, CustomLayoutFamily.PHONE_APP_LIST, name="Displayed",
+        columns=["criticality", "package_name", "play_title"],
+        widths={"package_name": 222},
+    )
+    settings["view_preset"] = "Custom"
+    window = create_window()
+    before = deepcopy(settings["custom_view_layouts"])
+    monkeypatch.setattr(QInputDialog, "getText", lambda *_args, **_kwargs: ("Renamed", True))
+
+    def edit(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "SavedViewCombo")
+        assert combo is not None
+        combo.setCurrentIndex(combo.findData(target))
+        notes = dialog.findChild(QCheckBox, "CustomColumnCheck_notes")
+        assert notes is not None and not notes.isChecked()
+        notes.setChecked(True)
+        if rename:
+            button = dialog.findChild(QPushButton, "RenameNamedViewButton")
+            assert button is not None
+            button.click()
+            assert notes.isChecked()
+        assert settings["custom_view_layouts"] == before
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", edit)
+    window._show_display_settings()
+    active = named_custom_views.active_view(settings["custom_view_layouts"], "phone_app_list")
+    assert active is not None and active["id"] == target
+    assert "notes" in active["columns"]
+    assert active["order"][:3] == ["criticality", "play_category", "package_name"]
+    assert active["widths"]["play_category"] == 271
+    assert active["widths"]["package_name"] == 381
+    assert window.table.columnWidth(window.model.columns.index("play_category")) == 271
+    assert _visible(window)[:3] == ["criticality", "play_category", "package_name"]
+    assert window._custom_view_by_id(settings, other) == window._custom_view_by_id(
+        {"custom_view_layouts": before}, other
+    )
+
+
+@pytest.mark.parametrize("preset", ["Custom", "Technical"])
+@pytest.mark.parametrize("delete_active", [False, True])
+def test_editor_delete_falls_back_only_when_removing_active_id(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    preset: str,
+    delete_active: bool,
+) -> None:
+    settings, create_window = window_store
+    inactive = _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="Inactive",
+                         columns=["criticality", "package_name", "play_title"])
+    active = _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="Active",
+                       columns=["criticality", "package_name", "play_category"])
+    _add_view(settings, CustomLayoutFamily.LOCAL_APK, name="APK",
+              columns=["criticality", "package_name", "local_apk_file_name"])
+    settings["view_preset"] = preset
+    window = create_window()
+    sibling = deepcopy(settings["custom_view_layouts"]["local_apk"])
+    monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+    def delete(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "SavedViewCombo")
+        assert combo is not None
+        combo.setCurrentIndex(combo.findData(active if delete_active else inactive))
+        button = dialog.findChild(QPushButton, "DeleteNamedViewButton")
+        assert button is not None
+        button.click()
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", delete)
+    window._show_display_settings()
+    assert settings["custom_view_layouts"]["local_apk"] == sibling
+    assert _active_id(settings, CustomLayoutFamily.PHONE_APP_LIST) == ("" if delete_active else active)
+    assert settings["view_preset"] == ("Basic" if delete_active else preset)
+    if delete_active:
+        assert _builtin(window, "Basic").isChecked()
+
+
+@pytest.mark.parametrize("dismissal", ["cancel", "close"])
+@pytest.mark.parametrize("operation", ["create", "rename", "delete", "select"])
+def test_editor_draft_mutations_cancel_without_any_settings_write(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    dismissal: str,
+    operation: str,
+) -> None:
+    settings, create_window = window_store
+    first = _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="First",
+                      columns=["criticality", "package_name", "play_title"])
+    _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="Second",
+              columns=["criticality", "package_name", "play_category"])
+    settings["view_preset"] = "Custom"
+    window = create_window()
+    before = deepcopy(settings)
+    monkeypatch.setattr(state, "save_settings", lambda _values: pytest.fail("Draft persisted"))
+    monkeypatch.setattr(QInputDialog, "getText", lambda *_args, **_kwargs: ("Draft", True))
+    monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+    def dismiss(dialog: QDialog) -> int:
+        combo = dialog.findChild(QComboBox, "SavedViewCombo")
+        assert combo is not None
+        combo.setCurrentIndex(combo.findData(first))
+        notes = dialog.findChild(QCheckBox, "CustomColumnCheck_notes")
+        assert notes is not None
+        notes.setChecked(True)
+        icons = dialog.findChild(QCheckBox, "ShowAppIconsCheck")
+        assert icons is not None
+        icons.setChecked(not icons.isChecked())
+        if operation != "select":
+            button = dialog.findChild(QPushButton, {
+                "create": "NewNamedViewButton", "rename": "RenameNamedViewButton", "delete": "DeleteNamedViewButton",
+            }[operation])
+            assert button is not None
+            button.click()
+        if dismissal == "close":
+            dialog.close()
+            return dialog.result()
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", dismiss)
+    window._show_display_settings()
+    assert settings == before
+
+
+def test_create_then_delete_draft_does_not_clear_persisted_active_view(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings, create_window = window_store
+    active = _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="Active",
+                       columns=["criticality", "package_name", "play_title"])
+    settings["view_preset"] = "Custom"
+    window = create_window()
+    before = deepcopy(settings["custom_view_layouts"])
+    monkeypatch.setattr(QInputDialog, "getText", lambda *_args, **_kwargs: ("Draft", True))
+    monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+    def edit(dialog: QDialog) -> int:
+        for name in ("NewNamedViewButton", "DeleteNamedViewButton"):
+            button = dialog.findChild(QPushButton, name)
+            assert button is not None
+            button.click()
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(QDialog, "exec", edit)
+    window._show_display_settings()
+    assert settings["custom_view_layouts"] == before
+    assert settings["view_preset"] == "Custom"
+    assert _active_id(settings, CustomLayoutFamily.PHONE_APP_LIST) == active
+
+
+@pytest.mark.parametrize("family,source", [
+    (CustomLayoutFamily.PHONE_APP_LIST, "device"), (CustomLayoutFamily.LOCAL_APK, "local_apk"),
+])
+def test_editor_three_view_limit_is_family_local(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    monkeypatch: pytest.MonkeyPatch,
+    family: CustomLayoutFamily,
+    source: str,
+) -> None:
+    settings, create_window = window_store
+    for index in range(3):
+        _add_view(settings, family, name=f"View {index + 1}", columns=["criticality", "package_name", "play_title"])
+    window = create_window()
+    window.source_mode = source
+    window._apply_established_source_defaults()
+
+    def inspect(dialog: QDialog) -> int:
+        button = dialog.findChild(QPushButton, "NewNamedViewButton")
+        combo = dialog.findChild(QComboBox, "SavedViewCombo")
+        assert button is not None and not button.isEnabled()
+        assert combo is not None and combo.count() == 4
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect)
+    window._show_display_settings()
+    window.source_mode = "local_apk" if source == "device" else "device"
+    window._apply_established_source_defaults()
+
+    def inspect_sibling(dialog: QDialog) -> int:
+        button = dialog.findChild(QPushButton, "NewNamedViewButton")
+        combo = dialog.findChild(QComboBox, "SavedViewCombo")
+        assert button is not None and button.isEnabled()
+        assert combo is not None and combo.count() == 1
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_sibling)
+    window._show_display_settings()
+
+
+def test_local_header_capture_and_reset_preserve_sibling_and_exclude_contextual_columns(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+) -> None:
+    settings, create_window = window_store
+    _add_view(settings, CustomLayoutFamily.PHONE_APP_LIST, name="Phone",
+              columns=["criticality", "package_name", "play_title"])
+    local_id = _add_view(settings, CustomLayoutFamily.LOCAL_APK, name="APK",
+                         columns=["criticality", "package_name", "local_apk_file_name"])
+    settings["view_preset"] = "Custom"
+    window = create_window()
+    window.source_mode = "local_apk"
+    window._apply_established_source_defaults()
+    phone = deepcopy(settings["custom_view_layouts"]["phone_app_list"])
+    filename = window.model.columns.index("local_apk_file_name")
+    header = window.table.horizontalHeader()
+    header.moveSection(header.visualIndex(filename), header.visualIndex(window.model.columns.index("package_name")))
+    window.table.setColumnWidth(filename, 387)
+    active = named_custom_views.active_view(settings["custom_view_layouts"], "local_apk")
+    assert active is not None and active["id"] == local_id
+    assert active["widths"]["local_apk_file_name"] == 387
+    assert "local_apk_version_comparison" not in active["columns"] + active["order"]
+    assert "local_apk_version_comparison" not in active["widths"]
+    window._reset_table_layout()
+    assert settings["custom_view_layouts"]["phone_app_list"] == phone
+    reset = named_custom_views.active_view(settings["custom_view_layouts"], "local_apk")
+    assert reset is not None and reset["id"] == local_id
+    assert reset["widths"]["local_apk_file_name"] != 387
+
+
+def test_named_layout_disk_round_trip_preserves_uuid_and_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(state, "settings_path", lambda: tmp_path / "settings.json")
+    settings = state.load_settings()
+    view_id = _add_view(settings, CustomLayoutFamily.LOCAL_APK, name="APK",
+                        columns=["criticality", "package_name", "play_category"],
+                        order=["play_category", "criticality", "package_name"], widths={"play_category": 201})
+    settings["custom_view_layouts_migrated_v1"] = True
+    state.save_settings(settings)
+    reloaded = state.load_settings()
+    assert reloaded["custom_view_layouts"] == settings["custom_view_layouts"]
+    assert _active_id(reloaded, CustomLayoutFamily.LOCAL_APK) == view_id

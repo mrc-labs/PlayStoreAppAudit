@@ -13,7 +13,7 @@ import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import named_custom_views
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.smart_queries import SmartQueryDialog
 

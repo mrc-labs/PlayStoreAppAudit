@@ -26,6 +26,7 @@ import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.main_window as main_window_ui
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
     LocalArtifactFailureKind,
@@ -37,7 +38,7 @@ from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, A
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.connected_device_profile import ConnectedDeviceProfile
 from playstore_app_audit.services.local_artifact_store import LocalArtifactStoreService
-from playstore_app_audit.ui import details_panel, named_custom_views, schema
+from playstore_app_audit.ui import details_panel, schema
 from playstore_app_audit.ui.base_window import EXPORT_FIELDS
 from playstore_app_audit.ui.main_window import MainWindow
 
