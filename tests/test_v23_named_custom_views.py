@@ -251,7 +251,6 @@ def test_overlong_names_and_overfull_or_duplicate_persisted_state_fail_conservat
         order=order,
         widths=widths,
     )
-    records = named_custom_views.view_records(layouts, "phone_app_list")
     duplicate = deepcopy(layouts)
     family = duplicate["phone_app_list"]
     assert isinstance(family, dict)
