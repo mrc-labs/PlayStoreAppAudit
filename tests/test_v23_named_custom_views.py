@@ -227,3 +227,55 @@ def test_selecting_views_is_family_local() -> None:
     layouts = named_custom_views.select_view(layouts, "phone_app_list", phone_b)
     assert named_custom_views.active_view(layouts, "phone_app_list")["id"] == phone_b
     assert named_custom_views.active_view(layouts, "local_apk")["id"] == apk
+
+
+def test_overlong_names_and_overfull_or_duplicate_persisted_state_fail_conservatively() -> None:
+    columns, order, widths = _payload()
+    layouts = _layout()
+
+    with pytest.raises(named_custom_views.NamedViewError):
+        named_custom_views.create_view(
+            layouts,
+            "phone_app_list",
+            name="x" * (named_custom_views.MAX_NAME_LENGTH + 1),
+            columns=columns,
+            order=order,
+            widths=widths,
+        )
+
+    layouts, _ = named_custom_views.create_view(
+        layouts,
+        "phone_app_list",
+        name="One",
+        columns=columns,
+        order=order,
+        widths=widths,
+    )
+    records = named_custom_views.view_records(layouts, "phone_app_list")
+    duplicate = deepcopy(layouts)
+    family = duplicate["phone_app_list"]
+    assert isinstance(family, dict)
+    views = family["views"]
+    assert isinstance(views, list)
+    views.append(deepcopy(views[0]))
+    assert named_custom_views.view_records(duplicate, "phone_app_list") == []
+
+    overfull = named_custom_views.empty_layouts()
+    for index in range(named_custom_views.MAX_VIEWS_PER_FAMILY):
+        overfull, _ = named_custom_views.create_view(
+            overfull,
+            "phone_app_list",
+            name=f"View {index + 1}",
+            columns=columns,
+            order=order,
+            widths=widths,
+        )
+    phone = overfull["phone_app_list"]
+    assert isinstance(phone, dict)
+    stored = phone["views"]
+    assert isinstance(stored, list)
+    extra = deepcopy(stored[-1])
+    extra["id"] = "12345678-1234-4234-8234-123456789abc"
+    extra["name"] = "View 4"
+    stored.append(extra)
+    assert named_custom_views.view_records(overfull, "phone_app_list") == []
