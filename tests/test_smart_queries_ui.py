@@ -13,6 +13,7 @@ import playstore_app_audit.services.smart_queries as smart_queries
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.audit_profiles as audit_profiles_ui
 import playstore_app_audit.ui.compact_window as compact_ui
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.smart_queries import SmartQueryDialog
 
@@ -132,6 +133,15 @@ def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
             "custom_view_columns": ["criticality"],
         },
     }
+    layouts, custom_view_id = named_custom_views.create_view(
+        named_custom_views.empty_layouts(),
+        "phone_app_list",
+        name="Current review",
+        columns=["criticality", "package_name", "play_title"],
+        order=["package_name", "play_title", "criticality"],
+        widths={"package_name": 319, "play_title": 281},
+        activate=True,
+    )
     settings.update(
         {
             "audit_profiles": {"Existing phone audit": legacy_profile},
@@ -140,29 +150,15 @@ def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
             "custom_view_columns": ["criticality", "package_name", "play_title"],
             "custom_view_order": ["package_name", "play_title", "criticality"],
             "custom_view_widths": {"package_name": 319, "play_title": 281},
-                "custom_view_layouts_migrated_v1": True,
-                "custom_view_layouts": {
-                    "schema_version": 1,
-                    "phone_app_list": {
-                        "exists": True,
-                        "columns": ["criticality", "package_name", "play_title"],
-                        "order": ["package_name", "play_title", "criticality"],
-                        "widths": {"package_name": 319, "play_title": 281},
-                    },
-                    "local_apk": {
-                        "exists": False,
-                        "columns": [],
-                        "order": [],
-                        "widths": {},
-                    },
-                },
+            "custom_view_layouts_migrated_v1": True,
+            "custom_view_layouts": layouts,
             "details_panel_position": "hidden",
             "show_app_icons": False,
             "date_format": "DD.MM.YYYY",
         }
     )
     window.user_settings.update(settings)
-    window._set_view_preset("Custom")
+    assert window._select_custom_view(custom_view_id)
     window._set_details_panel_position("hidden")
     window.search_edit.setText("current-search")
     window._set_criticality_filter("orange")
@@ -202,7 +198,9 @@ def test_legacy_audit_preset_is_visible_but_applies_execution_state_only(
     assert window._active_smart_query is query
     assert window.proxy.smart_query is query
     assert next(
-        action for action in window.view_preset_actions if action.data() == "Custom"
+        action
+        for action in window.view_preset_actions
+        if str(action.property("customViewId")) == custom_view_id
     ).isChecked()
 
     monkeypatch.setattr(

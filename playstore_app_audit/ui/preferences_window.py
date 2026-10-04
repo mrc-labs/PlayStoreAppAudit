@@ -54,6 +54,7 @@ import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
 import playstore_app_audit.ui.theme as theme_ui
 from app_icon import ensure_runtime_icon
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.services.store_freshness import (
     MAX_THRESHOLD_DAYS,
     StoreFreshnessThresholds,
@@ -448,46 +449,41 @@ class PreferencesWindow(table_ui.TableWindow):
         group = getattr(self, "_view_action_group", None)
         if not isinstance(group, QActionGroup):
             return
+        settings = state.load_settings()
         effective_name = name
-        if name == "Custom" and not self._has_custom_table_layout(
-            state.load_settings()
-        ):
+        active_view_id = self._active_custom_view_id(settings)
+        if name == "Custom" and not active_view_id:
             effective_name = "Basic"
-        active_family = custom_layout_family(self.source_mode)
         for action in group.actions():
-            action_family = action.property("customLayoutFamily")
+            view_id = str(action.property("customViewId") or "")
             if effective_name == "Custom":
                 action.setChecked(
                     action.data() == "Custom"
-                    and action_family == active_family.value
+                    and bool(view_id)
+                    and view_id == active_view_id
                 )
             else:
-                action.setChecked(
-                    action_family is None and action.data() == effective_name
-                )
+                action.setChecked(not view_id and action.data() == effective_name)
+
 
     def _sync_custom_preset_availability(self) -> None:
-        active_family = custom_layout_family(self.source_mode)
-        actions = list(getattr(self, "view_preset_actions", []) or [])
-        group = getattr(self, "_view_action_group", None)
-        if isinstance(group, QActionGroup):
-            actions.extend(action for action in group.actions() if action not in actions)
-        for action in actions:
-            raw_family = action.property("customLayoutFamily")
-            if raw_family is None:
-                continue
-            enabled = raw_family == active_family.value
-            action.setEnabled(enabled)
-            action.setToolTip(
-                "Edit or restore this source family's independent Custom layout."
-                if enabled
-                else "Available when this source family is active."
-            )
-            if not enabled:
-                action.setChecked(False)
+        rebuild = getattr(self, "_rebuild_named_view_actions", None)
+        if callable(rebuild):
+            rebuild()
+            return
+        current = str(state.load_settings().get("view_preset") or "Basic")
+        self._sync_view_preset_action(current)
+
 
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
+        family = custom_layout_family(self.source_mode)
+        persisted_layouts = self.user_settings.get("custom_view_layouts")
+        draft_layouts = persisted_layouts
+        draft_dirty = False
+        initial_preset = str(self.user_settings.get("view_preset") or "Basic")
+        initial_active_id = self._active_custom_view_id(self.user_settings, family)
+
         dialog = QDialog(self)
         dialog.setObjectName("DisplaySettingsDialog")
         dialog.setWindowTitle("Customize View")
@@ -504,6 +500,37 @@ class PreferencesWindow(table_ui.TableWindow):
                 "Choose how Play Store results are presented without changing audit behaviour."
             )
         )
+
+        saved_group = QGroupBox("Named Custom View")
+        saved_group.setObjectName("NamedCustomViewGroup")
+        saved_layout = QHBoxLayout(saved_group)
+        saved_view_combo = QComboBox()
+        saved_view_combo.setObjectName("SavedViewCombo")
+        saved_view_combo.setMinimumWidth(220)
+        new_view_button = QPushButton("New…")
+        new_view_button.setObjectName("NewNamedViewButton")
+        rename_view_button = QPushButton("Rename…")
+        rename_view_button.setObjectName("RenameNamedViewButton")
+        delete_view_button = QPushButton("Delete")
+        delete_view_button.setObjectName("DeleteNamedViewButton")
+        saved_layout.addWidget(QLabel("Saved view"))
+        saved_layout.addWidget(saved_view_combo, 1)
+        saved_layout.addWidget(new_view_button)
+        saved_layout.addWidget(rename_view_button)
+        saved_layout.addWidget(delete_view_button)
+        root.addWidget(saved_group)
+
+        family_label = (
+            "Phone / App List"
+            if family.value == "phone_app_list"
+            else "Local APK"
+        )
+        family_note = self._settings_note(
+            f"{family_label} keeps its own named views. Up to "
+            f"{named_custom_views.MAX_VIEWS_PER_FAMILY} can be saved for this source family."
+        )
+        family_note.setObjectName("NamedCustomViewFamilyNote")
+        root.addWidget(family_note)
 
         show_icons = QCheckBox("Show Play Store App Icons")
         show_icons.setObjectName("ShowAppIconsCheck")
@@ -610,7 +637,7 @@ class PreferencesWindow(table_ui.TableWindow):
         custom_heading.setFont(custom_font)
         root.addWidget(custom_heading)
         custom_note = self._settings_note(
-            "Choose the additional columns to include in this Custom view."
+            "Choose the additional columns to include in the selected named view."
         )
         custom_note.setObjectName("CustomColumnsNote")
         root.addWidget(custom_note)
@@ -636,36 +663,8 @@ class PreferencesWindow(table_ui.TableWindow):
         advanced_layout = QVBoxLayout(advanced_group)
         groups_layout.addWidget(common_group, 1)
         groups_layout.addWidget(advanced_group, 1)
-        custom_entry = self._custom_layout_entry(self.user_settings)
-        source_defaults = visible_columns(
-            "Basic",
-            self.source_mode,
-            compare_previous=state.store_history_enabled(self.user_settings),
-            device_inventory_history=state.device_inventory_history_enabled(
-                self.user_settings
-            ),
-            health_score_enabled=bool(
-                self.user_settings.get("health_score_enabled", False)
-            ),
-        )
-        stored_custom = (
-            list(custom_entry[0]) if custom_entry is not None else source_defaults
-        )
-        ordinary_stored_custom = [
-            column for column in stored_custom if column not in CUSTOM_CONTEXTUAL_COLUMNS
-        ]
-        current_preset = str(self.user_settings.get("view_preset") or "Basic")
-        initial_columns = (
-            list(ordinary_stored_custom)
-            if current_preset == "Custom"
-            else [
-                column
-                for column in self._visible_column_order()
-                if column not in CUSTOM_CONTEXTUAL_COLUMNS
-            ]
-        )
+
         applicable_source = custom_source_user_columns(self.source_mode)
-        configured = set(initial_columns).intersection(applicable_source)
         custom_checks: dict[str, QCheckBox] = {}
         common_columns, advanced_columns = custom_column_groups(self.source_mode)
         common_set = set(common_columns)
@@ -673,13 +672,212 @@ class PreferencesWindow(table_ui.TableWindow):
             label = base_ui.COLUMN_LABELS.get(key, key)
             check = QCheckBox(label)
             check.setObjectName(f"CustomColumnCheck_{key}")
-            check.setChecked(key in configured)
             custom_checks[key] = check
             (common_layout if key in common_set else advanced_layout).addWidget(check)
         common_layout.addStretch(1)
         advanced_layout.addStretch(1)
         scroll.setWidget(columns_host)
         root.addWidget(scroll, 1)
+
+        current_visible = [
+            column
+            for column in self._visible_column_order()
+            if column not in CUSTOM_CONTEXTUAL_COLUMNS
+        ]
+
+        def draft_settings() -> dict[str, object]:
+            values = dict(self.user_settings)
+            values["custom_view_layouts"] = draft_layouts
+            return values
+
+        def draft_views() -> list[dict[str, object]]:
+            return self._custom_view_records(draft_settings(), family)
+
+        def selected_view_id() -> str:
+            return str(saved_view_combo.currentData() or "")
+
+        def set_checks(columns: list[str]) -> None:
+            selected = set(columns).intersection(applicable_source)
+            for key, check in custom_checks.items():
+                check.setChecked(key in selected)
+
+        def refresh_combo(selected_id: str = "") -> None:
+            saved_view_combo.blockSignals(True)
+            saved_view_combo.clear()
+            saved_view_combo.addItem("New view…", "")
+            for view in draft_views():
+                saved_view_combo.addItem(str(view.get("name") or "Custom"), str(view.get("id") or ""))
+            index = saved_view_combo.findData(selected_id)
+            saved_view_combo.setCurrentIndex(index if index >= 0 else 0)
+            saved_view_combo.blockSignals(False)
+            has_selection = bool(saved_view_combo.currentData())
+            rename_view_button.setEnabled(has_selection)
+            delete_view_button.setEnabled(has_selection)
+            new_view_button.setEnabled(
+                named_custom_views.is_supported(draft_layouts)
+                and len(draft_views()) < named_custom_views.MAX_VIEWS_PER_FAMILY
+            )
+
+        def selected_view() -> dict[str, object] | None:
+            view_id = selected_view_id()
+            return self._custom_view_by_id(draft_settings(), view_id, family) if view_id else None
+
+        def load_selected_view() -> None:
+            view = selected_view()
+            columns = list(view["columns"]) if view is not None else current_visible
+            set_checks(columns)
+            has_selection = view is not None
+            rename_view_button.setEnabled(has_selection)
+            delete_view_button.setEnabled(has_selection)
+
+        def editor_payload(
+            existing_view: dict[str, object] | None,
+        ) -> tuple[list[str], list[str], dict[str, int]]:
+            custom_columns = ["criticality", "package_name"] + [
+                key for key, check in custom_checks.items() if check.isChecked()
+            ]
+            custom_columns = self._normalise_custom_columns(
+                list(dict.fromkeys(custom_columns))
+            ) or ["criticality", "package_name"]
+            _visible, live_order, live_widths, _encoded = self._current_table_layout()
+            applicable_family = custom_family_user_columns(family)
+            live_order = [
+                column
+                for column in live_order
+                if column not in CUSTOM_CONTEXTUAL_COLUMNS
+                and column in applicable_family
+            ]
+            existing_columns = list(existing_view["columns"]) if existing_view is not None else []
+            existing_order = list(existing_view["order"]) if existing_view is not None else []
+            stored_widths = dict(existing_view["widths"]) if existing_view is not None else {}
+            retained_columns = [
+                column
+                for column in existing_columns
+                if column not in applicable_source
+            ]
+            selected_columns = set(retained_columns) | set(custom_columns)
+            family_order = list(
+                dict.fromkeys(
+                    (existing_order if existing_view is not None else live_order)
+                    + [
+                        column
+                        for column in self.model.columns
+                        if column in applicable_family
+                    ]
+                )
+            )
+            family_columns = [
+                column for column in family_order if column in selected_columns
+            ]
+            preserved_widths = {
+                column: stored_widths.get(column, table_layout.default_column_width(self.table, column))
+                if existing_view is not None
+                else live_widths.get(column, table_layout.default_column_width(self.table, column))
+                for column in self.model.columns
+                if column in applicable_family
+            }
+            return family_columns, family_order, self._normalise_custom_widths(preserved_widths)
+
+        def new_view() -> None:
+            nonlocal draft_layouts, draft_dirty
+            if not named_custom_views.is_supported(draft_layouts):
+                return
+            if len(draft_views()) >= named_custom_views.MAX_VIEWS_PER_FAMILY:
+                QMessageBox.information(
+                    dialog,
+                    "Named Custom Views",
+                    f"You can save up to {named_custom_views.MAX_VIEWS_PER_FAMILY} views for this source family.",
+                )
+                return
+            name, ok = QInputDialog.getText(dialog, "New Custom View", "View name")
+            if not ok:
+                return
+            columns, order, widths = editor_payload(selected_view())
+            try:
+                draft_layouts, view_id = named_custom_views.create_view(
+                    draft_layouts,
+                    family.value,
+                    name=name,
+                    columns=columns,
+                    order=order,
+                    widths=widths,
+                    activate=False,
+                )
+            except named_custom_views.NamedViewError as exc:
+                QMessageBox.warning(dialog, "Named Custom Views", str(exc))
+                return
+            draft_dirty = True
+            refresh_combo(view_id)
+            load_selected_view()
+
+        def rename_view() -> None:
+            nonlocal draft_layouts, draft_dirty
+            view = selected_view()
+            if view is None:
+                return
+            name, ok = QInputDialog.getText(
+                dialog,
+                "Rename Custom View",
+                "View name",
+                text=str(view.get("name") or ""),
+            )
+            if not ok:
+                return
+            try:
+                draft_layouts = named_custom_views.rename_view(
+                    draft_layouts,
+                    family.value,
+                    str(view.get("id") or ""),
+                    name,
+                )
+            except named_custom_views.NamedViewError as exc:
+                QMessageBox.warning(dialog, "Named Custom Views", str(exc))
+                return
+            draft_dirty = True
+            refresh_combo(str(view.get("id") or ""))
+
+        def delete_view() -> None:
+            nonlocal draft_layouts, draft_dirty
+            view = selected_view()
+            if view is None:
+                return
+            if (
+                QMessageBox.question(
+                    dialog,
+                    "Delete Custom View",
+                    f'Delete "{view.get("name")}"?',
+                )
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+            try:
+                draft_layouts, _was_active = named_custom_views.delete_view(
+                    draft_layouts,
+                    family.value,
+                    str(view.get("id") or ""),
+                )
+            except named_custom_views.NamedViewError as exc:
+                QMessageBox.warning(dialog, "Named Custom Views", str(exc))
+                return
+            draft_dirty = True
+            refresh_combo("")
+            load_selected_view()
+
+        if named_custom_views.is_supported(draft_layouts):
+            initial_view_id = initial_active_id if initial_preset == "Custom" else ""
+            refresh_combo(initial_view_id)
+        else:
+            saved_view_combo.addItem("Unavailable", "")
+            saved_view_combo.setEnabled(False)
+            new_view_button.setEnabled(False)
+            rename_view_button.setEnabled(False)
+            delete_view_button.setEnabled(False)
+
+        load_selected_view()
+        saved_view_combo.currentIndexChanged.connect(lambda _index: load_selected_view())
+        new_view_button.clicked.connect(new_view)
+        rename_view_button.clicked.connect(rename_view)
+        delete_view_button.clicked.connect(delete_view)
 
         bottom = QHBoxLayout()
         reset = QPushButton("Reset to Defaults")
@@ -734,86 +932,51 @@ class PreferencesWindow(table_ui.TableWindow):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        custom_columns = ["criticality", "package_name"] + [
-            key for key, check in custom_checks.items() if check.isChecked()
-        ]
-        custom_columns = self._normalise_custom_columns(
-            list(dict.fromkeys(custom_columns))
-        ) or ["criticality", "package_name"]
-        columns_changed = set(custom_columns) != configured
-        custom_exists = self._has_custom_table_layout(self.user_settings)
-        legacy_contextual_columns = bool(
-            set(stored_custom).intersection(CUSTOM_CONTEXTUAL_COLUMNS)
-        )
-        save_custom = columns_changed or not custom_exists or legacy_contextual_columns
         updates: dict[str, object] = {
             "show_app_icons": show_icons.isChecked(),
             "date_format": date_format.currentText(),
         }
+        selected_id = selected_view_id()
+        selected = selected_view()
         custom_saved = False
-        if save_custom:
-            _visible, live_order, live_widths, encoded = self._current_table_layout()
-            family = custom_layout_family(self.source_mode)
-            applicable_family = custom_family_user_columns(family)
-            live_order = [
-                column
-                for column in live_order
-                if column not in CUSTOM_CONTEXTUAL_COLUMNS
-                and column in applicable_family
-            ]
-            existing_columns = custom_entry[0] if custom_entry is not None else []
-            existing_order = custom_entry[1] if custom_entry is not None else []
-            stored_widths = custom_entry[2] if custom_entry is not None else {}
-            retained_columns = [
-                column
-                for column in existing_columns
-                if column not in applicable_source
-            ]
-            selected_columns = set(retained_columns) | set(custom_columns)
-            family_order = list(
-                dict.fromkeys(
-                    live_order
-                    + existing_order
-                    + [
-                        column
-                        for column in self.model.columns
-                        if column in applicable_family
-                    ]
+        if selected_id and selected is not None and named_custom_views.is_supported(draft_layouts):
+            columns, order, widths = editor_payload(selected)
+            try:
+                draft_layouts = named_custom_views.update_view(
+                    draft_layouts,
+                    family.value,
+                    selected_id,
+                    columns=columns,
+                    order=order,
+                    widths=widths,
                 )
+                draft_layouts = named_custom_views.select_view(
+                    draft_layouts, family.value, selected_id
+                )
+            except named_custom_views.NamedViewError as exc:
+                QMessageBox.warning(dialog, "Named Custom Views", str(exc))
+                return
+            draft_dirty = True
+            updates.update(
+                {
+                    "custom_view_layouts": draft_layouts,
+                    "custom_view_layouts_migrated_v1": True,
+                    "view_preset": "Custom",
+                }
             )
-            family_columns = [
-                column for column in family_order if column in selected_columns
-            ]
-            preserved_widths = {
-                column: (
-                    live_widths[column]
-                    if live_widths.get(column, 0) >= 20
-                    else stored_widths.get(
-                        column,
-                        table_layout.default_column_width(self.table, column),
-                    )
-                )
-                for column in self.model.columns
-                if column in applicable_family
-            }
-            custom_saved = self._store_custom_layout_entry(
-                self.user_settings,
-                family,
-                columns=family_columns,
-                order=family_order,
-                widths=preserved_widths,
+            custom_saved = True
+        elif draft_dirty and named_custom_views.is_supported(draft_layouts):
+            updates["custom_view_layouts"] = draft_layouts
+            persisted_active_still_exists = named_custom_views.active_view(
+                draft_layouts, family.value
             )
-            if custom_saved:
-                updates.update(
-                    {
-                        "custom_view_columns": family_columns,
-                        "custom_view_exists": True,
-                        "custom_view_order": family_order,
-                        "custom_view_widths": preserved_widths,
-                        "qt_header_state": encoded,
-                        "view_preset": "Custom",
-                    }
-                )
+            if (
+                initial_active_id
+                and persisted_active_still_exists is None
+            ):
+                updates["view_preset"] = "Basic"
+            updates["custom_view_layouts_migrated_v1"] = True
+
         self.user_settings.update(updates)
         self.user_settings = state.save_settings(self.user_settings)
         if hasattr(self.model, "set_app_icons_enabled"):
@@ -824,15 +987,18 @@ class PreferencesWindow(table_ui.TableWindow):
                     )
                 )
             )
-        if save_custom and custom_saved:
+
+        if custom_saved:
+            self._restore_custom_table_layout()
             self._sync_view_preset_action("Custom")
-            self._sync_custom_preset_availability()
             self._apply_column_visibility(reset_order=False)
-        else:
-            self._sync_custom_preset_availability()
+        elif updates.get("view_preset") == "Basic":
+            self._apply_column_visibility(reset_order=True)
+        self._sync_custom_preset_availability()
         self._refresh_table_presentation()
         self._update_summary()
         self._set_presentation_status("Customize View settings saved")
+
 
     def _show_advanced_settings(self) -> None:
         self.user_settings = state.load_settings()

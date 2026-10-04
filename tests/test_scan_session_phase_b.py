@@ -22,6 +22,7 @@ import playstore_app_audit.ui.column_presets as column_presets
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.device_window as device_ui
 import playstore_app_audit.ui.main_window as main_ui
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.domain.models import AuditRunOutcome, AuditRunResult, AuditRunState
 from playstore_app_audit.services.audit_engine import AuditConfig
 from playstore_app_audit.services.connected_device_profile import (
@@ -363,24 +364,19 @@ def test_device_source_transition_preserves_custom_user_column_order(
         for index in range(header.count())
         if window.model.columns[header.logicalIndex(index)] in applicable
     ]
+    layouts, _view_id = named_custom_views.create_view(
+        named_custom_views.empty_layouts(),
+        "phone_app_list",
+        name="Phone order",
+        columns=["criticality", "package_name", "play_title"],
+        order=order_names,
+        widths={},
+        activate=True,
+    )
     settings = {
         "view_preset": "Custom",
         "custom_view_layouts_migrated_v1": True,
-        "custom_view_layouts": {
-            "schema_version": 1,
-            "phone_app_list": {
-                "exists": True,
-                "columns": ["criticality", "package_name", "play_title"],
-                "order": order_names,
-                "widths": {},
-            },
-            "local_apk": {
-                "exists": False,
-                "columns": [],
-                "order": [],
-                "widths": {},
-            },
-        },
+        "custom_view_layouts": layouts,
         "recent_sources": [],
     }
     monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
@@ -396,7 +392,6 @@ def test_device_source_transition_preserves_custom_user_column_order(
     ]
     assert order_after == order_before
     assert header.sortIndicatorOrder() == Qt.SortOrder.AscendingOrder
-
 
 def _run_worker(
     window: MainWindow,

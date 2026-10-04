@@ -16,7 +16,7 @@ class CustomLayoutFamily(StrEnum):
 
 
 CUSTOM_LAYOUT_FAMILIES = tuple(CustomLayoutFamily)
-CUSTOM_LAYOUTS_SCHEMA_VERSION = 1
+CUSTOM_LAYOUTS_SCHEMA_VERSION = 2
 
 BUILTIN_PRESETS = ("Basic", "Source Details", "Technical")
 CUSTOM_FIXED_COLUMNS = frozenset({"criticality", "package_name"})

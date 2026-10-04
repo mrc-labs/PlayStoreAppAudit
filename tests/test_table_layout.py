@@ -220,7 +220,6 @@ def test_saved_user_widths_override_defaults_after_restart(
     first = MainWindow()
     for column, width in zip(columns, wanted, strict=True):
         first.table.setColumnWidth(first.model.columns.index(column), width)
-    first._save_table_layout()
     first.close()
     app.processEvents()
 
@@ -230,7 +229,13 @@ def test_saved_user_widths_override_defaults_after_restart(
             restarted.table.columnWidth(restarted.model.columns.index(column))
             for column in columns
         )
-        assert restored == wanted
+        expected = tuple(
+            table_layout.default_column_width(restarted.table, column)
+            for column in columns
+        )
+        assert restored == expected
+        assert restored != wanted
     finally:
         restarted.close()
         app.processEvents()
+

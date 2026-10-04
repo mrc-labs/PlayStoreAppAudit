@@ -26,6 +26,7 @@ import playstore_app_audit.services.result_json as result_json
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.main_window as main_window_ui
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.domain.local_artifacts import (
     LocalArtifact,
     LocalArtifactFailureKind,
@@ -784,40 +785,35 @@ def test_technical_view_is_source_aware(
 def test_custom_view_can_include_location(
     window: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        state,
-        "load_settings",
-        lambda: {
-            "view_preset": "Custom",
-            "custom_view_layouts_migrated_v1": True,
-            "custom_view_layouts": {
-                "schema_version": 1,
-                "phone_app_list": {
-                    "exists": False,
-                    "columns": [],
-                    "order": [],
-                    "widths": {},
-                },
-                "local_apk": {
-                    "exists": True,
-                    "columns": [
-                        "criticality",
-                        "package_name",
-                        "local_apk_location",
-                    ],
-                    "order": [
-                        "criticality",
-                        "package_name",
-                        "local_apk_location",
-                    ],
-                    "widths": {},
-                },
-            },
-        },
+    layouts, _view_id = named_custom_views.create_view(
+        named_custom_views.empty_layouts(),
+        "local_apk",
+        name="Location",
+        columns=[
+            "criticality",
+            "package_name",
+            "local_apk_location",
+        ],
+        order=[
+            "criticality",
+            "package_name",
+            "local_apk_location",
+        ],
+        widths={},
+        activate=True,
     )
+    settings = {
+        "view_preset": "Custom",
+        "custom_view_layouts_migrated_v1": True,
+        "custom_view_layouts": layouts,
+    }
+    monkeypatch.setattr(state, "load_settings", lambda: dict(settings))
+    monkeypatch.setattr(compact_ui, "load_settings", lambda: dict(settings))
+    window.user_settings = dict(settings)
     window.source_mode = "local_apk"
-    assert "local_apk_location" in window._visible_column_order()
+    window._apply_established_source_defaults()
 
+    assert "local_apk_location" in window._visible_column_order()
 
 def test_library_entry_points_are_removed_and_global_tooltip_is_exact(window: MainWindow) -> None:
     file_actions = [action.text() for action in window.file_menu.actions()]

@@ -34,13 +34,13 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.device_specific_personal_session as personal_session
 import playstore_app_audit.services.personal_device_library as personal_device_library
-import playstore_app_audit.services.presentation as presentation
 import playstore_app_audit.services.scan_session as scan_sessions
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
 import playstore_app_audit.ui.json_export as json_export_ui
 import playstore_app_audit.ui.preferences_window as preferences_ui
 from playstore_app_audit import __version__
+from playstore_app_audit.domain import named_custom_views
 from playstore_app_audit.services.connected_device_profile import (
     ConnectedDeviceProfile,
     ConnectedDeviceProfileCapture,
@@ -382,7 +382,7 @@ def test_display_and_advanced_settings_have_distinct_hierarchies(
         )
         note = dialog.findChild(QLabel, "CustomColumnsNote")
         assert note is not None
-        assert note.text() == "Choose the additional columns to include in this Custom view."
+        assert note.text() == "Choose the additional columns to include in the selected named view."
         automatic = {
             key: dialog.findChild(QCheckBox, f"AutomaticColumnCheck_{key}")
             for key in (
@@ -568,11 +568,20 @@ def test_display_settings_save_existing_presentation_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     saved: list[dict[str, object]] = []
+    base_settings = dict(window.user_settings)
+    base_settings["custom_view_layouts"] = named_custom_views.empty_layouts()
+    base_settings["custom_view_layouts_migrated_v1"] = True
+    window.user_settings = dict(base_settings)
     monkeypatch.setattr(state, "load_settings", lambda: dict(window.user_settings))
     monkeypatch.setattr(
         state,
         "save_settings",
         lambda values: saved.append(dict(values)) or dict(values),
+    )
+    monkeypatch.setattr(
+        preferences_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("Review", True),
     )
 
     def accept_display(dialog: QDialog) -> int:
@@ -597,6 +606,9 @@ def test_display_settings_save_existing_presentation_keys(
         date_format.setCurrentText("DD/MM/YYYY")
         title_column.setChecked(True)
         technical_column.setChecked(True)
+        new_button = dialog.findChild(QPushButton, "NewNamedViewButton")
+        assert new_button is not None
+        new_button.click()
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", accept_display)
@@ -605,7 +617,11 @@ def test_display_settings_save_existing_presentation_keys(
 
     assert saved[-1]["show_app_icons"] is True
     assert saved[-1]["date_format"] == "DD/MM/YYYY"
-    assert saved[-1]["custom_view_columns"] == [
+    views = named_custom_views.view_records(
+        saved[-1]["custom_view_layouts"], "phone_app_list"
+    )
+    assert [view["name"] for view in views] == ["Review"]
+    assert views[0]["columns"] == [
         "criticality",
         "package_name",
         "play_title",
@@ -613,7 +629,6 @@ def test_display_settings_save_existing_presentation_keys(
     ]
     assert window.model._icons_enabled is True
     assert window.status_label.text() == "Customize View settings saved"
-
 
 def test_display_settings_toggle_columns_with_populated_sorted_table(
     window: MainWindow,
@@ -633,7 +648,8 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
             "view_preset": "Source Details",
             "health_score_enabled": True,
             "show_app_icons": False,
-            "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
+            "custom_view_layouts": named_custom_views.empty_layouts(),
+            "custom_view_layouts_migrated_v1": True,
         }
     )
 
@@ -648,6 +664,11 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     monkeypatch.setattr(state, "save_settings", save_settings)
     monkeypatch.setattr(compact_ui, "load_settings", load_settings)
     monkeypatch.setattr(compact_ui, "save_settings", save_settings)
+    monkeypatch.setattr(
+        preferences_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("Focused", True),
+    )
     window.user_settings = load_settings()
     window.source_mode = "device"
     window._sync_view_preset_action("Source Details")
@@ -707,6 +728,10 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
             if first_dialog:
                 assert check.isChecked()
             check.setChecked(key in desired_fields)
+        if first_dialog:
+            new_button = dialog.findChild(QPushButton, "NewNamedViewButton")
+            assert new_button is not None
+            new_button.click()
         first_dialog = False
         return QDialog.DialogCode.Accepted
 
@@ -732,7 +757,11 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     app.processEvents()
 
     assert all(not window.table.isColumnHidden(window.model.columns.index(key)) for key in fields)
-    assert fields.issubset(set(settings["custom_view_columns"]))
+    active = named_custom_views.active_view(
+        settings["custom_view_layouts"], "phone_app_list"
+    )
+    assert active is not None
+    assert fields.issubset(set(active["columns"]))
     assert window.proxy.rowCount() == 2
     assert window.table.currentIndex().data(Qt.ItemDataRole.UserRole)["package_name"] == selected_package
     assert window.details_panel._row is not None
@@ -742,7 +771,6 @@ def test_display_settings_toggle_columns_with_populated_sorted_table(
     } == original_widths
     assert layout_changes == []
     assert presentation_changes
-
 
 def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     window: MainWindow,
@@ -755,7 +783,8 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
             "view_preset": "Source Details",
             "health_score_enabled": True,
             "show_app_icons": False,
-            "custom_view_columns": list(presentation.DEFAULT_CUSTOM_VIEW_COLUMNS),
+            "custom_view_layouts": named_custom_views.empty_layouts(),
+            "custom_view_layouts_migrated_v1": True,
         }
     )
 
@@ -770,6 +799,11 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     monkeypatch.setattr(state, "save_settings", save_settings)
     monkeypatch.setattr(compact_ui, "load_settings", load_settings)
     monkeypatch.setattr(compact_ui, "save_settings", save_settings)
+    monkeypatch.setattr(
+        preferences_ui.QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("Persisted", True),
+    )
     window.user_settings = load_settings()
     window.source_mode = "device"
     window._sync_view_preset_action("Source Details")
@@ -798,6 +832,9 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
             assert check is not None
             assert check.isChecked()
             check.setChecked(False)
+        new_button = dialog.findChild(QPushButton, "NewNamedViewButton")
+        assert new_button is not None
+        new_button.click()
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", save_display)
@@ -847,7 +884,6 @@ def test_display_settings_restart_keeps_checkboxes_view_and_columns_consistent(
     finally:
         restarted.close()
         app.processEvents()
-
 
 def test_advanced_settings_preserve_display_preferences(
     window: MainWindow,
