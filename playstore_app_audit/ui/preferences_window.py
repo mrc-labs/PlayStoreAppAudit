@@ -49,6 +49,7 @@ import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.alternative_distribution_settings as alternative_settings_ui
 import playstore_app_audit.ui.base_window as base_ui
 import playstore_app_audit.ui.insights_window as insights_ui
+import playstore_app_audit.ui.named_custom_views as named_custom_views
 import playstore_app_audit.ui.rich_help as rich_help
 import playstore_app_audit.ui.table_layout as table_layout
 import playstore_app_audit.ui.table_window as table_ui
@@ -448,43 +449,31 @@ class PreferencesWindow(table_ui.TableWindow):
         group = getattr(self, "_view_action_group", None)
         if not isinstance(group, QActionGroup):
             return
+        settings = state.load_settings()
         effective_name = name
-        if name == "Custom" and not self._has_custom_table_layout(
-            state.load_settings()
-        ):
+        active_view_id = self._active_custom_view_id(settings)
+        if name == "Custom" and not active_view_id:
             effective_name = "Basic"
-        active_family = custom_layout_family(self.source_mode)
         for action in group.actions():
-            action_family = action.property("customLayoutFamily")
+            view_id = str(action.property("customViewId") or "")
             if effective_name == "Custom":
                 action.setChecked(
                     action.data() == "Custom"
-                    and action_family == active_family.value
+                    and bool(view_id)
+                    and view_id == active_view_id
                 )
             else:
-                action.setChecked(
-                    action_family is None and action.data() == effective_name
-                )
+                action.setChecked(not view_id and action.data() == effective_name)
+
 
     def _sync_custom_preset_availability(self) -> None:
-        active_family = custom_layout_family(self.source_mode)
-        actions = list(getattr(self, "view_preset_actions", []) or [])
-        group = getattr(self, "_view_action_group", None)
-        if isinstance(group, QActionGroup):
-            actions.extend(action for action in group.actions() if action not in actions)
-        for action in actions:
-            raw_family = action.property("customLayoutFamily")
-            if raw_family is None:
-                continue
-            enabled = raw_family == active_family.value
-            action.setEnabled(enabled)
-            action.setToolTip(
-                "Edit or restore this source family's independent Custom layout."
-                if enabled
-                else "Available when this source family is active."
-            )
-            if not enabled:
-                action.setChecked(False)
+        rebuild = getattr(self, "_rebuild_named_view_actions", None)
+        if callable(rebuild):
+            rebuild()
+            return
+        current = str(state.load_settings().get("view_preset") or "Basic")
+        self._sync_view_preset_action(current)
+
 
     def _show_display_settings(self) -> None:
         self.user_settings = state.load_settings()
