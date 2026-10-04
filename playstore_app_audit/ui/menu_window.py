@@ -165,43 +165,12 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         bar.addMenu(self.view_menu)
         self.view_presets_menu = QMenu("Column Preset", self.view_menu)
         self.view_menu.addMenu(self.view_presets_menu)
-        self.view_action_group = QActionGroup(self)
-        self.view_action_group.setExclusive(True)
-        current = str(state.load_settings().get("view_preset") or "Basic")
-        self.view_preset_actions = []
-        for name in BUILTIN_PRESETS:
-            action = QAction(name, self, checkable=True)
-            action.setData(name)
-            action.setChecked(name == current)
-            action.triggered.connect(
-                lambda _checked=False, a=action: self._select_column_preset(str(a.data()))
-            )
-            self.view_action_group.addAction(action)
-            self.view_presets_menu.addAction(action)
-            self.view_preset_actions.append(action)
-        active_family = custom_layout_family(self.source_mode)
-        for family, label in (
-            (CustomLayoutFamily.PHONE_APP_LIST, "Custom (Phone / App List)"),
-            (CustomLayoutFamily.LOCAL_APK, "Custom (Local APK)"),
-        ):
-            action = QAction(label, self, checkable=True)
-            action.setData("Custom")
-            action.setProperty("customLayoutFamily", family.value)
-            action.setChecked(current == "Custom" and family is active_family)
-            action.setEnabled(family is active_family)
-            action.setToolTip(
-                "Edit or restore this source family's independent Custom layout."
-                if family is active_family
-                else "Available when this source family is active."
-            )
-            action.triggered.connect(
-                lambda _checked=False, a=action: self._select_column_preset(str(a.data()))
-            )
-            self.view_action_group.addAction(action)
-            self.view_presets_menu.addAction(action)
-            self.view_preset_actions.append(action)
-        self._view_action_group = self.view_action_group
-        self._sync_view_preset_action(current)
+        self.view_preset_actions: list[QAction] = []
+        self.named_view_actions: list[QAction] = []
+        self._view_action_group = QActionGroup(self)
+        self._view_action_group.setExclusive(True)
+        self.view_action_group = self._view_action_group
+        self._rebuild_named_view_actions()
 
         self.reset_layout_action = self.view_menu.addAction(
             "Reset Table Layout", self._reset_table_layout
@@ -311,16 +280,72 @@ class MenuWindow(preferences_ui.PreferencesWindow):
         )
 
     def _select_column_preset(self, name: str) -> None:
-        if name != "Custom":
-            self._set_view_preset(name)
+        if name == "Custom":
+            self._show_display_settings()
+            return
+        self._set_view_preset(name)
+
+    def _select_named_column_preset(self, view_id: str) -> None:
+        if self._select_custom_view(view_id):
+            self._sync_view_preset_action("Custom")
+
+    def _rebuild_named_view_actions(self) -> None:
+        menu = getattr(self, "view_presets_menu", None)
+        if not isinstance(menu, QMenu):
             return
 
+        old_group = getattr(self, "_view_action_group", None)
+        if isinstance(old_group, QActionGroup):
+            for action in list(old_group.actions()):
+                old_group.removeAction(action)
+
+        menu.clear()
+        group = QActionGroup(self)
+        group.setExclusive(True)
+        self._view_action_group = group
+        self.view_action_group = group
+        self.view_preset_actions = []
+        self.named_view_actions = []
+
         settings = state.load_settings()
-        if self._has_custom_table_layout(settings):
-            self._set_view_preset("Custom")
-        self._show_display_settings()
-        current = str(state.load_settings().get("view_preset") or "Basic")
+        current = str(settings.get("view_preset") or "Basic")
+        for name in BUILTIN_PRESETS:
+            action = QAction(name, self, checkable=True)
+            action.setData(name)
+            action.setChecked(current == name)
+            action.triggered.connect(
+                lambda _checked=False, n=name: self._select_column_preset(n)
+            )
+            group.addAction(action)
+            menu.addAction(action)
+            self.view_preset_actions.append(action)
+
+        views = self._custom_view_records(settings)
+        if views:
+            menu.addSeparator()
+            active_id = self._active_custom_view_id(settings)
+            for view in views:
+                view_id = str(view.get("id") or "")
+                action = QAction(str(view.get("name") or "Custom"), self, checkable=True)
+                action.setData("Custom")
+                action.setProperty("customViewId", view_id)
+                action.setChecked(current == "Custom" and view_id == active_id)
+                action.triggered.connect(
+                    lambda _checked=False, vid=view_id: self._select_named_column_preset(vid)
+                )
+                group.addAction(action)
+                menu.addAction(action)
+                self.view_preset_actions.append(action)
+                self.named_view_actions.append(action)
+
+        menu.addSeparator()
+        customize = QAction("Customize View…", self)
+        customize.setData("Customize")
+        customize.triggered.connect(self._show_display_settings)
+        menu.addAction(customize)
+        self.customize_view_action = customize
         self._sync_view_preset_action(current)
+
 
     def _changes_history_availability(
         self,
