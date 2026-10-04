@@ -217,6 +217,11 @@ def test_operations_are_non_mutating_until_caller_persists_result() -> None:
             "phone_app_list": {"active_view_id": "", "views": "bad"},
             "local_apk": {"active_view_id": "", "views": []},
         },
+        {
+            "schema_version": 2,
+            "phone_app_list": {"active_view_id": "not-a-uuid", "views": []},
+            "local_apk": {"active_view_id": "", "views": []},
+        },
     ],
 )
 def test_future_or_malformed_state_is_not_editable(invalid: dict[str, object]) -> None:

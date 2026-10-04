@@ -97,7 +97,13 @@ def family_state(layouts: object, family: str) -> dict[str, object] | None:
 
 
 def _family_records(state: object) -> list[dict[str, Any]] | None:
-    if not isinstance(state, dict) or not isinstance(state.get("active_view_id"), str):
+    if not isinstance(state, dict):
+        return None
+    active_view_id = state.get("active_view_id")
+    if not isinstance(active_view_id, str):
+        return None
+    active_view_id = active_view_id.strip()
+    if active_view_id and not _valid_uuid(active_view_id):
         return None
     raw_views = state.get("views")
     if not isinstance(raw_views, list):
