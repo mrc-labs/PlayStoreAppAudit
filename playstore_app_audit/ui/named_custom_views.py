@@ -35,7 +35,16 @@ def empty_layouts() -> dict[str, object]:
 
 
 def normalise_name(value: object) -> str:
-    return " ".join(str(value or "").split())[:MAX_NAME_LENGTH]
+    return " ".join(str(value or "").split())
+
+
+def _validated_name(value: object) -> str:
+    name = normalise_name(value)
+    if not name:
+        raise NamedViewError("View name cannot be empty.")
+    if len(name) > MAX_NAME_LENGTH:
+        raise NamedViewError(f"View name cannot exceed {MAX_NAME_LENGTH} characters.")
+    return name
 
 
 def _valid_uuid(value: object) -> bool:
@@ -82,19 +91,34 @@ def view_records(layouts: object, family: str) -> list[dict[str, Any]]:
     state = family_state(layouts, family)
     if state is None:
         return []
+    raw_views = state.get("views", [])
+    assert isinstance(raw_views, list)
+    if len(raw_views) > MAX_VIEWS_PER_FAMILY:
+        return []
     records: list[dict[str, Any]] = []
-    for raw in state.get("views", []):
+    seen_ids: set[str] = set()
+    seen_names: set[str] = set()
+    for raw in raw_views:
         if not isinstance(raw, dict):
             return []
         view_id = str(raw.get("id") or "").strip().lower()
         name = normalise_name(raw.get("name"))
-        if not _valid_uuid(view_id) or not name:
+        name_key = name.casefold()
+        if (
+            not _valid_uuid(view_id)
+            or not name
+            or len(name) > MAX_NAME_LENGTH
+            or view_id in seen_ids
+            or name_key in seen_names
+        ):
             return []
         columns = raw.get("columns")
         order = raw.get("order")
         widths = raw.get("widths")
         if not isinstance(columns, list) or not isinstance(order, list) or not isinstance(widths, dict):
             return []
+        seen_ids.add(view_id)
+        seen_names.add(name_key)
         records.append(
             {
                 "id": view_id,
@@ -147,9 +171,7 @@ def create_view(
     assert isinstance(views, list)
     if len(views) >= MAX_VIEWS_PER_FAMILY:
         raise NamedViewLimitError(f"Maximum {MAX_VIEWS_PER_FAMILY} named views per source family.")
-    clean_name = normalise_name(name)
-    if not clean_name:
-        raise NamedViewError("View name cannot be empty.")
+    clean_name = _validated_name(name)
     if any(normalise_name(item.get("name")).casefold() == clean_name.casefold() for item in views):
         raise DuplicateNamedViewError("A view with this name already exists.")
     view_id = str(uuid4())
@@ -189,9 +211,7 @@ def update_view(
 
 def rename_view(layouts: object, family: str, view_id: str, name: object) -> dict[str, Any]:
     updated, state = _ensure_editable(layouts, family)
-    clean_name = normalise_name(name)
-    if not clean_name:
-        raise NamedViewError("View name cannot be empty.")
+    clean_name = _validated_name(name)
     target = str(view_id or "").strip().lower()
     for item in state["views"]:
         item_id = str(item.get("id") or "").strip().lower()
