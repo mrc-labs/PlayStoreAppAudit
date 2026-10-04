@@ -648,27 +648,28 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
         first.table.horizontalHeader().visualIndex(title), 0
     )
     app.processEvents()
-    legacy_header = settings["qt_header_state"]
-    legacy_order = _visual_order(first)
-    settings.pop("custom_view_order", None)
-    settings.pop("custom_view_widths", None)
+    _visible, legacy_order, _widths_by_name, legacy_header = first._current_table_layout()
+    first.close()
+    app.processEvents()
+
     settings.pop("custom_view_layouts", None)
     settings.pop("custom_view_layouts_migrated_v1", None)
     settings.update(
         {
             "custom_view_exists": False,
-            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS["custom_view_columns"]),
+            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS.get("custom_view_columns", [])),
             "qt_header_state": legacy_header,
             "qt_header_schema_version": TABLE_SCHEMA_VERSION,
             "view_preset": "Basic",
         }
     )
-    first.close()
-    app.processEvents()
 
     migrated = create_window()
     assert settings["view_preset"] == "Custom"
-    assert settings["custom_view_exists"] is True
+    views = named_custom_views.view_records(
+        settings["custom_view_layouts"], "phone_app_list"
+    )
+    assert len(views) == 1 and views[0]["name"] == "Custom 1"
     assert migrated.table.columnWidth(package) == 361
     applicable = column_presets.custom_family_user_columns(
         column_presets.CustomLayoutFamily.PHONE_APP_LIST
@@ -684,7 +685,6 @@ def test_rc2_header_state_migrates_without_losing_manual_widths_or_preferences(
     assert settings["show_app_icons"] is False
     assert migrated.model._icons_enabled is False
 
-
 def test_default_legacy_header_state_does_not_imply_custom(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
@@ -697,12 +697,13 @@ def test_default_legacy_header_state_does_not_imply_custom(
     _visible, _order, _widths_by_name, default_header = first._current_table_layout()
     first.close()
     app.processEvents()
-    settings.pop("custom_view_order", None)
-    settings.pop("custom_view_widths", None)
+
+    settings.pop("custom_view_layouts", None)
+    settings.pop("custom_view_layouts_migrated_v1", None)
     settings.update(
         {
             "custom_view_exists": False,
-            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS["custom_view_columns"]),
+            "custom_view_columns": deepcopy(state.DEFAULT_SETTINGS.get("custom_view_columns", [])),
             "qt_header_state": default_header,
             "view_preset": "Basic",
         }
@@ -711,12 +712,13 @@ def test_default_legacy_header_state_does_not_imply_custom(
     restarted = create_window()
 
     assert settings["view_preset"] == "Basic"
-    assert settings["custom_view_exists"] is False
-    assert _custom_action(restarted).isEnabled()
+    assert named_custom_views.view_records(
+        settings["custom_view_layouts"], "phone_app_list"
+    ) == []
+    assert not [action for action in restarted.view_preset_actions if action.data() == "Custom"]
     assert _visible_order(restarted) == expected_visible
     assert _visual_order(restarted) == expected_order
     assert _widths(restarted) == expected_widths
-
 
 def test_old_custom_visibility_is_preserved_while_last_builtin_stays_active(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
@@ -932,6 +934,8 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
         "package_name",
         "play_title",
     ]
+    settings.pop("custom_view_layouts", None)
+    settings.pop("custom_view_layouts_migrated_v1", None)
     settings.update(
         {
             "view_preset": "Custom",
@@ -944,38 +948,34 @@ def test_legacy_custom_history_fields_load_without_rewrite_and_normalize_on_save
         }
     )
     window = create_window()
-    assert settings["custom_view_columns"] == legacy_columns
     window.source_mode = "device"
     window._apply_column_visibility(reset_order=False)
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
+    active = named_custom_views.active_view(
+        settings["custom_view_layouts"], "phone_app_list"
+    )
+    assert active is not None
+    assert active["columns"] == ["criticality", "package_name", "play_title"]
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(active["order"])
+
     def accept_without_history_checks(dialog: QDialog) -> int:
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_change") is None
         assert dialog.findChild(QCheckBox, "CustomColumnCheck_device_change") is None
-        assert (
-            dialog.findChild(QCheckBox, "CustomColumnCheck_local_apk_version_comparison")
-            is None
-        )
+        assert dialog.findChild(
+            QCheckBox, "CustomColumnCheck_local_apk_version_comparison"
+        ) is None
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(QDialog, "exec", accept_without_history_checks)
     window._show_display_settings()
 
-    assert settings["custom_view_columns"] == legacy_columns
-    layouts = settings["custom_view_layouts"]
-    assert isinstance(layouts, dict)
-    phone_layout = layouts["phone_app_list"]
-    assert isinstance(phone_layout, dict)
-    assert phone_layout["columns"] == [
-        "criticality",
-        "package_name",
-        "play_title",
-    ]
-    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
-        phone_layout["order"]  # type: ignore[arg-type]
+    saved = named_custom_views.active_view(
+        settings["custom_view_layouts"], "phone_app_list"
     )
+    assert saved is not None
+    assert saved["columns"] == ["criticality", "package_name", "play_title"]
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
-
 
 def test_legacy_custom_preset_with_default_columns_migrates(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
@@ -1001,23 +1001,26 @@ def test_malformed_custom_state_falls_back_safely_to_basic(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
 ) -> None:
     settings, create_window = window_store
+    malformed = {
+        "schema_version": 2,
+        "phone_app_list": {"active_view_id": "bad", "views": "not-a-list"},
+        "local_apk": {"active_view_id": "", "views": []},
+        "opaque": {"preserve": True},
+    }
     settings.update(
         {
             "view_preset": "Custom",
-            "custom_view_exists": True,
-            "custom_view_columns": "not-a-list",
-            "custom_view_order": ["unknown"],
-            "custom_view_widths": {"package_name": "invalid"},
-            "qt_header_state": "not-valid-base64",
+            "custom_view_layouts": deepcopy(malformed),
+            "custom_view_layouts_migrated_v1": False,
             "show_app_icons": False,
         }
     )
     window = create_window()
 
     assert settings["view_preset"] == "Basic"
-    assert _custom_action(window).isEnabled()
+    assert settings["custom_view_layouts"] == malformed
+    assert not [action for action in window.view_preset_actions if action.data() == "Custom"]
     assert window.model._icons_enabled is False
-
 
 def test_partial_custom_widths_use_phase_a_semantic_defaults(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
