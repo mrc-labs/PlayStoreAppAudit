@@ -2,7 +2,7 @@
 
 ## Published v2.2.0 release
 
-Last updated: 2026-10-03 CEST
+Last updated: 2026-10-04 CEST
 
 v2.2.0 was published on **2026-10-02** as [Store App Audit v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) and is immutable at source SHA `21b6646571b7e93044b76fe4d18a04eeec092f18`. Annotated tag `v2.2.0` has object `95a402b25f65bf22db58f831076bca747e2c9103`; GitHub Release ID is `401714084`.
 
@@ -37,17 +37,17 @@ Published project-defined assets:
 
 v2.3 kickoff is approved and tracked by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) from canonical post-v2.2 `main` baseline `6637b94e0693673650f9005def5b5ed76cb86034`. Quality #644 / run `37033913962` completed **SUCCESS** at that exact SHA. Source/package version intentionally remains **2.2.0** until deliberate v2.3 release preparation.
 
-Approved product tracks:
+Completed v2.3 product tracks:
 
-1. **Track A, #188:** canonical Store-derived Play Store Category plus safe retirement of duplicated persisted `installer_category` state, including Smart Query/export compatibility.
-2. **Track B, #147:** maximum **3 Named Custom Views per source family**, with independent Phone / App List and Local APK families and conservative migration from the two v2.2 Custom layouts.
-3. **Track C, #224:** exact duplicate APK grouping by identical SHA-256 / identical bytes, distinct physical paths, explicit review and conservative path-based cleanup. Same package/version with different SHA-256 is not an exact duplicate.
+1. **Track A, #188, completed:** canonical Store-derived Play Store Category plus safe retirement of duplicated persisted `installer_category` state, integrated through PRs #227 and #228.
+2. **Track B, #147, completed:** maximum **3 Named Custom Views per source family**, with independent Phone / App List and Local APK families and conservative migration from the two v2.2 Custom layouts, integrated through PR #229.
+3. **Track C, #224, completed:** exact duplicate APK grouping by identical SHA-256 / identical bytes, distinct physical paths, explicit review and conservative path-based cleanup. Same package/version with different SHA-256 is not an exact duplicate. Integrated through PR #230.
 
 Kickoff backlog reconciliation is complete in the tracker: #191 is closed as superseded/not planned; #192 and #193 are closed as completed through their replacement v2.1 implementation paths; #188 and #147 now carry the v2.3 contracts; #224 is the dedicated duplicate APK issue.
 
-Preferred implementation order is #188, then #147, then #224. #154 signing/notarization and #209 update/self-update remain outside v2.3. Historical release notes and immutable v2.2 source/tag/assets remain unchanged.
+All three approved implementation tracks are complete in the intended order: #188, then #147, then #224. #154 signing/notarization and #209 update/self-update remain outside v2.3. Historical release notes and immutable v2.2 source/tag/assets remain unchanged.
 
-Track C implementation is available on `feature/v2.3-duplicate-apk-management`, based on `19884ab557b145d52fb18455c8e5bf2988b39dfe`, for control-tower review and exact-SHA Quality gating. The session-local tabbed review separates exact SHA-256 duplicate paths from read-only Same Version Variant / Multiple Versions findings. Explicit selection and permanent-deletion confirmation precede group-wide selected/keeper byte revalidation; only successful physical deletions reconcile rows and candidates. Source version remains 2.2.0. [Implementation and practical limits](LOCAL_APK_DUPLICATES.md) record the contract without changing published v2.2 evidence.
+Track C is integrated through PR #230. Final feature head `5a609f1176104184080fac4dfa612ca14e8d3905` passed Quality #677 / run `37234539713`; normal merge commit `9dcf8aa92b4785280765313d227e8fcb64a7db58` then passed post-merge Quality #678 / run `37234781404`. The session-local tabbed review separates exact SHA-256 duplicate paths from read-only Same Version Variant / Multiple Versions findings. Explicit selection and permanent-deletion confirmation precede group-wide selected/keeper byte revalidation; only successful physical deletions reconcile rows and candidates. All three v2.3 implementation pillars are now integrated. Source version remains 2.2.0 pending deliberate v2.3 release preparation. [Implementation and practical limits](LOCAL_APK_DUPLICATES.md) record the contract without changing published v2.2 evidence.
 
 ## Post-release development and closure
 
