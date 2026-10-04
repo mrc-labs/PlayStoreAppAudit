@@ -6,6 +6,12 @@ Last updated: 2026-10-05 CEST
 
 This file is the canonical forward-looking product roadmap for Store App Audit. `PROJECT_STATUS.md` records current shipped state, `PROJECT_DECISIONS.md` records durable engineering/release policy, and this document assigns future product work.
 
+## Permanent monthly maintenance cadence
+
+Store App Audit has a standing maintenance cycle on the first day of every month. The cycle rechecks the complete selected runtime/dependency/CI/build/packaging stack for current stable releases, deprecations/EOL and support/security changes. Compatible newer selected components are adopted and validated rather than intentionally left stale.
+
+Versioning for that cycle is fixed: a pure dependency/toolchain/component refresh with no application/source fix increments PATCH only; any application/source fix or compatibility adaptation increments MINOR and resets PATCH to zero. The monthly cadence is maintenance policy, not authorization to bypass normal exact-SHA release gates.
+
 ## Planning rules
 
 - Preserve the exact-SHA release model, read-only ADB policy and Store correctness semantics unless a deliberate decision changes them.

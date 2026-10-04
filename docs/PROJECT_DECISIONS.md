@@ -51,6 +51,18 @@ Rationale: local package files are user-owned filesystem objects. Mutation there
 
 These are product semantics, not presentation choices.
 
+## Permanent monthly maintenance and versioning
+
+- On the first day of every month, run a complete freshness and support audit for every directly used runtime, dependency, CI, build, packaging and release component.
+- Check for newer stable releases, announced deprecations/removals/EOL dates, security/support lifecycle changes and compatibility with every maintained platform/architecture target.
+- When a newer stable compatible release exists, adopt the latest supported compatible version unless a concrete compatibility blocker is documented. Do not carry an older selected component forward merely because the current build still works.
+- A maintenance-only refresh that changes dependencies, runtime/toolchain, CI or build components without any application/source fix or behavior change increments PATCH only: `MAJOR.MINOR.PATCH -> MAJOR.MINOR.(PATCH+1)`.
+- If the maintenance cycle requires any application/source fix, behavior change or compatibility adaptation, including code needed to accommodate an updated dependency or build tool, increment MINOR and reset PATCH: `MAJOR.MINOR.PATCH -> MAJOR.(MINOR+1).0`.
+- Major-version changes remain deliberate product/compatibility decisions and are never triggered automatically by the monthly cadence.
+- The monthly cadence never bypasses exact-SHA Quality, build, assembly, publication verification or permanent release closure.
+
+Rationale: Store App Audit should remain current with supported upstream components without disguising product/code changes as maintenance-only patch releases.
+
 ## Exact-SHA release model
 
 Every public release profile uses one exact source commit.

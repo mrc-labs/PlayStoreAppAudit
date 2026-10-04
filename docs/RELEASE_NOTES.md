@@ -42,6 +42,18 @@ Starting with v2.2, future release bodies may end with this compact, optional fo
 
 This is a footer, not a fifth required section. The four mandatory sections and their order remain unchanged. Do not add sponsorship to historical published v2.1, v2.0 or earlier release bodies; preserve their historical prose.
 
+## Maintenance-only patch release wording
+
+A PATCH-only monthly maintenance release contains no product/source fix or behavior change. Its public release notes should therefore remain deliberately minimal and should not imitate a feature release.
+
+Preferred framing:
+
+> Maintenance release focused on keeping Store App Audit current, secure and reliable.
+
+Equivalent wording may refer briefly to stability, support/security posture, dependency/toolchain freshness and alignment with supported upstream components. Do not list routine internal version churn as user-facing highlights unless a concrete compatibility or security impact is useful to users.
+
+If the component refresh requires an application/source fix or behavior change, it is not a maintenance-only PATCH release under the permanent versioning policy; it uses the MINOR-bump rule and normal release notes for the actual changes.
+
 ## Immutability and editorial maintenance
 
 The following published release material is immutable:
