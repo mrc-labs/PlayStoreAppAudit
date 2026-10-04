@@ -1,6 +1,6 @@
 # Session-local duplicate APK review
 
-Track C implements the locked [issue #224 contract](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224#issuecomment-5981962164) on `feature/v2.3-duplicate-apk-management`, based on `19884ab557b145d52fb18455c8e5bf2988b39dfe`. Source version remains 2.2.0. This is development work awaiting control-tower review and exact-SHA CI, not a published release claim.
+Track C implements the locked [issue #224 contract](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224#issuecomment-5981962164). It was integrated through PR #230 from final feature head `5a609f1176104184080fac4dfa612ca14e8d3905` into main merge commit `9dcf8aa92b4785280765313d227e8fcb64a7db58`. Source version remains 2.2.0. This integrated development state is not a published v2.3 release claim.
 
 ## Review and identity
 
@@ -43,4 +43,4 @@ Local validation on 2026-10-04, using existing Python 3.14.8 / PySide6 6.11.2:
 - Duplicate UI tests with the native Windows Qt plugin: **15 passed**, plus visual inspection of native renders for both tabs.
 - Quality Ruff scope, application compileall, all nine Quality Python helper compilations, PowerShell handoff-helper syntax and the standard Qt offscreen smoke: **passed**.
 
-Exact-SHA GitHub CI gating and control-tower review remain pending; no release, tag, merge, issue closure or PR is performed by this implementation task.
+Control-tower review accepted the exact feature head without code changes. Quality #677 / run `37234539713` completed SUCCESS at `5a609f1176104184080fac4dfa612ca14e8d3905` with 1789 tests passed, Ruff/compile checks green and the standard Qt offscreen smoke passing. PR #230 merged normally to `9dcf8aa92b4785280765313d227e8fcb64a7db58`; post-merge Quality #678 / run `37234781404` also completed SUCCESS on that exact main SHA. Issue #224 is closed completed. No release, tag or version bump was performed.
