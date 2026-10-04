@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-03
+Last updated: 2026-10-05 CEST
 
 ## Purpose
 
@@ -353,7 +353,7 @@ Exactly eight public assets were independently re-downloaded: six platform ZIPs,
 
 ### Post-release continuation
 
-Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
+At the completed post-v2.2 closure baseline, source/package version remained **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
 
 Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
 
@@ -361,13 +361,15 @@ PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normall
 
 Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is closed as completed. Final post-v2.2 documentation `main` is `6637b94e0693673650f9005def5b5ed76cb86034`, with Quality #644 / run `37033913962` SUCCESS at that exact SHA. This remains separate from the immutable v2.2 release source SHA.
 
-## v2.3 active development
+## v2.3 release preparation
 
-v2.3 is approved and coordinated by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225). Planning starts from canonical post-v2.2 `main` SHA `6637b94e0693673650f9005def5b5ed76cb86034`; source version remains `2.2.0` until deliberate release preparation.
+Updated 2026-10-05 CEST. Current source/package version is **2.3.0** (Windows File/Product **2.3.0.0**) on `v2/release-prep-2.3.0`. All three v2.3 pillars are integrated and Phase A passed at `ba7bf2268603dd75f95c9906299ba4bed036865b`. Phase B stages exact Python **3.14.8** after a fresh release-entry audit; final freshness, exact-head Quality, frozen main SHA, six-platform builds and publication remain pending. This branch is not a frozen release SHA. See [release preparation](V2_3_RELEASE_PREP.md), [entry freshness](V2_3_RELEASE_ENTRY_FRESHNESS.md) and [current handoff](HANDOFF_V2.3.md).
+
+v2.3 is approved and coordinated by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225). Planning starts from canonical post-v2.2 `main` SHA `6637b94e0693673650f9005def5b5ed76cb86034`; source version remained `2.2.0` during implementation and is now deliberately 2.3.0 for Phase B.
 
 ### Track A: Play Store Category plus installer-category cleanup
 
-Issue [#188](https://github.com/mrc-labs/PlayStoreAppAudit/issues/188).
+Completed via PRs #227/#228; issue [#188](https://github.com/mrc-labs/PlayStoreAppAudit/issues/188).
 
 - Make real Store-derived **Play Store Category** a canonical product field.
 - Integrate it across appropriate views, Details, Customize View, Smart Queries, CSV, HTML, versioned JSON and Mass Rename `{category}`.
@@ -378,7 +380,7 @@ Issue [#188](https://github.com/mrc-labs/PlayStoreAppAudit/issues/188).
 
 ### Track B: Named Custom Views
 
-Issue [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
+Completed via PR #229; issue [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
 
 - Maximum **3 named Custom Views per source family**.
 - Phone / App List and Local APK families remain independent.
@@ -388,7 +390,7 @@ Issue [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147).
 
 ### Track C: Duplicate APK management
 
-Issue [#224](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224).
+Completed via PR #230; issue [#224](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224).
 
 - Exact duplicate means identical artifact bytes / identical SHA-256.
 - Keep physical paths distinct and reviewable.
@@ -397,7 +399,7 @@ Issue [#224](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224).
 - Multiple historical versions may be grouped informationally; older does not automatically mean disposable.
 - Keep scope focused and do not reintroduce a full APK Library Manager.
 
-Preferred implementation order is **#188 -> #147 -> #224** so the canonical field/schema contract lands before named views depend on it. Track C may remain implementation-independent where branch dependencies are clean and merge order is explicit.
+Implementation completed in order **#188 -> #147 -> #224**. Phase A integrated acceptance passed on `ba7bf2268603dd75f95c9906299ba4bed036865b`; remaining work is deliberate release preparation and Phase C/D/E.
 
 Kickoff tracker hygiene is complete: #191 is closed as superseded/not planned; #192 and #193 are closed as completed through their replacement v2.1 paths. #154 production signing/notarization and #209 update/self-update remain outside v2.3.
 
@@ -439,4 +441,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` and `HANDOFF_V2.2.md` remain completed release-cycle handoff records. Active v2.3 coordination is tracked by #225 plus the current roadmap/status documents until a dedicated later handoff is deliberately created. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.
+`HANDOFF_V2.1.md` and `HANDOFF_V2.2.md` remain completed release-cycle handoff records. Active v2.3 release coordination uses [HANDOFF_V2.3.md](HANDOFF_V2.3.md), #225/#232 and current roadmap/status documents. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.

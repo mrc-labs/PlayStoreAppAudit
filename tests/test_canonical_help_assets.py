@@ -114,8 +114,11 @@ def test_overview_html_reuses_exact_canonical_gallery() -> None:
     assert 'width="700"' not in content
     assert "What can Store App Audit help you answer?" in content
     assert "Not Found" in content
-    assert "v2.0.0" in content
-    assert "v2.1" in content
+    assert "published v2.1" in content
+    assert "Current source is v2.3.0 release preparation, unpublished" in content
+    assert "published release remains v2.2.0" in content
+    assert "{category}" in content
+    assert "{{category}}" not in content
 
     for filename in (
         resource_ui.CANONICAL_HELP_IMAGE_NAMES

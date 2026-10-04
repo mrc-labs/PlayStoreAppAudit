@@ -10,9 +10,17 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0), published 2026-10-02 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current development baseline:** source version remains 2.2.0 after publication. Permanent post-release closure is coordinated in [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212); later feature scope has not been assigned.
+**Current source:** 2.3.0 release preparation, unpublished. All three v2.3 pillars are integrated and Phase A accepted; [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) and [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232) coordinate the remaining release gates. See [release preparation](docs/V2_3_RELEASE_PREP.md).
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
+
+## v2.3 source highlights (unpublished)
+
+- **Play Store Category:** real Store categories in views, Details, Smart Queries and exports; Local APK Mass Rename `{category}` uses this Store evidence.
+- **Named Custom Views:** up to three saved views per source family, independently for Phone / App List and Local APK, with safe migration of v2.2 layouts.
+- **Review Duplicates…:** explicit keeper-safe cleanup of byte-identical SHA-256 copies at distinct physical paths. Same Version Variant and Multiple Versions stay informational.
+
+These changes are integrated in source; v2.2.0 remains the latest published download.
 
 ## What's new in v2.2
 
@@ -63,7 +71,7 @@ These screenshots are included in the immutable v2.1.0 source and packages.
 - Review grouped changes such as app inventory changes, Store availability changes, reappeared listings and Store version/update changes.
 - Optionally show Play Store icons and calculate a transparent Maintenance Score heuristic.
 - Filter results with search, status chips, Quick Filters and saved one-level All/Any Smart Queries.
-- Switch between source-aware Basic, Source Details and Technical presets plus independent **Custom (Phone / App List)** and **Custom (Local APK)** layouts; inapplicable source fields stay hidden without rewriting either saved layout.
+- Switch between source-aware Basic, Source Details and Technical presets plus up to **3 named Custom Views per source family**; Phone / App List and Local APK remain independent, and inapplicable fields stay hidden without rewriting saved layouts.
 - Use conservative cache/recheck behavior, targeted rechecks or an explicit full refresh.
 - Compare previous audits and device snapshots under **Tools > Changes & History**.
 - Export all or visible results as CSV, HTML or versioned JSON.
@@ -79,7 +87,7 @@ Linux builds use Ubuntu 24.04 for both architectures; the x64 package passed Ubu
 
 ### Post-release continuation
 
-The three v2.2 pillars are shipped. [Issue #212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) remains open for closure merge, local synchronization and final confirmation. Broader Named Custom Views [#147](https://github.com/mrc-labs/PlayStoreAppAudit/issues/147), production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and safe update/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain deferred. No v2.3 feature scope is assigned.
+v2.2 closure [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is complete. v2.3 Play Store Category (#188), Named Custom Views (#147) and conservative Duplicate APK review (#224) are integrated and Phase A accepted. Phase B prepares source 2.3.0 for review; final package acceptance and publication remain pending. Production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and update/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain outside v2.3.
 
 ## Download and installation
 
@@ -228,9 +236,9 @@ No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
 
 ## Development
 
-The current source version remains `2.2.0` after publication of the latest release, [v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0). Linux builds use Ubuntu 24.04 on x64 and ARM64; the x64 package passed Ubuntu 22.04 backward GUI/CLI smoke and all packaged ELF requirements were inspected. Published source, tag and assets remain immutable; post-release development context is tracked in [Project Status](docs/PROJECT_STATUS.md).
+The current source version is `2.3.0` in unpublished release preparation. The latest published release remains [v2.2.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0). Linux builds use Ubuntu 24.04 on x64 and ARM64; the published v2.2 x64 package passed Ubuntu 22.04 backward GUI/CLI smoke and all its packaged ELF requirements were inspected. v2.3 package acceptance remains pending. Published source, tag and assets remain immutable; current context is tracked in [Project Status](docs/PROJECT_STATUS.md).
 
-Normal development tracks stable Python 3.14 with `check-latest: true`, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. The immutable v2.2 release used exact Python 3.14.8; every future final freshness gate must pin one audited exact patch again before SHA freeze. No Python 3.15 migration is part of this closure. Docker is not required for normal local source development.
+v2.3 preparation stages freshly audited exact Python 3.14.8 with fail-closed equality, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Final freshness must repeat immediately before SHA freeze. Post-release closure restores rolling stable Python 3.14 with `check-latest: true`. Python 3.15 migration is outside this release. Docker is not required for normal local source development.
 
 Install the development dependencies, run the application and execute the main source checks with:
 
@@ -257,7 +265,7 @@ Useful references:
 
 ## Building from source
 
-Development uses rolling stable Python 3.14 and Nuitka standalone packaging; the published v2.2 release used exact Python 3.14.8. Release artifacts follow an exact-SHA model: source is frozen after the final exact-patch freshness gate, platform builds and assets are validated from that SHA, and tagging/publication happen only after acceptance.
+v2.3 release preparation uses exact Python 3.14.8 and Nuitka standalone packaging; normal development returns to rolling stable Python 3.14 during post-release closure. Release artifacts follow an exact-SHA model: source is frozen after the final exact-patch freshness gate, platform builds and assets are validated from that SHA, and tagging/publication happen only after acceptance.
 
 Normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. The final release gate validates all six targets from one exact frozen SHA.
 

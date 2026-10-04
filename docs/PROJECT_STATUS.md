@@ -33,9 +33,11 @@ Published project-defined assets:
 - `PlayStoreAppAudit-v2.2.0-windows-x64.zip`: 46,996,491 bytes; SHA-256 `a4734d24d697673c8c4ee7265abbeccced38895ec1c5cf9d337cfbf20a88595e`
 - `SHA256SUMS.txt`: 758 bytes; SHA-256 `ba2417e067933da9183ca5f861285cf559a9c8f8065de486b5e7a18c334ee04c`
 
-## Active v2.3 development
+## v2.3 release preparation
 
-v2.3 kickoff is approved and tracked by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) from canonical post-v2.2 `main` baseline `6637b94e0693673650f9005def5b5ed76cb86034`. Quality #644 / run `37033913962` completed **SUCCESS** at that exact SHA. Source/package version intentionally remains **2.2.0** until deliberate v2.3 release preparation.
+Updated 2026-10-05 CEST. Current source/package version is **2.3.0** (Windows File/Product **2.3.0.0**) on `v2/release-prep-2.3.0`. All three v2.3 pillars are integrated and Phase A passed at `ba7bf2268603dd75f95c9906299ba4bed036865b`. Phase B stages exact Python **3.14.8** after a fresh release-entry audit; final freshness, exact-head Quality, frozen main SHA, six-platform builds and publication remain pending. This branch is not a frozen release SHA. See [release preparation](V2_3_RELEASE_PREP.md), [entry freshness](V2_3_RELEASE_ENTRY_FRESHNESS.md) and [current handoff](HANDOFF_V2.3.md).
+
+v2.3 kickoff is approved and tracked by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) from canonical post-v2.2 `main` baseline `6637b94e0693673650f9005def5b5ed76cb86034`. Quality #644 / run `37033913962` completed **SUCCESS** at that exact SHA. At kickoff the source/package version intentionally remained **2.2.0** until deliberate v2.3 release preparation.
 
 Completed v2.3 product tracks:
 
@@ -47,11 +49,11 @@ Kickoff backlog reconciliation is complete in the tracker: #191 is closed as sup
 
 All three approved implementation tracks are complete in the intended order: #188, then #147, then #224. #154 signing/notarization and #209 update/self-update remain outside v2.3. Historical release notes and immutable v2.2 source/tag/assets remain unchanged.
 
-Track C is integrated through PR #230. Final feature head `5a609f1176104184080fac4dfa612ca14e8d3905` passed Quality #677 / run `37234539713`; normal merge commit `9dcf8aa92b4785280765313d227e8fcb64a7db58` then passed post-merge Quality #678 / run `37234781404`. The session-local tabbed review separates exact SHA-256 duplicate paths from read-only Same Version Variant / Multiple Versions findings. Explicit selection and permanent-deletion confirmation precede group-wide selected/keeper byte revalidation; only successful physical deletions reconcile rows and candidates. All three v2.3 implementation pillars are now integrated. Source version remains 2.2.0 pending deliberate v2.3 release preparation. [Implementation and practical limits](LOCAL_APK_DUPLICATES.md) record the contract without changing published v2.2 evidence.
+Track C is integrated through PR #230. Final feature head `5a609f1176104184080fac4dfa612ca14e8d3905` passed Quality #677 / run `37234539713`; normal merge commit `9dcf8aa92b4785280765313d227e8fcb64a7db58` then passed post-merge Quality #678 / run `37234781404`. The session-local tabbed review separates exact SHA-256 duplicate paths from read-only Same Version Variant / Multiple Versions findings. Explicit selection and permanent-deletion confirmation precede group-wide selected/keeper byte revalidation; only successful physical deletions reconcile rows and candidates. All three v2.3 implementation pillars are now integrated. Integration retained source version 2.2.0; Phase B now deliberately prepares 2.3.0. [Implementation and practical limits](LOCAL_APK_DUPLICATES.md) record the contract without changing published v2.2 evidence.
 
 ## Post-release development and closure
 
-Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
+At the completed post-v2.2 closure baseline, source/package version remained **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.
 
 Immediately before every future frozen release SHA, final freshness must replace rolling selectors with one audited exact full Python patch and full-version equality again. The v2.2 release's exact 3.14.8 evidence remains historical and unchanged.
 

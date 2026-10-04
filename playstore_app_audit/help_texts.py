@@ -141,15 +141,21 @@ alt="Changes and History screenshot"></p>
 <h2>Safe Local APK file management</h2>
 <p>
 Mass Rename builds and validates the complete filename plan before any
-filesystem mutation.
+filesystem mutation. Its {{category}} placeholder uses the real Play Store Category.
+Review Duplicates groups byte-identical SHA-256 copies at distinct paths for
+explicit keeper-safe cleanup. Same Version Variant and Multiple Versions
+remain informational.
 </p>
 <p><img src="{mass_rename}"
 alt="Mass Rename preview screenshot"></p>
 
+<h2>Named Custom Views</h2>
+<p>Save up to three named views per source family, independently for Phone /
+App List and Local APK. Existing v2.2 Custom layouts migrate conservatively.</p>
 <div class="warning">
-<b>Development-line note:</b> these screenshots represent the current v2.1
-development UI. The latest published release remains v2.0.0 until v2.1
-passes its final release gates and is published.
+<b>Release note:</b> these synthetic screenshots document the published v2.1
+UI. Current source is v2.3.0 release preparation, unpublished; the latest
+published release remains v2.2.0.
 </div>
 """
 
