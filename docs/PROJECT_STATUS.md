@@ -47,6 +47,8 @@ Kickoff backlog reconciliation is complete in the tracker: #191 is closed as sup
 
 Preferred implementation order is #188, then #147, then #224. #154 signing/notarization and #209 update/self-update remain outside v2.3. Historical release notes and immutable v2.2 source/tag/assets remain unchanged.
 
+Track C implementation is available on `feature/v2.3-duplicate-apk-management`, based on `19884ab557b145d52fb18455c8e5bf2988b39dfe`, for control-tower review and exact-SHA Quality gating. The session-local tabbed review separates exact SHA-256 duplicate paths from read-only Same Version Variant / Multiple Versions findings. Explicit selection and permanent-deletion confirmation precede group-wide selected/keeper byte revalidation; only successful physical deletions reconcile rows and candidates. Source version remains 2.2.0. [Implementation and practical limits](LOCAL_APK_DUPLICATES.md) record the contract without changing published v2.2 evidence.
+
 ## Post-release development and closure
 
 Source/package version remains **2.2.0** (Windows File/Product **2.2.0.0**). Merged PR #222 restored stable rolling Python `3.14` with `check-latest: true` in all 11 setup environments across nine workflows, with fail-closed stable major/minor guards and full-version logging. The Windows helper keeps its standard-GIL/64-bit/native architecture protections; the Linux x64 helper dynamically selects the official Ubuntu 22.04 distribution of the exact patch resolved by setup-python and verifies equality after installation. `requires-python >=3.14` is unchanged; Python 3.15 is not adopted.

@@ -32,6 +32,7 @@ import playstore_app_audit.services.device_metadata as device_metadata
 import playstore_app_audit.services.device_specific_integration as device_specific_integration
 import playstore_app_audit.services.device_specific_settings as device_specific_settings
 import playstore_app_audit.services.local_apk_audit as local_apk_audit
+import playstore_app_audit.services.local_apk_duplicates as local_duplicates
 import playstore_app_audit.services.local_apk_file_ops as local_file_ops
 import playstore_app_audit.services.local_apk_mass_remove as mass_remove
 import playstore_app_audit.services.local_apk_mass_rename as mass_rename
@@ -40,6 +41,7 @@ import playstore_app_audit.services.local_package_metadata_cache as local_metada
 import playstore_app_audit.services.state as state
 import playstore_app_audit.services.store_locale as store_locale
 import playstore_app_audit.ui.compact_window as compact_ui
+import playstore_app_audit.ui.local_apk_duplicates_dialog as duplicates_ui
 import playstore_app_audit.ui.local_apk_mass_remove_dialog as mass_remove_ui
 import playstore_app_audit.ui.local_apk_mass_rename_dialog as mass_rename_ui
 import playstore_app_audit.ui.results_window as results_ui
@@ -137,6 +139,11 @@ class MainWindow(results_ui.ResultsWindow):
         self.file_mass_rename_action.triggered.connect(
             self._show_local_apk_mass_rename
         )
+
+        self.file_review_duplicates_action = self.file_local_apk_menu.addAction(
+            "Review Duplicates…"
+        )
+        self.file_review_duplicates_action.triggered.connect(self._show_local_apk_duplicates)
 
         self.file_local_apk_menu.addSeparator()
 
@@ -421,6 +428,9 @@ class MainWindow(results_ui.ResultsWindow):
             self.file_mass_rename_action.setEnabled(
                 self._local_mass_rename_available()
             )
+
+        if hasattr(self, "file_review_duplicates_action"):
+            self.file_review_duplicates_action.setEnabled(self._local_duplicates_available())
 
         if hasattr(self, "file_mass_remove_outdated_action"):
             self.file_mass_remove_outdated_action.setEnabled(
@@ -1427,14 +1437,16 @@ class MainWindow(results_ui.ResultsWindow):
         self,
         result: mass_remove.MassRemoveExecutionResult,
     ) -> None:
-        removed_keys = {
-            self._local_apk_path_key(entry.source)
-            for entry in result.entries
-            if (
-                entry.status
-                is local_file_ops.LocalPackageFileMutationStatus.REMOVED
+        self._sync_local_apk_removed_paths(
+            tuple(
+                entry.source
+                for entry in result.entries
+                if entry.status is local_file_ops.LocalPackageFileMutationStatus.REMOVED
             )
-        }
+        )
+
+    def _sync_local_apk_removed_paths(self, removed_paths: tuple[Path, ...]) -> None:
+        removed_keys = {self._local_apk_path_key(path) for path in removed_paths}
 
         if not removed_keys:
             self._sync_action_availability()
@@ -1636,6 +1648,67 @@ class MainWindow(results_ui.ResultsWindow):
             title,
             message,
         )
+
+    def _local_duplicates_available(self) -> bool:
+        if (
+            not local_apk_audit.is_local_apk_source(getattr(self, "source_mode", None))
+            or self._operation_running()
+            or self._local_apk_parse_active
+        ):
+            return False
+        return local_duplicates.analyze_local_apk_duplicates(
+            getattr(self, "current_rows", ()),
+            getattr(self, "_local_apk_candidates", ()),
+        ).has_findings
+
+    def _show_local_apk_duplicates(self) -> None:
+        if not self._local_duplicates_available():
+            return
+        candidates = self._local_apk_candidates
+        review = local_duplicates.analyze_local_apk_duplicates(self.current_rows, candidates)
+        dialog = duplicates_ui.LocalApkDuplicatesDialog(self, review)
+        if dialog.exec() != QDialog.DialogCode.Accepted or not dialog.plan.executable:
+            return
+        plan = dialog.plan
+        answer = QMessageBox.question(
+            self,
+            "Confirm Duplicate Copy Removal",
+            f"Permanently delete {plan.selected_count} explicitly selected duplicate copies?\n\n"
+            "At least one unselected exact copy per group must pass current SHA-256 verification. "
+            "Changed groups will be blocked. This operation cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        if (
+            self._operation_running()
+            or self._local_apk_parse_active
+            or self._local_apk_candidates != candidates
+            or not local_apk_audit.is_local_apk_source(self.source_mode)
+        ):
+            return
+        self._source_operation_active = True
+        self._sync_action_availability()
+        try:
+            result = local_duplicates.execute_duplicate_cleanup(plan)
+            self._sync_local_apk_removed_paths(
+                tuple(
+                    entry.source for entry in result.entries
+                    if entry.status is local_duplicates.DuplicateCleanupStatus.REMOVED
+                )
+            )
+            self.status_label.setText(result.message)
+        finally:
+            self._source_operation_active = False
+            self._sync_action_availability()
+        if any(entry.status is not local_duplicates.DuplicateCleanupStatus.REMOVED for entry in result.entries):
+            details = "\n".join(
+                f"{entry.source}: {entry.status.value}: {entry.message}"
+                for entry in result.entries
+                if entry.status is not local_duplicates.DuplicateCleanupStatus.REMOVED
+            )
+            QMessageBox.warning(self, "Duplicate Cleanup Results", f"{result.message}\n\n{details}")
 
     def _local_mass_rename_available(self) -> bool:
         if (
