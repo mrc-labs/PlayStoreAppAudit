@@ -2,6 +2,18 @@
 
 This is a mandatory release invariant for Store App Audit. It applies to every release, including patch releases.
 
+## Monthly first-day freshness cycle
+
+The complete component-freshness process is also a permanent monthly maintenance gate.
+
+- Run it on the first day of every month, not only immediately before a feature release.
+- Inventory every directly used runtime, dependency, GitHub Action, compiler/deployment tool, Android Platform-Tools path, native platform prerequisite, legal/source helper and release/assembly component.
+- Recheck current stable versions plus announced deprecations, removals, EOL/support dates and applicable security/support changes from authoritative upstream sources.
+- Adopt a newer stable compatible directly selected component when available, unless a concrete target-compatibility blocker is recorded and kept under watch.
+- A pure component/toolchain refresh with no application/source change is a PATCH release. Any source fix or compatibility adaptation required by the refresh is a MINOR release with PATCH reset to zero.
+- Record explicit no-action and future-watch decisions so a component is never treated as current merely because no repository pin changed.
+- Every resulting release still follows the normal exact-SHA validation, build, assembly, publication and closure gates.
+
 ## Two mandatory gates
 
 Run the complete component freshness audit twice:

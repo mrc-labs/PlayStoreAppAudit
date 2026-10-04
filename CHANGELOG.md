@@ -2,6 +2,20 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [2.3.0] - Unreleased
+
+### Added
+
+- Real **Play Store Category** in results, Details, customized views, Smart Queries and CSV/HTML/JSON exports.
+- Up to **3 named Custom Views per source family**, independently for Phone / App List and Local APK, with create, select, update, rename, delete and restart persistence.
+- **Review Duplicates…** for Local APK sources, with explicit keeper-safe cleanup of identical SHA-256 bytes at distinct physical paths. Same Version Variant and Multiple Versions are informational and never automatically deleted.
+
+### Changed
+
+- Local APK Mass Rename `{category}` uses the real Store category; unavailable categories are not fabricated.
+- Existing v2.2 Custom layouts migrate conservatively into named views.
+- Retired duplicated saved installer-category state while preserving legacy Smart Query meaning through canonical installer evidence.
+
 ## [2.2.0] - 2026-10-02
 
 ### Added

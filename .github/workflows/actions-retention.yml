@@ -36,14 +36,13 @@ jobs:
       - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.8"
 
-      - name: Verify stable Python 3.14 baseline
+      - name: Verify exact v2.3 Python patch
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert actual == '3.14.8' and sys.version_info.releaselevel == 'final', actual"
 
       - name: Compile retention policy
         run: python -m py_compile .github/scripts/cleanup_actions_retention.py

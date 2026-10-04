@@ -63,22 +63,21 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.8"
           cache: pip
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
 
-      - name: Verify stable Python 3.14 baseline
+      - name: Verify exact v2.3 Python patch
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert actual == '3.14.8' and sys.version_info.releaselevel == 'final', actual"
 
       - name: Verify Python 3.14 baseline
         run: |
-          python -c "import platform, sys; print(sys.version); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
+          python -c "import platform, sys; print(sys.version); assert platform.python_version() == '3.14.8'"
       - name: Prepare x64 compatibility target on native Ubuntu 24.04
         if: ${{ matrix.arch == 'x64' }}
         env:
@@ -136,7 +135,7 @@ jobs:
           pip install -r requirements-dev.txt "Nuitka==4.2.2"
       - name: Verify Python and Qt baseline
         run: |
-          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.11.2'"
+          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert platform.python_version() == '3.14.8'; assert PySide6.__version__ == '6.11.2'"
       - name: Preflight release legal material
         run: |
           python .github/scripts/preflight_release_legal_material.py \
