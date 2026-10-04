@@ -616,6 +616,8 @@ class CompactWindow(AuditWindow):
         settings["view_preset"] = "Custom"
         self.user_settings = save_settings(settings)
         restored = self._restore_custom_table_layout()
+        if restored:
+            self._apply_column_visibility(reset_order=False)
         sync = getattr(self, "_sync_view_preset_action", None)
         if callable(sync):
             sync("Custom")
