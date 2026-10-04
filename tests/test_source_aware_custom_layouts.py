@@ -437,3 +437,28 @@ def test_named_view_preserves_play_store_category_as_user_owned_field(
     assert "play_category" in custom_family_user_columns(
         CustomLayoutFamily.PHONE_APP_LIST
     )
+
+
+def test_builtin_header_changes_do_not_modify_remembered_named_view(
+    window_store: tuple[dict[str, object], Callable[[], MainWindow]],
+    app: QApplication,
+) -> None:
+    settings, create_window = window_store
+    view_id = _add_view(
+        settings,
+        CustomLayoutFamily.PHONE_APP_LIST,
+        name="Remembered",
+        columns=["criticality", "package_name", "play_title"],
+        widths={"package_name": 321},
+    )
+    settings["view_preset"] = "Basic"
+    before = deepcopy(settings["custom_view_layouts"])
+
+    window = create_window()
+    package = window.model.columns.index("package_name")
+    window.table.setColumnWidth(package, window.table.columnWidth(package) + 31)
+    app.processEvents()
+
+    assert settings["view_preset"] == "Basic"
+    assert settings["custom_view_layouts"] == before
+    assert _active_id(settings, CustomLayoutFamily.PHONE_APP_LIST) == view_id
