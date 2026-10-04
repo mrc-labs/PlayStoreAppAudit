@@ -38,9 +38,9 @@ def test_project_and_update_checker_use_canonical_github_repository() -> None:
     assert f"{repository_url}/releases/latest" == device_insights.LATEST_RELEASE_PAGE
 
 
-def test_v220_release_version() -> None:
-    assert __version__ == "2.2.0"
-    assert f"{__version__}.0" == "2.2.0.0"
+def test_v230_release_version() -> None:
+    assert __version__ == "2.3.0"
+    assert f"{__version__}.0" == "2.3.0.0"
 
 
 def test_release_qt_baseline_is_pinned() -> None:
