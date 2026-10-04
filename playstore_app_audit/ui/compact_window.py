@@ -660,6 +660,8 @@ class CompactWindow(AuditWindow):
 
     def _persist_current_custom_layout(self, *, activate: bool = True) -> bool:
         settings = load_settings()
+        if str(settings.get("view_preset") or "Basic") != "Custom":
+            return False
         family = self._current_custom_layout_family()
         existing = self._custom_layout_entry(settings, family)
         if existing is None:
