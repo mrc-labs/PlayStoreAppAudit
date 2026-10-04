@@ -446,7 +446,6 @@ class CompactWindow(AuditWindow):
         return custom_layout_family(self.source_mode)
 
     @staticmethod
-    @staticmethod
     def _custom_layouts_schema_supported(settings: dict[str, object]) -> bool:
         return named_custom_views.is_supported(settings.get("custom_view_layouts"))
 
