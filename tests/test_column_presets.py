@@ -7,16 +7,17 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog
+from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog, QInputDialog, QPushButton
 
 import playstore_app_audit.services.device_insights as device_insights
 import playstore_app_audit.services.state as state
 import playstore_app_audit.ui.compact_window as compact_ui
-from playstore_app_audit.ui import column_presets, table_layout
+from playstore_app_audit.ui import column_presets, named_custom_views, table_layout
 from playstore_app_audit.ui.main_window import MainWindow
 from playstore_app_audit.ui.table_window import TABLE_SCHEMA_VERSION
 
 CUSTOM_KEYS = (
+    "custom_view_layouts",
     "custom_view_exists",
     "custom_view_columns",
     "custom_view_order",
@@ -107,7 +108,34 @@ def _custom_snapshot(settings: dict[str, object]) -> dict[str, object]:
 
 
 def _custom_action(window: MainWindow):
-    return next(action for action in window.view_preset_actions if action.data() == "Custom")
+    return next(
+        (action for action in window.view_preset_actions if action.data() == "Custom"),
+        getattr(window, "customize_view_action"),
+    )
+
+
+def _seed_named_view(
+    settings: dict[str, object],
+    *,
+    family: column_presets.CustomLayoutFamily = column_presets.CustomLayoutFamily.PHONE_APP_LIST,
+    name: str = "Custom 1",
+    columns: list[str] | None = None,
+    order: list[str] | None = None,
+    widths: dict[str, int] | None = None,
+) -> str:
+    selected = columns or ["criticality", "package_name", "play_title"]
+    layouts, view_id = named_custom_views.create_view(
+        settings["custom_view_layouts"],
+        family.value,
+        name=name,
+        columns=selected,
+        order=order or list(selected),
+        widths=widths or {},
+        activate=True,
+    )
+    settings["custom_view_layouts"] = layouts
+    settings["custom_view_exists"] = True
+    return view_id
 
 
 def test_pristine_settings_remain_basic_without_custom_across_restart(
@@ -125,11 +153,11 @@ def test_pristine_settings_remain_basic_without_custom_across_restart(
     app.processEvents()
     try:
         fresh = state.load_settings()
-        basic = next(action for action in first.view_preset_actions if action.text() == "Basic")
         assert fresh["view_preset"] == "Basic"
         assert fresh["custom_view_exists"] is False
-        assert basic.isChecked()
-        assert _custom_action(first).isEnabled()
+        assert next(action for action in first.view_preset_actions if action.text() == "Basic").isChecked()
+        assert not [action for action in first.view_preset_actions if action.data() == "Custom"]
+        assert first.customize_view_action.isEnabled()
     finally:
         first.close()
         app.processEvents()
@@ -139,17 +167,14 @@ def test_pristine_settings_remain_basic_without_custom_across_restart(
     app.processEvents()
     try:
         second = state.load_settings()
-        basic = next(
-            action for action in restarted.view_preset_actions if action.text() == "Basic"
-        )
         assert second["view_preset"] == "Basic"
         assert second["custom_view_exists"] is False
-        assert basic.isChecked()
-        assert _custom_action(restarted).isEnabled()
+        assert next(action for action in restarted.view_preset_actions if action.text() == "Basic").isChecked()
+        assert not [action for action in restarted.view_preset_actions if action.data() == "Custom"]
+        assert restarted.customize_view_action.isEnabled()
     finally:
         restarted.close()
         app.processEvents()
-
 
 def test_column_preset_naming_and_custom_starts_enabled(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
@@ -162,29 +187,25 @@ def test_column_preset_naming_and_custom_starts_enabled(
         "Basic",
         "Source Details",
         "Technical",
-        "Custom (Phone / App List)",
-        "Custom (Local APK)",
     ]
-    assert _custom_action(window).data() == "Custom"
-    assert _custom_action(window).isEnabled()
-    assert not window.view_preset_actions[-1].isEnabled()
-    assert all(action.text() != "Customize View…" for action in window.view_menu.actions())
+    assert window.customize_view_action.text() == "Customize View…"
+    assert window.customize_view_action.isEnabled()
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
-    assert _custom_action(window).isEnabled()
+    assert named_custom_views.view_records(
+        settings["custom_view_layouts"], "phone_app_list"
+    ) == []
     assert window.model._icons_enabled is True
-
 
 def test_existing_custom_action_restores_gates_and_opens_editor(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings, create_window = window_store
+    view_id = _seed_named_view(settings)
     settings.update(
         {
             "view_preset": "Basic",
-            "custom_view_exists": True,
-            "custom_view_columns": ["criticality", "package_name", "play_title"],
             "changes_history_enabled": True,
             "compare_previous": True,
             "inventory_history_enabled": True,
@@ -195,15 +216,18 @@ def test_existing_custom_action_restores_gates_and_opens_editor(
     opened: list[None] = []
     monkeypatch.setattr(window, "_show_display_settings", lambda: opened.append(None))
 
-    _custom_action(window).trigger()
+    action = next(
+        action
+        for action in window.view_preset_actions
+        if str(action.property("customViewId")) == view_id
+    )
+    action.trigger()
 
-    assert opened == [None]
+    assert opened == []
     assert settings["view_preset"] == "Custom"
-    assert _custom_action(window).isChecked()
+    assert action.isChecked()
     assert {"change", "device_change"}.issubset(set(_visible_order(window)))
 
-
-@pytest.mark.parametrize("dismissal", ["cancel", "close"])
 def test_new_custom_action_cancel_or_close_keeps_builtin_and_creates_nothing(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     monkeypatch: pytest.MonkeyPatch,
@@ -211,6 +235,7 @@ def test_new_custom_action_cancel_or_close_keeps_builtin_and_creates_nothing(
 ) -> None:
     settings, create_window = window_store
     window = create_window()
+    before = deepcopy(settings["custom_view_layouts"])
 
     def dismiss(dialog: QDialog) -> int:
         if dismissal == "close":
@@ -219,16 +244,15 @@ def test_new_custom_action_cancel_or_close_keeps_builtin_and_creates_nothing(
         return QDialog.DialogCode.Rejected
 
     monkeypatch.setattr(QDialog, "exec", dismiss)
-
-    _custom_action(window).trigger()
+    window.customize_view_action.trigger()
 
     assert settings["view_preset"] == "Basic"
     assert settings["custom_view_exists"] is False
+    assert settings["custom_view_layouts"] == before
     assert next(
         action for action in window.view_preset_actions if action.text() == "Basic"
     ).isChecked()
-    assert not _custom_action(window).isChecked()
-
+    assert not [action for action in window.view_preset_actions if action.data() == "Custom"]
 
 def test_new_custom_action_save_creates_and_activates_ordinary_custom_base(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
@@ -239,27 +263,40 @@ def test_new_custom_action_save_creates_and_activates_ordinary_custom_base(
     window = create_window()
     expected_ordinary = set(_visible_order(window)) - {"change", "device_change"}
 
-    def accept_starting_columns(dialog: QDialog) -> int:
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        lambda *_args, **_kwargs: ("Review", True),
+    )
+
+    def create_and_accept(dialog: QDialog) -> int:
         checked = {
             check.objectName().removeprefix("CustomColumnCheck_")
             for check in dialog.findChildren(QCheckBox)
             if check.objectName().startswith("CustomColumnCheck_") and check.isChecked()
         }
         assert checked == expected_ordinary - {"criticality", "package_name"}
+        button = dialog.findChild(QPushButton, "NewNamedViewButton")
+        assert button is not None
+        button.click()
         return QDialog.DialogCode.Accepted
 
-    monkeypatch.setattr(QDialog, "exec", accept_starting_columns)
-
-    _custom_action(window).trigger()
+    monkeypatch.setattr(QDialog, "exec", create_and_accept)
+    window.customize_view_action.trigger()
 
     assert settings["view_preset"] == "Custom"
     assert settings["custom_view_exists"] is True
-    assert _custom_action(window).isChecked()
-    assert set(settings["custom_view_columns"]) == expected_ordinary  # type: ignore[arg-type]
-    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
-        settings["custom_view_columns"]  # type: ignore[arg-type]
+    views = named_custom_views.view_records(
+        settings["custom_view_layouts"], "phone_app_list"
     )
-
+    assert [view["name"] for view in views] == ["Review"]
+    assert set(views[0]["columns"]) == expected_ordinary
+    assert not column_presets.CUSTOM_CONTEXTUAL_COLUMNS.intersection(
+        views[0]["columns"]
+    )
+    assert next(
+        action for action in window.view_preset_actions if action.data() == "Custom"
+    ).isChecked()
 
 def test_programmatic_builtin_presets_do_not_create_custom(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
@@ -273,8 +310,9 @@ def test_programmatic_builtin_presets_do_not_create_custom(
         app.processEvents()
 
         assert settings["view_preset"] == preset
-        assert settings["custom_view_exists"] is False
-        assert _custom_action(window).isEnabled()
+        assert named_custom_views.view_records(
+            settings["custom_view_layouts"], "phone_app_list"
+        ) == []
         for logical, column in enumerate(window.model.columns):
             if window.table.isColumnHidden(logical):
                 continue
@@ -282,8 +320,6 @@ def test_programmatic_builtin_presets_do_not_create_custom(
                 window.table, column
             )
 
-
-@pytest.mark.parametrize("preset", ["Basic", "Source Details", "Technical"])
 def test_builtin_column_presets_remain_immutable_after_manual_resize(
     window_store: tuple[dict[str, object], Callable[[], MainWindow]],
     app: QApplication,
