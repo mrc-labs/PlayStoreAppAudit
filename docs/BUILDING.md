@@ -1,6 +1,6 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from the canonical `main` branch. Current unpublished v2.3 preparation stages exact stable Python **3.14.8**; normal development returns to rolling **3.14** during release closure. Published v2.2 remains immutable.
+Windows, macOS and Linux use the same Python/Qt source tree from canonical `main`. Published v2.3.0 is immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af` and used exact stable Python **3.14.8**. Post-release development tracks rolling stable **3.14** / `check-latest: true`; every future freeze requires fresh exact-patch selection. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md).
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
@@ -19,7 +19,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 ```
 
-The normal development policy uses `"3.14"` with `check-latest: true`; current v2.3 preparation instead stages freshly audited `"3.14.8"` and full equality. Development steps check stable major/minor 3.14 before use, and log the actual full runtime. The Windows helper keeps its standard 64-bit architecture guards; Linux x64 dynamically downloads the official Ubuntu 22.04 compatibility distribution of the identical resolved full patch and verifies equality after installation. Docker is not required for normal local source development, pytest or Qt/CLI smoke; CI uses Ubuntu 22.04 containers deliberately for x64 sysroot/probe and backward-runtime tests, separately from Ubuntu 24.04 build hosts.
+The post-v2.3 development policy uses `"3.14"` with `check-latest: true` in all 11 setup environments/nine workflows; the immutable release used audited `"3.14.8"` with full equality. Development steps check stable major/minor 3.14 before use, and log the actual full runtime. The Windows helper keeps its standard 64-bit architecture guards; Linux x64 dynamically downloads the official Ubuntu 22.04 compatibility distribution of the identical resolved full patch and verifies equality after installation. Docker is not required for normal local source development, pytest or Qt/CLI smoke; CI uses Ubuntu 22.04 containers deliberately for x64 sysroot/probe and backward-runtime tests, separately from Ubuntu 24.04 build hosts.
 
 Immediately before every future release SHA freeze, final freshness must replace rolling selectors with one audited exact `major.minor.patch` in release-producing workflows, final Quality and signing/assembly environments, and require full runtime equality. All six final candidates use that patch unless an evidenced upstream limitation is explicitly accepted. The mechanism remains ordinary YAML literals/assertions; no new toolchain configuration subsystem is introduced. Published v2.2 used exact Python **3.14.8** in all 11 setup environments and both native helpers; [its historical final freshness record](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md#exact-python-selection-and-checks) remains unchanged as release evidence. See [the canonical freshness policy](RELEASE_COMPONENT_FRESHNESS.md#development-tracking-and-final-python-patch-freeze).
 
@@ -54,14 +54,14 @@ python -c "from PySide6.QtWidgets import QApplication; from playstore_app_audit.
 Remove-Item Env:QT_QPA_PLATFORM
 ```
 
-`.github/workflows/quality.yml` runs cheap pull-request and `main` validation, currently on staged exact Python 3.14.8 for v2.3 preparation; final freshness must reconfirm the patch before frozen-release Quality. It is the normal pre-release correctness gate; it is not a package release workflow.
+`.github/workflows/quality.yml` runs cheap pull-request and `main` validation on rolling stable Python 3.14; final freshness pins and verifies one exact patch before frozen-release Quality. It is the normal source correctness gate, not a package release workflow.
 
 ## Release toolchain baseline
 
-Current v2.3 preparation pins (published v2.2 used the same selected parent toolchain):
+Current development baseline (immutable v2.2/v2.3 used exact Python 3.14.8 and the same selected parent toolchain):
 
-- Release-preparation/diagnostic packaging Python: exact stable **3.14.8**
-- Quality CI: exact stable **3.14.8**, with final freshness still required
+- Development/diagnostic packaging Python: rolling stable **3.14**; exact audited full patch mandatory at release freeze
+- Development Quality CI: rolling stable **3.14** / `check-latest: true` with stable/final guards
 - `PySide6-Essentials==6.11.2`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
 - `Nuitka==4.2.2`
@@ -167,7 +167,7 @@ v2.1.0 is immutable at `df2726b959963e5dbb096638d5072bd15eb1de92` with six platf
 
 ### v2.2.0 published release and engineering assembly
 
-v2.2.0 is published and immutable at `21b6646571b7e93044b76fe4d18a04eeec092f18`. The [prep record](V2_2_RELEASE_PREP.md) and [final freshness record](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) preserve historical diagnostics; PR #220 is merged and the exact release Python is 3.14.8. Canonical Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, macOS `36988307201` and assembly `36993205418` all succeeded on attempt 1 at that exact SHA. Exactly eight public assets passed independent re-download/name/size/SHA-256/byte-identity verification. See [the published body](RELEASE_NOTES.md#published-v220-release-body) and [Project Status](PROJECT_STATUS.md#published-v220-release). Post-v2.2 closure restored rolling stable Python 3.14; current v2.3 preparation stages exact 3.14.8 and still requires final freshness before SHA freeze.
+v2.2.0 is published and immutable at `21b6646571b7e93044b76fe4d18a04eeec092f18`. The [prep record](V2_2_RELEASE_PREP.md) and [final freshness record](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md) preserve historical diagnostics; PR #220 is merged and the exact release Python is 3.14.8. Canonical Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, macOS `36988307201` and assembly `36993205418` all succeeded on attempt 1 at that exact SHA. Exactly eight public assets passed independent re-download/name/size/SHA-256/byte-identity verification. See [the published body](RELEASE_NOTES.md#published-v220-release-body) and [Project Status](PROJECT_STATUS.md#published-v220-release). Post-v2.2 closure restored rolling stable Python 3.14; published v2.3 again froze exact 3.14.8. Phase E restores rolling development tracking; every future freeze repeats complete freshness and exact-patch guards.
 
 The six-platform unsigned Windows/Linux and ad-hoc macOS profile now uses `assemble-release.yml`: Windows input must be a successful `Build Windows - Qt6` run containing both architectures, and macOS downloads use the engineering Actions artifact prefix while public ZIP names remain canonical. This supersedes the direct-assembly routing in the historical [prep record](V2_2_RELEASE_PREP.md#six-target-engineering-assembly-readiness). The Windows ETB assembler remains x64-only; exact-run lineage, all six candidate checks, public strict legal evidence, unchanged binary ZIPs and the eight-file checksum contract remain mandatory.
 
@@ -183,7 +183,7 @@ This housekeeping never alters GitHub Release assets, tags or source commits.
 
 `build_windows_exe.bat` is the supported local Windows x64 helper. It:
 
-- locates native x64 Python through the Windows Python launcher's 3.14 selector and requires exact 3.14.8 during current v2.3 release preparation;
+- locates native x64 Python through the Windows Python launcher's 3.14 selector and requires stable/final 3.14 during development (one exact audited patch at release freeze);
 - creates or reuses `.venv` and installs `requirements-dev.txt`;
 - runs compileall, pytest, Ruff and Qt source smoke checks;
 - derives package and Windows version metadata from `playstore_app_audit.__version__`;
@@ -455,17 +455,17 @@ If source code or release tooling changes after the SHA is frozen, freeze a new 
 
 Documentation-only changes after a published release do not justify rebuilding, retagging or replacing that release's binary assets.
 
-## v2.3 release preparation
+## Published v2.3.0 engineering distribution
 
-See [Phase B evidence](V2_3_RELEASE_PREP.md), [fresh release-entry audit](V2_3_RELEASE_ENTRY_FRESHNESS.md), [release-body draft](V2_3_RELEASE_BODY_DRAFT.md) and [handoff](HANDOFF_V2.3.md). The entry audit is complete; exact Python pins are separately staged by the authorized Phase B task, not by the entry gate itself. Repeat the complete freshness gate immediately before final exact-main-SHA freeze. Source changes after freeze invalidate all six candidates.
+Published source/tag/assets are immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; [Phase E audit](V2_3_POST_RELEASE_CLOSURE.md) records accepted Quality, all six candidates, assembly and independent public-byte verification. Windows/Linux are unsigned; macOS is ad-hoc only, without Developer ID or notarization. Exactly eight accepted existing assets were published; no tag-triggered rebuild occurred. #154 production trust remains deferred.
 
-The intended v2.3 profile preserves the established engineering distribution: Windows/Linux unsigned and macOS ad-hoc signed only, without Developer ID or notarization. Use `assemble-release.yml` only after all six same-SHA engineering candidates validate, producing exactly eight assets. The production-trust procedure remains future #154 work, not the v2.3 profile. No final builds, tag or publication occurred in Phase B.
+[Phase B preparation](V2_3_RELEASE_PREP.md), [entry freshness](V2_3_RELEASE_ENTRY_FRESHNESS.md) and [former draft](V2_3_RELEASE_BODY_DRAFT.md) are historical. Entry audit alone did not freeze the release; final freshness and exact-SHA Quality preceded the six-platform builds. Development restores rolling Python 3.14 while preserving exact 3.14.8 release evidence. Complete freshness and one exact audited patch remain mandatory before any future frozen SHA.
 
 ## Version handling
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-v1.7.0, v1.8.0, v1.9.0, v1.99.0, v2.0.0 and v2.1.0 version metadata are part of their immutable published release profiles. Current source version is `2.3.0` (Windows `2.3.0.0`) in unpublished v2.3 preparation. The latest published release remains v2.2.0. The immutable release is `21b6646571b7e93044b76fe4d18a04eeec092f18`; final Quality, six-platform builds, assembly and independent public re-download passed. Post-release development restores rolling stable Python 3.14; every future release must repeat the final exact-patch freeze.
+Historical release version metadata remains immutable. Current source is `2.3.0` (Windows `2.3.0.0`), matching latest published v2.3.0 at `8d476dc5507d8249d8cd62c861095ed3e443f0af`. Source Quality, six-platform acceptance, assembly and independent public verification passed. Closure changes development workflows/context only, preserving product code and version. Every future release repeats final freshness and exact-patch freeze.
 
 ## Packaged smoke tests
 

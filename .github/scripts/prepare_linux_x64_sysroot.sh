@@ -9,7 +9,8 @@ mkdir -p linux-diagnostics
 compat_root="$RUNNER_TEMP/linux-compat-build"
 mkdir "$compat_root"
 resolved_python="$(python -c 'import platform, sys; assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == "final"; print(platform.python_version())')"
-test "$resolved_python" = 3.14.8
+# Development tracks stable 3.14; the compatibility distribution must use
+# the identical resolved full patch. Future release freezes pin it upstream.
 python .github/scripts/download_linux_compat_python.py \
   --version "$resolved_python" --output-dir "$compat_root"
 cp "$compat_root/python-distribution.json" linux-diagnostics/

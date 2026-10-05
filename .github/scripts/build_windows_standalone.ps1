@@ -93,9 +93,9 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Could not read platform.machine() from the selected Python."
 }
 
-& $Python -c "import platform, struct, sys; print(sys.version); print(struct.calcsize('P') * 8); assert platform.python_version() == '3.14.8' and sys.version_info.releaselevel == 'final'; assert struct.calcsize('P') * 8 == 64"
+& $Python -c "import platform, struct, sys; print(sys.version); print(struct.calcsize('P') * 8); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert struct.calcsize('P') * 8 == 64"
 if ($LASTEXITCODE -ne 0) {
-    Fail "Windows packaging requires standard 64-bit Python 3.14.8."
+    Fail "Windows packaging requires standard 64-bit stable Python 3.14."
 }
 
 $ExpectedMachineNormalized = $ExpectedPlatformMachine.ToUpperInvariant()

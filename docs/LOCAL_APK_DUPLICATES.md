@@ -1,6 +1,6 @@
 # Session-local duplicate APK review
 
-Track C implements the locked [issue #224 contract](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224#issuecomment-5981962164). It was integrated through PR #230 from final feature head `5a609f1176104184080fac4dfa612ca14e8d3905` into main merge commit `9dcf8aa92b4785280765313d227e8fcb64a7db58`. Integration retained source version 2.2.0; [Phase B release preparation](V2_3_RELEASE_PREP.md) now deliberately targets 2.3.0. This integrated development state is not a published v2.3 release claim.
+Track C implements the locked [issue #224 contract](https://github.com/mrc-labs/PlayStoreAppAudit/issues/224#issuecomment-5981962164), integrated through PR #230 from feature head `5a609f1176104184080fac4dfa612ca14e8d3905` into main `9dcf8aa92b4785280765313d227e8fcb64a7db58` while source remained 2.2.0. Phase B advanced to 2.3.0; this feature shipped in immutable v2.3.0 at `8d476dc5507d8249d8cd62c861095ed3e443f0af`. [Publication and pending closure](V2_3_POST_RELEASE_CLOSURE.md) are separate from original implementation acceptance.
 
 ## Review and identity
 

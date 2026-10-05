@@ -1,5 +1,7 @@
 # v2.3 release-entry component freshness
 
+**Historical Phase B record, superseded for current state.** v2.3.0 is published at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; final freshness, canonical six-platform/assembly acceptance and independent public-byte verification subsequently passed. Phase E restores rolling stable Python 3.14 / `check-latest: true`, preserving exact 3.14.8 release evidence below. [Closure audit](V2_3_POST_RELEASE_CLOSURE.md) records later outcomes and outstanding work. All preparation/pending statements below describe the original audit boundary, not current publication state.
+
 Audit date: **2026-10-05 CEST** (primary queries began `2026-10-04T22:00:49Z`, already October 5 locally). This is a fresh entry audit, not copied v2.2 approval. Scope follows [the permanent ownership policy](RELEASE_COMPONENT_FRESHNESS.md): **A** directly controlled, **B** supported parent bundle, **C** vendor internals, **D** supported OS/compiler baseline preserving six targets and compatibility floors.
 
 **Entry conclusion: PASS for Phase B source preparation.** No newer stable compatible direct pin or Action major requires a repository update. One independently resolved mypy development dependency, ast_serialize, advances to 0.12.1 in the clean environment. No final package, signing, legal-compliance or frozen-SHA acceptance is implied. Final complete freshness and all six native candidate validations remain mandatory in Phase C.

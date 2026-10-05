@@ -1,39 +1,31 @@
-# Store App Audit v2.3 release handoff
+# Store App Audit v2.3 publication and Phase E handoff
 
-Updated **2026-10-05 CEST**. Active cycle: [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225), acceptance/release preparation [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232).
+Updated **2026-10-05 CEST**. #225 and #232 remain open for independent Control Tower closure review. This tracked context is not a generated checkout/snapshot export.
 
-## Published history versus current source
+## Immutable release versus development
 
-Latest published release is **v2.2.0**, immutable at `21b6646571b7e93044b76fe4d18a04eeec092f18`; annotated tag object `95a402b25f65bf22db58f831076bca747e2c9103`, Release ID `401714084`. Its eight assets and published verification remain unchanged. Its complete closure is recorded in `V2_2_POST_RELEASE_CLOSURE.md`; `HANDOFF_V2.2.md` remains historical.
+Published **v2.3.0** on **2026-10-05**, immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`, Release ID `403687278`. Exactly eight accepted Windows/Linux/macOS x64/ARM64 ZIP/source/checksum assets are published. Windows/Linux are unsigned; macOS is engineering ad-hoc only, without Developer ID or notarization. [Independent public-byte verification](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051) passed. Source remains **2.3.0** / Windows **2.3.0.0**. Phase E restores rolling stable Python `3.14` / `check-latest: true` on `chore/v2.3-closure`. Its forthcoming development SHA is separate from the immutable release SHA. Control Tower review, normal merge, post-merge Quality/rendered-main README checks and safe local synchronization remain pending. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md).
 
-Current source is **2.3.0**, Windows File/Product **2.3.0.0**, **unpublished** on `v2/release-prep-2.3.0`. This branch is not the frozen release SHA. Starting/Phase A accepted baseline is `ba7bf2268603dd75f95c9906299ba4bed036865b`; [accepted evidence](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5984807882).
+Published at 2026-10-05T12:44:51Z. Published toolchain: exact Python **3.14.8**, matched PySide/Shiboken/Qt **6.11.2**, Nuitka **4.2.2**. GitHub reports `immutable: false`; project policy still forbids rebuild/retag/asset replacement.
 
-All three pillars are integrated: Category/installer state through PR #227/#228, up to three Named Custom Views per independent source family through PR #229, conservative identical-SHA-256 duplicate review through PR #230. Phase A passed. Keep accepted limitations visible: long named views can clip at minimum width with tooltips; synchronous duplicate revalidation can pause UI; portable final check-to-delete race remains; Windows symlink tests depend on privileges.
+All three pillars shipped: #188 Category/installer state (PR #227/#228), #147 up to three Named Custom Views per independent source family (PR #229), #224 conservative identical-SHA-256 duplicate review (PR #230). Phase A accepted `ba7bf2268603dd75f95c9906299ba4bed036865b`. Historical Phase B [preparation](V2_3_RELEASE_PREP.md)/[entry freshness](V2_3_RELEASE_ENTRY_FRESHNESS.md) remain preserved. Practical limits: long view names can clip with tooltips; synchronous duplicate revalidation may pause UI; the portable final check-to-delete race remains; Windows symlink tests depend on privileges. Published Help retains preparation-time wording because product code/assets remain unchanged.
 
-## Phase B checkpoint and delivered HEAD
+## Accepted release evidence
 
-Version/exact-runtime code checkpoint: `1060e98a028856e7d700651819e197cc83ea40fc`. The subsequent current-context/evidence commit completes preparation. The final **exact release-prep HEAD**, local/remote equality, clean state and validation are captured in the generated clean `REPOSITORY_SNAPSHOT.md` and final delivery report. Use that full SHA for review/Quality; do not treat the code checkpoint as final HEAD. This avoids embedding a commit's own unknowable hash into itself.
+| Gate | Canonical run | Acceptance |
+| --- | --- | --- |
+| Quality #680 | [37241775290](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37241775290) | SUCCESS, 1790 tests |
+| Windows x64/ARM64 | [37246646085](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37246646085) | SUCCESS |
+| Linux x64/ARM64 | [37246681845](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37246681845) | SUCCESS, both compatibility reports retained |
+| macOS Intel/ARM64 | [37246726056](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37246726056) | SUCCESS, accepted attempt 2 after upload retry |
+| Assembly | [37260955813](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37260955813) | SUCCESS, artifact `11324630974` |
 
-Fresh entry evidence: [V2_3_RELEASE_ENTRY_FRESHNESS.md](V2_3_RELEASE_ENTRY_FRESHNESS.md). Preparation/validation: [V2_3_RELEASE_PREP.md](V2_3_RELEASE_PREP.md). Public wording: [V2_3_RELEASE_BODY_DRAFT.md](V2_3_RELEASE_BODY_DRAFT.md), with canonical four sections and pending final verification.
+All resolve to the exact immutable release SHA. Six-platform package/startup/architecture/version/provenance/legal/source acceptance and independent public-byte verification passed. Linux x64 Ubuntu 22.04 offscreen/xcb GUI and CLI smoke passed; ELF maxima x64 GLIBC 2.35 / GLIBCXX 3.4.29, ARM64 2.38 / 3.4.32. macOS bundled metadata maxima Intel 26.0 / ARM64 15.0 differ from main-executable settings 10.15/11.0; tested hosts 26.6.1/26.6.2 establish no older-OS runtime acceptance. Publication used local authenticated CLI, with no publication Actions run ID or tag-triggered rebuild.
 
-Local source gate passed: **1781 pytest passed, 9 skipped**, full Quality Ruff, application/nine-helper compilation, PowerShell syntax and standard Qt offscreen smoke. Focused release checks **81 passed**; focused Help/workflow/Tracks A/B/C **117 passed**. Strict source legal preflight and dependency integrity passed. Exact delivered-head gate and remote equality are recorded by the clean external delivery evidence; remote CI and native candidate acceptance remain pending.
+## Phase E and next authorized step
 
-Python 3.14.8 is freshly selected, staged exactly in all 11 setup environments/nine workflows and both native helpers with fail-closed full equality. Matched PySide/Shiboken/Qt 6.11.2 and Nuitka 4.2.2 remain current. No direct dependency/Action pin update was needed; clean mypy dependency resolution now uses ast_serialize 0.12.1. Final freshness remains mandatory immediately before final SHA freeze. Post-release closure restores rolling stable Python 3.14 / `check-latest: true`.
+[Closure audit](V2_3_POST_RELEASE_CLOSURE.md) records unchanged retention run `37348726683`, before/after **37 artifacts / 4,548,500,908 bytes**, all nine canonical artifacts, correct live metadata, stale default-main README awaiting merge, preserved local material and unavailable Docker daemon. Development restores stable `3.14` / `check-latest: true` in 11 setup environments/nine workflows plus matching guards/tests/native helpers. Stable/final, GIL, architecture, security and same-resolved-patch checks remain. Dependency pins, product code, source/Windows version and release assets remain unchanged. Every future freeze requires complete freshness and one exact audited full patch again.
 
-## Next authorized phase
+The closure PR's exact head and exact-head Quality result belong in the PR/final delivery report, not a self-referential hash in this commit. Stop for **independent Control Tower review**. Do not merge, enable auto-merge or close #225/#232. After normal merge, verify exact post-merge Quality, recheck rendered default-main README/live metadata, repeat Docker resource inspection when its daemon is available, then follow `RELEASE_CLOSURE.md`: clean status, fetch --prune, switch main, pull --ff-only, verify clean canonical HEAD. Never reset/stash/discard unexpected work. Generate a snapshot/handoff only from that synchronized state if requested. Final closure remains pending.
 
-Return control for **control-tower release-prep review**. No PR, merge, tag, release, issue closure or final platform build dispatch was performed in Phase B.
-
-Phase C must review this exact delivered branch SHA, run remote exact-head Quality, merge normally and validate exact post-merge main. Repeat the full final freshness gate, resolve/pin any newly required compatible updates, then freeze one exact full main SHA. Build Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/ARM64 from that same SHA. Validate package contents, architecture, version, startup, provenance, all legal/source material, Linux x64 Ubuntu 22.04 backward smoke, all ELF maxima and actual macOS floors. Entry/source checks are not package acceptance.
-
-Phase D assembles exactly eight engineering assets from accepted same-SHA runs, validates them, tags and publishes accepted existing artifacts, then independently re-downloads and verifies size/SHA-256/byte identity. Windows/Linux remain unsigned; macOS uses ad-hoc engineering signing only, without Developer ID or notarization. #154 production trust and #209 updater remain outside v2.3. A tag must never rebuild binaries.
-
-Phase E follows `RELEASE_CLOSURE.md` and `CI_MAINTENANCE.md`: context review, live public repository/About/homepage/topics/README checks, safe retention, separate read-only local Docker audit, restored rolling development Python, validated clean local VS Code synchronization to expected canonical main SHA, then clean snapshot/handoff. Never reset/stash/discard dirty work. Publishing alone is not closure.
-
-## Watches to reopen at final freshness
-
-- Windows ARM64 vendor OpenSSL 3.6 support ends 2026-11-01; recheck current vcpkg port/integration and applicable advisories before a delayed release.
-- Xcode 27 does not preserve Intel support; keep supported shared Xcode 26.6 until a concrete successor preserves both architectures and floors.
-- Ubuntu-latest 26.04 rollout begins 2026-10-19; release builders are explicitly 24.04. Hosted Ubuntu 22.04 retirement does not retire intentional supported Jammy compatibility containers.
-- Qt 6.12 is newer independently, but the public matched Python bindings remain 6.11.2; do not mix libraries. Recheck parent releases and advisories.
-- Vendor-owned Azure signing internals are recorded observations; production signing acceptance is absent and remains #154.
+Historical v2.2 release/closure and `HANDOFF_V2.2.md` remain unchanged. #154 production signing/notarization and #209 updater/self-update remain deferred; no next product milestone is assigned here. Dated entry-audit watches remain future rechecks: matched Qt bindings, vendor OpenSSL support, Intel/ARM64 Xcode successor, runner labels and vendor signing integrations. They do not authorize rebuilding published v2.3.

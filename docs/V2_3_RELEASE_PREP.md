@@ -1,5 +1,7 @@
 # v2.3.0 Phase B release preparation
 
+**Historical Phase B record, superseded for current state.** v2.3.0 is published at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; final freshness, canonical six-platform/assembly acceptance and independent public-byte verification subsequently passed. Phase E restores rolling stable Python 3.14 / `check-latest: true`, preserving exact 3.14.8 release evidence below. [Closure audit](V2_3_POST_RELEASE_CLOSURE.md) records later outcomes and outstanding work. All preparation/pending statements below describe the original audit boundary, not current publication state.
+
 Date: **2026-10-05 CEST**. Tracking: [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225), [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232).
 
 ## Source state and scope
@@ -44,7 +46,7 @@ Fresh isolated Windows x64 environment: Python 3.14.8, PySide6/Qt 6.11.2; user s
 
 The completed pre-commit gate is recorded here; the same complete gate is repeated on the delivered clean commit, with exact HEAD/log evidence in the external clean export/final delivery report. Remote exact-head Quality remains a control-tower gate, not a claimed CI result.
 
-## Remaining release work
+## Release work planned at the Phase B checkpoint (historical)
 
 **Phase C:** control-tower review/PR, exact-head Quality, normal merge and post-merge Quality; repeat final freshness, verify exact Python selection and freeze one full main SHA. Build and accept all six same-SHA candidates, with architecture/version/startup/provenance/legal/source and actual binary compatibility evidence. Recheck the ast_serialize development resolution as part of clean platform environment validation.
 

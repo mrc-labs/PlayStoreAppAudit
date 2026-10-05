@@ -367,11 +367,11 @@ PR [#222](https://github.com/mrc-labs/PlayStoreAppAudit/pull/222) merged normall
 
 Issue [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is closed as completed. Final post-v2.2 documentation `main` is `6637b94e0693673650f9005def5b5ed76cb86034`, with Quality #644 / run `37033913962` SUCCESS at that exact SHA. This remains separate from the immutable v2.2 release source SHA.
 
-## v2.3 release preparation
+## v2.3 published product scope
 
-Updated 2026-10-05 CEST. Current source/package version is **2.3.0** (Windows File/Product **2.3.0.0**) on `v2/release-prep-2.3.0`. All three v2.3 pillars are integrated and Phase A passed at `ba7bf2268603dd75f95c9906299ba4bed036865b`. Phase B stages exact Python **3.14.8** after a fresh release-entry audit; final freshness, exact-head Quality, frozen main SHA, six-platform builds and publication remain pending. This branch is not a frozen release SHA. See [release preparation](V2_3_RELEASE_PREP.md), [entry freshness](V2_3_RELEASE_ENTRY_FRESHNESS.md) and [current handoff](HANDOFF_V2.3.md).
+Published **v2.3.0** on **2026-10-05**, immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`, Release ID `403687278`. Exactly eight accepted Windows/Linux/macOS x64/ARM64 ZIP/source/checksum assets are published. Windows/Linux are unsigned; macOS is engineering ad-hoc only, without Developer ID or notarization. [Independent public-byte verification](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051) passed. Source remains **2.3.0** / Windows **2.3.0.0**. Phase E restores rolling stable Python `3.14` / `check-latest: true` on `chore/v2.3-closure`. Its forthcoming development SHA is separate from the immutable release SHA. Control Tower review, normal merge, post-merge Quality/rendered-main README checks and safe local synchronization remain pending. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md) and [current handoff](HANDOFF_V2.3.md).
 
-v2.3 is approved and coordinated by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225). Planning starts from canonical post-v2.2 `main` SHA `6637b94e0693673650f9005def5b5ed76cb86034`; source version remained `2.2.0` during implementation and is now deliberately 2.3.0 for Phase B.
+v2.3 is approved and coordinated by master issue [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225). Planning starts from canonical post-v2.2 `main` SHA `6637b94e0693673650f9005def5b5ed76cb86034`; source version remained `2.2.0` during implementation and advanced to 2.3.0 in Phase B.
 
 ### Track A: Play Store Category plus installer-category cleanup
 
@@ -405,7 +405,7 @@ Completed via PR #230; issue [#224](https://github.com/mrc-labs/PlayStoreAppAudi
 - Multiple historical versions may be grouped informationally; older does not automatically mean disposable.
 - Keep scope focused and do not reintroduce a full APK Library Manager.
 
-Implementation completed in order **#188 -> #147 -> #224**. Phase A integrated acceptance passed on `ba7bf2268603dd75f95c9906299ba4bed036865b`; remaining work is deliberate release preparation and Phase C/D/E.
+Implementation completed in order **#188 -> #147 -> #224**. Phase A integrated acceptance passed on `ba7bf2268603dd75f95c9906299ba4bed036865b`; Phases B/C/D and independent public-byte verification passed. Phase E review, normal merge, post-merge Quality/public README checks, unavailable Docker inventory and safe local synchronization remain. No next product milestone is assigned by closure.
 
 Kickoff tracker hygiene is complete: #191 is closed as superseded/not planned; #192 and #193 are closed as completed through their replacement v2.1 paths. #154 production signing/notarization and #209 update/self-update remain outside v2.3.
 

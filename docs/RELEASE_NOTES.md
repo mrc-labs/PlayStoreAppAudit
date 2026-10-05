@@ -66,6 +66,54 @@ GitHub Release descriptive prose is editorially maintainable. It may be correcte
 
 The body published on GitHub remains the primary historical source. Repository changelogs, tags, checksums, and preserved CI evidence may supplement only clearly supported missing detail. Obvious encoding and formatting corruption may be fixed without changing meaning.
 
+## Published v2.3.0 release body
+
+Title: `Store App Audit v2.3.0` · [Published 2026-10-05](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0)
+
+Release ID `403687278`; annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`; immutable source `8d476dc5507d8249d8cd62c861095ed3e443f0af`. The body below is copied unchanged from the published GitHub Release, the primary historical source. The former [draft](V2_3_RELEASE_BODY_DRAFT.md) is superseded. Its future-tense public-verification sentence describes the publication-time boundary; [independent public-byte verification subsequently passed](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051). No live Release prose was changed by closure.
+
+```markdown
+## What's New / Highlights
+
+### Added
+- **Play Store Category** in results, Details, custom views, Smart Queries and CSV/HTML/JSON exports.
+- Up to **3 named Custom Views per source family**, independently for Phone / App List and Local APK, with create/select/update/rename/delete and restart persistence.
+- **Review Duplicates…** for Local APK sources: explicit keeper-safe cleanup of identical SHA-256 bytes at distinct physical paths. Same Version Variant and Multiple Versions remain informational.
+
+### Changed
+- Local APK Mass Rename `{category}` uses the real Store category.
+- Existing v2.2 Custom layouts migrate conservatively into named views.
+- Legacy installer-classification Smart Queries retain their meaning.
+
+## Compatibility and distribution
+
+Windows x64 and ARM64, Linux x64 and ARM64, macOS Intel/x64 and Apple Silicon/ARM64.
+
+Windows and Linux packages are unsigned. macOS packages use engineering ad-hoc signing only; they are not Developer ID signed or notarized.
+
+Linux x64 passed packaged GUI/CLI smoke on Ubuntu 22.04, with maximum GLIBC 2.35 / GLIBCXX 3.4.29 requirements. Linux ARM64 was validated on Ubuntu 24.04, with maximum GLIBC 2.38 / GLIBCXX 3.4.32 requirements.
+
+The highest bundled macOS minimum-version metadata is **26.0 on Intel** and **15.0 on Apple Silicon**. Native package validation ran on macOS **26.6.1 Intel** and **26.6.2 ARM64**. Earlier operating-system runtime acceptance is not claimed; the main executable's lower deployment metadata does not establish whole-package compatibility.
+
+## Release assets
+
+Exactly eight project assets: six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`.
+
+Extract the ZIP for your OS and architecture before starting the application. The source archive complements the bundled third-party legal material.
+
+## Verification
+
+Frozen release source: `8d476dc5507d8249d8cd62c861095ed3e443f0af`.
+
+Quality, six-platform packaged GUI/CLI smoke, architecture/version/provenance, signing-state and strict legal/source validation passed. Accepted assembly: [37260955813](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37260955813).
+
+All eight assets passed independent names, sizes and SHA-256 verification. All six final binary ZIPs are byte-for-byte identical to the accepted candidates; all seven checksum entries passed.
+
+Verify downloads against `SHA256SUMS.txt`. Independent public re-download and byte verification will be recorded after publication.
+
+Optional support: [GitHub Sponsors](https://github.com/sponsors/mrc-labs).
+```
+
 ## Published v2.2.0 release body
 
 Title: `Store App Audit v2.2.0` · [Published 2026-10-02](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0)

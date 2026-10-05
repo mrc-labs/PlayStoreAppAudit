@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Fetch the official x64 Ubuntu 22 distribution of the already-resolved patch.
 
-The build host remains Ubuntu 24.04. Never select a different Python patch or
+Development resolves rolling stable 3.14; a release freeze supplies its exact
+full patch. This helper always preserves that resolved version and verifies the
+official archive size/digest. The build host remains Ubuntu 24.04.
+Never select a different Python patch or
 accept an unofficial distribution to lower the target ABI.
 """
 from __future__ import annotations
