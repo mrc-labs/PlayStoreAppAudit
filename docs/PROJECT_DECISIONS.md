@@ -332,6 +332,10 @@ Development may follow stable `3.14` with `check-latest: true`. Before final rel
 
 Rationale: the release compiler, Qt baseline and Quality environment should describe the toolchain actually used by the maintained release architecture rather than an obsolete transitional baseline.
 
+### 2026-10-05: v2.3 publication and focused closure
+
+The six-platform v2.3.0 engineering release at `8d476dc5507d8249d8cd62c861095ed3e443f0af` passed independent public-byte verification. Exact release Python 3.14.8 remains immutable evidence. Phase E restores stable rolling 3.14 / `check-latest: true` in all 11 setup environments/nine workflows and matching native guards. Future final freshness still requires one exact audited full patch before freeze. Product code, versions, dependency pins, signing decisions, retention algorithm and published assets remain unchanged. [Closure](V2_3_POST_RELEASE_CLOSURE.md) is pending independent review, merge, post-merge checks and local synchronization; #154/#209 stay deferred.
+
 ## Release workflow structure
 
 Package workflows are platform-isolated and exact-SHA guarded:
@@ -344,11 +348,11 @@ Trust/assembly workflows are purpose-specific:
 
 - `.github/workflows/sign-windows.yml`: optional Windows production-signing stage, used only after a deliberate credential/provider validation decision;
 - `.github/workflows/assemble-windows-engineering-release.yml`: unsigned Windows x64 engineering asset assembly for ETB profiles such as v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.99;
-- `.github/workflows/assemble-release.yml`: canonical six-platform v2.2 assembly for the deliberately selected unsigned Windows/Linux and engineering ad-hoc macOS profile. It requires exactly `Build Windows - Qt6` for Windows and engineering-prefixed macOS Actions artifacts, preserving canonical public ZIP names and all strict SHA/legal/asset checks. A future production-trust profile requires a dedicated validated input-contract change.
+- `.github/workflows/assemble-release.yml`: canonical six-platform v2.2/v2.3 assembly for the deliberately selected unsigned Windows/Linux and engineering ad-hoc macOS profile. It requires exactly `Build Windows - Qt6` for Windows and engineering-prefixed macOS Actions artifacts, preserving canonical public ZIP names and all strict SHA/legal/asset checks. A future production-trust profile requires a dedicated validated input-contract change.
 
 The engineering assembler verifies source workflow identity, manual-dispatch status, success, repository and exact head SHA, rejects ARM64 source artifacts, validates the Windows x64 candidate and emits the three-file engineering release set.
 
-The full assembler accepts distinct Windows-build, Linux and engineering-macOS run IDs, verifies workflow identity/status/repository/exact SHA, validates all six candidates and emits exactly eight files for the selected v2.2 profile.
+The full assembler accepts distinct Windows-build, Linux and engineering-macOS run IDs, verifies workflow identity/status/repository/exact SHA, validates all six candidates and emits exactly eight files for the selected v2.2/v2.3 profile.
 
 Rationale: separate assembly profiles preserve exact-SHA and legal guarantees while allowing lightweight ETB releases without unnecessary platform/signing work.
 

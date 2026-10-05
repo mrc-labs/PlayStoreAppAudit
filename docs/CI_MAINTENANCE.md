@@ -97,6 +97,14 @@ The 2026-10-02 review followed immutable source `21b6646571b7e93044b76fe4d18a04e
 - The separate cache snapshot contains **23 pip caches / 2,706,260,081 bytes (2.520 GiB)**, including repeated branch-scoped keys and older 3.14.7 entries. Caches were inspected but not purged; these bytes are separate from compressed artifact storage.
 - Release `401714084`, its body, annotated tag object `95a402b25f65bf22db58f831076bca747e2c9103`, source and exactly eight public assets were rechecked unchanged. No retention setting, cleanup algorithm, release workflow build, signing operation, tag or published asset changed during housekeeping.
 
+### v2.3.0 Phase E housekeeping snapshot
+
+On 2026-10-05, [manual retention run 37348726683](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37348726683) completed SUCCESS from frozen main `8d476dc5507d8249d8cd62c861095ed3e443f0af` using the unchanged policy and exact release Python. No active consumers existed; no eligible artifact/run deletion was selected.
+
+Before and after: **37 artifacts / 4,548,500,908 compressed bytes**; separate pip caches **23 / 2,706,260,081 bytes**. Canonical Quality `37241775290`, Windows `37246646085`, Linux `37246681845` (both reports), macOS `37246726056` (accepted retry), assembly `37260955813` and all nine canonical artifacts remain retained. Published Release `403687278`, annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9` and eight public asset identities/body were rechecked unchanged.
+
+Older failure/cancelled artifacts remain within their existing seven-day policy. SHA-specific historical Linux reports and historical v1.99 assembler evidence are manual review candidates, not automatic deletion authorization. No cache purge, policy/settings/algorithm change or manual deletion occurred. [Complete inventory and pending closure](V2_3_POST_RELEASE_CLOSURE.md).
+
 ## Public release naming
 
 Do not use **Engineering Test Build** or **ETB** in public GitHub Release titles, release-body headings or public compatibility labels. Build validation and signing status should be stated directly instead of encoded in a build-class label.

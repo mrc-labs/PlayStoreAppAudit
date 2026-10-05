@@ -54,19 +54,22 @@ def test_linux_migration_requires_real_old_runtime_smoke() -> None:
     assert "QT_QPA_PLATFORM=xcb" in smoke
 
 
-def test_compat_python_preserves_resolved_patch_and_rejects_prerelease() -> None:
+@pytest.mark.parametrize("version", ["3.14.8", "3.14.9"])
+def test_compat_python_preserves_resolved_patch_and_rejects_prerelease(
+    version: str,
+) -> None:
     file = {
         "platform": "linux", "platform_version": "22.04", "arch": "x64",
-        "filename": "python-3.14.8-linux-22.04-x64.tar.gz",
+        "filename": f"python-{version}-linux-22.04-x64.tar.gz",
         "download_url": "https://github.com/actions/python-versions/releases/download/tag/python.tar.gz",
     }
-    manifest = [{"version": "3.14.8", "stable": True, "files": [file]}]
-    assert select_distribution(manifest, "3.14.8") == file
+    manifest = [{"version": version, "stable": True, "files": [file]}]
+    assert select_distribution(manifest, version) == file
     with pytest.raises(ValueError, match="Exactly one"):
-        select_distribution(manifest, "3.14.9")
+        select_distribution(manifest, "3.14.10")
     with pytest.raises(ValueError, match="stable, full"):
         select_distribution(manifest, "3.14.8rc1")
     with pytest.raises(ValueError, match="Exactly one"):
-        select_distribution([{**manifest[0], "stable": False}], "3.14.8")
+        select_distribution([{**manifest[0], "stable": False}], version)
     with pytest.raises(ValueError, match="Unofficial"):
-        select_distribution([{**manifest[0], "files": [{**file, "download_url": "https://example.org/python"}]}], "3.14.8")
+        select_distribution([{**manifest[0], "files": [{**file, "download_url": "https://example.org/python"}]}], version)

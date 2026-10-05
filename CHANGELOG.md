@@ -2,7 +2,7 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
-## [2.3.0] - Unreleased
+## [2.3.0] - 2026-10-05
 
 ### Added
 
