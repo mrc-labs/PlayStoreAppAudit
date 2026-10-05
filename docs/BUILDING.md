@@ -465,7 +465,7 @@ Published source/tag/assets are immutable at `8d476dc5507d8249d8cd62c861095ed3e4
 
 The canonical application version is recorded in both `playstore_app_audit.__version__` and `pyproject.toml`; tests require them to match. Windows file/product version adds a fourth numeric component, so application version `1.9.0` maps to Windows version `1.9.0.0`.
 
-Historical release version metadata remains immutable. Current source is `2.3.0` (Windows `2.3.0.0`), matching latest published v2.3.0 at `8d476dc5507d8249d8cd62c861095ed3e443f0af`. Source Quality, six-platform acceptance, assembly and independent public verification passed. Closure changes development workflows/context only, preserving product code and version. Every future release repeats final freshness and exact-patch freeze.
+Historical release version metadata remains immutable. Current source is `2.3.0` (Windows `2.3.0.0`), matching immutable v2.3.0 at `8d476dc5507d8249d8cd62c861095ed3e443f0af`. Post-release main `19e2f14644000f9fbc11f1f7052fb16438692257` includes normally merged PR #234 and Quality #682 SUCCESS, 1791 tests; rolling development Python restoration is complete. The final documentation follow-up changes context only. Every future release repeats full freshness and exact-patch freeze. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md).
 
 ## Packaged smoke tests
 

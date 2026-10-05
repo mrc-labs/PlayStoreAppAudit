@@ -10,7 +10,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.3.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0), published 2026-10-05 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current source:** 2.3.0. Publication and independent public-byte verification passed. [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) and [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232) remain open for final closure review, normal merge and safe local synchronization. See [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md).
+**Current source:** 2.3.0. Publication/public-byte verification and closure PR [#234](https://github.com/mrc-labs/PlayStoreAppAudit/pull/234) passed; post-release main is `19e2f14644000f9fbc11f1f7052fb16438692257`, separately from the immutable release SHA. [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) and [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232) remain open for final documentation follow-up review, merge and local synchronization. See [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md).
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
@@ -87,7 +87,7 @@ Linux builds use Ubuntu 24.04 for both architectures; the x64 package passed Ubu
 
 ### Post-release continuation
 
-v2.2 closure [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is historical and complete. v2.3 Category (#188), Named Custom Views (#147) and Duplicate APK review (#224) are published. Phase E remains pending independent review, merge and local synchronization. Production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and updater/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain deferred.
+v2.2 closure [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is historical and complete. v2.3 Category (#188), Named Custom Views (#147) and Duplicate APK review (#224) are published. Initial Phase E PR #234, post-merge Quality/public README checks, local synchronization to its merged main and Docker inventory passed. [Final ledger](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-6005262111) keeps final documentation review/merge/synchronization pending. Production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and updater/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain deferred.
 
 ## Download and installation
 
