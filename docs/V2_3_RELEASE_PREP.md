@@ -1,6 +1,6 @@
 # v2.3.0 Phase B release preparation
 
-**Historical Phase B record, superseded for current state.** v2.3.0 is published at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; final freshness, canonical six-platform/assembly acceptance and independent public-byte verification subsequently passed. Phase E restores rolling stable Python 3.14 / `check-latest: true`, preserving exact 3.14.8 release evidence below. [Closure audit](V2_3_POST_RELEASE_CLOSURE.md) records later outcomes and outstanding work. All preparation/pending statements below describe the original audit boundary, not current publication state.
+**Historical Phase B record, superseded for current state.** v2.3.0 is published at `8d476dc5507d8249d8cd62c861095ed3e443f0af`; final freshness, canonical six-platform/assembly acceptance and independent public-byte verification subsequently passed. Normally merged PR #234 restored rolling stable Python 3.14 / `check-latest: true` at post-release PR #234 baseline `19e2f14644000f9fbc11f1f7052fb16438692257`, with Quality #682 SUCCESS. Exact 3.14.8 release evidence below is preserved. [Closure audit](V2_3_POST_RELEASE_CLOSURE.md) records later outcomes and outstanding work. All preparation/pending statements below describe the original audit boundary, not current publication state.
 
 Date: **2026-10-05 CEST**. Tracking: [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225), [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232).
 

@@ -1,8 +1,78 @@
 # v2.3.0 Phase E post-release closure audit
 
-Audit date: **2026-10-05 CEST**. Scope: focused closure PR on `chore/v2.3-closure` for independent Control Tower review. Publication and independent public-byte verification already passed. **Final closure remains pending normal merge, post-merge verification and safe local synchronization.** #225/#232 remain open. This tracked audit is not a generated repository snapshot or handoff export.
+Initial audit: **2026-10-05 CEST**, PR #234 (`chore/v2.3-closure`). Follow-up: **2026-10-06 CEST**, `docs/v2.3-final-closure` from canonical main `19e2f14644000f9fbc11f1f7052fb16438692257`. PR #234 review/normal merge/post-merge checks and the initial safe local synchronization are complete; at this follow-up delivery checkpoint the new documentation PR still required independent review, normal merge, post-merge checks and final local synchronization. Current acceptance, canonical main and final signoff belong in the live #225/#232 ledgers. This is tracked context, not a generated snapshot, handoff export or command Markdown.
 
-## Starting state and immutable release
+## Accepted PR #234 and safe local synchronization
+
+[Control Tower ledger](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-6005262111) independently accepted the reviewed PR #234 head `e7f41a235df9ea09cc2e304de970a1207a1b9898`, its normal merge to `19e2f14644000f9fbc11f1f7052fb16438692257`, and both parents: immutable frozen main `8d476dc5507d8249d8cd62c861095ed3e443f0af` plus the exact reviewed head. Merge timestamp `2026-10-05T23:16:14Z` is **2026-10-06 01:16:14 CEST**. Post-merge [Quality #682 / 37387525994](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/37387525994) completed SUCCESS at exact canonical main with **1791 tests**, Ruff, compilation, PowerShell and Qt smoke. Rolling stable Python development restoration is merged; no product/version/dependency changes.
+
+Before any synchronization on 2026-10-06 the real VS Code checkout was clean. Fetch with prune, switch main and fast-forward-only pull completed without discarding local work. Local HEAD, fetched origin/main and fresh GitHub main all matched `19e2f14644000f9fbc11f1f7052fb16438692257`, with a clean working tree. The local annotated v2.3.0 target remained `8d476dc5507d8249d8cd62c861095ed3e443f0af`. Live API/HTML checks corroborated the merged PR, Quality, rendered-main README (v2.3 latest/published features/unsigned-ad-hoc state/Sponsors/four screenshots), unchanged About/homepage/topics and latest published release/tag identity. The newer development main is not the immutable release source.
+
+Only after the successful Docker inventory below was `docs/v2.3-final-closure` created from that clean synchronized main. Local and remote branch were absent before creation; no existing work was recreated. At follow-up inventory there are **45 local branches**, one registered worktree and one unmerged existing branch (`v2/local-apk-device-specific`), all preserved. The new final-documentation PR's review, merge, exact post-merge checks and resulting local synchronization are **pending**. No issue closure or generated handoff is performed; signoff remains in #225/#232.
+
+## Completed Docker inventory (2026-10-06 CEST)
+
+The installed Docker Desktop was initially stopped; it was started normally with explicit user authorization. No installation, configuration change, container/image/volume/cache deletion or prune occurred. Desktop **4.93.0 (240920)**, client/server Engine **29.8.1**, selected `desktop-linux` context, Linux amd64 server. All eight requested read-only inventory commands (version, info, all containers, digest-bearing images, volumes, detailed storage, builders and build-cache usage) completed successfully. Raw outputs and selected ownership/mount metadata are retained in an external temporary audit directory; no secret/environment values or extra tracked log/command file were added.
+
+### Containers and ownership
+
+**4 stopped containers, 0 running/paused**. Names, compose/DDEV labels and mounts identify the separate `shop-wp` WordPress project and shared DDEV router/SSH services.
+
+| Container | Image | State / exit code |
+| --- | --- | --- |
+| `ddev-shop-wp-web` | `ddev/ddev-webserver:v1.25.4-shop-wp-built` | exited / 143 |
+| `ddev-shop-wp-db` | `ddev/ddev-dbserver-mariadb-10.11:v1.25.4-shop-wp-built` | exited / 0 |
+| `ddev-router` | `ddev/ddev-traefik-router:v1.25.4` | exited / 143 |
+| `ddev-ssh-agent` | `ddev/ddev-ssh-agent:v1.25.4` | exited / 2 |
+
+All four are preserved. Stopped state and nonzero historical exit codes are inventory facts, not evidence that another project's resources are disposable. No container was started/stopped/recreated by the inventory.
+
+### Images, Ubuntu tags and dangling images
+
+**9 unique image IDs / 10 repository-tag rows**; `ddev/ddev-webserver:latest` and `:v1.25.4` point to the same image. All named images are DDEV integrations; no `ubuntu:20.04`, `ubuntu:22.04`, `ubuntu:24.04` or other Ubuntu repository tag appears. No image named for Store App Audit or `psaa-remediation` appears. Dangling-image query returned **zero**.
+
+| Repository | Tag | Image ID prefix |
+| --- | --- | --- |
+| `ddev/ddev-webserver` | `v1.25.4-shop-wp-built` | `2de2d93f1e95` |
+| `ddev/ddev-dbserver-mariadb-10.11` | `v1.25.4-shop-wp-built` | `1d4b0772ca47` |
+| `ddev/ddev-webserver` | `latest` | `5dfc489f8a4b` |
+| `ddev/ddev-webserver` | `v1.25.4` | `5dfc489f8a4b` |
+| `ddev/ddev-dbserver-mariadb-10.11` | `v1.25.4` | `b24bb87bc518` |
+| `ddev/ddev-dbserver-mariadb-11.8` | `v1.25.4` | `869af6679e68` |
+| `ddev/ddev-xhgui` | `v1.25.4` | `70946481646f` |
+| `ddev/ddev-traefik-router` | `v1.25.4` | `004aab66ba2b` |
+| `ddev/ddev-ssh-agent` | `v1.25.4` | `054f98a2f3d2` |
+| `ddev/ddev-utilities` | `latest` | `97822ff9a064` |
+
+Images without attached containers (base DDEV web/DB images, MariaDB 11.8, xhgui, utilities) may support other/future project runs; no deletion eligibility is inferred from their container count. Preserve them pending an explicit owner-reviewed cleanup. This local absence of Ubuntu images does not change intentional CI Ubuntu 22.04 x64 sysroot/probe/backward-smoke requirements.
+
+### Volumes and cache
+
+**5 local volumes**, all retained:
+
+| Volume | Ownership / disposition |
+| --- | --- |
+| `ddev-global-cache` | shared DDEV cache / SSH service; preserve |
+| `ddev-shop-wp-snapshots` | shop-wp project; preserve |
+| `ddev-ssh-agent_dot_ssh` | shared DDEV cache / SSH service; preserve |
+| `ddev-ssh-agent_socket_dir` | shared DDEV cache / SSH service; preserve |
+| `shop-wp-mariadb` | shop-wp project; preserve |
+
+Detailed storage reports `ddev-global-cache` **663.5 MB**, `shop-wp-mariadb` **185.7 MB**; snapshot/SSH volumes show **0 B** at inspection. The snapshot volume has zero container links but its project label identifies `shop-wp`; it is preserved. Global cache has three links and SSH socket volume two links; shared use is concrete.
+
+Both `default` and selected `desktop-linux` builder entries are running, using the Docker driver and BuildKit **v0.33.0**. Cache usage shows **78 records / 1.152 GB**, **Shared 1.152 GB / Private 0 B**. `buildx du` labels **1.152 GB reclaimable**, while `docker system df` reports **0 B cache reclaimable**; the reports differ for these shared records, so preserve both observations without inferring additive guaranteed cleanup savings. Cache ownership is shared/ambiguous and all records remain intact.
+
+| Docker storage category | Total | Active | Reported size | Reported reclaimable |
+| --- | ---: | ---: | ---: | ---: |
+| Images | 9 | 4 | 4.216GB | 876MB (20%) |
+| Containers | 4 | 0 | 137.9MB | 137.9MB (100%) |
+| Local Volumes | 5 | 4 | 849.2MB | 0B (0%) |
+| Build Cache | 78 | 0 | 1.152GB | 0B |
+
+Do not sum shared image/cache figures as exclusive disk allocation. Docker reports stopped-container writable layers and some images as reclaimable; the project labels/mounts and shared cache make them resources to preserve, not authorized cleanup targets. No application release staging, environment, unmerged branch or shared resource was deleted. The previous daemon-unavailable limitation below is now resolved by this completed read-only inventory.
+
+## Historical starting state and immutable release (PR #234)
+
 
 Before changing anything, `git status --short` was empty; branch was `main`. Local HEAD, fetched `origin/main` and live GitHub main all equalled `8d476dc5507d8249d8cd62c861095ed3e443f0af`. The authorized closure branch was absent locally/remotely and was created only after the read-only consumer/retention checks and authorized maintenance dispatch. No reset, stash, clean, discard or force operation occurred.
 
@@ -63,7 +133,7 @@ Dispatched only the existing unchanged maintenance workflow from frozen `main`:
 
 All nine canonical v2.3 artifacts total **1,665,855,684 bytes** and remain retained. Quality `37241775290` and both macOS attempts' accepted lineage remain available. Release/body, annotated tag/target and public asset identity were rechecked unchanged after retention. The policy/algorithm/default retention settings were preserved; only the development Python selector/guard is changed in this PR. No manual cleanup or cache purge occurred.
 
-### Complete active Actions artifact inventory
+### Complete Actions artifact inventory at the 2026-10-05 retention snapshot
 
 | Artifact ID | Source run | Name | Compressed bytes |
 | --- | --- | --- | ---: |
@@ -105,7 +175,7 @@ All nine canonical v2.3 artifacts total **1,665,855,684 bytes** and remain retai
 | `11154989241` | `36847001212` | `PlayStoreAppAudit-engineering-v2.1.0-macos-arm64` | 192,739,336 |
 | `10123756577` | `34401780853` | `PlayStoreAppAudit-v1.99.0-windows-x64-engineering-release-assets` | 111,364,719 |
 
-### Manual review candidates, preserved
+### Manual review candidates at the 2026-10-05 snapshot, preserved
 
 Older partial/failure/cancelled runs `36847001212`, `36913179503`, `36921057381`, `36922785071`, `36927646143` and `36947574138` remain subject to the existing seven-day expiry; they do not replace successful generations. The unchanged workflow found none expired at dispatch.
 
@@ -120,13 +190,13 @@ Live authenticated metadata before/after is unchanged:
 - Topics: `adb`, `android`, `android-apps`, `apk`, `app-audit`, `app-inventory`, `desktop-app`, `google-play`, `google-play-store`, `pyside6`, `python`, `qt6`.
 - Product identity/technical slug remain Store App Audit / PlayStoreAppAudit.
 - Latest Release API confirms non-draft, non-prerelease v2.3.0 / ID `403687278`.
-- Live repository and latest v2.3 Release HTML plus rendered-main README were inspected, including four canonical screenshots. README still calls v2.2 latest and v2.3 unpublished because closure is not yet merged. This PR corrects current-facing README wording; **public main must be rechecked after merge**. Latest release discovery is confirmed by the authenticated API, separately from stale README prose.
+- Initial 2026-10-05 HTML inspection found stale v2.2/preparation README prose before PR #234 merged. After merge, [Control Tower ledger](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-6005262111) and the 2026-10-06 local authenticated rendered-README check confirm correct v2.3 latest/published wording, distribution state, Sponsors and all four screenshot references at `19e2f14644000f9fbc11f1f7052fb16438692257`. The final documentation PR must still receive its own post-merge public-context check.
 - Sponsors repository link/badge, `.github/FUNDING.yml` and live [mrc-labs Sponsors page](https://github.com/sponsors/mrc-labs) remain correct; no metadata/account edits.
 - The published body is copied verbatim into `RELEASE_NOTES.md`; its publication-time future public-verification sentence is preserved, with the subsequent independent PASS ledger recorded outside the body. No live body edit.
 
 ## Local Docker and repository hygiene
 
-Docker CLI **29.8.1**, Windows/amd64, context `desktop-linux` is installed. The daemon is unavailable: named pipe `dockerDesktopLinuxEngine` cannot be found; default builder also cannot reach `docker_engine`. Read-only version, containers, images, volumes, system storage and buildx inventories were attempted; they could not enumerate daemon resources. **This is a limitation, not a completed or empty Docker audit.** Repeat when the daemon is available. No daemon start, prune, image/container/volume/cache deletion or inferred cleanup occurred. Intentional CI `ubuntu:22.04` compatibility containers remain required and unchanged.
+At the **initial 2026-10-05** audit Docker CLI **29.8.1** was installed but the daemon pipes were unavailable; Docker resource enumeration was genuinely pending then and no daemon start occurred in that task. The **completed 2026-10-06 inventory above supersedes that limitation** after the separately authorized normal Desktop start. Both audits preserved all resources and required CI Ubuntu 22.04 containers.
 
 One registered worktree exists: the user's VS Code checkout. 44 local branches were inspected; 43 are contained in starting `main` (including main and the newly created closure branch before edits). Unmerged local branches: `v2/local-apk-device-specific`. All branches are preserved; remote-tracking divergence/gone markers are not deletion authorization.
 
@@ -195,12 +265,16 @@ Exact 3.14.8 release/Phase B evidence remains historical. The permanent twice-pe
 
 Reviewed the required maintained context: AGENTS, README, CHANGELOG, PROJECT_DECISIONS, PROJECT_STATUS, ROADMAP, BUILDING, RELEASE_NOTES, CI_MAINTENANCE, HANDOFF_V2.3 and RELEASE_CLOSURE, plus RELEASE_COMPONENT_FRESHNESS, LOCAL_APK_DUPLICATES and v2.3 preparation/freshness/body records. Changed current facts and preserved historical v2.2-and-earlier notes. RELEASE_CLOSURE and RELEASE_COMPONENT_FRESHNESS procedures remain unchanged. No generated snapshot/export was created; next product milestone remains unassigned.
 
-## Validation
+## Historical PR #234 validation
 
 Focused policy/helper/workflow tests: **56 passed**. PowerShell parser for Windows standalone and export helpers: **PASS**; Bash syntax-only parse of the Linux sysroot helper: **PASS**. Full source gate on exact stable local Python **3.14.8**: **1782 passed, 9 skipped** (Windows directory-link privilege limitations); full Quality Ruff scope, application compileall, nine Python helper compilations, CI source Qt offscreen smoke and `pip check` all **PASS**. Product tree, main entry point, version metadata and dependency pins match the release baseline. Local validation logs/settings/caches remain outside the checkout. Exact PR head and exact-head remote Quality are supplied in the PR/final delivery report rather than embedding a self-referential hash here.
 
-## Closure checklist
+## Final documentation follow-up validation
 
-Completed for review: initial clean exact-main gate; published identity and independent PASS ledger; consumer/artifact inventory; unchanged retention SUCCESS and before/after storage; preserved canonical release artifacts/logs; metadata/Sponsors inspection; local Git/material read-only inventory; rolling Python restoration and matched checks; maintained context reconciliation; focused and full local Quality/source gates.
+This follow-up is Markdown-only. Local diff/path/whitespace and main-versus-release/pending-status coherence checks passed, with no product/version/dependency/workflow/helper changes. All **66 local Markdown target/anchor checks** passed; existing focused context/policy/version tests reported **25 passed**. The exact follow-up head and its remote Quality result are supplied in the PR/delivery report. No source/package rebuild or generated export is required or performed. Quality #682 above belongs to already merged PR #234; the new documentation PR's own Quality result remains separate and is recorded in its reviewable delivery evidence.
 
-Pending: independent Control Tower review and normal merge; exact post-merge Quality; live rendered-main README/metadata recheck; actual Docker resource inventory when daemon is available; clean local status/fetch --prune/switch main/pull --ff-only and exact canonical SHA verification; generated handoff only after synchronization if requested; final closure confirmation and explicit authorized issue handling. No merge/auto-merge, issue closure, production signing, assembly/build dispatch, tag, publication, asset replacement or unrelated feature work occurred in Phase E. **Do not call the cycle closed yet.**
+## Closure checklist at follow-up delivery
+
+Completed: immutable publication and independent public-byte acceptance; initial PR #234 review/normal merge to `19e2f14644000f9fbc11f1f7052fb16438692257`; exact post-merge Quality #682/public README/metadata checks; preserved retention snapshot and canonical release evidence; clean real local synchronization to that main; complete read-only Docker/container/image/volume/cache/storage and local Git inventories with all shared/ambiguous resources and staging preserved; rolling Python restoration; maintained context reconciliation for the focused documentation follow-up.
+
+Pending at delivery: independent review and normal merge of the **new** `docs/v2.3-final-closure` documentation PR; its exact post-merge Quality and public-context recheck; final safe clean local synchronization to the resulting canonical main; ledger signoff and any separately authorized issue handling by Control Tower. No handoff/export or generated command Markdown is authorized now. No merge/auto-merge, issue closure, production signing, assembly/build dispatch, rebuild, tag, publication, asset replacement, local pruning/deletion or unrelated feature work was performed in this follow-up. This checkpoint does not declare later steps complete; consult live #225/#232 for current signoff.
