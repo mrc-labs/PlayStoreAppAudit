@@ -70,7 +70,7 @@ The body published on GitHub remains the primary historical source. Repository c
 
 Title: `Store App Audit v2.3.0` · [Published 2026-10-05](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0)
 
-Release ID `403687278`; annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`; immutable source `8d476dc5507d8249d8cd62c861095ed3e443f0af`. The body below is copied unchanged from the published GitHub Release, the primary historical source. The former [draft](V2_3_RELEASE_BODY_DRAFT.md) is superseded. Its future-tense public-verification sentence describes the publication-time boundary; [independent public-byte verification subsequently passed](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051). No live Release prose was changed by closure.
+Release ID `403687278`; annotated tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`; immutable source `8d476dc5507d8249d8cd62c861095ed3e443f0af`. The body below is copied unchanged from the published GitHub Release, the primary historical source. The former [draft](V2_3_RELEASE_BODY_DRAFT.md) is superseded. An editorial clarification on 2026-10-13 replaces the publication-time forward-looking verification sentence with the [completed independent public-byte verification result](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051). Published source, tag and assets are unchanged.
 
 ```markdown
 ## What's New / Highlights
@@ -109,7 +109,7 @@ Quality, six-platform packaged GUI/CLI smoke, architecture/version/provenance, s
 
 All eight assets passed independent names, sizes and SHA-256 verification. All six final binary ZIPs are byte-for-byte identical to the accepted candidates; all seven checksum entries passed.
 
-Verify downloads against `SHA256SUMS.txt`. Independent public re-download and byte verification will be recorded after publication.
+Verify downloads against `SHA256SUMS.txt`. Independent public re-download and byte-for-byte verification of all eight assets passed; all seven checksum entries passed. See the [public verification record](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232#issuecomment-5995051051).
 
 Optional support: [GitHub Sponsors](https://github.com/sponsors/mrc-labs).
 ```
