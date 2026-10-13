@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-05 CEST
+Last updated: 2026-10-06 CEST
 
 ## Purpose
 
@@ -19,6 +19,56 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 - Published release source commits, tag targets and binary/source/checksum assets are immutable; descriptive Release prose may be maintained without changing historical meaning.
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
+
+## Proposed post-v2.3 release sequence
+
+Prepared **2026-10-06 CEST** after completed v2.3 closure. This is a **planning proposal for review**, not an approved implementation milestone, release date or version freeze. The numbered rows show the preferred order across the known backlog; later numbers may move when priorities, bugs or prerequisites change. Create the next master issue only after its scope is agreed.
+
+Origins are kept explicit: **GitHub** means existing roadmap/issues/decisions; **handover** means the earlier Control Tower handover subsequently supplied by the maintainer; **new proposal** means an additional idea introduced during this planning pass. The handover's “likely v2.4” direction is tentative. A deferred candidate is not already accepted product scope.
+
+| Candidate release | User outcome and proposed scope | Origin | Exit criteria / dependencies |
+| --- | --- | --- | --- |
+| **v2.4.0** | **Verified update download, manual installation.** Improve update notification; choose the correct GitHub asset for OS/architecture; offer Download Update; verify release/tag identity, filename, size and SHA-256 against official release metadata and SHA256SUMS; explain the actual signing state. Add clear progress/cancel/failure handling. | GitHub **#209 Phase 1**; handover's likely v2.4 direction. Download recovery/cancellation UX is a new proposal. | All six target mappings covered; reject mismatches and incomplete downloads; cancelled/failed work leaves the current installation intact; install remains an explicit manual operation. Native UX acceptance plus CLI/update-service regression coverage and the normal release gates. |
+| **v2.5.0** | **Local APK collections and version-archive review.** Extend the existing exact-duplicate and version grouping into a bounded workflow for user-selected folders and archived versions. Preserve physical paths, package/version identity and keeper selection. Make expensive duplicate/hash revalidation responsive with progress and cooperative cancellation; optionally export a review summary. | GitHub later Local APK candidates; handover's richer duplicate/version archive management. Responsive revalidation and review-summary export are new proposals. | Audit the existing Library core first and reuse it where suitable. No automatic deletion based on age, version or Store status; successful explicit operations reconcile exact paths only. Large-file/cancel/partial-failure evidence and cross-platform path tests required. A full Library Manager is not implicit scope. |
+| **v2.6.0** | **Explicit external-tool integrations.** Configurable user-owned custom commands/integrations; optional Windows Explorer action to audit supported selected packages/folders. Keep the shared audit/CLI contract and evaluate equivalents for other platforms separately. | GitHub and handover: custom commands/integrations and Windows Explorer integration. Safe command configuration/preview is a new proposal. | Explicit configuration and execution; safe argument handling for spaces/untrusted filenames; no downloaded commands or automatic Android write/install operations. Explorer integration is opt-in with reversible registration. Product UX stays coherent on all supported platforms. |
+| **v2.7.0** | **Richer historical evidence.** Extend existing Changes & History and manual Device Snapshots with user-selected comparable audit baselines, useful historical trends and exports. Define any new persisted evidence and schema before using it in visualizations. | Handover's longitudinal History direction and existing GitHub history architecture. Selectable audit baselines/trend views are new proposals, subject to checking what already exists. | Preserve opt-in tracking, comparable source/country/device semantics and privacy boundaries. Retain missing/unknown evidence, future-schema safety and explicit retention controls. Do not retroactively fabricate scores or compare incompatible snapshots. |
+| **v2.8.0** | **A focused dashboard/status overview.** Summarize useful multi-source and History evidence with drill-down to existing results, changes and source records. Candidate summaries include Store availability/update changes, device inventory changes and archived Local APK versions. | GitHub deferred dashboard candidate and handover's later 2.x/v3 direction. Exact cards/drill-down design is a new proposal. | First demonstrate that mature source/history data supports distinct user tasks. A UX audit precedes exploratory visual redesign. Missing/unknown data stays visible; no new security interpretation of Maintenance Score, broad Fluent redesign or competing audit surface. Move/defer this row if the History prerequisite is not ready. |
+| **v2.9.0, conditional** | **Trusted self-update.** Implement #209 Phase 2 using an external updater/bootstrap with portable-directory preservation, verified staging, atomic replacement where supported, rollback, interrupted-update recovery and explicit shutdown/restart. | GitHub **#209 Phase 2** and handover. | Proceed only after an accepted trust/authenticity policy for each platform and a dedicated updater design. Complete #154 acceptance where required; Windows/macOS credentials and Linux metadata/package authenticity must be explicit. No silent downgrade, trust weakening or unsigned fallback presented as trusted. Exercise failure/recovery paths on all supported targets. |
+| **v3.0 horizon, optional** | **Reassess a larger product evolution.** Candidates are a richer persistent Local APK collection/library workspace and, only after a new explicit product decision, opt-in watchlists/background monitoring or broader longitudinal workflows. | Handover's long-term direction; GitHub Library foundation. Monitoring remains currently not planned. | A discovery/UX proposal must show value beyond the shipped audit tool, acceptable resource/privacy behavior and a small verifiable scope. No automatic file deletion or Android mutations. The 3.0 label itself requires an explicit product/versioning decision; these features do not automatically justify a major bump. |
+
+### Parallel distribution-trust track: #154
+
+Begin with a read-only feasibility/cost/eligibility and CI-integration assessment, alongside the functional planning above. Signing is not a prerequisite for the explicit manual-download profile in #209 Phase 1.
+
+- **Windows:** evaluate SignPath, Microsoft Store/MSIX, Microsoft/Azure managed signing and OV/EV providers against the commercial/dual-licensing model, actual eligibility, cost, reputation benefits and key/CI isolation.
+- **macOS:** evaluate Apple Developer membership, Developer ID Application, Hardened Runtime, notarization/stapling and safe credential handling.
+- **Linux / update metadata:** agree how future automatic update delivery authenticates its metadata and payload; checksum equality alone is not a production-trust decision.
+- Make a separate provider/budget/credential decision before implementation. Never weaken licensing just to obtain free signing.
+- Production trust can enter a focused future functional release when ready; it has no fixed version/date and must not hold the unrelated Local APK/History tracks indefinitely.
+- Existing signing source is infrastructure, not evidence of successful production signing. Real provider-backed end-to-end validation and exact-SHA lineage are required before any trust claim.
+
+### Maintenance and opportunistic fixes
+
+The first-of-month audit remains a parallel lane for every active release line. A pure compatible dependency/runtime/CI/build/package component refresh, without an application fix or compatibility adaptation, increments **PATCH** only. Starting from v2.3.0 this would be v2.3.1 if that is the next actual release; after a later minor release, use that line's next patch.
+
+Any application/source fix or compatibility adaptation increments **MINOR** and resets PATCH to zero. Such a release may move the proposed feature numbers above; a bug fix is not silently classified as maintenance-only. Do not create an empty monthly release when the audit finds no required changes.
+
+Maintenance-only release prose stays minimal: “Maintenance release focused on keeping Store App Audit current, secure and reliable.”
+
+### Selection and acceptance rules
+
+- Select **one primary user outcome** for each kickoff; split large rows into focused normal PRs and defer optional additions when needed.
+- Start by checking existing code/evidence so already shipped capabilities are not reimplemented as new features.
+- Record origin, scope, non-goals, acceptance criteria and dependencies in the next master/focused issues. A proposal is not an instruction for Codex to implement all rows.
+- Control Tower sets scope and independently reviews GitHub evidence. Codex in the real VS Code checkout performs substantial implementation and native/local acceptance.
+- Keep all six targets, read-only ADB semantics, strict legal/source checks, expected-head gating, twice-per-release freshness, exact-SHA candidate acceptance and complete release closure.
+- Published v2.3 source/tag/assets remain immutable. Planning changes never authorize rebuilding, retagging or replacing them.
+
+### Parked ideas and conflicting historical wording
+
+The handover permits future reassessment of watchlists/background monitoring, while current repository decisions explicitly mark them **not planned**. Keep that decision effective until a new scoped product decision changes it; the v3.0 horizon row is a reassessment option, not approval.
+
+QDockWidget, installed signing-certificate change detection, broad alternative-source fuzzy association, predefined country presets, a broad Fluent redesign and large architecture/type-only refactors remain outside this proposal unless separately justified and approved. A full APK Library Manager must not enter a small release by scope drift.
 
 ## v2.0 published baseline
 
@@ -447,4 +497,4 @@ Do not reintroduce without a new product decision:
 
 ## Continuation and handoff generation
 
-`HANDOFF_V2.1.md` and `HANDOFF_V2.2.md` remain completed release-cycle handoff records. Active v2.3 release coordination uses [HANDOFF_V2.3.md](HANDOFF_V2.3.md), #225/#232 and current roadmap/status documents. Future handoff exports must be generated only from a clean synchronized checkout and should select the newest versioned handoff automatically.
+`HANDOFF_V2.1.md`, `HANDOFF_V2.2.md` and [HANDOFF_V2.3.md](HANDOFF_V2.3.md) preserve completed release-cycle checkpoints. The v2.3 cycle is closed in [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) / [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232); final closure signoff records canonical post-release main. The post-v2.3 sequence above is proposed planning, with no new implementation milestone assigned until kickoff approval. Future handoff exports must be generated only when requested, from a clean synchronized checkout, and should select the newest versioned handoff automatically.
