@@ -3,7 +3,9 @@
   "audit_date": "2026-10-24 Europe/Rome",
   "canonical_policy_sha": "88b341b6d910fca066b728582d99db846211687d",
   "tracker": "https://github.com/mrc-labs/PlayStoreAppAudit/issues/238",
-  "state": "BLOCKED; no complete freshness acceptance; source/provider rebuild scope review required",
+  "state": "v2.4.0 MINOR adaptation approved; native pilot and remaining migrations pending; no release acceptance",
+  "release_version": "2.4.0",
+  "maintenance_delta_2026_10_25": {"decision":"#238 approves minimal CPython adaptation and controlled matched Qt/provider rebuild", "prior_observation_count":1094, "rule":"Reuse unchanged observations; this count is not an upgrade backlog", "pilot_target":"native Ubuntu 22.04 x64", "pilot_status":"implemented; validation pending", "source_manifest":"../.github/scripts/native_runtime_pilot_sources.json", "patch":"../.github/patches/cpython-3.14.9-openssl4.patch", "libpng_candidate":"1.6.59 through supported system-library source build", "pcre2_candidate":"10.49 through supported system-library source build"},
   "limits": [
     "Per-provider observations are target-specific. No final packages built.",
     "Cargo workspace and source attributions are potential graphs, not claims every entry is shipped.",

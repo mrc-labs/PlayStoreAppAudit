@@ -1,6 +1,6 @@
 # Store App Audit v2.3 publication and Phase E handoff
 
-**Historical v2.3.0 context.** The active cycle is now [v2.3.1 maintenance preparation](V2_3_1_RELEASE_PREP.md), authorized in [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) on 2026-10-24. Use that checklist and current PROJECT_STATUS/ROADMAP for new work; publication/closure evidence below remains historical. No new generated handoff/snapshot is produced during branch preparation.
+**Historical v2.3.0 context.** The active cycle is now [v2.4.0 maintenance/security/compatibility preparation](V2_4_RELEASE_PREP.md), authorized in [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) and reclassified on 2026-10-25. Use that checklist and current PROJECT_STATUS/ROADMAP for new work; publication/closure evidence below remains historical. No new generated handoff/snapshot is produced during branch preparation.
 
 Updated **2026-10-06 CEST**. This document records the follow-up preparation checkpoint. Query live #225/#232 and GitHub main before continuing; do not repeat steps subsequently accepted in their ledgers. This tracked context is not a generated checkout/snapshot export.
 

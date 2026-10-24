@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-24 CEST
+Last updated: 2026-10-25 CEST
 
 ## Purpose
 
@@ -20,13 +20,11 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
 
-## Active v2.3.1 maintenance cycle
+## Active v2.4.0 maintenance/security/compatibility cycle
 
-**Scope reassessment required before adoption.** PR #240 makes the whole-stack latest-stable rule explicit, including embedded/vendor components. The current #238 provider requirement and newly identified native security gaps cannot be cleared by the current parent versions. CPython/OpenSSL source adaptation and controlled runtime/Qt rebuild qualification must be reviewed under the MINOR policy before implementation. Prepared 2.3.1 metadata is provisional; no new release number or freeze is approved. Preserve useful component updates and bounded native audit evidence while this gate is blocked.
+Control Tower approved MINOR reclassification on **2026-10-25**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Keep existing PR #239 and branch `release/v2.3.1-maintenance` for continuity. Prepared metadata is **2.4.0 / Windows 2.4.0.0**; the earlier PATCH proposal is preparation history. [Audit](V2_4_RELEASE_PREP.md) and [inventory](V2_4_COMPONENT_INVENTORY.json) control the selected stack and open migrations.
 
-The maintainer approved a PATCH-only component/toolchain refresh on **2026-10-24**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) from main `58f0d27041b6220442e9c35e470db744c3dfe02c`. Prepared source metadata is **2.3.1 / Windows 2.3.1.0**; this is not publication. The [release checklist and full entry freshness audit](V2_3_1_RELEASE_PREP.md) controls component selection and remaining gates. No new product feature, application fix/compatibility adaptation, updater or production signing is included. Any required application change returns to Control Tower for MINOR scope reassessment. #236 remains a separate draft product-planning proposal.
-
-Preparation stops at focused PR review and exact-head Quality. The Control Tower support-horizon review replaces Windows ARM64 cryptography's near-EOL OpenSSL 3.6.5 prerequisite now with official-source **4.0.3**, requiring focused native diagnostics before acceptance. A later normal merge, post-merge Quality, complete second freshness audit, exact Python pins and new freeze must precede all six rebuilt candidates. Accepted six-target/floor/signing constraints remain; selected OpenSSL 4.0 support ends **2027-05-14**. Publication and permanent closure require the full existing procedures and separate authorization.
+Implement minimal CPython/OpenSSL compatibility and a coherent corrected Qt/provider build, first demonstrating one native diagnostic pilot. Preserve all six native targets and accepted OS/ABI/trust/legal requirements. This maintenance release includes no #209 update-delivery feature, #154 production signing or opportunistic refactor; #236's tentative feature numbering is not a commitment. No SHA is frozen. Independent review, complete remaining qualifications, normal merge, post-merge Quality and second full freshness/exact-Python selection must precede final release builds. Stop this tranche before merge/freeze/final multi-platform builds/assembly/tag/signing/publication.
 
 ## v2.0 published baseline
 

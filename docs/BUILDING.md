@@ -4,9 +4,9 @@ Windows, macOS and Linux use the same Python/Qt source tree from canonical `main
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
-Current **v2.3.1 maintenance preparation** is governed by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) and the [entry audit/release checklist](V2_3_1_RELEASE_PREP.md). Source metadata is 2.3.1 / Windows 2.3.1.0; this is not publication or a frozen toolchain. Entry validation uses Python 3.14.9; rolling development selectors remain until final freshness. Windows ARM64 cryptography now selects official-source OpenSSL 4.0.3 with native MSVC/clang assembly, static OpenSSL and dynamic CRT, replacing the near-EOL 3.6.5 vcpkg prerequisite. The existing Windows workflow's `diagnostic_only=true` mode requires `target=arm64` and an exact SHA, compiles/verifies only this prerequisite and cryptography, and uploads distinct diagnostic evidence without a release ZIP. Normal package builds retain source/hash/provenance evidence in CI legal material and ship the backend's notices before unchanged strict legal validation. Native diagnostic evidence is prerequisite validation, not final package/floor acceptance.
+Current **v2.4.0 maintenance/security/compatibility preparation** follows [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) and the [active audit](V2_4_RELEASE_PREP.md). Metadata is **2.4.0 / Windows 2.4.0.0**; the historical branch name is retained. Control Tower now authorizes minimal upstream-derived CPython adaptation and controlled matched runtime/framework builds. The native Ubuntu 22.04 x64 pilot builds project-modified Python 3.14.9 plus OpenSSL 4.0.3 and Qt/PySide/Shiboken 6.12.0 with corrected libpng; source hashes, patch, configuration and legal material must accompany evidence. It is not an unchanged official Python distribution or a final candidate. Producing workflows are not switched to the pilot until independent review and all six target qualifications.
 
-**Current STOP:** the whole-stack reassessment under PR #240 and the all-provider OpenSSL 4.0 requirement reopen entry acceptance. CPython API/runtime adaptation, Qt native security/provider rebuilds and other component qualifications require Control Tower scope/MINOR review before adoption. The existing UI-audit workflow's `component_audit=true` mode requires an exact `expected_sha`, measures six native source environments, uses the producing Jammy compatibility runtime for Linux x64, and emits only `diagnostic-components-*` evidence. It performs no Nuitka application build, release assembly or signing. The Windows ARM64 bounded API probe records the CPython/OpenSSL compatibility finding without patching or adopting a runtime; expected legacy-symbol link failure is a blocker observation, not a successful Python build. Preserve package/ABI/legal acceptance requirements after any later approved implementation.
+**Current STOP:** complete one native pilot and exact-head Quality, then return for independent review. No final multi-platform build, merge, freeze, assembly, signing, tag or publication. Existing ARM64 prerequisite and six-target component diagnostics remain historical provider evidence; their green status does not qualify the new controlled stack. All accepted native/OS/ABI/trust/legal requirements remain mandatory. See the active audit for the minimal extension plan and residual migrations.
 
 ## Local development environment
 
@@ -62,7 +62,7 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-Current v2.3.1 preparation baseline (immutable v2.2/v2.3 toolchain evidence remains in their release records):
+Current v2.4.0 preparation baseline (immutable v2.2/v2.3 toolchain evidence remains in their release records):
 
 - Development/diagnostic packaging Python: rolling stable **3.14**; exact audited full patch mandatory at release freeze
 - Development Quality CI: rolling stable **3.14** / `check-latest: true` with stable/final guards
