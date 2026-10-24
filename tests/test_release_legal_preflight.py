@@ -82,7 +82,7 @@ def test_preflight_resolves_deterministic_legal_prerequisites(
         expected_nuitka_version="4.3.1",
     )
 
-    assert result["project_version"] == "2.3.1"
+    assert result["project_version"] == "2.4.0"
     assert result["pyside6_essentials_version"] == "6.12.0"
     assert result["shiboken6_version"] == "6.12.0"
     assert result["nuitka_version"] == "4.3.1"

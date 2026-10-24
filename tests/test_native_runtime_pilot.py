@@ -22,7 +22,7 @@ def test_pilot_patch_and_official_sources_are_hash_bound() -> None:
         assert int(item['sha256'], 16) > 0
 
 
-def test_malformed_metadata_corpus_reaches_png_end_read_with_valid_container_crc() -> None:
+def test_malformed_metadata_corpus_has_valid_crc_and_spec_chunk_order() -> None:
     for kind in (b'zTXt', b'iTXt', b'iCCP'):
         image = png_fixture(kind, b'not-deflate')
         assert image.startswith(b'\x89PNG\r\n\x1a\n')
@@ -34,7 +34,8 @@ def test_malformed_metadata_corpus_reaches_png_end_read_with_valid_container_crc
             assert crc == zlib.crc32(chunk)
             chunks.append(chunk[:4])
             position += size + 12
-        assert chunks == [b'IHDR', b'IDAT', kind, b'IEND']
+        expected = [b'IHDR', kind, b'IDAT', b'IEND'] if kind == b'iCCP' else [b'IHDR', b'IDAT', kind, b'IEND']
+        assert chunks == expected
         assert position == len(image)
 
 

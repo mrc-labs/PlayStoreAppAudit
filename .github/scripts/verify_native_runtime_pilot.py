@@ -34,7 +34,10 @@ def png_fixture(kind: bytes | None = None, compressed: bytes = b'') -> bytes:
     header = b'\x89PNG\r\n\x1a\n' + png_chunk(b'IHDR', struct.pack('!2I5B', 1, 1, 8, 6, 0, 0, 0))
     prefixes = {b'zTXt': b'note\0\0', b'iTXt': b'note\0\1\0\0\0', b'iCCP': b'profile\0\0'}
     metadata = png_chunk(kind, prefixes[kind] + compressed) if kind else b''
-    return header + png_chunk(b'IDAT', zlib.compress(b'\0\xff\0\0\xff')) + metadata + png_chunk(b'IEND', b'')
+    pixels = png_chunk(b'IDAT', zlib.compress(b'\0\xff\0\0\xff'))
+    # iCCP is only legal before IDAT; compressed text is legal at end-read.
+    payload = metadata + pixels if kind == b'iCCP' else pixels + metadata
+    return header + payload + png_chunk(b'IEND', b'')
 
 
 def certificate_material(root: Path) -> dict[str, Path]:
