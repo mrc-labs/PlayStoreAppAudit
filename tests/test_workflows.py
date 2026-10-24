@@ -119,9 +119,28 @@ def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
 
     assert provision < install < verify
     assert workflow.count("if: ${{ matrix.arch == 'arm64' }}") == 2
-    assert "VCPKG_INSTALLATION_ROOT" in workflow[provision:install]
-    assert "arm64-windows-static-md" in workflow[provision:install]
-    assert "OPENSSL_STATIC=1" in workflow[provision:install]
+    assert "provision_windows_arm64_openssl.ps1" in workflow[provision:install]
+    assert "verify_windows_arm64_crypto.py" in workflow[verify:]
+
+
+def test_windows_crypto_diagnostic_cannot_emit_a_release_candidate() -> None:
+    workflow = _workflow("build-windows-exe.yml")
+    assert "diagnostic_only:" in workflow
+    assert "$env:DIAGNOSTIC_ONLY -eq 'true' -and $env:REQUESTED_TARGET -ne 'arm64'" in workflow
+    steps = workflow.split("      - name: ")[1:]
+    for name in (
+        "Install runtime, test and build dependencies",
+        "Verify native PySide6 runtime", "Preflight release legal material",
+        "Static checks and regression tests", "Qt source smoke tests",
+        "Validate the managed ADB path", "Build and validate Windows standalone package",
+        "Upload Windows standalone release candidate",
+    ):
+        step = next(s for s in steps if s.startswith(name + "\n"))
+        assert "if: ${{ !inputs.diagnostic_only }}" in step
+    upload = next(s for s in steps if s.startswith("Upload non-release ARM64"))
+    assert "if: ${{ always() && inputs.diagnostic_only }}" in upload
+    assert "name: diagnostic-openssl-cryptography-windows-arm64-" in upload
+    assert ".zip" not in upload
 
 
 def test_linux_release_keeps_shared_runtime_replaceable() -> None:

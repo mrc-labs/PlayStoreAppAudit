@@ -126,7 +126,7 @@ def test_development_native_helpers_preserve_resolved_patch_and_current_rust() -
     macos = (ROOT / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
     assert "--default-toolchain 1.99.1" in macos
     assert 'rustc 1.99.1 ' in macos
-    windows = (ROOT / ".github/workflows/build-windows-exe.yml").read_text(encoding="utf-8")
+    windows = (ROOT / ".github/scripts/provision_windows_arm64_openssl.ps1").read_text(encoding="utf-8")
     assert "rustup toolchain install 1.99.1 --profile minimal" in windows
     assert "host: aarch64-pc-windows-msvc" in windows
 

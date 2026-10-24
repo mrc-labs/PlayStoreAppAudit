@@ -77,16 +77,18 @@ jobs:
       - name: Validate PowerShell helper syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path 'scripts/export_chat_handoff.ps1'),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -ne 0) {
-            $errors | Format-List | Out-String | Write-Error
-            throw 'PowerShell helper syntax validation failed.'
+          foreach ($helper in @('scripts/export_chat_handoff.ps1', '.github/scripts/build_windows_standalone.ps1', '.github/scripts/provision_windows_arm64_openssl.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $helper),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | Format-List | Out-String | Write-Error
+              throw 'PowerShell helper syntax validation failed.'
+            }
           }
 
       - name: Compile, test and lint
@@ -95,13 +97,13 @@ jobs:
           python -m compileall -q playstore_app_audit
           if ($LASTEXITCODE -ne 0) { throw 'compileall failed.' }
 
-          python -m py_compile .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py .github/scripts/assemble_windows_engineering_release.py .github/scripts/cleanup_actions_retention.py .github/scripts/inspect_linux_abi.py .github/scripts/download_linux_compat_python.py
+          python -m py_compile .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py .github/scripts/assemble_windows_engineering_release.py .github/scripts/cleanup_actions_retention.py .github/scripts/inspect_linux_abi.py .github/scripts/download_linux_compat_python.py .github/scripts/verify_windows_arm64_crypto.py
           if ($LASTEXITCODE -ne 0) { throw 'Release/audit/maintenance helper compilation failed.' }
 
           python -m pytest
           if ($LASTEXITCODE -ne 0) { throw 'pytest failed.' }
 
-          ruff check playstore_app_audit tests main.py .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py .github/scripts/assemble_windows_engineering_release.py .github/scripts/cleanup_actions_retention.py .github/scripts/inspect_linux_abi.py .github/scripts/download_linux_compat_python.py
+          ruff check playstore_app_audit tests main.py .github/scripts/capture_ui_style.py .github/scripts/preflight_release_legal_material.py .github/scripts/prepare_release_legal_bundle.py .github/scripts/normalize_macos_bundle.py .github/scripts/sign_macos_app.py .github/scripts/assemble_windows_engineering_release.py .github/scripts/cleanup_actions_retention.py .github/scripts/inspect_linux_abi.py .github/scripts/download_linux_compat_python.py .github/scripts/verify_windows_arm64_crypto.py
           if ($LASTEXITCODE -ne 0) { throw 'Ruff failed.' }
 
       - name: Qt offscreen smoke test

@@ -406,6 +406,25 @@ if ($env:GITHUB_ACTIONS -eq "true") {
     $BuildInfoLines += "Signing: unsigned local artifact"
 }
 
+if ($PackageArch -eq 'arm64') {
+    if (-not $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE) {
+        Fail 'ARM64 packaging requires verified OpenSSL/cryptography source evidence.'
+    }
+    & $Python .github/scripts/verify_windows_arm64_crypto.py `
+        --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE `
+        --package-dir $PackageDir --release-dir $LegalReleaseDir
+    if ($LASTEXITCODE -ne 0) { Fail 'ARM64 crypto legal/source staging failed.' }
+    $CryptoEvidence = Get-Content -LiteralPath (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-verification.json') -Raw | ConvertFrom-Json
+    $BuildInfoLines += @(
+        "cryptography: $($CryptoEvidence.cryptography)"
+        "cryptography OpenSSL backend: $($CryptoEvidence.cryptography_backend)"
+        "cryptography linkage: static OpenSSL / dynamic MSVC CRT"
+        "cryptography OpenSSL source: $($CryptoEvidence.source.source_url)"
+        "cryptography OpenSSL source SHA-256: $($CryptoEvidence.source.source_sha256)"
+        "cryptography legal/source evidence: third-party-build/openssl-cryptography; CI legal prerequisites"
+    )
+}
+
 $BuildInfoLines |
     Set-Content -LiteralPath (Join-Path $PackageDir "BUILD-INFO.txt") -Encoding utf8
 
