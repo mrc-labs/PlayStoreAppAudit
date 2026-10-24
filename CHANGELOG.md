@@ -2,6 +2,10 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
+## [2.3.1] - Unreleased
+
+Maintenance release preparation focused on keeping Store App Audit current, secure and reliable. No product features or application behavior changes. See the [component audit and release gates](docs/V2_3_1_RELEASE_PREP.md); publication remains pending.
+
 ## [2.3.0] - 2026-10-05
 
 ### Added

@@ -32,8 +32,8 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 ## Runtime and dependencies
 
 - Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in all 11 setup environments/nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
-- Current PySide6 baseline: `PySide6-Essentials==6.11.2`.
-- Current release compiler pin: `Nuitka==4.2.2`.
+- Current v2.3.1 preparation PySide6 baseline: `PySide6-Essentials==6.12.0`.
+- Current release compiler pin: `Nuitka==4.3.1`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
 - Python pre-releases, including Python 3.15 release candidates, are not stable release baselines unless a deliberate engineering decision changes the policy.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
@@ -81,6 +81,10 @@ v2.2.0 was published 2026-10-02 and is immutable at `21b6646571b7e93044b76fe4d18
 Canonical Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, macOS `36988307201` and assembly `36993205418` all passed on attempt 1 at the exact release SHA. Exactly eight assets were independently re-downloaded and verified by names, sizes, SHA-256 and byte identity. Do not rebuild, retag or replace them. The completed post-v2.2 source baseline remained 2.2.0; PR #222 restored rolling stable Python 3.14 development tracking at post-release baseline `fec702dace16efc96d4d0c072acd97bd0f13a90f`, with Quality #641 / `37019239185` SUCCESS. Public repository/About/README reconciliation and local Docker hygiene are complete. Issue #212 is closed as completed after final local synchronization and closure confirmation.
 
 Proactively migrate concretely announced deprecations when a stable supported successor preserves all six targets and intended compatibility floors and can be validated in the active release cycle. Preview successors and implicit floor increases are excluded; classify blockers, required migrations, watches and upstream observations explicitly.
+
+## v2.3.1 maintenance preparation
+
+Tracker [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) authorizes maintenance-only preparation from `58f0d27041b6220442e9c35e470db744c3dfe02c`. Prepared source metadata is **2.3.1 / Windows 2.3.1.0**, not a published release. [The active release checklist and entry audit](docs/V2_3_1_RELEASE_PREP.md) records current component selections, six-target support evidence and security/deprecation decisions. Entry validation uses Python **3.14.9**; workflows retain rolling stable **3.14** until the second full audit and exact-patch freeze. Python 3.15 support in Nuitka remains experimental. OpenSSL 3.6 EOL **2026-11-01** must be reevaluated if release work crosses that boundary. Stop for independent PR/exact-head Quality review before merge, freeze or final builds. Published v2.3.0 identity and evidence below remain historical and immutable.
 
 ## v2.3.0 publication and closure evidence
 

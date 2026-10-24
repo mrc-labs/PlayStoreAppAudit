@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-05 CEST
+Last updated: 2026-10-24 CEST
 
 ## Purpose
 
@@ -19,6 +19,12 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 - Published release source commits, tag targets and binary/source/checksum assets are immutable; descriptive Release prose may be maintained without changing historical meaning.
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
+
+## Active v2.3.1 maintenance cycle
+
+The maintainer approved a PATCH-only component/toolchain refresh on **2026-10-24**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) from main `58f0d27041b6220442e9c35e470db744c3dfe02c`. Prepared source metadata is **2.3.1 / Windows 2.3.1.0**; this is not publication. The [release checklist and full entry freshness audit](V2_3_1_RELEASE_PREP.md) controls component selection and remaining gates. No new product feature, application fix/compatibility adaptation, updater or production signing is included. Any required application change returns to Control Tower for MINOR scope reassessment. #236 remains a separate draft product-planning proposal.
+
+Preparation stops at focused PR review and exact-head Quality. A later normal merge, post-merge Quality, complete second freshness audit, exact Python pins and new freeze must precede all six rebuilt candidates. Accepted six-target/floor/signing constraints remain; the **November 1 OpenSSL 3.6 support boundary** is an explicit release-delay gate. Publication and permanent closure require the full existing procedures and separate authorization.
 
 ## v2.0 published baseline
 

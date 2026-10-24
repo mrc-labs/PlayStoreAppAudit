@@ -112,9 +112,9 @@ if (-not $MachineMatches) {
 
 Write-Host "Reported machine: $ReportedMachine"
 
-& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.11.2'"
+& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.12.0'"
 if ($LASTEXITCODE -ne 0) {
-    Fail "PySide6 6.11.2 verification failed."
+    Fail "PySide6 6.12.0 verification failed."
 }
 
 & $Python -m nuitka --version

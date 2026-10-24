@@ -4,6 +4,8 @@ Windows, macOS and Linux use the same Python/Qt source tree from canonical `main
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
 
+Current **v2.3.1 maintenance preparation** is governed by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) and the [entry audit/release checklist](V2_3_1_RELEASE_PREP.md). Source metadata is 2.3.1 / Windows 2.3.1.0; this is not publication or a frozen toolchain. Entry validation uses Python 3.14.9; rolling development selectors remain until final freshness. Review the OpenSSL 3.6 November 1 support boundary before release work continues past it.
+
 ## Local development environment
 
 Create a virtual environment and install the development dependencies:
@@ -15,7 +17,7 @@ python -m venv .venv
 Activate it with `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` on macOS/Linux, then run:
 
 ```bash
-python -m pip install --upgrade pip
+python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
 python -m pip install -r requirements-dev.txt
 ```
 
@@ -58,17 +60,19 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-Current development baseline (immutable v2.2/v2.3 used exact Python 3.14.8 and the same selected parent toolchain):
+Current v2.3.1 preparation baseline (immutable v2.2/v2.3 toolchain evidence remains in their release records):
 
 - Development/diagnostic packaging Python: rolling stable **3.14**; exact audited full patch mandatory at release freeze
 - Development Quality CI: rolling stable **3.14** / `check-latest: true` with stable/final guards
-- `PySide6-Essentials==6.11.2`
+- `PySide6-Essentials==6.12.0`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
-- `Nuitka==4.2.2`
+- `Nuitka==4.3.1`
 - Qt Widgets
 - official JavaScript GitHub Actions at their currently supported majors
 
 Keep these current pins aligned with the mandatory release component freshness gate and package evidence.
+
+Pip's direct wheel URL and SHA-256 above follow the [PSF eMudhra/emSign security bootstrap](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576). Runtime certifi is explicitly pinned at 2026.10.23; old pip's embedded trust is a separate concern, so run the bootstrap before installing dependencies in reused project environments. Do not disable TLS verification or update unrelated environments as part of a project build. Linux/macOS deployment uses the supported `--no-install` option after installing the audited tooling; Linux explicitly installs `patchelf==0.19.1.0` as required by the deployment parent's distribution check.
 
 `pyaxmlparser` is Apache-2.0 and currently declares `lxml` (BSD-3-Clause),
 `click>=6.7` (BSD-3-Clause) and `asn1crypto>=0.24.0` (MIT). `lxml` is a compiled

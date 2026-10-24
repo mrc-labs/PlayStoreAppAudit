@@ -38,9 +38,9 @@ def test_project_and_update_checker_use_canonical_github_repository() -> None:
     assert f"{repository_url}/releases/latest" == device_insights.LATEST_RELEASE_PAGE
 
 
-def test_v230_release_version() -> None:
-    assert __version__ == "2.3.0"
-    assert f"{__version__}.0" == "2.3.0.0"
+def test_v231_maintenance_preparation_version() -> None:
+    assert __version__ == "2.3.1"
+    assert f"{__version__}.0" == "2.3.1.0"
 
 
 def test_release_qt_baseline_is_pinned() -> None:
@@ -52,7 +52,7 @@ def test_release_qt_baseline_is_pinned() -> None:
         root / "requirements.txt"
     ).read_text(encoding="utf-8").splitlines()
 
-    qt_requirement = "PySide6-Essentials==6.11.2"
+    qt_requirement = "PySide6-Essentials==6.12.0"
     assert qt_requirement in project["project"]["dependencies"]
     assert qt_requirement in requirements
 

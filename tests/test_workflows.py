@@ -108,7 +108,7 @@ def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:
 
         assert python_check < install < qt_check
         assert "PySide6" not in workflow[python_check:install]
-        assert "PySide6.__version__ == '6.11.2'" in workflow[qt_check:]
+        assert "PySide6.__version__ == '6.12.0'" in workflow[qt_check:]
 
 
 def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
@@ -149,11 +149,16 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
         workflow = _workflow(name)
 
         assert (
-            'pip install -r requirements-dev.txt "Nuitka==4.2.2"'
+            'pip install -r requirements-dev.txt "Nuitka==4.3.1"'
             in workflow
         )
         assert "--report=compilation-report.xml" in workflow
         assert "test -s compilation-report.xml" in workflow
+        assert "pyside6-deploy -c pysidedeploy.spec -f --no-install" in workflow
+
+    # The deployment parent checks distribution metadata, even when apt has
+    # already provisioned the native executable.
+    assert '"patchelf==0.19.1.0"' in _workflow("build-linux.yml")
 
 
 def test_linux_release_runs_legal_gate_before_zip() -> None:

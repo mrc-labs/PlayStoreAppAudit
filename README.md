@@ -10,7 +10,7 @@ The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Go
 
 **Latest published release:** [v2.3.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0), published 2026-10-05 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current source:** 2.3.0. Publication/public-byte verification and closure PR [#234](https://github.com/mrc-labs/PlayStoreAppAudit/pull/234) passed. Post-release development follows rolling stable Python 3.14; the published release source remains immutable. Current closure acceptance and signoff are recorded in [#225](https://github.com/mrc-labs/PlayStoreAppAudit/issues/225) / [#232](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232). See [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md).
+**Current source:** 2.3.1 maintenance preparation, tracked in [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). This dependency/toolchain refresh is not yet published. Development follows supported stable Python 3.14; see the [entry audit and release checklist](docs/V2_3_1_RELEASE_PREP.md). Published v2.3.0 source, tag and assets remain immutable; its [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md) preserves the release evidence.
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
 
