@@ -35,6 +35,9 @@ if ($env:VSCMD_ARG_HOST_ARCH -ne 'arm64' -or $env:VSCMD_ARG_TGT_ARCH -ne 'arm64'
 $compiler = (Get-Command cl.exe).Source
 python .github/scripts/inspect_pe.py --expect 0xAA64 $compiler
 if ($LASTEXITCODE -ne 0) { throw 'MSVC compiler is not a native ARM64 PE.' }
+$linker = (Get-Command link.exe).Source
+python .github/scripts/inspect_pe.py --expect 0xAA64 $linker
+if ($LASTEXITCODE -ne 0) { throw 'MSVC linker is not a native ARM64 PE.' }
 # OpenSSL's documented CLANGASM target uses clang-cl only for ARM64 assembly.
 $clang = (Get-Command clang-cl.exe).Source
 python .github/scripts/inspect_pe.py --expect 0xAA64 $clang
@@ -117,6 +120,7 @@ Copy-Item -LiteralPath (Join-Path $source 'LICENSE.txt') -Destination $evidence
     "OPENSSL_DIR=$prefix", "OPENSSL_INCLUDE_DIR=$(Join-Path $prefix 'include')", "OPENSSL_LIB_DIR=$lib",
     'OPENSSL_STATIC=1', 'OPENSSL_NO_VENDOR=1', 'PIP_NO_BINARY=cryptography', 'PIP_NO_CACHE_DIR=1',
     "CRYPTOGRAPHY_OPENSSL_EVIDENCE=$evidence"
+    "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=$linker"
 ) | Add-Content -LiteralPath $env:GITHUB_ENV
 # Subsequent steps need the same native MSVC environment for the source wheel.
 foreach ($name in @('PATH', 'INCLUDE', 'LIB', 'LIBPATH', 'VSINSTALLDIR', 'VCINSTALLDIR',

@@ -117,6 +117,7 @@ def main() -> None:
     if sys.version_info[:2] != (3, 14) or sys.version_info.releaselevel != "final":
         raise RuntimeError("Diagnostics require stable Python 3.14")
 
+    import decimal
     import pyexpat
     import sqlite3
     import zlib
@@ -124,7 +125,7 @@ def main() -> None:
     from cryptography.hazmat.backends.openssl.backend import backend
     from lxml import etree
     from PIL import features
-    from PySide6 import QtCore, QtNetwork
+    from PySide6 import QtCore, QtGui, QtNetwork
 
     app = QtCore.QCoreApplication([])
     QtNetwork.QSslSocket.supportsSsl()
@@ -140,15 +141,21 @@ def main() -> None:
         qt_backends.append(item)
     if active:
         QtNetwork.QSslSocket.setActiveBackend(active)
+    image = QtGui.QImage(2, 2, QtGui.QImage.Format.Format_ARGB32)
+    image.fill(0xFF336699)
+    buffer = QtCore.QBuffer()
+    buffer.open(QtCore.QIODevice.OpenModeFlag.WriteOnly)
+    if not image.save(buffer, "PNG") or QtGui.QImage.fromData(bytes(buffer.data()), "PNG").isNull():
+        raise RuntimeError("Qt PNG provider roundtrip failed")
     extensions = {}
     for name in ("_ssl", "_hashlib", "_sqlite3", "pyexpat", "zlib", "_bz2", "_lzma", "_ctypes",
                  "_zstd", "cryptography.hazmat.bindings._rust", "lxml.etree",
-                 "PySide6.QtCore", "PySide6.QtNetwork"):
+                 "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtNetwork"):
         module = importlib.import_module(name)
         extensions[name] = module_image(module)
     images = loaded_images()
     providers = []
-    relevant = re.compile(r"(ssl|crypto|expat|sqlite|lzma|libffi|bz2|zstd|libz[.-]|xml2|xslt)", re.I)
+    relevant = re.compile(r"(ssl|crypto|expat|sqlite|lzma|libffi|bz2|zstd|libz[.-]|xml2|xslt|libpng|pcre|harfbuzz|freetype)", re.I)
     for path in images:
         if not relevant.search(path.name):
             continue
@@ -158,7 +165,19 @@ def main() -> None:
             library.OpenSSL_version.argtypes = [ctypes.c_int]
             library.OpenSSL_version.restype = ctypes.c_char_p
             item["openssl_version"] = library.OpenSSL_version(0).decode("ascii")
+        if re.search(r"liblzma", path.name, re.I) and path.is_file():
+            library = ctypes.CDLL(str(path))
+            library.lzma_version_string.restype = ctypes.c_char_p
+            item["lzma_version"] = library.lzma_version_string().decode("ascii")
         providers.append(item)
+    qt_embedded_literals = []
+    for path in images:
+        if re.search(r"Qt[6]?(?:Gui|Core)(?:\.|$)", path.name) and path.is_file():
+            data = path.read_bytes()
+            candidates = sorted({match.decode("ascii") for match in re.findall(
+                rb"(?<![0-9])(?:1\.6\.[0-9]{1,2}|10\.[0-9]{2} [0-9]{4}-[0-9]{2}-[0-9]{2})(?![0-9])", data)})
+            qt_embedded_literals.append({"path": str(path), "sha256": hashlib.sha256(data).hexdigest(),
+                                         "version_literals_not_runtime_api": candidates})
     qt_root = Path(QtCore.__file__).parent
     potential_ssl_files = []
     for directory in (Path(sys.base_prefix), qt_root):
@@ -172,12 +191,14 @@ def main() -> None:
         "gil_disabled": False, "python_distribution": str(sys.base_prefix),
         "python_ssl": ssl.OPENSSL_VERSION, "cryptography_ssl": backend.openssl_version_text(),
         "sqlite": sqlite3.sqlite_version, "expat": pyexpat.EXPAT_VERSION,
+        "mpdecimal": decimal.__libmpdec_version__,
         "zlib_api": zlib.ZLIB_VERSION, "zlib_runtime_api": zlib.ZLIB_RUNTIME_VERSION,
         "lxml": {"libxml_runtime": etree.LIBXML_VERSION, "libxml_compiled": etree.LIBXML_COMPILED_VERSION,
                  "libxslt_runtime": etree.LIBXSLT_VERSION, "libxslt_compiled": etree.LIBXSLT_COMPILED_VERSION},
         "pillow_development_only": {name: features.version(name) for name in features.get_supported()},
         "qt": {"version": QtCore.qVersion(), "build": QtCore.QLibraryInfo.build(),
-               "default_tls_backend": active, "tls_backends": qt_backends},
+               "default_tls_backend": active, "tls_backends": qt_backends,
+               "png_roundtrip": "PASS", "embedded_binary_literals": qt_embedded_literals},
         "extensions": extensions, "loaded_relevant_images": providers,
         "installed_possible_ssl_files_not_package_inventory": potential_ssl_files,
         "loaded_image_paths": [str(path) for path in images],

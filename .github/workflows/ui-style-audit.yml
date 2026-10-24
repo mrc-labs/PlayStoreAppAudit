@@ -106,7 +106,14 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: '10.15'
         run: bash .github/scripts/provision_macos_intel_crypto.sh
 
+      - name: Select producing Linux x64 compatibility runtime for diagnostics
+        if: ${{ inputs.component_audit && runner.os == 'Linux' && matrix.arch == 'x64' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/prepare_linux_x64_sysroot.sh
+
       - name: Install source-mode UI dependencies
+        if: ${{ !(inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -116,6 +123,17 @@ jobs:
             python -m pip install "Nuitka==4.3.1"
             if [ "${{ runner.os }}" = Linux ]; then python -m pip install "patchelf==0.19.1.0"; fi
           fi
+
+      - name: Install native Windows ARM64 diagnostic dependencies
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          if ($LASTEXITCODE -ne 0) { throw 'Secure pip bootstrap failed.' }
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native dependency installation failed.' }
+          python -m pip install "Nuitka==4.3.1"
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic compiler metadata installation failed.' }
 
       - name: Capture Windows native and Fusion styles
         if: ${{ !inputs.component_audit && runner.os == 'Windows' }}
@@ -248,5 +266,6 @@ jobs:
           path: |
             component-audit/
             component-install.json
+            linux-diagnostics/
           if-no-files-found: error
           retention-days: 0
