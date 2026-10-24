@@ -3,6 +3,10 @@ name: UI style audit
 on:
   workflow_dispatch:
     inputs:
+      runtime_pilot:
+        description: One native Jammy x64 controlled Python-Qt-OpenSSL pilot; never a final candidate
+        type: boolean
+        default: false
       component_audit:
         description: Non-release six-target component/provider inventory; no UI capture or packaging
         type: boolean
@@ -21,6 +25,7 @@ concurrency:
 
 jobs:
   capture:
+    if: ${{ !inputs.runtime_pilot }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -267,5 +272,75 @@ jobs:
             component-audit/
             component-install.json
             linux-diagnostics/
+          if-no-files-found: error
+          retention-days: 0
+
+  runtime-pilot:
+    if: ${{ inputs.runtime_pilot }}
+    name: Native runtime-framework pilot / Linux x64 Jammy
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated pilot source and native target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.component_audit }}' = false
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+
+      - name: Set up bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Install ephemeral native build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch p7zip-full \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
+
+      - name: Build and exercise one controlled native stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir pilot-evidence
+          bash .github/scripts/build_native_runtime_pilot.sh \
+            "$RUNNER_TEMP/native-runtime-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic runtime-framework evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
+          path: pilot-evidence/
           if-no-files-found: error
           retention-days: 0

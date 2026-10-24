@@ -1,0 +1,27 @@
+{
+  "scope": "v2.4 native Ubuntu 22.04 x64 diagnostic only; not a release runtime or general toolchain manager",
+  "checked": "2026-10-25 Europe/Rome",
+  "cpython_patch": {
+    "path": ".github/patches/cpython-3.14.9-openssl4.patch",
+    "sha256": "1b6aa8f4d5189b4dd864fe6332567181fc16d490a20cd9f2e767b7c381f46031",
+    "upstream": "https://github.com/python/cpython/pull/146217",
+    "upstream_patch_sha256": "8d491c4b52781d8f6b784ae99f28acdc0c48f468df28ba6863e62e8ac6f3abfe",
+    "adaptation": "Backport upstream const-correct X509 handling and OpenSSL-4 version assertion. Preserve 3.14 fixed-protocol APIs using TLS_method plus checked minimum/maximum bounds as documented by OpenSSL, rather than upstream main's removal of legacy constants. No change to certificate/hostname defaults or _hashlib source.",
+    "migration": "https://docs.openssl.org/4.0/man7/ossl-guide-migration/",
+    "files": {
+      "Modules/_ssl.c": {"base_sha256":"429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a","patched_sha256":"38eb02851d690c36d53e655cba209839ec906b7603d812d32f31f7e607e749a6"},
+      "Modules/_ssl/cert.c": {"base_sha256":"4d07b7ca6fea2f848413f76b6f65e2c26e36d49c70431f04d748e4624706eb4f","patched_sha256":"0085ddc7bdebff311ecf1f63bbae9f44886d5f239795f560d3692aa0a55d9f8f"},
+      "Lib/test/test_ssl.py": {"base_sha256":"33b281da686c0dbfceae8ef3183c58da5b7dc8539c4d379cf669ec69523b446e","patched_sha256":"4875db55a114094e965e75eb06e33c8195067e4904589c481cd9c6765f29aa78"}
+    }
+  },
+  "sources": [
+    {"name":"Python-3.14.9.tar.xz","directory":"Python-3.14.9","url":"https://www.python.org/ftp/python/3.14.9/Python-3.14.9.tar.xz","sha256":"e02d9ac21cebda6e46435369744a92c65cc7cd8669697694122cf97ffacd1e53","authority":"https://www.python.org/downloads/release/python-3149/"},
+    {"name":"openssl-4.0.3.tar.gz","directory":"openssl-4.0.3","url":"https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz","sha256":"325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9","authority":"https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz.sha256"},
+    {"name":"libpng-1.6.59.tar.xz","directory":"libpng-1.6.59","url":"https://download.sourceforge.net/libpng/libpng-1.6.59.tar.xz","sha256":"d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389","authority":"https://www.libpng.org/pub/png/libpng.html"},
+    {"name":"pcre2-10.49.tar.gz","directory":"pcre2-10.49","url":"https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz","sha256":"929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae","authority":"https://api.github.com/repos/PCRE2Project/pcre2/releases/tags/pcre2-10.49"},
+    {"name":"qtbase-everywhere-src-6.12.0.tar.xz","directory":"qtbase-everywhere-src-6.12.0","url":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz","sha256":"a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307","authority":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz.sha256"},
+    {"name":"qtsvg-everywhere-src-6.12.0.tar.xz","directory":"qtsvg-everywhere-src-6.12.0","url":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz","sha256":"e4ab39534ec97987b1b9b60ef7f4d3253d5912a69f8c713a01753174a4029331","authority":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz.sha256"},
+    {"name":"pyside-setup-everywhere-src-6.12.0.tar.xz","directory":"pyside-setup-everywhere-src-6.12.0","url":"https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz","sha256":"099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751","authority":"https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz.sha256"},
+    {"name":"libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z","directory":"libclang","url":"https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z","sha256":"6c9929becccf32d88f788899da7dd4edd42371ad95e2990d9b84e8f480feabfc","authority":"https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z.sha256","scope":"build-only Qt-provided stable libclang, supported 16-22 parser range; not a preview LLVM or shipped application library"}
+  ]
+}
