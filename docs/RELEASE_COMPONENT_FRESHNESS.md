@@ -108,6 +108,20 @@ For each gate, record in the active release checklist or handoff:
 
 The final pre-release record must refer to the exact dependency/workflow state that will be frozen for production builds.
 
+## Aggregated release benefit report
+
+Every release, including a maintenance-only PATCH, must include a **concise aggregated benefit report** for the maintainer alongside the detailed component inventory. Group the report by practical outcomes, not one paragraph or row per upgraded dependency. Record it in the active release issue or an existing genuine release audit/preparation record; do not create a standalone handoff/status/command-carrier document merely to hold this summary.
+
+- Compare the selected release state with the **previous published release**, not an intermediate PR or diagnostic build. Exclude fixes already present in that baseline and unreleased changes not selected for the new packages.
+- Summarize relevant security/trust fixes, stability/correctness improvements, supported-platform/deprecation migrations, and performance/resource changes **only when supported by evidence**. Omit empty categories; a reasonable default is 3–6 outcome bullets.
+- Explain serious applicable fixes in plain language: the failure or attack addressed, its affected scope, the upstream severity/advisory reference and whether the affected path is present/reachable in this application. Distinguish an affected bundled library from demonstrated application exposure. Never promote a low-severity or non-applicable upstream issue to a critical application vulnerability.
+- Distinguish **measured in this project**, **documented upstream but not measured here**, and **not applicable / still pending**. Do not invent speed, memory, startup or reliability gains from a version bump or passing tests. Benchmark only when a performance claim needs it.
+- Separate improvements to the distributed application from improvements confined to developer tools/CI. Include material compatibility changes, regressions, unresolved support/security findings or limitations rather than presenting only positive effects.
+- Link the aggregate conclusions to authoritative release notes/advisories and the relevant project validation, while leaving the component-by-component detail in the audit matrix.
+- Produce a preliminary report after the entry audit/refresh. Reconcile the final report with the **actual frozen SHA, selected dependency versions and six accepted package inventories** before release acceptance. A successful source test or one native diagnostic does not establish benefit/verification on all targets.
+
+This report does not change the standard four-section public Release body. Maintenance-only public highlights remain the established short sentence unless a material user-impacting security/compatibility fact needs disclosure; the fuller maintainer report stays linked in the release ledger/audit. Full closure must retain the final aggregate report and its evidence.
+
 ## Update and validation rule
 
 When an update is required, treat it as release work rather than a documentation-only change. At minimum:
