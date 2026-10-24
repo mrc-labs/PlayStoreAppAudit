@@ -15,6 +15,8 @@ from inspect_pe import read_pe_machine
 
 SOURCE_URL = "https://raw.githubusercontent.com/python/cpython/v3.14.9/Modules/_ssl.c"
 SOURCE_SHA256 = "429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a"
+LICENSE_URL = "https://raw.githubusercontent.com/python/cpython/v3.14.9/LICENSE"
+LICENSE_SHA256 = "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231"
 METHODS = ("TLSv1_method", "TLSv1_1_method", "TLSv1_2_method")
 
 
@@ -39,6 +41,11 @@ def main() -> None:
     if hashlib.sha256(source).hexdigest() != SOURCE_SHA256:
         raise RuntimeError("CPython source provenance mismatch")
     (root / "cpython-3.14.9-ssl.c").write_bytes(source)
+    with urllib.request.urlopen(LICENSE_URL, timeout=60) as response:
+        license_payload = response.read()
+    if hashlib.sha256(license_payload).hexdigest() != LICENSE_SHA256:
+        raise RuntimeError("CPython license provenance mismatch")
+    (root / "CPYTHON-LICENSE.txt").write_bytes(license_payload)
     for name in METHODS:
         if f"method = {name}();".encode() not in source:
             raise RuntimeError("The selected CPython source no longer has the expected API dependency")
@@ -76,6 +83,7 @@ def main() -> None:
         "scope": "non-release-native-api-feasibility-not-a-python-build",
         "source_sha": os.environ.get("GITHUB_SHA"), "cpython_version": "3.14.9",
         "cpython_source_url": SOURCE_URL, "cpython_source_sha256": SOURCE_SHA256,
+        "cpython_license_url": LICENSE_URL, "cpython_license_sha256": LICENSE_SHA256,
         "openssl": "4.0.3", "architecture": "ARM64", "outcomes": outcomes,
         "decision": "BLOCKED: unmodified CPython references removed OpenSSL methods; source adaptation requires scope/MINOR review.",
         "limits": "This tests the guarded method API dependency, not a full CPython build or _hashlib qualification. No runtime is adopted.",

@@ -72,9 +72,15 @@
         "Official 3.14.9 Windows external pins/SBOM and Mac build recipe",
         "Hosted six-target manifest and source-mode native provider probes",
         "3.15.1 alternative and Nuitka stable support",
-        "Unmodified 3.14.9 _ssl source and upstream OpenSSL-4 support PRs"
+        "Unmodified 3.14.9 _ssl source and upstream OpenSSL-4 support PRs",
+        "python-build-standalone 20261021 selects OpenSSL 3.5.9",
+        "conda-forge Python 3.14.9 native GIL builds on six targets require openssl >=3.5.9,<4.0a0"
       ],
-      "constraint": "Hosted official distributions do not supply uniform OpenSSL 4.0. Unmodified 3.14.9 references removed version-method APIs; backport PR #146403 is closed/unmerged. A custom runtime/source adaptation requires Control Tower scope/MINOR review. Other native upgrades must be qualified in that rebuild, not retained merely for PATCH."
+      "constraint": "Hosted official distributions do not supply uniform OpenSSL 4.0. Unmodified 3.14.9 references removed version-method APIs; backport PR #146403 is closed/unmerged. A custom runtime/source adaptation requires Control Tower scope/MINOR review. Other native upgrades must be qualified in that rebuild, not retained merely for PATCH.",
+      "sources": [
+        "https://github.com/astral-sh/python-build-standalone/blob/20261021/pythonbuild/downloads.json",
+        "https://api.anaconda.org/release/conda-forge/python/3.14.9"
+      ]
     },
     "lxml-source": {
       "checked": [
@@ -888,7 +894,354 @@
       }
     ]
   },
-  "component_count": 1094
+  "component_count": 1094,
+  "native_diagnostic_evidence": {
+    "run_id": 40123588698,
+    "source_sha": "f7816a3f5852184354ace2fd894b3a74f1f9dc50",
+    "scope": "source-environment diagnostics; no final package or custom Python built",
+    "profiles": [
+      {
+        "job_id": 120960179113,
+        "platform": "win32",
+        "architecture": "amd64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.5.9 29 Sep 2026",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.50.4",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.3.1.zlib-ng",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (x86_64-little_endian-llp64 shared (dynamic) release build; by MSVC 2022) [Python limited API run time: 3.14.9 built: 3.14.3]",
+          "default_tls_backend": "openssl",
+          "tls_backends": [
+            {
+              "name": "cert-only",
+              "selected": false
+            },
+            {
+              "name": "openssl",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "OpenSSL 3.5.4 30 Sep 2025",
+              "runtime_provider": "OpenSSL 3.5.9 29 Sep 2026"
+            },
+            {
+              "name": "schannel",
+              "selected": false
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\x64\\Lib\\site-packages\\PySide6\\Qt6Core.dll",
+              "sha256": "f57ed38afd95d0306cca9d88d997f639f70c7628a4f1f064eae291d579487121",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\x64\\Lib\\site-packages\\PySide6\\Qt6Gui.dll",
+              "sha256": "abd20026e190e8cc69667d1bea042db05cd353cc05e7da74b063c20b7da3f6cd",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\x64\\Lib\\site-packages\\PySide6\\QtCore.pyd",
+              "sha256": "6486f6f0a2fec42fc8c652c0b76bb3ad0d44eaccad9c72e577116a075681eebb",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\x64\\Lib\\site-packages\\PySide6\\QtGui.pyd",
+              "sha256": "9ac544d1bcf8a26c408c63090d05506f8382d5378ee3a204e29a3ac5449c5b2b",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      },
+      {
+        "job_id": 120960179362,
+        "platform": "win32",
+        "architecture": "arm64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.5.9 29 Sep 2026",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.50.4",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.3.1.zlib-ng",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (arm64-little_endian-llp64 shared (dynamic) release build; by MSVC 2022) [Python limited API run time: 3.14.9 built: 3.14.3]",
+          "default_tls_backend": "schannel",
+          "tls_backends": [
+            {
+              "name": "cert-only",
+              "selected": false
+            },
+            {
+              "name": "schannel",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "Secure Channel (NTDDI: 0xA00000C)",
+              "runtime_provider": "Secure Channel, Windows 10.0.26200"
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\arm64\\Lib\\site-packages\\PySide6\\Qt6Core.dll",
+              "sha256": "86836d6a4a3f04a78acd0e4343d8a71135584e515dd70ee5f43c6ccce1aa8163",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\arm64\\Lib\\site-packages\\PySide6\\Qt6Gui.dll",
+              "sha256": "ee8bee0052c49fb8c08902afebd91b0ee75dadb573bce4240db607257f86f8d9",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\arm64\\Lib\\site-packages\\PySide6\\QtCore.pyd",
+              "sha256": "4edd339799b4496e9a58fde8d002b33b27f94f0b0be1d85beadb183f58c9b0de",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.14.9\\arm64\\Lib\\site-packages\\PySide6\\QtGui.pyd",
+              "sha256": "8dae9eb4054b0e96c9d01782e199d1b1877e9cca9b2849502d38c704ab6efd29",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      },
+      {
+        "job_id": 120960179372,
+        "platform": "linux",
+        "architecture": "aarch64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.0.13 30 Jan 2024",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.45.1",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.3",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (arm64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0) [Python limited API run time: 3.14.9 built: 3.12.3]",
+          "default_tls_backend": "openssl",
+          "tls_backends": [
+            {
+              "name": "openssl",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "OpenSSL 3.0.13 30 Jan 2024",
+              "runtime_provider": "OpenSSL 3.0.13 30 Jan 2024"
+            },
+            {
+              "name": "cert-only",
+              "selected": false
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/arm64/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Core.so.6",
+              "sha256": "0f646c360cad9d8ae53ad8a7838be16a77283d64d842081ab803fddabeda7e4c",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/arm64/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Gui.so.6",
+              "sha256": "6722d78273d4a2c0c78263062c0297ab939968d321f97013d2dc2ef4d1fd7a63",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/arm64/lib/python3.14/site-packages/PySide6/QtCore.abi3.so",
+              "sha256": "8ca599bd898df6c847359630a6db18765e7ebfaf1a2f18d94dbdc9481d42b48f",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/arm64/lib/python3.14/site-packages/PySide6/QtGui.abi3.so",
+              "sha256": "0643d91da7e404815f74c2b52266e73ffb94360b4a7a22f8ed98dc83e0a75db4",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      },
+      {
+        "job_id": 120960179395,
+        "platform": "darwin",
+        "architecture": "x86_64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.5.9 29 Sep 2026",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.50.4",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.2.12",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (x86_64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 17.0.0 (clang-1700.3.19.1)) [Python limited API run time: 3.14.9 built: 3.13.7]",
+          "default_tls_backend": "securetransport",
+          "tls_backends": [
+            {
+              "name": "securetransport",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "Secure Transport, macOS Tahoe (26.6.1)",
+              "runtime_provider": "Secure Transport, macOS Tahoe (26.6.1)"
+            },
+            {
+              "name": "cert-only",
+              "selected": false
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/Qt/lib/QtCore.framework/Versions/A/QtCore",
+              "sha256": "f9b5066d08409573d5d380738debe8fb6fdbd62b85488747647e71671fc6a079",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/Qt/lib/QtGui.framework/Versions/A/QtGui",
+              "sha256": "a637b9db8047245b28520c901a3b1c915b4c7af17b4b558a38c6ef760ee7ceb4",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/QtCore.abi3.so",
+              "sha256": "1288c120342b8460a8829856a07abf2d7d63be8f72502c3dcffc146bb780cbec",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/QtGui.abi3.so",
+              "sha256": "26baca4950d51fc763c17babf84163e1d1472643bfe720f81e17f508d773d03d",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      },
+      {
+        "job_id": 120960179403,
+        "platform": "linux",
+        "architecture": "x86_64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.0.2 15 Mar 2022",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.37.2",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.2.11",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 11.5.0 20240719 (Red Hat 11.5.0-5)) [Python limited API run time: 3.14.9 built: 3.12.9]",
+          "default_tls_backend": "openssl",
+          "tls_backends": [
+            {
+              "name": "cert-only",
+              "selected": false
+            },
+            {
+              "name": "openssl",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "OpenSSL 3.2.2 4 Jun 2024",
+              "runtime_provider": "OpenSSL 3.0.2 15 Mar 2022"
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/x64/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Core.so.6",
+              "sha256": "26341368e3f2017ab9e33a3faa8806ae87fd59f2f8491f4c5aa7e8c1053b8a05",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/x64/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Gui.so.6",
+              "sha256": "392cf5a2fed77ca7b861484ae0f25a2f7f54789024e79518c6c28e1ddf5b4b1a",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/x64/lib/python3.14/site-packages/PySide6/QtCore.abi3.so",
+              "sha256": "c69ab7ddf99eaf37df6c9ed9498bba9f3678d8544de3921c13d046c31f0d484b",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "/opt/hostedtoolcache/Python/3.14.9/x64/lib/python3.14/site-packages/PySide6/QtGui.abi3.so",
+              "sha256": "a4ebd89caef6afa4944f73436b47203fcbf5923d7fe2a8a90f1da00aeb4a4f27",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      },
+      {
+        "job_id": 120960179411,
+        "platform": "darwin",
+        "architecture": "arm64",
+        "python": "3.14.9",
+        "python_ssl": "OpenSSL 3.5.9 29 Sep 2026",
+        "cryptography_ssl": "OpenSSL 4.0.3 29 Sep 2026",
+        "sqlite": "3.50.4",
+        "expat": "expat_2.9.0",
+        "zlib_runtime_api": "1.2.12",
+        "qt": {
+          "version": "6.12.0",
+          "build": "Qt 6.12.0 (arm64-little_endian-lp64 shared (dynamic) release build; by Apple LLVM 17.0.0 (clang-1700.3.19.1)) [Python limited API run time: 3.14.9 built: 3.13.7]",
+          "default_tls_backend": "securetransport",
+          "tls_backends": [
+            {
+              "name": "securetransport",
+              "selected": true,
+              "supports_ssl": true,
+              "build_provider": "Secure Transport, macOS Tahoe (26.6.2)",
+              "runtime_provider": "Secure Transport, macOS Tahoe (26.6.2)"
+            },
+            {
+              "name": "cert-only",
+              "selected": false
+            }
+          ],
+          "png_roundtrip": "PASS",
+          "embedded_binary_literals": [
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/Qt/lib/QtCore.framework/Versions/A/QtCore",
+              "sha256": "f9b5066d08409573d5d380738debe8fb6fdbd62b85488747647e71671fc6a079",
+              "version_literals_not_runtime_api": [
+                "10.48 2026-08-31"
+              ]
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/Qt/lib/QtGui.framework/Versions/A/QtGui",
+              "sha256": "a637b9db8047245b28520c901a3b1c915b4c7af17b4b558a38c6ef760ee7ceb4",
+              "version_literals_not_runtime_api": [
+                "1.6.58"
+              ]
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/QtCore.abi3.so",
+              "sha256": "1288c120342b8460a8829856a07abf2d7d63be8f72502c3dcffc146bb780cbec",
+              "version_literals_not_runtime_api": []
+            },
+            {
+              "path": "/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/PySide6/QtGui.abi3.so",
+              "sha256": "26baca4950d51fc763c17babf84163e1d1472643bfe720f81e17f508d773d03d",
+              "version_literals_not_runtime_api": []
+            }
+          ]
+        }
+      }
+    ]
+  }
 ,
   "components": [
     {"component":"asn1crypto","provider":"isolated Python distributions","selected":"1.5.1","latest_stable":"1.5.1","latest_compatible":{"selected_provider_reference":"1.5.1","newest_candidate":"1.5.1","candidate_qualification":"same version"},"category":"A","scope":"runtime","decision":"current-version","route":"direct","source":"https://pypi.org/pypi/asn1crypto/json","advisory_ids":[],"requires_python":""},
