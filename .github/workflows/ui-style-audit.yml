@@ -2,6 +2,15 @@ name: UI style audit
 
 on:
   workflow_dispatch:
+    inputs:
+      component_audit:
+        description: Non-release six-target component/provider inventory; no UI capture or packaging
+        type: boolean
+        default: false
+      expected_sha:
+        description: Exact source SHA required for component diagnostics
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -12,31 +21,38 @@ concurrency:
 
 jobs:
   capture:
-    name: ${{ matrix.label }} native vs Fusion
+    name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2025
-            label: Windows
-            platform_key: windows
-          - os: macos-15
-            label: macOS
-            platform_key: macos
-          - os: ubuntu-24.04
-            label: Linux
-            platform_key: linux
+        include: ${{ fromJSON(inputs.component_audit && '[{"os":"windows-2025","label":"windows-x64","platform_key":"windows","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","platform_key":"windows","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","platform_key":"linux","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","platform_key":"linux","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","platform_key":"macos","arch":"x64"},{"os":"macos-26","label":"macos-arm64","platform_key":"macos","arch":"arm64"}]' || '[{"os":"windows-2025","label":"Windows","platform_key":"windows","arch":"x64"},{"os":"macos-15","label":"macOS","platform_key":"macos","arch":"arm64"},{"os":"ubuntu-24.04","label":"Linux","platform_key":"linux","arch":"x64"}]') }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      COMPONENT_AUDIT: ${{ inputs.component_audit }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      QT_QPA_PLATFORM: offscreen
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Verify component diagnostic source SHA
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#EXPECTED_SHA}" = 40
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           check-latest: true
+          architecture: ${{ matrix.arch }}
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -76,15 +92,33 @@ jobs:
             xauth \
             xvfb
 
+      - name: Provision diagnostic Windows ARM64 cryptography
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          & ./.github/scripts/provision_windows_arm64_openssl.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "openssl-arm64-$env:GITHUB_RUN_ID")
+          if ($LASTEXITCODE -ne 0) { throw 'Native crypto prerequisite failed.' }
+
+      - name: Provision diagnostic Intel macOS cryptography
+        if: ${{ inputs.component_audit && runner.os == 'macOS' && matrix.arch == 'x64' }}
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+          MACOSX_DEPLOYMENT_TARGET: '10.15'
+        run: bash .github/scripts/provision_macos_intel_crypto.sh
+
       - name: Install source-mode UI dependencies
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
-          python -m pip install -r requirements-dev.txt
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if [ "$COMPONENT_AUDIT" = true ]; then
+            python -m pip install "Nuitka==4.3.1"
+            if [ "${{ runner.os }}" = Linux ]; then python -m pip install "patchelf==0.19.1.0"; fi
+          fi
 
       - name: Capture Windows native and Fusion styles
-        if: runner.os == 'Windows'
+        if: ${{ !inputs.component_audit && runner.os == 'Windows' }}
         shell: pwsh
         env:
           QT_SCALE_FACTOR: "1"
@@ -95,7 +129,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Fusion Windows UI capture failed.' }
 
       - name: Capture macOS native and Fusion styles
-        if: runner.os == 'macOS'
+        if: ${{ !inputs.component_audit && runner.os == 'macOS' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -104,7 +138,7 @@ jobs:
           python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Capture Linux default and Fusion styles under Xvfb
-        if: runner.os == 'Linux'
+        if: ${{ !inputs.component_audit && runner.os == 'Linux' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -113,6 +147,7 @@ jobs:
           xvfb-run -a python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Validate audit evidence
+        if: ${{ !inputs.component_audit }}
         shell: bash
         env:
           PLATFORM_KEY: ${{ matrix.platform_key }}
@@ -179,9 +214,39 @@ jobs:
           PY
 
       - name: Upload UI audit screenshots and metadata
+        if: ${{ !inputs.component_audit }}
         uses: actions/upload-artifact@v7
         with:
           name: ui-style-audit-${{ matrix.platform_key }}
           path: ui-style-audit/
+          if-no-files-found: error
+          retention-days: 0
+
+      - name: Inspect native component providers
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/audit_runtime_components.py --output-dir component-audit
+
+      - name: Verify ARM64 cryptography and probe CPython OpenSSL 4 feasibility
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          Copy-Item component-install.json (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-install.json')
+          python .github/scripts/verify_windows_arm64_crypto.py --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Native cryptography verification failed.' }
+          python .github/scripts/probe_cpython_openssl4.py --output-dir component-audit/cpython-openssl4
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded CPython/OpenSSL API probe failed.' }
+          Copy-Item -LiteralPath $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE -Destination component-audit/openssl-cryptography -Recurse
+
+      - name: Upload non-release component diagnostic evidence
+        if: ${{ always() && inputs.component_audit }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-components-${{ matrix.platform_key }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            component-audit/
+            component-install.json
           if-no-files-found: error
           retention-days: 0

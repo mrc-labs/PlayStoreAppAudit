@@ -2,6 +2,8 @@
 
 Audit date: **2026-10-24 Europe/Rome (CEST)**. Canonical tracker: [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Starting main: `58f0d27041b6220442e9c35e470db744c3dfe02c`. Temporary branch: `release/v2.3.1-maintenance`.
 
+**Reopened under the permanent whole-stack rule.** [PR #240's canonical policy at main `88b341b6d910fca066b728582d99db846211687d`](https://github.com/mrc-labs/PlayStoreAppAudit/blob/88b341b6d910fca066b728582d99db846211687d/docs/RELEASE_COMPONENT_FRESHNESS.md) was fetched/read without rebasing, merging or overwriting this branch. It supersedes the narrower B/C conclusions in the initial entry audit below. A current parent, LTS status and vendor ownership do not establish freshness. The updated tracker additionally requests OpenSSL **4.0.x in every shipped OpenSSL provider**, including Python `_ssl`/`_hashlib`; the independent cryptography prerequisite result alone does not satisfy that requirement. **Entry acceptance is blocked**, pending the cross-component/provider findings and scope review recorded below; earlier local/CI successes remain evidence of their tested revisions only.
+
 This is the active release checklist and complete **entry** component audit required by [the freshness policy](RELEASE_COMPONENT_FRESHNESS.md). It records fresh official upstream queries and local validation, not copied v2.3 acceptance. Categories: **A** directly selected/resolved components; **B** supported parent bundles; **C** vendor-owned internals; **D** supported OS/compiler integrations preserving the accepted matrix/floors.
 
 Source metadata is prepared as **2.3.1 / Windows 2.3.1.0**. Latest published remains **v2.3.0**, immutable source `8d476dc5507d8249d8cd62c861095ed3e443f0af`, tag object `ee386624680b8608a98fb13da5f51bdff736d1e9`, Release ID `403687278`. No new release SHA is frozen, and no v2.3.1 packages have been built or published. Published v2.3.0 binaries are never inputs to the new release.
@@ -9,7 +11,7 @@ Source metadata is prepared as **2.3.1 / Windows 2.3.1.0**. Latest published rem
 ## Scope and acceptance boundaries
 
 - [x] Clean real checkout verified; origin URL and fetched main match the expected repository/SHA; clean local main fast-forwarded from `dd6d9dc9ff39e330129d3624e4de57d4ab004966`; requested branch did not already exist.
-- [x] Complete entry inventory, stable/minor/major comparison, support/deprecation/security review and compatible refresh below.
+- [ ] Complete entry inventory and required refresh accepted under the clarified whole-stack rule; nested/provider follow-up is mandatory.
 - [ ] Focused PR reviewed independently and exact-head Quality accepted by Control Tower.
 - [ ] Normal merge commit, post-merge Quality and complete second freshness audit.
 - [ ] One exact audited Python patch pinned/asserted in all producing/final Quality/signing/assembly setups, then a new main SHA frozen.

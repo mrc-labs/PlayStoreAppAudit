@@ -123,7 +123,7 @@ def test_development_native_helpers_preserve_resolved_patch_and_current_rust() -
     assert 'sys.version_info.releaselevel == "final"' in sysroot
     assert '--version "$resolved_python"' in sysroot
     assert '= "$resolved_python"' in sysroot
-    macos = (ROOT / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
+    macos = (ROOT / ".github/scripts/provision_macos_intel_crypto.sh").read_text(encoding="utf-8")
     assert "--default-toolchain 1.99.1" in macos
     assert 'rustc 1.99.1 ' in macos
     windows = (ROOT / ".github/scripts/provision_windows_arm64_openssl.ps1").read_text(encoding="utf-8")
