@@ -1,6 +1,23 @@
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
-@@ -1134,7 +1134,7 @@
+@@ -133,6 +133,16 @@
+ #include "_ssl_data_111.h"
+ #else
+ #error Unsupported OpenSSL version
++#endif
++
++/* OpenSSL 4 removed SSLv3 entirely (CPython gh-146217). */
++#if OPENSSL_VERSION_NUMBER >= 0x40000000L
++#  ifndef OPENSSL_NO_SSL3
++#    define OPENSSL_NO_SSL3
++#  endif
++#  ifndef OPENSSL_NO_SSL3_METHOD
++#    define OPENSSL_NO_SSL3_METHOD
++#  endif
+ #endif
+ 
+ /* OpenSSL API 1.1.0+ does not include version methods */
+@@ -1134,7 +1144,7 @@
  
  static PyObject *
  _create_tuple_for_attribute(_sslmodulestate *state,
@@ -9,7 +26,7 @@
  {
      Py_ssize_t buflen;
      PyObject *pyattr;
-@@ -1163,16 +1163,16 @@
+@@ -1163,16 +1173,16 @@
  }
  
  static PyObject *
@@ -30,7 +47,7 @@
      int index_counter;
      int rdn_level = -1;
      int retcode;
-@@ -3114,6 +3114,7 @@
+@@ -3114,6 +3124,7 @@
      PySSLContext *self;
      uint64_t options;
      const SSL_METHOD *method = NULL;
@@ -38,7 +55,7 @@
      SSL_CTX *ctx = NULL;
      X509_VERIFY_PARAM *ssl_verification_params;
      int result;
-@@ -3139,7 +3140,13 @@
+@@ -3139,7 +3150,13 @@
          !defined(OPENSSL_NO_TLS1_METHOD))
      case PY_SSL_VERSION_TLS1:
          PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1 is deprecated", 2, NULL);
@@ -52,7 +69,7 @@
          break;
  #endif
  #if (defined(TLS1_1_VERSION) && \
-@@ -3147,7 +3154,13 @@
+@@ -3147,7 +3164,13 @@
          !defined(OPENSSL_NO_TLS1_1_METHOD))
      case PY_SSL_VERSION_TLS1_1:
          PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1_1 is deprecated", 2, NULL);
@@ -66,7 +83,7 @@
          break;
  #endif
  #if (defined(TLS1_2_VERSION) && \
-@@ -3155,7 +3168,13 @@
+@@ -3155,7 +3178,13 @@
          !defined(OPENSSL_NO_TLS1_2_METHOD))
      case PY_SSL_VERSION_TLS1_2:
          PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1_2 is deprecated", 2, NULL);
@@ -80,7 +97,7 @@
          break;
  #endif
      case PY_SSL_VERSION_TLS:
-@@ -3212,6 +3231,14 @@
+@@ -3212,6 +3241,14 @@
      self->psk_server_callback = NULL;
  #endif
      self->tstate_mutex = (PyMutex){0};

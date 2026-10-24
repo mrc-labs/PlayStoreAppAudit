@@ -3,13 +3,13 @@
   "checked": "2026-10-25 Europe/Rome",
   "cpython_patch": {
     "path": ".github/patches/cpython-3.14.9-openssl4.patch",
-    "sha256": "1b6aa8f4d5189b4dd864fe6332567181fc16d490a20cd9f2e767b7c381f46031",
+    "sha256": "98e3c27966e9a6f2a12131a7ac19ac66aa7bae20da85ef9e1d8f3e7bc769fe81",
     "upstream": "https://github.com/python/cpython/pull/146217",
     "upstream_patch_sha256": "8d491c4b52781d8f6b784ae99f28acdc0c48f468df28ba6863e62e8ac6f3abfe",
-    "adaptation": "Backport upstream const-correct X509 handling and OpenSSL-4 version assertion. Preserve 3.14 fixed-protocol APIs using TLS_method plus checked minimum/maximum bounds as documented by OpenSSL, rather than upstream main's removal of legacy constants. No change to certificate/hostname defaults or _hashlib source.",
+    "adaptation": "Backport upstream removed-SSLv3 guards, const-correct X509 handling and OpenSSL-4 version assertion. Preserve 3.14 fixed-protocol APIs using TLS_method plus checked minimum/maximum bounds as documented by OpenSSL, rather than upstream main's removal of legacy constants. No change to certificate/hostname defaults or _hashlib source.",
     "migration": "https://docs.openssl.org/4.0/man7/ossl-guide-migration/",
     "files": {
-      "Modules/_ssl.c": {"base_sha256":"429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a","patched_sha256":"38eb02851d690c36d53e655cba209839ec906b7603d812d32f31f7e607e749a6"},
+      "Modules/_ssl.c": {"base_sha256":"429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a","patched_sha256":"77f1a8c97af32e4f8eccc193a8bc8ce8039f55d9ace100f621a77643add44baa"},
       "Modules/_ssl/cert.c": {"base_sha256":"4d07b7ca6fea2f848413f76b6f65e2c26e36d49c70431f04d748e4624706eb4f","patched_sha256":"0085ddc7bdebff311ecf1f63bbae9f44886d5f239795f560d3692aa0a55d9f8f"},
       "Lib/test/test_ssl.py": {"base_sha256":"33b281da686c0dbfceae8ef3183c58da5b7dc8539c4d379cf669ec69523b446e","patched_sha256":"4875db55a114094e965e75eb06e33c8195067e4904589c481cd9c6765f29aa78"}
     }

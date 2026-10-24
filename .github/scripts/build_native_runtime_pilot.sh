@@ -68,7 +68,16 @@ cd "$work/src/Python-3.14.9"
   LDFLAGS="-Wl,-rpath,$prefix/python/lib" \
   --with-pkg-config=yes
 make -j2
-LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -c "import _ssl, _hashlib, ssl, sysconfig; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); print('Built _ssl/_hashlib import:', ssl.OPENSSL_VERSION)"
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
+python - <<'PY'
+import os, xml.etree.ElementTree as ET
+from pathlib import Path
+cases = ET.parse(Path(os.environ['PILOT_EVIDENCE']) / 'cpython-regressions.xml').getroot().iter('testcase')
+executed = [case.attrib.get('classname', '') for case in cases if case.find('skipped') is None]
+for module in ('test_ssl', 'test_hashlib', 'test_hmac'):
+    assert any(module in name for name in executed), f'{module} was skipped rather than exercised'
+PY
 make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
