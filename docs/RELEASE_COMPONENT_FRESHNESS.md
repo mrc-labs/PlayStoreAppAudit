@@ -2,6 +2,18 @@
 
 This is a mandatory release invariant for Store App Audit. It applies to every release, including patch releases.
 
+## Permanent latest-stable selection rule (reaffirmed 2026-10-24)
+
+This is a standing project rule for **every component and every release**, not an OpenSSL-only exception. Select the **latest stable compatible version** across runtime, direct/transitive dependencies, embedded native libraries, build/deployment tools, CI Actions and their relevant internals, SDKs, managed downloads, and release/legal/assembly tooling. Recheck announced deprecations, removals, support ends and applicable advisories before selection and before freeze.
+
+- LTS longevity, an existing pin, a working old integration, a vendor snapshot, or inclusion inside a current parent is **not by itself a reason to retain an older version** when a newer stable supported compatible integration is available.
+- The A/B/C/D categories below identify ownership and the safe upgrade path; they do not exempt nested components from inventory, version comparison or support/security review.
+- For an older nested component, check newer parent releases, supported parent configuration, supported vendor alternatives and a controlled rebuild where appropriate. Record the actual integration/target constraint if the newer release cannot be used. Do not label a selected parent “current” as a substitute for evaluating its internals.
+- Proactively migrate concretely announced deprecations/EOLs when a stable supported compatible successor exists. Shipping just before a known support end is not a substitute for evaluating and applying that migration now.
+- Preview software, experimental integration, unsupported ABI/DLL substitution, weakened verification and implicit removal of an architecture or compatibility floor are not acceptable ways to claim freshness. An incompatible newest version requires explicit evidence and a supported alternative or a release blocker; convenience and validation cost are not compatibility evidence.
+- Preserve the versioning rule below. If the required refresh needs a source fix or compatibility adaptation, reassess the MINOR release classification; do not omit an otherwise required update merely to preserve a PATCH number.
+- This governs software built/distributed by the project and its relevant build environment. It does not authorize arbitrary upgrades of a maintainer's unrelated OS applications, other projects or local Docker/DDEV resources. Published source/tag/assets remain immutable.
+
 ## Monthly first-day freshness cycle
 
 The complete component-freshness process is also a permanent monthly maintenance gate.
@@ -9,7 +21,7 @@ The complete component-freshness process is also a permanent monthly maintenance
 - Run it on the first day of every month, not only immediately before a feature release.
 - Inventory every directly used runtime, dependency, GitHub Action, compiler/deployment tool, Android Platform-Tools path, native platform prerequisite, legal/source helper and release/assembly component.
 - Recheck current stable versions plus announced deprecations, removals, EOL/support dates and applicable security/support changes from authoritative upstream sources.
-- Adopt a newer stable compatible directly selected component when available, unless a concrete target-compatibility blocker is recorded and kept under watch.
+- Adopt a newer stable compatible component through a supported integration when available, including the evaluated embedded/transitive paths below, unless a concrete target-compatibility blocker is recorded and kept under watch.
 - A pure component/toolchain refresh with no application/source change is a PATCH release. Any source fix or compatibility adaptation required by the refresh is a MINOR release with PATCH reset to zero.
 - Record explicit no-action and future-watch decisions so a component is never treated as current merely because no repository pin changed.
 - Every resulting release still follows the normal exact-SHA validation, build, assembly, publication and closure gates.
@@ -21,7 +33,7 @@ Run the complete component freshness audit twice:
 1. **Release-phase entry gate** - before release-specific stabilization, version freeze or packaging starts.
 2. **Final pre-release gate** - after the final product changes are complete and immediately before the exact release SHA is frozen for production builds/publication.
 
-A release may not pass either gate with a known newer stable compatible component under repository control left unapplied. Compatibility is evaluated against the complete maintained support matrix, including architecture and binary compatibility requirements. Apply the ownership categories below; a globally newer version alone does not make a supported vendor bundle stale.
+A release may not pass either gate with a known newer stable compatible component under repository control left unapplied. Compatibility is evaluated against the complete maintained support matrix, including architecture and binary compatibility requirements. Apply the ownership categories below to establish the supported upgrade path. Evaluate every newer embedded/transitive version; a current supported parent is not an automatic freshness exemption.
 
 Pre-releases, release candidates, betas, alphas, nightlies and development snapshots do not count as the latest stable version. They are evaluated separately and are adopted only through an explicit engineering decision.
 
@@ -35,11 +47,17 @@ Use the **latest stable compatible release** for the maintained support matrix. 
 
 ### B. Upstream-bundled components
 
-Evaluate freshness at the **supported upstream parent package/runtime boundary**: for example official CPython with its OpenSSL, the matched PySide/Shiboken/Qt wheel set, or a supported vendor compiler/runtime bundle. Record the actual embedded version. Do not replace an embedded library merely to match a newer independent major. It becomes a blocker if the parent is stale, an applicable security advisory requires action, the repository deliberately overrides it, or upstream declares it unsupported. Independently provisioned libraries remain subject to category A within their supported integration; they cannot be relabelled bundled merely to avoid an available compatible update.
+Inventory the **actual embedded versions per relevant target** as well as the parent: for example official CPython with OpenSSL/Expat/compression libraries, matched PySide/Shiboken/Qt wheels and TLS providers, or a compiler/runtime bundle. Compare these with current stable upstream versions and support/security facts. A current supported parent alone does not discharge this check.
+
+When a newer embedded component exists, evaluate a newer supported parent, a supported configuration/vendor integration or a controlled rebuild that preserves the maintained target matrix and compatibility floors. Use the latest stable compatible integration available. Do not retain an older family merely because it is LTS or shipped by the parent. If no supported compatible route exists, record the target-specific technical evidence, selected supported alternative, remaining advisory/support risk and the maintained watch or release blocker. Unsupported parents, applicable unresolved security findings and unresolved required upgrades remain blockers.
+
+Do not replace linked DLLs/SONAMEs mechanically or assume that an independently newer major is ABI compatible. A custom parent rebuild or compatibility adaptation must be scoped, validated and classified under the release versioning policy. Independently selected components are category A; embedding them does not erase repository ownership.
 
 ### C. Vendor-owned implementation internals
 
-Use the latest stable supported parent Action/integration. Record older internal packages and nested Actions as upstream observations/risks when they are not exposed as repository configuration. They become blockers when the repository can safely select/override them, a newer supported parent release updates them, an applicable security/trust issue requires action, or the integration is demonstrably broken/unsupported. Do not fork a vendor Action solely to satisfy a mechanical latest-version comparison.
+Use the latest stable supported parent Action/integration and inspect its relevant internal packages and nested Actions. Record version gaps, support/deprecation dates and advisory applicability; do not assume that vendor ownership makes an old internal component acceptable.
+
+Check for a newer supported parent, a supported override/configuration or a supported alternative integration. Adopt an available stable compatible route and validate it. When the repository cannot safely control the internal selection, record the exact ownership boundary and incompatibility/support evidence, then classify the result as an explicit upstream watch or blocker under the permanent rule. A vendor fork is not an automatic requirement, but neither is “vendor internal” an automatic exemption. Reopen the decision when parent, support, advisory or supported-alternative facts change.
 
 ### D. OS, runner and compiler toolchains
 
@@ -80,11 +98,11 @@ For each gate, record in the active release checklist or handoff:
 
 - audit date;
 - component/tool name;
-- ownership category and repository control boundary;
+- ownership category, actual provider/parent and repository control boundary;
 - version selected by the repository;
 - latest stable upstream version and latest compatible supported selection, if different;
 - authoritative upstream source used to verify it;
-- compatibility/support/advisory evidence for any differing selection or upstream observation;
+- compatibility/support/advisory evidence for any differing selection or upstream observation, including which supported upgrade paths were checked and why an older embedded/provider version remains selected;
 - action taken (`current`, `updated`, `supported parent/upstream observation`, or an explicit release blocker);
 - validation repeated after any update.
 
