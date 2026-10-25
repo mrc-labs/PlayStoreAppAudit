@@ -7,7 +7,9 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
+import tarfile
 import urllib.request
 from pathlib import Path
 
@@ -26,19 +28,50 @@ def main() -> None:
     work.mkdir(parents=True)
     selected = evidence / 'selected-cxx-sdk'
     selected.mkdir()
-    spec = json.loads(Path('.github/scripts/native_runtime_pilot_sources.json').read_text())['cxx_link_sdk']
+    manifest = json.loads(Path('.github/scripts/native_runtime_pilot_sources.json').read_text())
+    spec, tool = manifest['cxx_link_sdk'], manifest['extractor']
+    tool_archive = work / tool['name']
+    tool_archive.write_bytes(urllib.request.urlopen(tool['url'], timeout=90).read())
+    assert hashlib.sha256(tool_archive.read_bytes()).hexdigest() == tool['sha256']
+    tool_root = work / 'extractor'
+    tool_root.mkdir()
+    # Bootstrap using stdlib XZ/tar, without relying on the obsolete system p7zip.
+    with tarfile.open(tool_archive) as archive:
+        for member in archive:
+            target = (tool_root / member.name).resolve()
+            assert target.is_relative_to(tool_root) and not member.issym() and not member.islnk(), member.name
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+            else:
+                assert member.isfile(), member.name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.extractfile(member) as payload, target.open('wb') as output:
+                    shutil.copyfileobj(payload, output)
+                target.chmod(member.mode & 0o777)
+    extractor = tool_root / '7zz'
+    extractor_version = subprocess.check_output([str(extractor)], text=True)
+    assert '26.05' in extractor_version
+    tool_legal = evidence / 'legal' / '7zip'
+    tool_legal.mkdir(parents=True)
+    shutil.copy2(tool_root / 'readme.txt', tool_legal / 'readme.txt')
+    tools = work / 'tools'
+    tools.mkdir()
+    (tools / '7z').symlink_to(extractor)
+    with Path(os.environ['GITHUB_PATH']).open('a') as path_file:
+        path_file.write(str(tools) + '\n')
     compiler = os.environ.get('CXX', 'c++')
     assert subprocess.check_output([compiler, '-dumpversion'], text=True).strip().split('.')[0] == '11'
     package = work / 'target-libstdcxx.rpm'
     package.write_bytes(urllib.request.urlopen(spec['url'], timeout=90).read())
     assert hashlib.sha256(package.read_bytes()).hexdigest() == spec['sha256']
     expanded = work / 'expanded'
-    subprocess.run(['7z', 'x', '-y', '-o' + str(expanded), str(package)], check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(extractor), 'x', '-y', '-o' + str(expanded), str(package)], check=True, stdout=subprocess.DEVNULL)
     libraries = list(expanded.rglob('libstdc++.so.6.0.29'))
     if not libraries:
         payloads = [item for item in expanded.rglob('*') if item.is_file() and '.cpio' in item.name]
         assert len(payloads) == 1, payloads
-        subprocess.run(['7z', 'x', '-y', '-o' + str(expanded), str(payloads[0])],
+        subprocess.run([str(extractor), 'x', '-y', '-ir!libstdc++.so.6.0.29',
+                        '-o' + str(expanded), str(payloads[0])],
                        check=True, stdout=subprocess.DEVNULL)
         libraries = list(expanded.rglob('libstdc++.so.6.0.29'))
     assert len(libraries) == 1, libraries
@@ -85,7 +118,7 @@ int main() {
               'link_library_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
               'thread_probe_glibcxx': maximum, 'runtime_cpp_paths': sorted(set(runtime)),
               'thread_probe': 'PASS', 'runtime_sdk_loaded': False,
-              'extraction_tool': subprocess.check_output(['7z'], text=True).splitlines()[:4]}
+              'extraction_tool': extractor_version.splitlines()[:4], 'extractor_source': tool}
     (evidence / 'cxx-sdk-qualified.json').write_text(json.dumps(report, indent=2) + '\n')
     with Path(os.environ['GITHUB_ENV']).open('a') as environment:
         environment.write(f'PILOT_CXX_SDK_ROOT={work}\nPILOT_CXX_LINK_DIR={link}\n')

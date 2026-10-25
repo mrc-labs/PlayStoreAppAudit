@@ -1,6 +1,13 @@
 {
   "scope": "v2.4 native Ubuntu 22.04 x64 diagnostic only; not a release runtime or general toolchain manager",
   "checked": "2026-10-25 Europe/Rome",
+  "extractor": {
+    "version":"26.05","name":"7z2605-linux-x64.tar.xz",
+    "url":"https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz",
+    "sha256":"22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e",
+    "authority":"https://api.github.com/repos/ip7z/7zip/releases/tags/26.05",
+    "source":{"name":"7z2605-src.tar.xz","url":"https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz","sha256":"0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e","authority":"https://api.github.com/repos/ip7z/7zip/releases/tags/26.05"}
+  },
   "cxx_link_sdk": {
     "scope":"Build-only GNU 11 target link interface; never added to runtime loader paths or distributed as a runtime library",
     "version":"11.5.0-14.el9",

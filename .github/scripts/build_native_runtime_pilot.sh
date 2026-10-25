@@ -54,13 +54,13 @@ def fetch(item):
     print('Verified official source/tool:', item['name'], flush=True)
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
     list(pool.map(fetch, spec['sources']))
-sdk_source = spec['cxx_link_sdk']['source']
-sdk_archive = evidence / 'sources' / sdk_source['name']
-with urllib.request.urlopen(sdk_source['url'], timeout=180) as src, sdk_archive.open('wb') as out:
-    shutil.copyfileobj(src, out)
-with sdk_archive.open('rb') as stream:
-    assert hashlib.file_digest(stream, 'sha256').hexdigest() == sdk_source['sha256']
-print('Verified original target SDK source RPM:', sdk_source['name'], flush=True)
+for sdk_source in (spec['cxx_link_sdk']['source'], spec['extractor']['source']):
+    sdk_archive = evidence / 'sources' / sdk_source['name']
+    with urllib.request.urlopen(sdk_source['url'], timeout=180) as src, sdk_archive.open('wb') as out:
+        shutil.copyfileobj(src, out)
+    with sdk_archive.open('rb') as stream:
+        assert hashlib.file_digest(stream, 'sha256').hexdigest() == sdk_source['sha256']
+    print('Verified original build-tool source:', sdk_source['name'], flush=True)
 source = work / 'src/Python-3.14.9'
 for name, hashes in spec['cpython_patch']['files'].items():
     assert hashlib.sha256((source / name).read_bytes()).hexdigest() == hashes['base_sha256']

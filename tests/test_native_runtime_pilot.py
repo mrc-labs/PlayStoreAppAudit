@@ -119,7 +119,8 @@ def test_pilot_patch_and_official_sources_are_hash_bound() -> None:
     patch = spec['cpython_patch']
     assert hashlib.sha256((ROOT / patch['path']).read_bytes()).hexdigest() == patch['sha256']
     assert len(spec['sources']) == 8
-    for item in [*spec['sources'], spec['cxx_link_sdk'], spec['cxx_link_sdk']['source']]:
+    for item in [*spec['sources'], spec['cxx_link_sdk'], spec['cxx_link_sdk']['source'],
+                 spec['extractor'], spec['extractor']['source']]:
         assert item['url'].startswith('https://')
         assert len(item['sha256']) == 64
         assert int(item['sha256'], 16) > 0
