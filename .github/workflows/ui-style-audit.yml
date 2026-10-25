@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       trust_diagnostics_only:
-        description: Read-only CA layout and default-trust handshake on the single runtime pilot runner
+        description: CA defaults and tiny C++ SDK ABI probe only; no component downloads or rebuild
         type: boolean
         default: false
       runtime_pilot:
@@ -302,7 +302,7 @@ jobs:
           test "$RUNNER_ARCH" = X64
           test "$(uname -m)" = x86_64
 
-      - name: Diagnose system trust before downloads or build prerequisites
+      - name: Diagnose system trust and C++ SDK before downloads or build prerequisites
         shell: bash
         run: |
           set -euo pipefail

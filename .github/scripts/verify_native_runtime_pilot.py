@@ -12,6 +12,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import socket
 import ssl
 import struct
@@ -26,6 +27,41 @@ import zlib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+
+from inspect_linux_abi import required_versions, version_floor
+
+
+def diagnose_cxx_abi(output: Path) -> None:
+    """Measure the compiler AND its link SDK before any component downloads."""
+    compiler = shutil.which(os.environ.get('CXX', 'c++'))
+    assert compiler, 'No native C++ compiler available for ABI preflight'
+    source = output / 'cxx-abi-probe.cpp'
+    binary = output / 'cxx-abi-probe.so'
+    source.write_text('#include <condition_variable>\n#include <mutex>\n'
+                      'void probe(std::condition_variable &cv, std::unique_lock<std::mutex> &lock) { cv.wait(lock); }\n')
+    command = [compiler, '-std=c++17', '-fPIC', '-shared', str(source), '-pthread', '-o', str(binary)]
+    subprocess.run(command, check=True)
+    versions = subprocess.check_output(['readelf', '--wide', '--version-info', str(binary)], text=True)
+    symbols = subprocess.check_output(['readelf', '--wide', '--dyn-syms', str(binary)], text=True)
+    (output / 'cxx-abi-probe-versions.txt').write_text(versions)
+    (output / 'cxx-abi-probe-symbols.txt').write_text(symbols)
+    library = subprocess.check_output([compiler, '-print-file-name=libstdc++.so'], text=True).strip()
+    needs = required_versions(versions)
+    maximum = version_floor(needs, 'GLIBCXX_')
+    compatible = maximum is None or tuple(map(int, maximum.removeprefix('GLIBCXX_').split('.'))) <= (3, 4, 29)
+    packages = subprocess.run(['dpkg-query', '-W', 'gcc-11', 'g++-11', 'libstdc++-11-dev', 'libstdc++6'],
+                              capture_output=True, text=True, check=False)
+    report = {'source_sha': os.environ['GITHUB_SHA'], 'compiler': compiler,
+              'compiler_version': subprocess.check_output([compiler, '--version'], text=True),
+              'command': command, 'link_library': library, 'resolved_link_library': str(Path(library).resolve()),
+              'packages': packages.stdout, 'package_query_stderr': packages.stderr,
+              'required_versions': needs, 'glibcxx': maximum, 'accepted_glibcxx': 'GLIBCXX_3.4.29',
+              'compatible': compatible, 'probe_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+              'note': 'A small SDK probe is not a substitute for full Qt/PySide/extension ABI validation.'}
+    (output / 'cxx-sdk-diagnostics.json').write_text(json.dumps(report, indent=2) + '\n')
+    print('C++ SDK ABI diagnostic:', json.dumps(report), flush=True)
+    if not compatible:
+        raise RuntimeError(f'C++ link SDK requires {maximum}, accepted GLIBCXX_3.4.29; stopped before component downloads')
 
 
 def default_trust_handshake() -> dict[str, Any]:
@@ -104,6 +140,7 @@ def diagnose_system_trust(output: Path) -> None:
     report['default_trust'] = default_trust_handshake()
     destination.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
+    diagnose_cxx_abi(output)
 
 
 def executed_upstream_suites(xml_path: Path) -> dict[str, int]:
@@ -330,12 +367,15 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
         header = subprocess.check_output(['readelf', '-h', str(path)], text=True)
         assert 'Advanced Micro Devices X86-64' in header, path
         versions = subprocess.check_output(['readelf', '--version-info', str(path)], text=True)
+        (Path(os.environ['PILOT_EVIDENCE']) / f'{path.name}-version-info.txt').write_text(versions)
+        needs = required_versions(versions)
         bounds = {}
         for kind, floor in [('GLIBC', (2, 35)), ('GLIBCXX', (3, 4, 29))]:
-            found = [tuple(map(int, value.split('.'))) for value in re.findall(rf'\b{kind}_([0-9.]+)', versions)]
-            if found:
-                bounds[kind] = max(found)
-                assert max(found) <= floor, (path, kind, max(found), floor)
+            maximum = version_floor(needs, kind + '_')
+            if maximum:
+                numeric = tuple(map(int, maximum.removeprefix(kind + '_').split('.')))
+                bounds[kind] = numeric
+                assert numeric <= floor, (path, kind, numeric, floor)
         with path.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         results.append({'path': str(path), 'sha256': digest, 'version_maxima': bounds})
