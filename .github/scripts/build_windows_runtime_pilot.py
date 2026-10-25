@@ -148,7 +148,9 @@ def main() -> None:
     for candidate in (work / '7zip').glob('*.txt'):
         shutil.copy2(candidate, legal / ('7zip-' + candidate.name))
     ssl_source, ssl_prefix = src / 'openssl-4.0.3', prefix / 'openssl'
-    run(['perl', 'Configure', 'VC-WIN64A', 'shared', 'no-docs', '--prefix=' + str(ssl_prefix), '--libdir=lib', 'CFLAGS=/MD'], cwd=ssl_source, log=evidence / 'openssl-configure.log')
+    # CPython's Windows OpenSSL recipe uses no-uplink: all components share /MD.
+    # Fresh one-shot builds can use OpenSSL's documented no-makedepend option.
+    run(['perl', 'Configure', 'VC-WIN64A', 'shared', 'no-uplink', 'no-makedepend', 'no-docs', '--prefix=' + str(ssl_prefix), '--libdir=lib', 'CFLAGS=/MD'], cwd=ssl_source, log=evidence / 'openssl-configure.log')
     assert 'CFLAGS=/MD' in (ssl_source / 'makefile').read_text(), 'Explicit shared CRT required'
     run(['nmake'], cwd=ssl_source, log=evidence / 'openssl-build.log')
     run(['nmake', 'test', 'TESTS=test_evp test_x509 test_verify test_ssl_new'], cwd=ssl_source, log=evidence / 'openssl-regressions.log')
@@ -160,6 +162,8 @@ def main() -> None:
     run(['msbuild', python_source / 'PCbuild/pcbuild.proj', '/m:2', '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/p:VCToolsVersion=' + os.environ['VCTOOLSVERSION'], '/p:IncludeTkinter=false', '/p:IncludeSSL=true', '/p:IncludeTests=true', '/p:UseJIT=false', '/p:DisableGil=false', '/p:ExternalsDir=' + str(externals) + '\\', '/p:opensslOutDir=' + str(ssl_source) + '\\', '/p:opensslIncludeDir=' + str(ssl_prefix / 'include')], log=evidence / 'cpython-build.log')
     py = build / 'python.exe'
     run([py, '-c', "import _ssl,_hashlib,ssl,sysconfig; print(ssl.OPENSSL_VERSION); assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"])
+    # Imports alone did not detect the uplink ABI failure: exercise actual PEM file I/O.
+    run([py, '-c', "import ssl,sys; from pathlib import Path; root=Path(sys.argv[1]); c=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER); c.load_cert_chain(root/'keycert.pem'); t=ssl.create_default_context(cafile=str(root/'pycacert.pem')); assert t.verify_mode==ssl.CERT_REQUIRED and t.check_hostname; print('OpenSSL PEM file I/O and CRT integration PASS')", python_source / 'Lib/test/certdata'])
     run([py, '-m', 'test', '-j2', '--junit-xml', evidence / 'cpython-regressions.xml', 'test_ssl', 'test_hashlib', 'test_hmac'], cwd=python_source, log=evidence / 'cpython-regressions.log')
     executed_upstream_suites(evidence / 'cpython-regressions.xml')
     runtime = prefix / 'python'

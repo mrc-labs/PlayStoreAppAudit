@@ -67,3 +67,11 @@ def test_windows_profile_is_isolated_from_production_and_other_targets() -> None
     for path in (ROOT / '.github/workflows').glob('*.yml'):
         if path.name not in {'ui-style-audit.yml', 'quality.yml'}:
             assert 'build_windows_runtime_pilot' not in path.read_text()
+
+
+def test_windows_ssl_recipe_preserves_cpython_crt_integration_and_tests_pem_io() -> None:
+    builder = (ROOT / '.github/scripts/build_windows_runtime_pilot.py').read_text()
+    assert "'no-uplink'" in builder and "'CFLAGS=/MD'" in builder
+    assert "load_cert_chain(root/'keycert.pem')" in builder
+    assert "cafile=str(root/'pycacert.pem')" in builder
+    assert builder.index('PEM file I/O and CRT integration PASS') < builder.index("'--junit-xml'")
