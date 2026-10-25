@@ -47,7 +47,10 @@ def fetch(item):
     with dest.open('rb') as stream:
         assert hashlib.file_digest(stream, 'sha256').hexdigest() == item['sha256'], item['name']
     if dest.suffix == '.7z':
-        subprocess.run(['7z', 'x', '-y', f'-o{work / "src"}', str(dest)], check=True, stdout=subprocess.DEVNULL)
+        # The generator uses libclang's API with GCC; unused driver aliases form link chains.
+        exclusions = ['-x!' + name for name in item.get('exclude_paths', [])]
+        subprocess.run(['7z', 'x', '-y', *exclusions, f'-o{work / "src"}', str(dest)],
+                       check=True, stdout=subprocess.DEVNULL)
     else:
         with tarfile.open(dest) as archive:
             archive.extractall(work / 'src', filter='data')
