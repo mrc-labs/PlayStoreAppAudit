@@ -10,7 +10,26 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
-from verify_windows_runtime_pilot import pe_versions, validate_imports  # noqa: E402
+from verify_windows_runtime_pilot import (  # noqa: E402
+    pe_versions,
+    require_certificate_rejection,
+    validate_imports,
+)
+
+
+def test_schannel_issuer_failure_is_a_real_untrusted_chain_rejection() -> None:
+    require_certificate_rejection('untrusted', False, ['UnableToGetIssuerCertificate'])
+
+
+@pytest.mark.parametrize('case,encrypted,errors', [
+    ('untrusted', True, ['UnableToGetIssuerCertificate']),
+    ('untrusted', False, ['UnspecifiedError']),
+    ('HostNameMismatch', False, ['CertificateExpired']),
+    ('CertificateExpired', False, []),
+])
+def test_other_tls_outcomes_cannot_satisfy_certificate_negatives(case, encrypted, errors) -> None:
+    with pytest.raises(AssertionError):
+        require_certificate_rejection(case, encrypted, errors)
 
 
 @pytest.mark.parametrize('imports', [

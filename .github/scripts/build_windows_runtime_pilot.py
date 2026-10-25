@@ -91,6 +91,13 @@ def main() -> None:
         'tools':tools, 'os':platform.platform(), 'windows':tuple(sys.getwindowsversion()),
         'image':os.environ.get('IMAGEVERSION'), 'trust':trust,
         'sdk':os.environ.get('WINDOWSSDKVERSION'), 'vc_tools':os.environ.get('VCTOOLSVERSION')}, indent=2))
+    # Exercise the native OS backend/verifier on this runner before costly sources/rebuilds.
+    bootstrap = work / 'schannel-preflight'
+    run([sys.executable, '-m', 'venv', bootstrap])
+    bootstrap_py = bootstrap / 'Scripts/python.exe'
+    run([bootstrap_py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
+    run([bootstrap_py, '-m', 'pip', 'install', 'PySide6-Essentials==6.12.0', 'cryptography==50.0.2', '--report', evidence / 'schannel-preflight-install.json'])
+    run([bootstrap_py, REPO / '.github/scripts/verify_windows_runtime_pilot.py', '--bootstrap-schannel', '--output-dir', evidence / 'schannel-preflight'])
     manifest = REPO / '.github/scripts/windows_runtime_pilot_sources.json'
     spec = json.loads(manifest.read_text())
     shutil.copy2(manifest, evidence / manifest.name)

@@ -44,6 +44,17 @@ def validate_imports(imports: str) -> None:
     assert not re.search(r'(?:vcruntime\d+(?:_\d+)?d|msvcp\d+d|ucrtbased)\.dll', imports, re.I), imports
 
 
+def require_certificate_rejection(case: str, encrypted: bool, errors: list[str]) -> None:
+    assert not encrypted and errors, (case, encrypted, errors)
+    expected = {
+        'HostNameMismatch': {'HostNameMismatch'},
+        'CertificateExpired': {'CertificateExpired'},
+        'untrusted': {'CertificateUntrusted', 'SelfSignedCertificateInChain', 'UnableToGetIssuerCertificate',
+                      'UnableToGetLocalIssuerCertificate', 'UnableToVerifyFirstCertificate'},
+    }
+    assert set(errors) & expected[case], (case, errors)
+
+
 def loaded_modules() -> list[Path]:
     from ctypes import wintypes
 
@@ -94,16 +105,15 @@ def qt_checks(paths: dict[str, Path], backend: str) -> dict[str, Any]:
         with tls_server(paths, leaf) as port:
             socket.connectToHostEncrypted('127.0.0.1', port)
             encrypted = socket.waitForEncrypted(10000)
+            negotiated = socket.sessionProtocol().name if encrypted else None
             assert encrypted == (expected_error is None), (backend, case, errors, socket.errorString())
             if expected_error is None:
                 assert not errors and socket.sessionProtocol() == protocol
                 socket.write(b'GET / HTTP/1.0\r\n\r\n')
                 assert b'200 OK' in qt_fixture_response(socket)
-            elif expected_error == 'untrusted':
-                assert set(errors) & {'CertificateUntrusted', 'SelfSignedCertificateInChain', 'UnableToGetLocalIssuerCertificate', 'UnableToVerifyFirstCertificate'}, errors
             else:
-                assert expected_error in errors, errors
-            rows.append({'case':case, 'encrypted':encrypted, 'protocol':socket.sessionProtocol().name if encrypted else None, 'errors':errors, 'result':'PASS'})
+                require_certificate_rejection(expected_error, encrypted, errors)
+            rows.append({'case':case, 'encrypted':encrypted, 'protocol':negotiated, 'errors':errors, 'result':'PASS'})
             socket.abort()
     socket = QSslSocket()
     socket.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
@@ -159,8 +169,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--qt-backend', choices=['schannel'])
+    parser.add_argument('--bootstrap-schannel', action='store_true')
     args = parser.parse_args()
     output = args.output_dir
+    if args.bootstrap_schannel:
+        from PySide6.QtWidgets import QApplication
+
+        assert sys.platform == 'win32' and platform.machine().upper() == 'AMD64'
+        output.mkdir(parents=True)
+        app = QApplication([])
+        assert app.platformName() == 'windows'
+        report = qt_checks(certificate_material(output), 'schannel')
+        modules = loaded_modules()
+        assert any(p.name.lower() == 'schannel.dll' for p in modules)
+        report.update(source_sha=os.environ['GITHUB_SHA'], os=platform.platform(),
+                      scope='Bootstrap native Schannel/verifier prerequisite only; not controlled-stack acceptance',
+                      native_tls_modules=[str(p) for p in modules if p.name.lower() in ('schannel.dll','crypt32.dll','sspicli.dll','secur32.dll')])
+        (output / 'bootstrap-schannel.json').write_text(json.dumps(report, indent=2))
+        print(json.dumps(report, indent=2))
+        return
     prefix = Path(os.environ['PILOT_PREFIX']).resolve()
     assert sys.platform == 'win32' and platform.machine().upper() == 'AMD64'
     assert platform.python_version() == '3.14.9' and not sysconfig.get_config_var('Py_GIL_DISABLED')
