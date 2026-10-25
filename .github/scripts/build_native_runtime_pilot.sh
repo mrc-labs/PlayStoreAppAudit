@@ -56,8 +56,11 @@ export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
 
 cd "$work/src/openssl-4.0.3"
-# install_sw installs software only; it does not run install_ssldirs or edit /etc/ssl.
-./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir=/etc/ssl
+# Match Ubuntu's ordinary CA file and hashed directory, without editing either.
+test "$(/usr/bin/openssl version -d)" = 'OPENSSLDIR: "/usr/lib/ssl"'
+test -r /usr/lib/ssl/cert.pem
+# install_sw installs software only; it does not run install_ssldirs or edit OS trust.
+./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir=/usr/lib/ssl
 make -j2
 make test TESTS='test_evp test_x509 test_verify test_ssl_new'
 make install_sw
