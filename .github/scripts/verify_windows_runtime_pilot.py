@@ -55,6 +55,25 @@ def require_certificate_rejection(case: str, encrypted: bool, errors: list[str])
     assert set(errors) & expected[case], (case, errors)
 
 
+def controlled_qt_origin(path: Path, prefix: Path, package_root: Path) -> str:
+    """Windows upstream packaging copies Qt; require exact controlled-build bytes."""
+    if path.name.startswith('Qt6'):
+        original = prefix / 'qt/bin' / path.name
+    elif path.is_relative_to(package_root / 'plugins'):
+        original = prefix / 'qt/plugins' / path.relative_to(package_root / 'plugins')
+    else:
+        assert path.is_relative_to(prefix / 'qt/plugins'), path
+        original = path
+    assert original.is_file(), ('No controlled Qt original', path)
+    assert path.is_relative_to(prefix / 'qt') or path.is_relative_to(package_root), path
+    with path.open('rb') as stream:
+        actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+    with original.open('rb') as stream:
+        expected = hashlib.file_digest(stream, 'sha256').hexdigest()
+    assert actual == expected, ('Qt package copy differs from controlled source build', path, original)
+    return str(original)
+
+
 def loaded_modules() -> list[Path]:
     from ctypes import wintypes
 
@@ -136,6 +155,10 @@ def images(prefix: Path, output: Path) -> dict[str, Any]:
     assert any(p.name.lower() == 'vcruntime140.dll' for p in modules), 'Dynamic MSVC CRT not loaded'
     assert any(p.name.lower() == 'msvcp140.dll' for p in modules), 'Dynamic C++ CRT not loaded'
     selected = [p for p in modules if p.is_relative_to(prefix) or p.is_relative_to(Path(sys.prefix).resolve())]
+    package_root = Path(sys.prefix).resolve() / 'Lib/site-packages/PySide6'
+    qt_origins = {str(p):controlled_qt_origin(p, prefix, package_root)
+                  for p in modules if p.name.startswith('Qt6') or p.is_relative_to(prefix / 'qt/plugins')
+                  or p.is_relative_to(package_root / 'plugins')}
     rows = []
     for path in selected:
         assert read_pe_machine(path) == 0x8664, path
@@ -146,10 +169,11 @@ def images(prefix: Path, output: Path) -> dict[str, Any]:
         (output / (path.name + '-dependents.txt')).write_text(dependencies)
         with path.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-        rows.append({'path':str(path), 'sha256':digest, 'machine':'AMD64', 'versions':versions, 'dependencies':dependencies})
+        rows.append({'path':str(path), 'sha256':digest, 'machine':'AMD64', 'versions':versions,
+                     'controlled_qt_original':qt_origins.get(str(path)), 'dependencies':dependencies})
     for name in ('python314.dll','Qt6Core.dll','Qt6Network.dll','libssl-4-x64.dll','libcrypto-4-x64.dll'):
-        assert any(p.name.lower() == name.lower() and p.is_relative_to(prefix) for p in modules), name
-    assert all(p.is_relative_to(prefix / 'qt') for p in modules if p.name.startswith('Qt6'))
+        assert any(p.name.lower() == name.lower() and (p.is_relative_to(prefix) or str(p) in qt_origins) for p in modules), name
+    assert qt_origins
     assert all(p.is_relative_to(prefix / 'python') for p in modules if p.name.lower() == 'python314.dll')
     png = next(p for p in modules if p.name.lower() == 'libpng16.dll' and p.is_relative_to(prefix))
     query = ctypes.CDLL(str(png)).png_get_libpng_ver

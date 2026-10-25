@@ -11,10 +11,52 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
 from verify_windows_runtime_pilot import (  # noqa: E402
+    controlled_qt_origin,
     pe_versions,
     require_certificate_rejection,
     validate_imports,
 )
+
+
+def test_upstream_qt_package_copy_requires_identical_controlled_bytes(tmp_path: Path) -> None:
+    prefix = tmp_path / 'prefix'
+    package = tmp_path / 'venv/Lib/site-packages/PySide6'
+    original = prefix / 'qt/bin/Qt6Core.dll'
+    original.parent.mkdir(parents=True)
+    package.mkdir(parents=True)
+    original.write_bytes(b'controlled source build output')
+    copy = package / original.name
+    copy.write_bytes(original.read_bytes())
+    assert controlled_qt_origin(copy, prefix, package) == str(original)
+    copy.write_bytes(b'same name and version, different binary')
+    with pytest.raises(AssertionError, match='differs'):
+        controlled_qt_origin(copy, prefix, package)
+
+
+def test_identical_qt_bytes_from_an_uncontrolled_directory_are_rejected(tmp_path: Path) -> None:
+    prefix = tmp_path / 'prefix'
+    original = prefix / 'qt/bin/Qt6Core.dll'
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b'controlled build')
+    foreign = tmp_path / original.name
+    foreign.write_bytes(original.read_bytes())
+    with pytest.raises(AssertionError):
+        controlled_qt_origin(foreign, prefix, tmp_path / 'venv/PySide6')
+
+
+def test_packaged_tls_plugin_requires_the_matching_controlled_plugin(tmp_path: Path) -> None:
+    prefix = tmp_path / 'prefix'
+    package = tmp_path / 'venv/Lib/site-packages/PySide6'
+    original = prefix / 'qt/plugins/tls/qopensslbackend.dll'
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b'controlled OpenSSL4 TLS plugin')
+    copy = package / 'plugins/tls/qopensslbackend.dll'
+    copy.parent.mkdir(parents=True)
+    copy.write_bytes(original.read_bytes())
+    assert controlled_qt_origin(copy, prefix, package) == str(original)
+    copy.write_bytes(b'foreign backend')
+    with pytest.raises(AssertionError, match='differs'):
+        controlled_qt_origin(copy, prefix, package)
 
 
 def test_schannel_issuer_failure_is_a_real_untrusted_chain_rejection() -> None:
