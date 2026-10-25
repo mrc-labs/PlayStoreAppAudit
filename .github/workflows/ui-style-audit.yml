@@ -3,6 +3,10 @@ name: UI style audit
 on:
   workflow_dispatch:
     inputs:
+      windows_runtime_pilot:
+        description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
+        type: boolean
+        default: false
       trust_diagnostics_only:
         description: CA and selected target C++ SDK qualification only; no Python/Qt component rebuild
         type: boolean
@@ -29,7 +33,7 @@ concurrency:
 
 jobs:
   capture:
-    if: ${{ !inputs.runtime_pilot }}
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -365,5 +369,54 @@ jobs:
         with:
           name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
           path: pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-runtime-pilot:
+    if: ${{ inputs.windows_runtime_pilot }}
+    name: Native runtime-framework pilot / Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated Windows pilot SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'X64') { throw 'Native x64 runner required.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows x64 pilot.' }
+
+      - name: Set up Windows pilot bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: x64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'AMD64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable native bootstrap required.' }
+
+      - name: Qualify and exercise controlled Windows stack
+        shell: pwsh
+        run: |
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
+
+      - name: Upload diagnostic Windows runtime evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-framework-windows-x64-${{ github.run_id }}
+          path: windows-pilot-evidence/
           if-no-files-found: error
           retention-days: 0

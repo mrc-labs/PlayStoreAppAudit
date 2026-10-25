@@ -73,6 +73,22 @@ No blocker remains for this bounded pilot. Required next work is independent PR/
 
 ### Remaining migration priorities and six-target extension
 
+### Authorized Windows x64 diagnostic tranche (2026-10-25)
+
+Control Tower accepts Linux run **40212940120** as one diagnostic source-profile feasibility result, with Quality **#719 / 40216209796** on `1876850c5a298f90491b085466a91aff4a3c39ec`. That is the clean verified starting head of this tranche; canonical main remains `8287cd131352a45e60735a8c9e708bf9bbc7ae8c`, fetched without merging. The new [#238 checkpoint](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) authorizes **Windows x64 only** next. The other four targets and release-producing profiles are not enabled.
+
+The isolated Windows job reuses the seven accepted runtime source archive records and CPython compatibility patch unchanged, through a separate [Windows manifest](../.github/scripts/windows_runtime_pilot_sources.json). The Linux builder/verifier/source manifest/patch are unchanged; only diagnostic dispatch routing and standard Quality helper coverage change. Those shared workflow/static checks are repeated; no Linux runtime-input change invalidates its accepted source evidence. Original source/archive hashes, exact CPython prerequisite revisions, raw/normalized/post-patch PCbuild file hashes and legal records accompany the Windows evidence.
+
+The additional [PCbuild patch](../.github/patches/cpython-3.14.9-windows-openssl4.patch) selects actual **libcrypto-4-x64.dll / libssl-4-x64.dll**, preserving original **libcrypto.lib / libssl.lib** import-library names. It removes optional PDB copy items; no DLL is renamed. The source XML's CRLF-to-LF normalization is hash-checked before applying the reviewable patch, and Git's output conversion is disabled to preserve post-patch hashes. Supported **MSVC 2022 v143 / 19.44**, native x64, Release shared CRT **/MD**, normal GIL and existing Windows 10 1809+ requirements are retained. [Qt 6.12 Windows](https://doc.qt.io/qt-6/windows.html) supports this compiler/baseline and announces that 6.12 is the final Windows-10-supporting Qt line; do not implicitly adopt a later incompatible parent. [PySide's Windows source guide](https://doc.qt.io/qtforpython-6/building_from_source/windows.html) requires the same compiler for Python, Qt and bindings.
+
+Python _ssl/_hashlib use the real OpenSSL 4 DLLs; cryptography remains its independently version-checked wheel provider. Matched source Qt/PySide/Shiboken 6.12.0 links the new OpenSSL backend and retains the separate **Schannel OS backend**. Both backends receive default-trust and TLS/certificate regressions in separate processes; Schannel is reported as Windows native TLS, not OpenSSL. TLS 1.3 for Schannel is tested on the current native runner, not promised on older Windows where OS support differs. No OS trust store is written or verification weakened.
+
+Supported system-library builds select libpng **1.6.59**, PCRE2 **10.49** and zlib **1.3.2** (same zlib release as Qt's source declaration). Official stable **NASM 3.02**, Qt-provided stable libclang **22.1.8** in its supported parser range, and portable **7-Zip 26.05** are hash-bound build-only tools. Unchanged CPython parent external prerequisites are pinned to official source/binary revisions with their corresponding source retained; their inventory migration entries remain open, not waived by this pilot.
+
+Before rebuild, **39 targeted tests**, Python/Ruff/PowerShell checks and both source patch base/post hashes pass locally. The restricted sandbox denied Schannel credentials; the same targeted tests pass outside the sandbox without any code/trust change. Native CI remains required. Planned acceptance covers default Windows trust, actual Python/Qt TLS 1.2/1.3 and certificate negatives, hash vectors, PNG corpus/upstream cases, native GUI/CLI, PE machine/import/CRT/header bounds and loaded-module provenance. Header checks alone do not establish a clean older-Windows package launch. **Windows pilot outcome pending; no Windows qualification is claimed yet.**
+
+### Remaining migration priorities and six-target extension
+
 | Priority / scope | Minimum supported next path and acceptance boundary |
 | --- | --- |
 | P0: shipped trust/runtime/framework | Native Linux x64 pilot passes with preserved trust and ABI. Obtain independent review before later applying the same exact source/patch/config contract to the remaining five native environments. Uniform OpenSSL and libpng remediation are not accepted on six targets from one pilot. |

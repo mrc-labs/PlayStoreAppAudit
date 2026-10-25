@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import struct
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / '.github/scripts'))
+from verify_windows_runtime_pilot import pe_versions, validate_imports  # noqa: E402
+
+
+@pytest.mark.parametrize('imports', [
+    'libssl-3-x64.dll', 'LIBCRYPTO-3.dll', 'VCRUNTIME140D.dll',
+    'MSVCP140D.dll', 'ucrtbased.dll', 'vcruntime140_1d.dll',
+])
+def test_provider_or_crt_fallback_is_rejected(imports: str) -> None:
+    with pytest.raises(AssertionError):
+        validate_imports(imports)
+
+
+def test_openssl4_and_release_crt_import_names_are_preserved() -> None:
+    validate_imports('libssl-4-x64.dll\nlibcrypto-4-x64.dll\nVCRUNTIME140.dll\nMSVCP140.dll\napi-ms-win-crt-runtime-l1-1-0.dll')
+
+
+def test_pe_os_bounds_read_optional_header_instead_of_host_version(tmp_path: Path) -> None:
+    data = bytearray(512)
+    struct.pack_into('<I', data, 0x3C, 128)
+    optional = 128 + 24
+    struct.pack_into('<H', data, optional, 0x20B)
+    struct.pack_into('<HH', data, optional + 40, 6, 0)
+    struct.pack_into('<HH', data, optional + 48, 10, 0)
+    path = tmp_path / 'image.dll'
+    path.write_bytes(data)
+    assert pe_versions(path) == {'os':(6, 0), 'subsystem':(10, 0)}
+    struct.pack_into('<H', data, optional, 0x10B)
+    path.write_bytes(data)
+    with pytest.raises(AssertionError):
+        pe_versions(path)
+
+
+def test_windows_sources_reuse_accepted_linux_runtime_inputs() -> None:
+    linux = json.loads((ROOT / '.github/scripts/native_runtime_pilot_sources.json').read_text())
+    windows = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text())
+    assert windows['cpython_patch'] == linux['cpython_patch']
+    assert windows['sources'][:7] == linux['sources'][:7]
+    for key in ('cpython_patch', 'windows_patch'):
+        patch = windows[key]
+        assert hashlib.sha256((ROOT / patch['path']).read_bytes()).hexdigest() == patch['sha256']
+    for item in [*windows['sources'], *windows['cpython_externals'], windows['extractor'], windows['nasm'], windows['extractor_source'], windows['nasm_source']]:
+        assert item['url'].startswith('https://') and len(item['sha256']) == 64
+    assert windows['openssl_dlls'] == ['libcrypto-4-x64.dll','libssl-4-x64.dll']
+    assert windows['openssl_import_libraries'] == ['libcrypto.lib','libssl.lib']
+
+
+def test_windows_profile_is_isolated_from_production_and_other_targets() -> None:
+    workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
+    job = workflow.split('\n  windows-runtime-pilot:', 1)[1]
+    assert 'runs-on: windows-2025' in job and 'matrix:' not in job
+    assert 'Dispatch SHA mismatch' in job and 'Checkout SHA mismatch' in job
+    assert 'Select only Windows x64 pilot' in job
+    assert 'diagnostic-runtime-framework-windows-x64-' in job
+    assert 'PlayStoreAppAudit-v' not in job
+    for path in (ROOT / '.github/workflows').glob('*.yml'):
+        if path.name not in {'ui-style-audit.yml', 'quality.yml'}:
+            assert 'build_windows_runtime_pilot' not in path.read_text()
