@@ -169,6 +169,11 @@ def main() -> None:
     run([py, '-m', 'ensurepip'])
     run([py, '-m', 'venv', work / 'venv'])
     py = work / 'venv/Scripts/python.exe'
+    # setup-python exports bootstrap roots; binding discovery must use the rebuilt runtime.
+    for variable in ('PYTHONHOME', 'PYTHON_ROOT_DIR', 'PYTHON2_ROOT_DIR', 'PYTHON3_ROOT_DIR'):
+        os.environ.pop(variable, None)
+    os.environ['PYTHON_ROOT_DIR'] = str(runtime)
+    os.environ['PYTHON3_ROOT_DIR'] = str(runtime)
     os.environ['PATH'] = os.pathsep.join(map(str, [py.parent, prefix / 'qt/bin', prefix / 'bin', ssl_prefix / 'bin'])) + os.pathsep + os.environ['PATH']
     run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
     run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])

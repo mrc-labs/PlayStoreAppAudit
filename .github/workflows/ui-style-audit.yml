@@ -284,7 +284,7 @@ jobs:
           retention-days: 0
 
   runtime-pilot:
-    if: ${{ inputs.runtime_pilot }}
+    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot }}
     name: Native runtime-framework pilot / Linux x64 Jammy
     runs-on: ubuntu-22.04
     timeout-minutes: 180

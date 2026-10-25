@@ -71,8 +71,6 @@ The earlier SDK failure is resolved in this profile through a normal, explicitly
 
 No blocker remains for this bounded pilot. Required next work is independent PR/exact-head Quality review, then separately authorised remaining migrations and other five native qualifications. Final module profiles, package/legal/source/ADB checks, the second full freshness audit, exact Python pins and a new main freeze remain open. No merge, freeze, final multi-platform build, assembly, signing, tag or publication occurs here.
 
-### Remaining migration priorities and six-target extension
-
 ### Authorized Windows x64 diagnostic tranche (2026-10-25)
 
 Control Tower accepts Linux run **40212940120** as one diagnostic source-profile feasibility result, with Quality **#719 / 40216209796** on `1876850c5a298f90491b085466a91aff4a3c39ec`. That is the clean verified starting head of this tranche; canonical main remains `8287cd131352a45e60735a8c9e708bf9bbc7ae8c`, fetched without merging. The new [#238 checkpoint](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) authorizes **Windows x64 only** next. The other four targets and release-producing profiles are not enabled.
