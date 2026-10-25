@@ -6,9 +6,32 @@ import struct
 import zlib
 from pathlib import Path
 
-from verify_native_runtime_pilot import png_fixture
+import pytest
+from verify_native_runtime_pilot import executed_upstream_suites, png_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_cpython_name_only_junit_dialect_counts_executed_cases(tmp_path: Path) -> None:
+    path = tmp_path / 'upstream.xml'
+    path.write_text('''<testsuites tests="4" errors="0" failures="0"><testsuite>
+      <testcase name="test.test_ssl.ContextTests.test_verify" status="run" result="completed"/>
+      <testcase name="test.test_ssl.NetworkTests.test_network"><skipped/></testcase>
+      <testcase name="test.test_hashlib.HashLibTestCase.test_sha256"/>
+      <testcase name="test.test_hmac.HMACTestCase.test_digest"/>
+    </testsuite></testsuites>''', encoding='utf-8')
+    assert executed_upstream_suites(path) == {'test_ssl': 1, 'test_hashlib': 1, 'test_hmac': 1}
+
+
+def test_other_passing_suites_cannot_hide_a_skipped_ssl_suite(tmp_path: Path) -> None:
+    path = tmp_path / 'upstream.xml'
+    path.write_text('''<testsuites><testsuite>
+      <testcase name="test.test_ssl.ContextTests.test_verify"><skipped/></testcase>
+      <testcase name="test.test_hashlib.HashLibTestCase.test_sha256"/>
+      <testcase name="test.test_hmac.HMACTestCase.test_digest"/>
+    </testsuite></testsuites>''', encoding='utf-8')
+    with pytest.raises(RuntimeError, match='test_ssl was skipped'):
+        executed_upstream_suites(path)
 
 
 def test_pilot_patch_and_official_sources_are_hash_bound() -> None:

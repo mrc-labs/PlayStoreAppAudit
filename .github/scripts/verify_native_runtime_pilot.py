@@ -20,10 +20,30 @@ import sys
 import sysconfig
 import threading
 import warnings
+import xml.etree.ElementTree as ET
 import zlib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+
+
+def executed_upstream_suites(xml_path: Path) -> dict[str, int]:
+    """Require actual cases, including CPython's name-only JUnit dialect."""
+    root = ET.parse(xml_path).getroot()
+    counts = dict.fromkeys(('test_ssl', 'test_hashlib', 'test_hmac'), 0)
+    for case in root.iter('testcase'):
+        if case.find('failure') is not None or case.find('error') is not None:
+            raise RuntimeError('Upstream regression contains a failure/error')
+        if case.find('skipped') is not None or case.attrib.get('status') == 'notrun':
+            continue
+        identity = case.attrib.get('classname', '') + '.' + case.attrib.get('name', '')
+        for module in counts:
+            if re.search(rf'(?:^|\.){module}\.', identity):
+                counts[module] += 1
+    for module, count in counts.items():
+        if not count:
+            raise RuntimeError(f'{module} was skipped rather than exercised')
+    return counts
 
 
 def png_chunk(kind: bytes, data: bytes) -> bytes:
@@ -221,6 +241,10 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
     assert pcre_version.startswith('10.49 '), pcre_version
     qt_images = [p for p in paths if p.name.startswith('libQt6')]
     assert qt_images and all(p.is_relative_to(prefix / 'qt') for p in qt_images)
+    python_images = [p for p in paths if p.name.startswith('libpython3.14')]
+    assert python_images and all(p.is_relative_to(prefix / 'python') for p in python_images)
+    generator_prefix = Path(os.environ['PILOT_WORK']) / 'src/libclang'
+    assert not any(p.is_relative_to(generator_prefix) for p in paths)
     for stem in ('libssl.so.4', 'libcrypto.so.4', 'libQt6Core.so.6', 'libQt6Network.so.6'):
         assert any(p.name.startswith(stem) and p.is_relative_to(prefix) for p in paths), stem
     return results
@@ -233,6 +257,8 @@ def main() -> None:
     prefix = Path(os.environ['PILOT_PREFIX']).resolve()
     assert sys.platform == 'linux' and platform.machine() == 'x86_64'
     assert platform.python_version() == '3.14.9' and not sysconfig.get_config_var('Py_GIL_DISABLED')
+    assert Path(sys.base_prefix).resolve() == prefix / 'python'
+    assert Path(ssl.__file__).resolve().is_relative_to(prefix / 'python')
     assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 ')
     import _hashlib
     import _ssl

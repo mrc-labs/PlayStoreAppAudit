@@ -56,7 +56,8 @@ export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
 
 cd "$work/src/openssl-4.0.3"
-./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib
+# install_sw installs software only; it does not run install_ssldirs or edit /etc/ssl.
+./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir=/etc/ssl
 make -j2
 make test TESTS='test_evp test_x509 test_verify test_ssl_new'
 make install_sw
@@ -70,17 +71,17 @@ cd "$work/src/Python-3.14.9"
 make -j2
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -c "import _ssl, _hashlib, ssl, sysconfig; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); print('Built _ssl/_hashlib import:', ssl.OPENSSL_VERSION)"
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
-python - <<'PY'
-import os, xml.etree.ElementTree as ET
-from pathlib import Path
-cases = ET.parse(Path(os.environ['PILOT_EVIDENCE']) / 'cpython-regressions.xml').getroot().iter('testcase')
-executed = [case.attrib.get('classname', '') for case in cases if case.find('skipped') is None]
-for module in ('test_ssl', 'test_hashlib', 'test_hmac'):
-    assert any(module in name for name in executed), f'{module} was skipped rather than exercised'
-PY
+PYTHONPATH="$repo/.github/scripts" python -c \
+  "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_upstream_suites; print('Executed upstream cases:', executed_upstream_suites(Path(sys.argv[1])))" \
+  "$evidence/cpython-regressions.xml"
 make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
+# Do not let setup-python's same-SONAME libpython or CMake roots satisfy this build.
+export LD_LIBRARY_PATH="$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
+unset PYTHONHOME Python_ROOT_DIR Python2_ROOT_DIR Python3_ROOT_DIR
+export Python_ROOT_DIR="$prefix/python" Python3_ROOT_DIR="$prefix/python"
+export PKG_CONFIG_PATH="$prefix/python/lib/pkgconfig:$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 "$prefix/python/bin/python3.14" -m venv "$work/venv"
 export PATH="$work/venv/bin:$PATH"
 python -m pip install 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'
@@ -126,6 +127,8 @@ python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
   --parallel=2 --limited-api=yes --module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test \
   --no-qt-tools
 cd "$repo"
+# libclang is a generator prerequisite, never an application runtime search path.
+export LD_LIBRARY_PATH="$prefix/qt/lib:$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
 python - <<'PY'
 from pathlib import Path
 lines = Path('requirements.txt').read_text().splitlines()
@@ -134,7 +137,7 @@ PY
 python -m pip install -r "$evidence/runtime-requirements.txt" 'pytest==9.1.1' --report "$evidence/runtime-install.json"
 python -m pip check
 export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.9"
-export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt SSL_CERT_DIR=/etc/ssl/certs
+unset SSL_CERT_FILE SSL_CERT_DIR
 export XDG_CONFIG_HOME="$work/profile/config" XDG_DATA_HOME="$work/profile/data" XDG_CACHE_HOME="$work/profile/cache"
 export QT_QPA_PLATFORM=xcb
 xvfb-run -a python .github/scripts/verify_native_runtime_pilot.py --output-dir "$evidence"
