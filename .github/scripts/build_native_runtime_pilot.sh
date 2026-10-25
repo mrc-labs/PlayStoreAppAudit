@@ -137,6 +137,13 @@ cd "$work/qt-build"
   -openssl-linked -system-libpng -system-pcre -no-feature-openssl-runtime \
   -- -DOPENSSL_ROOT_DIR="$ssl_prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
   -DCMAKE_INSTALL_RPATH="$ssl_prefix/lib;$prefix/lib"
+python - <<'PY'
+import os
+from pathlib import Path
+flags = next(line for line in Path('CMakeCache.txt').read_text().splitlines() if line.startswith('CMAKE_CXX_FLAGS:STRING='))
+assert '-L' + os.environ['PILOT_CXX_LINK_DIR'] in flags, flags
+print('Qt target link SDK flags verified:', flags, flush=True)
+PY
 cmake --build . --parallel 2
 cmake --install .
 cp CMakeCache.txt "$evidence/qtbase-CMakeCache.txt"

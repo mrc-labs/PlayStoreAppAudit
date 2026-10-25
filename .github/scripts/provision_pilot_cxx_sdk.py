@@ -50,7 +50,7 @@ def main() -> None:
                 target.chmod(member.mode & 0o777)
     extractor = tool_root / '7zz'
     extractor_version = subprocess.check_output([str(extractor)], text=True)
-    assert '26.05' in extractor_version
+    assert tool['version'] in extractor_version
     tool_legal = evidence / 'legal' / '7zip'
     tool_legal.mkdir(parents=True)
     shutil.copy2(tool_root / 'readme.txt', tool_legal / 'readme.txt')
@@ -96,10 +96,12 @@ def main() -> None:
 #include <mutex>
 #include <thread>
 int main() {
-    std::mutex mutex; std::condition_variable condition; bool ready = false;
+    std::mutex mutex; std::condition_variable condition; bool ready = false, started = false;
     std::thread worker([&] { std::unique_lock<std::mutex> lock(mutex);
+        started = true; condition.notify_all();
         condition.wait(lock, [&] { return ready; }); });
-    { std::lock_guard<std::mutex> lock(mutex); ready = true; }
+    { std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&] { return started; }); ready = true; }
     condition.notify_one(); worker.join(); std::cout << "threads PASS\\n";
     std::ifstream maps("/proc/self/maps"); std::cout << maps.rdbuf();
 }
