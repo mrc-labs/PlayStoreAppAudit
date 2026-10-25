@@ -10,9 +10,52 @@ from unittest.mock import MagicMock
 
 import pytest
 import verify_native_runtime_pilot as pilot
-from verify_native_runtime_pilot import default_trust_handshake, executed_upstream_suites, png_fixture
+from verify_native_runtime_pilot import (
+    default_trust_handshake,
+    executed_upstream_suites,
+    png_fixture,
+    qt_fixture_response,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_qt_fixture_response_accepts_already_buffered_data_without_waiting(monkeypatch) -> None:
+    connection = MagicMock()
+    connection.readAll.return_value = b'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n'
+    wait = MagicMock(side_effect=AssertionError('Buffered response must not wait for new data'))
+    monkeypatch.setattr(pilot.threading, 'Event', MagicMock(return_value=MagicMock(wait=wait)))
+    assert b'200 OK' in qt_fixture_response(connection)
+    wait.assert_not_called()
+
+
+def test_qt_fixture_response_does_not_accept_a_missing_http_reply(monkeypatch) -> None:
+    connection = MagicMock()
+    connection.readAll.return_value = b''
+    monkeypatch.setattr(pilot.time, 'monotonic', MagicMock(side_effect=[0, 6]))
+    with pytest.raises(AssertionError, match='response timed out'):
+        qt_fixture_response(connection)
+
+
+def test_qt_tls_fixture_can_serve_response_from_a_python_thread(tmp_path: Path) -> None:
+    from PySide6.QtNetwork import QSslCertificate, QSslConfiguration, QSslSocket
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication([])
+    assert app
+    paths = pilot.certificate_material(tmp_path)
+    connection = QSslSocket()
+    config = QSslConfiguration.defaultConfiguration()
+    config.setCaCertificates(QSslCertificate.fromData(paths['ca'].read_bytes()))
+    config.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
+    connection.setSslConfiguration(config)
+    connection.setPeerVerifyName('localhost')
+    with pilot.tls_server(paths) as port:
+        connection.connectToHostEncrypted('127.0.0.1', port)
+        assert connection.waitForEncrypted(5000), connection.errorString()
+        connection.write(b'GET / HTTP/1.0\r\n\r\n')
+        assert b'200 OK' in qt_fixture_response(connection)
+        connection.abort()
 
 
 @pytest.mark.parametrize('failure', [None, ssl.SSLCertVerificationError('untrusted'), TimeoutError('offline')])

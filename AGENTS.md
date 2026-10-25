@@ -31,7 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in all 11 setup environments/nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
+- Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in 11 maintained setup environments plus one isolated diagnostic-pilot bootstrap across nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
 - Current v2.4.0 preparation PySide6 baseline: `PySide6-Essentials==6.12.0`.
 - Current release compiler pin: `Nuitka==4.3.1`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.

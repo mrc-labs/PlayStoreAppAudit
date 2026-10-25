@@ -19,6 +19,7 @@ import subprocess
 import sys
 import sysconfig
 import threading
+import time
 import warnings
 import xml.etree.ElementTree as ET
 import zlib
@@ -244,6 +245,24 @@ def python_tls_checks(paths: dict[str, Path]) -> list[str]:
     return results
 
 
+def qt_fixture_response(connection: Any) -> bytes:
+    """Receive the local fixture header without starving its Python server thread."""
+    from PySide6.QtCore import QCoreApplication
+
+    deadline = time.monotonic() + 5
+    response = bytearray()
+    yield_threads = threading.Event()
+    while b'\r\n\r\n' not in response:
+        response.extend(bytes(connection.readAll()))
+        if b'\r\n\r\n' in response:
+            break
+        if time.monotonic() >= deadline:
+            raise AssertionError(f'Local Qt TLS response timed out: {bytes(response)!r}; {connection.errorString()}')
+        QCoreApplication.processEvents()
+        yield_threads.wait(.01)
+    return bytes(response)
+
+
 def qt_tls_checks(paths: dict[str, Path]) -> list[dict[str, Any]]:
     from PySide6.QtNetwork import QSsl, QSslCertificate, QSslConfiguration, QSslSocket
 
@@ -274,14 +293,16 @@ def qt_tls_checks(paths: dict[str, Path]) -> list[dict[str, Any]]:
             assert encrypted == expected, (name, encrypted, errors, connection.errorString())
             if expected:
                 assert not errors
+                assert connection.sessionProtocol() == protocol
                 connection.write(b'GET / HTTP/1.0\r\n\r\n')
-                connection.waitForBytesWritten(5000)
-                assert connection.waitForReadyRead(5000)
-                assert b'200 OK' in bytes(connection.readAll())
+                assert b'200 OK' in qt_fixture_response(connection)
             else:
                 assert errors, (name, connection.errorString())
+            negotiated = connection.sessionProtocol().name if encrypted else None
             connection.abort()
-        results.append({'case': name, 'encrypted': encrypted, 'errors': errors, 'result': 'PASS'})
+        results.append({'case': name, 'encrypted': encrypted, 'negotiated_protocol': negotiated,
+                        'errors': errors, 'result': 'PASS'})
+        print('Qt TLS case:', json.dumps(results[-1]), flush=True)
     # Exercise the real framework defaults separately from the isolated CA fixtures.
     connection = QSslSocket()
     connection.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
@@ -291,6 +312,7 @@ def qt_tls_checks(paths: dict[str, Path]) -> list[dict[str, Any]]:
     assert connection.waitForEncrypted(20000), (errors, connection.errorString())
     assert not errors and not connection.peerCertificate().isNull()
     results.append({'case': 'OS default trust / www.python.org', 'encrypted': True, 'errors': errors,
+                    'negotiated_protocol': connection.sessionProtocol().name,
                     'peer_serial': bytes(connection.peerCertificate().serialNumber()).decode(), 'result': 'PASS'})
     connection.abort()
     return results
@@ -379,8 +401,12 @@ def main() -> None:
     app = QApplication([])
     assert app.platformName() == 'xcb', app.platformName()
     default_trust = default_trust_handshake()
+    (output / 'python-default-trust.json').write_text(json.dumps(default_trust, indent=2) + '\n')
+    print('Python default trust:', json.dumps(default_trust), flush=True)
     python_tls = python_tls_checks(paths)
+    (output / 'python-tls.json').write_text(json.dumps(python_tls, indent=2) + '\n')
     qt_tls = qt_tls_checks(paths)
+    (output / 'qt-tls.json').write_text(json.dumps(qt_tls, indent=2) + '\n')
     valid = png_fixture()
     image = QImage.fromData(valid)
     pixmap = QPixmap()
