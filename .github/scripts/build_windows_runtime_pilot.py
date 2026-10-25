@@ -157,7 +157,7 @@ def main() -> None:
         assert (ssl_source / name).is_file(), name
     shutil.copy2(ssl_source / 'configdata.pm', evidence / 'openssl-configdata.pm')
     build = python_source / 'PCbuild/amd64'
-    run(['msbuild', python_source / 'PCbuild/pcbuild.proj', '/m:2', '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/p:IncludeTkinter=false', '/p:IncludeSSL=true', '/p:IncludeTests=true', '/p:UseJIT=false', '/p:DisableGil=false', '/p:ExternalsDir=' + str(externals) + '\\', '/p:opensslOutDir=' + str(ssl_source) + '\\', '/p:opensslIncludeDir=' + str(ssl_prefix / 'include')], log=evidence / 'cpython-build.log')
+    run(['msbuild', python_source / 'PCbuild/pcbuild.proj', '/m:2', '/p:Configuration=Release', '/p:Platform=x64', '/p:PlatformToolset=v143', '/p:VCToolsVersion=' + os.environ['VCTOOLSVERSION'], '/p:IncludeTkinter=false', '/p:IncludeSSL=true', '/p:IncludeTests=true', '/p:UseJIT=false', '/p:DisableGil=false', '/p:ExternalsDir=' + str(externals) + '\\', '/p:opensslOutDir=' + str(ssl_source) + '\\', '/p:opensslIncludeDir=' + str(ssl_prefix / 'include')], log=evidence / 'cpython-build.log')
     py = build / 'python.exe'
     run([py, '-c', "import _ssl,_hashlib,ssl,sysconfig; print(ssl.OPENSSL_VERSION); assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED')"])
     run([py, '-m', 'test', '-j2', '--junit-xml', evidence / 'cpython-regressions.xml', 'test_ssl', 'test_hashlib', 'test_hmac'], cwd=python_source, log=evidence / 'cpython-regressions.log')
