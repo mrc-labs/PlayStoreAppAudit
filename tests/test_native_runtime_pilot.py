@@ -2,14 +2,44 @@ from __future__ import annotations
 
 import hashlib
 import json
+import ssl
 import struct
 import zlib
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
-from verify_native_runtime_pilot import executed_upstream_suites, png_fixture
+import verify_native_runtime_pilot as pilot
+from verify_native_runtime_pilot import default_trust_handshake, executed_upstream_suites, png_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize('failure', [None, ssl.SSLCertVerificationError('untrusted'), TimeoutError('offline')])
+def test_default_trust_requires_authenticated_handshake_and_accepts_lazy_ca_loading(monkeypatch, failure) -> None:
+    monkeypatch.delenv('SSL_CERT_FILE', raising=False)
+    monkeypatch.delenv('SSL_CERT_DIR', raising=False)
+    context = MagicMock(verify_mode=ssl.CERT_REQUIRED, check_hostname=True)
+    context.cert_store_stats.side_effect = [{'x509_ca': 0}, {'x509_ca': 1}]
+    create_context = MagicMock(return_value=context)
+    monkeypatch.setattr(pilot.ssl, 'create_default_context', create_context)
+    raw = MagicMock()
+    monkeypatch.setattr(pilot.socket, 'create_connection', MagicMock(return_value=raw))
+    connection = context.wrap_socket.return_value.__enter__.return_value
+    connection.getpeercert.return_value = b'authenticated peer DER'
+    connection.version.return_value = 'TLSv1.3'
+    if failure:
+        context.wrap_socket.side_effect = failure
+        with pytest.raises(type(failure)):
+            default_trust_handshake()
+    else:
+        result = default_trust_handshake()
+        assert result['store_before']['x509_ca'] == 0
+        assert result['store_after']['x509_ca'] == 1
+        assert result['result'] == 'default-trust authenticated handshake PASS'
+        connection.getpeercert.assert_called_once_with(binary_form=True)
+    create_context.assert_called_once_with()
+    context.wrap_socket.assert_called_once_with(raw.__enter__.return_value, server_hostname='www.python.org')
 
 
 def test_cpython_name_only_junit_dialect_counts_executed_cases(tmp_path: Path) -> None:

@@ -3,6 +3,10 @@ name: UI style audit
 on:
   workflow_dispatch:
     inputs:
+      trust_diagnostics_only:
+        description: Read-only CA layout and default-trust handshake on the single runtime pilot runner
+        type: boolean
+        default: false
       runtime_pilot:
         description: One native Jammy x64 controlled Python-Qt-OpenSSL pilot; never a final candidate
         type: boolean
@@ -298,19 +302,29 @@ jobs:
           test "$RUNNER_ARCH" = X64
           test "$(uname -m)" = x86_64
 
+      - name: Diagnose system trust before downloads or build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 .github/scripts/verify_native_runtime_pilot.py \
+            --diagnose-system-trust --output-dir pilot-evidence
+
       - name: Set up bootstrap Python
+        if: ${{ !inputs.trust_diagnostics_only }}
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           check-latest: true
 
       - name: Verify stable Python 3.14
+        if: ${{ !inputs.trust_diagnostics_only }}
         shell: bash
         run: |
           set -euo pipefail
           python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
       - name: Install ephemeral native build prerequisites
+        if: ${{ !inputs.trust_diagnostics_only }}
         shell: bash
         run: |
           set -euo pipefail
@@ -328,10 +342,11 @@ jobs:
           python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
 
       - name: Build and exercise one controlled native stack
+        if: ${{ !inputs.trust_diagnostics_only }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir pilot-evidence
+          test -d pilot-evidence
           bash .github/scripts/build_native_runtime_pilot.sh \
             "$RUNNER_TEMP/native-runtime-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee pilot-evidence/pilot-build.log

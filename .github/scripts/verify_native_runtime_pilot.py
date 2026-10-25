@@ -27,6 +27,84 @@ from pathlib import Path
 from typing import Any
 
 
+def default_trust_handshake() -> dict[str, Any]:
+    """Exercise OS defaults, including hashed directories populated lazily."""
+    assert not os.environ.get('SSL_CERT_FILE') and not os.environ.get('SSL_CERT_DIR')
+    context = ssl.create_default_context()
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+    before = context.cert_store_stats()
+    hostname = 'www.python.org'
+    with (socket.create_connection((hostname, 443), timeout=20) as raw,
+          context.wrap_socket(raw, server_hostname=hostname) as connection):
+        certificate = connection.getpeercert(binary_form=True)
+        assert certificate
+        result = {'host': hostname, 'protocol': connection.version(),
+                  'peer_sha256': hashlib.sha256(certificate).hexdigest(),
+                  'verify_mode': context.verify_mode.name, 'check_hostname': context.check_hostname,
+                  'store_before': before, 'store_after': context.cert_store_stats(),
+                  'result': 'default-trust authenticated handshake PASS'}
+    return result
+
+
+def diagnose_system_trust(output: Path) -> None:
+    """Read the runner's real trust layout before installing or building anything."""
+    output.mkdir(parents=True, exist_ok=True)
+    commands = {}
+    for name, command in {
+        'openssl_version': ['/usr/bin/openssl', 'version', '-a'],
+        'openssl_directory': ['/usr/bin/openssl', 'version', '-d'],
+        'ca_packages': ['dpkg-query', '-W', 'openssl', 'ca-certificates'],
+    }.items():
+        process = subprocess.run(command, capture_output=True, text=True, check=False)
+        commands[name] = {'command': command, 'exit_code': process.returncode,
+                          'stdout': process.stdout, 'stderr': process.stderr}
+    match = re.fullmatch(r'OPENSSLDIR: "(.+)"\s*', commands['openssl_directory']['stdout'])
+    assert match, commands['openssl_directory']
+    system_directory = Path(match[1])
+    defaults = ssl.get_default_verify_paths()
+    candidates = {system_directory, system_directory / 'cert.pem', system_directory / 'certs',
+                  Path('/usr/lib/ssl'), Path('/usr/lib/ssl/cert.pem'), Path('/usr/lib/ssl/certs'),
+                  Path('/etc/ssl'), Path('/etc/ssl/cert.pem'), Path('/etc/ssl/certs'),
+                  Path('/etc/ssl/certs/ca-certificates.crt')}
+    candidates.update(Path(value) for key, value in defaults._asdict().items()
+                      if value and not key.endswith('_env'))
+
+    def describe(path: Path) -> dict[str, Any]:
+        data: dict[str, Any] = {'path': str(path), 'exists': path.exists(),
+                                'readable': os.access(path, os.R_OK),
+                                'searchable': os.access(path, os.X_OK),
+                                'symlink': os.readlink(path) if path.is_symlink() else None,
+                                'resolved': str(path.resolve())}
+        if path.exists() or path.is_symlink():
+            metadata = path.lstat()
+            data.update(mode=oct(metadata.st_mode), uid=metadata.st_uid, gid=metadata.st_gid)
+        if path.is_file() and os.access(path, os.R_OK):
+            payload = path.read_bytes()
+            data.update(size=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
+                        pem_certificates=payload.count(b'-----BEGIN CERTIFICATE-----'))
+        return data
+
+    paths = []
+    for path in sorted(candidates):
+        data = describe(path)
+        process = subprocess.run(['namei', '-l', str(path)], capture_output=True, text=True, check=False)
+        data['namei'] = process.stdout + process.stderr
+        if path.is_dir():
+            data['hashed_entries'] = [describe(entry) for entry in sorted(path.iterdir())
+                                      if re.fullmatch(r'[0-9a-f]{8}\.\d+', entry.name)]
+        paths.append(data)
+    report = {'source_sha': os.environ['GITHUB_SHA'], 'os_release': Path('/etc/os-release').read_text(),
+              'python_ssl': ssl.OPENSSL_VERSION, 'default_verify_paths': defaults._asdict(),
+              'environment': {key: os.environ.get(key) for key in ('SSL_CERT_FILE', 'SSL_CERT_DIR')},
+              'commands': commands, 'paths': paths}
+    # Persist layout even when the subsequent authenticated network probe fails.
+    destination = output / 'system-trust-diagnostics.json'
+    destination.write_text(json.dumps(report, indent=2) + '\n')
+    report['default_trust'] = default_trust_handshake()
+    destination.write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps(report, indent=2))
+
+
 def executed_upstream_suites(xml_path: Path) -> dict[str, int]:
     """Require actual cases, including CPython's name-only JUnit dialect."""
     root = ET.parse(xml_path).getroot()
@@ -253,7 +331,12 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-dir', type=Path, required=True)
-    output = parser.parse_args().output_dir
+    parser.add_argument('--diagnose-system-trust', action='store_true')
+    arguments = parser.parse_args()
+    output = arguments.output_dir
+    if arguments.diagnose_system_trust:
+        diagnose_system_trust(output)
+        return
     prefix = Path(os.environ['PILOT_PREFIX']).resolve()
     assert sys.platform == 'linux' and platform.machine() == 'x86_64'
     assert platform.python_version() == '3.14.9' and not sysconfig.get_config_var('Py_GIL_DISABLED')
