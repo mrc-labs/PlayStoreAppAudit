@@ -1,6 +1,15 @@
 {
   "scope": "v2.4 native Ubuntu 22.04 x64 diagnostic only; not a release runtime or general toolchain manager",
   "checked": "2026-10-25 Europe/Rome",
+  "cxx_link_sdk": {
+    "scope":"Build-only GNU 11 target link interface; never added to runtime loader paths or distributed as a runtime library",
+    "version":"11.5.0-14.el9",
+    "vendor_license":"GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD",
+    "url":"https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libstdc++-11.5.0-14.el9.x86_64.rpm",
+    "sha256":"513df35338962e053052b9d52429e8a5f3d60dfe6b1757cd9faaf61d6abda955",
+    "authority":"https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/repodata/repomd.xml",
+    "source":{"name":"gcc-11.5.0-14.el9.src.rpm","url":"https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/g/gcc-11.5.0-14.el9.src.rpm","sha256":"19dec462f2880508570ca42a82c2f76fbd95fcad8d3e3ff812e9ca50cdeb2d8f","authority":"https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/repodata/repomd.xml"}
+  },
   "cpython_patch": {
     "path": ".github/patches/cpython-3.14.9-openssl4.patch",
     "sha256": "98e3c27966e9a6f2a12131a7ac19ac66aa7bae20da85ef9e1d8f3e7bc769fe81",

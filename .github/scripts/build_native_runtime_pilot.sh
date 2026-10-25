@@ -14,6 +14,11 @@ from pathlib import Path
 report = json.loads(Path('pilot-evidence/system-trust-diagnostics.json').read_text())
 assert report['source_sha'] == os.environ['GITHUB_SHA']
 assert report['default_trust']['result'] == 'default-trust authenticated handshake PASS'
+sdk = json.loads(Path('pilot-evidence/cxx-sdk-qualified.json').read_text())
+assert sdk['source_sha'] == os.environ['GITHUB_SHA'] and sdk['compatible']
+assert sdk['thread_probe'] == 'PASS' and sdk['runtime_sdk_loaded'] is False
+assert sdk['link_directory'] == os.environ['PILOT_CXX_LINK_DIR']
+assert ('-L' + sdk['link_directory']) in os.environ['CXXFLAGS'].split()
 measured = report['commands']['openssl_directory']['stdout']
 current = subprocess.check_output(['/usr/bin/openssl', 'version', '-d'], text=True)
 assert current == measured, (current, measured)
@@ -49,6 +54,13 @@ def fetch(item):
     print('Verified official source/tool:', item['name'], flush=True)
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
     list(pool.map(fetch, spec['sources']))
+sdk_source = spec['cxx_link_sdk']['source']
+sdk_archive = evidence / 'sources' / sdk_source['name']
+with urllib.request.urlopen(sdk_source['url'], timeout=180) as src, sdk_archive.open('wb') as out:
+    shutil.copyfileobj(src, out)
+with sdk_archive.open('rb') as stream:
+    assert hashlib.file_digest(stream, 'sha256').hexdigest() == sdk_source['sha256']
+print('Verified original target SDK source RPM:', sdk_source['name'], flush=True)
 source = work / 'src/Python-3.14.9'
 for name, hashes in spec['cpython_patch']['files'].items():
     assert hashlib.sha256((source / name).read_bytes()).hexdigest() == hashes['base_sha256']

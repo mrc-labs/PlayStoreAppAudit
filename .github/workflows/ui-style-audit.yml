@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       trust_diagnostics_only:
-        description: CA defaults and tiny C++ SDK ABI probe only; no component downloads or rebuild
+        description: CA and selected target C++ SDK qualification only; no Python/Qt component rebuild
         type: boolean
         default: false
       runtime_pilot:
@@ -309,6 +309,16 @@ jobs:
           /usr/bin/python3 .github/scripts/verify_native_runtime_pilot.py \
             --diagnose-system-trust --output-dir pilot-evidence
 
+      - name: Qualify maintained target C++ link SDK before runtime downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends p7zip-full
+          /usr/bin/python3 .github/scripts/provision_pilot_cxx_sdk.py \
+            --work-root "$RUNNER_TEMP/pilot-cxx-sdk-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --evidence-dir pilot-evidence
+
       - name: Set up bootstrap Python
         if: ${{ !inputs.trust_diagnostics_only }}
         uses: actions/setup-python@v7
@@ -329,7 +339,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config patch p7zip-full \
+          sudo apt-get install -y build-essential pkg-config patch \
             libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
             libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
             libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev \

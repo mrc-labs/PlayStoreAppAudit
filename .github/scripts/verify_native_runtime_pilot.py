@@ -28,10 +28,11 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from inspect_linux_abi import readelf as read_elf
 from inspect_linux_abi import required_versions, version_floor
 
 
-def diagnose_cxx_abi(output: Path) -> None:
+def diagnose_cxx_abi(output: Path, *, link_directory: Path | None = None, require_compatible: bool = True) -> None:
     """Measure the compiler AND its link SDK before any component downloads."""
     compiler = shutil.which(os.environ.get('CXX', 'c++'))
     assert compiler, 'No native C++ compiler available for ABI preflight'
@@ -40,12 +41,16 @@ def diagnose_cxx_abi(output: Path) -> None:
     source.write_text('#include <condition_variable>\n#include <mutex>\n'
                       'void probe(std::condition_variable &cv, std::unique_lock<std::mutex> &lock) { cv.wait(lock); }\n')
     command = [compiler, '-std=c++17', '-fPIC', '-shared', str(source), '-pthread', '-o', str(binary)]
+    if link_directory is not None:
+        command.insert(1, '-L' + str(link_directory))
     subprocess.run(command, check=True)
-    versions = subprocess.check_output(['readelf', '--wide', '--version-info', str(binary)], text=True)
-    symbols = subprocess.check_output(['readelf', '--wide', '--dyn-syms', str(binary)], text=True)
+    versions = read_elf(binary, '--version-info')
+    symbols = read_elf(binary, '--dyn-syms')
     (output / 'cxx-abi-probe-versions.txt').write_text(versions)
     (output / 'cxx-abi-probe-symbols.txt').write_text(symbols)
     library = subprocess.check_output([compiler, '-print-file-name=libstdc++.so'], text=True).strip()
+    if link_directory is not None:
+        library = str(link_directory / 'libstdc++.so')
     needs = required_versions(versions)
     maximum = version_floor(needs, 'GLIBCXX_')
     compatible = maximum is None or tuple(map(int, maximum.removeprefix('GLIBCXX_').split('.'))) <= (3, 4, 29)
@@ -60,7 +65,7 @@ def diagnose_cxx_abi(output: Path) -> None:
               'note': 'A small SDK probe is not a substitute for full Qt/PySide/extension ABI validation.'}
     (output / 'cxx-sdk-diagnostics.json').write_text(json.dumps(report, indent=2) + '\n')
     print('C++ SDK ABI diagnostic:', json.dumps(report), flush=True)
-    if not compatible:
+    if require_compatible and not compatible:
         raise RuntimeError(f'C++ link SDK requires {maximum}, accepted GLIBCXX_3.4.29; stopped before component downloads')
 
 
@@ -140,7 +145,8 @@ def diagnose_system_trust(output: Path) -> None:
     report['default_trust'] = default_trust_handshake()
     destination.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
-    diagnose_cxx_abi(output)
+    # Measure the host before explicitly qualifying the selected target link SDK.
+    diagnose_cxx_abi(output, require_compatible=False)
 
 
 def executed_upstream_suites(xml_path: Path) -> dict[str, int]:
@@ -364,9 +370,9 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
     for path in sorted(selected):
         if not path.is_file() or path.read_bytes()[:4] != b'\x7fELF':
             continue
-        header = subprocess.check_output(['readelf', '-h', str(path)], text=True)
+        header = read_elf(path, '--file-header')
         assert 'Advanced Micro Devices X86-64' in header, path
-        versions = subprocess.check_output(['readelf', '--version-info', str(path)], text=True)
+        versions = read_elf(path, '--version-info')
         (Path(os.environ['PILOT_EVIDENCE']) / f'{path.name}-version-info.txt').write_text(versions)
         needs = required_versions(versions)
         bounds = {}
@@ -395,6 +401,8 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
     assert python_images and all(p.is_relative_to(prefix / 'python') for p in python_images)
     generator_prefix = Path(os.environ['PILOT_WORK']) / 'src/libclang'
     assert not any(p.is_relative_to(generator_prefix) for p in paths)
+    sdk_prefix = Path(os.environ['PILOT_CXX_SDK_ROOT']).resolve()
+    assert not any(p.is_relative_to(sdk_prefix) for p in paths), 'Target link SDK must never be loaded at runtime'
     for stem in ('libssl.so.4', 'libcrypto.so.4', 'libQt6Core.so.6', 'libQt6Network.so.6'):
         assert any(p.name.startswith(stem) and p.is_relative_to(prefix) for p in paths), stem
     return results
