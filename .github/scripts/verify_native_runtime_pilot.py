@@ -300,6 +300,8 @@ def main() -> None:
             pixmap.loadFromData(fixture)
             png_results.append({'kind': kind.decode(), 'case': index, 'decoded': not result.isNull(),
                                 'result': 'no native crash; malformed metadata may be rejected'})
+    # Direct script execution starts sys.path in .github/scripts, not the checkout.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from playstore_app_audit import __version__
     from playstore_app_audit.ui.main_window import MainWindow
     assert __version__ == '2.4.0'
