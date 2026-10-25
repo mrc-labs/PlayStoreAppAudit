@@ -7,6 +7,22 @@ evidence="$repo/pilot-evidence"
 test "$(uname -m)" = x86_64
 test "$(. /etc/os-release; echo "$VERSION_ID")" = 22.04
 test ! -e "$work"
+# Reuse the read-only native measurement, never guess an OS trust layout.
+openssl_dir=$(/usr/bin/python3 - <<'PY'
+import json, os, re, subprocess
+from pathlib import Path
+report = json.loads(Path('pilot-evidence/system-trust-diagnostics.json').read_text())
+assert report['source_sha'] == os.environ['GITHUB_SHA']
+assert report['default_trust']['result'] == 'default-trust authenticated handshake PASS'
+measured = report['commands']['openssl_directory']['stdout']
+current = subprocess.check_output(['/usr/bin/openssl', 'version', '-d'], text=True)
+assert current == measured, (current, measured)
+match = re.fullmatch(r'OPENSSLDIR: "(.+)"\s*', measured)
+assert match and Path(match[1]).is_absolute(), measured
+print(match[1])
+PY
+)
+printf 'Measured system OpenSSL directory: %s; default-trust handshake verified\n' "$openssl_dir"
 mkdir -p "$work/src" "$evidence/sources" "$evidence/legal"
 export PILOT_WORK="$work" PILOT_EVIDENCE="$evidence"
 python - <<'PY'
@@ -56,11 +72,9 @@ export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
 
 cd "$work/src/openssl-4.0.3"
-# Match Ubuntu's ordinary CA file and hashed directory, without editing either.
-test "$(/usr/bin/openssl version -d)" = 'OPENSSLDIR: "/usr/lib/ssl"'
-test -r /usr/lib/ssl/cert.pem
+# Preserve measured OS defaults; hashed CA directories may load certificates lazily.
 # install_sw installs software only; it does not run install_ssldirs or edit OS trust.
-./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir=/usr/lib/ssl
+./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir="$openssl_dir"
 make -j2
 make test TESTS='test_evp test_x509 test_verify test_ssl_new'
 make install_sw

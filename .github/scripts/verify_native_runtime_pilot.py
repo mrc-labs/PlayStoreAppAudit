@@ -241,7 +241,6 @@ def python_tls_checks(paths: dict[str, Path]) -> list[str]:
         fixed = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     assert ssl.HAS_TLSv1_2
     assert fixed.minimum_version == fixed.maximum_version == ssl.TLSVersion.TLSv1_2
-    assert ssl.create_default_context().cert_store_stats()['x509_ca'] > 0
     return results
 
 
@@ -283,6 +282,17 @@ def qt_tls_checks(paths: dict[str, Path]) -> list[dict[str, Any]]:
                 assert errors, (name, connection.errorString())
             connection.abort()
         results.append({'case': name, 'encrypted': encrypted, 'errors': errors, 'result': 'PASS'})
+    # Exercise the real framework defaults separately from the isolated CA fixtures.
+    connection = QSslSocket()
+    connection.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
+    errors = []
+    connection.sslErrors.connect(lambda values: errors.extend(error.error().name for error in values))
+    connection.connectToHostEncrypted('www.python.org', 443)
+    assert connection.waitForEncrypted(20000), (errors, connection.errorString())
+    assert not errors and not connection.peerCertificate().isNull()
+    results.append({'case': 'OS default trust / www.python.org', 'encrypted': True, 'errors': errors,
+                    'peer_serial': bytes(connection.peerCertificate().serialNumber()).decode(), 'result': 'PASS'})
+    connection.abort()
     return results
 
 
@@ -368,6 +378,7 @@ def main() -> None:
     paths = certificate_material(cert_root)
     app = QApplication([])
     assert app.platformName() == 'xcb', app.platformName()
+    default_trust = default_trust_handshake()
     python_tls = python_tls_checks(paths)
     qt_tls = qt_tls_checks(paths)
     valid = png_fixture()
@@ -402,7 +413,7 @@ def main() -> None:
               'qt_backend': QSslSocket.activeBackend(), 'python_tls': python_tls, 'qt_tls': qt_tls,
               'hash_vectors': 'SHA256/HMAC-SHA256/PBKDF2-SHA256 PASS', 'png': png_results,
               'gui': 'native xcb MainWindow event-loop PASS', 'loaded_changed_images': images,
-              'trust': {'paths': str(ssl.get_default_verify_paths()), 'default_store': ssl.create_default_context().cert_store_stats()},
+              'trust': {'paths': str(ssl.get_default_verify_paths()), 'default_handshake': default_trust},
               'limits': ['One source environment only; no application binary/candidate built.',
                          'Remaining five targets, package closure and other inventory migrations remain open.',
                          'Malformed PNG corpus is regression coverage, not a demonstrated CVE exploit.']}

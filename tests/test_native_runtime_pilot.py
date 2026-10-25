@@ -42,6 +42,13 @@ def test_default_trust_requires_authenticated_handshake_and_accepts_lazy_ca_load
     context.wrap_socket.assert_called_once_with(raw.__enter__.return_value, server_hostname='www.python.org')
 
 
+@pytest.mark.parametrize('variable', ['SSL_CERT_FILE', 'SSL_CERT_DIR'])
+def test_default_trust_probe_cannot_hide_an_environment_override(monkeypatch, variable) -> None:
+    monkeypatch.setenv(variable, 'injected-trust')
+    with pytest.raises(AssertionError):
+        default_trust_handshake()
+
+
 def test_cpython_name_only_junit_dialect_counts_executed_cases(tmp_path: Path) -> None:
     path = tmp_path / 'upstream.xml'
     path.write_text('''<testsuites tests="4" errors="0" failures="0"><testsuite>
