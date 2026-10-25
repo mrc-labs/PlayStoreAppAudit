@@ -185,6 +185,7 @@ def main() -> None:
         os.environ.pop(variable, None)
     os.environ['PYTHON_ROOT_DIR'] = str(runtime)
     os.environ['PYTHON3_ROOT_DIR'] = str(runtime)
+    os.environ['CMAKE_PREFIX_PATH'] = os.pathsep.join(map(str, [prefix, ssl_prefix, prefix / 'qt']))
     os.environ['PATH'] = os.pathsep.join(map(str, [py.parent, prefix / 'qt/bin', prefix / 'bin', ssl_prefix / 'bin'])) + os.pathsep + os.environ['PATH']
     run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
     run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])
@@ -196,6 +197,17 @@ def main() -> None:
         run(['cmake', '--build', build_dir], log=evidence / (label + '-build.log'))
         run(['ctest', '--test-dir', build_dir, '--output-on-failure'], log=evidence / (label + '-regressions.log'))
         run(['cmake', '--install', build_dir], log=evidence / (label + '-install.log'))
+    # QtSvg is a separate configure process: require its system zlib wrapper first.
+    dependency_probe = work / 'qt-dependency-probe'
+    dependency_probe.mkdir()
+    (dependency_probe / 'CMakeLists.txt').write_text(
+        'cmake_minimum_required(VERSION 3.21)\nproject(PilotQtDependencies LANGUAGES C)\n'
+        f'list(PREPEND CMAKE_MODULE_PATH "{(src / "qtbase-everywhere-src-6.12.0/cmake").as_posix()}")\n'
+        'set(QT_USE_BUNDLED_BundledZLIB OFF)\n'
+        'find_package(WrapZLIB REQUIRED)\n'
+        'if(NOT TARGET WrapZLIB::WrapZLIB)\nmessage(FATAL_ERROR "Missing Qt system zlib target")\nendif()\n')
+    run(['cmake', '-S', dependency_probe, '-B', dependency_probe / 'build', *common,
+         '-DCMAKE_PREFIX_PATH=' + str(prefix)], log=evidence / 'qt-dependency-preflight.log')
     qt_build = work / 'qt-build'
     qt_build.mkdir()
     run(['cmd', '/d', '/c', src / 'qtbase-everywhere-src-6.12.0/configure.bat', '-prefix', prefix / 'qt', '-release', '-opensource', '-confirm-license', '-nomake', 'tests', '-nomake', 'examples', '-openssl-linked', '-system-libpng', '-system-pcre', '-system-zlib', '-no-feature-openssl-runtime', '--', '-DOPENSSL_ROOT_DIR=' + str(ssl_prefix), '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL'], cwd=qt_build, log=evidence / 'qtbase-configure.log')
@@ -205,7 +217,7 @@ def main() -> None:
     shutil.copy2(qt_build / 'config.summary', evidence / 'qtbase-config.summary')
     svg_build = work / 'svg-build'
     svg_build.mkdir()
-    run(['cmd', '/d', '/c', prefix / 'qt/bin/qt-configure-module.bat', src / 'qtsvg-everywhere-src-6.12.0'], cwd=svg_build, log=evidence / 'qtsvg-configure.log')
+    run(['cmd', '/d', '/c', prefix / 'qt/bin/qt-configure-module.bat', src / 'qtsvg-everywhere-src-6.12.0', '--', '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL'], cwd=svg_build, log=evidence / 'qtsvg-configure.log')
     run(['cmake', '--build', svg_build, '--parallel', '2'], log=evidence / 'qtsvg-build.log')
     run(['cmake', '--install', svg_build], log=evidence / 'qtsvg-install.log')
     os.environ['LLVM_INSTALL_DIR'] = str(src / 'libclang')
