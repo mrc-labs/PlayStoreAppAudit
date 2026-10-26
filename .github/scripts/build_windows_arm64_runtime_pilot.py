@@ -37,6 +37,8 @@ def host_tools(work: Path, arm: dict, base: dict, evidence: Path) -> dict[str, P
     perl_archive = fetch(arm['host_perl_source'], sources)
     unpack(perl_archive, work)
     perl_source = work / 'perl-5.44.0'
+    tests = ['op/arith2.t', 'op/pack.t']
+    assert all((perl_source / 't' / name).is_file() for name in tests), 'Check upstream test layout before compiling'
     run(['nmake', '-f', 'Makefile', 'CCTYPE=MSVC143', 'WIN64=define',
          'CCHOME=' + os.environ['VCTOOLSINSTALLDIR'].rstrip('\\')], cwd=perl_source / 'win32', log=evidence / 'perl-build.log')
     perl = perl_source / 'perl.exe'
@@ -44,7 +46,9 @@ def host_tools(work: Path, arm: dict, base: dict, evidence: Path) -> dict[str, P
     os.environ['PERL5LIB'] = str(perl_source / 'lib')
     run([perl, '-MConfig', '-e', 'die unless $Config{version} eq "5.44.0"; die unless $Config{archname} =~ /arm64/; use File::Spec; use File::Temp; use Digest::SHA; print "$^V $Config{archname}\\n"'], cwd=perl_source, log=evidence / 'perl-native-probe.log')
     # Targeted upstream core tests for the modules used by source generators.
-    run([perl, '-Ilib', '-MTest::Harness', '-e', 'runtests(@ARGV)', 't/op/arith.t', 't/op/pack.t'], cwd=perl_source, log=evidence / 'perl-regressions.log')
+    run(['nmake', '-f', 'Makefile', 'test', 'CCTYPE=MSVC143', 'WIN64=define',
+         'CCHOME=' + os.environ['VCTOOLSINSTALLDIR'].rstrip('\\'), 'TEST_FILES=' + ' '.join(tests)],
+        cwd=perl_source / 'win32', log=evidence / 'perl-regressions.log')
     os.environ['PATH'] = str(perl.parent) + os.pathsep + os.environ['PATH']
     assert Path(shutil.which('perl') or '').resolve() == perl.resolve()
     # Only Qt's bootstrap MOC is compiled; native wheel uic/rcc already passed.
