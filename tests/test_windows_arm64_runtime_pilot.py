@@ -6,6 +6,7 @@ import struct
 from pathlib import Path
 
 import pytest
+from build_windows_arm64_runtime_pilot import stack_sources
 from probe_windows_arm64_runtime import require_arm64
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,3 +58,26 @@ def test_arm64_probe_is_single_target_and_cannot_start_a_stack_rebuild() -> None
     probe = (ROOT / '.github/scripts/probe_windows_arm64_runtime.py').read_text(encoding='utf-8')
     assert "'nmake'" not in probe and "'--build'" not in probe
     assert 'nasm.exe' not in probe and 'VC-WIN64A' not in probe
+
+
+def test_arm64_stack_never_selects_amd64_parser_or_nasm() -> None:
+    base = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text(encoding='utf-8'))
+    arm = json.loads((ROOT / '.github/scripts/windows_arm64_runtime_pilot_sources.json').read_text(encoding='utf-8'))
+    before = json.dumps(base, sort_keys=True)
+    selected = stack_sources(arm, base)
+    parsers = [item for item in selected if item.get('directory') == 'libclang']
+    assert parsers == [arm['host_libclang']]
+    assert all('nasm' not in item['name'] for item in selected)
+    assert not any('windows-vs2022_64.7z' in item['name'] for item in selected)
+    assert selected[:7] == base['sources'][:7]
+    assert json.dumps(base, sort_keys=True) == before
+
+
+def test_libffi_source_attribution_does_not_replace_the_binary_prerequisite() -> None:
+    base = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text(encoding='utf-8'))
+    arm = json.loads((ROOT / '.github/scripts/windows_arm64_runtime_pilot_sources.json').read_text(encoding='utf-8'))
+    selected = [item for item in stack_sources(arm, base) if item.get('destination') == 'libffi-3.4.4']
+    assert len(selected) == 2
+    attribution, binary = selected
+    assert attribution['source_only'] and 'source-deps' in attribution['name']
+    assert not binary.get('source_only') and 'bin-deps' in binary['name']

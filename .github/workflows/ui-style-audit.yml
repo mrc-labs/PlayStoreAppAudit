@@ -11,6 +11,10 @@ on:
         description: Also build/probe native Perl and Qt bootstrap generators only; requires ARM64 probe
         type: boolean
         default: false
+      windows_arm64_full_pilot:
+        description: One controlled native ARM64 source-stack pilot, gated by all cheap/host prerequisites
+        type: boolean
+        default: false
       windows_runtime_pilot:
         description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
         type: boolean
@@ -45,7 +49,7 @@ concurrency:
 
 jobs:
   capture:
-    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -296,7 +300,7 @@ jobs:
           retention-days: 0
 
   runtime-pilot:
-    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
+    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: Native runtime-framework pilot / Linux x64 Jammy
     runs-on: ubuntu-22.04
     timeout-minutes: 180
@@ -385,7 +389,7 @@ jobs:
           retention-days: 0
 
   windows-runtime-pilot:
-    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
+    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -435,10 +439,10 @@ jobs:
           retention-days: 0
 
   windows-arm64-runtime-probe:
-    if: ${{ inputs.windows_arm64_runtime_probe }}
-    name: Native runtime prerequisites / Windows ARM64
+    if: ${{ inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot }}
+    name: ${{ inputs.windows_arm64_full_pilot && 'Native runtime-framework pilot / Windows ARM64' || 'Native runtime prerequisites / Windows ARM64' }}
     runs-on: windows-11-arm
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.windows_arm64_full_pilot && 240 || 30 }}
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
@@ -472,14 +476,15 @@ jobs:
         shell: pwsh
         run: |
           $hostTools = '${{ inputs.windows_arm64_host_tools }}' -eq 'true'
-          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools
-          if ($LASTEXITCODE -ne 0) { throw 'Prerequisites blocked; no full source rebuild started.' }
+          $fullPilot = '${{ inputs.windows_arm64_full_pilot }}' -eq 'true'
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools -FullPilot:$fullPilot
+          if ($LASTEXITCODE -ne 0) { throw 'ARM64 diagnostic failed; inspect prerequisite/host/runtime gate evidence.' }
 
       - name: Upload native ARM64 prerequisite evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: diagnostic-runtime-prerequisites-windows-arm64-${{ github.run_id }}
+          name: ${{ inputs.windows_arm64_full_pilot && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-windows-arm64-${{ github.run_id }}
           path: windows-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0

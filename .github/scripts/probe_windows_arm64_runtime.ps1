@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$HostTools)
+param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$HostTools, [switch]$FullPilot)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:RUNNER_ARCH -ne 'ARM64' -or $env:PROCESSOR_ARCHITECTURE -ne 'ARM64') {
@@ -29,7 +29,10 @@ if ($env:VSCMD_ARG_HOST_ARCH -ne 'arm64' -or $env:VSCMD_ARG_TGT_ARCH -ne 'arm64'
 $env:PILOT_VS_PATH = $selected
 python .github/scripts/probe_windows_arm64_runtime.py --work-root $WorkRoot
 if ($LASTEXITCODE -ne 0) { throw 'ARM64 prerequisites failed; no full rebuild authorized by this result.' }
-if ($HostTools) {
-    python .github/scripts/build_windows_arm64_runtime_pilot.py --work-root (Join-Path $WorkRoot 'host-build') --host-tools-only
-    if ($LASTEXITCODE -ne 0) { throw 'Current host tools blocked; no full runtime rebuild started.' }
+if ($HostTools -and $FullPilot) { throw 'Select host-only or full pilot, not both.' }
+if ($HostTools -or $FullPilot) {
+    $builderArguments = @('.github/scripts/build_windows_arm64_runtime_pilot.py', '--work-root', (Join-Path $WorkRoot 'stack-build'))
+    if (-not $FullPilot) { $builderArguments += '--host-tools-only' }
+    python @builderArguments
+    if ($LASTEXITCODE -ne 0) { throw 'ARM64 source diagnostic failed; inspect the last completed gate in evidence.' }
 }
