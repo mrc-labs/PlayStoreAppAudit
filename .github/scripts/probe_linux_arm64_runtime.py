@@ -29,6 +29,11 @@ def contract() -> tuple[dict, dict]:
     return arm, base
 
 
+def runtime_sources(arm: dict, base: dict) -> list[dict]:
+    """One explicit current security-patch override, otherwise accepted sources."""
+    return [arm['cpython_source'], *base['sources'][1:7]]
+
+
 def run(command: list, *, cwd: Path = REPO, log: Path | None = None, env: dict | None = None) -> str:
     print('RUN', *map(str, command), flush=True)
     result = subprocess.run(list(map(str, command)), cwd=cwd, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

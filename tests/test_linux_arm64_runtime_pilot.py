@@ -52,6 +52,40 @@ def test_arm64_contract_keeps_source_hashes_but_selects_native_host_assets() -> 
     assert 'win32' not in arm['host_perl_source']['native_makefile']
 
 
+def test_current_security_python_override_keeps_the_reviewed_patch_bytes() -> None:
+    arm, base = probe.contract()
+    selected = probe.runtime_sources(arm, base)
+    assert selected[0] == arm['cpython_source'] and selected[1:] == base['sources'][1:7]
+    assert selected[0]['directory'] == 'Python-3.14.10'
+    assert base['sources'][0]['directory'] == 'Python-3.14.9'
+    assert arm['cpython_patch']['sha256'] == base['cpython_patch']['sha256']
+    assert hashlib.sha256((ROOT / arm['cpython_patch']['path']).read_bytes()).hexdigest() == arm['cpython_patch']['sha256']
+    assert 'Modules/_ssl/distrusted_spki.h' in arm['security_files']
+    assert 'Lib/tarfile.py' in arm['security_files']
+
+
+@pytest.mark.parametrize('outcome', ['', '<skipped/>', '<error/>', '<failure/>'])
+def test_security_regression_requires_actual_unskipped_execution(tmp_path: Path, outcome: str) -> None:
+    from verify_linux_arm64_runtime_pilot import require_security_case
+
+    path = tmp_path / 'results.xml'
+    path.write_text(f'<testsuite><testcase name="test.test_ssl.MemoryBIOTests.test_distrusted_spki">{outcome}</testcase></testsuite>')
+    if not outcome:
+        require_security_case(path)
+    else:
+        with pytest.raises(AssertionError, match='compromised-SPKI'):
+            require_security_case(path)
+
+
+def test_security_regression_cannot_accept_an_absent_case(tmp_path: Path) -> None:
+    from verify_linux_arm64_runtime_pilot import require_security_case
+
+    path = tmp_path / 'results.xml'
+    path.write_text('<testsuite><testcase name="test_other"/></testsuite>')
+    with pytest.raises(AssertionError, match='compromised-SPKI'):
+        require_security_case(path)
+
+
 def test_arm64_diagnostic_does_not_select_x64_sysroot_or_other_jobs() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     prior, job = workflow.split('\n  linux-arm64-runtime-pilot:', 1)

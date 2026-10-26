@@ -69,5 +69,40 @@
       "sha256": "04231c9fd011bd4ccc868f544fcf815e2dbfb4a579ba276403f2bb2ae8fc33c1",
       "scope": "probe-only native generator; not modified-runtime acceptance"
     }
-  ]
+  ],
+  "python_version": "3.14.10",
+  "cpython_source": {
+    "name": "Python-3.14.10.tar.xz",
+    "directory": "Python-3.14.10",
+    "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+    "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+    "authority": "https://www.python.org/downloads/release/python-31410/"
+  },
+  "cpython_patch": {
+    "path": ".github/patches/cpython-3.14.9-openssl4.patch",
+    "sha256": "98e3c27966e9a6f2a12131a7ac19ac66aa7bae20da85ef9e1d8f3e7bc769fe81",
+    "upstream": "https://github.com/python/cpython/pull/146217",
+    "upstream_patch_sha256": "8d491c4b52781d8f6b784ae99f28acdc0c48f468df28ba6863e62e8ac6f3abfe",
+    "adaptation": "Unchanged reviewed OpenSSL4 patch bytes apply to official CPython 3.14.10 without fuzz/new source adaptation; current security checks retained. Native qualification required.",
+    "migration": "https://docs.openssl.org/4.0/man7/ossl-guide-migration/",
+    "files": {
+      "Modules/_ssl.c": {
+        "base_sha256": "66245ce8d08fbc8276ea389ce6b250888ce4bb917da12a6496209de7b48ef121",
+        "patched_sha256": "6ae38c85daab752b4e9b5e816144eeb217472ff8d3915047b8b2a157db2101cb"
+      },
+      "Modules/_ssl/cert.c": {
+        "base_sha256": "4d07b7ca6fea2f848413f76b6f65e2c26e36d49c70431f04d748e4624706eb4f",
+        "patched_sha256": "0085ddc7bdebff311ecf1f63bbae9f44886d5f239795f560d3692aa0a55d9f8f"
+      },
+      "Lib/test/test_ssl.py": {
+        "base_sha256": "49cd9863938836e7ea963b7d36ab82d60f4fd5c20eb735399183e0d0efc5fc81",
+        "patched_sha256": "739e86fed49b7f2e554d3c9183dc1aa405986e7f150a3113b062d0ca7d7b6d56"
+      }
+    }
+  },
+  "security": "CVE-2026-115557 distrusted SPKI and CVE-2026-114583 tar-filter protections unchanged from official 3.14.10. Require executed upstream security regressions; previous 3.14.9 profiles do not qualify this patch version.",
+  "security_files": {
+    "Modules/_ssl/distrusted_spki.h": "bff6ffbbdb400bcfee6d15f8309da2128157feb7d8be98d14041abe80fc9ff8e",
+    "Lib/tarfile.py": "0f521ef8759f672841632bce6189f805d5420db9fe7f41a00db81b6150207cc7"
+  }
 }

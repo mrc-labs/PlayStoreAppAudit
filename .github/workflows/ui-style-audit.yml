@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       linux_arm64_pilot:
-        description: Native Noble ARM64 prerequisites only; no controlled runtime rebuild
+        description: One native Noble ARM64 prerequisites or controlled source-stack diagnostic; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites]
+        options: ['off', prerequisites, full]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -495,9 +495,9 @@ jobs:
           retention-days: 0
   linux-arm64-runtime-pilot:
     if: ${{ inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off' }}
-    name: Native runtime prerequisites / Linux ARM64 Noble
+    name: ${{ inputs.linux_arm64_pilot == 'full' && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
+    timeout-minutes: 240
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
@@ -537,6 +537,22 @@ jobs:
           set -euo pipefail
           python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'aarch64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
+      - name: Install ephemeral native source-build prerequisites
+        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+
       - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
         shell: bash
         run: |
@@ -546,11 +562,20 @@ jobs:
             --work-root "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee linux-arm64-pilot-evidence/prerequisite-build.log
 
+      - name: Build and exercise one gated native AArch64 source stack
+        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_linux_arm64_runtime_pilot.sh \
+            "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/pilot-build.log
+
       - name: Upload diagnostic Linux ARM64 evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: diagnostic-runtime-prerequisites-linux-arm64-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
           path: linux-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0
