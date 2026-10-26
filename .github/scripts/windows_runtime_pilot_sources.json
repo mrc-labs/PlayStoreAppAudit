@@ -35,6 +35,19 @@
     },
     "purpose": "Real OpenSSL 4 x64 DLL names; unchanged import-library names; omit non-runtime PDB copy items"
   },
+  "pyside_windows_patch": {
+    "path": ".github/patches/pyside6-6.12.0-windows-module-subset.patch",
+    "sha256": "0f7fede0e111e8c4c750d854a76341961fef07659e76a762ffd7eca5dcbf78d7",
+    "source": "https://github.com/qtproject/pyside-pyside-setup/blob/v6.12.0/build_scripts/platforms/windows_desktop.py",
+    "cmake_contract": "https://github.com/qtproject/pyside-pyside-setup/blob/v6.12.0/sources/pyside6/CMakeLists.txt",
+    "purpose": "Project build-only correction: require the UiTools module before packaging its optional Designer plugin; retain missing-artifact failure when UiTools is selected. No runtime, module, DLL or TLS behavior changes.",
+    "files": {
+      "build_scripts/platforms/windows_desktop.py": {
+        "base_sha256": "eb13f479dbc209963321fd02d48dd3986e1f7bbfc17237de20a380a220be8ae9",
+        "patched_sha256": "10f561dd38dbeb09a198a8572549d1bdbb41d425ac67f455dc8244ad6a8893f3"
+      }
+    }
+  },
   "sources": [
     {
       "name": "Python-3.14.9.tar.xz",

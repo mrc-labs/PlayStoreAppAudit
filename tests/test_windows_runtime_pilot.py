@@ -16,6 +16,7 @@ from verify_windows_runtime_pilot import (  # noqa: E402
     pe_versions,
     require_certificate_rejection,
     validate_imports,
+    validate_qtcore_imports,
 )
 
 
@@ -121,6 +122,15 @@ def test_openssl4_and_release_crt_import_names_are_preserved() -> None:
     validate_imports('libssl-4-x64.dll\nlibcrypto-4-x64.dll\nVCRUNTIME140.dll\nMSVCP140.dll\napi-ms-win-crt-runtime-l1-1-0.dll')
 
 
+def test_windows_legacy_icu_import_preserves_1809_floor() -> None:
+    validate_qtcore_imports('icuuc.dll\nicuin.dll\nVCRUNTIME140.dll')
+
+
+def test_windows_1903_umbrella_icu_import_is_rejected() -> None:
+    with pytest.raises(AssertionError, match='1809'):
+        validate_qtcore_imports('ICU.dll\nVCRUNTIME140.dll')
+
+
 def test_pe_os_bounds_read_optional_header_instead_of_host_version(tmp_path: Path) -> None:
     data = bytearray(512)
     struct.pack_into('<I', data, 0x3C, 128)
@@ -142,7 +152,7 @@ def test_windows_sources_reuse_accepted_linux_runtime_inputs() -> None:
     windows = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text())
     assert windows['cpython_patch'] == linux['cpython_patch']
     assert windows['sources'][:7] == linux['sources'][:7]
-    for key in ('cpython_patch', 'windows_patch'):
+    for key in ('cpython_patch', 'windows_patch', 'pyside_windows_patch'):
         patch = windows[key]
         assert hashlib.sha256((ROOT / patch['path']).read_bytes()).hexdigest() == patch['sha256']
     for item in [*windows['sources'], *windows['cpython_externals'], windows['extractor'], windows['nasm'], windows['extractor_source'], windows['nasm_source']]:

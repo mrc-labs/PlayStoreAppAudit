@@ -44,6 +44,12 @@ def validate_imports(imports: str) -> None:
     assert not re.search(r'(?:vcruntime\d+(?:_\d+)?d|msvcp\d+d|ucrtbased)\.dll', imports, re.I), imports
 
 
+def validate_qtcore_imports(imports: str) -> None:
+    validate_imports(imports)
+    # Legacy Windows ICU imports exist since 1703; umbrella icu.dll requires 1903.
+    assert not re.search(r'\bicu\.dll\b', imports, re.I), 'Windows 1809 floor excludes umbrella ICU import'
+
+
 def require_certificate_rejection(case: str, encrypted: bool, errors: list[str]) -> None:
     assert not encrypted and errors, (case, encrypted, errors)
     expected = {
@@ -235,6 +241,8 @@ def main() -> None:
         dependencies = subprocess.check_output(['dumpbin','/nologo','/dependents',module.__file__], text=True)
         assert library in dependencies, dependencies
         validate_imports(dependencies)
+    core_imports = subprocess.check_output(['dumpbin', '/nologo', '/dependents', prefix / 'qt/bin/Qt6Core.dll'], text=True)
+    validate_qtcore_imports(core_imports)
     certificates = output / 'isolated-certificates'
     certificates.mkdir(exist_ok=True)
     paths = certificate_material(certificates)
@@ -281,7 +289,7 @@ def main() -> None:
     app.exec()
     assert not window.isVisible()
     native = images(prefix, output)
-    report = {'source_sha':os.environ['GITHUB_SHA'],'identity':'project-modified CPython 3.14.9, matched source Qt/PySide/Shiboken 6.12.0',
+    report = {'source_sha':os.environ['GITHUB_SHA'],'identity':'project-modified CPython 3.14.9 and matched source Qt/PySide/Shiboken 6.12.0; PySide Windows packager patched for selected module subset',
         'python':sys.version,'gil_disabled':sysconfig.get_config_var('Py_GIL_DISABLED'),'architecture':platform.machine(),
         'python_ssl':ssl.OPENSSL_VERSION,'cryptography_ssl':backend.openssl_version_text(),
         'cryptography_provider':'independent wheel statically linked OpenSSL; not Python DLL provider',

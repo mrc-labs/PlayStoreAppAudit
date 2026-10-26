@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import concurrent.futures
+import functools
 import hashlib
 import json
 import os
@@ -15,6 +17,7 @@ import tarfile
 import urllib.request
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 from inspect_pe import read_pe_machine
 from verify_native_runtime_pilot import default_trust_handshake, executed_upstream_suites
@@ -120,6 +123,51 @@ def native_loader_preflight(work: Path, evidence: Path) -> None:
     print('Native secure DLL loader preflight PASS: PATH rejected; explicit and private venv registration accepted.', flush=True)
 
 
+def pyside_packaging_preflight(source: Path, evidence: Path) -> None:
+    """Exercise the actual hash-verified vendor packager without compiling Qt."""
+    path = source / 'build_scripts/platforms/windows_desktop.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'))
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'copy_qt_artifacts')
+    results = []
+    for uitools, designer_available in [(False, False), (True, False), (True, True)]:
+        copied = []
+
+        def copydir(origin: str, *args: object, selected: list[str] = copied,
+                    available: bool = designer_available, **kwargs: object) -> bool:
+            selected.append(origin)
+            if origin == '{install_dir}/plugins/designer' and not available:
+                raise FileNotFoundError('required Designer plugin missing')
+            return True
+
+        modules = ['Core', 'Gui', 'Widgets', 'Network', 'Svg', 'SvgWidgets', 'Test']
+        if uitools:
+            modules.append('UiTools')
+        build = SimpleNamespace(get_built_pyside_config=lambda _, selected=modules: {'built_modules':selected},
+            qtinfo=SimpleNamespace(build_type='release'), build_classifiers=[],
+            is_webengine_built=lambda _:False)
+        namespace = {'functools':functools, 'platform':platform,
+            'config':SimpleNamespace(is_internal_shiboken_generator_build=lambda:False),
+            'PYSIDE_MULTIMEDIA_LIBS':[], 'PYSIDE':'pyside6', 'copydir':copydir,
+            'copyfile':lambda *a, **k:None, 'download_qt_dependency_dlls':lambda *a:None,
+            'filter_match':lambda *a:True}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(path), 'exec'), namespace)
+        try:
+            namespace['copy_qt_artifacts'](build, 'package/PySide6', False, {})
+        except FileNotFoundError:
+            assert uitools and not designer_available, 'Unselected optional Designer was required'
+            outcome = 'required missing plugin rejected'
+        else:
+            assert not uitools or designer_available, 'Required missing plugin was silently accepted'
+            assert '{qt_plugins_dir}' in copied, 'TLS/platform plugin collection must remain enabled'
+            assert ('{install_dir}/plugins/designer' in copied) == uitools
+            outcome = 'selected plugins collected'
+        results.append({'uitools':uitools, 'designer_available':designer_available, 'result':outcome})
+    (evidence / 'pyside-packaging-preflight.json').write_text(json.dumps({
+        'source_sha':os.environ['GITHUB_SHA'], 'vendor_file_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+        'cases':results, 'scope':'actual vendor function; file-copy calls instrumented, no binaries fabricated'}, indent=2))
+    print('PySide Windows module-subset packaging preflight PASS (3 cases).', flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--work-root', type=Path, required=True)
@@ -203,6 +251,9 @@ def main() -> None:
     python_source = src / 'Python-3.14.9'
     patch_source(python_source, spec['cpython_patch'], evidence)
     patch_source(python_source, spec['windows_patch'], evidence)
+    pyside_source = src / 'pyside-setup-everywhere-src-6.12.0'
+    patch_source(pyside_source, spec['pyside_windows_patch'], evidence)
+    pyside_packaging_preflight(pyside_source, evidence)
     for directory in [*src.iterdir(), *externals.iterdir()]:
         if not directory.is_dir():
             continue
