@@ -65,6 +65,12 @@ def images(prefix: Path, output: Path) -> dict[str, Any]:
     for name in ('python314.dll', 'Qt6Core.dll', 'Qt6Network.dll', 'libssl-4-arm64.dll', 'libcrypto-4-arm64.dll'):
         assert any(path.name.lower() == name.lower() and (path.is_relative_to(prefix) or str(path) in origins) for path in modules), name
     assert origins and all(path.is_relative_to(prefix / 'python') for path in modules if path.name.lower() == 'python314.dll')
+    for path in modules:
+        if path.name.lower() not in ('libssl-4-arm64.dll', 'libcrypto-4-arm64.dll'):
+            continue
+        assert path.is_relative_to(prefix / 'python') or path.is_relative_to(prefix / 'openssl'), ('Foreign shared provider', path)
+        original = prefix / 'openssl/bin' / path.name
+        assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(original.read_bytes()).digest(), ('Python provider differs from controlled OpenSSL output', path)
     png = next(path for path in modules if path.name.lower() == 'libpng16.dll' and path.is_relative_to(prefix))
     query = ctypes.CDLL(str(png)).png_get_libpng_ver
     query.restype = ctypes.c_char_p

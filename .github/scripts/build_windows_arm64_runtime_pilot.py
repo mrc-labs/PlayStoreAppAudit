@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -58,6 +59,9 @@ def host_tools(work: Path, arm: dict, base: dict, evidence: Path) -> dict[str, P
     run(['nmake', '-f', 'Makefile', 'test', 'CCTYPE=MSVC143', 'WIN64=define',
          'CCHOME=' + os.environ['VCTOOLSINSTALLDIR'].rstrip('\\'), 'TEST_FILES=' + ' '.join(tests)],
         cwd=perl_source / 'win32', log=evidence / 'perl-regressions.log')
+    result = (evidence / 'perl-regressions.log').read_text(encoding='utf-8', errors='replace')
+    counts = re.search(r'Files=(\d+), Tests=(\d+)', result)
+    assert counts and int(counts[1]) == 2 and int(counts[2]) > 0 and 'Result: PASS' in result, 'Two executed upstream host-tool suites required'
     os.environ['PATH'] = str(perl.parent) + os.pathsep + os.environ['PATH']
     assert Path(shutil.which('perl') or '').resolve() == perl.resolve()
     # Only Qt's bootstrap MOC is compiled; native wheel uic/rcc already passed.
@@ -187,7 +191,16 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
     ssl_source = work / 'openssl-4.0.3'
     ssl_prefix = prefix / 'openssl'
     run([host['perl'], 'Configure', arm['openssl_target'], 'shared', 'no-uplink', 'no-makedepend', 'no-docs', '--prefix=' + str(ssl_prefix), '--libdir=lib', 'CFLAGS=/MD'], cwd=ssl_source, log=evidence / 'openssl-configure.log')
-    assert 'CFLAGS=/MD' in (ssl_source / 'makefile').read_text(encoding='utf-8')
+    makefile = (ssl_source / 'makefile').read_text(encoding='utf-8')
+    assert 'CFLAGS=/MD' in makefile
+    # Exercise current Perl + the real OpenSSL ARM64 perlasm/clang-cl recipe first.
+    target = re.search(r'^([^\r\n :]*aesv8-armx\.obj)\s*:', makefile, re.MULTILINE)
+    assert target, 'Find the upstream ARM64 AES assembly target before full compilation'
+    run(['nmake', target[1]], cwd=ssl_source, log=evidence / 'openssl-perlasm-preflight.log')
+    assembly = ssl_source / target[1].replace('\\', '/')
+    headers = subprocess.check_output(['dumpbin', '/headers', str(assembly)], text=True)
+    assert 'AA64 machine' in headers and '8664 machine' not in headers
+    (evidence / 'openssl-perlasm-headers.txt').write_text(headers, encoding='utf-8')
     run(['nmake'], cwd=ssl_source, log=evidence / 'openssl-build.log')
     run(['nmake', 'test', 'TESTS=test_evp test_x509 test_verify test_ssl_new'], cwd=ssl_source, log=evidence / 'openssl-regressions.log')
     run(['nmake', 'install_sw'], cwd=ssl_source, log=evidence / 'openssl-install.log')
