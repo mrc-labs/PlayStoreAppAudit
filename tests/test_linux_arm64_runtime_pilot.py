@@ -10,6 +10,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_linux_generator_paths_use_qt_reported_libexec(tmp_path: Path) -> None:
+    info = {name:str(tmp_path / name) for name in ('cmake', 'ninja', 'libexec', 'generator')}
+    paths = probe.generator_paths(info)
+    assert paths[2:4] == [tmp_path / 'libexec/uic', tmp_path / 'libexec/rcc']
+    assert paths[-1] == tmp_path / 'generator/shiboken6'
+
+
 @pytest.mark.parametrize('glibc,glibcxx,allowed', [('2.38','3.4.32',True), ('2.39','3.4.32',False), ('2.38','3.4.33',False)])
 def test_arm64_application_abi_cannot_inherit_host_or_x64_limits(tmp_path: Path, monkeypatch, glibc, glibcxx, allowed) -> None:
     path = tmp_path / 'probe'

@@ -70,6 +70,12 @@ def elf(path: Path, *, target: bool) -> dict:
         'required_versions':needs, 'maxima':maxima, 'role':'target ABI probe' if target else 'native build-host tool; Noble ABI, not application floor'}
 
 
+def generator_paths(info: dict) -> list[Path]:
+    """Use Qt's reported libexec directory; Linux tools are not Windows peers."""
+    return [Path(info['cmake']) / 'cmake', Path(info['ninja']) / 'ninja',
+        Path(info['libexec']) / 'uic', Path(info['libexec']) / 'rcc', Path(info['generator']) / 'shiboken6']
+
+
 def trust(evidence: Path) -> dict:
     directory = run(['/usr/bin/openssl', 'version', '-d'])
     match = re.fullmatch(r'OPENSSLDIR: "(.+)"\s*', directory)
@@ -151,14 +157,16 @@ def main() -> None:
     run(['g++-13', '-std=c++17', source, '-pthread', '-o', binary], log=evidence / 'cxx-probe-build.log')
     run([binary], log=evidence / 'cxx-probe-run.log')
     report['target_probe'] = elf(binary, target=True)
+    report['result'] = 'Native ABI/trust probes PASS; host tool qualification pending'
+    (evidence / 'prerequisites.json').write_text(json.dumps(report, indent=2))
     # Hash-bound same-version architecture variants, isolated from the new runtime.
     tools = work / 'host-tools'
     run([sys.executable, '-m', 'venv', tools])
     py = tools / 'bin/python'
     run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
     run([py, '-m', 'pip', 'install', 'cmake==4.4.4', 'ninja==1.13.2', *[w['url'] + '#sha256=' + w['sha256'] for w in arm['probe_wheels']], '--report', evidence / 'host-tools-install.json'])
-    tools_info = json.loads(run([py, '-c', 'import cmake,ninja,PySide6,shiboken6_generator,json; print(json.dumps(dict(cmake=cmake.CMAKE_BIN_DIR,ninja=ninja.BIN_DIR,pyside=PySide6.__path__[0],generator=shiboken6_generator.__path__[0])))']))
-    paths = [Path(tools_info['cmake']) / 'cmake', Path(tools_info['ninja']) / 'ninja', Path(tools_info['pyside']) / 'uic', Path(tools_info['pyside']) / 'rcc', Path(tools_info['generator']) / 'shiboken6']
+    tools_info = json.loads(run([py, '-c', 'import cmake,ninja,shiboken6_generator,json; from PySide6.QtCore import QLibraryInfo; print(json.dumps(dict(cmake=cmake.CMAKE_BIN_DIR,ninja=ninja.BIN_DIR,libexec=QLibraryInfo.path(QLibraryInfo.LibraryPath.LibraryExecutablesPath),generator=shiboken6_generator.__path__[0])))']))
+    paths = generator_paths(tools_info)
     report['generators'] = []
     for path in paths:
         row = elf(path, target=False)
