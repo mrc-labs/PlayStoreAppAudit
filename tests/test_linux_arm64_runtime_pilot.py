@@ -86,6 +86,15 @@ def test_security_regression_cannot_accept_an_absent_case(tmp_path: Path) -> Non
         require_security_case(path)
 
 
+def test_security_case_marked_notrun_is_rejected_even_without_skip_element(tmp_path: Path) -> None:
+    from verify_linux_arm64_runtime_pilot import require_security_case
+
+    path = tmp_path / 'results.xml'
+    path.write_text('<testsuite><testcase name="test_distrusted_spki" status="notrun"/></testsuite>')
+    with pytest.raises(AssertionError, match='compromised-SPKI'):
+        require_security_case(path)
+
+
 def test_arm64_diagnostic_does_not_select_x64_sysroot_or_other_jobs() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     prior, job = workflow.split('\n  linux-arm64-runtime-pilot:', 1)

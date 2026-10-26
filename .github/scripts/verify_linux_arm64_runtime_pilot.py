@@ -30,7 +30,7 @@ from verify_native_runtime_pilot import (
 
 def require_security_case(path: Path) -> None:
     cases = [case for case in ET.parse(path).getroot().iter('testcase') if 'test_distrusted_spki' in case.get('name', '')]
-    assert cases and all(case.find('skipped') is None and case.find('error') is None and case.find('failure') is None for case in cases), 'Executed CPython compromised-SPKI rejection required'
+    assert cases and all(case.get('status') != 'notrun' and case.find('skipped') is None and case.find('error') is None and case.find('failure') is None for case in cases), 'Executed CPython compromised-SPKI rejection required'
 
 
 def images(prefix: Path, output: Path) -> dict:
