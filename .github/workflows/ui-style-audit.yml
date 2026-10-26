@@ -3,6 +3,11 @@ name: UI style audit
 on:
   workflow_dispatch:
     inputs:
+      linux_arm64_pilot:
+        description: Native Noble ARM64 prerequisites only; no controlled runtime rebuild
+        type: choice
+        default: 'off'
+        options: ['off', prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -49,7 +54,7 @@ concurrency:
 
 jobs:
   capture:
-    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -300,7 +305,7 @@ jobs:
           retention-days: 0
 
   runtime-pilot:
-    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
     name: Native runtime-framework pilot / Linux x64 Jammy
     runs-on: ubuntu-22.04
     timeout-minutes: 180
@@ -389,7 +394,7 @@ jobs:
           retention-days: 0
 
   windows-runtime-pilot:
-    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -439,7 +444,7 @@ jobs:
           retention-days: 0
 
   windows-arm64-runtime-probe:
-    if: ${{ inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot }}
+    if: ${{ (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
     name: ${{ inputs.windows_arm64_full_pilot && 'Native runtime-framework pilot / Windows ARM64' || 'Native runtime prerequisites / Windows ARM64' }}
     runs-on: windows-11-arm
     timeout-minutes: ${{ inputs.windows_arm64_full_pilot && 240 || 30 }}
@@ -486,5 +491,66 @@ jobs:
         with:
           name: ${{ inputs.windows_arm64_full_pilot && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-windows-arm64-${{ github.run_id }}
           path: windows-arm64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+  linux-arm64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off' }}
+    name: Native runtime prerequisites / Linux ARM64 Noble
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated Linux ARM64 source and accepted OS
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+
+      - name: Set up native ARM64 bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'aarch64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p linux-arm64-pilot-evidence
+          python .github/scripts/probe_linux_arm64_runtime.py \
+            --work-root "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/prerequisite-build.log
+
+      - name: Upload diagnostic Linux ARM64 evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-prerequisites-linux-arm64-${{ github.run_id }}
+          path: linux-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0

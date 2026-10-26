@@ -1,0 +1,73 @@
+{
+  "scope": "one native Ubuntu 24.04 ARM64 diagnostic; no x64 SDK inheritance or Ubuntu22.04 ARM64 claim",
+  "base_manifest": "native_runtime_pilot_sources.json",
+  "base_manifest_canonical_sha256": "84b562fb93d4e14fd73d3a47af9ff1b8e0095a360ac0e1551edaab3b6d8fdad9",
+  "os": "24.04",
+  "machine": "AArch64",
+  "glibc_max": "2.38",
+  "glibcxx_max": "3.4.32",
+  "openssl_target": "linux-aarch64",
+  "abi_authority": "docs/V2_3_POST_RELEASE_CLOSURE.md",
+  "host_libclang": {
+    "name": "libclang-release_22.1.8-based-linux-Ubuntu24.04-gcc13.2-arm64.7z",
+    "directory": "libclang",
+    "url": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Ubuntu24.04-gcc13.2-arm64.7z",
+    "sha256": "c4c3d5d2b5f44e1e5c28bd48a3b352c67e9f7c4af032012d7d865ce6498640e3",
+    "authority": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Ubuntu24.04-gcc13.2-arm64.7z.sha256",
+    "exclude_paths": [
+      "libclang/bin/clang++",
+      "libclang/bin/clang-cl",
+      "libclang/bin/clang-cpp"
+    ],
+    "scope": "native build-host parser SDK; not application ABI floor"
+  },
+  "host_extractor": {
+    "version": "26.05",
+    "name": "7z2605-linux-arm64.tar.xz",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-arm64.tar.xz",
+    "sha256": "0b71f6cfc34669b3bf69f2347efd3429f77020665003a13b9cdc53b784270421",
+    "authority": "https://api.github.com/repos/ip7z/7zip/releases/tags/26.05",
+    "source": {
+      "name": "7z2605-src.tar.xz",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz",
+      "sha256": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e",
+      "authority": "https://api.github.com/repos/ip7z/7zip/releases/tags/26.05"
+    }
+  },
+  "host_perl_source": {
+    "name": "perl-5.44.0.tar.gz",
+    "directory": "perl-5.44.0",
+    "url": "https://cpan.metacpan.org/authors/id/L/LE/LEONT/perl-5.44.0.tar.gz",
+    "sha256": "3b855066b92491cb40e86affb1ca57d1a388aa43e51b91c7806a32c2f65f96c3",
+    "authority": "https://fastapi.metacpan.org/v1/release/LEONT/perl-5.44.0",
+    "support": "https://perldoc.perl.org/perlpolicy#MAINTENANCE-AND-SUPPORT",
+    "native_makefile": "https://github.com/Perl/perl5/blob/v5.44.0/INSTALL",
+    "scope": "native Linux build-host interpreter only; current stable source route already qualified on Windows; no vendor patch; actual Noble image interpreter is recorded separately"
+  },
+  "probe_wheels": [
+    {
+      "distribution": "PySide6-Essentials",
+      "version": "6.12.0",
+      "name": "pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/5e/4e/f4fd4c016719be832ec49d3c87940459e87fd666179a0a199a3998d07916/pyside6_essentials-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "sha256": "08c5841063fc1df69b7fa1ee405f539e66576a83fc48004be3e2c5e35ccbfa69",
+      "scope": "probe-only native generator; not modified-runtime acceptance"
+    },
+    {
+      "distribution": "shiboken6",
+      "version": "6.12.0",
+      "name": "shiboken6-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/97/ca/a4415e6218e0dff764fe2b2d30db2fc8f499a08ace07634232ade3f73adc/shiboken6-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "sha256": "ff72a72b3277b418902d562b987b33a6f6818bed9fe40a49d634d09bc67f620e",
+      "scope": "probe-only native generator; not modified-runtime acceptance"
+    },
+    {
+      "distribution": "shiboken6_generator",
+      "version": "6.12.0",
+      "name": "shiboken6_generator-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "url": "https://files.pythonhosted.org/packages/72/f9/ecc02698bc0f827c930e4ad9146a2080512a81e52ab8a4a3c32c9b0b92c9/shiboken6_generator-6.12.0-cp310-abi3-manylinux_2_39_aarch64.whl",
+      "sha256": "04231c9fd011bd4ccc868f544fcf815e2dbfb4a579ba276403f2bb2ae8fc33c1",
+      "scope": "probe-only native generator; not modified-runtime acceptance"
+    }
+  ]
+}

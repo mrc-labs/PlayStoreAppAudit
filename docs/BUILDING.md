@@ -14,6 +14,8 @@ Current **v2.4.0 maintenance/security/compatibility preparation** follows [#238]
 
 ## Local development environment
 
+The current newly authorized diagnostic target is **Linux ARM64 only** on native Ubuntu 24.04, after Control Tower accepted the Windows ARM64 pilot. Preserve **GLIBC 2.38 / GLIBCXX 3.4.32** from the published ARM64 inventory; Ubuntu 22.04 ARM64 was never accepted. Qualify native GCC 13/link SDK, Python/GIL, parser/generators and default CA trust before controlled component rebuilds. Do not reuse the separate x64 target SDK or migrate to Ubuntu 26. A guarded prerequisite-only job in UI style audit emits diagnostic evidence, not final packages. Stop for independent Linux ARM64 review; all producing profiles remain unchanged. See the [active audit](V2_4_RELEASE_PREP.md#authorized-linux-arm64-prerequisites-ubuntu-2404-only).
+
 Create a virtual environment and install the development dependencies:
 
 ```bash

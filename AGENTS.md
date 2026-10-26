@@ -31,7 +31,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
-- Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in 11 maintained setup environments plus three isolated diagnostic-pilot bootstraps across nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
+- Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in 11 maintained setup environments plus four isolated diagnostic-pilot bootstraps across nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
 - Current v2.4.0 preparation PySide6 baseline: `PySide6-Essentials==6.12.0`.
 - Current release compiler pin: `Nuitka==4.3.1`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
@@ -83,6 +83,8 @@ Canonical Quality `36987000922`, Windows `36988301118`, Linux `36988304138`, mac
 Proactively migrate concretely announced deprecations when a stable supported successor preserves all six targets and intended compatibility floors and can be validated in the active release cycle. Preview successors and implicit floor increases are excluded; classify blockers, required migrations, watches and upstream observations explicitly.
 
 ## v2.4.0 maintenance, security and compatibility preparation
+
+Current #238 acceptance now includes Windows ARM64 (**3/6 diagnostic source profiles**). The newly authorized tranche is **Linux ARM64 only**, starting at `04cca1dfed5a94893e9ccf5e26f6135a98887fd1`: native Ubuntu **24.04**, preserved application ceilings **GLIBC 2.38 / GLIBCXX 3.4.32**, no Ubuntu 22.04 ARM64 claim and no x64 Jammy/GNU11 SDK inheritance. Cheap AArch64/Python/GIL/compiler/link-SDK/parser/generator/CA gates precede any controlled runtime rebuild. Stop for independent Linux ARM64 review; no macOS or producing-profile adoption. The current audit records phase/source/run evidence.
 
 Tracker [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238) approves MINOR reclassification on 2026-10-25, preserving PR #239 and historical branch `release/v2.3.1-maintenance`. Prepared source metadata is **2.4.0 / Windows 2.4.0.0**, not publication. The [active audit](docs/V2_4_RELEASE_PREP.md) and [existing provider inventory](docs/V2_4_COMPONENT_INVENTORY.json) preserve the 2026-10-24 entry findings; 1094 observations are not 1094 required upgrades. Refresh only changed/uncertain facts in this tranche.
 
