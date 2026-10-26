@@ -131,6 +131,7 @@ def pyside_packaging_preflight(source: Path, evidence: Path) -> None:
     results = []
     for uitools, designer_available in [(False, False), (True, False), (True, True)]:
         copied = []
+        clang_preparations = []
 
         def copydir(origin: str, *args: object, selected: list[str] = copied,
                     available: bool = designer_available, **kwargs: object) -> bool:
@@ -144,7 +145,8 @@ def pyside_packaging_preflight(source: Path, evidence: Path) -> None:
             modules.append('UiTools')
         build = SimpleNamespace(get_built_pyside_config=lambda _, selected=modules: {'built_modules':selected},
             qtinfo=SimpleNamespace(build_type='release'), build_classifiers=[],
-            is_webengine_built=lambda _:False)
+            is_webengine_built=lambda _:False,
+            prepare_standalone_clang=lambda selected=clang_preparations, **kwargs:selected.append(kwargs))
         namespace = {'functools':functools, 'platform':platform,
             'config':SimpleNamespace(is_internal_shiboken_generator_build=lambda:False),
             'PYSIDE_MULTIMEDIA_LIBS':[], 'PYSIDE':'pyside6', 'copydir':copydir,
@@ -160,8 +162,10 @@ def pyside_packaging_preflight(source: Path, evidence: Path) -> None:
             assert not uitools or designer_available, 'Required missing plugin was silently accepted'
             assert '{qt_plugins_dir}' in copied, 'TLS/platform plugin collection must remain enabled'
             assert ('{install_dir}/plugins/designer' in copied) == uitools
+            assert clang_preparations == ([{'is_win':True}] if platform.machine() == 'ARM64' else [])
             outcome = 'selected plugins collected'
-        results.append({'uitools':uitools, 'designer_available':designer_available, 'result':outcome})
+        results.append({'uitools':uitools, 'designer_available':designer_available,
+            'clang_preparations':clang_preparations, 'result':outcome})
     (evidence / 'pyside-packaging-preflight.json').write_text(json.dumps({
         'source_sha':os.environ['GITHUB_SHA'], 'vendor_file_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
         'cases':results, 'scope':'actual vendor function; file-copy calls instrumented, no binaries fabricated'}, indent=2))

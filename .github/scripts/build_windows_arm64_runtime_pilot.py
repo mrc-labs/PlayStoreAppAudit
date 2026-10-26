@@ -116,6 +116,15 @@ def main() -> None:
     arm = json.loads((REPO / '.github/scripts/windows_arm64_runtime_pilot_sources.json').read_text(encoding='utf-8'))
     base = json.loads((REPO / '.github/scripts' / arm['base_manifest']).read_text(encoding='utf-8'))
     assert hashlib.sha256(json.dumps(base, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == arm['base_manifest_canonical_sha256']
+    if not args.host_tools_only:
+        # Exercise the actual ARM64 packager before even rebuilding host tools.
+        sources = evidence / 'sources'
+        sources.mkdir(exist_ok=True)
+        item = next(item for item in base['sources'] if item['directory'] == 'pyside-setup-everywhere-src-6.12.0')
+        unpack(fetch(item, sources), work)
+        pyside = work / item['directory']
+        patch_source(pyside, base['pyside_windows_patch'], evidence)
+        pyside_packaging_preflight(pyside, evidence)
     host = host_tools(work, arm, base, evidence)
     if not args.host_tools_only:
         build_stack(work, arm, base, evidence, host)
@@ -171,8 +180,6 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
     for key in ('cpython_patch', 'windows_patch'):
         patch_source(python_source, base[key], evidence)
     pyside = work / 'pyside-setup-everywhere-src-6.12.0'
-    patch_source(pyside, base['pyside_windows_patch'], evidence)
-    pyside_packaging_preflight(pyside, evidence)
     for path in (REPO / '.github/scripts/windows_arm64_runtime_pilot_sources.json', REPO / '.github/scripts/windows_runtime_pilot_sources.json'):
         shutil.copy2(path, evidence / path.name)
     legal = evidence / 'legal'

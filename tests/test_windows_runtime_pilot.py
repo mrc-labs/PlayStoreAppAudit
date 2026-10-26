@@ -20,6 +20,30 @@ from verify_windows_runtime_pilot import (  # noqa: E402
 )
 
 
+@pytest.mark.parametrize('machine', ['AMD64', 'ARM64'])
+def test_packager_harness_handles_native_arm64_clang_preparation(tmp_path: Path, monkeypatch, machine: str) -> None:
+    import build_windows_runtime_pilot as builder
+
+    # Reduced vendor boundary: retain its optional-plugin failure and ARM64-only
+    # host-parser callback, which the diagnostic stub previously omitted.
+    path = tmp_path / 'build_scripts/platforms/windows_desktop.py'
+    path.parent.mkdir(parents=True)
+    path.write_text('def copy_qt_artifacts(build, destination, copy_clang, variables):\n'
+        '    modules = build.get_built_pyside_config(destination)["built_modules"]\n'
+        '    copydir("{qt_plugins_dir}")\n'
+        '    if "UiTools" in modules:\n'
+        '        copydir("{install_dir}/plugins/designer")\n'
+        '    if copy_clang or platform.machine() == "ARM64":\n'
+        '        build.prepare_standalone_clang(is_win=True)\n', encoding='utf-8')
+    monkeypatch.setattr(builder.platform, 'machine', lambda:machine)
+    monkeypatch.setenv('GITHUB_SHA', 'a' * 40)
+    builder.pyside_packaging_preflight(tmp_path, tmp_path)
+    cases = json.loads((tmp_path / 'pyside-packaging-preflight.json').read_text())['cases']
+    assert cases[1]['result'] == 'required missing plugin rejected'
+    for row in (cases[0], cases[2]):
+        assert row['clang_preparations'] == ([{'is_win':True}] if machine == 'ARM64' else [])
+
+
 def test_dll_startup_is_private_explicit_and_retains_handles(tmp_path: Path, monkeypatch) -> None:
     import build_windows_runtime_pilot as builder
 
