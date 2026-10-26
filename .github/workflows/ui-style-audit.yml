@@ -3,6 +3,10 @@ name: UI style audit
 on:
   workflow_dispatch:
     inputs:
+      windows_arm64_runtime_probe:
+        description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
+        type: boolean
+        default: false
       windows_runtime_pilot:
         description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
         type: boolean
@@ -37,7 +41,7 @@ concurrency:
 
 jobs:
   capture:
-    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot }}
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
@@ -288,7 +292,7 @@ jobs:
           retention-days: 0
 
   runtime-pilot:
-    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot }}
+    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
     name: Native runtime-framework pilot / Linux x64 Jammy
     runs-on: ubuntu-22.04
     timeout-minutes: 180
@@ -377,7 +381,7 @@ jobs:
           retention-days: 0
 
   windows-runtime-pilot:
-    if: ${{ inputs.windows_runtime_pilot }}
+    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -423,5 +427,54 @@ jobs:
         with:
           name: diagnostic-runtime-framework-windows-x64-${{ github.run_id }}
           path: windows-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-arm64-runtime-probe:
+    if: ${{ inputs.windows_arm64_runtime_probe }}
+    name: Native runtime prerequisites / Windows ARM64
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated ARM64 probe SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'Native ARM64 runner required.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows ARM64 prerequisites.' }
+
+      - name: Set up ARM64 probe bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'ARM64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Native GIL-enabled stable bootstrap required.' }
+
+      - name: Probe native compiler, DLL linkage and Qt host generators
+        shell: pwsh
+        run: |
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          if ($LASTEXITCODE -ne 0) { throw 'Prerequisites blocked; no full source rebuild started.' }
+
+      - name: Upload native ARM64 prerequisite evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-prerequisites-windows-arm64-${{ github.run_id }}
+          path: windows-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0
