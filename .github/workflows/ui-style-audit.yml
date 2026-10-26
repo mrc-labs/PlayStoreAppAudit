@@ -7,6 +7,10 @@ on:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
         default: false
+      windows_arm64_host_tools:
+        description: Also build/probe native Perl and Qt bootstrap generators only; requires ARM64 probe
+        type: boolean
+        default: false
       windows_runtime_pilot:
         description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
         type: boolean
@@ -467,7 +471,8 @@ jobs:
       - name: Probe native compiler, DLL linkage and Qt host generators
         shell: pwsh
         run: |
-          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          $hostTools = '${{ inputs.windows_arm64_host_tools }}' -eq 'true'
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools
           if ($LASTEXITCODE -ne 0) { throw 'Prerequisites blocked; no full source rebuild started.' }
 
       - name: Upload native ARM64 prerequisite evidence only

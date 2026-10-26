@@ -44,5 +44,22 @@
       "sha256": "5e3f120a228d69553e12be24a80d1240896affa5a3a1d7876e8fe4a9dab72cd8",
       "scope": "probe-only native build-host tools; never runtime-stack acceptance"
     }
-  ]
+  ],
+  "host_extractor": {
+    "name": "7z2605-arm64.exe",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-arm64.exe",
+    "sha256": "86d5790d5dd84cab4636c3bb7fab10d3ed7cd3e57e6119401bd2769e28165268",
+    "authority": "https://api.github.com/repos/ip7z/7zip/releases/tags/26.05",
+    "scope": "same 26.05 extractor release, native ARM64 host variant; no target dependency"
+  },
+  "host_perl_source": {
+    "name": "perl-5.44.0.tar.gz",
+    "directory": "perl-5.44.0",
+    "url": "https://cpan.metacpan.org/authors/id/L/LE/LEONT/perl-5.44.0.tar.gz",
+    "sha256": "3b855066b92491cb40e86affb1ca57d1a388aa43e51b91c7806a32c2f65f96c3",
+    "authority": "https://fastapi.metacpan.org/v1/release/LEONT/perl-5.44.0",
+    "support": "https://perldoc.perl.org/perlpolicy#MAINTENANCE-AND-SUPPORT",
+    "native_makefile": "https://github.com/Perl/perl5/blob/v5.44.0/win32/Makefile",
+    "scope": "native ARM64 build-host tool only; resolves measured EOL Perl 5.32.1; current Strawberry 5.42.3.1 does not waive newer stable source route; no patch"
+  }
 }
