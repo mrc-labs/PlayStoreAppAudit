@@ -10,12 +10,46 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / '.github/scripts'))
+from build_windows_runtime_pilot import register_private_dll_directories  # noqa: E402
 from verify_windows_runtime_pilot import (  # noqa: E402
     controlled_qt_origin,
     pe_versions,
     require_certificate_rejection,
     validate_imports,
 )
+
+
+def test_dll_startup_is_private_explicit_and_retains_handles(tmp_path: Path, monkeypatch) -> None:
+    import build_windows_runtime_pilot as builder
+
+    site = tmp_path / 'venv/Lib/site-packages'
+    site.mkdir(parents=True)
+    controlled = tmp_path / 'controlled/bin'
+    controlled.mkdir(parents=True)
+    monkeypatch.setattr(builder.subprocess, 'check_output', lambda *args, **kwargs: str(site) + '\n')
+    monkeypatch.setenv('GITHUB_SHA', 'a' * 40)
+    register_private_dll_directories(tmp_path / 'venv/Scripts/python.exe', [controlled], tmp_path)
+    registered = []
+    sentinel = object()
+    monkeypatch.setattr(builder.os, 'add_dll_directory', lambda path: registered.append(path) or sentinel, raising=False)
+    namespace = {}
+    exec((site / '_playstore_pilot_dll_dirs.py').read_text(), namespace)
+    assert registered == [str(controlled.resolve())]
+    assert namespace['HANDLES'] == [sentinel]
+    assert (site / 'playstore_pilot_dll_dirs.pth').read_text() == 'import _playstore_pilot_dll_dirs\n'
+    record = json.loads((tmp_path / 'private-dll-directories.json').read_text())
+    assert record['directories'] == registered
+    for path, digest in record['files'].items():
+        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest
+
+
+def test_dll_startup_rejects_absent_directory(tmp_path: Path, monkeypatch) -> None:
+    import build_windows_runtime_pilot as builder
+
+    monkeypatch.setattr(builder.subprocess, 'check_output', lambda *args, **kwargs: str(tmp_path))
+    with pytest.raises(FileNotFoundError):
+        register_private_dll_directories(tmp_path / 'python.exe', [tmp_path / 'absent'], tmp_path)
+    assert not (tmp_path / 'playstore_pilot_dll_dirs.pth').exists()
 
 
 def test_upstream_qt_package_copy_requires_identical_controlled_bytes(tmp_path: Path) -> None:

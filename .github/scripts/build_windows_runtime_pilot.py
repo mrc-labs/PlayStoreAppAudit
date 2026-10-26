@@ -63,9 +63,67 @@ def patch_source(source: Path, patch: dict, evidence: Path) -> None:
     shutil.copy2(path, evidence / path.name)
 
 
+def register_private_dll_directories(py: Path, directories: list[Path], evidence: Path) -> None:
+    """Initialize only this diagnostic venv using Python's secure DLL search API."""
+    site = Path(subprocess.check_output([str(py), '-c', 'import sysconfig; print(sysconfig.get_path("purelib"))'], text=True).strip())
+    paths = [str(path.resolve(strict=True)) for path in directories]
+    module = site / '_playstore_pilot_dll_dirs.py'
+    module.write_text('import os\nDIRECTORIES = ' + repr(paths) + '\n'
+                      'HANDLES = [os.add_dll_directory(path) for path in DIRECTORIES]\n', encoding='utf-8')
+    startup = site / 'playstore_pilot_dll_dirs.pth'
+    startup.write_text('import _playstore_pilot_dll_dirs\n', encoding='utf-8')
+    (evidence / 'private-dll-directories.json').write_text(json.dumps({
+        'source_sha':os.environ['GITHUB_SHA'], 'python':str(py), 'directories':paths,
+        'files':{str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in (module, startup)},
+        'scope':'isolated diagnostic venv only; no OS or application loader changes',
+    }, indent=2))
+
+
+def native_loader_preflight(work: Path, evidence: Path) -> None:
+    """Reproduce PATH-only failure, then test explicit and venv-startup registration."""
+    root = work / 'loader-preflight'
+    dependency, extension = root / 'dependency', root / 'extension'
+    dependency.mkdir(parents=True)
+    extension.mkdir()
+    helper = dependency / 'pilot_dependency.c'
+    helper.write_text('__declspec(dllexport) int pilot_answer(void) { return 42; }\n')
+    source = extension / 'pilot_loader.c'
+    source.write_text('#include <Python.h>\n__declspec(dllimport) int pilot_answer(void);\n'
+        'static PyObject *answer(PyObject *s, PyObject *a) { return PyLong_FromLong(pilot_answer()); }\n'
+        'static PyMethodDef methods[] = {{"answer", answer, METH_NOARGS, NULL}, {NULL}};\n'
+        'static struct PyModuleDef module = {PyModuleDef_HEAD_INIT, "pilot_loader", NULL, -1, methods};\n'
+        'PyMODINIT_FUNC PyInit_pilot_loader(void) { return PyModule_Create(&module); }\n')
+    run(['cl', '/nologo', '/LD', '/MD', helper, '/link', '/OUT:' + str(dependency / 'pilot_dependency.dll'),
+         '/IMPLIB:' + str(dependency / 'pilot_dependency.lib')], cwd=dependency, log=evidence / 'loader-helper-build.log')
+    run(['cl', '/nologo', '/LD', '/MD', '/I' + str(Path(sys.base_prefix) / 'include'), source,
+         '/link', '/LIBPATH:' + str(Path(sys.base_prefix) / 'libs'), dependency / 'pilot_dependency.lib',
+         '/OUT:' + str(extension / 'pilot_loader.pyd')], cwd=extension, log=evidence / 'loader-extension-build.log')
+    assert read_pe_machine(extension / 'pilot_loader.pyd') == 0x8664
+    environment = {**os.environ, 'PATH':str(dependency) + os.pathsep + os.environ['PATH']}
+    code = 'import sys; sys.path.insert(0, sys.argv[1]); import pilot_loader; assert pilot_loader.answer() == 42; print("answer=42")'
+    failed = subprocess.run([sys.executable, '-I', '-c', code, str(extension)], cwd=root, env=environment, capture_output=True, text=True)
+    assert failed.returncode and 'DLL load failed while importing pilot_loader' in failed.stderr, failed
+    explicit = subprocess.run([sys.executable, '-I', '-c',
+        'import os; handle=os.add_dll_directory(' + repr(str(dependency)) + '); ' + code,
+        str(extension)], cwd=root, env=environment, capture_output=True, text=True, check=True)
+    venv = root / 'venv'
+    run([sys.executable, '-m', 'venv', '--without-pip', venv])
+    py = venv / 'Scripts/python.exe'
+    register_private_dll_directories(py, [dependency], evidence)
+    automatic = subprocess.run([str(py), '-I', '-c', code, str(extension)], cwd=root, env=environment, capture_output=True, text=True, check=True)
+    (evidence / 'loader-preflight.json').write_text(json.dumps({
+        'source_sha':os.environ['GITHUB_SHA'], 'machine':'AMD64', 'crt':'/MD',
+        'path_only':{'returncode':failed.returncode, 'stderr':failed.stderr},
+        'explicit_registration':explicit.stdout, 'venv_startup_registration':automatic.stdout,
+        'inputs':{str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in (helper, source)},
+    }, indent=2))
+    print('Native secure DLL loader preflight PASS: PATH rejected; explicit and private venv registration accepted.', flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--work-root', type=Path, required=True)
+    parser.add_argument('--prerequisites-only', action='store_true')
     args = parser.parse_args()
     work = args.work_root.resolve()
     evidence = REPO / 'windows-pilot-evidence'
@@ -91,6 +149,7 @@ def main() -> None:
         'tools':tools, 'os':platform.platform(), 'windows':tuple(sys.getwindowsversion()),
         'image':os.environ.get('IMAGEVERSION'), 'trust':trust,
         'sdk':os.environ.get('WINDOWSSDKVERSION'), 'vc_tools':os.environ.get('VCTOOLSVERSION')}, indent=2))
+    native_loader_preflight(work, evidence)
     # Exercise the native OS backend/verifier on this runner before costly sources/rebuilds.
     bootstrap = work / 'schannel-preflight'
     run([sys.executable, '-m', 'venv', bootstrap])
@@ -98,6 +157,9 @@ def main() -> None:
     run([bootstrap_py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
     run([bootstrap_py, '-m', 'pip', 'install', 'PySide6-Essentials==6.12.0', 'cryptography==50.0.2', '--report', evidence / 'schannel-preflight-install.json'])
     run([bootstrap_py, REPO / '.github/scripts/verify_windows_runtime_pilot.py', '--bootstrap-schannel', '--output-dir', evidence / 'schannel-preflight'])
+    if args.prerequisites_only:
+        print('Windows prerequisite/loader diagnostics PASS; no component source downloads or rebuild.', flush=True)
+        return
     manifest = REPO / '.github/scripts/windows_runtime_pilot_sources.json'
     spec = json.loads(manifest.read_text())
     shutil.copy2(manifest, evidence / manifest.name)
@@ -187,6 +249,10 @@ def main() -> None:
     os.environ['PYTHON3_ROOT_DIR'] = str(runtime)
     os.environ['CMAKE_PREFIX_PATH'] = os.pathsep.join(map(str, [prefix, ssl_prefix, prefix / 'qt']))
     os.environ['PATH'] = os.pathsep.join(map(str, [py.parent, prefix / 'qt/bin', prefix / 'bin', ssl_prefix / 'bin'])) + os.pathsep + os.environ['PATH']
+    dll_directories = [prefix / 'qt/bin', prefix / 'bin', ssl_prefix / 'bin']
+    for directory in dll_directories:
+        directory.mkdir(parents=True, exist_ok=True)
+    register_private_dll_directories(py, dll_directories, evidence)
     run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
     run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])
     os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '2'
@@ -220,6 +286,10 @@ def main() -> None:
     run(['cmd', '/d', '/c', prefix / 'qt/bin/qt-configure-module.bat', src / 'qtsvg-everywhere-src-6.12.0', '--', '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL'], cwd=svg_build, log=evidence / 'qtsvg-configure.log')
     run(['cmake', '--build', svg_build, '--parallel', '2'], log=evidence / 'qtsvg-build.log')
     run(['cmake', '--install', svg_build], log=evidence / 'qtsvg-install.log')
+    # Exercise the actual Qt dependency closure before compiling binding wrappers/stubs.
+    run([py, '-I', '-c', 'import ctypes,sys; dll=ctypes.WinDLL(sys.argv[1]); print("Controlled QtCore secure-load PASS", dll._name)',
+         prefix / 'qt/bin/Qt6Core.dll'], log=evidence / 'qtcore-loader-preflight.log')
+    run(['dumpbin', '/dependents', prefix / 'qt/bin/Qt6Core.dll'], log=evidence / 'qtcore-dependents.log')
     os.environ['LLVM_INSTALL_DIR'] = str(src / 'libclang')
     run([py, 'setup.py', 'install', '--ignore-git', '--qtpaths=' + str(prefix / 'qt/bin/qtpaths6.exe'), '--parallel=2', '--limited-api=yes', '--module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test', '--no-qt-tools'], cwd=src / 'pyside-setup-everywhere-src-6.12.0', log=evidence / 'pyside-build.log')
     requirements = evidence / 'runtime-requirements.txt'

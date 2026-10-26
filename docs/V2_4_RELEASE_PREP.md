@@ -2,6 +2,14 @@
 
 ## Current MINOR tranche (2026-10-25)
 
+### Windows secure-loader investigation (2026-10-26, resumed)
+
+The interrupted pause checkpoint was preserved in local normal commit `3427a342bd43a949ce378133ff93f22570182b61`; the checkout was clean before new work. Canonical main remains unchanged and was not merged. The maintainer's new #238 reconfirmation preserves the whole-stack migration and bounded Windows-x64 sequencing; OpenSSL 4.0.3 is this profile's current input, not an indefinite exemption from stable-compatible freshness.
+
+Pilot **40242391635** at `6d9f3dc565e3f2e43b23a0eba809d25c44173a5b` passed the early native Schannel gate, CPython PEM I/O and SSL/hash/HMAC suites, source library tests, QtBase and QtSvg build/install. It failed generating PySide QtCore stubs with Windows loader error 126 (`DLL load failed ... specified module could not be found`). That message alone does not identify the missing DLL. The source-build PySide initializer registers its binding directories and the PATH entry containing qmake, while this source profile installs system-library dependencies separately in `prefix/bin`. [Python's supported DLL search API](https://docs.python.org/3.14/library/os.html#os.add_dll_directory) explicitly resolves imported extensions and ctypes dependencies; PATH is not that registration.
+
+The bounded correction registers exactly the controlled Qt, source-library and OpenSSL bin directories through `os.add_dll_directory`, retaining handles in a module loaded by a `.pth` **only inside the private diagnostic venv**. Paths and initializer hashes are recorded. No application loader, system trust store, global loader policy or producing workflow changes. Before any source download/rebuild, a tiny native AMD64 `/MD` extension must fail with its dependency on PATH alone and succeed with explicit registration and with this private venv startup. A prerequisites-only dispatch runs that proof plus existing stock Schannel/default-trust checks. After Qt installation, the actual QtCore dependency closure must securely load before PySide compilation. This is a testable diagnosis/configuration change; complete modified-runtime qualification remains pending until the full pilot passes. Accepted Linux source/build/test inputs remain unchanged.
+
 ### Maintainer pause checkpoint (2026-10-26 00:16 Europe/Rome)
 
 The maintainer explicitly paused Codex work until credits were available again, approximately **03:16 Europe/Rome**. The local polling script was stopped and the existing GitHub pilot was left running. The maintainer resumed work at **03:21 Europe/Rome**. The pause interrupted saving before the documentation commit: on resume, only the three owned context/audit files were dirty; source/remote head remained unchanged. This checkpoint completes that save in the active audit, without creating a separate handoff Markdown. **Inspect the existing pilot before dispatching another build.**

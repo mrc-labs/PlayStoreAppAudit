@@ -7,6 +7,10 @@ on:
         description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
         type: boolean
         default: false
+      windows_prerequisites_only:
+        description: Windows pilot compiler, secure DLL loader and stock Schannel only; no source-stack rebuild
+        type: boolean
+        default: false
       trust_diagnostics_only:
         description: CA and selected target C++ SDK qualification only; no Python/Qt component rebuild
         type: boolean
@@ -409,7 +413,8 @@ jobs:
       - name: Qualify and exercise controlled Windows stack
         shell: pwsh
         run: |
-          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true'
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
 
       - name: Upload diagnostic Windows runtime evidence only
