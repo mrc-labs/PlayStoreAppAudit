@@ -129,6 +129,14 @@ def stack_sources(arm: dict, base: dict) -> list[dict]:
 
 
 def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[str, Path]) -> None:
+    # This previously proved integration must still have a native toolchain now.
+    run(['rustup', 'toolchain', 'install', '1.99.1', '--profile', 'minimal'], log=evidence / 'rust-install.log')
+    os.environ['RUSTUP_TOOLCHAIN'] = '1.99.1'
+    rust = subprocess.check_output(['rustc', '-vV'], text=True)
+    assert 'host: aarch64-pc-windows-msvc' in rust and 'release: 1.99.1' in rust
+    for tool in ('rustc', 'cargo'):
+        require_arm64(Path(subprocess.check_output(['rustup', 'which', tool], text=True).strip()))
+    (evidence / 'rust-host-prerequisite.txt').write_text(rust, encoding='utf-8')
     sources = evidence / 'sources'
     items = stack_sources(arm, base)
 
@@ -320,7 +328,7 @@ def crypto_source(work: Path, prefix: Path, sources: Path, evidence: Path, arm: 
         'compiler':shutil.which('cl'), 'assembler':shutil.which('clang-cl'), 'configure':arguments,
         'source_sha':os.environ['GITHUB_SHA'], 'run_id':os.environ['GITHUB_RUN_ID']}
     (crypto_evidence / 'source-provenance.json').write_text(json.dumps(provenance, indent=2), encoding='utf-8')
-    run(['rustup', 'toolchain', 'install', '1.99.1', '--profile', 'minimal'], log=crypto_evidence / 'rust-install.log')
+    shutil.copy2(evidence / 'rust-install.log', crypto_evidence / 'rust-install.log')
     os.environ.update(RUSTUP_TOOLCHAIN='1.99.1', OPENSSL_DIR=str(installed), OPENSSL_INCLUDE_DIR=str(installed / 'include'), OPENSSL_LIB_DIR=str(installed / 'lib'),
         OPENSSL_STATIC='1', OPENSSL_NO_VENDOR='1', PIP_NO_BINARY='cryptography', PIP_NO_CACHE_DIR='1',
         CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER=shutil.which('link') or '')
