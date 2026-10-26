@@ -1,25 +1,25 @@
 {
-  "scope": "Windows x64 isolated diagnostic only; unchanged Linux inputs/evidence retained",
-  "checked": "2026-10-25 Europe/Rome",
+  "scope": "Windows x64 isolated diagnostic; Python 3.14.10 requalification; historical evidence retains original identities",
+  "checked": "2026-10-26 Europe/Rome",
   "cpython_patch": {
     "path": ".github/patches/cpython-3.14.9-openssl4.patch",
     "sha256": "98e3c27966e9a6f2a12131a7ac19ac66aa7bae20da85ef9e1d8f3e7bc769fe81",
     "upstream": "https://github.com/python/cpython/pull/146217",
     "upstream_patch_sha256": "8d491c4b52781d8f6b784ae99f28acdc0c48f468df28ba6863e62e8ac6f3abfe",
-    "adaptation": "Backport upstream removed-SSLv3 guards, const-correct X509 handling and OpenSSL-4 version assertion. Preserve 3.14 fixed-protocol APIs using TLS_method plus checked minimum/maximum bounds as documented by OpenSSL, rather than upstream main's removal of legacy constants. No change to certificate/hostname defaults or _hashlib source.",
+    "adaptation": "Unchanged reviewed OpenSSL4 patch bytes apply to official CPython 3.14.10 without fuzz/new source adaptation; current security checks retained. Native qualification required.",
     "migration": "https://docs.openssl.org/4.0/man7/ossl-guide-migration/",
     "files": {
       "Modules/_ssl.c": {
-        "base_sha256": "429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a",
-        "patched_sha256": "77f1a8c97af32e4f8eccc193a8bc8ce8039f55d9ace100f621a77643add44baa"
+        "base_sha256": "66245ce8d08fbc8276ea389ce6b250888ce4bb917da12a6496209de7b48ef121",
+        "patched_sha256": "6ae38c85daab752b4e9b5e816144eeb217472ff8d3915047b8b2a157db2101cb"
       },
       "Modules/_ssl/cert.c": {
         "base_sha256": "4d07b7ca6fea2f848413f76b6f65e2c26e36d49c70431f04d748e4624706eb4f",
         "patched_sha256": "0085ddc7bdebff311ecf1f63bbae9f44886d5f239795f560d3692aa0a55d9f8f"
       },
       "Lib/test/test_ssl.py": {
-        "base_sha256": "33b281da686c0dbfceae8ef3183c58da5b7dc8539c4d379cf669ec69523b446e",
-        "patched_sha256": "4875db55a114094e965e75eb06e33c8195067e4904589c481cd9c6765f29aa78"
+        "base_sha256": "49cd9863938836e7ea963b7d36ab82d60f4fd5c20eb735399183e0d0efc5fc81",
+        "patched_sha256": "739e86fed49b7f2e554d3c9183dc1aa405986e7f150a3113b062d0ca7d7b6d56"
       }
     }
   },
@@ -50,11 +50,11 @@
   },
   "sources": [
     {
-      "name": "Python-3.14.9.tar.xz",
-      "directory": "Python-3.14.9",
-      "url": "https://www.python.org/ftp/python/3.14.9/Python-3.14.9.tar.xz",
-      "sha256": "e02d9ac21cebda6e46435369744a92c65cc7cd8669697694122cf97ffacd1e53",
-      "authority": "https://www.python.org/downloads/release/python-3149/"
+      "name": "Python-3.14.10.tar.xz",
+      "directory": "Python-3.14.10",
+      "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+      "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "authority": "https://www.python.org/downloads/release/python-31410/"
     },
     {
       "name": "openssl-4.0.3.tar.gz",
@@ -124,7 +124,7 @@
       "revision": "05301997b2f9590f49c672cf3dfd3d3dfa7ad521",
       "directory": "cpython-source-deps-05301997b2f9590f49c672cf3dfd3d3dfa7ad521",
       "destination": "bzip2-1.0.8",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-mpdecimal-4.0.0.tar.gz",
@@ -134,7 +134,7 @@
       "revision": "48316ec025c1ebe500854c332be0a12c640c7301",
       "directory": "cpython-source-deps-48316ec025c1ebe500854c332be0a12c640c7301",
       "destination": "mpdecimal-4.0.0",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-sqlite-3.50.4.0.tar.gz",
@@ -144,7 +144,7 @@
       "revision": "ef547e549b49a2822214ef7880c0ca212b32929e",
       "directory": "cpython-source-deps-ef547e549b49a2822214ef7880c0ca212b32929e",
       "destination": "sqlite-3.50.4.0",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-xz-5.2.5.tar.gz",
@@ -154,7 +154,7 @@
       "revision": "c6bc0c612605622aaef101a33a751f9de2ecc193",
       "directory": "cpython-source-deps-c6bc0c612605622aaef101a33a751f9de2ecc193",
       "destination": "xz-5.2.5",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-zlib-ng-2.2.4.tar.gz",
@@ -164,7 +164,7 @@
       "revision": "a502e047655c31db29601def76ad6539acacf43d",
       "directory": "cpython-source-deps-a502e047655c31db29601def76ad6539acacf43d",
       "destination": "zlib-ng-2.2.4",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-zstd-1.5.7.tar.gz",
@@ -174,7 +174,7 @@
       "revision": "eef946ae8cf1591c0e5cc5f43486210768647c2e",
       "directory": "cpython-source-deps-eef946ae8cf1591c0e5cc5f43486210768647c2e",
       "destination": "zstd-1.5.7",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     },
     {
       "name": "cpython-source-deps-libffi-3.4.4.tar.gz",
@@ -184,7 +184,7 @@
       "revision": "73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
       "directory": "cpython-source-deps-73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
       "destination": "libffi-3.4.4",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open",
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open",
       "source_only": true
     },
     {
@@ -195,7 +195,7 @@
       "revision": "94cb9a1c7feb608adf2b9f8fe2dbd6925ffbf90d",
       "directory": "cpython-bin-deps-94cb9a1c7feb608adf2b9f8fe2dbd6925ffbf90d",
       "destination": "libffi-3.4.4",
-      "scope": "Unchanged CPython 3.14.9 parent prerequisite; remaining inventory migrations stay open"
+      "scope": "Unchanged CPython 3.14.10 parent prerequisite; remaining inventory migrations stay open"
     }
   ],
   "openssl_dlls": [
@@ -233,5 +233,10 @@
     "sha256": "87336eba53b4acfe917424ab5d500d2b0054d9f5148d35c2273ccf2cfb712f0d",
     "authority": "https://www.nasm.us/pub/nasm/releasebuilds/3.02/",
     "scope": "corresponding original source"
-  }
+  },
+  "security_files": {
+    "Modules/_ssl/distrusted_spki.h": "bff6ffbbdb400bcfee6d15f8309da2128157feb7d8be98d14041abe80fc9ff8e",
+    "Lib/tarfile.py": "0f521ef8759f672841632bce6189f805d5420db9fe7f41a00db81b6150207cc7"
+  },
+  "security": "CVE-2026-115557 distrusted SPKI and CVE-2026-114583 tar-filter protections unchanged from official 3.14.10. Require executed upstream security regressions; previous 3.14.9 profiles do not qualify this patch version."
 }

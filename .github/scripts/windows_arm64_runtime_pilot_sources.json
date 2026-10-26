@@ -1,7 +1,7 @@
 {
   "scope": "native Windows ARM64 diagnostic only; x64/Linux inputs unchanged",
   "base_manifest": "windows_runtime_pilot_sources.json",
-  "base_manifest_canonical_sha256": "d46dcebd60e0730ef4df8334896f581fbfbbc40c9ca820a85fa9fc7013741501",
+  "base_manifest_canonical_sha256": "62edb54946b7ed35ee7220b24ec0cc7b29c195947cd2f57e1a3fa75c35fc7061",
   "openssl_target": "VC-WIN64-CLANGASM-ARM",
   "openssl_dlls": [
     "libcrypto-4-arm64.dll",

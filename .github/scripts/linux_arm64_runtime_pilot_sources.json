@@ -1,7 +1,7 @@
 {
   "scope": "one native Ubuntu 24.04 ARM64 diagnostic; no x64 SDK inheritance or Ubuntu22.04 ARM64 claim",
   "base_manifest": "native_runtime_pilot_sources.json",
-  "base_manifest_canonical_sha256": "84b562fb93d4e14fd73d3a47af9ff1b8e0095a360ac0e1551edaab3b6d8fdad9",
+  "base_manifest_canonical_sha256": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
   "os": "24.04",
   "machine": "AArch64",
   "glibc_max": "2.38",

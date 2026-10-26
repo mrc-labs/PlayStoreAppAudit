@@ -126,6 +126,25 @@ def test_pilot_patch_and_official_sources_are_hash_bound() -> None:
         assert int(item['sha256'], 16) > 0
 
 
+@pytest.mark.parametrize('outcome', ['', '<skipped/>', '<error/>', '<failure/>', 'notrun', 'absent'])
+@pytest.mark.parametrize('tar_outcome', ['passed', 'skipped', 'absent'])
+def test_security_gate_requires_both_actual_upstream_regressions(tmp_path: Path, outcome: str, tar_outcome: str) -> None:
+    from verify_native_runtime_pilot import executed_cpython_security
+
+    xml, log = tmp_path / 'ssl.xml', tmp_path / 'tar.log'
+    status = 'status="notrun"' if outcome == 'notrun' else ''
+    body = outcome if outcome.startswith('<') else ''
+    name = 'other' if outcome == 'absent' else 'test.test_ssl.MemoryBIOTests.test_distrusted_spki'
+    xml.write_text(f'<testsuite><testcase name="{name}" {status}>{body}</testcase></testsuite>')
+    text = 'test_link_at_destination ... ok\nRan 1 test\n\nOK\n'
+    log.write_text(text if tar_outcome == 'passed' else text.replace('ok', 'skipped') if tar_outcome == 'skipped' else 'Ran 1 test\n\nOK\n')
+    if outcome or tar_outcome != 'passed':
+        with pytest.raises(RuntimeError, match='Executed CPython'):
+            executed_cpython_security(xml, log)
+    else:
+        assert len(executed_cpython_security(xml, log)) == 2
+
+
 def test_malformed_metadata_corpus_has_valid_crc_and_spec_chunk_order() -> None:
     for kind in (b'zTXt', b'iTXt', b'iCCP'):
         image = png_fixture(kind, b'not-deflate')

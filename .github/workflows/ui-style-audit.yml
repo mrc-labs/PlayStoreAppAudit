@@ -49,7 +49,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:

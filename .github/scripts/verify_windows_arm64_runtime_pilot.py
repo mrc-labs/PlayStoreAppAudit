@@ -93,7 +93,7 @@ def main() -> None:
     output.mkdir(exist_ok=True)
     prefix = Path(os.environ['PILOT_PREFIX']).resolve()
     assert sys.platform == 'win32' and platform.machine().upper() == 'ARM64'
-    assert platform.python_version() == '3.14.9' and not sysconfig.get_config_var('Py_GIL_DISABLED')
+    assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')
     assert Path(sys.base_prefix).resolve() == prefix / 'python'
     require_arm64(Path(sys.executable))
     for directory in (prefix / 'qt/bin', prefix / 'bin', prefix / 'openssl/bin'):
@@ -164,10 +164,13 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
+    from verify_native_runtime_pilot import executed_cpython_security
+
+    security = executed_cpython_security(output / 'cpython-regressions.xml', output / 'tarfile-security-regression.log')
     native = images(prefix, output)
-    report = {'source_sha':os.environ['GITHUB_SHA'], 'identity':'project-modified native ARM64 CPython 3.14.9 and matched source Qt/PySide/Shiboken 6.12.0; same three accepted patches',
+    report = {'source_sha':os.environ['GITHUB_SHA'], 'identity':'project-modified native ARM64 CPython 3.14.10 and matched source Qt/PySide/Shiboken 6.12.0; same three accepted patches',
         'architecture':platform.machine(), 'gil_disabled':sysconfig.get_config_var('Py_GIL_DISABLED'), 'python':sys.version,
-        'python_ssl':ssl.OPENSSL_VERSION, 'cryptography_ssl':backend.openssl_version_text(),
+        'cpython_security':security, 'python_ssl':ssl.OPENSSL_VERSION, 'cryptography_ssl':backend.openssl_version_text(),
         'cryptography_provider':'independent native source build; static OpenSSL / dynamic CRT',
         'default_trust':defaults, 'python_tls':python_tls, 'qt_openssl':openssl,
         'qt_schannel':json.loads((output / 'qt-schannel.json').read_text(encoding='utf-8')),

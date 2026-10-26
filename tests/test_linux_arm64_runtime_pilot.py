@@ -57,7 +57,7 @@ def test_current_security_python_override_keeps_the_reviewed_patch_bytes() -> No
     selected = probe.runtime_sources(arm, base)
     assert selected[0] == arm['cpython_source'] and selected[1:] == base['sources'][1:7]
     assert selected[0]['directory'] == 'Python-3.14.10'
-    assert base['sources'][0]['directory'] == 'Python-3.14.9'
+    assert base['sources'][0] == arm['cpython_source']
     assert arm['cpython_patch']['sha256'] == base['cpython_patch']['sha256']
     assert hashlib.sha256((ROOT / arm['cpython_patch']['path']).read_bytes()).hexdigest() == arm['cpython_patch']['sha256']
     assert 'Modules/_ssl/distrusted_spki.h' in arm['security_files']

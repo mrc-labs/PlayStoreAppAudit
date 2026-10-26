@@ -1,6 +1,6 @@
 {
   "scope": "v2.4 native Ubuntu 22.04 x64 diagnostic only; not a release runtime or general toolchain manager",
-  "checked": "2026-10-25 Europe/Rome",
+  "checked": "2026-10-26 Europe/Rome",
   "extractor": {
     "version":"26.05","name":"7z2605-linux-x64.tar.xz",
     "url":"https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz",
@@ -22,16 +22,16 @@
     "sha256": "98e3c27966e9a6f2a12131a7ac19ac66aa7bae20da85ef9e1d8f3e7bc769fe81",
     "upstream": "https://github.com/python/cpython/pull/146217",
     "upstream_patch_sha256": "8d491c4b52781d8f6b784ae99f28acdc0c48f468df28ba6863e62e8ac6f3abfe",
-    "adaptation": "Backport upstream removed-SSLv3 guards, const-correct X509 handling and OpenSSL-4 version assertion. Preserve 3.14 fixed-protocol APIs using TLS_method plus checked minimum/maximum bounds as documented by OpenSSL, rather than upstream main's removal of legacy constants. No change to certificate/hostname defaults or _hashlib source.",
+    "adaptation": "Unchanged reviewed OpenSSL4 patch bytes apply to official CPython 3.14.10 without fuzz/new source adaptation; current security checks retained. Native qualification required.",
     "migration": "https://docs.openssl.org/4.0/man7/ossl-guide-migration/",
     "files": {
-      "Modules/_ssl.c": {"base_sha256":"429462fe513155551219d285a605a3849b15503dbbc5425c529ac4f728a4402a","patched_sha256":"77f1a8c97af32e4f8eccc193a8bc8ce8039f55d9ace100f621a77643add44baa"},
+      "Modules/_ssl.c": {"base_sha256":"66245ce8d08fbc8276ea389ce6b250888ce4bb917da12a6496209de7b48ef121","patched_sha256":"6ae38c85daab752b4e9b5e816144eeb217472ff8d3915047b8b2a157db2101cb"},
       "Modules/_ssl/cert.c": {"base_sha256":"4d07b7ca6fea2f848413f76b6f65e2c26e36d49c70431f04d748e4624706eb4f","patched_sha256":"0085ddc7bdebff311ecf1f63bbae9f44886d5f239795f560d3692aa0a55d9f8f"},
-      "Lib/test/test_ssl.py": {"base_sha256":"33b281da686c0dbfceae8ef3183c58da5b7dc8539c4d379cf669ec69523b446e","patched_sha256":"4875db55a114094e965e75eb06e33c8195067e4904589c481cd9c6765f29aa78"}
+      "Lib/test/test_ssl.py": {"base_sha256":"49cd9863938836e7ea963b7d36ab82d60f4fd5c20eb735399183e0d0efc5fc81","patched_sha256":"739e86fed49b7f2e554d3c9183dc1aa405986e7f150a3113b062d0ca7d7b6d56"}
     }
   },
   "sources": [
-    {"name":"Python-3.14.9.tar.xz","directory":"Python-3.14.9","url":"https://www.python.org/ftp/python/3.14.9/Python-3.14.9.tar.xz","sha256":"e02d9ac21cebda6e46435369744a92c65cc7cd8669697694122cf97ffacd1e53","authority":"https://www.python.org/downloads/release/python-3149/"},
+    {"name":"Python-3.14.10.tar.xz","directory":"Python-3.14.10","url":"https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz","sha256":"de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032","authority":"https://www.python.org/downloads/release/python-31410/"},
     {"name":"openssl-4.0.3.tar.gz","directory":"openssl-4.0.3","url":"https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz","sha256":"325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9","authority":"https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz.sha256"},
     {"name":"libpng-1.6.59.tar.xz","directory":"libpng-1.6.59","url":"https://download.sourceforge.net/libpng/libpng-1.6.59.tar.xz","sha256":"d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389","authority":"https://www.libpng.org/pub/png/libpng.html"},
     {"name":"pcre2-10.49.tar.gz","directory":"pcre2-10.49","url":"https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.gz","sha256":"929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae","authority":"https://api.github.com/repos/PCRE2Project/pcre2/releases/tags/pcre2-10.49"},
@@ -39,5 +39,10 @@
     {"name":"qtsvg-everywhere-src-6.12.0.tar.xz","directory":"qtsvg-everywhere-src-6.12.0","url":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz","sha256":"e4ab39534ec97987b1b9b60ef7f4d3253d5912a69f8c713a01753174a4029331","authority":"https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtsvg-everywhere-src-6.12.0.tar.xz.sha256"},
     {"name":"pyside-setup-everywhere-src-6.12.0.tar.xz","directory":"pyside-setup-everywhere-src-6.12.0","url":"https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz","sha256":"099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751","authority":"https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz.sha256"},
     {"name":"libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z","directory":"libclang","exclude_paths":["libclang/bin/clang++","libclang/bin/clang-cl","libclang/bin/clang-cpp"],"url":"https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z","sha256":"6c9929becccf32d88f788899da7dd4edd42371ad95e2990d9b84e8f480feabfc","authority":"https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-linux-Rhel9.6-gcc11.4-x86_64.7z.sha256","scope":"build-only Qt-provided stable libclang, supported 16-22 parser range; not a preview LLVM or shipped application library"}
-  ]
+  ],
+  "security_files": {
+    "Modules/_ssl/distrusted_spki.h": "bff6ffbbdb400bcfee6d15f8309da2128157feb7d8be98d14041abe80fc9ff8e",
+    "Lib/tarfile.py": "0f521ef8759f672841632bce6189f805d5420db9fe7f41a00db81b6150207cc7"
+  },
+  "security": "CVE-2026-115557 distrusted SPKI and CVE-2026-114583 tar-filter protections unchanged from official 3.14.10. Require executed upstream security regressions; previous 3.14.9 profiles do not qualify this patch version."
 }

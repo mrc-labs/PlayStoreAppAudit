@@ -168,6 +168,19 @@ def executed_upstream_suites(xml_path: Path) -> dict[str, int]:
     return counts
 
 
+def executed_cpython_security(xml_path: Path, tar_log: Path) -> dict[str, str]:
+    """A passing suite must include executed SPKI and tar-filter security cases."""
+    cases = [case for case in ET.parse(xml_path).getroot().iter('testcase')
+             if 'test_distrusted_spki' in case.get('name', '')]
+    if not cases or any(case.get('status') == 'notrun' or any(case.find(tag) is not None
+                       for tag in ('skipped', 'error', 'failure')) for case in cases):
+        raise RuntimeError('Executed CPython compromised-SPKI rejection required')
+    text = tar_log.read_text(encoding='utf-8')
+    if 'test_link_at_destination' not in text or 'Ran 1 test' not in text or '\nOK\n' not in text or 'skipped' in text:
+        raise RuntimeError('Executed CPython tar destination-link rejection required')
+    return {'compromised_spki': 'executed rejection PASS', 'tar_destination_link': 'executed rejection PASS'}
+
+
 def png_chunk(kind: bytes, data: bytes) -> bytes:
     return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
 
@@ -419,7 +432,7 @@ def main() -> None:
         return
     prefix = Path(os.environ['PILOT_PREFIX']).resolve()
     assert sys.platform == 'linux' and platform.machine() == 'x86_64'
-    assert platform.python_version() == '3.14.9' and not sysconfig.get_config_var('Py_GIL_DISABLED')
+    assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')
     assert Path(sys.base_prefix).resolve() == prefix / 'python'
     assert Path(ssl.__file__).resolve().is_relative_to(prefix / 'python')
     assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 ')
@@ -479,9 +492,11 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
+    security = executed_cpython_security(output / 'cpython-regressions.xml', output / 'tarfile-security-regression.log')
     images = native_images(prefix)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': 'native source-stack pilot; not final package acceptance',
-              'identity': 'project-modified CPython 3.14.9 / source-built matched Qt-PySide-Shiboken 6.12.0',
+              'identity': 'project-modified CPython 3.14.10 / source-built matched Qt-PySide-Shiboken 6.12.0',
+              'cpython_security': security,
               'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(),
               'qt_ssl_build': QSslSocket.sslLibraryBuildVersionString(), 'qt_ssl_runtime': QSslSocket.sslLibraryVersionString(),
               'qt_backend': QSslSocket.activeBackend(), 'python_tls': python_tls, 'qt_tls': qt_tls,

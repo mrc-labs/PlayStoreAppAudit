@@ -24,7 +24,7 @@ from build_windows_runtime_pilot import (
 )
 from inspect_pe import read_pe_machine
 from probe_windows_arm64_runtime import require_arm64
-from verify_native_runtime_pilot import executed_upstream_suites
+from verify_native_runtime_pilot import executed_cpython_security, executed_upstream_suites
 
 
 def unpack(archive: Path, destination: Path) -> None:
@@ -176,9 +176,11 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
             unpack(archive, work)
         if item in base['cpython_externals']:
             (work / item['directory']).rename(externals / item['destination'])
-    python_source = work / 'Python-3.14.9'
+    python_source = work / 'Python-3.14.10'
     for key in ('cpython_patch', 'windows_patch'):
         patch_source(python_source, base[key], evidence)
+    for name, expected in base['security_files'].items():
+        assert hashlib.sha256((python_source / name).read_bytes()).hexdigest() == expected, 'Upstream security protection changed: ' + name
     pyside = work / 'pyside-setup-everywhere-src-6.12.0'
     for path in (REPO / '.github/scripts/windows_arm64_runtime_pilot_sources.json', REPO / '.github/scripts/windows_runtime_pilot_sources.json'):
         shutil.copy2(path, evidence / path.name)
@@ -236,6 +238,8 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
     run([py, '-c', "import ssl,sys; from pathlib import Path; root=Path(sys.argv[1]); c=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER); c.load_cert_chain(root/'keycert.pem'); t=ssl.create_default_context(cafile=str(root/'pycacert.pem')); assert t.verify_mode==ssl.CERT_REQUIRED and t.check_hostname; print('ARM64 PEM I/O PASS')", python_source / 'Lib/test/certdata'])
     run([py, '-m', 'test', '-j2', '--junit-xml', evidence / 'cpython-regressions.xml', 'test_ssl', 'test_hashlib', 'test_hmac'], cwd=python_source, log=evidence / 'cpython-regressions.log')
     executed_upstream_suites(evidence / 'cpython-regressions.xml')
+    run([py, '-m', 'unittest', '-v', 'test.test_tarfile.TestExtractionFilters.test_link_at_destination'], cwd=python_source, log=evidence / 'tarfile-security-regression.log')
+    print('Executed upstream security:', executed_cpython_security(evidence / 'cpython-regressions.xml', evidence / 'tarfile-security-regression.log'), flush=True)
     runtime = prefix / 'python'
     run([py, python_source / 'PC/layout', '-s', python_source, '-b', build, '--copy', runtime, '--include-dev', '--include-venv', '--include-stable', '--include-tests'], log=evidence / 'cpython-layout.log')
     shutil.copy2(evidence / 'windows_arm64_runtime_pilot_sources.json', runtime / 'PROJECT_MODIFIED_RUNTIME.json')

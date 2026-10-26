@@ -64,12 +64,14 @@ for sdk_source in (spec['cxx_link_sdk']['source'], spec['extractor']['source']):
     with sdk_archive.open('rb') as stream:
         assert hashlib.file_digest(stream, 'sha256').hexdigest() == sdk_source['sha256']
     print('Verified original build-tool source:', sdk_source['name'], flush=True)
-source = work / 'src/Python-3.14.9'
+source = work / 'src/Python-3.14.10'
 for name, hashes in spec['cpython_patch']['files'].items():
     assert hashlib.sha256((source / name).read_bytes()).hexdigest() == hashes['base_sha256']
 subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(patch.resolve())], cwd=source, check=True)
 for name, hashes in spec['cpython_patch']['files'].items():
     assert hashlib.sha256((source / name).read_bytes()).hexdigest() == hashes['patched_sha256']
+for name, expected in spec['security_files'].items():
+    assert hashlib.sha256((source / name).read_bytes()).hexdigest() == expected, 'Upstream security protection changed: ' + name
 for directory in (work / 'src').iterdir():
     target = evidence / 'legal' / directory.name
     target.mkdir()
@@ -95,7 +97,7 @@ make test TESTS='test_evp test_x509 test_verify test_ssl_new'
 make install_sw
 cp configdata.pm "$evidence/openssl-configdata.pm"
 
-cd "$work/src/Python-3.14.9"
+cd "$work/src/Python-3.14.10"
 ./configure --prefix="$prefix/python" --enable-shared --with-openssl="$ssl_prefix" \
   --with-openssl-rpath=auto --with-ensurepip=install \
   LDFLAGS="-Wl,-rpath,$prefix/python/lib" \
@@ -106,6 +108,10 @@ LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evide
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_upstream_suites; print('Executed upstream cases:', executed_upstream_suites(Path(sys.argv[1])))" \
   "$evidence/cpython-regressions.xml"
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
+PYTHONPATH="$repo/.github/scripts" python -c \
+  "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_cpython_security; print('Executed upstream security:', executed_cpython_security(Path(sys.argv[1]), Path(sys.argv[2])))" \
+  "$evidence/cpython-regressions.xml" "$evidence/tarfile-security-regression.log"
 make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
@@ -175,7 +181,7 @@ Path('pilot-evidence/runtime-requirements.txt').write_text('\n'.join(x for x in 
 PY
 python -m pip install -r "$evidence/runtime-requirements.txt" 'pytest==9.1.1' --report "$evidence/runtime-install.json"
 python -m pip check
-export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.9"
+export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.10"
 unset SSL_CERT_FILE SSL_CERT_DIR
 export XDG_CONFIG_HOME="$work/profile/config" XDG_DATA_HOME="$work/profile/data" XDG_CACHE_HOME="$work/profile/cache"
 export QT_QPA_PLATFORM=xcb
@@ -187,7 +193,7 @@ python - <<'PY'
 import json, os, platform, subprocess, sys
 from pathlib import Path
 summary = {'source_sha':os.environ['GITHUB_SHA'],'scope':'non-release native runtime/framework pilot',
- 'runtime_identity':'project-modified CPython 3.14.9, not unchanged official binary',
+ 'runtime_identity':'project-modified CPython 3.14.10, not unchanged official binary',
  'python':sys.version,'architecture':platform.machine(),'prefix':os.environ['PILOT_PREFIX'],
  'gil_disabled':__import__('sysconfig').get_config_var('Py_GIL_DISABLED'),
  'tools':{name:subprocess.run(command,capture_output=True,text=True,check=True).stdout for name,command in {
