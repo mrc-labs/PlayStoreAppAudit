@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-25 Europe/Rome
+Last updated: 2026-10-26 Europe/Rome
 
 ## Purpose
 
@@ -24,7 +24,7 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 
 Control Tower approved MINOR reclassification on **2026-10-25**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Keep existing PR #239 and branch `release/v2.3.1-maintenance` for continuity. Prepared metadata is **2.4.0 / Windows 2.4.0.0**; the earlier PATCH proposal is preparation history. [Audit](V2_4_RELEASE_PREP.md) and [inventory](V2_4_COMPONENT_INVENTORY.json) control the selected stack and open migrations.
 
-The minimal CPython/OpenSSL compatibility and coherent corrected Qt/provider source profile pass one native Ubuntu 22.04 x64 diagnostic pilot (40212940120). Independent review and later qualification of the other five targets and final producing profiles remain required. Preserve all six native targets and accepted OS/ABI/trust/legal requirements. This maintenance release includes no #209 update-delivery feature, #154 production signing or opportunistic refactor; #236's tentative feature numbering is not a commitment. No SHA is frozen. Independent review, complete remaining qualifications, normal merge, post-merge Quality and second full freshness/exact-Python selection must precede final release builds. Stop this tranche before merge/freeze/final multi-platform builds/assembly/tag/signing/publication.
+The minimal CPython/OpenSSL compatibility and coherent corrected Qt/provider source profile pass one native Ubuntu 22.04 x64 diagnostic pilot (40212940120). Control Tower accepted that diagnostic feasibility; the current bounded extension is Windows x64 only, with full pilot 40294762434 pending after successful native loader/Schannel prerequisite diagnostic 40294610366. The other four targets and final producing profiles remain unqualified. Preserve all six native targets and accepted OS/ABI/trust/legal requirements. This maintenance release includes no #209 update-delivery feature, #154 production signing or opportunistic refactor; #236's tentative feature numbering is not a commitment. No SHA is frozen. Independent review, complete remaining qualifications, normal merge, post-merge Quality and second full freshness/exact-Python selection must precede final release builds. Stop this tranche before merge/freeze/final multi-platform builds/assembly/tag/signing/publication.
 
 ## v2.0 published baseline
 

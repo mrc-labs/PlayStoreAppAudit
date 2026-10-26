@@ -1,4 +1,5 @@
 {
+  "windows_checkpoint_2026_10_26": {"source_head":"529604b782a20530149cd16ad637e63b6276524a","scope":"native Windows x64 diagnostic only; no producing profile adoption","selected":"project-modified CPython 3.14.9; OpenSSL 4.0.3; matched Qt/PySide/Shiboken 6.12.0; libpng 1.6.59; PCRE2 10.49","source_manifest":"../.github/scripts/windows_runtime_pilot_sources.json","prior_run":40242391635,"prior_result":"QtBase/QtSvg built; PySide QtCore stub import error 126; not accepted","prerequisite_run":40294610366,"prerequisite_result":"PASS native AMD64 /MD extension PATH-only negative and explicit/private-venv registration positives; stock Schannel six TLS/trust/certificate cases","full_run":40294762434,"full_status":"pending; complete modified-runtime qualification not claimed","linux_inputs":"unchanged accepted 40212940120","remaining_targets":"four other native targets not extended","freshness":"OpenSSL4 current supported selection, not indefinite pin; existing 1094 observations retained without rescanning"},
   "schema_version": 1,
   "audit_date": "2026-10-24 Europe/Rome",
   "canonical_policy_sha": "88b341b6d910fca066b728582d99db846211687d",
