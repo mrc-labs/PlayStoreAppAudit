@@ -199,7 +199,7 @@ mkdir "$work/qt-header-probe"
 cat > "$work/qt-header-probe/CMakeLists.txt" <<'CMAKE'
 cmake_minimum_required(VERSION 3.21)
 project(NativeQtHeaderProbe LANGUAGES CXX)
-find_package(Qt6 6.12.0 EXACT COMPONENTS Gui REQUIRED)
+find_package(Qt6 6.12.0 EXACT COMPONENTS Gui GuiPrivate REQUIRED)
 add_executable(native-qt-header main.cpp)
 target_link_libraries(native-qt-header PRIVATE Qt6::Gui Qt6::GuiPrivate)
 CMAKE
