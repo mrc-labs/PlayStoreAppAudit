@@ -81,6 +81,10 @@ make -j2
 make test TESTS='test_evp test_x509 test_verify test_ssl_new' > "$evidence/openssl-regressions.log" 2>&1
 make install_sw
 cp configdata.pm "$evidence/openssl-configdata.pm"
+# CMake owns install rpaths; inherited linker rpaths otherwise make Apple's
+# install_name_tool reject the install edit and leave build-tree Qt loaded.
+python_link_flags="$LDFLAGS"
+unset LDFLAGS
 
 # Required compression source is already qualified on Windows; keep libpng/Qt coherent.
 cmake -S "$work/src/zlib-1.3.2" -B "$work/zlib-build" -GNinja \
@@ -94,6 +98,7 @@ cmake --install "$work/zlib-build"
 
 mkdir "$work/python-build"
 cd "$work/python-build"
+export LDFLAGS="$python_link_flags"
 "$work/src/Python-3.14.10/configure" --prefix="$prefix/python" --enable-shared \
   --with-openssl="$ssl_prefix" --with-openssl-rpath=auto --with-ensurepip=install --with-pkg-config=yes
 make -j2
@@ -118,6 +123,7 @@ cp config.log "$evidence/cpython-config.log"
 cp Makefile "$evidence/cpython-Makefile"
 cp "$evidence/macos_arm64_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/native_runtime_pilot_sources.json"
+unset LDFLAGS
 unset Python_ROOT_DIR Python2_ROOT_DIR Python3_ROOT_DIR PYTHON_ROOT_DIR PYTHON2_ROOT_DIR PYTHON3_ROOT_DIR
 export Python_ROOT_DIR="$prefix/python" Python3_ROOT_DIR="$prefix/python"
 export PKG_CONFIG_PATH="$prefix/python/lib/pkgconfig:$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
@@ -180,6 +186,37 @@ cmake --build . --parallel 2
 cmake --install .
 cp CMakeCache.txt "$evidence/qtbase-CMakeCache.txt"
 cp config.summary "$evidence/qtbase-config.summary"
+# Resolve the installed framework, not a still-loadable build-tree framework,
+# before spending time on Svg and the binding generator/compiler.
+PYTHONPATH="$repo/.github/scripts" python - <<'PY'
+import os
+from pathlib import Path
+from probe_macos_arm64_runtime import installed_qt
+prefix = Path(os.environ['PILOT_WORK']) / 'prefix'
+print(installed_qt(prefix / 'qt', Path(os.environ['PILOT_EVIDENCE']))['result'])
+PY
+mkdir "$work/qt-header-probe"
+cat > "$work/qt-header-probe/CMakeLists.txt" <<'CMAKE'
+cmake_minimum_required(VERSION 3.21)
+project(NativeQtHeaderProbe LANGUAGES CXX)
+find_package(Qt6 6.12.0 EXACT COMPONENTS Gui REQUIRED)
+add_executable(native-qt-header main.cpp)
+target_link_libraries(native-qt-header PRIVATE Qt6::Gui Qt6::GuiPrivate)
+CMAKE
+cat > "$work/qt-header-probe/main.cpp" <<'CPP'
+#include <qrhi.h>
+#include <QtCore/QLibraryInfo>
+#include <QtCore/qglobal.h>
+#include <cstdio>
+int main(){QRhi *rhi=nullptr;puts(qVersion());puts(QLibraryInfo::path(QLibraryInfo::PrefixPath).toUtf8().constData());return rhi?1:0;}
+CPP
+cmake -S "$work/qt-header-probe" -B "$work/qt-header-probe/build" -GNinja \
+  -DCMAKE_PREFIX_PATH="$prefix/qt;$prefix;$ssl_prefix" -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.4 -DCMAKE_OSX_SYSROOT="$SDKROOT" \
+  '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local'
+cmake --build "$work/qt-header-probe/build"
+"$work/qt-header-probe/build/native-qt-header" > "$evidence/qt-header-probe.txt"
+test "$(tail -n 1 "$evidence/qt-header-probe.txt")" = "$prefix/qt"
 mkdir "$work/qtsvg-build"
 cd "$work/qtsvg-build"
 "$prefix/qt/bin/qt-configure-module" "$work/src/qtsvg-everywhere-src-6.12.0" \
@@ -210,7 +247,7 @@ python .github/scripts/verify_macos_arm64_runtime_pilot.py --output-dir "$eviden
   cd "$work/profile"
   test -f PlayStoreAppAudit.portable
   python "$repo/main.py" cli audit --help > "$evidence/cli-smoke.txt"
-  python -m pytest "$repo/tests/test_cli_headless.py" -q > "$evidence/project-cli-regressions.log" 2>&1
+  PYTHONPATH="$repo" python -m pytest "$repo/tests/test_cli_headless.py" -q > "$evidence/project-cli-regressions.log" 2>&1
 )
 python -m compileall -q playstore_app_audit
 python - <<'PY'

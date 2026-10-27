@@ -128,6 +128,22 @@ def prepare_python(work: Path, evidence: Path, base: dict) -> Path:
     return source
 
 
+def installed_qt(qt: Path, evidence: Path) -> dict:
+    """Reject a successful install command that still resolves the build tree."""
+    query = run([qt / 'bin/qtpaths6', '--query'])
+    values = dict(line.split(':', 1) for line in query.splitlines() if ':' in line)
+    assert Path(values['QT_INSTALL_PREFIX']).resolve() == qt.resolve(), ('Installed Qt resolves another prefix', values)
+    assert (qt / 'lib/QtGui.framework/Headers/6.12.0/QtGui/rhi/qrhi.h').is_file()
+    rows = [macho(path.resolve(), target=True, output=evidence) for path in
+            (qt / 'bin/qtpaths6', qt / 'lib/QtCore.framework/QtCore')]
+    for row in rows:
+        assert len(row['rpaths']) == len(set(row['rpaths'])), ('Duplicate installed rpath', row)
+        assert not any('/qt-build' in value or '/src/' in value for value in row['rpaths']), ('Build-tree runtime path', row)
+    report = {'query': values, 'images': rows, 'result': 'Installed Qt prefix/framework/rpath/header PASS'}
+    (evidence / 'installed-qt.json').write_text(json.dumps(report, indent=2))
+    return report
+
+
 def source_perl(work: Path, evidence: Path, arm: dict) -> dict:
     archive = fetch(arm['host_perl_source'], evidence / 'sources')
     unpack(archive, work)

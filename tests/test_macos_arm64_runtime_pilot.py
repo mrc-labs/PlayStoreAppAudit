@@ -162,3 +162,23 @@ def test_darwin_build_tests_use_upstreams_case_insensitive_executable_name() -> 
     assert 'test -f ./python.exe && test -x ./python.exe' in recipe
     assert './python -' not in recipe
     assert recipe.count('./python.exe -') == 4
+
+
+@pytest.mark.parametrize('defect', ['other-prefix', 'build-rpath', 'duplicate-rpath', 'none'])
+def test_installed_qt_cannot_silently_resolve_build_tree(tmp_path: Path, monkeypatch, defect: str) -> None:
+    qt, evidence = tmp_path / 'qt', tmp_path / 'evidence'
+    evidence.mkdir()
+    header = qt / 'lib/QtGui.framework/Headers/6.12.0/QtGui/rhi/qrhi.h'
+    header.parent.mkdir(parents=True)
+    header.write_text('header fixture')
+    prefix = str(tmp_path / 'qt-build') if defect == 'other-prefix' else str(qt)
+    monkeypatch.setattr(probe, 'run', lambda *args: 'QT_INSTALL_PREFIX:' + prefix)
+    paths = [(tmp_path / 'qt-build/lib').as_posix()] if defect == 'build-rpath' else ['@loader_path']
+    if defect == 'duplicate-rpath':
+        paths *= 2
+    monkeypatch.setattr(probe, 'macho', lambda *args, **kwargs: {'rpaths': paths})
+    if defect == 'none':
+        assert probe.installed_qt(qt, evidence)['result'].endswith('PASS')
+    else:
+        with pytest.raises(AssertionError):
+            probe.installed_qt(qt, evidence)
