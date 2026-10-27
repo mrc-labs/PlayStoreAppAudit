@@ -128,14 +128,18 @@ def source_perl(work: Path, evidence: Path, arm: dict) -> dict:
     unpack(archive, work)
     source = work / 'perl-5.44.0'
     cc = run(['xcrun', '--find', 'clang']).strip()
-    run(['sh', 'Configure', '-des', '-Dprefix=' + str(work / 'host-perl'), '-Dcc=' + cc], cwd=source, log=evidence / 'perl-configure.log')
-    run(['make', '-j3'], cwd=source, log=evidence / 'perl-build.log')
-    result = run(['make', 'test_harness'], cwd=source, env={**os.environ, 'TEST_ARGS': 'op/arith2.t op/pack.t'}, log=evidence / 'perl-regressions.log')
+    sdk = run(['xcrun', '--sdk', 'macosx', '--show-sdk-path']).strip()
+    environment = {**os.environ, 'SDKROOT': sdk}
+    flags = '-isysroot ' + sdk + ' -arch arm64'
+    run(['sh', 'Configure', '-des', '-Dprefix=' + str(work / 'host-perl'), '-Dcc=' + cc,
+         '-Dccflags=' + flags, '-Dldflags=' + flags], cwd=source, env=environment, log=evidence / 'perl-configure.log')
+    run(['make', '-j3'], cwd=source, env=environment, log=evidence / 'perl-build.log')
+    result = run(['make', 'test_harness'], cwd=source, env={**environment, 'TEST_ARGS': 'op/arith2.t op/pack.t'}, log=evidence / 'perl-regressions.log')
     count = re.search(r'Files=(\d+), Tests=(\d+)', result)
     assert count and int(count[1]) == 2 and int(count[2]) > 0 and 'Result: PASS' in result
     row = macho(source / 'perl', target=False)
-    run(['make', 'install'], cwd=source, log=evidence / 'perl-install.log')
-    row.update(version=run([work / 'host-perl/bin/perl', '-V:version', '-V:archname']), tests=int(count[2]))
+    run(['make', 'install'], cwd=source, env=environment, log=evidence / 'perl-install.log')
+    row.update(version=run([work / 'host-perl/bin/perl', '-V:version', '-V:archname']), tests=int(count[2]), sdk=sdk)
     assert '5.44.0' in row['version']
     return row
 

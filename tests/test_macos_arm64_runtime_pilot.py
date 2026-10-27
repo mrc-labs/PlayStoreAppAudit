@@ -87,6 +87,32 @@ def test_unused_sdk_driver_aliases_are_excluded_without_disabling_link_validatio
     assert not any(isinstance(arg, str) and arg.startswith(('-snl', '-spf')) for arg in arguments)
 
 
+def test_perl_absolute_compiler_keeps_the_selected_sdk_through_build_and_tests(tmp_path: Path, monkeypatch) -> None:
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        if argv[:2] == ['xcrun', '--find']:
+            return '/Xcode/usr/bin/clang\n'
+        if argv[:2] == ['xcrun', '--sdk']:
+            return '/Xcode/SDKs/MacOSX.sdk\n'
+        if argv == ['make', 'test_harness']:
+            return 'Files=2, Tests=14735\nResult: PASS\n'
+        return 'version=5.44.0\n'
+
+    monkeypatch.setattr(probe, 'fetch', lambda *args: tmp_path / 'source.tar.gz')
+    monkeypatch.setattr(probe, 'unpack', lambda *args: None)
+    monkeypatch.setattr(probe, 'macho', lambda *args, **kwargs: {'selected_slice': 'arm64'})
+    monkeypatch.setattr(probe, 'run', run)
+    report = probe.source_perl(tmp_path, tmp_path, {'host_perl_source': {}})
+    configure = next(argv for argv, _ in calls if argv[:2] == ['sh', 'Configure'])
+    assert '-Dccflags=-isysroot /Xcode/SDKs/MacOSX.sdk -arch arm64' in configure
+    assert '-Dldflags=-isysroot /Xcode/SDKs/MacOSX.sdk -arch arm64' in configure
+    for argv, kwargs in calls:
+        if argv[0] in ('sh', 'make'):
+            assert kwargs['env']['SDKROOT'] == report['sdk'] == '/Xcode/SDKs/MacOSX.sdk'
+
+
 def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_linux() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     assert workflow.count('        type: ') == 10
