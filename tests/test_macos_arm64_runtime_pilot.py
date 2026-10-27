@@ -182,3 +182,21 @@ def test_installed_qt_cannot_silently_resolve_build_tree(tmp_path: Path, monkeyp
     else:
         with pytest.raises(AssertionError):
             probe.installed_qt(qt, evidence)
+
+
+@pytest.mark.parametrize('selection,allowed', [
+    (['lib/png.framework/Versions/1.6.59/png'], True),
+    (['lib/libpng16.16.59.0.dylib'], True),
+    (['foreign/png.framework/Versions/1.6.59/png'], False),
+    (['lib/png.framework/Versions/1.6.55/png'], False),
+    (['lib/png.framework/Versions/1.6.59/png', 'lib/libpng16.16.59.0.dylib'], False),
+])
+def test_loaded_png_framework_is_measured_without_accepting_foreign_or_ambiguous_providers(tmp_path: Path, selection: list[str], allowed: bool) -> None:
+    from verify_macos_arm64_runtime_pilot import loaded_png
+
+    paths = [tmp_path / name for name in selection]
+    if allowed:
+        assert loaded_png(paths, tmp_path) == paths[0]
+    else:
+        with pytest.raises(AssertionError, match='controlled loaded libpng'):
+            loaded_png(paths, tmp_path)

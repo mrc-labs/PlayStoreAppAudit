@@ -51,6 +51,16 @@ def allowed_origin(path: Path, prefix: Path, venv: Path) -> bool:
     return path.is_relative_to(prefix) or path.is_relative_to(venv) or path.as_posix().startswith(('/System/', '/usr/lib/', '/Library/Apple/System/'))
 
 
+def loaded_png(paths: list[Path], prefix: Path) -> Path:
+    """Recognize libpng's supported Apple framework and dylib install forms."""
+    library_root = prefix / 'lib'
+    framework = library_root / 'png.framework/Versions/1.6.59/png'
+    found = [path for path in paths if path == framework or
+             (path.parent == library_root and path.name.startswith('libpng16') and path.suffix == '.dylib')]
+    assert len(found) == 1, ('Expected one controlled loaded libpng provider', found)
+    return found[0]
+
+
 def qt_checks(paths: dict[str, Path], backend: str) -> dict:
     from PySide6.QtNetwork import QSsl, QSslCertificate, QSslConfiguration, QSslSocket
 
@@ -148,10 +158,13 @@ def images(prefix: Path, output: Path) -> dict:
     assert executable['minimum_os'] == python_library['minimum_os'] == ['11.0'], 'Preserve the Python executable/library deployment separately from Qt/package ceiling'
     qt = [p for p in paths if re.match(r'Qt\w+', p.name) and '.framework' in str(p)]
     assert qt and all(p.is_relative_to(prefix / 'qt') for p in qt), qt
-    png = next(p for p in paths if p.name.startswith('libpng16') and p.is_relative_to(prefix))
+    png = loaded_png(paths, prefix)
     query = ctypes.CDLL(str(png)).png_get_libpng_ver
     query.restype = ctypes.c_char_p
     assert query(None) == b'1.6.59'
+    png_image = next(row for row in rows if Path(row['path']) == png)
+    qt_gui = next(row for row in rows if Path(row['path']).name == 'QtGui')
+    assert set(png_image['install_names']) & set(qt_gui['dependencies']), 'QtGui must link the actual measured libpng provider'
     pcre = next(p for p in paths if p.name.startswith('libpcre2-16') and p.is_relative_to(prefix))
     value = ctypes.create_string_buffer(128)
     assert ctypes.CDLL(str(pcre)).pcre2_config_16(11, value) >= 0
@@ -168,7 +181,7 @@ def images(prefix: Path, output: Path) -> dict:
         module = next(row for row in rows if Path(row['path']).name.startswith(stem))
         dependencies = [name for name in module['dependencies'] if expected in name]
         assert dependencies and not any(name.startswith('/usr/lib/') for name in dependencies), ('Stdlib codec must link controlled source', module)
-    report = {'changed': rows, 'all_loaded': list(map(str, paths)), 'python_executable': executable['path'], 'python_executable_minos': executable['minimum_os'], 'libpng': '1.6.59', 'pcre2': pcre_version, 'codecs': codecs, 'maximum_minos': max((v for row in rows for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.')))), 'limit': 'Loaded source-prefix closure only; not all-file package/ADB or older-OS acceptance'}
+    report = {'changed': rows, 'all_loaded': list(map(str, paths)), 'python_executable': executable['path'], 'python_executable_minos': executable['minimum_os'], 'libpng': '1.6.59', 'libpng_provider': str(png), 'libpng_linkage': 'QtGui LC_LOAD_DYLIB matches measured provider LC_ID_DYLIB', 'pcre2': pcre_version, 'codecs': codecs, 'maximum_minos': max((v for row in rows for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.')))), 'limit': 'Loaded source-prefix closure only; not all-file package/ADB or older-OS acceptance'}
     (output / 'macho-loaded-images.json').write_text(json.dumps(report, indent=2))
     return report
 
