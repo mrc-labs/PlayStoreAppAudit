@@ -37,6 +37,16 @@ def test_missing_deployment_metadata_cannot_be_a_compatibility_pass() -> None:
         probe.load_commands('Load command 0\ncmd LC_RPATH\npath @rpath (offset 12)')
 
 
+def test_raw_macho_measurement_is_retained_for_independent_review(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / 'image'
+    path.write_bytes(b'Mach-O fixture')
+    raw = commands('14.4')
+    monkeypatch.setattr(probe, 'run', lambda argv: 'arm64' if argv[0] == 'lipo' else raw)
+    evidence = tmp_path / 'evidence'
+    row = probe.macho(path, target=True, output=evidence)
+    assert (evidence / ('image-' + row['sha256'][:12] + '-otool.txt')).read_text() == raw
+
+
 def test_ios_metadata_cannot_pass_as_macos() -> None:
     with pytest.raises(AssertionError, match='Non-macOS'):
         probe.load_commands(commands('14.4').replace('platform 1', 'platform 2'))
@@ -77,6 +87,27 @@ def test_mac_contract_reuses_qualified_sources_without_changing_prior_profiles()
     assert arm['framework_deployment'] == '14.4'
     assert arm['accepted_package_maximum'] == '15.0'
     assert all('universal2.whl' in wheel['name'] for wheel in arm['probe_wheels'])
+    assert arm['xz_source']['directory'] == 'xz-5.8.4' and arm['zstd_source']['directory'] == 'zstd-1.5.7'
+
+
+@pytest.mark.parametrize('second', ['<testcase name="test.test_zstd.test_roundtrip"/>', '<testcase name="test.test_zstd.test_roundtrip"><skipped/></testcase>', '<testcase name="test.test_zstd.test_roundtrip" status="notrun"/>', ''])
+def test_new_codec_integrations_cannot_pass_with_an_absent_or_skipped_suite(tmp_path: Path, second: str) -> None:
+    from verify_macos_arm64_runtime_pilot import executed_codec_suites
+
+    path = tmp_path / 'codecs.xml'
+    path.write_text('<testsuite><testcase name="test.test_lzma.test_roundtrip"/>' + second + '</testsuite>')
+    if second == '<testcase name="test.test_zstd.test_roundtrip"/>':
+        assert executed_codec_suites(path) == {'test_lzma': 1, 'test_zstd': 1}
+    else:
+        with pytest.raises(AssertionError, match='actually execute'):
+            executed_codec_suites(path)
+
+
+@pytest.mark.parametrize('relative,allowed', [('prefix/lib/libssl.4.dylib', True), ('venv/lib/native.so', True), ('host-tools/lib/libwrong.dylib', False), ('src/libclang/lib/libclang.dylib', False)])
+def test_runtime_cannot_import_a_host_or_build_tree_provider(tmp_path: Path, relative: str, allowed: bool) -> None:
+    from verify_macos_arm64_runtime_pilot import allowed_origin
+
+    assert allowed_origin(tmp_path / relative, tmp_path / 'prefix', tmp_path / 'venv') == allowed
 
 
 def test_unused_sdk_driver_aliases_are_excluded_without_disabling_link_validation() -> None:
@@ -122,3 +153,5 @@ def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_li
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in mac
     assert "test '${{ inputs.component_audit }}' = false" in mac
     assert 'build-macos.yml' not in mac and 'notarytool' not in mac and 'DEVELOPER_ID' not in mac
+    assert mac.index('Qualify native SDK, sources, trust and parser') < mac.index('Build and exercise the gated')
+    assert "if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}" in mac

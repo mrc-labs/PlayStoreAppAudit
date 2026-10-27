@@ -91,15 +91,20 @@ def version(value: str) -> tuple[int, ...]:
     return (numbers + (0, 0, 0))[:3]
 
 
-def macho(path: Path, *, target: bool, allow_universal: bool = False) -> dict:
+def macho(path: Path, *, target: bool, allow_universal: bool = False, output: Path | None = None) -> dict:
     architectures = run(['lipo', '-archs', path]).split()
     assert 'arm64' in architectures and set(architectures) <= {'arm64', 'x86_64'}, ('No native ARM64 slice', path, architectures)
     if target and not allow_universal:
         assert architectures == ['arm64'], ('Controlled target must be ARM64 only', path, architectures)
-    commands = load_commands(run(['otool', '-arch', 'arm64', '-l', path]))
+    raw = run(['otool', '-arch', 'arm64', '-l', path])
+    commands = load_commands(raw)
     if target:
         assert all(version(v) <= version('15.0') for v in commands['minimum_os']), ('Raised package floor', path, commands)
-    return {'path': str(path.resolve()), 'architectures': architectures, 'selected_slice': 'arm64', 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), **commands, 'role': 'target image' if target else 'native host tool; not package OS floor'}
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if output:
+        output.mkdir(exist_ok=True)
+        (output / (path.name + '-' + digest[:12] + '-otool.txt')).write_text(raw)
+    return {'path': str(path.resolve()), 'architectures': architectures, 'selected_slice': 'arm64', 'sha256': digest, **commands, 'role': 'target image' if target else 'native host tool; not package OS floor'}
 
 
 def prepare_python(work: Path, evidence: Path, base: dict) -> Path:
@@ -142,6 +147,59 @@ def source_perl(work: Path, evidence: Path, arm: dict) -> dict:
     row.update(version=run([work / 'host-perl/bin/perl', '-V:version', '-V:archname']), tests=int(count[2]), sdk=sdk)
     assert '5.44.0' in row['version']
     return row
+
+
+def source_compression(work: Path, evidence: Path, arm: dict, tools: dict, sdk: str, python_source: Path) -> dict:
+    """Restore SDK-missing standard Python codecs through current supported sources."""
+    prefix = work / 'prefix'
+    cmake, ninja = Path(tools['cmake']) / 'cmake', Path(tools['ninja']) / 'ninja'
+    environment = {**os.environ, 'SDKROOT': sdk, 'MACOSX_DEPLOYMENT_TARGET': '11.0'}
+    common = ['-GNinja', '-DCMAKE_MAKE_PROGRAM=' + str(ninja), '-DCMAKE_BUILD_TYPE=Release',
+              '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_INSTALL_LIBDIR=lib', '-DCMAKE_INSTALL_NAME_DIR=@rpath',
+              '-DCMAKE_OSX_ARCHITECTURES=arm64', '-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0', '-DCMAKE_OSX_SYSROOT=' + sdk,
+              '-DCMAKE_INSTALL_RPATH=' + str(prefix / 'lib'), '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local']
+    for key, label, subdirectory, extra in [
+        ('xz_source', 'xz', '', ['-DBUILD_SHARED_LIBS=ON', '-DBUILD_TESTING=OFF', '-DXZ_TOOL_XZ=OFF', '-DXZ_TOOL_XZDEC=OFF', '-DXZ_TOOL_LZMADEC=OFF', '-DXZ_TOOL_LZMAINFO=OFF', '-DXZ_TOOL_SCRIPTS=OFF']),
+        ('zstd_source', 'zstd', 'build/cmake', ['-DZSTD_BUILD_SHARED=ON', '-DZSTD_BUILD_STATIC=OFF', '-DZSTD_BUILD_PROGRAMS=OFF', '-DZSTD_BUILD_TESTS=OFF']),
+    ]:
+        item = arm[key]
+        unpack(fetch(item, evidence / 'sources'), work / 'src')
+        source = work / 'src' / item['directory'] / subdirectory
+        build = work / (label + '-build')
+        run([cmake, '-S', source, '-B', build, *common, *extra], env=environment, log=evidence / (label + '-configure.log'))
+        run([cmake, '--build', build, '--parallel', '2'], env=environment, log=evidence / (label + '-build.log'))
+        run([cmake, '--install', build], env=environment, log=evidence / (label + '-install.log'))
+    probe = work / 'compression-probe.cpp'
+    probe.write_text('''#include <lzma.h>
+#include <zstd.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
+int main(){const uint8_t input[]="native codec probe";uint8_t encoded[512],decoded[512];size_t n=0,r=0,o=0;uint64_t limit=UINT64_MAX;
+if(lzma_easy_buffer_encode(6,LZMA_CHECK_CRC64,nullptr,input,sizeof(input),encoded,&n,sizeof(encoded))!=LZMA_OK)return 1;
+if(lzma_stream_buffer_decode(&limit,0,nullptr,encoded,&r,n,decoded,&o,sizeof(decoded))!=LZMA_OK||o!=sizeof(input)||memcmp(input,decoded,o))return 2;
+n=ZSTD_compress(encoded,sizeof(encoded),input,sizeof(input),1);if(ZSTD_isError(n))return 3;
+o=ZSTD_decompress(decoded,sizeof(decoded),encoded,n);if(ZSTD_isError(o)||o!=sizeof(input)||memcmp(input,decoded,o))return 4;
+printf("%s %s codec roundtrips PASS\\n",lzma_version_string(),ZSTD_versionString());}
+''')
+    run(['xcrun', 'clang++', '-arch', 'arm64', '-mmacosx-version-min=11.0', probe,
+         '-I' + str(prefix / 'include'), '-L' + str(prefix / 'lib'), '-Wl,-rpath,' + str(prefix / 'lib'),
+         '-llzma', '-lzstd', '-o', work / 'compression-probe'], env=environment, log=evidence / 'compression-probe-build.log')
+    result = run([work / 'compression-probe'], env=environment, log=evidence / 'compression-probe-run.log')
+    assert result.strip() == '5.8.4 1.5.7 codec roundtrips PASS', result
+    rows = [macho(next((prefix / 'lib').glob(pattern)).resolve(), target=True, output=evidence)
+            for pattern in ('liblzma.*.dylib', 'libzstd.*.dylib')]
+    build = work / 'python-codec-configure-probe'
+    build.mkdir()
+    environment.update(CC=run(['xcrun', '--find', 'clang']).strip(), CXX=run(['xcrun', '--find', 'clang++']).strip(),
+        CPPFLAGS='-I' + str(prefix / 'include') + ' -isysroot ' + sdk,
+        LDFLAGS='-arch arm64 -L' + str(prefix / 'lib') + ' -Wl,-rpath,' + str(prefix / 'lib'),
+        PKG_CONFIG_LIBDIR=str(prefix / 'lib/pkgconfig'), PKG_CONFIG_PATH=str(prefix / 'lib/pkgconfig'))
+    run([python_source / 'configure', '--prefix=' + str(work / 'unused-codec-prefix'), '--enable-shared', '--with-ensurepip=no'], cwd=build, env=environment, log=evidence / 'python-codec-configure.log')
+    modules = dict(re.findall(r'^MODULE_(\w+)_STATE=(\w+)', (build / 'Makefile').read_text(), re.M))
+    assert all(modules.get(name) == 'yes' for name in ('_LZMA', '_ZSTD')), ('Native codec integrations missing', modules)
+    return {'sources': [arm['xz_source'], arm['zstd_source']], 'native_images': rows,
+            'probe': macho(work / 'compression-probe', target=True, output=evidence), 'result': result.strip(), 'python_module_configuration': modules}
 
 
 def main() -> None:
@@ -202,6 +260,7 @@ def main() -> None:
     run([paths[-1], '--generator-set=shiboken', '--output-directory=' + str(work / 'generated'), header, typesystem], log=evidence / 'shiboken-generation.log')
     assert any((work / 'generated').rglob('*nativearmprobe*'))
     run([py, REPO / '.github/scripts/verify_macos_arm64_runtime_pilot.py', '--native-prerequisites', '--output-dir', evidence], log=evidence / 'native-tls-prerequisites.log')
+    report['compression'] = source_compression(work, evidence, arm, info, report['sdk'], python_source)
     extractor = fetch(arm['host_extractor'], work)
     unpack(extractor, work / 'extractor')
     seven = work / 'extractor/7zz'
@@ -219,7 +278,7 @@ def main() -> None:
     report['source_perl'] = source_perl(work, evidence, arm)
     for name in ('macos_arm64_runtime_pilot_sources.json', arm['base_manifest']):
         shutil.copy2(REPO / '.github/scripts' / name, evidence / name)
-    report['result'] = 'PASS native macOS ARM64 prerequisites; no controlled runtime compiled'
+    report['result'] = 'PASS native macOS ARM64 prerequisites; no CPython/Qt runtime compiled'
     (evidence / 'prerequisites.json').write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2), flush=True)
 

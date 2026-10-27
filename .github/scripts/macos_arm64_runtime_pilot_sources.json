@@ -102,5 +102,21 @@
     "sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
     "authority": "https://pypi.org/pypi/cryptography/50.0.2/json",
     "scope": "existing independent ARM64 runtime integration, unmodified exact source"
+  },
+  "xz_source": {
+    "name": "xz-5.8.4.tar.xz",
+    "directory": "xz-5.8.4",
+    "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.xz",
+    "sha256": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+    "authority": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.4",
+    "scope": "Restore native CPython compression module absent from selected Apple SDK; supported current stable source, no vendor patch"
+  },
+  "zstd_source": {
+    "name": "zstd-1.5.7.tar.gz",
+    "directory": "zstd-1.5.7",
+    "url": "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
+    "sha256": "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+    "authority": "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz.sha256",
+    "scope": "Restore native CPython compression module absent from selected Apple SDK; supported current stable source, no vendor patch"
   }
 }

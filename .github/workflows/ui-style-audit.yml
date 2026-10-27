@@ -5,10 +5,10 @@ on:
     inputs:
       linux_arm64_pilot:
         # Legacy key preserves existing dispatches within GitHub's ten-input limit.
-        description: One Linux ARM64 diagnostic or macOS ARM64 prerequisites; never a final candidate
+        description: One isolated Linux or macOS ARM64 diagnostic; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -583,10 +583,10 @@ jobs:
           retention-days: 0
 
   macos-arm64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' }}
-    name: Native runtime prerequisites / macOS ARM64
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' }}
+    name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
-    timeout-minutes: 120
+    timeout-minutes: 240
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
@@ -638,11 +638,20 @@ jobs:
             --work-root "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
 
-      - name: Upload diagnostic macOS ARM64 prerequisite evidence only
+      - name: Build and exercise the gated native ARM64 controlled source prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_macos_arm64_runtime_pilot.sh \
+            "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic macOS ARM64 evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: diagnostic-runtime-prerequisites-macos-arm64-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: macos-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0

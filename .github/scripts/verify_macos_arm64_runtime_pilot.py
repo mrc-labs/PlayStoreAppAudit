@@ -13,6 +13,7 @@ import ssl
 import subprocess
 import sys
 import sysconfig
+import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
 
@@ -36,6 +37,18 @@ def loaded_images() -> list[Path]:
     name.argtypes = [ctypes.c_uint32]
     name.restype = ctypes.c_char_p
     return sorted({Path(name(i).decode()).resolve() for i in range(count())})
+
+
+def executed_codec_suites(path: Path) -> dict[str, int]:
+    cases = list(ET.parse(path).getroot().iter('testcase'))
+    assert not any(case.find('error') is not None or case.find('failure') is not None for case in cases)
+    counts = {module: sum(module in (case.get('classname', '') + '.' + case.get('name', '')) and case.get('status') != 'notrun' and case.find('skipped') is None for case in cases) for module in ('test_lzma', 'test_zstd')}
+    assert all(counts.values()), 'Both native CPython codec suites must actually execute'
+    return counts
+
+
+def allowed_origin(path: Path, prefix: Path, venv: Path) -> bool:
+    return path.is_relative_to(prefix) or path.is_relative_to(venv) or path.as_posix().startswith(('/System/', '/usr/lib/', '/Library/Apple/System/'))
 
 
 def qt_checks(paths: dict[str, Path], backend: str) -> dict:
@@ -107,13 +120,16 @@ def changed_images(prefix: Path, paths: list[Path]) -> list[dict]:
     assert not any(re.search(r'lib(?:ssl|crypto)[.\-]3', p.name) for p in paths), 'OpenSSL3 fallback rejected'
     assert not any('libclang' in str(p).lower() for p in paths), 'Build-host parser leaked into runtime'
     assert not any(str(p).startswith(('/opt/homebrew/', '/usr/local/', '/Library/Frameworks/Python.framework')) for p in paths), 'Foreign build/SDK provider loaded'
+    assert all(allowed_origin(p, prefix, Path(sys.prefix).resolve()) for p in paths), ('Foreign non-system runtime image', [str(p) for p in paths if not allowed_origin(p, prefix, Path(sys.prefix).resolve())])
     rows = []
     for path in paths:
         if not (path.is_relative_to(prefix) or path.is_relative_to(Path(sys.prefix).resolve())):
             continue
         assert path.is_file(), path
         controlled = path.is_relative_to(prefix) or any(part in ('PySide6', 'shiboken6') for part in path.parts)
-        row = macho(path, target=True, allow_universal=not controlled)
+        row = macho(path, target=True, allow_universal=not controlled, output=Path(os.environ['PILOT_EVIDENCE']))
+        signature = subprocess.run(['codesign', '-dv', '--verbose=2', str(path)], text=True, capture_output=True)
+        row['signature'] = {'inspection_returncode': signature.returncode, 'detail': signature.stdout + signature.stderr, 'action': 'inspection only; no credential activation or production signing'}
         assert not any('/opt/homebrew' in p or '/usr/local/' in p for p in row['rpaths']), row
         if 'cryptography' in path.parts and path.name.startswith('_rust'):
             assert not any(re.search(r'lib(?:crypto|ssl)', value, re.I) for value in row['dependencies']), 'Independent cryptography must retain static OpenSSL'
@@ -127,6 +143,9 @@ def images(prefix: Path, output: Path) -> dict:
     for stem, origin in [('libpython3.14', prefix / 'python'), ('libssl.4.dylib', prefix / 'openssl'), ('libcrypto.4.dylib', prefix / 'openssl')]:
         found = [p for p in paths if p.name.startswith(stem)]
         assert found and all(p.is_relative_to(origin) for p in found), (stem, found)
+    executable = next(row for row in rows if Path(row['path']) == Path(sys.executable).resolve())
+    python_library = next(row for row in rows if Path(row['path']).name.startswith('libpython3.14'))
+    assert executable['minimum_os'] == python_library['minimum_os'] == ['11.0'], 'Preserve the Python executable/library deployment separately from Qt/package ceiling'
     qt = [p for p in paths if re.match(r'Qt\w+', p.name) and '.framework' in str(p)]
     assert qt and all(p.is_relative_to(prefix / 'qt') for p in qt), qt
     png = next(p for p in paths if p.name.startswith('libpng16') and p.is_relative_to(prefix))
@@ -138,7 +157,18 @@ def images(prefix: Path, output: Path) -> dict:
     assert ctypes.CDLL(str(pcre)).pcre2_config_16(11, value) >= 0
     pcre_version = value.raw.decode('utf-16-le').split('\0', 1)[0]
     assert pcre_version.startswith('10.49 ')
-    report = {'changed': rows, 'all_loaded': list(map(str, paths)), 'libpng': '1.6.59', 'pcre2': pcre_version, 'maximum_minos': max((v for row in rows for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.')))), 'limit': 'Loaded source-prefix closure only; not all-file package/ADB or older-OS acceptance'}
+    codecs = {}
+    for stem, function, expected in [('liblzma.', 'lzma_version_string', '5.8.4'), ('libzstd.', 'ZSTD_versionString', '1.5.7')]:
+        library = next(p for p in paths if p.name.startswith(stem) and p.is_relative_to(prefix))
+        query = getattr(ctypes.CDLL(str(library)), function)
+        query.restype = ctypes.c_char_p
+        assert query().decode() == expected
+        codecs[stem] = {'version': expected, 'path': str(library)}
+    for stem, expected in [('_lzma.', 'liblzma.'), ('_zstd.', 'libzstd.')]:
+        module = next(row for row in rows if Path(row['path']).name.startswith(stem))
+        dependencies = [name for name in module['dependencies'] if expected in name]
+        assert dependencies and not any(name.startswith('/usr/lib/') for name in dependencies), ('Stdlib codec must link controlled source', module)
+    report = {'changed': rows, 'all_loaded': list(map(str, paths)), 'python_executable': executable['path'], 'python_executable_minos': executable['minimum_os'], 'libpng': '1.6.59', 'pcre2': pcre_version, 'codecs': codecs, 'maximum_minos': max((v for row in rows for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.')))), 'limit': 'Loaded source-prefix closure only; not all-file package/ADB or older-OS acceptance'}
     (output / 'macho-loaded-images.json').write_text(json.dumps(report, indent=2))
     return report
 
@@ -178,6 +208,8 @@ def main() -> None:
     assert platform.python_version() == arm['python_version'] and Path(sys.base_prefix).resolve() == prefix / 'python'
     assert Path(ssl.__file__).resolve().is_relative_to(prefix / 'python') and ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 ')
     import _hashlib
+    import lzma
+    from compression import zstd
 
     import certifi
     import PySide6
@@ -186,6 +218,9 @@ def main() -> None:
     from PySide6.QtGui import QImage, QPixmap
 
     assert PySide6.__version__ == shiboken6.__version__ == qVersion() == '6.12.0'
+    assert zlib.ZLIB_RUNTIME_VERSION == '1.3.2'
+    assert lzma.decompress(lzma.compress(b'native')) == zstd.decompress(zstd.compress(b'native')) == b'native'
+    codec_suites = executed_codec_suites(output / 'cpython-codec-regressions.xml')
     assert backend.openssl_version_text().startswith('OpenSSL 4.0.3 ')
     trust_file = prefix / 'trust/cert.pem'
     assert Path(ssl.get_default_verify_paths().cafile).resolve() == trust_file
@@ -198,6 +233,10 @@ def main() -> None:
     assert _hashlib.openssl_sha256(b'abc').hexdigest() == 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
     assert hmac.digest(b'key', b'The quick brown fox jumps over the lazy dog', 'sha256').hex() == 'f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8'
     assert hashlib.pbkdf2_hmac('sha256', b'password', b'salt', 1).hex() == '120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b'
+    from PySide6.QtNetwork import QSslSocket
+
+    default_qt_backend = QSslSocket.activeBackend()
+    assert default_qt_backend in ('openssl', 'securetransport'), default_qt_backend
     qt_tls = qt_checks(paths, 'openssl')
     subprocess.run([sys.executable, __file__, '--output-dir', str(output), '--qt-native-backend'], check=True)
     pixmap = QPixmap()
@@ -211,6 +250,10 @@ def main() -> None:
             pixmap.loadFromData(fixture)
             png_rows.append({'kind': kind.decode(), 'case': index, 'decoded': not image.isNull(), 'result': 'no native crash; regression corpus, not exploit reproduction'})
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    profile = Path(os.environ['PILOT_WORK']) / 'profile'
+    profile.mkdir(exist_ok=True)
+    (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')
+    os.chdir(profile)
     from playstore_app_audit.ui.main_window import MainWindow
 
     window = MainWindow()
@@ -219,7 +262,11 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
-    report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': 'project-modified CPython3.14.10 and matched source Qt/PySide/Shiboken6.12.0; native macOS ARM64 diagnostic, not unchanged official binaries', 'python': sys.version, 'machine': platform.machine(), 'gil_disabled': sysconfig.get_config_var('Py_GIL_DISABLED'), 'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(), 'cryptography_provider': 'independent official native-capable wheel/static OpenSSL4; actual selected ARM64 slice, not a Rosetta target', 'default_trust': defaults, 'python_tls': python_tls, 'cpython_security': security, 'qt_openssl': qt_tls, 'qt_securetransport': json.loads((output / 'qt-securetransport.json').read_text()), 'hash_vectors': 'SHA256/HMAC/PBKDF2 PASS', 'png': png_rows, 'gui': 'native Cocoa MainWindow event-loop PASS', 'native': images(prefix, output), 'limits': ['Source prefix only; no Nuitka package, portability/signing/final acceptance.', 'Python SPKI does not qualify Qt/native/OS/cryptography CA security.', 'SecureTransport is legacy TLS1.2; qualified OpenSSL backend provides TLS1.3.']}
+    report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': 'project-modified CPython3.14.10 and matched source Qt/PySide/Shiboken6.12.0; native macOS ARM64 diagnostic, not unchanged official binaries', 'python': sys.version, 'machine': platform.machine(), 'gil_disabled': sysconfig.get_config_var('Py_GIL_DISABLED'), 'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(), 'cryptography_provider': 'independent official native-capable wheel/static OpenSSL4; actual selected ARM64 slice, not a Rosetta target', 'default_trust': defaults, 'python_tls': python_tls, 'cpython_security': security, 'qt_default_backend': default_qt_backend, 'qt_openssl': qt_tls, 'qt_securetransport': json.loads((output / 'qt-securetransport.json').read_text()), 'hash_vectors': 'SHA256/HMAC/PBKDF2 PASS', 'png': png_rows, 'gui': 'native Cocoa MainWindow event-loop PASS', 'native': images(prefix, output), 'limits': ['Source prefix only; no Nuitka package, portability/signing/final acceptance.', 'Python SPKI does not qualify Qt/native/OS/cryptography CA security.', 'SecureTransport is legacy TLS1.2; qualified OpenSSL backend provides TLS1.3.']}
+    report['cpython_codec_suites'] = codec_suites
+    all_rows = {row['path']: row for row in [*report['native']['changed'], *report['qt_securetransport']['changed_images']]}
+    report['all_backend_loaded_changed_images'] = len(all_rows)
+    report['all_backend_maximum_minos'] = max((v for row in all_rows.values() for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.'))))
     (output / 'pilot-results.json').write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2), flush=True)
 
