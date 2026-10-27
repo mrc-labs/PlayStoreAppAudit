@@ -1,5 +1,8 @@
 # Building Store App Audit
 
+
+**macOS ARM64 active qualification (2026-10-27):** Control Tower accepts all four current-Python designs at a5f9351. Native prerequisites 40506179671 pass at 77d8a6c (macOS26.6.2 ARM64/GIL, Xcode26.6/SDK26.5/AppleClang21, real libclang22.1.8 parser/generators, unchanged CPython patch/security guards, native default trust and source Perl5.44/14735 tests). Isolated full pilot 40511365740 runs at source 916432336ffcfe863c0f6eee96d481759547cef6. Updated prerequisites qualify source XZ5.8.4/Zstd1.5.7 for demonstrated SDK-missing Python codecs before rebuilding the main stack. Python private certifi PEM defaults and native Keychain/SecureTransport remain distinct. Preserve Python11.0, Qt14.4 and measured loaded-image ceiling15.0; main11.0 alone is not package compatibility. No previous four effective inputs change; Intel and producing/final-release operations remain unauthorized. Full result/Mach-O/source/legal checks and final exact-head Quality remain pending.
+
 Windows, macOS and Linux use the same Python/Qt source tree from canonical `main`. Published v2.3.0 is immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af` and used exact stable Python **3.14.8**. Post-release development tracks rolling stable **3.14** / `check-latest: true`; every future freeze requires fresh exact-patch selection. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md).
 
 The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.

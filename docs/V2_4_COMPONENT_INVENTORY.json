@@ -1,4 +1,19 @@
 {
+  "macos_arm64_qualification_2026_10_27": {
+    "starting_head": "a5f9351bad3b591a35f5b16e250f3f39a6761f74",
+    "source_head": "916432336ffcfe863c0f6eee96d481759547cef6",
+    "prerequisite_run": 40506179671,
+    "prerequisite_status": "SUCCESS",
+    "pilot_run": 40511365740,
+    "status": "Updated native prerequisites SUCCESS; controlled runtime/framework build IN PROGRESS; diagnostic ARM64 only",
+    "native_host": "macOS26.6.2 ARM64/GIL; Xcode26.6 SDK26.5 AppleClang21",
+    "source_contract": "Python3.14.10/OpenSSL4.0.3/Qt-PySide-Shiboken6.12.0/libpng1.6.59/PCRE2 10.49 unchanged",
+    "new_macos_prerequisites": "XZ5.8.4/Zstd1.5.7: proven SDK-missing _lzma/_zstd; unmodified current official sources; native source/codec/configure gate before main rebuild",
+    "trust": "Python private hash-bound certifi2026.10.23 OPENSSLDIR/cert.pem; separate native Keychain/SecureTransport; ordinary default handshake required",
+    "deployment": "Python11.0, Qt14.4, loaded target ceiling15.0; no older-OS/package acceptance",
+    "shared_impact": "Prior four runtime manifests/build/probe/verifier and vendor patch bytes unchanged; diagnostic routing/static checks repeated",
+    "remaining": "Full pilot/native/security/Mach-O/source/legal checks, final exact-head Quality and independent review; remaining CA/security/migrations/final gates open"
+  },
   "python_31410_requalification_2026_10_27": {
     "starting_head": "261b5154c1d46fddc28ff77e4895a2fb7ce7739c",
     "source_head": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
