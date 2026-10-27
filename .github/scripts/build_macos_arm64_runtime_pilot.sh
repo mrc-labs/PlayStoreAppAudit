@@ -204,7 +204,7 @@ add_executable(native-qt-header main.cpp)
 target_link_libraries(native-qt-header PRIVATE Qt6::Gui Qt6::GuiPrivate)
 CMAKE
 cat > "$work/qt-header-probe/main.cpp" <<'CPP'
-#include <qrhi.h>
+#include <rhi/qrhi.h>
 #include <QtCore/QLibraryInfo>
 #include <QtCore/qglobal.h>
 #include <cstdio>
