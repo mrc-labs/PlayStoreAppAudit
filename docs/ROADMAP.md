@@ -1,6 +1,6 @@
 # Product Roadmap
 
-Last updated: 2026-10-26 Europe/Rome
+Last updated: 2026-10-27 Europe/Rome
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 
 ## Active v2.4.0 maintenance/security/compatibility cycle
 
-Current sequencing checkpoint: Control Tower accepts the prior Linux x64/Windows x64/ARM64 source feasibility profiles at their original Python 3.14.9 SHAs. The newly authorized Linux ARM64 pilot **40402101612** now passes on **3.14.10**, with unchanged OpenSSL 4 patch bytes, executed upstream SPKI/tarfile security regressions, trust/TLS/hash/PNG/native GUI/CLI and **73 AArch64 ELFs within GLIBC 2.38 / GLIBCXX 3.4.32**. ZIP, nine sources, one patch and 65 legal files are worker-verified; source Quality passes 1871 tests. STOP for independent Linux ARM64 review. Earlier targets need affected 3.14.10 requalification; macOS Intel/ARM64 initial source qualification and all final producing/package/freshness gates remain open. No other target is authorized. See the [current result](V2_4_RELEASE_PREP.md#native-linux-arm64-result-complete-noble-diagnostic-pass).
+Current sequencing checkpoint: **Python 3.14.10 requalification (2026-10-27):** Linux x64 **40412794087**, Windows x64 **40412798113** and Windows ARM64 **40413173398** all pass at source `5f6484e9ce7f1b23e4d353769ec84b88a2dea59f`. Full controlled profiles repeat SSL/hash, actually executed SPKI/tarfile, default trust/TLS negatives, provider/native/ABI checks and GUI/CLI. OpenSSL 4.0.3, matched Qt/PySide/Shiboken 6.12.0, libpng 1.6.59/PCRE2 10.49 and existing patch bytes remain unchanged. Loaded images are **73 x86-64 ELFs (GLIBC 2.35/GLIBCXX 3.4.29), 58 AMD64 PEs and 57 AA64 PEs**, Windows /MD. ZIP/source/patch/legal bytes are worker-verified. Direct source Quality **#766 / 40414326872** passes **1889 tests**. Control Tower already accepts Linux ARM64 on Python 3.14.10; its effective inputs remain identical despite parent-hash reconciliation, so run 40402101612 at source `95c4ba5f3765647f712eb80a519368bfc486b6c3` remains evidence. Four native designs now have current-Python diagnostic evidence; the three new results await independent review. Historical 3.14.9 artifacts keep their real identities. **STOP for review**; macOS and all producer/final-release operations remain unauthorized. Independent provider CA/security, remaining migrations, older-OS/package/ADB/source/legal/freshness/exact-Python gates stay open. See the [three-profile result/aggregate](V2_4_RELEASE_PREP.md#python-31410-realignment-three-complete-native-profiles-pass-2026-10-27). The next target requires a new Control Tower authorization; no macOS run starts in this tranche.
 
 Control Tower approved MINOR reclassification on **2026-10-25**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Keep existing PR #239 and branch `release/v2.3.1-maintenance` for continuity. Prepared metadata is **2.4.0 / Windows 2.4.0.0**; the earlier PATCH proposal is preparation history. [Audit](V2_4_RELEASE_PREP.md) and [inventory](V2_4_COMPONENT_INVENTORY.json) control the selected stack and open migrations.
 
