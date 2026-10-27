@@ -79,6 +79,14 @@ def test_mac_contract_reuses_qualified_sources_without_changing_prior_profiles()
     assert all('universal2.whl' in wheel['name'] for wheel in arm['probe_wheels'])
 
 
+def test_unused_sdk_driver_aliases_are_excluded_without_disabling_link_validation() -> None:
+    arm, _ = probe.contract()
+    arguments = probe.clang_extraction(Path('7zz'), Path('sdk.7z'), Path('src'), arm['host_libclang'])
+    assert {arg for arg in arguments if isinstance(arg, str) and arg.startswith('-x!')} == {
+        '-x!libclang/bin/clang++', '-x!libclang/bin/clang-cl', '-x!libclang/bin/clang-cpp'}
+    assert not any(isinstance(arg, str) and arg.startswith(('-snl', '-spf')) for arg in arguments)
+
+
 def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_linux() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     assert workflow.count('        type: ') == 10

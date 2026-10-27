@@ -56,6 +56,11 @@ def unpack(archive: Path, destination: Path) -> None:
         bundle.extractall(destination, filter='data')
 
 
+def clang_extraction(seven: Path, archive: Path, destination: Path, item: dict) -> list:
+    """Unused driver aliases must not bypass the extractor's link safety checks."""
+    return [seven, 'x', '-y', *['-x!' + name for name in item['exclude_paths']], '-o' + str(destination), archive]
+
+
 def load_commands(text: str) -> dict:
     minimum, sdk, rpaths, identity, dependencies = [], [], [], [], []
     for block in re.split(r'Load command \d+\n', text)[1:]:
@@ -199,7 +204,7 @@ def main() -> None:
     report['extractor'] = macho(seven, target=False)
     run([seven], log=evidence / '7zip-version.log')
     archive = fetch(arm['host_libclang'], work)
-    run([seven, 'x', '-y', '-o' + str(work / 'src'), archive], log=evidence / 'libclang-extract.log')
+    run(clang_extraction(seven, archive, work / 'src', arm['host_libclang']), log=evidence / 'libclang-extract.log')
     library = next((work / 'src/libclang/lib').glob('libclang.dylib')).resolve()
     report['parser'] = macho(library, target=False)
     probe = work / 'parser-probe.cpp'

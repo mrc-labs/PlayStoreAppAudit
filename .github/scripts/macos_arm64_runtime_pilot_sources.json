@@ -16,7 +16,12 @@
     "url": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-macos-universal.7z",
     "sha256": "e8874063110aaf48d9573da933c1e96dee98454b48a127017c75e8159f575b81",
     "authority": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-macos-universal.7z.sha256",
-    "scope": "host parser only; supported stable22.1.8 in documented16-22 range; official universal asset executes native ARM64 slice; not runtime floor"
+    "scope": "host parser only; supported stable22.1.8 in documented16-22 range; official universal asset executes native ARM64 slice; not runtime floor",
+    "exclude_paths": [
+      "libclang/bin/clang++",
+      "libclang/bin/clang-cl",
+      "libclang/bin/clang-cpp"
+    ]
   },
   "host_extractor": {
     "name": "7z2605-mac.tar.xz",
