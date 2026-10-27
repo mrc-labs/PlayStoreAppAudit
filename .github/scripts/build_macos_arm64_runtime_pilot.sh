@@ -97,10 +97,12 @@ cd "$work/python-build"
 "$work/src/Python-3.14.10/configure" --prefix="$prefix/python" --enable-shared \
   --with-openssl="$ssl_prefix" --with-openssl-rpath=auto --with-ensurepip=install --with-pkg-config=yes
 make -j2
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python -c "import ssl,_ssl,_hashlib,ctypes,sqlite3,zlib,lzma,sysconfig; from compression import zstd; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); assert zlib.ZLIB_RUNTIME_VERSION=='1.3.2'; assert lzma.decompress(lzma.compress(b'native'))==zstd.decompress(zstd.compress(b'native'))==b'native'; print('Built native SSL/hash/ctypes/sqlite/zlib/lzma/zstd PASS',ssl.OPENSSL_VERSION)"
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python -m test -j2 --junit-xml "$evidence/cpython-codec-regressions.xml" test_lzma test_zstd > "$evidence/cpython-codec-regressions.log" 2>&1
+# Upstream uses .exe on case-insensitive macOS to avoid the Python/ directory.
+test -f ./python.exe && test -x ./python.exe
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -c "import ssl,_ssl,_hashlib,ctypes,sqlite3,zlib,lzma,sysconfig; from compression import zstd; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); assert zlib.ZLIB_RUNTIME_VERSION=='1.3.2'; assert lzma.decompress(lzma.compress(b'native'))==zstd.decompress(zstd.compress(b'native'))==b'native'; print('Built native SSL/hash/ctypes/sqlite/zlib/lzma/zstd PASS',ssl.OPENSSL_VERSION)"
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m test -j2 --junit-xml "$evidence/cpython-codec-regressions.xml" test_lzma test_zstd > "$evidence/cpython-codec-regressions.log" 2>&1
 PYTHONPATH="$repo/.github/scripts" python - "$evidence" <<'PY'
 import sys
 from pathlib import Path

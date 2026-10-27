@@ -155,3 +155,10 @@ def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_li
     assert 'build-macos.yml' not in mac and 'notarytool' not in mac and 'DEVELOPER_ID' not in mac
     assert mac.index('Qualify native SDK, sources, trust and parser') < mac.index('Build and exercise the gated')
     assert "if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}" in mac
+
+
+def test_darwin_build_tests_use_upstreams_case_insensitive_executable_name() -> None:
+    recipe = (ROOT / '.github/scripts/build_macos_arm64_runtime_pilot.sh').read_text()
+    assert 'test -f ./python.exe && test -x ./python.exe' in recipe
+    assert './python -' not in recipe
+    assert recipe.count('./python.exe -') == 4
