@@ -1,0 +1,101 @@
+{
+  "scope": "One isolated native macOS26 ARM64 diagnostic; no Intel/Rosetta target, producing adoption or final package acceptance",
+  "base_manifest": "native_runtime_pilot_sources.json",
+  "base_manifest_canonical_sha256": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
+  "runner": "macos-26",
+  "xcode": "26.6",
+  "developer_dir": "/Applications/Xcode_26.6.app/Contents/Developer",
+  "python_version": "3.14.10",
+  "python_deployment": "11.0",
+  "framework_deployment": "14.4",
+  "accepted_package_maximum": "15.0",
+  "abi_authority": "docs/V2_3_POST_RELEASE_CLOSURE.md",
+  "openssl_target": "darwin64-arm64-cc",
+  "host_libclang": {
+    "name": "libclang-release_22.1.8-based-macos-universal.7z",
+    "url": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-macos-universal.7z",
+    "sha256": "e8874063110aaf48d9573da933c1e96dee98454b48a127017c75e8159f575b81",
+    "authority": "https://download.qt.io/development_releases/prebuilt/libclang/libclang-release_22.1.8-based-macos-universal.7z.sha256",
+    "scope": "host parser only; supported stable22.1.8 in documented16-22 range; official universal asset executes native ARM64 slice; not runtime floor"
+  },
+  "host_extractor": {
+    "name": "7z2605-mac.tar.xz",
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-mac.tar.xz",
+    "sha256": "12ef6830317743cfd3f0ab1724bde43fcc270d8b6d8564f8c12c2a2b7f993570",
+    "version": "26.05",
+    "source": {
+      "name": "7z2605-src.tar.xz",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-src.tar.xz",
+      "sha256": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e"
+    }
+  },
+  "host_perl_source": {
+    "name": "perl-5.44.0.tar.gz",
+    "directory": "perl-5.44.0",
+    "url": "https://cpan.metacpan.org/authors/id/L/LE/LEONT/perl-5.44.0.tar.gz",
+    "sha256": "3b855066b92491cb40e86affb1ca57d1a388aa43e51b91c7806a32c2f65f96c3",
+    "authority": "https://fastapi.metacpan.org/v1/release/LEONT/perl-5.44.0",
+    "support": "https://perldoc.perl.org/perlpolicy#MAINTENANCE-AND-SUPPORT",
+    "native_makefile": "https://github.com/Perl/perl5/blob/v5.44.0/INSTALL",
+    "scope": "Native Darwin build-host interpreter only, official unmodified current5.44.0 source/hash already qualified on other targets; OS Perl stays unchanged"
+  },
+  "zlib_source": {
+    "name": "zlib-1.3.2.tar.gz",
+    "directory": "zlib-1.3.2",
+    "url": "https://zlib.net/zlib-1.3.2.tar.gz",
+    "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "authority": "https://zlib.net/",
+    "scope": "Qt/libpng system-library source dependency; same version as Qt 6.12 embedded source"
+  },
+  "certifi_wheel": {
+    "name": "certifi-2026.10.23-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl",
+    "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
+  },
+  "certifi_source": {
+    "name": "certifi-2026.10.23.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/fd/11/b524cbd9bbdaca58608e4cf4053fd463417549e1959fa8d3aa18319f9555/certifi-2026.10.23.tar.gz",
+    "sha256": "a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd"
+  },
+  "python_trust": "Private OpenSSL default OPENSSLDIR/cert.pem from exact certifi2026.10.23 wheel; no SSL_CERT_FILE/DIR override; not Keychain/native OS trust. Mirrors supported PSF PEM strategy; retain source/license and actual bundle SHA.",
+  "qt_trust": "Measure independent OpenSSL backend default CA collection and native SecureTransport/Keychain; no CA injection for public default-trust proof. SecureTransport is legacy TLS1.2, not OpenSSL4/TLS1.3; provider CA/security gate remains open.",
+  "authorities": [
+    "https://doc.qt.io/qt-6/macos.html",
+    "https://docs.python.org/3.14/using/mac.html",
+    "https://developer.apple.com/documentation/Security/secure-transport",
+    "https://doc.qt.io/qtforpython-6/building_from_source/index.html"
+  ],
+  "probe_wheels": [
+    {
+      "name": "pyside6_essentials-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "url": "https://files.pythonhosted.org/packages/e1/90/d528f8dd3f9f20712bc719e10c698d27c998e1dd76ed3f33b6fb606d0972/pyside6_essentials-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "sha256": "0867b709a724db28b161227c7d6ecb5ed10cc09226a53542417ac6dee1308239",
+      "distribution": "PySide6-Essentials",
+      "version": "6.12.0",
+      "scope": "host generator probe only; official universal2 includes native ARM64, not controlled runtime acceptance"
+    },
+    {
+      "name": "shiboken6-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "url": "https://files.pythonhosted.org/packages/b5/45/11536fba5f50a57671eb14441c6098096f3e57074e54c9d7d66039a5831e/shiboken6-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "sha256": "47105e05baf57d35453e07d240bbe59cb4b8d9565377ea5134ff9fb37d4f5c02",
+      "distribution": "shiboken6",
+      "version": "6.12.0",
+      "scope": "host generator probe only; official universal2 includes native ARM64, not controlled runtime acceptance"
+    },
+    {
+      "name": "shiboken6_generator-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "url": "https://files.pythonhosted.org/packages/48/0f/879f46f33817c157af58379470719afb4782264073fe2e188892f6842b50/shiboken6_generator-6.12.0-cp310-abi3-macosx_14_0_universal2.whl",
+      "sha256": "d93fb47e8f071855f9b92edea24c331d88461c5b94c0ef656eb5efe157bf0abf",
+      "distribution": "shiboken6_generator",
+      "version": "6.12.0",
+      "scope": "host generator probe only; official universal2 includes native ARM64, not controlled runtime acceptance"
+    }
+  ],
+  "cryptography_source": {
+    "name": "cryptography-50.0.2.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/9d/af/182eb91b0df3fe75c4d9f26fe70684569566745f6ba7e5c9c73a862c5252/cryptography-50.0.2.tar.gz",
+    "sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+    "authority": "https://pypi.org/pypi/cryptography/50.0.2/json",
+    "scope": "existing independent ARM64 runtime integration, unmodified exact source"
+  }
+}
