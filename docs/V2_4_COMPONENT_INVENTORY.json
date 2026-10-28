@@ -15,7 +15,7 @@
       {
         "id": "R02",
         "status": "? REQUIRED security/provider acceptance",
-        "applicability_minimum_action": "Functional trust and Python compromised-SPKI rejection do not establish Qt/OpenSSL, Schannel, SecureTransport/Keychain or independent cryptography root/security policy. Compare actual default providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
+        "applicability_minimum_action": "Functional trust and Python compromised-SPKI rejection do not establish Qt/OpenSSL, Schannel or SecureTransport/Keychain root/security policy. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118 vs Mac Keychain157 are separate observed inputs, not equivalent security acceptance."
       },
       {
