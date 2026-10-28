@@ -112,9 +112,9 @@ if (-not $MachineMatches) {
 
 Write-Host "Reported machine: $ReportedMachine"
 
-& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.11.2'"
+& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.12.0'"
 if ($LASTEXITCODE -ne 0) {
-    Fail "PySide6 6.11.2 verification failed."
+    Fail "PySide6 6.12.0 verification failed."
 }
 
 & $Python -m nuitka --version
@@ -404,6 +404,25 @@ if ($env:GITHUB_ACTIONS -eq "true") {
     )
 } else {
     $BuildInfoLines += "Signing: unsigned local artifact"
+}
+
+if ($PackageArch -eq 'arm64') {
+    if (-not $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE) {
+        Fail 'ARM64 packaging requires verified OpenSSL/cryptography source evidence.'
+    }
+    & $Python .github/scripts/verify_windows_arm64_crypto.py `
+        --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE `
+        --package-dir $PackageDir --release-dir $LegalReleaseDir
+    if ($LASTEXITCODE -ne 0) { Fail 'ARM64 crypto legal/source staging failed.' }
+    $CryptoEvidence = Get-Content -LiteralPath (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-verification.json') -Raw | ConvertFrom-Json
+    $BuildInfoLines += @(
+        "cryptography: $($CryptoEvidence.cryptography)"
+        "cryptography OpenSSL backend: $($CryptoEvidence.cryptography_backend)"
+        "cryptography linkage: static OpenSSL / dynamic MSVC CRT"
+        "cryptography OpenSSL source: $($CryptoEvidence.source.source_url)"
+        "cryptography OpenSSL source SHA-256: $($CryptoEvidence.source.source_sha256)"
+        "cryptography legal/source evidence: third-party-build/openssl-cryptography; CI legal prerequisites"
+    )
 }
 
 $BuildInfoLines |

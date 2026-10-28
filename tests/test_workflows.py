@@ -108,7 +108,7 @@ def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:
 
         assert python_check < install < qt_check
         assert "PySide6" not in workflow[python_check:install]
-        assert "PySide6.__version__ == '6.11.2'" in workflow[qt_check:]
+        assert "PySide6.__version__ == '6.12.0'" in workflow[qt_check:]
 
 
 def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
@@ -119,9 +119,28 @@ def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
 
     assert provision < install < verify
     assert workflow.count("if: ${{ matrix.arch == 'arm64' }}") == 2
-    assert "VCPKG_INSTALLATION_ROOT" in workflow[provision:install]
-    assert "arm64-windows-static-md" in workflow[provision:install]
-    assert "OPENSSL_STATIC=1" in workflow[provision:install]
+    assert "provision_windows_arm64_openssl.ps1" in workflow[provision:install]
+    assert "verify_windows_arm64_crypto.py" in workflow[verify:]
+
+
+def test_windows_crypto_diagnostic_cannot_emit_a_release_candidate() -> None:
+    workflow = _workflow("build-windows-exe.yml")
+    assert "diagnostic_only:" in workflow
+    assert "$env:DIAGNOSTIC_ONLY -eq 'true' -and $env:REQUESTED_TARGET -ne 'arm64'" in workflow
+    steps = workflow.split("      - name: ")[1:]
+    for name in (
+        "Install runtime, test and build dependencies",
+        "Verify native PySide6 runtime", "Preflight release legal material",
+        "Static checks and regression tests", "Qt source smoke tests",
+        "Validate the managed ADB path", "Build and validate Windows standalone package",
+        "Upload Windows standalone release candidate",
+    ):
+        step = next(s for s in steps if s.startswith(name + "\n"))
+        assert "if: ${{ !inputs.diagnostic_only }}" in step
+    upload = next(s for s in steps if s.startswith("Upload non-release ARM64"))
+    assert "if: ${{ always() && inputs.diagnostic_only }}" in upload
+    assert "name: diagnostic-openssl-cryptography-windows-arm64-" in upload
+    assert ".zip" not in upload
 
 
 def test_linux_release_keeps_shared_runtime_replaceable() -> None:
@@ -149,11 +168,16 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
         workflow = _workflow(name)
 
         assert (
-            'pip install -r requirements-dev.txt "Nuitka==4.2.2"'
+            'pip install -r requirements-dev.txt "Nuitka==4.3.1"'
             in workflow
         )
         assert "--report=compilation-report.xml" in workflow
         assert "test -s compilation-report.xml" in workflow
+        assert "pyside6-deploy -c pysidedeploy.spec -f --no-install" in workflow
+
+    # The deployment parent checks distribution metadata, even when apt has
+    # already provisioned the native executable.
+    assert '"patchelf==0.19.1.0"' in _workflow("build-linux.yml")
 
 
 def test_linux_release_runs_legal_gate_before_zip() -> None:

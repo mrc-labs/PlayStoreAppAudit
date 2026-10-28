@@ -1,6 +1,10 @@
 # Product Roadmap
 
-Last updated: 2026-10-05 CEST
+Six native current-Python source-stack diagnostics now PASS. Control Tower accepts five; **[Mac Intel40639680469](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40639680469)** at source **8e153d954fc4506144ea321946bb8be3831bacb8** awaits independent review. Python3.14.10/OpenSSL4.0.3, matched Qt/PySide/Shiboken6.12.0, libpng1.6.59/PCRE2 10.49; Intel independent native source/static cryptography50.0.2. **78 loaded x64-selected images**, actual maximum14.4, Python/crypto10.15, accepted package ceiling26.0, distinct private PEM118 vs Qt157 from captured Keychain158 default trust; TLS/security/hash/PNG/Cocoa GUI/CLI pass. ZIP17 original inputs, unchanged CPython patch, legal and retained crypto wheel bytes are worker verified. No older-OS or final-package acceptance claim.
+
+Prepared **2.4.0 / Windows2.4.0.0** is unpublished. The [active audit](V2_4_RELEASE_PREP.md) and [one finite current R01–R17 ledger](V2_4_RELEASE_PREP.md#current-finite-migration-and-acceptance-ledger-2026-10-28) replace obsolete scheduling rows and retain mandatory provider/security/native/build-tool migrations, concrete minimum actions and affected checks. The1094 historical component observations and prior-five effective runtime inputs stay unchanged. Only Windowsx64 manual testing is available; native CI supplies other target evidence. Final exact-head Quality is recorded in PR#239. **STOP for Intel/residual review**; no other target, producer adoption, merge/freeze/final build/assembly/production signing/tag/publication.
+
+Last updated: 2026-10-28 Europe/Rome
 
 ## Purpose
 
@@ -19,6 +23,16 @@ Versioning for that cycle is fixed: a pure dependency/toolchain/component refres
 - Published release source commits, tag targets and binary/source/checksum assets are immutable; descriptive Release prose may be maintained without changing historical meaning.
 - Produce a UX audit/report before broad visual redesign work when the change is exploratory rather than already specified.
 - Prefer small, verifiable PRs and lightweight CI; reserve Windows/Nuitka packaging for deliberate high-impact evidence or frozen release candidates.
+
+## Active v2.4.0 maintenance/security/compatibility cycle
+
+Six native current-Python source-stack diagnostics now PASS. Control Tower accepts five; **[Mac Intel40639680469](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40639680469)** at source **8e153d954fc4506144ea321946bb8be3831bacb8** awaits independent review. Python3.14.10/OpenSSL4.0.3, matched Qt/PySide/Shiboken6.12.0, libpng1.6.59/PCRE2 10.49; Intel independent native source/static cryptography50.0.2. **78 loaded x64-selected images**, actual maximum14.4, Python/crypto10.15, accepted package ceiling26.0, distinct private PEM118 vs Qt157 from captured Keychain158 default trust; TLS/security/hash/PNG/Cocoa GUI/CLI pass. ZIP17 original inputs, unchanged CPython patch, legal and retained crypto wheel bytes are worker verified. No older-OS or final-package acceptance claim.
+
+Prepared **2.4.0 / Windows2.4.0.0** is unpublished. The [active audit](V2_4_RELEASE_PREP.md) and [one finite current R01–R17 ledger](V2_4_RELEASE_PREP.md#current-finite-migration-and-acceptance-ledger-2026-10-28) replace obsolete scheduling rows and retain mandatory provider/security/native/build-tool migrations, concrete minimum actions and affected checks. The1094 historical component observations and prior-five effective runtime inputs stay unchanged. Only Windowsx64 manual testing is available; native CI supplies other target evidence. Final exact-head Quality is recorded in PR#239. **STOP for Intel/residual review**; no other target, producer adoption, merge/freeze/final build/assembly/production signing/tag/publication.
+
+Control Tower approved MINOR reclassification on **2026-10-25**, tracked by [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Keep existing PR #239 and branch `release/v2.3.1-maintenance` for continuity. Prepared metadata is **2.4.0 / Windows 2.4.0.0**; the earlier PATCH proposal is preparation history. [Audit](V2_4_RELEASE_PREP.md) and [inventory](V2_4_COMPONENT_INVENTORY.json) control the selected stack and open migrations.
+
+The minimal CPython/OpenSSL compatibility adaptation and coherent corrected Qt/provider profile have bounded native Linux x64/ARM64 and Windows x64/ARM64 feasibility evidence on their recorded source versions. Preserve all six native targets and accepted OS/ABI/trust/legal requirements; Intel independent review and all final producing profiles remain open. This maintenance release includes no #209 update-delivery feature, #154 production signing or opportunistic refactor; #236's tentative feature numbering is not a commitment. No SHA is frozen. Independent review, complete remaining qualifications, normal merge, post-merge Quality and second full freshness/exact-Python selection must precede final release builds. Stop this tranche before merge/freeze/final multi-platform builds/assembly/tag/signing/publication.
 
 ## v2.0 published baseline
 

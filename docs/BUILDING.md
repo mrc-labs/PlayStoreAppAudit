@@ -1,8 +1,8 @@
 # Building Store App Audit
 
-Windows, macOS and Linux use the same Python/Qt source tree from canonical `main`. Published v2.3.0 is immutable at `8d476dc5507d8249d8cd62c861095ed3e443f0af` and used exact stable Python **3.14.8**. Post-release development tracks rolling stable **3.14** / `check-latest: true`; every future freeze requires fresh exact-patch selection. See [closure audit](V2_3_POST_RELEASE_CLOSURE.md).
+Six native current-Python source-stack diagnostics now PASS. Control Tower accepts five; **[Mac Intel40639680469](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40639680469)** at source **8e153d954fc4506144ea321946bb8be3831bacb8** awaits independent review. Python3.14.10/OpenSSL4.0.3, matched Qt/PySide/Shiboken6.12.0, libpng1.6.59/PCRE2 10.49; Intel independent native source/static cryptography50.0.2. **78 loaded x64-selected images**, actual maximum14.4, Python/crypto10.15, accepted package ceiling26.0, distinct private PEM118 vs Qt157 from captured Keychain158 default trust; TLS/security/hash/PNG/Cocoa GUI/CLI pass. ZIP17 original inputs, unchanged CPython patch, legal and retained crypto wheel bytes are worker verified. No older-OS or final-package acceptance claim.
 
-The canonical release engineering rules are also summarized in `AGENTS.md` and `PROJECT_DECISIONS.md`. Current pins, workflow names and backlog live in `PROJECT_STATUS.md`.
+Prepared **2.4.0 / Windows2.4.0.0** is unpublished. The [active audit](V2_4_RELEASE_PREP.md) and [one finite current R01–R17 ledger](V2_4_RELEASE_PREP.md#current-finite-migration-and-acceptance-ledger-2026-10-28) replace obsolete scheduling rows and retain mandatory provider/security/native/build-tool migrations, concrete minimum actions and affected checks. The1094 historical component observations and prior-five effective runtime inputs stay unchanged. Only Windowsx64 manual testing is available; native CI supplies other target evidence. Final exact-head Quality is recorded in PR#239. **STOP for Intel/residual review**; no other target, producer adoption, merge/freeze/final build/assembly/production signing/tag/publication.
 
 ## Local development environment
 
@@ -15,11 +15,11 @@ python -m venv .venv
 Activate it with `.venv\Scripts\activate` on Windows or `source .venv/bin/activate` on macOS/Linux, then run:
 
 ```bash
-python -m pip install --upgrade pip
+python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
 python -m pip install -r requirements-dev.txt
 ```
 
-The post-v2.3 development policy uses `"3.14"` with `check-latest: true` in all 11 setup environments/nine workflows; the immutable release used audited `"3.14.8"` with full equality. Development steps check stable major/minor 3.14 before use, and log the actual full runtime. The Windows helper keeps its standard 64-bit architecture guards; Linux x64 dynamically downloads the official Ubuntu 22.04 compatibility distribution of the identical resolved full patch and verifies equality after installation. Docker is not required for normal local source development, pytest or Qt/CLI smoke; CI uses Ubuntu 22.04 containers deliberately for x64 sysroot/probe and backward-runtime tests, separately from Ubuntu 24.04 build hosts.
+The post-v2.3 development policy uses `"3.14"` with `check-latest: true` in 11 maintained setup environments plus six isolated diagnostic-pilot bootstraps across nine workflows; the immutable release used audited `"3.14.8"` with full equality. Development steps check stable major/minor 3.14 before use, and log the actual full runtime. The Windows helper keeps its standard 64-bit architecture guards; Linux x64 dynamically downloads the official Ubuntu 22.04 compatibility distribution of the identical resolved full patch and verifies equality after installation. Docker is not required for normal local source development, pytest or Qt/CLI smoke; CI uses Ubuntu 22.04 containers deliberately for x64 sysroot/probe and backward-runtime tests, separately from Ubuntu 24.04 build hosts.
 
 Immediately before every future release SHA freeze, final freshness must replace rolling selectors with one audited exact `major.minor.patch` in release-producing workflows, final Quality and signing/assembly environments, and require full runtime equality. All six final candidates use that patch unless an evidenced upstream limitation is explicitly accepted. The mechanism remains ordinary YAML literals/assertions; no new toolchain configuration subsystem is introduced. Published v2.2 used exact Python **3.14.8** in all 11 setup environments and both native helpers; [its historical final freshness record](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md#exact-python-selection-and-checks) remains unchanged as release evidence. See [the canonical freshness policy](RELEASE_COMPONENT_FRESHNESS.md#development-tracking-and-final-python-patch-freeze).
 
@@ -58,17 +58,19 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
-Current development baseline (immutable v2.2/v2.3 used exact Python 3.14.8 and the same selected parent toolchain):
+Current v2.4.0 preparation baseline (immutable v2.2/v2.3 toolchain evidence remains in their release records):
 
 - Development/diagnostic packaging Python: rolling stable **3.14**; exact audited full patch mandatory at release freeze
 - Development Quality CI: rolling stable **3.14** / `check-latest: true` with stable/final guards
-- `PySide6-Essentials==6.11.2`
+- `PySide6-Essentials==6.12.0`
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
-- `Nuitka==4.2.2`
+- `Nuitka==4.3.1`
 - Qt Widgets
 - official JavaScript GitHub Actions at their currently supported majors
 
 Keep these current pins aligned with the mandatory release component freshness gate and package evidence.
+
+Pip's direct wheel URL and SHA-256 above follow the [PSF eMudhra/emSign security bootstrap](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576). Runtime certifi is explicitly pinned at 2026.10.23; old pip's embedded trust is a separate concern, so run the bootstrap before installing dependencies in reused project environments. Do not disable TLS verification or update unrelated environments as part of a project build. Linux/macOS deployment uses the supported `--no-install` option after installing the audited tooling; Linux explicitly installs `patchelf==0.19.1.0` as required by the deployment parent's distribution check.
 
 `pyaxmlparser` is Apache-2.0 and currently declares `lxml` (BSD-3-Clause),
 `click>=6.7` (BSD-3-Clause) and `asn1crypto>=0.24.0` (MIT). `lxml` is a compiled
@@ -311,7 +313,7 @@ Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It
 
 Both select Xcode **26.6** explicitly. The hosted `xcode-27` path is [public preview](https://github.com/actions/runner-images/issues/14404), not the v2.2 GA baseline; re-evaluate only after stable hosted availability and six-target compatibility/package validation. It is the latest stable common supported Xcode baseline for these architectures; Xcode 27 requires an Apple-silicon host and is not a reason to drop Intel. Preserve the previous main-executable deployment metadata (10.15 on Intel, 11.0 on ARM64) with explicit deployment targets and post-build assertions. These executable fields do not independently establish the minimum OS of every bundled library or promise old-OS acceptance.
 
-Intel cryptography 50.0.2 is deliberately source-built with Rust 1.99.0 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.1 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the entry gate validated the host/compiler migration on both architectures, and the final gate repeats the affected Intel source/package path after the Rust update.
+Intel cryptography 50.0.2 is deliberately source-built with Rust 1.99.1 and official OpenSSL 4.0.3 sources verified by SHA-256. Rustup 1.29.2 uses its checksum-verified official Intel installer in isolated runner directories; Homebrew's current rustup has no macOS Intel bottle. OpenSSL is static and built for the existing deployment target so a host-specific Homebrew bottle is not implicitly imported. ARM64 uses the supported native wheel. Both jobs retain GUI/CLI smoke, architecture/resource/provenance and strict legal/source validation; the entry gate validated the host/compiler migration on both architectures, and the final gate repeats the affected Intel source/package path after the Rust update.
 
 It accepts:
 

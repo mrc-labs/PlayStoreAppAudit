@@ -2,41 +2,93 @@ name: UI style audit
 
 on:
   workflow_dispatch:
+    inputs:
+      linux_arm64_pilot:
+        # Legacy key preserves existing dispatches within GitHub's ten-input limit.
+        description: One isolated Linux or macOS diagnostic; never a final candidate
+        type: choice
+        default: 'off'
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full]
+      windows_arm64_runtime_probe:
+        description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
+        type: boolean
+        default: false
+      windows_arm64_host_tools:
+        description: Also build/probe native Perl and Qt bootstrap generators only; requires ARM64 probe
+        type: boolean
+        default: false
+      windows_arm64_full_pilot:
+        description: One controlled native ARM64 source-stack pilot, gated by all cheap/host prerequisites
+        type: boolean
+        default: false
+      windows_runtime_pilot:
+        description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
+        type: boolean
+        default: false
+      windows_prerequisites_only:
+        description: Windows pilot compiler, secure DLL loader and stock Schannel only; no source-stack rebuild
+        type: boolean
+        default: false
+      trust_diagnostics_only:
+        description: CA and selected target C++ SDK qualification only; no Python/Qt component rebuild
+        type: boolean
+        default: false
+      runtime_pilot:
+        description: One native Jammy x64 controlled Python-Qt-OpenSSL pilot; never a final candidate
+        type: boolean
+        default: false
+      component_audit:
+        description: Non-release six-target component/provider inventory; no UI capture or packaging
+        type: boolean
+        default: false
+      expected_sha:
+        description: Exact source SHA required for component diagnostics
+        type: string
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
   capture:
-    name: ${{ matrix.label }} native vs Fusion
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2025
-            label: Windows
-            platform_key: windows
-          - os: macos-15
-            label: macOS
-            platform_key: macos
-          - os: ubuntu-24.04
-            label: Linux
-            platform_key: linux
+        include: ${{ fromJSON(inputs.component_audit && '[{"os":"windows-2025","label":"windows-x64","platform_key":"windows","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","platform_key":"windows","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","platform_key":"linux","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","platform_key":"linux","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","platform_key":"macos","arch":"x64"},{"os":"macos-26","label":"macos-arm64","platform_key":"macos","arch":"arm64"}]' || '[{"os":"windows-2025","label":"Windows","platform_key":"windows","arch":"x64"},{"os":"macos-15","label":"macOS","platform_key":"macos","arch":"arm64"},{"os":"ubuntu-24.04","label":"Linux","platform_key":"linux","arch":"x64"}]') }}
     runs-on: ${{ matrix.os }}
 
+    env:
+      COMPONENT_AUDIT: ${{ inputs.component_audit }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      QT_QPA_PLATFORM: offscreen
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Verify component diagnostic source SHA
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#EXPECTED_SHA}" = 40
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python 3.14
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           check-latest: true
+          architecture: ${{ matrix.arch }}
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -76,13 +128,51 @@ jobs:
             xauth \
             xvfb
 
-      - name: Install source-mode UI dependencies
+      - name: Provision diagnostic Windows ARM64 cryptography
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          & ./.github/scripts/provision_windows_arm64_openssl.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "openssl-arm64-$env:GITHUB_RUN_ID")
+          if ($LASTEXITCODE -ne 0) { throw 'Native crypto prerequisite failed.' }
+
+      - name: Provision diagnostic Intel macOS cryptography
+        if: ${{ inputs.component_audit && runner.os == 'macOS' && matrix.arch == 'x64' }}
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+          MACOSX_DEPLOYMENT_TARGET: '10.15'
+        run: bash .github/scripts/provision_macos_intel_crypto.sh
+
+      - name: Select producing Linux x64 compatibility runtime for diagnostics
+        if: ${{ inputs.component_audit && runner.os == 'Linux' && matrix.arch == 'x64' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/prepare_linux_x64_sysroot.sh
+
+      - name: Install source-mode UI dependencies
+        if: ${{ !(inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if [ "$COMPONENT_AUDIT" = true ]; then
+            python -m pip install "Nuitka==4.3.1"
+            if [ "${{ runner.os }}" = Linux ]; then python -m pip install "patchelf==0.19.1.0"; fi
+          fi
+
+      - name: Install native Windows ARM64 diagnostic dependencies
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          if ($LASTEXITCODE -ne 0) { throw 'Secure pip bootstrap failed.' }
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native dependency installation failed.' }
+          python -m pip install "Nuitka==4.3.1"
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic compiler metadata installation failed.' }
 
       - name: Capture Windows native and Fusion styles
-        if: runner.os == 'Windows'
+        if: ${{ !inputs.component_audit && runner.os == 'Windows' }}
         shell: pwsh
         env:
           QT_SCALE_FACTOR: "1"
@@ -93,7 +183,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Fusion Windows UI capture failed.' }
 
       - name: Capture macOS native and Fusion styles
-        if: runner.os == 'macOS'
+        if: ${{ !inputs.component_audit && runner.os == 'macOS' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -102,7 +192,7 @@ jobs:
           python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Capture Linux default and Fusion styles under Xvfb
-        if: runner.os == 'Linux'
+        if: ${{ !inputs.component_audit && runner.os == 'Linux' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -111,6 +201,7 @@ jobs:
           xvfb-run -a python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Validate audit evidence
+        if: ${{ !inputs.component_audit }}
         shell: bash
         env:
           PLATFORM_KEY: ${{ matrix.platform_key }}
@@ -177,9 +268,465 @@ jobs:
           PY
 
       - name: Upload UI audit screenshots and metadata
+        if: ${{ !inputs.component_audit }}
         uses: actions/upload-artifact@v7
         with:
           name: ui-style-audit-${{ matrix.platform_key }}
           path: ui-style-audit/
+          if-no-files-found: error
+          retention-days: 0
+
+      - name: Inspect native component providers
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/audit_runtime_components.py --output-dir component-audit
+
+      - name: Verify ARM64 cryptography and probe CPython OpenSSL 4 feasibility
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          Copy-Item component-install.json (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-install.json')
+          python .github/scripts/verify_windows_arm64_crypto.py --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Native cryptography verification failed.' }
+          python .github/scripts/probe_cpython_openssl4.py --output-dir component-audit/cpython-openssl4
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded CPython/OpenSSL API probe failed.' }
+          Copy-Item -LiteralPath $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE -Destination component-audit/openssl-cryptography -Recurse
+
+      - name: Upload non-release component diagnostic evidence
+        if: ${{ always() && inputs.component_audit }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-components-${{ matrix.platform_key }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            component-audit/
+            component-install.json
+            linux-diagnostics/
+          if-no-files-found: error
+          retention-days: 0
+
+  runtime-pilot:
+    if: ${{ inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    name: Native runtime-framework pilot / Linux x64 Jammy
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated pilot source and native target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.component_audit }}' = false
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+
+      - name: Diagnose system trust and C++ SDK before downloads or build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 .github/scripts/verify_native_runtime_pilot.py \
+            --diagnose-system-trust --output-dir pilot-evidence
+
+      - name: Qualify maintained target C++ link SDK before runtime downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 .github/scripts/provision_pilot_cxx_sdk.py \
+            --work-root "$RUNNER_TEMP/pilot-cxx-sdk-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --evidence-dir pilot-evidence
+
+      - name: Set up bootstrap Python
+        if: ${{ !inputs.trust_diagnostics_only }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+
+      - name: Verify stable Python 3.14
+        if: ${{ !inputs.trust_diagnostics_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Install ephemeral native build prerequisites
+        if: ${{ !inputs.trust_diagnostics_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
+
+      - name: Build and exercise one controlled native stack
+        if: ${{ !inputs.trust_diagnostics_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d pilot-evidence
+          bash .github/scripts/build_native_runtime_pilot.sh \
+            "$RUNNER_TEMP/native-runtime-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic runtime-framework evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
+          path: pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-runtime-pilot:
+    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    name: Native runtime-framework pilot / Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated Windows pilot SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'X64') { throw 'Native x64 runner required.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows x64 pilot.' }
+
+      - name: Set up Windows pilot bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: x64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'AMD64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable native bootstrap required.' }
+
+      - name: Qualify and exercise controlled Windows stack
+        shell: pwsh
+        run: |
+          $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true'
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
+
+      - name: Upload diagnostic Windows runtime evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-runtime-framework-windows-x64-${{ github.run_id }}
+          path: windows-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-arm64-runtime-probe:
+    if: ${{ (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    name: ${{ inputs.windows_arm64_full_pilot && 'Native runtime-framework pilot / Windows ARM64' || 'Native runtime prerequisites / Windows ARM64' }}
+    runs-on: windows-11-arm
+    timeout-minutes: ${{ inputs.windows_arm64_full_pilot && 240 || 30 }}
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated ARM64 probe SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'Native ARM64 runner required.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows ARM64 prerequisites.' }
+
+      - name: Set up ARM64 probe bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'ARM64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Native GIL-enabled stable bootstrap required.' }
+
+      - name: Probe native compiler, DLL linkage and Qt host generators
+        shell: pwsh
+        run: |
+          $hostTools = '${{ inputs.windows_arm64_host_tools }}' -eq 'true'
+          $fullPilot = '${{ inputs.windows_arm64_full_pilot }}' -eq 'true'
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools -FullPilot:$fullPilot
+          if ($LASTEXITCODE -ne 0) { throw 'ARM64 diagnostic failed; inspect prerequisite/host/runtime gate evidence.' }
+
+      - name: Upload native ARM64 prerequisite evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.windows_arm64_full_pilot && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-windows-arm64-${{ github.run_id }}
+          path: windows-arm64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+  linux-arm64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' }}
+    name: ${{ inputs.linux_arm64_pilot == 'full' && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated Linux ARM64 source and accepted OS
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+
+      - name: Set up native ARM64 bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'aarch64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Install ephemeral native source-build prerequisites
+        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+
+      - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p linux-arm64-pilot-evidence
+          python .github/scripts/probe_linux_arm64_runtime.py \
+            --work-root "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/prerequisite-build.log
+
+      - name: Build and exercise one gated native AArch64 source stack
+        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_linux_arm64_runtime_pilot.sh \
+            "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic Linux ARM64 evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.linux_arm64_pilot == 'full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
+          path: linux-arm64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  macos-arm64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' }}
+    name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
+    runs-on: macos-26
+    timeout-minutes: 240
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated macOS ARM64 SHA and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = arm64
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+          test -d "$DEVELOPER_DIR"
+          test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+
+      - name: Set up macOS ARM64 bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'arm64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p macos-arm64-pilot-evidence
+          python .github/scripts/probe_macos_arm64_runtime.py \
+            --work-root "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
+
+      - name: Build and exercise the gated native ARM64 controlled source prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_macos_arm64_runtime_pilot.sh \
+            "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic macOS ARM64 evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
+          path: macos-arm64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+
+  macos-x64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot == 'macos-x64-prerequisites' || inputs.linux_arm64_pilot == 'macos-x64-full' }}
+    name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'Native runtime-framework pilot / macOS Intel/x64' || 'Native runtime prerequisites / macOS Intel/x64' }}
+    runs-on: macos-26-intel
+    timeout-minutes: 240
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Verify isolated macOS Intel/x64 SHA and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+          test -d "$DEVELOPER_DIR"
+          test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+
+      - name: Set up macOS Intel/x64 bootstrap Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: x64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p macos-x64-pilot-evidence
+          python .github/scripts/probe_macos_x64_runtime.py \
+            --work-root "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-x64-pilot-evidence/prerequisite-build.log
+
+      - name: Build and exercise the gated native Intel/x64 controlled source prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_macos_x64_runtime_pilot.sh \
+            "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-x64-pilot-evidence/pilot-build.log
+
+      - name: Upload diagnostic macOS Intel/x64 evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-x64-${{ github.run_id }}
+          path: macos-x64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0

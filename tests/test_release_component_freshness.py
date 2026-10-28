@@ -18,15 +18,15 @@ def test_v2_toolchain_uses_python_314_and_current_qt_pin() -> None:
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
 
     assert project["requires-python"] == ">=3.14"
-    assert "PySide6-Essentials==6.11.2" in project["dependencies"]
-    assert "PySide6-Essentials==6.11.2" in requirements
+    assert "PySide6-Essentials==6.12.0" in project["dependencies"]
+    assert "PySide6-Essentials==6.12.0" in requirements
 
 
 def test_local_windows_build_helper_tracks_v2_toolchain_and_source_details() -> None:
     helper = (ROOT / "build_windows_exe.bat").read_text(encoding="utf-8")
 
     assert "py -3.14" in helper
-    assert '"Nuitka==4.2.2"' in helper
+    assert '"Nuitka==4.3.1"' in helper
     assert "_set_view_preset('Source Details')" in helper
     assert "_set_view_preset('Device')" not in helper
 
@@ -86,7 +86,7 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
                 assert "if ($LASTEXITCODE -ne 0) { throw" in step
             else:
                 assert "set -euo pipefail" in step
-    assert setups == 11
+    assert setups == 17
 
 
 @pytest.mark.parametrize(
@@ -123,11 +123,11 @@ def test_development_native_helpers_preserve_resolved_patch_and_current_rust() -
     assert 'sys.version_info.releaselevel == "final"' in sysroot
     assert '--version "$resolved_python"' in sysroot
     assert '= "$resolved_python"' in sysroot
-    macos = (ROOT / ".github/workflows/build-macos.yml").read_text(encoding="utf-8")
-    assert "--default-toolchain 1.99.0" in macos
-    assert 'rustc 1.99.0 ' in macos
-    windows = (ROOT / ".github/workflows/build-windows-exe.yml").read_text(encoding="utf-8")
-    assert "rustup toolchain install 1.99.0 --profile minimal" in windows
+    macos = (ROOT / ".github/scripts/provision_macos_intel_crypto.sh").read_text(encoding="utf-8")
+    assert "--default-toolchain 1.99.1" in macos
+    assert 'rustc 1.99.1 ' in macos
+    windows = (ROOT / ".github/scripts/provision_windows_arm64_openssl.ps1").read_text(encoding="utf-8")
+    assert "rustup toolchain install 1.99.1 --profile minimal" in windows
     assert "host: aarch64-pc-windows-msvc" in windows
 
 
