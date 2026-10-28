@@ -34,13 +34,6 @@ def contract() -> tuple[dict, dict]:
     return intel, base
 
 
-
-
-
-
-
-
-
 def macho(path: Path, *, target: bool, allow_universal: bool = False, output: Path | None = None) -> dict:
     architectures = run(['lipo', '-archs', path]).split()
     assert 'x86_64' in architectures and set(architectures) <= {'arm64', 'x86_64'}, ('No native Intel/x64 slice', path, architectures)
@@ -55,7 +48,6 @@ def macho(path: Path, *, target: bool, allow_universal: bool = False, output: Pa
         output.mkdir(exist_ok=True)
         (output / (path.name + '-' + digest[:12] + '-otool.txt')).write_text(raw)
     return {'path': str(path.resolve()), 'architectures': architectures, 'selected_slice': 'x86_64', 'sha256': digest, **commands, 'role': 'target image' if target else 'native host tool; not package OS floor'}
-
 
 
 def installed_qt(qt: Path, evidence: Path) -> dict:

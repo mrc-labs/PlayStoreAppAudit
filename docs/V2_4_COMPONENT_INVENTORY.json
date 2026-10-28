@@ -111,7 +111,7 @@
     ]
   },
   "macos_x64_qualification_2026_10_28": {
-    "state": "native prerequisites prepared; not yet dispatched or qualified",
+    "state": "native prerequisite SUCCESS; full runtime pending",
     "starting_head": "a4243630ea84a1556f26fb01cc10a1063658d7d1",
     "scope": "macOS Intel/x64 only; residual reconciliation; no producing adoption",
     "manifest": ".github/scripts/macos_x64_runtime_pilot_sources.json",
@@ -122,7 +122,13 @@
       "framework": "14.4",
       "accepted_highest_bundled_minimum": "26.0"
     },
-    "trust": "Python private default certifi PEM distinct from Qt/native Keychain; full security qualification pending"
+    "trust": "Python private default certifi PEM distinct from Qt/native Keychain; full security qualification pending",
+    "prerequisite_run": 40638283142,
+    "prerequisite_source": "36a077d4bab27a119075ae88926a8a15b306cc21",
+    "prerequisite_artifact": 12794833135,
+    "prerequisite_zip_sha256": "afc6e816f3d913f10d82276c2b777f41751500800335f4a890794a58d08ff7be",
+    "host": "macOS26.6.1/x86_64/Xcode26.6/SDK26.5/AppleClang21.0.0",
+    "native_default_trust": "stock SecureTransport TLS1.2/157 roots; bootstrap Python default handshake PASS; private PEM118 byte verified; full custom trust pending"
   },
   "macos_arm64_qualification_2026_10_27": {
     "starting_head": "a5f9351bad3b591a35f5b16e250f3f39a6761f74",
