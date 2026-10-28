@@ -1,4 +1,115 @@
 {
+  "current_finite_migration_ledger_2026_10_28": {
+    "date": "2026-10-28",
+    "authority": "docs/V2_4_RELEASE_PREP.md#current-finite-migration-and-acceptance-ledger-2026-10-28",
+    "inventory_1094_canonical_sha256": "1cef86117edaf67ec218da6a83485a9d2a7309bf46c23dafd01c990b2d0e631c",
+    "entry_components_unchanged": true,
+    "scope": "Reconciliation, not a new exhaustive scan; current Python/security native profiles supersede only dated findings they actually resolve",
+    "rows": [
+      {
+        "id": "R01",
+        "status": "? diagnostic5/6 accepted; Intel in progress",
+        "applicability_minimum_action": "Python3.14.10/OpenSSL4.0.3, matched Qt/PySide/Shiboken6.12.0, actual PNG1.6.59/PCRE2 10.49. CPython adaptation/MINOR review, Windows real4 DLL names and default-CA defects are resolved for accepted profiles; complete Intel with its separate native source/static cryptography. No new parent selection or unmodified-official-runtime claim.",
+        "verification_evidence": "[Linux ARM40402101612](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40402101612), [Linux x6440412794087](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40412794087), [Win x6440412798113](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40412798113), [Win ARM40413173398](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40413173398), [Mac ARM40602044274](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/40602044274). All execute SPKI/tarfile, TLS/hash/PNG/GUI/CLI/native bounds. Intel result above; no historical3.14.9 artifact renamed."
+      },
+      {
+        "id": "R02",
+        "status": "? REQUIRED security/provider acceptance",
+        "applicability_minimum_action": "Functional trust and Python compromised-SPKI rejection do not establish Qt/OpenSSL, Schannel, SecureTransport/Keychain or independent cryptography root/security policy. Compare actual default providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
+        "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118 vs Mac Keychain157 are separate observed inputs, not equivalent security acceptance."
+      },
+      {
+        "id": "R03",
+        "status": "? REQUIRED build-network security",
+        "applicability_minimum_action": "pip26.2.2 private urllib3 2.7.0 streaming findings remain reachable candidates; application urllib3 2.8.0 and PSF bootstrap do not replace that namespace. Check corrected stable parent first; otherwise qualify supported installer migration or reviewed downstream debundled source build. Never patch installed private files in place.",
+        "verification_evidence": "Hash/provenance, authenticated download/stream/error/proxy applicability, isolated dependency/build/source/legal checks on every job using the replacement. Pure-Python msgpack and copied pkg_resources lack the reported vulnerable implementations; those specific non-applicabilities remain resolved in JSON."
+      },
+      {
+        "id": "R04",
+        "status": "? REQUIRED Action network/security/deprecation",
+        "applicability_minimum_action": "Latest parents still bundle older undici/XML and explicitly unsupported glob10.5.0. Assess actual prebundled HTTP/XML call paths, then stable corrected parent/SDK or direct stable CLI for the affected operation. Repo npm overrides do not alter remote dist. No general Action framework/fork is selected.",
+        "verification_evidence": "Download/artifact/cache/Azure service-response tests, exact-SHA/provenance/retention/permissions and source/legal validation for affected jobs. WebSocket/EventSource/cookie/template/untrusted-glob conditions are scoped watches where repository inputs never select them, not blanket vendor waivers."
+      },
+      {
+        "id": "R05",
+        "status": "? REQUIRED controlled Python native freshness",
+        "applicability_minimum_action": "Reconcile measured target providers, then qualify SQLite3.54.1, libffi3.8.0, libmpdec4.0.1 and remaining XZ5.8.4/zlib-ng2.3.3 candidates through documented source/build selection. Mac XZ5.8.4/Zstd1.5.7 and source zlib1.3.2 are already qualified; OS SQLite/ffi and Windows copied/prebuilt providers remain distinct. Tcl/Tk is incidental/excluded, not a Qt application migration.",
+        "verification_evidence": "Stdlib sqlite/ctypes/decimal/compression regressions, security/hash/TLS and native CRT/ABI/OS/linkage on each actually changed runtime; original sources/patches/legal. No inferred compatibility failure from old parent pins."
+      },
+      {
+        "id": "R06",
+        "status": "? REQUIRED cffi provenance/native freshness",
+        "applicability_minimum_action": "cffi2.1.1 MSVC copied x86/x64 sources and ARM prebuilt ffi.lib do not supply a measurable libffi release; do not label them3.8.0 from Python's SBOM. Qualify current native libffi via supported source/pkg-config on POSIX and reviewed native MSVC route, or obtain concrete upstream compatibility/provenance evidence.",
+        "verification_evidence": "cffi/crypto integration, real architecture/CRT, FFI callbacks and native source/license closure on actual consuming targets."
+      },
+      {
+        "id": "R07",
+        "status": "? REQUIRED lxml native freshness",
+        "applicability_minimum_action": "lxml6.1.3 vendor libxml2 Windows2.11.9/POSIX2.14.6 ? candidate2.15.4, libxslt1.1.45 remains current. Existing2.15 compatibility fixes and documented source/static build give a concrete route; Windows security backports alone do not prove incompatibility.",
+        "verification_evidence": "Parser/HTML/encoding/network-disable behavior, actual compiled-feature/version/architecture/ABI and sources/licenses for all shipped lxml integrations."
+      },
+      {
+        "id": "R08",
+        "status": "? REQUIRED active Qt natives",
+        "applicability_minimum_action": "HarfBuzz14.5?15.0, MD4C0.5.3?0.6.0, TinyCBOR7.0?7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Use stable system-library configuration where exposed, otherwise minimal reviewed Qt source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected.",
+        "verification_evidence": "Matched binding build, text/font/markdown/CBOR/rendering regressions, GUI/PNG/TLS and native ABI/legal on changed targets. No arbitrary framework/dylib substitution."
+      },
+      {
+        "id": "R09",
+        "status": "? REQUIRED Qt data / conditional plugins",
+        "applicability_minimum_action": "UCD report36?38, CLDR48.2?49, PSL May14?Oct22, copied libpsl?0.23.3 and tl::expected?1.3.1 require supported parent/generator/source comparison and relevant schema/API tests. Qt SQLite3.53.4?3.54.1 applies if its built plugin is retained; Mac cache builds it even though current runtime closure does not load QtSql. D3D12 allocator3.1?3.2 is Windows-conditional; Vulkan allocator3.3?3.4 requires actual feature/plugin inclusion.",
+        "verification_evidence": "Locale/domain/security-list and corresponding-source checks; plugin/target membership before update, native build/ABI checks where selected. Mac Vulkan is OFF; Android Gradle is absent from all six desktop build paths; copied DBus headers/protocol revisions are not an OS runtime version. Final package membership must prove exclusions."
+      },
+      {
+        "id": "R10",
+        "status": "? REQUIRED setuptools/build isolation",
+        "applicability_minimum_action": "Qualify documented preferred external dependencies for84.2.1 instead of older fallback copies (jaraco/importlib_metadata/more-itertools/platformdirs/tomli/wheel/zipp). Do not add unsupported setuptools[core] to published build-system.requires or assume an environment install changes an isolated backend.",
+        "verification_evidence": "Clean isolated wheel/source builds, actual resolved external imports and build reports on affected platforms; reproducible constraints/provenance."
+      },
+      {
+        "id": "R11",
+        "status": "? REQUIRED selected Rust integrations; conditional findings scoped",
+        "applicability_minimum_action": "cryptography50.0.2/Ruff0.17.2 Cargo locks include build/dev/cfg-only crates. Establish selected call graph, then minimal supported cargo-update/source rebuild or corrected parent for genuinely included outdated components; unmaintained paste/proc-macro-error2 require maintained integration assessment. Rustup1.29.2/Rust1.99.1 Intel source route is already current, not another needed upgrade.",
+        "verification_evidence": "Native compile/crypto/lint regressions, lock/MSRV/source/legal closure. Ruff does not perform privileged untrusted ZIP extraction; crossbeam pointer-formatting reachability is unproven. Those exact advisory conditions remain explicit watches, not application vulnerabilities or proof all475 crates ship."
+      },
+      {
+        "id": "R12",
+        "status": "? REQUIRED development Pillow natives",
+        "applicability_minimum_action": "Development-only Pillow13.0.0 LittleCMS2.19?2.19.1/FriBidi1.0.11?1.0.17/HarfBuzz14.5?15.0: corrected stable parent first, otherwise documented source build against current libraries. Production nofollow-PIL remains unchanged.",
+        "verification_evidence": "Actual feature/provider reports and icon/image tooling tests; affected build/Quality environments and source provenance, not a claim of shipped app exposure."
+      },
+      {
+        "id": "R13",
+        "status": "? REQUIRED selected tool/runner freshness",
+        "applicability_minimum_action": "Qualify remaining actual compiler/SDK/utility gaps: VS18.11.1, LLVM23.1.4 where a supported generator/assembler exists, curl8.23.0, libarchive3.8.10 and gh2.103.2. Match each to invoked executable; an image inventory entry alone is neither selection nor exemption. Current CMake4.4.4/Ninja1.13.2, Perl5.44, NASM3.02 where applicable and7-Zip26.05 are already selected in bounded profiles. LLVM parser22.1.8 is a supported Qt integration, so newer parser compatibility needs an actual wrapper/build probe.",
+        "verification_evidence": "Cheap native host/target/SDK/parser probes before affected rebuilds; preserve /MD and Linux ceilings2.35/3.4.29 x64 and2.38/3.4.32 ARM. Current Xcode26.6 supported; Xcode27 preview excluded. No Ubuntu26 migration or local software/Docker changes."
+      },
+      {
+        "id": "R14",
+        "status": "? REQUIRED Linux ARM ADB freshness",
+        "applicability_minimum_action": "Google37.0.1 archives already selected for supported desktop providers; Google offers no native Linux ARM archive. Noble ADB34.0.4 is an independent older native vendor integration. Qualify maintained native source/vendor37 path and dependencies against existing ARM24.04/ABI contract; no emulation or silent floor increase.",
+        "verification_evidence": "Read-only device/discovery/CLI behavior, architecture/linkage/source/legal/redistribution. Only Windowsx64 manual testing is available; use native runner evidence elsewhere and explicitly mark unavailable physical-device evidence."
+      },
+      {
+        "id": "R15",
+        "status": "? constrained stable-selector WATCH",
+        "applicability_minimum_action": "Nuitka4.3.1 selects inline SCons4.10.1; standalone4.11.1 exists but force-system-scons is explicitly experimental. No stable supported override is demonstrated. Request/track corrected stable parent/integration; do not delete inline code or enable the experimental switch. Python3.15.1 remains excluded by experimental Nuitka production support.",
+        "verification_evidence": "Concrete documented selector/support constraint retained in inventory; recheck at second freshness. This is an upstream support constraint, not a current-parent exemption or permission to ignore an applicable security issue."
+      },
+      {
+        "id": "R16",
+        "status": "? conditional disabled signing; REQUIRED before use",
+        "applicability_minimum_action": "ArtifactSigning0.1.20 hardcodes old SDK/client and preview CLI. Stable direct SDK10.0.28000.2705/client1.0.146/CLI1.1.5/cache6.1.0 are candidates for a separately reviewed tooling migration. Runtime exposure is absent while disabled; activation is outside this release tranche.",
+        "verification_evidence": "Provenance/static migration review before any use; later authorized native post-sign qualification would require explicit signing approval. No credentials, Developer ID, notarization or production signing here."
+      },
+      {
+        "id": "R17",
+        "status": "? REQUIRED release/package acceptance; not authorized now",
+        "applicability_minimum_action": "Independent review of all six source diagnostics is feasibility only. Later approved integration must select fresh components above, retain all six native floors, complete second full freshness and pin one exact Python patch, then exact-SHA Quality/freeze and final packages. Current producers intentionally remain unchanged.",
+        "verification_evidence": "All-file package/ADB/architecture/provider/ABI/GUI/CLI/legal/corresponding-source acceptance, same frozen SHA, then separately authorized normal merge/build/assembly/release. Rebuild every affected target after shared input changes; no reuse of v2.3.0 binaries."
+      }
+    ]
+  },
   "macos_x64_qualification_2026_10_28": {
     "state": "native prerequisites prepared; not yet dispatched or qualified",
     "starting_head": "a4243630ea84a1556f26fb01cc10a1063658d7d1",

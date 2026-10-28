@@ -148,6 +148,7 @@ def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_li
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     assert workflow.count('        type: ') == 10
     linux, mac = workflow.split('\n  macos-arm64-runtime-pilot:', 1)
+    mac = mac.split('\n  macos-x64-runtime-pilot:', 1)[0]
     assert "inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full'" in linux
     assert 'runs-on: macos-26\n' in mac and 'matrix:' not in mac and 'macos-26-intel' not in mac
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in mac
