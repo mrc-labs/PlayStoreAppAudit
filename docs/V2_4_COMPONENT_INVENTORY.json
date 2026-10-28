@@ -92,9 +92,9 @@
       },
       {
         "id": "R15",
-        "status": "constrained stable-selector WATCH",
+        "status": "REQUIRED supported SCons integration; selection blocked",
         "applicability_minimum_action": "Nuitka4.3.1 selects inline SCons4.10.1; standalone4.11.1 exists but force-system-scons is explicitly experimental. No stable supported override is demonstrated. Request/track corrected stable parent or upstream-reviewed inline4.11.1 source integration; do not delete inline code or enable the experimental switch. Python3.15.1 remains excluded by experimental Nuitka production support.",
-        "verification_evidence": "Concrete documented selector/support constraint retained in inventory; recheck at second freshness. This is an upstream support constraint, not a current-parent exemption or permission to ignore an applicable security issue."
+        "verification_evidence": "Qualify a stable corrected parent or upstream-reviewed inline4.11.1 source integration with compiler/package tests on each affected native target; public force-system-scons remains experimental and excluded. Until a supported route is qualified or a concrete policy-compliant incompatibility is independently accepted, this is a release blocker, not permission to retain4.10.1. Recheck at second freshness; Python3.15 exclusion remains the separate documented compiler support constraint."
       },
       {
         "id": "R16",
