@@ -1,4 +1,23 @@
 {
+  "residual_tool_delta_2026_11_03": {
+    "date": "2026-11-03",
+    "starting_head": "655c90d48dc91b48a9b44e50bfebdede5d8fe896",
+    "authorization": "Maintainer explicitly authorizes residual maintenance; no independent Intel acceptance claimed; stop before merge/freeze/final/release operations",
+    "selected": {
+      "pip": "26.3",
+      "pip_private_urllib3": "2.8.0",
+      "Nuitka": "4.3.4",
+      "pytest": "9.2.0",
+      "ruff": "0.17.3",
+      "mypy": "2.4.1"
+    },
+    "pip_wheel_sha256": "f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13",
+    "actual_nuitka_inline_scons": "4.10.1",
+    "scons_candidate": "4.11.1",
+    "scons_gate": "R15 remains blocked; substantive vendor MSVC cache APIs must be preserved by a reviewed source integration",
+    "state": "local full1937/9skip (1946 collected), pip check/outdated/lint/compile and strict legal PASS; native tool probes/exact-head Quality pending",
+    "scope": "Targeted parent-source delta;1094 historical observations unchanged; no exhaustive scan or source runtime rebuild"
+  },
   "current_finite_migration_ledger_2026_10_28": {
     "date": "2026-10-28",
     "authority": "docs/V2_4_RELEASE_PREP.md#current-finite-migration-and-acceptance-ledger-2026-10-28",
@@ -20,8 +39,8 @@
       },
       {
         "id": "R03",
-        "status": "REQUIRED build-network security",
-        "applicability_minimum_action": "pip26.2.2 private urllib3 2.7.0 streaming findings remain reachable candidates; application urllib3 2.8.0 and PSF bootstrap do not replace that namespace. Check corrected stable parent first; otherwise qualify supported installer migration or reviewed downstream debundled source build. Never patch installed private files in place.",
+        "status": "pip26.3/private urllib3 2.8.0 selected; native validation pending",
+        "applicability_minimum_action": "Official pip26.3 supplies the corrected private HTTP provider. A verified stdlib HTTPS/hash download followed by strictly offline local-wheel installation removes the old-pip bootstrap network path. Hash/TLS/downgrade negatives pass; repeat native installer/resolver checks before closure. No private-module mutation.",
         "verification_evidence": "Hash/provenance, authenticated download/stream/error/proxy applicability, isolated dependency/build/source/legal checks on every job using the replacement. Pure-Python msgpack and copied pkg_resources lack the reported vulnerable implementations; those specific non-applicabilities remain resolved in JSON."
       },
       {
@@ -93,7 +112,7 @@
       {
         "id": "R15",
         "status": "REQUIRED supported SCons integration; selection blocked",
-        "applicability_minimum_action": "Nuitka4.3.1 selects inline SCons4.10.1; standalone4.11.1 exists but force-system-scons is explicitly experimental. No stable supported override is demonstrated. Request/track corrected stable parent or upstream-reviewed inline4.11.1 source integration; do not delete inline code or enable the experimental switch. Python3.15.1 remains excluded by experimental Nuitka production support.",
+        "applicability_minimum_action": "Nuitka4.3.4 still selects inline SCons4.10.1; standalone4.11.1 exists but force-system-scons is explicitly experimental. No stable supported override is demonstrated. Request/track corrected stable parent or upstream-reviewed inline4.11.1 source integration; do not delete inline code or enable the experimental switch. Python3.15.1 remains excluded by experimental Nuitka production support.",
         "verification_evidence": "Qualify a stable corrected parent or upstream-reviewed inline4.11.1 source integration with compiler/package tests on each affected native target; public force-system-scons remains experimental and excluded. Until a supported route is qualified or a concrete policy-compliant incompatibility is independently accepted, this is a release blocker, not permission to retain4.10.1. Recheck at second freshness; Python3.15 exclusion remains the separate documented compiler support constraint."
       },
       {

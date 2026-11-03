@@ -114,7 +114,7 @@ def main() -> None:
     require_arm64(py)
     register_private_dll_directories(py, [dependency], evidence)
     run([py, '-I', '-c', code, extension], log=evidence / 'secure-loader.log')
-    run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
+    run([py, REPO / '.github/scripts/bootstrap_pip.py'])
     run([py, '-m', 'pip', 'install', *[item['url'] + '#sha256=' + item['sha256'] for item in spec['probe_wheels']], '--report', evidence / 'probe-tools-install.json'])
     package = venv / 'Lib/site-packages/PySide6'
     for name in ('uic', 'rcc'):

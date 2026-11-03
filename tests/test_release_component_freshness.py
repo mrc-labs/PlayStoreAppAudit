@@ -26,7 +26,7 @@ def test_local_windows_build_helper_tracks_v2_toolchain_and_source_details() -> 
     helper = (ROOT / "build_windows_exe.bat").read_text(encoding="utf-8")
 
     assert "py -3.14" in helper
-    assert '"Nuitka==4.3.1"' in helper
+    assert '"Nuitka==4.3.4"' in helper
     assert "_set_view_preset('Source Details')" in helper
     assert "_set_view_preset('Device')" not in helper
 
@@ -86,7 +86,7 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
                 assert "if ($LASTEXITCODE -ne 0) { throw" in step
             else:
                 assert "set -euo pipefail" in step
-    assert setups == 17
+    assert setups == 18
 
 
 @pytest.mark.parametrize(

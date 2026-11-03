@@ -210,7 +210,7 @@ def main() -> None:
     bootstrap = work / 'schannel-preflight'
     run([sys.executable, '-m', 'venv', bootstrap])
     bootstrap_py = bootstrap / 'Scripts/python.exe'
-    run([bootstrap_py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
+    run([bootstrap_py, REPO / '.github/scripts/bootstrap_pip.py'])
     run([bootstrap_py, '-m', 'pip', 'install', 'PySide6-Essentials==6.12.0', 'cryptography==50.0.2', '--report', evidence / 'schannel-preflight-install.json'])
     run([bootstrap_py, REPO / '.github/scripts/verify_windows_runtime_pilot.py', '--bootstrap-schannel', '--output-dir', evidence / 'schannel-preflight'])
     if args.prerequisites_only:
@@ -316,7 +316,7 @@ def main() -> None:
     for directory in dll_directories:
         directory.mkdir(parents=True, exist_ok=True)
     register_private_dll_directories(py, dll_directories, evidence)
-    run([py, '-m', 'pip', 'install', 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'])
+    run([py, REPO / '.github/scripts/bootstrap_pip.py'])
     run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])
     os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '2'
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL']
@@ -357,7 +357,7 @@ def main() -> None:
     run([py, 'setup.py', 'install', '--ignore-git', '--qtpaths=' + str(prefix / 'qt/bin/qtpaths6.exe'), '--parallel=2', '--limited-api=yes', '--module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test', '--no-qt-tools'], cwd=src / 'pyside-setup-everywhere-src-6.12.0', log=evidence / 'pyside-build.log')
     requirements = evidence / 'runtime-requirements.txt'
     requirements.write_text('\n'.join(x for x in (REPO / 'requirements.txt').read_text().splitlines() if not x.startswith('PySide6-Essentials==')) + '\n')
-    run([py, '-m', 'pip', 'install', '-r', requirements, 'pytest==9.1.1', '--report', evidence / 'runtime-install.json'])
+    run([py, '-m', 'pip', 'install', '-r', requirements, 'pytest==9.2.0', '--report', evidence / 'runtime-install.json'])
     run([py, '-m', 'pip', 'check'])
     for name in ('SSL_CERT_FILE','SSL_CERT_DIR','PYTHONHOME','QT_QPA_PLATFORM','LLVM_INSTALL_DIR'):
         os.environ.pop(name, None)

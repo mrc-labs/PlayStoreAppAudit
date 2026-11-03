@@ -8,7 +8,7 @@ on:
         description: One isolated Linux or macOS diagnostic; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,10 +51,82 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'tools' && 'toolchain-delta' || inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
+
+  native-toolchain-delta:
+    if: ${{ inputs.linux_arm64_pilot == 'tools' }}
+    name: Toolchain delta / ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-2025, label: windows-x64, arch: x64}
+          - {os: windows-11-arm, label: windows-arm64, arch: arm64}
+          - {os: ubuntu-24.04, label: linux-x64, arch: x64}
+          - {os: ubuntu-24.04-arm, label: linux-arm64, arch: arm64}
+          - {os: macos-26-intel, label: macos-x64, arch: x64}
+          - {os: macos-26, label: macos-arm64, arch: arm64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.label, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Guard exact source and isolated diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+
+      - name: Set up native Python bootstrap
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final';assert platform.python_version()=='3.14.10';assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Qualify verified pip and current tool installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python .github/scripts/bootstrap_pip.py | tee toolchain-delta-evidence/pip-bootstrap.log
+          python -m pip install 'Nuitka==4.3.4' 'pytest==9.2.0' 'ruff==0.17.3' 'mypy==2.4.1' --report toolchain-delta-evidence/install.json
+          python .github/scripts/verify_toolchain_delta.py
+
+      - name: Upload host tool diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-toolchain-delta-${{ matrix.label }}-${{ github.run_id }}
+          path: toolchain-delta-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
   capture:
     if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
     name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
@@ -153,10 +225,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python .github/scripts/bootstrap_pip.py
           python -m pip install -r requirements-dev.txt --report component-install.json
           if [ "$COMPONENT_AUDIT" = true ]; then
-            python -m pip install "Nuitka==4.3.1"
+            python -m pip install "Nuitka==4.3.4"
             if [ "${{ runner.os }}" = Linux ]; then python -m pip install "patchelf==0.19.1.0"; fi
           fi
 
@@ -164,11 +236,11 @@ jobs:
         if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
         shell: pwsh
         run: |
-          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python .github/scripts/bootstrap_pip.py
           if ($LASTEXITCODE -ne 0) { throw 'Secure pip bootstrap failed.' }
           python -m pip install -r requirements-dev.txt --report component-install.json
           if ($LASTEXITCODE -ne 0) { throw 'Native dependency installation failed.' }
-          python -m pip install "Nuitka==4.3.1"
+          python -m pip install "Nuitka==4.3.4"
           if ($LASTEXITCODE -ne 0) { throw 'Diagnostic compiler metadata installation failed.' }
 
       - name: Capture Windows native and Fusion styles
@@ -373,7 +445,7 @@ jobs:
             libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
             libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
             libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
-          python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+          python .github/scripts/bootstrap_pip.py
           python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
 
       - name: Build and exercise one controlled native stack
