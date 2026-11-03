@@ -15,8 +15,68 @@
     "actual_nuitka_inline_scons": "4.10.1",
     "scons_candidate": "4.11.1",
     "scons_gate": "R15 remains blocked; substantive vendor MSVC cache APIs must be preserved by a reviewed source integration",
-    "state": "local full1937/9skip (1946 collected), pip check/outdated/lint/compile and strict legal PASS; native tool probes/exact-head Quality pending",
-    "scope": "Targeted parent-source delta;1094 historical observations unchanged; no exhaustive scan or source runtime rebuild"
+    "state": "SUCCESS local validation and six native host tool checks; R03 resolved, R15 remains blocked",
+    "scope": "Targeted parent-source delta;1094 historical observations unchanged; no exhaustive scan or source runtime rebuild",
+    "source_head": "4d37b984e4984e6c57955659de2ab9e20ec3e4f7",
+    "native_run": 41553734181,
+    "quality_run": 41553737813,
+    "quality_tests": 1946,
+    "native_artifacts": [
+      {
+        "target": "macos-x64",
+        "artifact": 13194140286,
+        "bytes": 910643,
+        "sha256": "sha256:14293077451da7fd22a4b925bb3a105e8a04369034ad61c339c4abe0572637d1",
+        "native_module_sha256": "6ca5eb4c95dfe55505411a4857295887339772f3ea28a8822db3b448f0224968",
+        "actual_machine": 16777223,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      },
+      {
+        "target": "windows-arm64",
+        "artifact": 13194120261,
+        "bytes": 2464318,
+        "sha256": "sha256:d0ee893f98df473430c3092935bb36ea9589384ab66eb9065d8255fdc52e576a",
+        "native_module_sha256": "a8fd27f699d3dbabdde4c4c171f5f0973aa86ae13c0d5f9d14cd66965610974d",
+        "actual_machine": 43620,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      },
+      {
+        "target": "macos-arm64",
+        "artifact": 13193910259,
+        "bytes": 905655,
+        "sha256": "sha256:6e581fc81dc3d3709329b4d63607ec1cd8319d5a684e2ae052ff952302b64dac",
+        "native_module_sha256": "9501acc363c3f9cd2e6978e3ea1acf9c9a2ebc776b09fcbe31ebe98caa5df51a",
+        "actual_machine": 16777228,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      },
+      {
+        "target": "linux-x64",
+        "artifact": 13193278454,
+        "bytes": 765372,
+        "sha256": "sha256:dd8049fc575cacae15b310392a811d54906e264f333912d9274fe7f2927584fb",
+        "native_module_sha256": "f02c993317b1a210277d52ac4c3e15c46a8ac20d49d3c6b41db278ecda735bb6",
+        "actual_machine": 62,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      },
+      {
+        "target": "windows-x64",
+        "artifact": 13193173683,
+        "bytes": 2449990,
+        "sha256": "sha256:3554d0e06a7744b51529cf020590e909ebd0a55f244786704f94c72cfa6d3d7e",
+        "native_module_sha256": "515d7dd8cded5a7f886c181335cb0c6677544f59adb80aa599a2320b997efe1e",
+        "actual_machine": 34404,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      },
+      {
+        "target": "linux-arm64",
+        "artifact": 13192568676,
+        "bytes": 761919,
+        "sha256": "sha256:1b2464a9cca62a9088d6bb6d545d941d7229a22cc6af1cb8d15bc9a6fa3b0e75",
+        "native_module_sha256": "e27d95ee16078675383bdb2b1f6e4a1102bed63aa6c78f545c51ce5e8b6faac3",
+        "actual_machine": 183,
+        "result": "Independent ZIP/installed-tool/report/native-binary checks PASS"
+      }
+    ]
   },
   "current_finite_migration_ledger_2026_10_28": {
     "date": "2026-10-28",
@@ -39,8 +99,8 @@
       },
       {
         "id": "R03",
-        "status": "pip26.3/private urllib3 2.8.0 selected; native validation pending",
-        "applicability_minimum_action": "Official pip26.3 supplies the corrected private HTTP provider. A verified stdlib HTTPS/hash download followed by strictly offline local-wheel installation removes the old-pip bootstrap network path. Hash/TLS/downgrade negatives pass; repeat native installer/resolver checks before closure. No private-module mutation.",
+        "status": "RESOLVED pip26.3/private urllib3 2.8.0; six native checks PASS",
+        "applicability_minimum_action": "Official pip26.3 supplies the corrected private HTTP provider. A verified stdlib HTTPS/hash download followed by strictly offline local-wheel installation removes the old-pip bootstrap network path. Hash/TLS/downgrade negatives and all six native installer/compiler checks41553734181 pass, with worker ZIP/binary verification. Reopen on new upstream/advisory facts. No private-module mutation.",
         "verification_evidence": "Hash/provenance, authenticated download/stream/error/proxy applicability, isolated dependency/build/source/legal checks on every job using the replacement. Pure-Python msgpack and copied pkg_resources lack the reported vulnerable implementations; those specific non-applicabilities remain resolved in JSON."
       },
       {
