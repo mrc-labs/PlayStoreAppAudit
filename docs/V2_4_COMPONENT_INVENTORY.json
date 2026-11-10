@@ -1,6 +1,6 @@
 {
   "libffi_msvc_prerequisite_2026_11_10": {
-    "state": "Configured native headers PASS; one unsigned-mask MSVC SDL incompatibility; reviewed project patch/native ABI candidate pending",
+    "state": "Native project/COFF/CRT PASS; consumer link found missing official tramp.c; two scoped patch candidate pending",
     "version": "3.8.0",
     "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
     "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
@@ -11,7 +11,7 @@
     "failed_source": "d79f6f20202da302599a5d161d078260d25105e2",
     "failed_run": 42742580293,
     "demonstrated_gate": "61 compile errors after native host/target prerequisites; missing version/type declarations",
-    "minimum_next_action": "Documented configure/MSVC wrapper header generation, then supplied project/native3.8 version/call/closure/CRT proof; retain hashes and do not infer whole-target incompatibility",
+    "minimum_next_action": "Add official Makefile source tramp.c to MSVC project, then repeat native version/call/closure/aligned-stack-struct execution before consumer integration. No source stubs or relaxed checks.",
     "configured_source": "d0f320292ae9d7e37b589c34363b9458caa3205d",
     "configured_run": 42743731127,
     "native_host_tools": "Git Bash/compiler/assembler all AA64; MSVC14.51.36231 SDK10.0.26100.0",
@@ -28,9 +28,22 @@
         "reason": "Native MSVC14.51 /sdl C4146 at FFI_ALIGN_DOWN; dest and alignment are size_t, so ~(alignment-1) equals -alignment modulo unsigned width. No SDL or warning checks disabled.",
         "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0",
         "native_failure_run": 42743731127
+      },
+      "msvc_project_patch": {
+        "path": ".github/patches/libffi-3.8.0-msvc-arm64-project.patch",
+        "sha256": "04750523901a905c5ca22a51f67e6eff5a55ba2036b050bb2e36d9a19619b906",
+        "source_file": "msvc_build/aarch64/Ffi_staticLib.vcxproj",
+        "original_sha256": "8171504c3712e969101fd723e24b287a60261593e214bcedbb886c37e3f6543a",
+        "normalized_sha256": "a7993ac76d009e432e5875f658aa10799ba293e04e6ddc4f730b18b4428fce1c",
+        "patched_sha256": "0ba85a8a7e5c273c00411e5e0bf7a8c09287a010e68c11863650b97378614011",
+        "reason": "Official Makefile.am includes src/tramp.c; supplied MSVC project omits it, causing four native ffi_tramp unresolved symbols. Add the same official source, preserving build flags; normalize project line endings for reproducible patching.",
+        "authority": "https://github.com/libffi/libffi/blob/v3.8.0/Makefile.am",
+        "native_failure_run": 42745001966
       }
     },
-    "consumer_regression": "Native3.8 version/call/closure plus ten aligned large stack structures/value isolation; pending"
+    "consumer_regression": "Native3.8 version/call/closure plus ten aligned large stack structures/value isolation; pending",
+    "last_probe_source": "09caf0ee4e1a91d1e3838819de0bceebf7ae2d4e",
+    "last_probe_run": 42745001966
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",

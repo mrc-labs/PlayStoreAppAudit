@@ -45,17 +45,22 @@ def run(command: list[str], log: Path, cwd: Path, environment: dict[str, str] | 
     return result.stdout + result.stderr
 
 
-def apply_alignment_patch(source: Path, evidence: Path, spec: dict) -> None:
+def apply_libffi_patch(source: Path, evidence: Path, spec: dict) -> None:
     patch = REPO / spec['path']
-    target = source / 'src/aarch64/ffi.c'
+    target = source / spec['source_file']
     if hashlib.sha256(patch.read_bytes()).hexdigest() != spec['sha256']:
         raise ValueError('Changed reviewed libffi patch')
     if hashlib.sha256(target.read_bytes()).hexdigest() != spec['original_sha256']:
-        raise ValueError('Changed original libffi AArch64 source')
+        raise ValueError('Changed original libffi source')
+    if 'normalized_sha256' in spec:
+        normalized = target.read_bytes().replace(b'\r\n', b'\n')
+        if hashlib.sha256(normalized).hexdigest() != spec['normalized_sha256']:
+            raise ValueError('Unexpected normalized libffi project')
+        target.write_bytes(normalized)
     command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
     environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent.resolve())}
-    run([*command, '--check', str(patch)], evidence / 'alignment-patch-check.log', source, environment)
-    run([*command, str(patch)], evidence / 'alignment-patch.log', source, environment)
+    run([*command, '--check', str(patch)], evidence / (patch.stem + '-check.log'), source, environment)
+    run([*command, str(patch)], evidence / (patch.stem + '-apply.log'), source, environment)
     if hashlib.sha256(target.read_bytes()).hexdigest() != spec['patched_sha256']:
         raise ValueError('Unexpected post-patch libffi source')
     shutil.copy2(patch, evidence)
@@ -152,15 +157,15 @@ int main(void) {
     return 0;
 }
 ''', encoding='utf-8')
+    shutil.copy2(client, evidence)
     executable = work / 'ffi_consumer.exe'
     run([str(compiler), '/nologo', '/MD', '/std:c17', '/DFFI_BUILDING_DLL',
          '/I' + str(source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
          str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
     assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
+    shutil.copy2(executable, evidence)
     output = run([str(executable)], evidence / 'consumer.log', work)
     assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
-    shutil.copy2(client, evidence)
-    shutil.copy2(executable, evidence)
     return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
 
 
@@ -200,10 +205,11 @@ def main() -> None:
         shutil.copy2(source / 'LICENSE', evidence / 'libffi-LICENSE')
         report['gate'] = 'upstream configure/MSVC wrapper header generation'
         report['project_configuration'] = configure_headers(source, work, evidence, compiler)
-        patch = json.loads((REPO / '.github/scripts/libffi_arm64_probe_sources.json').read_text())['alignment_patch']
-        report['gate'] = 'reviewed one-expression unsigned alignment compatibility patch'
-        apply_alignment_patch(source, evidence, patch)
-        report['vendor_patches'] = [patch]
+        patches = json.loads((REPO / '.github/scripts/libffi_arm64_probe_sources.json').read_text())
+        report['gate'] = 'reviewed unsigned alignment/project source-list compatibility patches'
+        for key in ['alignment_patch', 'msvc_project_patch']:
+            apply_libffi_patch(source, evidence, patches[key])
+            report['vendor_patches'].append(patches[key])
         build = work / 'build'
         build.mkdir()
         msbuild = Path(os.environ['PILOT_VS_PATH']) / 'MSBuild/Current/Bin/arm64/MSBuild.exe'
@@ -225,11 +231,12 @@ def main() -> None:
         directives = run(['dumpbin.exe', '/directives', str(libraries[0])], evidence / 'crt-directives.txt', work)
         normalized = directives.upper().replace('"', '')
         assert '/DEFAULTLIB:MSVCRT' in normalized and '/DEFAULTLIB:LIBCMT' not in normalized, 'Dynamic release CRT provenance failed'
+        report.update(library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
+        shutil.copy2(libraries[0], evidence)
         report['gate'] = 'native version/call/closure consumer execution'
         report['consumer'] = exercise_library(source, work, libraries[0], compiler, evidence)
         report.update(result='PASS controlled project/header configuration, native call/closure and dynamic CRT; CPython/cffi acceptance remains required',
                       library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
-        shutil.copy2(libraries[0], evidence)
     except Exception as error:
         report['failure'] = f'{type(error).__name__}: {error}'
         raise

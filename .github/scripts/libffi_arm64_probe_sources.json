@@ -1,5 +1,5 @@
 {
-  "scope": "Project-authored one-expression MSVC SDL compatibility patch; not claimed upstream approved; unsigned size_t identity preserves alignment arithmetic",
+  "scope": "Project-authored MSVC SDL expression and project source-list compatibility adaptations; no upstream approval claimed; unsigned size_t alignment arithmetic unchanged",
   "source_url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
   "source_sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
   "alignment_patch": {
@@ -11,5 +11,16 @@
     "reason": "Native MSVC14.51 /sdl C4146 at FFI_ALIGN_DOWN; dest and alignment are size_t, so ~(alignment-1) equals -alignment modulo unsigned width. No SDL or warning checks disabled.",
     "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0",
     "native_failure_run": 42743731127
+  },
+  "msvc_project_patch": {
+    "path": ".github/patches/libffi-3.8.0-msvc-arm64-project.patch",
+    "sha256": "04750523901a905c5ca22a51f67e6eff5a55ba2036b050bb2e36d9a19619b906",
+    "source_file": "msvc_build/aarch64/Ffi_staticLib.vcxproj",
+    "original_sha256": "8171504c3712e969101fd723e24b287a60261593e214bcedbb886c37e3f6543a",
+    "normalized_sha256": "a7993ac76d009e432e5875f658aa10799ba293e04e6ddc4f730b18b4428fce1c",
+    "patched_sha256": "0ba85a8a7e5c273c00411e5e0bf7a8c09287a010e68c11863650b97378614011",
+    "reason": "Official Makefile.am includes src/tramp.c; supplied MSVC project omits it, causing four native ffi_tramp unresolved symbols. Add the same official source, preserving build flags; normalize project line endings for reproducible patching.",
+    "authority": "https://github.com/libffi/libffi/blob/v3.8.0/Makefile.am",
+    "native_failure_run": 42745001966
   }
 }

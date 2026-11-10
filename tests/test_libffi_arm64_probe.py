@@ -47,7 +47,7 @@ def test_libffi_alignment_patch_integrity_fails_before_git(
     target = tmp_path / 'src/aarch64/ffi.c'
     target.parent.mkdir(parents=True)
     target.write_bytes(b'original fixture')
-    spec = {'path':patch.name, 'sha256':hashlib.sha256(patch.read_bytes()).hexdigest(),
+    spec = {'path':patch.name, 'source_file':'src/aarch64/ffi.c', 'sha256':hashlib.sha256(patch.read_bytes()).hexdigest(),
             'original_sha256':hashlib.sha256(target.read_bytes()).hexdigest(), 'patched_sha256':'0'*64}
     if changed == 'source':
         target.write_bytes(b'changed source')
@@ -57,5 +57,5 @@ def test_libffi_alignment_patch_integrity_fails_before_git(
     monkeypatch.setattr(probe, 'REPO', tmp_path)
     monkeypatch.setattr(probe, 'run', lambda *args, **kwargs: called.append(args))
     with pytest.raises(ValueError, match='Changed'):
-        probe.apply_alignment_patch(tmp_path, tmp_path, spec)
+        probe.apply_libffi_patch(tmp_path, tmp_path, spec)
     assert not called
