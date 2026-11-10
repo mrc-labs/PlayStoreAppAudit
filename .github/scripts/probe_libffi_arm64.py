@@ -320,7 +320,9 @@ print(json.dumps(dict(positive_variadic='Native MSVC ARM64 string/int/double PAS
     assert cases and not ET.parse(xml).findall('.//failure') and not ET.parse(xml).findall('.//error')
     executed = [case for case in cases if case.find('skipped') is None]
     assert any('callback' in case.get('name', '') for case in executed), 'Callback regressions did not execute'
-    assert any('vararg' in case.get('name', '') for case in executed), 'Variadic regressions did not execute'
+    # This upstream case invokes _testfunc(9) with real promoted varargs.
+    # printf-based cases can legitimately skip on the Windows C runtime.
+    assert any(case.get('name') == 'test_call_function_9' for case in executed), 'Native upstream variadic regression did not execute'
     return {**measured, 'machine': 0xAA64, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
             'positive_variadic': variadic, 'variadic_fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
             'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
