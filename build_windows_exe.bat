@@ -60,7 +60,7 @@ echo.
 echo === Install/update build dependencies ===
 "%PYTHON%" .github\scripts\bootstrap_pip.py
 if errorlevel 1 exit /b 1
-"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.3.4"
+"%PYTHON%" -m pip install -r requirements-dev.txt "Nuitka==4.3.5"
 if errorlevel 1 exit /b 1
 
 echo.

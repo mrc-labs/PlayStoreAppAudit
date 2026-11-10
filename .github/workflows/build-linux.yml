@@ -138,7 +138,7 @@ jobs:
           env -u LD_LIBRARY_PATH openssl version
           if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
           python .github/scripts/bootstrap_pip.py
-          pip install -r requirements-dev.txt "Nuitka==4.3.4" "patchelf==0.19.1.0"
+          pip install -r requirements-dev.txt "Nuitka==4.3.5" "patchelf==0.19.1.0"
       - name: Verify Python and Qt baseline
         run: |
           python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
@@ -146,7 +146,7 @@ jobs:
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.3.4"
+            --expected-nuitka-version "4.3.5"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen

@@ -58,7 +58,7 @@ def test_tool_diagnostic_requires_explicit_mode_and_excludes_expensive_profiles(
     root = Path(__file__).resolve().parents[1]
     workflow = (root / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     job = workflow.split('  native-toolchain-delta:', 1)[1].split('\n  capture:', 1)[0]
-    assert "if: ${{ inputs.linux_arm64_pilot == 'tools' }}" in job
+    assert "if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' }}" in job
     for flag in ['component_audit', 'runtime_pilot', 'windows_runtime_pilot',
                  'windows_arm64_runtime_probe', 'windows_arm64_host_tools',
                  'windows_arm64_full_pilot', 'windows_prerequisites_only', 'trust_diagnostics_only']:

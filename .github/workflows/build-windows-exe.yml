@@ -151,7 +151,7 @@ jobs:
           if ($env:PACKAGE_ARCH -eq 'arm64') {
             $reportArgs = @('--force-reinstall', '--report', "$env:CRYPTOGRAPHY_OPENSSL_EVIDENCE/cryptography-install.json")
           }
-          python -m pip install -r requirements-dev.txt "Nuitka==4.3.4" @reportArgs
+          python -m pip install -r requirements-dev.txt "Nuitka==4.3.5" @reportArgs
           if ($LASTEXITCODE -ne 0) { throw 'Could not install project/build dependencies.' }
 
       - name: Install diagnostic cryptography from source
@@ -198,7 +198,7 @@ jobs:
         if: ${{ !inputs.diagnostic_only }}
         shell: pwsh
         run: |
-          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.3.4"
+          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.3.5"
           if ($LASTEXITCODE -ne 0) { throw 'Release legal-material preflight failed.' }
 
       - name: Static checks and regression tests

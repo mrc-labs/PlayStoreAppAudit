@@ -1,5 +1,5 @@
 -r requirements.txt
 Pillow==13.0.0
 pytest==9.2.0
-ruff==0.17.3
+ruff==0.17.4
 mypy==2.4.1

@@ -141,7 +141,7 @@ jobs:
       - name: Install dependencies
         run: |
           python .github/scripts/bootstrap_pip.py
-          pip install -r requirements-dev.txt "Nuitka==4.3.4"
+          pip install -r requirements-dev.txt "Nuitka==4.3.5"
       - name: Verify Intel cryptography source runtime
         if: ${{ matrix.arch == 'x64' }}
         run: |
@@ -156,7 +156,7 @@ jobs:
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.3.4"
+            --expected-nuitka-version "4.3.5"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen

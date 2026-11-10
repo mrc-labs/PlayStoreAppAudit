@@ -168,7 +168,7 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
         workflow = _workflow(name)
 
         assert (
-            'pip install -r requirements-dev.txt "Nuitka==4.3.4"'
+            'pip install -r requirements-dev.txt "Nuitka==4.3.5"'
             in workflow
         )
         assert "--report=compilation-report.xml" in workflow

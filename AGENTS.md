@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Current November10 compiler delta: stock Nuitka4.3.5/Ruff0.17.4; controlled Nuitka4.3.5+psaa.scons4111 source integration is diagnostic-only pending six native checks. See [active audit](docs/V2_4_RELEASE_PREP.md) for source/hash/patch/legal provenance and remaining gates.
+
 ## Project
 
 Play Store App Audit is a Python desktop application that audits Android package IDs against public Google Play listings and, optionally, enriches results from an Android device through ADB.
@@ -33,7 +35,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 - Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in 11 maintained setup environments plus seven isolated diagnostic-pilot/tool bootstraps across nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.
 - Current v2.4.0 preparation PySide6 baseline: `PySide6-Essentials==6.12.0`.
-- Current release compiler pin: `Nuitka==4.3.4`.
+- Current release compiler pin: `Nuitka==4.3.5`.
 - Runtime, development and build dependency pins must reflect the latest stable compatible versions verified by the mandatory release freshness gate and its explicit ownership/compatibility categories.
 - Python pre-releases, including Python 3.15 release candidates, are not stable release baselines unless a deliberate engineering decision changes the policy.
 - UI technology: Qt Widgets, not QML unless a demonstrated UX, maintainability or performance reason justifies migration.
