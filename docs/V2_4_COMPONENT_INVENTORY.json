@@ -1,4 +1,14 @@
 {
+  "libffi_msvc_prerequisite_2026_11_10": {
+    "state": "Native official-project probe prepared; no runtime adoption",
+    "version": "3.8.0",
+    "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+    "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+    "authority": "https://api.github.com/repos/libffi/libffi/releases/tags/v3.8.0",
+    "native_target": "Windows ARM64/MSVC14.51 v145/installed SDK/dynamic CRT",
+    "vendor_patches": [],
+    "scope": "R05/R06 source feasibility only; CPython and cffi remain separate existing integrations"
+  },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",
     "state": "Six-native source compiler/module/source/legal PASS; producer/package adoption pending",

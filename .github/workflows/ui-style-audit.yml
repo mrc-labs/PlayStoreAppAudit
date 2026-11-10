@@ -5,10 +5,10 @@ on:
     inputs:
       linux_arm64_pilot:
         # Legacy key preserves existing dispatches within GitHub's ten-input limit.
-        description: One isolated Linux or macOS diagnostic; never a final candidate
+        description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, ffi-arm64-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
@@ -536,7 +536,7 @@ jobs:
           retention-days: 0
 
   windows-arm64-runtime-probe:
-    if: ${{ (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    if: ${{ ((inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off')) || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' }}
     name: ${{ inputs.windows_arm64_full_pilot && 'Native runtime-framework pilot / Windows ARM64' || 'Native runtime prerequisites / Windows ARM64' }}
     runs-on: windows-11-arm
     timeout-minutes: ${{ inputs.windows_arm64_full_pilot && 240 || 30 }}
@@ -554,6 +554,7 @@ jobs:
           if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
           if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
           if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'Native ARM64 runner required.' }
+          if ('${{ inputs.linux_arm64_pilot }}' -eq 'ffi-arm64-prerequisites' -and ('${{ inputs.windows_arm64_runtime_probe }}' -ne 'false' -or '${{ inputs.windows_arm64_host_tools }}' -ne 'false' -or '${{ inputs.windows_arm64_full_pilot }}' -ne 'false')) { throw 'libffi prerequisites exclude other ARM64 modes.' }
           if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows ARM64 prerequisites.' }
 
       - name: Set up ARM64 probe bootstrap Python
@@ -574,7 +575,8 @@ jobs:
         run: |
           $hostTools = '${{ inputs.windows_arm64_host_tools }}' -eq 'true'
           $fullPilot = '${{ inputs.windows_arm64_full_pilot }}' -eq 'true'
-          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools -FullPilot:$fullPilot
+          $ffiOnly = '${{ inputs.linux_arm64_pilot }}' -eq 'ffi-arm64-prerequisites'
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools -FullPilot:$fullPilot -FfiPrerequisitesOnly:$ffiOnly
           if ($LASTEXITCODE -ne 0) { throw 'ARM64 diagnostic failed; inspect prerequisite/host/runtime gate evidence.' }
 
       - name: Upload native ARM64 prerequisite evidence only
