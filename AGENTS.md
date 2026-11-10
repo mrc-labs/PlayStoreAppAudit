@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Current November10 compiler delta: stock Nuitka4.3.5/Ruff0.17.4; controlled Nuitka4.3.5+psaa.scons4111 source integration is diagnostic-only pending six native checks. See [active audit](docs/V2_4_RELEASE_PREP.md) for source/hash/patch/legal provenance and remaining gates.
+Current November10 compiler delta: stock Nuitka4.3.5/Ruff0.17.4; controlled Nuitka4.3.5+psaa.scons4111/SCons4.11.1 now passes six-native source/module/legal checks42739540359 at a55768b; Quality42739545052 passes1952 tests. Producer/package adoption remains pending. See [active audit](docs/V2_4_RELEASE_PREP.md) for source/hash/patch/legal provenance and remaining gates.
 
 ## Project
 

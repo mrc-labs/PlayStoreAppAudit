@@ -1,7 +1,7 @@
 {
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",
-    "state": "Prepared hash-guarded stable-source integration; native qualification pending",
+    "state": "Six-native source compiler/module/source/legal PASS; producer/package adoption pending",
     "official_metadata": "https://pypi.org/pypi/Nuitka/4.3.5/json",
     "selected_stock_compiler": "4.3.5",
     "selected_ruff": "0.17.4",
@@ -73,7 +73,94 @@
       "derivation": "MSVC cache functions copied from official Nuitka4.3.5 inline4.10.1; those original upstream4.10/4.11 bodies are semantically unchanged. Preserve SDK keys/cache invalidation and Nuitka unexpected-error propagation; retain other stable4.11 source features. No experimental force-system-scons or installed-file mutation."
     },
     "scope": "Diagnostic host tools only; prior runtime source inputs unchanged; affected package validation and remaining ledger still required",
-    "historical_components_canonical_sha256": "1cef86117edaf67ec218da6a83485a9d2a7309bf46c23dafd01c990b2d0e631c"
+    "historical_components_canonical_sha256": "1cef86117edaf67ec218da6a83485a9d2a7309bf46c23dafd01c990b2d0e631c",
+    "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+    "native_run": 42739540359,
+    "quality_run": 42739545052,
+    "quality_tests": 1952,
+    "native_artifacts": [
+      {
+        "target": "macos-x64",
+        "artifact": 13729230290,
+        "bytes": 13052372,
+        "sha256": "sha256:e3ce1d479ccb6a338d7097f35d2b78910f92c972e1e2e8a5555ec13c20c7ea4c",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "12009e2832f6c996db0046ff499fd44776f0d7bb55efab2e48aa65f9fef4fdc1",
+        "actual_machine": 16777223,
+        "wheel_sha256": "7569961d99fda9e818de8826b6c4890b9558a10976c3c1fb58c74ec2b2453985",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      },
+      {
+        "target": "macos-arm64",
+        "artifact": 13728850599,
+        "bytes": 13047349,
+        "sha256": "sha256:5cb2a84122b49ad2ec0f38148ac52ac98469c10931c6d608c4043f0e22083ed2",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "942a2a091ccf4948a7bc49b4167d5958daaf4345803392cf8f8ae839718ce67c",
+        "actual_machine": 16777228,
+        "wheel_sha256": "042d9808fb235469300c7230cbfda3a49d788dd0f807bb983124364cb5b56435",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      },
+      {
+        "target": "linux-arm64",
+        "artifact": 13728726126,
+        "bytes": 12905516,
+        "sha256": "sha256:16750113d555dae8166185aff8a6196fcd04e8edb53621dd337ace8e82e16f7c",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "9cae4a7d0a3cc6148d71d506bb3789d8bc6fedb6e9aa310486244c813cc865df",
+        "actual_machine": 183,
+        "wheel_sha256": "648b2d8496a1b589dd42bee12a743fc73a861dd8ef183432984a2fc2e2b56767",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      },
+      {
+        "target": "windows-arm64",
+        "artifact": 13728656088,
+        "bytes": 15206799,
+        "sha256": "sha256:9ea87fcbd0b30b8fd7e240e68ce25f701e19fb58443f458c326a77b9126aea08",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "4a4ea2f8c1a89781ead720af9ad1fd539a461a30462e48be99c180eedc8e89d8",
+        "actual_machine": 43620,
+        "wheel_sha256": "017895945a54f934408f9612507523e2a40211b17aab38e3ee28f31236795476",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      },
+      {
+        "target": "linux-x64",
+        "artifact": 13728084147,
+        "bytes": 12908954,
+        "sha256": "sha256:2bb804749b56d56678b9df392b5ed55debedc1d0e1a055086018991025defeda",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "27538fb415d1275e8e15b6e9c8a9b5d615da3b6c601e3be5eb9b6f1b3666e833",
+        "actual_machine": 62,
+        "wheel_sha256": "4e626afadc16004256ea819e8eef5ce52f5437b1d71c915f383ff637582dba9b",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      },
+      {
+        "target": "windows-x64",
+        "artifact": 13727979398,
+        "bytes": 15192498,
+        "sha256": "sha256:9b4f31c8bda0f4def63132a9307272792e6495fc25717dc3e0a5cd5b7d2d5c2d",
+        "source_sha": "a55768b8ff79f645612a421f07e09e03d434f017",
+        "native_module_sha256": "4431e9c5e7744f6bcd698ad89559e1fe35688ac12edd559d4d2daf0dd82b69a4",
+        "actual_machine": 34404,
+        "wheel_sha256": "5f09e328673ed6433888a303d27275bd348ab0dc6abbcdcc41594835a741ccac",
+        "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution verification PASS"
+      }
+    ],
+    "legal_correction": {
+      "problem": "Inline Zstandard LICENSE.txt overwrote project AGPL by basename traversal order",
+      "fixed": "Only PEP639 Nuitka project metadata licenses accepted; missing/ambiguous source fails closed",
+      "native_original_license_comparison": "PASS all six ZIPs",
+      "expected_agpl_sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    "provider_review": {
+      "parents": "Qt/PySide/Shiboken6.12.0; cryptography50.0.2; certifi2026.10.23 unchanged",
+      "qt_common_blacklist": "Serial/common-name checks, invoked by OpenSSL/Schannel/SecureTransport; not CPython SPKI policy",
+      "keychain_emsign_anchors": [
+        "emSign ECC Root CA - G3",
+        "emSign Root CA - G1"
+      ],
+      "qt_subset_membership": "Unresolved; individual157 members not retained. No incident acceptance/exclusion inferred. R02 remains required."
+    }
   },
   "residual_tool_delta_2026_11_03": {
     "date": "2026-11-03",
@@ -224,7 +311,7 @@
       {
         "id": "R11",
         "status": "REQUIRED selected Rust integrations; conditional findings scoped",
-        "applicability_minimum_action": "cryptography50.0.2/Ruff0.17.2 Cargo locks include build/dev/cfg-only crates. Establish selected call graph, then minimal supported cargo-update/source rebuild or corrected parent for genuinely included outdated components; unmaintained paste/proc-macro-error2 require maintained integration assessment. Rustup1.29.2/Rust1.99.1 Intel source route is already current, not another needed upgrade.",
+        "applicability_minimum_action": "cryptography50.0.2/current Ruff0.17.4 selected graphs require qualification; the original Ruff0.17.2 Cargo observations include build/dev/cfg-only crates and are not a claim about the new selected graph. Establish selected call graph, then minimal supported cargo-update/source rebuild or corrected parent for genuinely included outdated components; unmaintained paste/proc-macro-error2 require maintained integration assessment. Rustup1.29.2/Rust1.99.1 Intel source route is already current, not another needed upgrade.",
         "verification_evidence": "Native compile/crypto/lint regressions, lock/MSRV/source/legal closure. Ruff does not perform privileged untrusted ZIP extraction; crossbeam pointer-formatting reachability is unproven. Those exact advisory conditions remain explicit watches, not application vulnerabilities or proof all475 crates ship."
       },
       {
@@ -247,9 +334,9 @@
       },
       {
         "id": "R15",
-        "status": "controlled stable-source integration; native qualification pending",
-        "applicability_minimum_action": "Nuitka4.3.5 still selects inline4.10.1. The source integration above preserves actual MSVC APIs and selects stable4.11.1 with explicit project-modified identity. Seven scoped patched files/hash guards and strict compiler legal provenance are reviewable; no upstream approval is claimed. No experimental override. Python3.15 remains outside stable compiler support.",
-        "verification_evidence": "Six native compiler/module/cache/architecture checks and independent source/wheel/legal byte verification pending. Producer adoption and affected full package/ABI validation remain required before closure; a diagnostic pass alone cannot closeR17. All earlier stock4.3.4 results retain their actual source identity."
+        "status": "native source integration PASS; producer/package adoption pending",
+        "applicability_minimum_action": "Official stable Nuitka4.3.5 still vendors4.10.1. Controlled Nuitka4.3.5+psaa.scons4111/SCons4.11.1 source integration above preserves vendor MSVC cache/SDK APIs with explicit project identity and original/patch hashes. All six native hosts pass; worker verifies wheel, original source, patches, licenses and binary bytes. No upstream approval or experimental override is claimed. Recheck for a corrected stable parent at final freshness.",
+        "verification_evidence": "Sourcea55768b, native42739540359 and exact-source Quality42739545052/1952 tests. Source selection is qualified; producing adoption and affected full package/ABI/legal validation remain required underR17. Current producing compiler stays stock4.3.5 until reviewed adoption. Python3.15 remains outside stable compiler support."
       },
       {
         "id": "R16",
@@ -260,7 +347,7 @@
       {
         "id": "R17",
         "status": "REQUIRED release/package acceptance; not authorized now",
-        "applicability_minimum_action": "Independent review of all six source diagnostics is feasibility only. Later approved integration must select fresh components above, retain all six native floors, complete second full freshness and pin one exact Python patch, then exact-SHA Quality/freeze and final packages. Current producers intentionally remain unchanged.",
+        "applicability_minimum_action": "Independent review of all six source diagnostics is feasibility only. Later approved integration must select fresh components above, retain all six native floors, complete second full freshness and pin one exact Python patch, then exact-SHA Quality/freeze and final packages. Controlled runtime/framework/SCons producer adoption remains pending; stock pip/compiler pin refreshes are already applied and do not constitute whole-stack adoption.",
         "verification_evidence": "All-file package/ADB/architecture/provider/ABI/GUI/CLI/legal/corresponding-source acceptance, same frozen SHA, then separately authorized normal merge/build/assembly/release. Rebuild every affected target after shared input changes; no reuse of v2.3.0 binaries."
       }
     ]
