@@ -126,18 +126,26 @@ static uint64_t stacked(Big a, Big b, Big c, Big d, Big e,
     return sum;
 }
 int main(void) {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    puts("stage: version API");
     ffi_cif cif;
     ffi_type *types[] = { &ffi_type_sint64, &ffi_type_sint64 };
     int64_t a = 11, b = 31, result = 0, extra = 3;
     void *args[] = { &a, &b }, *code = NULL;
     if (strcmp(ffi_get_version(), "3.8.0") || ffi_get_version_number() != 30800) return 1;
+    puts("stage: scalar CIF");
     if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 2, &ffi_type_sint64, types) != FFI_OK) return 2;
+    puts("stage: scalar ffi_call");
     ffi_call(&cif, FFI_FN(add), &result, args);
     if (result != 42) return 3;
+    puts("stage: closure allocation");
     ffi_closure *closure = ffi_closure_alloc(sizeof(ffi_closure), &code);
+    puts("stage: closure preparation");
     if (!closure || ffi_prep_closure_loc(closure, &cif, callback, &extra, code) != FFI_OK) return 4;
     int64_t (*call)(int64_t, int64_t) = (int64_t (*)(int64_t, int64_t))code;
+    puts("stage: closure invocation");
     if (call(a, b) != 45) return 5;
+    puts("stage: closure free");
     ffi_closure_free(closure);
     Big big[10];
     ffi_type *elements[] = { &ffi_type_uint64, &ffi_type_uint64,
@@ -150,7 +158,9 @@ int main(void) {
         for (int y=0; y<4; y++) { big[x].q[y]=(uint64_t)(100*x+y+1); expected+=big[x].q[y]; }
         big_types[x]=&aggregate; big_args[x]=&big[x];
     }
+    printf("stage: aligned struct CIF size=%zu alignment=%u\n", sizeof(Big), __alignof(Big));
     if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 10, &ffi_type_uint64, big_types) != FFI_OK) return 6;
+    puts("stage: aligned struct ffi_call");
     ffi_call(&cif, FFI_FN(stacked), &total, big_args);
     if (total!=expected || big[0].q[0]!=1) return 7;
     printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());
@@ -159,12 +169,31 @@ int main(void) {
 ''', encoding='utf-8')
     shutil.copy2(client, evidence)
     executable = work / 'ffi_consumer.exe'
-    run([str(compiler), '/nologo', '/MD', '/std:c17', '/DFFI_BUILDING_DLL',
+    run([str(compiler), '/nologo', '/MD', '/Zi', '/std:c17', '/DFFI_BUILDING_DLL',
          '/I' + str(source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
          str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
     assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
     shutil.copy2(executable, evidence)
-    output = run([str(executable)], evidence / 'consumer.log', work)
+    try:
+        output = run([str(executable)], evidence / 'consumer.log', work)
+    except subprocess.CalledProcessError:
+        debugger = Path(os.environ['PROGRAMFILES(X86)']) / 'Windows Kits/10/Debuggers/arm64/cdb.exe'
+        if debugger.is_file():
+            debugger_machine = read_pe_machine(debugger)
+            (evidence / 'consumer-debugger.json').write_text(json.dumps({
+                'path': str(debugger), 'machine': debugger_machine,
+                'sha256': hashlib.sha256(debugger.read_bytes()).hexdigest(),
+                'scope': 'Optional installed SDK diagnostic only; no compiler or runtime adoption',
+            }, indent=2), encoding='utf-8')
+            if debugger_machine != 0xAA64:
+                raise
+            try:
+                trace = subprocess.run([str(debugger), '-c', 'g;.ecxr;kv;q', str(executable)],
+                                       cwd=work, capture_output=True, text=True, timeout=40)
+                (evidence / 'consumer-native-debug.log').write_text(trace.stdout + trace.stderr, encoding='utf-8')
+            except subprocess.TimeoutExpired:
+                (evidence / 'consumer-native-debug.log').write_text('Native debugger deadline reached', encoding='utf-8')
+        raise
     assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
     return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
 

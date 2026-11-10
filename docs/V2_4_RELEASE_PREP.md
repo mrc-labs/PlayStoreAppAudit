@@ -2,6 +2,9 @@
 
 ## Controlled compiler qualification (2026-11-10)
 
+**libffi execution gate, not qualified:** [42746673421](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42746673421), source29c09ada7ad013193cccf24dbf74293028652ccb, passes the two patch guards, native project build, AA64 COFF, dynamic CRT and consumer link. The executable then exits with access violation `0xC0000005`. This is not promoted to native ABI acceptance. The next diagnostic changes only unbuffered per-stage output and debug information, optionally using the already-installed SDK debugger only if its PE is AA64. It changes no library inputs or verification policy and retains library/executable/C source even on failure. Root cause must be localized before any further vendor ABI adaptation or runtime rebuild; R05/R06 remain release blockers.
+
+
 **libffi native consumer link gate:** [42745001966](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42745001966), source09caf0ee4e1a91d1e3838819de0bceebf7ae2d4e, passes source/header/mask patch, MSVC project compilation, AA64 COFF and dynamic CRT checks. The consumer then fails to link four `ffi_tramp_*` symbols. The official3.8.0 Makefile includes `src/tramp.c`; the supplied MSVC project omits it. A second project-only patch adds that same upstream source, with original/LF-normalized/post hashes and unchanged security/CRT flags. No stub or fallback replaces the real implementation. The source/patch hash guards and native consumer remain mandatory; no full runtime build starts while this route is unqualified.
 
 
