@@ -1,6 +1,6 @@
 {
   "native_provider_consolidation_2026_11_10": {
-    "state": "Prepared, native qualification pending",
+    "state": "CA native gap demonstrated; five-provider/Qt-guard Linux source qualification pending",
     "date": "2026-11-10",
     "starting_head": "1c55bb5e9d445fbe6a8493eb3d5df6cb3acae40f",
     "scope": "Linux x64 source/provider delta plus six-host Qt CA bootstrap; no producer adoption",
@@ -81,6 +81,26 @@
       "provider_security_manifest": {
         "path": "provider_ca_security_sources.json",
         "canonical_sha256": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f"
+      },
+      "qt_ca_patch": {
+        "path": ".github/patches/qtbase-6.12.0-compromised-spki.patch",
+        "sha256": "fb993b8dc7209082e6cbc1980bb93cbe6bfc3b76e3c95f9c2788dba75993e2ca",
+        "file": "src/network/ssl/qsslcertificate.cpp",
+        "base_sha256": "7ea8d8558b039607c72977059521e4b9670147b66184e2c49b4fe2effd5290e3",
+        "patched_sha256": "60d77f087bad6dea64fce2c46fe6695ef7d710ba81d237c117939022dcf31535",
+        "blocked_spki_sha256": [
+          "43bffa19d6ef651451f6841e019931e96f6f2eaeff28ab4b6f1ce4576de2717b",
+          "49dd353dc2b919a3770645117d0e60c16115e7d1bc259eefe734b00ea434fe5f",
+          "5c0660a2b164910d8ff589c18e14552e9e0ec237dcefe2cb736d41a4811f81a0",
+          "63ecefee431d49523bc1136c4e72d0206a477086caf606cd5cf025686c109cf8",
+          "92c063d67e8f14db71d288e11266ffdaf69cbf115f7bab14f3bc2f68d25e0e30",
+          "e0254c7fcdc265e2f0f8a428dabb75ab4ae039b4872d62f5ee57f0877d5a8a41",
+          "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+          "ec4ffa1ad0ac88081314b7aaffef6a91f97cd57291bb5ba686c5415f5eb4f6b6"
+        ],
+        "origin": "Project-authored minimal common blacklist extension; not upstream approval. Qt6.12.0 official original archive; public incident keys agree with existing CPython security input. No unchanged-official-binary claim.",
+        "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE",
+        "scope": "Initially qualified only in Linux x64 isolated source pilot; other five profiles remain unchanged and still require guard adoption/requalification."
       }
     },
     "provider_security_manifest": {
@@ -112,7 +132,141 @@
       "scope_notes": "Six TLS intermediate keys plus two code-signing keys are in metadata; TLS corpus has14 regular and two rollover chains. Disabled signing remains separate. Native probes must identify actual available backend and trust outcome, not assume OpenSSL4 or count transport failures as rejections."
     },
     "unchanged_other_profiles": "Original shared/base manifests and Windows/Linux ARM/Mac builders remain byte-identical; added Linux x64-only manifest does not change their parent hashes or effective sources. New shared CA predicate is used only by new probes.",
-    "preflight": "72 targeted checks, source hashes/SHA3, local offline Qt API shape, Ruff/compile/Bash syntax PASS; no native acceptance claimed."
+    "preflight": "72 targeted checks, source hashes/SHA3, local offline Qt API shape, Ruff/compile/Bash syntax PASS; no native acceptance claimed.",
+    "ca_bootstrap": {
+      "run": 42808506948,
+      "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+      "quality": 42808515599,
+      "quality_tests": 1980,
+      "artifacts": [
+        {
+          "artifact": 13762225871,
+          "name": "diagnostic-ca-bootstrap-macos-x64-42808506948",
+          "size": 74344,
+          "sha256": "b768a73307c77b59d1889cf5d9fcec2ef8bc441ba5bce1dc9da198dc9a52d8ac",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "securetransport",
+              "runtime": "Secure Transport, macOS Tahoe (26.6.1)",
+              "roots": 157,
+              "accepted_chains": 16,
+              "rejected_chains": 0,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        },
+        {
+          "artifact": 13762225695,
+          "name": "diagnostic-ca-bootstrap-macos-arm64-42808506948",
+          "size": 74385,
+          "sha256": "155cdf33a79575ba6aa1f9497dc3d603e27488022707161b8a48de7269522625",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "securetransport",
+              "runtime": "Secure Transport, macOS Tahoe (26.7.2)",
+              "roots": 157,
+              "accepted_chains": 16,
+              "rejected_chains": 0,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        },
+        {
+          "artifact": 13761710847,
+          "name": "diagnostic-ca-bootstrap-windows-x64-42808506948",
+          "size": 187458,
+          "sha256": "23189465020dc53d2061990234b85308fce9a0b402bb7baf6347e1bcfeab7dda",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "openssl",
+              "runtime": "OpenSSL 3.5.9 29 Sep 2026",
+              "roots": 564,
+              "accepted_chains": 0,
+              "rejected_chains": 16,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            },
+            {
+              "backend": "schannel",
+              "runtime": "Secure Channel, Windows 10.0.26100",
+              "roots": 564,
+              "accepted_chains": 16,
+              "rejected_chains": 0,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        },
+        {
+          "artifact": 13761665977,
+          "name": "diagnostic-ca-bootstrap-windows-arm64-42808506948",
+          "size": 119373,
+          "sha256": "3f20abb82c7a074d183a72f9c599b62de72acaf7ea352cc3ff3380dc3a9b58d9",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "schannel",
+              "runtime": "Secure Channel, Windows 10.0.26200",
+              "roots": 564,
+              "accepted_chains": 16,
+              "rejected_chains": 0,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        },
+        {
+          "artifact": 13761510861,
+          "name": "diagnostic-ca-bootstrap-linux-x64-42808506948",
+          "size": 70252,
+          "sha256": "d100756927f21b942c0bcd7eeb056a779bd6e804bc1e91e36708b74e123343d6",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "openssl",
+              "runtime": "OpenSSL 3.0.13 30 Jan 2024",
+              "roots": 121,
+              "accepted_chains": 0,
+              "rejected_chains": 16,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        },
+        {
+          "artifact": 13760501878,
+          "name": "diagnostic-ca-bootstrap-linux-arm64-42808506948",
+          "size": 70217,
+          "sha256": "04c9bc9b1ea2e1771bc7f55c08b64819941ef2e968415ac46c5e5ed700bbf85e",
+          "source_sha": "83f6b799b0d70dce1a6acd94985b4551d202307d",
+          "backends": [
+            {
+              "backend": "openssl",
+              "runtime": "OpenSSL 3.0.13 30 Jan 2024",
+              "roots": 121,
+              "accepted_chains": 0,
+              "rejected_chains": 16,
+              "SPKI_encoding": "16/16 PASS",
+              "ordinary_default_trust": "PASS"
+            }
+          ]
+        }
+      ],
+      "scope": "Qt host wheel bootstrap policies only; actual16-chain verification not sourceOpenSSL4/full-package acceptance",
+      "decision": "R02 blocked on four native backend acceptances. Minimum common project Qt SPKI guard prepared; native full Linux consolidation first. No OS trust mutation; other five source profiles unchanged."
+    },
+    "local_checks": "74 focused tests PASS with normal loopback permissions; helper Ruff/compile/Bash syntax and official Qt original/patch/post replay PASS",
+    "cpython_spki_agreement": {
+      "url": "https://raw.githubusercontent.com/python/cpython/v3.14.10/Modules/_ssl/distrusted_spki.h",
+      "sha256": "bff6ffbbdb400bcfee6d15f8309da2128157feb7d8be98d14041abe80fc9ff8e",
+      "keys": 8,
+      "agreement": true
+    }
   },
   "libffi_msvc_prerequisite_2026_11_10": {
     "state": "PASS controlled native libffi3.8.0 and cffi2.1.1+psaa.libffi380 Windows ARM64 consumer; R05/R06 runtime/crypto/other-target acceptance remains required",

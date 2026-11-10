@@ -4,6 +4,7 @@ import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import apply_qt_ca_guard as qt_guard
 import probe_qt_ca_security as ca_probe
 import pytest
 from verify_linux_x64_native_delta import STEMS, SUITES, executed_native_suites, provider_paths
@@ -106,3 +107,28 @@ def test_unverified_ca_fixtures_never_reach_the_certificate_parser(
     with pytest.raises(ValueError, match='downgrade|Changed reviewed'):
         ca_probe.fetch_inputs(output)
     assert not list((output / 'inputs').iterdir())
+
+
+@pytest.mark.parametrize('altered', ['patch', 'source'])
+def test_qt_guard_refuses_changed_patch_or_original_before_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, altered: str
+) -> None:
+    import hashlib
+
+    scripts = tmp_path / '.github/scripts'
+    scripts.mkdir(parents=True)
+    patch = tmp_path / 'guard.patch'
+    patch.write_bytes(b'reviewed patch')
+    source = tmp_path / 'qt'
+    source.mkdir()
+    target = source / 'certificate.cpp'
+    target.write_bytes(b'original source')
+    (scripts / 'linux_x64_native_delta_sources.json').write_text(json.dumps({'qt_ca_patch': {
+        'path': 'guard.patch', 'file': 'certificate.cpp',
+        'sha256': hashlib.sha256(patch.read_bytes()).hexdigest(),
+        'base_sha256': hashlib.sha256(target.read_bytes()).hexdigest()}}))
+    (patch if altered == 'patch' else target).write_bytes(b'changed')
+    monkeypatch.setattr(qt_guard, 'REPO', tmp_path)
+    monkeypatch.setattr(qt_guard.subprocess, 'run', lambda *a, **kw: pytest.fail('Unreviewed source reached patch'))
+    with pytest.raises(ValueError, match='Changed reviewed|Unexpected original'):
+        qt_guard.apply_guard(source, tmp_path / 'evidence')

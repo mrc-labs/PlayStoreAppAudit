@@ -110,6 +110,10 @@ for dependency in sqlite3 libffi libmpdec liblzma zlib; do
   pkg-config --modversion "$dependency"
 done
 
+# Guard the demonstrated native-provider CA gap before any Qt compilation.
+python "$repo/.github/scripts/apply_qt_ca_guard.py" \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" --evidence "$evidence"
+
 cd "$work/src/openssl-4.0.3"
 # Preserve measured OS defaults; hashed CA directories may load certificates lazily.
 # install_sw installs software only; it does not run install_ssldirs or edit OS trust.

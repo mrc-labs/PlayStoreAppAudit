@@ -134,10 +134,25 @@ def qt_ca_security(output: Path) -> dict:
     compromised = json.loads((inputs / 'impacted-intermediates.json').read_text())
     bad_keys = {item['spki_sha256'].lower() for item in compromised}
     assert len(bad_keys) == 8
+    guard = json.loads((output / 'qt-ca-patch-provenance.json').read_text())
+    assert set(guard['blocked_spki_sha256']) == bad_keys
+    key_checks = []
+    for item in compromised:
+        certificates = QSslCertificate.fromData(item['pem'].encode())
+        assert len(certificates) == 1
+        certificate = certificates[0]
+        assert bytes(certificate.digest(QCryptographicHash.Algorithm.Sha256)).hex() == item['sha256'].lower()
+        actual_key = hashlib.sha256(bytes(certificate.publicKey().toDer())).hexdigest()
+        assert actual_key == item['spki_sha256'].lower() and certificate.isBlacklisted()
+        key_checks.append({'certificate': item['sha256'].lower(), 'spki': actual_key,
+                           'blacklisted': True, 'usage': item['usage']})
     roots = QSslConfiguration.systemCaCertificates()
     root_fingerprints = {bytes(c.digest(QCryptographicHash.Algorithm.Sha256)).hex() for c in roots}
     expected_roots = json.loads((inputs / 'roots.json').read_text())
     membership = {root['name']: root['sha256'].lower() in root_fingerprints for root in expected_roots}
+    for item in expected_roots:
+        controls = QSslCertificate.fromData(item['pem'].encode())
+        assert len(controls) == 1 and not controls[0].isBlacklisted(), 'Healthy root overblocked'
     results = []
     now = dt.datetime.now(dt.UTC)
     with zipfile.ZipFile(inputs / 'chains.zip') as archive:
@@ -156,12 +171,13 @@ def qt_ca_security(output: Path) -> dict:
             assert len(chain) == len(certificates)
             errors = QSslCertificate.verify(chain, hostname)
             labels = [error.error().name for error in errors]
-            assert trust_rejected(labels), (name, labels)
+            assert trust_rejected(labels) and 'CertificateBlacklisted' in labels, (name, labels)
             results.append({'fixture': name, 'hostname': hostname, 'errors': labels,
                             'compromised_key_positions': [i for i, key in enumerate(keys) if key in bad_keys],
                             'sha256': hashlib.sha256(data).hexdigest(), 'result': 'Qt actual-default chain rejection PASS'})
     assert any('rollover/' in row['fixture'] for row in results)
     return {'provider': QSslSocket.activeBackend(), 'library': QSslSocket.sslLibraryVersionString(),
+            'project_guard': guard, 'compromised_certificates': key_checks,
             'default_root_fingerprints': sorted(root_fingerprints), 'incident_root_membership': membership,
             'chains': results, 'scope': 'Actual default Qt/OpenSSL chain policy; ordinary authenticated default handshake separately required by full pilot'}
 
