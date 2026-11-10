@@ -1,0 +1,15 @@
+{
+  "scope": "Project-authored one-expression MSVC SDL compatibility patch; not claimed upstream approved; unsigned size_t identity preserves alignment arithmetic",
+  "source_url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+  "source_sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+  "alignment_patch": {
+    "path": ".github/patches/libffi-3.8.0-msvc-arm64-alignment.patch",
+    "sha256": "f4613f6a380216a6cc27bac449d8e410be27b5ac8a3cf82813dc45d71f434724",
+    "source_file": "src/aarch64/ffi.c",
+    "original_sha256": "6cb999516a85c94de18f7dbc0c746e8c15d89bc8974553c7270d0e20b674e4dc",
+    "patched_sha256": "410606e6061ea08c465e999e50021d379d4fe7686551dbfda2d8f9fb52ada307",
+    "reason": "Native MSVC14.51 /sdl C4146 at FFI_ALIGN_DOWN; dest and alignment are size_t, so ~(alignment-1) equals -alignment modulo unsigned width. No SDL or warning checks disabled.",
+    "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0",
+    "native_failure_run": 42743731127
+  }
+}

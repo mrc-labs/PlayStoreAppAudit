@@ -1,17 +1,36 @@
 {
   "libffi_msvc_prerequisite_2026_11_10": {
-    "state": "Supplied MSVC ARM64 project blocked by stale headers; upstream-generated header integration candidate pending",
+    "state": "Configured native headers PASS; one unsigned-mask MSVC SDL incompatibility; reviewed project patch/native ABI candidate pending",
     "version": "3.8.0",
     "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
     "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
     "authority": "https://api.github.com/repos/libffi/libffi/releases/tags/v3.8.0",
     "native_target": "Windows ARM64/MSVC14.51 v145/installed SDK/dynamic CRT",
     "vendor_patches": [],
-    "scope": "No runtime/cffi adoption. Original sources and unmodified runtime/compiler qualification remain at real source identities.",
+    "scope": "Probe-only controlled integration; no runtime/cffi adoption; no SDL or certificate verification weakening.",
     "failed_source": "d79f6f20202da302599a5d161d078260d25105e2",
     "failed_run": 42742580293,
     "demonstrated_gate": "61 compile errors after native host/target prerequisites; missing version/type declarations",
-    "minimum_next_action": "Documented configure/MSVC wrapper header generation, then supplied project/native3.8 version/call/closure/CRT proof; retain hashes and do not infer whole-target incompatibility"
+    "minimum_next_action": "Documented configure/MSVC wrapper header generation, then supplied project/native3.8 version/call/closure/CRT proof; retain hashes and do not infer whole-target incompatibility",
+    "configured_source": "d0f320292ae9d7e37b589c34363b9458caa3205d",
+    "configured_run": 42743731127,
+    "native_host_tools": "Git Bash/compiler/assembler all AA64; MSVC14.51.36231 SDK10.0.26100.0",
+    "patch_manifest": {
+      "scope": "Project-authored one-expression MSVC SDL compatibility patch; not claimed upstream approved; unsigned size_t identity preserves alignment arithmetic",
+      "source_url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+      "source_sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "alignment_patch": {
+        "path": ".github/patches/libffi-3.8.0-msvc-arm64-alignment.patch",
+        "sha256": "f4613f6a380216a6cc27bac449d8e410be27b5ac8a3cf82813dc45d71f434724",
+        "source_file": "src/aarch64/ffi.c",
+        "original_sha256": "6cb999516a85c94de18f7dbc0c746e8c15d89bc8974553c7270d0e20b674e4dc",
+        "patched_sha256": "410606e6061ea08c465e999e50021d379d4fe7686551dbfda2d8f9fb52ada307",
+        "reason": "Native MSVC14.51 /sdl C4146 at FFI_ALIGN_DOWN; dest and alignment are size_t, so ~(alignment-1) equals -alignment modulo unsigned width. No SDL or warning checks disabled.",
+        "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0",
+        "native_failure_run": 42743731127
+      }
+    },
+    "consumer_regression": "Native3.8 version/call/closure plus ten aligned large stack structures/value isolation; pending"
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",

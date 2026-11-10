@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import probe_libffi_arm64 as probe
@@ -35,3 +36,26 @@ def test_libffi_arm64_prerequisites_cannot_start_full_source_builds() -> None:
     assert '$HostTools -or $FullPilot' in branch and 'return' in branch
     assert 'probe_libffi_arm64.py' in branch
     assert 'build_windows_arm64_runtime_pilot.py' not in branch
+
+
+@pytest.mark.parametrize('changed', ['source', 'patch'])
+def test_libffi_alignment_patch_integrity_fails_before_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str
+) -> None:
+    patch = tmp_path / 'alignment.patch'
+    patch.write_bytes(b'reviewed fixture')
+    target = tmp_path / 'src/aarch64/ffi.c'
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b'original fixture')
+    spec = {'path':patch.name, 'sha256':hashlib.sha256(patch.read_bytes()).hexdigest(),
+            'original_sha256':hashlib.sha256(target.read_bytes()).hexdigest(), 'patched_sha256':'0'*64}
+    if changed == 'source':
+        target.write_bytes(b'changed source')
+    else:
+        patch.write_bytes(b'changed patch')
+    called = []
+    monkeypatch.setattr(probe, 'REPO', tmp_path)
+    monkeypatch.setattr(probe, 'run', lambda *args, **kwargs: called.append(args))
+    with pytest.raises(ValueError, match='Changed'):
+        probe.apply_alignment_patch(tmp_path, tmp_path, spec)
+    assert not called

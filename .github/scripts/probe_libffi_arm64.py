@@ -19,6 +19,7 @@ from inspect_pe import read_pe_machine
 
 URL = 'https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz'
 SHA256 = '7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4'
+REPO = Path(__file__).resolve().parents[2]
 
 
 def fetch_source(work: Path, evidence: Path) -> Path:
@@ -35,13 +36,30 @@ def fetch_source(work: Path, evidence: Path) -> Path:
     return work / 'libffi-3.8.0'
 
 
-def run(command: list[str], log: Path, cwd: Path) -> str:
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+def run(command: list[str], log: Path, cwd: Path, environment: dict[str, str] | None = None) -> str:
+    result = subprocess.run(command, cwd=cwd, env=environment, capture_output=True, text=True)
     log.write_text(result.stdout + result.stderr, encoding='utf-8')
     if result.returncode:
         print((result.stdout + result.stderr)[-14000:], flush=True)
     result.check_returncode()
     return result.stdout + result.stderr
+
+
+def apply_alignment_patch(source: Path, evidence: Path, spec: dict) -> None:
+    patch = REPO / spec['path']
+    target = source / 'src/aarch64/ffi.c'
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != spec['sha256']:
+        raise ValueError('Changed reviewed libffi patch')
+    if hashlib.sha256(target.read_bytes()).hexdigest() != spec['original_sha256']:
+        raise ValueError('Changed original libffi AArch64 source')
+    command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent.resolve())}
+    run([*command, '--check', str(patch)], evidence / 'alignment-patch-check.log', source, environment)
+    run([*command, str(patch)], evidence / 'alignment-patch.log', source, environment)
+    if hashlib.sha256(target.read_bytes()).hexdigest() != spec['patched_sha256']:
+        raise ValueError('Unexpected post-patch libffi source')
+    shutil.copy2(patch, evidence)
+    shutil.copy2(REPO / '.github/scripts/libffi_arm64_probe_sources.json', evidence)
 
 
 def configure_headers(source: Path, work: Path, evidence: Path, compiler: Path) -> dict:
@@ -92,6 +110,16 @@ static void callback(ffi_cif *cif, void *result, void **args, void *data) {
     (void)cif;
     *(int64_t *)result = *(int64_t *)args[0] + *(int64_t *)args[1] + *(int64_t *)data;
 }
+typedef struct __declspec(align(16)) { uint64_t q[4]; } Big;
+static uint64_t stacked(Big a, Big b, Big c, Big d, Big e,
+                        Big f, Big g, Big h, Big i, Big j) {
+    Big all[] = {a,b,c,d,e,f,g,h,i,j};
+    uint64_t sum = 0;
+    for (int x=0; x<10; x++) for (int y=0; y<4; y++) sum += all[x].q[y];
+    volatile Big *local = &a;
+    local->q[0] = 0;
+    return sum;
+}
 int main(void) {
     ffi_cif cif;
     ffi_type *types[] = { &ffi_type_sint64, &ffi_type_sint64 };
@@ -106,7 +134,21 @@ int main(void) {
     int64_t (*call)(int64_t, int64_t) = (int64_t (*)(int64_t, int64_t))code;
     if (call(a, b) != 45) return 5;
     ffi_closure_free(closure);
-    printf("libffi %s native version/call/closure PASS\n", ffi_get_version());
+    Big big[10];
+    ffi_type *elements[] = { &ffi_type_uint64, &ffi_type_uint64,
+                             &ffi_type_uint64, &ffi_type_uint64, NULL };
+    ffi_type aggregate = {sizeof(Big), __alignof(Big), FFI_TYPE_STRUCT, elements};
+    ffi_type *big_types[10];
+    void *big_args[10];
+    uint64_t expected=0, total=0;
+    for (int x=0; x<10; x++) {
+        for (int y=0; y<4; y++) { big[x].q[y]=(uint64_t)(100*x+y+1); expected+=big[x].q[y]; }
+        big_types[x]=&aggregate; big_args[x]=&big[x];
+    }
+    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 10, &ffi_type_uint64, big_types) != FFI_OK) return 6;
+    ffi_call(&cif, FFI_FN(stacked), &total, big_args);
+    if (total!=expected || big[0].q[0]!=1) return 7;
+    printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());
     return 0;
 }
 ''', encoding='utf-8')
@@ -116,7 +158,7 @@ int main(void) {
          str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
     assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
     output = run([str(executable)], evidence / 'consumer.log', work)
-    assert 'libffi 3.8.0 native version/call/closure PASS' in output
+    assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
     shutil.copy2(client, evidence)
     shutil.copy2(executable, evidence)
     return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
@@ -158,11 +200,15 @@ def main() -> None:
         shutil.copy2(source / 'LICENSE', evidence / 'libffi-LICENSE')
         report['gate'] = 'upstream configure/MSVC wrapper header generation'
         report['project_configuration'] = configure_headers(source, work, evidence, compiler)
+        patch = json.loads((REPO / '.github/scripts/libffi_arm64_probe_sources.json').read_text())['alignment_patch']
+        report['gate'] = 'reviewed one-expression unsigned alignment compatibility patch'
+        apply_alignment_patch(source, evidence, patch)
+        report['vendor_patches'] = [patch]
         build = work / 'build'
         build.mkdir()
         msbuild = Path(os.environ['PILOT_VS_PATH']) / 'MSBuild/Current/Bin/arm64/MSBuild.exe'
         assert msbuild.is_file(), f'Native ARM64 MSBuild missing: {msbuild}'
-        report['gate'] = 'official MSVC project with recorded upstream-generated headers; no algorithm patch'
+        report['gate'] = 'MSVC project with upstream-generated headers and equivalent unsigned mask; SDL preserved'
         run([str(msbuild), str(project), '/t:Build', '/m:2', '/v:normal', '/p:Configuration=Release',
              '/p:Platform=ARM64', '/p:PlatformToolset=' + os.environ['PILOT_MSVC_TOOLSET'], '/p:PreferredToolArchitecture=ARM64',
              '/p:WholeProgramOptimization=false',
