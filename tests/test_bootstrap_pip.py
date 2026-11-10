@@ -58,7 +58,7 @@ def test_tool_diagnostic_requires_explicit_mode_and_excludes_expensive_profiles(
     root = Path(__file__).resolve().parents[1]
     workflow = (root / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     job = workflow.split('  native-toolchain-delta:', 1)[1].split('\n  capture:', 1)[0]
-    assert "if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' }}" in job
+    assert "if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' }}" in job
     for flag in ['component_audit', 'runtime_pilot', 'windows_runtime_pilot',
                  'windows_arm64_runtime_probe', 'windows_arm64_host_tools',
                  'windows_arm64_full_pilot', 'windows_prerequisites_only', 'trust_diagnostics_only']:
@@ -67,5 +67,8 @@ def test_tool_diagnostic_requires_explicit_mode_and_excludes_expensive_profiles(
         assert 'label: ' + label + ',' in job
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in job
     assert 'verify_toolchain_delta.py' in job
+    assert "Exercise selected native compiler and developer tools\n        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' }}" in job
+    assert "Qualify verified pip and current tool installs\n        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' }}" in job
+    assert "Probe current native Qt CA policy before source rebuilds" in job
     assert not any(token in job for token in ['build_native_runtime_pilot', 'build_windows_runtime_pilot',
                                             'build_macos_', 'assemble-release', 'sign-windows', 'secrets.'])

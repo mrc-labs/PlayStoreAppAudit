@@ -1,4 +1,119 @@
 {
+  "native_provider_consolidation_2026_11_10": {
+    "state": "Prepared, native qualification pending",
+    "date": "2026-11-10",
+    "starting_head": "1c55bb5e9d445fbe6a8493eb3d5df6cb3acae40f",
+    "scope": "Linux x64 source/provider delta plus six-host Qt CA bootstrap; no producer adoption",
+    "native_delta_manifest": {
+      "scope": "Native Ubuntu22.04 x64 controlled Python/provider delta only; no producing adoption or other-target effective input change",
+      "date": "2026-11-10",
+      "base_manifest": "native_runtime_pilot_sources.json",
+      "base_manifest_canonical_sha256": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
+      "baseline": "Native x86_64/GIL3.14.10; GNU11/GLIBC2.35/GLIBCXX3.4.29; existing OpenSSL4.0.3/matched Qt6.12.0/PNG1.6.59/PCRE2 10.49 unchanged",
+      "sources": [
+        {
+          "name": "sqlite-autoconf-3540100.tar.gz",
+          "directory": "sqlite-autoconf-3540100",
+          "url": "https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz",
+          "sha256": "926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e",
+          "official_sha3_256": "b6ced585c750916b1052667239a12c25a7ff34e7f06e1e6e01ecb0427657d9c4",
+          "authority": "https://www.sqlite.org/download.html"
+        },
+        {
+          "name": "mpdecimal-4.0.1.tar.gz",
+          "directory": "mpdecimal-4.0.1",
+          "url": "https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.1.tar.gz",
+          "sha256": "96d33abb4bb0070c7be0fed4246cd38416188325f820468214471938545b1ac8",
+          "authority": "https://www.bytereef.org/mpdecimal/download.html"
+        },
+        {
+          "name": "libffi-3.8.0.tar.gz",
+          "directory": "libffi-3.8.0",
+          "url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+          "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+          "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0"
+        },
+        {
+          "name": "xz-5.8.4.tar.xz",
+          "directory": "xz-5.8.4",
+          "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.xz",
+          "sha256": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+          "authority": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.4"
+        },
+        {
+          "name": "zlib-1.3.2.tar.gz",
+          "directory": "zlib-1.3.2",
+          "url": "https://zlib.net/zlib-1.3.2.tar.gz",
+          "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+          "authority": "https://zlib.net/"
+        },
+        {
+          "name": "cffi-2.1.1.tar.gz",
+          "directory": "cffi-2.1.1",
+          "url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+          "sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+          "authority": "https://pypi.org/pypi/cffi/2.1.1/json"
+        }
+      ],
+      "sqlite_legal_notice": {
+        "name": "sqlite-copyright.html",
+        "url": "https://www.sqlite.org/copyright.html",
+        "sha256": "44ca9f793055c8e32fc65f65a4f5bcf813a33f5bdaaa084067dd617a4ed3cc70",
+        "authority": "https://www.sqlite.org/copyright.html",
+        "scope": "Official public-domain/legal notice retained byte-exact alongside original amalgamation source"
+      },
+      "expected": {
+        "sqlite": "3.54.1",
+        "libmpdec": "4.0.1",
+        "libffi": "3.8.0",
+        "liblzma": "5.8.4",
+        "zlib": "1.3.2",
+        "cffi": "2.1.1"
+      },
+      "cffi_identity": "Unmodified official2.1.1 source via documented POSIX pkg-config; project-built wheel distinct from an unchanged official binary. Controlled runtime provenance and wheel/provider hashes identify the integration. No Windows source patch or compiler selection transferred.",
+      "python_regressions": [
+        "test_ctypes",
+        "test_sqlite3",
+        "test_decimal",
+        "test_lzma",
+        "test_zlib"
+      ],
+      "provider_security_manifest": {
+        "path": "provider_ca_security_sources.json",
+        "canonical_sha256": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f"
+      }
+    },
+    "provider_security_manifest": {
+      "scope": "Public compromised-CA fixture contract; input bytes are not provider acceptance",
+      "date": "2026-11-10",
+      "sources": [
+        {
+          "name": "impacted-intermediates.json",
+          "url": "https://emudhra.we-have-a-problem.com/impacted-intermediates.json",
+          "sha256": "f67b3abe9b4879f4e91874ed041beccd71257f1db41c588c724ccf12aa90c59e",
+          "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+        },
+        {
+          "name": "roots.json",
+          "url": "https://emudhra.we-have-a-problem.com/roots.json",
+          "sha256": "119f32cd81a6b5a4e3c4c2df5fe07daa90dc43cafa123a62f0394f1895d92380",
+          "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+        },
+        {
+          "name": "chains.zip",
+          "url": "https://emudhra.we-have-a-problem.com/chains.zip",
+          "sha256": "afb9d69e8e5fc9eb0c08d5fe4baafc67edbcced2d63af2f9deb62edb6431d4a9",
+          "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+        }
+      ],
+      "expected_keys": 8,
+      "expected_certificates": 16,
+      "expected_chains": 16,
+      "scope_notes": "Six TLS intermediate keys plus two code-signing keys are in metadata; TLS corpus has14 regular and two rollover chains. Disabled signing remains separate. Native probes must identify actual available backend and trust outcome, not assume OpenSSL4 or count transport failures as rejections."
+    },
+    "unchanged_other_profiles": "Original shared/base manifests and Windows/Linux ARM/Mac builders remain byte-identical; added Linux x64-only manifest does not change their parent hashes or effective sources. New shared CA predicate is used only by new probes.",
+    "preflight": "72 targeted checks, source hashes/SHA3, local offline Qt API shape, Ruff/compile/Bash syntax PASS; no native acceptance claimed."
+  },
   "libffi_msvc_prerequisite_2026_11_10": {
     "state": "PASS controlled native libffi3.8.0 and cffi2.1.1+psaa.libffi380 Windows ARM64 consumer; R05/R06 runtime/crypto/other-target acceptance remains required",
     "version": "3.8.0",

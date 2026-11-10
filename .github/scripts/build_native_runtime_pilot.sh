@@ -35,8 +35,12 @@ import concurrent.futures, hashlib, json, os, shutil, subprocess, tarfile, urlli
 from pathlib import Path
 manifest = Path('.github/scripts/native_runtime_pilot_sources.json')
 spec = json.loads(manifest.read_text())
+delta_manifest = Path('.github/scripts/linux_x64_native_delta_sources.json')
+delta = json.loads(delta_manifest.read_text())
+assert hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == delta['base_manifest_canonical_sha256']
 work, evidence = Path(os.environ['PILOT_WORK']), Path(os.environ['PILOT_EVIDENCE'])
 shutil.copy2(manifest, evidence / manifest.name)
+shutil.copy2(delta_manifest, evidence / delta_manifest.name)
 patch = Path(spec['cpython_patch']['path'])
 assert hashlib.sha256(patch.read_bytes()).hexdigest() == spec['cpython_patch']['sha256']
 shutil.copy2(patch, evidence / patch.name)
@@ -56,7 +60,7 @@ def fetch(item):
             archive.extractall(work / 'src', filter='data')
     print('Verified official source/tool:', item['name'], flush=True)
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-    list(pool.map(fetch, spec['sources']))
+    list(pool.map(fetch, [*spec['sources'], *delta['sources']]))
 for sdk_source in (spec['cxx_link_sdk']['source'], spec['extractor']['source']):
     sdk_archive = evidence / 'sources' / sdk_source['name']
     with urllib.request.urlopen(sdk_source['url'], timeout=180) as src, sdk_archive.open('wb') as out:
@@ -76,9 +80,22 @@ for directory in (work / 'src').iterdir():
     target = evidence / 'legal' / directory.name
     target.mkdir()
     for candidate in directory.iterdir():
-        if candidate.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'NOTICE')):
+        if candidate.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'COPYRIGHT', 'NOTICE')):
             if candidate.is_dir(): shutil.copytree(candidate, target / candidate.name)
             else: shutil.copy2(candidate, target / candidate.name)
+security = json.loads((manifest.parent / delta['provider_security_manifest']['path']).read_text())
+assert hashlib.sha256(json.dumps(security, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == delta['provider_security_manifest']['canonical_sha256']
+shutil.copy2(manifest.parent / delta['provider_security_manifest']['path'], evidence)
+for item in [delta['sqlite_legal_notice'], *security['sources']]:
+    directory = evidence / ('sources' if item is delta['sqlite_legal_notice'] else 'provider-security-inputs')
+    directory.mkdir(exist_ok=True)
+    with urllib.request.urlopen(item['url'], timeout=90) as response:
+        assert response.geturl().startswith('https://'), 'HTTPS downgrade rejected'
+        data = response.read()
+    assert hashlib.sha256(data).hexdigest() == item['sha256'], item['name']
+    (directory / item['name']).write_bytes(data)
+    if item is delta['sqlite_legal_notice']:
+        (evidence / 'legal/sqlite-autoconf-3540100' / item['name']).write_bytes(data)
 PY
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"
@@ -87,6 +104,11 @@ export CMAKE_BUILD_PARALLEL_LEVEL=2
 export LD_LIBRARY_PATH="$ssl_prefix/lib:$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
+bash "$repo/.github/scripts/build_linux_x64_native_libraries.sh"
+for dependency in sqlite3 libffi libmpdec liblzma zlib; do
+  test "$(pkg-config --variable=libdir "$dependency")" = "$prefix/lib"
+  pkg-config --modversion "$dependency"
+done
 
 cd "$work/src/openssl-4.0.3"
 # Preserve measured OS defaults; hashed CA directories may load certificates lazily.
@@ -100,11 +122,16 @@ cp configdata.pm "$evidence/openssl-configdata.pm"
 cd "$work/src/Python-3.14.10"
 ./configure --prefix="$prefix/python" --enable-shared --with-openssl="$ssl_prefix" \
   --with-openssl-rpath=auto --with-ensurepip=install \
-  LDFLAGS="-Wl,-rpath,$prefix/python/lib" \
-  --with-pkg-config=yes
+  CPPFLAGS="-I$prefix/include" LDFLAGS="-L$prefix/lib -Wl,-rpath,$prefix/python/lib -Wl,-rpath,$prefix/lib" \
+  --with-pkg-config=yes --with-system-libmpdec=yes
 make -j2
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -c "import _ssl, _hashlib, ssl, sysconfig; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); print('Built _ssl/_hashlib import:', ssl.OPENSSL_VERSION)"
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-native-regressions.xml" \
+  test_ctypes test_sqlite3 test_decimal test_lzma test_zlib > "$evidence/cpython-native-regressions.log" 2>&1 \
+  || { tail -n 100 "$evidence/cpython-native-regressions.log"; exit 1; }
+LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python "$repo/.github/scripts/verify_linux_x64_native_delta.py" \
+  --prefix "$prefix" --output-dir "$evidence" --native-only
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_upstream_suites; print('Executed upstream cases:', executed_upstream_suites(Path(sys.argv[1])))" \
   "$evidence/cpython-regressions.xml"
@@ -115,6 +142,7 @@ PYTHONPATH="$repo/.github/scripts" python -c \
 make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
+cp "$evidence/linux_x64_native_delta_sources.json" "$prefix/python/linux_x64_native_delta_sources.json"
 # Do not let setup-python's same-SONAME libpython or CMake roots satisfy this build.
 export LD_LIBRARY_PATH="$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
 unset PYTHONHOME Python_ROOT_DIR Python2_ROOT_DIR Python3_ROOT_DIR
@@ -123,7 +151,16 @@ export PKG_CONFIG_PATH="$prefix/python/lib/pkgconfig:$prefix/lib/pkgconfig:$ssl_
 "$prefix/python/bin/python3.14" -m venv "$work/venv"
 export PATH="$work/venv/bin:$PATH"
 python "$repo/.github/scripts/bootstrap_pip.py"
-python -m pip install 'setuptools==84.2.1' 'wheel==0.48.0' 'cmake==4.4.4' 'ninja==1.13.2' 'packaging==26.3' --report "$evidence/build-tools-install.json"
+python -m pip install 'setuptools==84.2.1' 'wheel==0.48.0' 'cmake==4.4.4' 'ninja==1.13.2' 'packaging==26.3' 'pycparser==3.12' 'pytest==9.2.0' --report "$evidence/build-tools-install.json"
+mkdir "$evidence/cffi-wheel"
+python -m pip wheel --no-index --no-build-isolation --no-deps --verbose \
+  --wheel-dir "$evidence/cffi-wheel" "$work/src/cffi-2.1.1" > "$evidence/cffi-build.log" 2>&1 \
+  || { tail -n 100 "$evidence/cffi-build.log"; exit 1; }
+python -m pip install --no-index --no-deps "$evidence"/cffi-wheel/cffi-*.whl
+(cd "$work/src/cffi-2.1.1" && python -m pytest -q src/c/test_c.py testing/cffi0/test_ffi_backend.py testing/cffi1/test_ffi_obj.py \
+  --junitxml "$evidence/cffi-tests.xml") > "$evidence/cffi-tests.log" 2>&1 \
+  || { tail -n 100 "$evidence/cffi-tests.log"; exit 1; }
+python "$repo/.github/scripts/verify_linux_x64_native_delta.py" --prefix "$prefix" --output-dir "$evidence" --native-only --cffi
 
 cmake -S "$work/src/libpng-1.6.59" -B "$work/png-build" -GNinja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
@@ -143,7 +180,7 @@ mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
   -release -opensource -confirm-license -nomake tests -nomake examples \
-  -openssl-linked -system-libpng -system-pcre -no-feature-openssl-runtime \
+  -openssl-linked -system-libpng -system-pcre -system-zlib -system-sqlite -no-feature-openssl-runtime \
   -- -DOPENSSL_ROOT_DIR="$ssl_prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
   -DCMAKE_INSTALL_RPATH="$ssl_prefix/lib;$prefix/lib"
 python - <<'PY'
@@ -157,6 +194,7 @@ cmake --build . --parallel 2
 cmake --install .
 cp CMakeCache.txt "$evidence/qtbase-CMakeCache.txt"
 cp config.summary "$evidence/qtbase-config.summary"
+bash "$repo/.github/scripts/probe_linux_x64_qt_sqlite.sh"
 mkdir "$work/qtsvg-build"
 cd "$work/qtsvg-build"
 "$prefix/qt/bin/qt-configure-module" "$work/src/qtsvg-everywhere-src-6.12.0" \
@@ -186,6 +224,7 @@ unset SSL_CERT_FILE SSL_CERT_DIR
 export XDG_CONFIG_HOME="$work/profile/config" XDG_DATA_HOME="$work/profile/data" XDG_CACHE_HOME="$work/profile/cache"
 export QT_QPA_PLATFORM=xcb
 xvfb-run -a python .github/scripts/verify_native_runtime_pilot.py --output-dir "$evidence"
+xvfb-run -a python .github/scripts/verify_linux_x64_native_delta.py --prefix "$prefix" --output-dir "$evidence" --cffi
 python main.py cli audit --help > "$evidence/cli-smoke.txt"
 xvfb-run -a python -m pytest tests/test_cli_headless.py -q > "$evidence/project-cli-regressions.log" 2>&1
 python -m compileall -q playstore_app_audit

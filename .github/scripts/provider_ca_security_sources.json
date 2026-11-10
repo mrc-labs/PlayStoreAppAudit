@@ -1,0 +1,28 @@
+{
+  "scope": "Public compromised-CA fixture contract; input bytes are not provider acceptance",
+  "date": "2026-11-10",
+  "sources": [
+    {
+      "name": "impacted-intermediates.json",
+      "url": "https://emudhra.we-have-a-problem.com/impacted-intermediates.json",
+      "sha256": "f67b3abe9b4879f4e91874ed041beccd71257f1db41c588c724ccf12aa90c59e",
+      "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+    },
+    {
+      "name": "roots.json",
+      "url": "https://emudhra.we-have-a-problem.com/roots.json",
+      "sha256": "119f32cd81a6b5a4e3c4c2df5fe07daa90dc43cafa123a62f0394f1895d92380",
+      "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+    },
+    {
+      "name": "chains.zip",
+      "url": "https://emudhra.we-have-a-problem.com/chains.zip",
+      "sha256": "afb9d69e8e5fc9eb0c08d5fe4baafc67edbcced2d63af2f9deb62edb6431d4a9",
+      "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE"
+    }
+  ],
+  "expected_keys": 8,
+  "expected_certificates": 16,
+  "expected_chains": 16,
+  "scope_notes": "Six TLS intermediate keys plus two code-signing keys are in metadata; TLS corpus has14 regular and two rollover chains. Disabled signing remains separate. Native probes must identify actual available backend and trust outcome, not assume OpenSSL4 or count transport failures as rejections."
+}
