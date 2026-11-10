@@ -2,6 +2,8 @@
 
 ## Controlled compiler qualification (2026-11-10)
 
+First source0ef912eadbe78ca0a4fd123ba09b106f6dd39a5e: direct [Quality42737836702 SUCCESS](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42737836702),1949 tests, lint/compilation/Qt smoke. Local full suite finishes with two failures on the slow host: an existing wall-clock bound and cancellation scheduling case; both unchanged assertions pass when isolated (10 focused cases). No application behavior fix or weaker threshold is applied. Initial [native run42737825275](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42737825275) reaches actual first native compilation and Windows host/target/SDK checks, then rejects the diagnostic's unsupported `--recompile-c-only` flag. The repeat uses the same ordinary supported compile command against the existing build directory for warm-cache execution. No vendor patch/source input changes are needed for that diagnostic correction; complete native acceptance remains pending.
+
 Resumed saved work at18822659bb7ef01d263025138f407e8bd1667355; remote branch/main match, no unrelated changes. That checkpoint's direct Quality41554813651 is SUCCESS. The maintainer's residual-work authorization remains; independent Intel approval is not claimed.
 
 Official [Nuitka4.3.5](https://pypi.org/project/Nuitka/4.3.5/) and [Ruff0.17.4](https://pypi.org/project/ruff/0.17.4/) supersede November3 selections; pip26.3/SCons4.11.1/pytest9.2.0/mypy2.4.1 remain stable. Source inspection proves4.3.5 still selects inline4.10.1. Its only new vendor difference prunes Intel ilink discovery; full upstream4.11 source retains those modules, so no subset-pruning patch is required. MSVC cache adaptations are byte unchanged.

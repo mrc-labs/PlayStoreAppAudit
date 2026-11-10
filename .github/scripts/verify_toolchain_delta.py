@@ -105,7 +105,7 @@ print('MSVC versioned cache/SDK fields/isolation roundtrip PASS')
             for tool in tools:
                 assert read_pe_machine(Path(tool['compiler'])) == (0xAA64 if expected == 'arm64' else 0x8664), 'Emulated compiler host rejected'
             (output / 'msvc-host-target-sdk.json').write_text(json.dumps(tools, indent=2), encoding='utf-8')
-        run([sys.executable, '-m', 'nuitka', '--module', '--recompile-c-only', '--output-dir=' + str(binary),
+        run([sys.executable, '-m', 'nuitka', '--module', '--output-dir=' + str(binary),
              '--report=' + str(output / 'warm-nuitka-report.xml'), '--jobs=2', source], output / 'warm-compiler.log')
         assert 'PSAA_TOOLCHAIN_SCONS=4.11.1' in (output / 'warm-compiler.log').read_text()
         import prepare_release_legal_bundle as legal
