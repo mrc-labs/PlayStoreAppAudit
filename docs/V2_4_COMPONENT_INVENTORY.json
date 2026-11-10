@@ -80,25 +80,29 @@
     "independent_byte_verification": "PASS ZIP size/digest, official source, generated/original headers, original MIT license, both patch bytes/base/post replay, seven AA64 COFF objects, dynamic MSVCRT/no LIBCMT, native consumer PE/hash/C source and actual execution report.",
     "prior_crash_disposition": "The over-aligned manually initialized descriptor was outside documented libffi usage. Only the harness changed for the successful repeat; no additional vendor ABI patch. No claim is made for that unsupported fixture.",
     "next_cffi_consumer": {
-      "state": "Static source wheel builds/loads libffi3.8.0; UCRT symbol fixture absent; native variadic DLL repeat pending",
+      "state": "Native mixed variadic result23.0 instead of27.5; minimal existing ffi_prep_cif_var selection prepared, repeat pending",
       "source_contract": {
         "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
         "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
         "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
         "distribution_version": "2.1.1+psaa.libffi380",
         "api_version": "2.1.1",
-        "scope": "Project-authored opt-in ARM64 build selection and explicit local distribution identity; no upstream approval. Unchanged cffi implementation/API; no bundled ffi.lib on this route. Native consumer qualification only, not crypto or runtime adoption. This local variant rejects non-native Windows ARM64 or missing controlled prefix rather than using the original vendor fallback.",
+        "scope": "Project-authored native ARM64-only static source selection and local identity, plus minimal guarded selection of existing ffi_prep_cif_var for the Microsoft variadic ABI. Windows closure allocation is unchanged. No upstream approval, preview parent, controlled runtime/crypto/producer adoption or unchanged official distribution claim.",
         "patch": {
           "path": ".github/patches/cffi-2.1.1-controlled-arm64-libffi.patch",
-          "sha256": "4c144deb95e059b2483da8e7ddb93145a4d3e03ac0fc4f6541914e31608ab650",
+          "sha256": "f9239017e1182b2951545d9c0e6efa58052339250ea3463816c810da4fca41b7",
           "files": {
             "setup.py": {
               "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
-              "patched_sha256": "f5c82247c1a492f2f6c8cccbaa947330d433547bfaaec860a4170b4385255a70"
+              "patched_sha256": "718f068c6a96253e461491ff19337bd73e55d0313f1b1f2ee599893d30653593"
             },
             "pyproject.toml": {
               "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
               "patched_sha256": "412e8a9e83a7dc1854aec82fa70c903be7804518fe6bfb8785f6202ae3b152b6"
+            },
+            "src/c/_cffi_backend.c": {
+              "original_sha256": "335899c93f88c53939fa8121502fb7129f34b9b8bdd97563d33346e0e91f9964",
+              "patched_sha256": "4641444bb1c0b3298329e7317adcb21bf8fca5bb370c599f2bed191cc33776dd"
             }
           }
         },
@@ -108,18 +112,41 @@
           "pycparser==3.12",
           "pytest==9.2.0"
         ],
-        "static_linkage": "libffi3.8 ffi.h.in uses FFI_STATIC_BUILD; cffi old FFI_BUILDING alone produces16 __imp_ffi link errors in run42764087999. Enable the upstream static declaration macro in the opt-in ARM64 configuration; no C implementation change."
+        "static_linkage": "libffi3.8 ffi.h.in uses FFI_STATIC_BUILD; cffi old FFI_BUILDING alone produces16 __imp_ffi link errors in run42764087999. Enable the upstream static declaration macro in the opt-in ARM64 configuration; no C implementation change.",
+        "variadic_compatibility": {
+          "demonstrated_run": 42796859017,
+          "actual": 23.0,
+          "expected": 27.5,
+          "authority": "https://learn.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions",
+          "source_api": "libffi3.8.0 src/prep_cif.c, src/aarch64/ffi.c and cffi2.1.1 existing fb_prepare_cif variadic branch",
+          "minimum_change": "Enable the existing ffi_prep_cif_var path only for the controlled Windows ARM64 build; preserve closure flags and actual mixed floating/integer/string regression."
+        }
       },
       "scope": "Isolated ARM64 native consumer only; no controlled CPython/cryptography/producer adoption",
       "failed_source": "124e9f6f8d7b8bc79e543c2b329f21a5a96be267",
       "failed_run": 42764087999,
       "source_quality_run": 42764092640,
       "source_quality_tests": 1958,
-      "last_source": "0f35700f09cbd746b53f03c237a6c9ecb70c47c4",
-      "last_run": 42793931793,
-      "last_quality_run": 42793938090,
-      "fixture_scope": "Native /MD C va_list DLL checks positive string/int/double arguments and27.5; explicit target/prefix rejection in modified cffi variant"
+      "last_source": "46510d3f94db590f40e07ecb14e6407b7c96268f",
+      "last_run": 42796859017,
+      "last_quality_run": 42796865745,
+      "fixture_scope": "Require direct libffi and actual cffi native mixed string/int/double27.5, then upstream call/callback/variadic suites; no thresholds weakened"
     }
+  },
+  "provider_ca_security_delta_2026_11_10": {
+    "state": "Public fixture bytes/DER/SPKI/chain membership verified; provider acceptance remains REQUIRED R02",
+    "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE",
+    "input_source": "https://emudhra.we-have-a-problem.com/",
+    "source_sha256": {
+      "impacted-intermediates.json": "f67b3abe9b4879f4e91874ed041beccd71257f1db41c588c724ccf12aa90c59e",
+      "roots.json": "119f32cd81a6b5a4e3c4c2df5fe07daa90dc43cafa123a62f0394f1895d92380",
+      "chains.zip": "afb9d69e8e5fc9eb0c08d5fe4baafc67edbcced2d63af2f9deb62edb6431d4a9"
+    },
+    "certificates": 16,
+    "compromised_spki": 8,
+    "regular_chains": 14,
+    "rollover_chains": 2,
+    "minimum_action": "Measure all16 TLS chains against actual Python/Qt/native providers and ordinary default positive trust; inspect entire chain and applicable OS revocation behavior. No root removal, fallback or leaf-only bypass."
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",

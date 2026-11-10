@@ -1,6 +1,7 @@
 --- a/setup.py
 +++ b/setup.py
-@@ -129,10 +129,32 @@
+@@ -128,12 +128,35 @@
+     pkgconfig = os.path.join(prefix, 'lib', 'pkgconfig')
      os.environ['PKG_CONFIG_PATH'] = (
          os.environ.get('PKG_CONFIG_PATH', '') + ':' + pkgconfig)
  
@@ -26,6 +27,7 @@
 +                raise RuntimeError("Incomplete controlled ARM64 libffi prefix")
 +            include_dirs[:] = [project_include]
 +            define_macros.append(("FFI_STATIC_BUILD", "1"))
++            define_macros.append(("PSAA_LIBFFI_380", "1"))
 +            library_dirs[:] = []
 +            libraries[:] = []
 +            extra_link_args.append(project_library)
@@ -35,9 +37,11 @@
      else:
          COMPILE_LIBFFI = 'src/c/libffi_x86_x64'    # from the CPython distribution
          assert os.path.isdir(COMPILE_LIBFFI), "directory not found!"
+         include_dirs[:] = [COMPILE_LIBFFI]
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -7,7 +7,7 @@
+@@ -6,9 +6,9 @@
+ build-backend = "setuptools.build_meta"
  
  [project]
  name = "cffi"
@@ -46,3 +50,27 @@
  dependencies = [
      "pycparser; implementation_name != 'PyPy'",
  ]
+ requires-python = ">=3.10"
+--- a/src/c/_cffi_backend.c
++++ b/src/c/_cffi_backend.c
+@@ -122,8 +122,20 @@
+ # define CFFI_CHECK_FFI_CLOSURE_ALLOC 1
+ # define CFFI_CHECK_FFI_CLOSURE_ALLOC_MAYBE 1
+ # define CFFI_CHECK_FFI_PREP_CLOSURE_LOC 1
+ # define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 1
++
++#elif defined(_WIN32) && defined(_M_ARM64) && defined(PSAA_LIBFFI_380)
++/* Windows ARM64 varargs use general registers, including floating values.
++ * The controlled static libffi supplies the existing variadic preparation API.
++ * Preserve Windows closure allocation; only select the correct call ABI.
++ */
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC 0
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC_MAYBE 0
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC 0
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 0
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR 1
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 1
+ 
+ #else

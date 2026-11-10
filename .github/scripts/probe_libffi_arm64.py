@@ -111,8 +111,18 @@ def exercise_library(source: Path, work: Path, library: Path, compiler: Path, ev
     client.write_text(r'''#include <ffi.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 static int64_t add(int64_t a, int64_t b) { return a + b; }
+static double mixed_variadic(int base, ...) {
+    va_list args;
+    va_start(args, base);
+    const char *text = va_arg(args, const char *);
+    int integer = va_arg(args, int);
+    double real = va_arg(args, double);
+    va_end(args);
+    return base + strlen(text) + integer + real;
+}
 static void callback(ffi_cif *cif, void *result, void **args, void *data) {
     (void)cif;
     *(int64_t *)result = *(int64_t *)args[0] + *(int64_t *)args[1] + *(int64_t *)data;
@@ -166,6 +176,16 @@ int main(void) {
     printf("stage: natural struct ffi_call computed size=%zu alignment=%u\n", aggregate.size, aggregate.alignment);
     ffi_call(&cif, FFI_FN(stacked), &total, big_args);
     if (total!=expected || big[0].q[0]!=1) return 7;
+    puts("stage: direct ffi_prep_cif_var string/int/double");
+    int fixed=7, integer=13;
+    const char *text="ffi";
+    double real=4.5, mixed_result=0;
+    ffi_type *mixed_types[]={&ffi_type_sint, &ffi_type_pointer, &ffi_type_sint, &ffi_type_double};
+    void *mixed_args[]={&fixed, &text, &integer, &real};
+    if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, 1, 4, &ffi_type_double, mixed_types)!=FFI_OK) return 9;
+    ffi_call(&cif, FFI_FN(mixed_variadic), &mixed_result, mixed_args);
+    if (mixed_result!=27.5) return 10;
+    printf("direct variadic result=%.1f PASS\n",mixed_result);
     printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());
     return 0;
 }
