@@ -44,6 +44,84 @@ def run(command: list[str], log: Path, cwd: Path) -> str:
     return result.stdout + result.stderr
 
 
+def configure_headers(source: Path, work: Path, evidence: Path, compiler: Path) -> dict:
+    """Generate matching upstream headers instead of editing stale declarations."""
+    bash = Path(os.environ['PROGRAMFILES']) / 'Git/bin/bash.exe'
+    assert bash.is_file(), f'Git Bash missing: {bash}'
+    configured = work / 'configured'
+    configured.mkdir()
+    script = r'''set -euo pipefail
+src=$(cygpath -u "$1")
+build=$(cygpath -u "$2")
+native_bin=$(cygpath -u "$3")
+export PATH="$native_bin:$PATH"
+cd "$build"
+"$src/configure" --build=aarch64-w64-mingw32 --host=aarch64-w64-mingw32 \
+  --disable-shared --enable-static --disable-dependency-tracking \
+  CC="$src/msvcc.sh -marm64" CXX="$src/msvcc.sh -marm64" LD=link \
+  CPP="cl -nologo -EP" CXXCPP="cl -nologo -EP" CPPFLAGS="-DFFI_BUILDING_DLL"
+'''
+    try:
+        run([str(bash), '--noprofile', '--norc', '-c', script, 'libffi-headers',
+             str(source), str(configured), str(compiler.parent)], evidence / 'configure.log', configured)
+    finally:
+        if (configured / 'config.log').is_file():
+            shutil.copy2(configured / 'config.log', evidence)
+    generated = {'ffi.h': configured / 'include/ffi.h', 'fficonfig.h': configured / 'fficonfig.h'}
+    assert re.search(r'FFI_VERSION_STRING\s+"3\.8\.0"', generated['ffi.h'].read_text()), 'Wrong/unconfigured libffi header version'
+    hashes = {}
+    for name, path in generated.items():
+        destination = source / 'msvc_build/aarch64/aarch64_include' / name
+        shutil.copy2(destination, evidence / ('original-' + name))
+        shutil.copy2(path, evidence / ('configured-' + name))
+        hashes[name] = {'original_sha256': hashlib.sha256(destination.read_bytes()).hexdigest(),
+                        'configured_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+        shutil.copy2(path, destination)
+    return {'bash': str(bash), 'bash_host_machine': read_pe_machine(bash), 'compiler': 'MSVC -marm64 wrapper, native ARM64',
+            'abi_triple': 'aarch64-w64-mingw32 identifies Windows ABI; no GNU target compiler', 'headers': hashes}
+
+
+def exercise_library(source: Path, work: Path, library: Path, compiler: Path, evidence: Path) -> dict:
+    client = work / 'ffi_consumer.c'
+    client.write_text(r'''#include <ffi.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+static int64_t add(int64_t a, int64_t b) { return a + b; }
+static void callback(ffi_cif *cif, void *result, void **args, void *data) {
+    (void)cif;
+    *(int64_t *)result = *(int64_t *)args[0] + *(int64_t *)args[1] + *(int64_t *)data;
+}
+int main(void) {
+    ffi_cif cif;
+    ffi_type *types[] = { &ffi_type_sint64, &ffi_type_sint64 };
+    int64_t a = 11, b = 31, result = 0, extra = 3;
+    void *args[] = { &a, &b }, *code = NULL;
+    if (strcmp(ffi_get_version(), "3.8.0") || ffi_get_version_number() != 30800) return 1;
+    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 2, &ffi_type_sint64, types) != FFI_OK) return 2;
+    ffi_call(&cif, FFI_FN(add), &result, args);
+    if (result != 42) return 3;
+    ffi_closure *closure = ffi_closure_alloc(sizeof(ffi_closure), &code);
+    if (!closure || ffi_prep_closure_loc(closure, &cif, callback, &extra, code) != FFI_OK) return 4;
+    int64_t (*call)(int64_t, int64_t) = (int64_t (*)(int64_t, int64_t))code;
+    if (call(a, b) != 45) return 5;
+    ffi_closure_free(closure);
+    printf("libffi %s native version/call/closure PASS\n", ffi_get_version());
+    return 0;
+}
+''', encoding='utf-8')
+    executable = work / 'ffi_consumer.exe'
+    run([str(compiler), '/nologo', '/MD', '/std:c17', '/DFFI_BUILDING_DLL',
+         '/I' + str(source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
+         str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
+    assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
+    output = run([str(executable)], evidence / 'consumer.log', work)
+    assert 'libffi 3.8.0 native version/call/closure PASS' in output
+    shutil.copy2(client, evidence)
+    shutil.copy2(executable, evidence)
+    return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
@@ -78,13 +156,16 @@ def main() -> None:
         report['official_project_sha256'] = hashlib.sha256(project.read_bytes()).hexdigest()
         report['official_header_sha256'] = hashlib.sha256((source / 'msvc_build/aarch64/aarch64_include/ffi.h').read_bytes()).hexdigest()
         shutil.copy2(source / 'LICENSE', evidence / 'libffi-LICENSE')
+        report['gate'] = 'upstream configure/MSVC wrapper header generation'
+        report['project_configuration'] = configure_headers(source, work, evidence, compiler)
         build = work / 'build'
         build.mkdir()
         msbuild = Path(os.environ['PILOT_VS_PATH']) / 'MSBuild/Current/Bin/arm64/MSBuild.exe'
         assert msbuild.is_file(), f'Native ARM64 MSBuild missing: {msbuild}'
-        report['gate'] = 'official MSVC project, supported toolset/SDK property overrides; no source patches'
+        report['gate'] = 'official MSVC project with recorded upstream-generated headers; no algorithm patch'
         run([str(msbuild), str(project), '/t:Build', '/m:2', '/v:normal', '/p:Configuration=Release',
              '/p:Platform=ARM64', '/p:PlatformToolset=' + os.environ['PILOT_MSVC_TOOLSET'], '/p:PreferredToolArchitecture=ARM64',
+             '/p:WholeProgramOptimization=false',
              '/p:VCToolsVersion=' + os.environ['VCTOOLSVERSION'].rstrip('\\/'),
              '/p:WindowsTargetPlatformVersion=' + os.environ['WINDOWSSDKVERSION'].rstrip('\\/'),
              '/p:OutDir=' + str(build) + os.sep, '/p:IntDir=' + str(build / 'obj') + os.sep],
@@ -98,7 +179,9 @@ def main() -> None:
         directives = run(['dumpbin.exe', '/directives', str(libraries[0])], evidence / 'crt-directives.txt', work)
         normalized = directives.upper().replace('"', '')
         assert '/DEFAULTLIB:MSVCRT' in normalized and '/DEFAULTLIB:LIBCMT' not in normalized, 'Dynamic release CRT provenance failed'
-        report.update(result='PASS official native project and dynamic CRT; consumer/ABI execution remains required',
+        report['gate'] = 'native version/call/closure consumer execution'
+        report['consumer'] = exercise_library(source, work, libraries[0], compiler, evidence)
+        report.update(result='PASS controlled project/header configuration, native call/closure and dynamic CRT; CPython/cffi acceptance remains required',
                       library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
         shutil.copy2(libraries[0], evidence)
     except Exception as error:

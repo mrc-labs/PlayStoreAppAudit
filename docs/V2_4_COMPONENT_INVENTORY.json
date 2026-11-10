@@ -1,13 +1,17 @@
 {
   "libffi_msvc_prerequisite_2026_11_10": {
-    "state": "Native official-project probe prepared; no runtime adoption",
+    "state": "Supplied MSVC ARM64 project blocked by stale headers; upstream-generated header integration candidate pending",
     "version": "3.8.0",
     "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
     "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
     "authority": "https://api.github.com/repos/libffi/libffi/releases/tags/v3.8.0",
     "native_target": "Windows ARM64/MSVC14.51 v145/installed SDK/dynamic CRT",
     "vendor_patches": [],
-    "scope": "R05/R06 source feasibility only; CPython and cffi remain separate existing integrations"
+    "scope": "No runtime/cffi adoption. Original sources and unmodified runtime/compiler qualification remain at real source identities.",
+    "failed_source": "d79f6f20202da302599a5d161d078260d25105e2",
+    "failed_run": 42742580293,
+    "demonstrated_gate": "61 compile errors after native host/target prerequisites; missing version/type declarations",
+    "minimum_next_action": "Documented configure/MSVC wrapper header generation, then supplied project/native3.8 version/call/closure/CRT proof; retain hashes and do not infer whole-target incompatibility"
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",
