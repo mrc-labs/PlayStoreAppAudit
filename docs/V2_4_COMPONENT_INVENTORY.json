@@ -1,6 +1,6 @@
 {
   "libffi_msvc_prerequisite_2026_11_10": {
-    "state": "Native project/link/COFF/CRT PASS; consumer access violation0xC0000005; ABI diagnosis pending, not adopted",
+    "state": "Native3.8 version/scalar/closure PASS; stack test harness violated documented ffi_type initialization; valid natural-layout repeat pending",
     "version": "3.8.0",
     "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
     "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
@@ -11,7 +11,7 @@
     "failed_source": "d79f6f20202da302599a5d161d078260d25105e2",
     "failed_run": 42742580293,
     "demonstrated_gate": "61 compile errors after native host/target prerequisites; missing version/type declarations",
-    "minimum_next_action": "Per-stage native execution trace/optional existing native SDK debugger; no further library changes before identifying actual failure; no full runtime rebuild.",
+    "minimum_next_action": "Repeat documented natural-layout native call/closure/large-struct tests with unchanged library inputs before consumer integration.",
     "configured_source": "d0f320292ae9d7e37b589c34363b9458caa3205d",
     "configured_run": 42743731127,
     "native_host_tools": "Git Bash/compiler/assembler all AA64; MSVC14.51.36231 SDK10.0.26100.0",
@@ -43,7 +43,11 @@
     },
     "consumer_regression": "Native3.8 version/call/closure plus ten aligned large stack structures/value isolation; pending",
     "last_probe_source": "29c09ada7ad013193cccf24dbf74293028652ccb",
-    "last_probe_run": 42746673421
+    "last_probe_run": 42746673421,
+    "trace_source": "bfc13e638343dfc1c031b78e5697c3bbf6542729",
+    "trace_run": 42748231047,
+    "harness_contract": "doc/libffi.texi: initialize struct ffi_type size/alignment to0; compare computed native layout, then test ten stack structures. Prior over-aligned descriptor is not a component incompatibility exception.",
+    "diagnostic_sdk_debugger": "10.0.26100.6584 ARM64, PE_AA64 hash efda8a8d73116ba97189e1bc638d888f41b592fcc1ba11d8a9039ff2a2472a75"
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",

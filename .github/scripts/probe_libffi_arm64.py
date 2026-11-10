@@ -115,7 +115,7 @@ static void callback(ffi_cif *cif, void *result, void **args, void *data) {
     (void)cif;
     *(int64_t *)result = *(int64_t *)args[0] + *(int64_t *)args[1] + *(int64_t *)data;
 }
-typedef struct __declspec(align(16)) { uint64_t q[4]; } Big;
+typedef struct { uint64_t q[4]; } Big;
 static uint64_t stacked(Big a, Big b, Big c, Big d, Big e,
                         Big f, Big g, Big h, Big i, Big j) {
     Big all[] = {a,b,c,d,e,f,g,h,i,j};
@@ -150,7 +150,7 @@ int main(void) {
     Big big[10];
     ffi_type *elements[] = { &ffi_type_uint64, &ffi_type_uint64,
                              &ffi_type_uint64, &ffi_type_uint64, NULL };
-    ffi_type aggregate = {sizeof(Big), __alignof(Big), FFI_TYPE_STRUCT, elements};
+    ffi_type aggregate = {0, 0, FFI_TYPE_STRUCT, elements};
     ffi_type *big_types[10];
     void *big_args[10];
     uint64_t expected=0, total=0;
@@ -158,9 +158,10 @@ int main(void) {
         for (int y=0; y<4; y++) { big[x].q[y]=(uint64_t)(100*x+y+1); expected+=big[x].q[y]; }
         big_types[x]=&aggregate; big_args[x]=&big[x];
     }
-    printf("stage: aligned struct CIF size=%zu alignment=%u\n", sizeof(Big), __alignof(Big));
+    printf("stage: natural struct CIF native size=%zu alignment=%u\n", sizeof(Big), __alignof(Big));
     if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 10, &ffi_type_uint64, big_types) != FFI_OK) return 6;
-    puts("stage: aligned struct ffi_call");
+    if (aggregate.size != sizeof(Big) || aggregate.alignment != __alignof(Big)) return 8;
+    printf("stage: natural struct ffi_call computed size=%zu alignment=%u\n", aggregate.size, aggregate.alignment);
     ffi_call(&cif, FFI_FN(stacked), &total, big_args);
     if (total!=expected || big[0].q[0]!=1) return 7;
     printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());

@@ -2,6 +2,11 @@
 
 ## Controlled compiler qualification (2026-11-10)
 
+**libffi diagnostic harness correction:** trace [42748231047](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42748231047), sourcebfc13e638343dfc1c031b78e5697c3bbf6542729, proves version API, scalar call and closure allocation/preparation/invocation/free PASS before the structure call fails in `stacked`. Native SDK debugger10.0.26100.6584/AA64 confirms that call site. Worker downloads artifact13732462291 (1779356 bytes,SHA256`23fb75b5f4f03a172376cf8b193a7a546bf73fd0a2943c58310d648815db6eaf`) and independently verifies its ZIP bytes.
+
+The harness had manually initialized structure size/alignment and forced extra alignment; official3.8.0 `doc/libffi.texi` requires both fields initialized to zero for libffi to calculate from members. That invalid descriptor is not used as library incompatibility evidence. The corrected test retains ten large structures/value isolation, uses the documented natural descriptor, and requires computed size/alignment to equal native C layout before calling. Library source/configuration/patch inputs are unchanged. The valid repeat remains required before adoption; no checks or thresholds are weakened.
+
+
 **libffi execution gate, not qualified:** [42746673421](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/42746673421), source29c09ada7ad013193cccf24dbf74293028652ccb, passes the two patch guards, native project build, AA64 COFF, dynamic CRT and consumer link. The executable then exits with access violation `0xC0000005`. This is not promoted to native ABI acceptance. The next diagnostic changes only unbuffered per-stage output and debug information, optionally using the already-installed SDK debugger only if its PE is AA64. It changes no library inputs or verification policy and retains library/executable/C source even on failure. Root cause must be localized before any further vendor ABI adaptation or runtime rebuild; R05/R06 remain release blockers.
 
 
