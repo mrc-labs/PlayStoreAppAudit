@@ -1527,10 +1527,24 @@ def _copy_nuitka_legal_files(licenses_root: Path) -> tuple[str, list[str]]:
     required = {"license-runtime.txt", "license.txt", "notice.txt"}
     found: dict[str, Path] = {}
     for entry in dist.files or []:
-        name = PurePosixPath(str(entry)).name.casefold()
+        relative = PurePosixPath(str(entry))
+        # Current Nuitka wheels put the project's PEP 639 licenses in metadata.
+        # Inline dependencies also ship LICENSE.txt; their order in RECORD must
+        # never replace the compiler's own license.
+        parts = relative.parts
+        if not (
+            len(parts) == 3
+            and parts[0].casefold().startswith("nuitka-")
+            and parts[0].casefold().endswith(".dist-info")
+            and parts[1] == "licenses"
+        ):
+            continue
+        name = relative.name.casefold()
         if name in required:
             source = Path(dist.locate_file(entry))
             if source.is_file():
+                if name in found:
+                    raise RuntimeError(f"Ambiguous Nuitka metadata license: {name}")
                 found[name] = source
     missing = required - found.keys()
     if missing:
