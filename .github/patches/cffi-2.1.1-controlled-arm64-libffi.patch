@@ -1,7 +1,15 @@
 --- a/setup.py
 +++ b/setup.py
-@@ -131,8 +131,24 @@
+@@ -129,10 +129,32 @@
+     os.environ['PKG_CONFIG_PATH'] = (
+         os.environ.get('PKG_CONFIG_PATH', '') + ':' + pkgconfig)
  
++# This explicitly labelled project variant must never silently use vendor ffi.lib.
++if sys.platform != "win32" or platform.machine() != "ARM64":
++    raise RuntimeError("Controlled libffi variant requires native Windows ARM64")
++if not os.environ.get("PSAA_LIBFFI_ARM64_ROOT"):
++    raise RuntimeError("Controlled libffi variant requires its source-built prefix")
++
  if sys.platform == "win32" and uses_msvc():
      if platform.machine() == "ARM64":
 -        include_dirs.append(os.path.join("src/c/libffi_arm64/include"))

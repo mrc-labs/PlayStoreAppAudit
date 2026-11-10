@@ -271,15 +271,8 @@ assert cffi.__version__==_cffi_backend.__version__=='2.1.1'
 backend=ctypes.WinDLL(_cffi_backend.__file__)
 backend.ffi_get_version.restype=ctypes.c_char_p
 assert backend.ffi_get_version()==b'3.8.0' and backend.ffi_get_version_number()==30800
-ffi=cffi.FFI()
-ffi.cdef('int _snprintf(char *, size_t, const char *, ...);')
-ucrt=ffi.dlopen('ucrtbase.dll')
-buffer=ffi.new('char[128]')
-count=ucrt._snprintf(buffer,128,b'%s:%d:%.1f',ffi.new('char[]',b'ffi'),ffi.cast('int',13),ffi.cast('double',4.5))
-assert ffi.string(buffer)==b'ffi:13:4.5' and count==len(b'ffi:13:4.5')
 print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_cffi_backend.__file__,'rb').read()).hexdigest(),
- distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800,
- positive_variadic='UCRT _snprintf string/int/double result and length PASS')))
+ distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
 '''
     measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
     backend = Path(measured['module'])
@@ -288,6 +281,38 @@ print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_
     imports = run(['dumpbin.exe', '/imports', str(backend)], evidence / 'cffi-imports.txt', work)
     assert not re.search(r'(?im)^\s*(?:lib)?ffi[^\s]*\.dll\s*$', imports), 'Unexpected dynamic libffi dependency'
     assert 'VCRUNTIME140.dll' in imports, 'Missing dynamic CRT dependency'
+    # UCRT printf-family names may be SDK inline wrappers rather than exports.
+    # Compile a real variadic ABI boundary instead of guessing system symbols.
+    client = work / 'cffi_varargs.c'
+    client.write_text('''#include <stdarg.h>
+#include <string.h>
+__declspec(dllexport) double psaa_variadic(int base, ...) {
+    va_list args;
+    va_start(args, base);
+    const char *text = va_arg(args, const char *);
+    int integer = va_arg(args, int);
+    double real = va_arg(args, double);
+    va_end(args);
+    return base + strlen(text) + integer + real;
+}
+''', encoding='utf-8')
+    compiler = Path(shutil.which('cl.exe') or '')
+    assert read_pe_machine(compiler) == 0xAA64
+    fixture = work / 'cffi_varargs.dll'
+    run([str(compiler), '/nologo', '/MD', '/LD', '/std:c17', str(client), '/Fe:' + str(fixture)],
+        evidence / 'cffi-varargs-build.log', work)
+    assert read_pe_machine(fixture) == 0xAA64
+    for file in [client, fixture]:
+        shutil.copy2(file, evidence)
+    positive = '''import cffi,json,sys
+ffi=cffi.FFI()
+ffi.cdef('double psaa_variadic(int, ...);')
+library=ffi.dlopen(sys.argv[1])
+result=library.psaa_variadic(7,ffi.new('char[]',b'ffi'),ffi.cast('int',13),ffi.cast('double',4.5))
+assert result==27.5,result
+print(json.dumps(dict(positive_variadic='Native MSVC ARM64 string/int/double PASS',result=result)))
+'''
+    variadic = json.loads(run([str(python), '-c', positive, str(fixture)], evidence / 'cffi-varargs.json', work))
     tests = ['src/c/test_c.py', 'testing/cffi0/test_ffi_backend.py', 'testing/cffi1/test_ffi_obj.py']
     xml = evidence / 'cffi-tests.xml'
     run([str(python), '-m', 'pytest', '-q', *tests, '--junitxml', str(xml)], evidence / 'cffi-tests.log', cffi_source, environment)
@@ -297,6 +322,7 @@ print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_
     assert any('callback' in case.get('name', '') for case in executed), 'Callback regressions did not execute'
     assert any('vararg' in case.get('name', '') for case in executed), 'Variadic regressions did not execute'
     return {**measured, 'machine': 0xAA64, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
+            'positive_variadic': variadic, 'variadic_fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
             'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
             'tests': len(cases), 'executed': len(executed), 'skipped': len(cases) - len(executed),
             'scope': 'Isolated source consumer only; no controlled CPython/cryptography or producing adoption'}

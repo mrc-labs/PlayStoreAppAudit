@@ -80,21 +80,21 @@
     "independent_byte_verification": "PASS ZIP size/digest, official source, generated/original headers, original MIT license, both patch bytes/base/post replay, seven AA64 COFF objects, dynamic MSVCRT/no LIBCMT, native consumer PE/hash/C source and actual execution report.",
     "prior_crash_disposition": "The over-aligned manually initialized descriptor was outside documented libffi usage. Only the harness changed for the successful repeat; no additional vendor ABI patch. No claim is made for that unsupported fixture.",
     "next_cffi_consumer": {
-      "state": "Initial native link failed16 __imp_ffi symbols; upstream FFI_STATIC_BUILD selection corrected, repeat pending",
+      "state": "Static source wheel builds/loads libffi3.8.0; UCRT symbol fixture absent; native variadic DLL repeat pending",
       "source_contract": {
         "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
         "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
         "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
         "distribution_version": "2.1.1+psaa.libffi380",
         "api_version": "2.1.1",
-        "scope": "Project-authored opt-in ARM64 build selection and explicit local distribution identity; no upstream approval. Unchanged cffi implementation/API; no bundled ffi.lib on this route. Native consumer qualification only, not crypto or runtime adoption.",
+        "scope": "Project-authored opt-in ARM64 build selection and explicit local distribution identity; no upstream approval. Unchanged cffi implementation/API; no bundled ffi.lib on this route. Native consumer qualification only, not crypto or runtime adoption. This local variant rejects non-native Windows ARM64 or missing controlled prefix rather than using the original vendor fallback.",
         "patch": {
           "path": ".github/patches/cffi-2.1.1-controlled-arm64-libffi.patch",
-          "sha256": "786a18dfdd511369fca7467c1adbbb534c08a099beb942aaf8feff679cf4af5b",
+          "sha256": "4c144deb95e059b2483da8e7ddb93145a4d3e03ac0fc4f6541914e31608ab650",
           "files": {
             "setup.py": {
               "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
-              "patched_sha256": "3a43f924af2ae66cabdbcc16c6bb0b07125234675eac2c51b35760567dce0f69"
+              "patched_sha256": "f5c82247c1a492f2f6c8cccbaa947330d433547bfaaec860a4170b4385255a70"
             },
             "pyproject.toml": {
               "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
@@ -114,7 +114,11 @@
       "failed_source": "124e9f6f8d7b8bc79e543c2b329f21a5a96be267",
       "failed_run": 42764087999,
       "source_quality_run": 42764092640,
-      "source_quality_tests": 1958
+      "source_quality_tests": 1958,
+      "last_source": "0f35700f09cbd746b53f03c237a6c9ecb70c47c4",
+      "last_run": 42793931793,
+      "last_quality_run": 42793938090,
+      "fixture_scope": "Native /MD C va_list DLL checks positive string/int/double arguments and27.5; explicit target/prefix rejection in modified cffi variant"
     }
   },
   "controlled_compiler_delta_2026_11_10": {
