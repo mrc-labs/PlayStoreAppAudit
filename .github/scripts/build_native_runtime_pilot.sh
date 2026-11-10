@@ -46,8 +46,13 @@ assert hashlib.sha256(patch.read_bytes()).hexdigest() == spec['cpython_patch']['
 shutil.copy2(patch, evidence / patch.name)
 def fetch(item):
     dest = (work if item['name'].endswith('.7z') else evidence / 'sources') / item['name']
-    with urllib.request.urlopen(item['url'], timeout=180) as src, dest.open('wb') as out:
-        shutil.copyfileobj(src, out)
+    try:
+        with urllib.request.urlopen(item['url'], timeout=180) as src, dest.open('wb') as out:
+            assert src.geturl().startswith('https:'), 'Source HTTPS downgrade rejected'
+            shutil.copyfileobj(src, out)
+    except Exception:
+        print('Source fetch failed:', item['name'], item['url'], flush=True)
+        raise
     with dest.open('rb') as stream:
         assert hashlib.file_digest(stream, 'sha256').hexdigest() == item['sha256'], item['name']
     if dest.suffix == '.7z':

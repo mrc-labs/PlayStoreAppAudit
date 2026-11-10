@@ -15,10 +15,12 @@ logged() {
   printf 'Native provider: %s\n' "$name"
   "$@" > "$evidence/$name.log" 2>&1 || { tail -n 80 "$evidence/$name.log"; return 1; }
 }
-cd "$work/src/zlib-1.3.2"
+cd "$work/src/zlib-1.4"
 logged zlib-configure ./configure --prefix="$prefix" --libdir="$prefix/lib"
 logged zlib-build make -j2
 logged zlib-regressions make test
+logged zlib-inflate-build make infcover
+logged zlib-inflate-regressions ./infcover
 logged zlib-install make install
 cd "$work/src/xz-5.8.4"
 logged xz-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --disable-static \
