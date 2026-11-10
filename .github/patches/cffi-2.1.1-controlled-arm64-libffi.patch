@@ -1,6 +1,6 @@
 --- a/setup.py
 +++ b/setup.py
-@@ -131,8 +131,23 @@
+@@ -131,8 +131,24 @@
  
  if sys.platform == "win32" and uses_msvc():
      if platform.machine() == "ARM64":
@@ -17,6 +17,7 @@
 +                    os.path.join(project_include, "ffitarget.h")]):
 +                raise RuntimeError("Incomplete controlled ARM64 libffi prefix")
 +            include_dirs[:] = [project_include]
++            define_macros.append(("FFI_STATIC_BUILD", "1"))
 +            library_dirs[:] = []
 +            libraries[:] = []
 +            extra_link_args.append(project_library)

@@ -32,11 +32,11 @@
     "scope": "Project-authored opt-in ARM64 build selection and explicit local distribution identity; no upstream approval. Unchanged cffi implementation/API; no bundled ffi.lib on this route. Native consumer qualification only, not crypto or runtime adoption.",
     "patch": {
       "path": ".github/patches/cffi-2.1.1-controlled-arm64-libffi.patch",
-      "sha256": "147fa2ab9f3c3b22861d191cd671c59f78cffc79d3fec496818d13acd18c3dca",
+      "sha256": "786a18dfdd511369fca7467c1adbbb534c08a099beb942aaf8feff679cf4af5b",
       "files": {
         "setup.py": {
           "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
-          "patched_sha256": "83d7a74c558a265656fcbf603c1e60a879835e4b647619002baea0c6639e9911"
+          "patched_sha256": "3a43f924af2ae66cabdbcc16c6bb0b07125234675eac2c51b35760567dce0f69"
         },
         "pyproject.toml": {
           "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
@@ -49,6 +49,7 @@
       "wheel==0.48.0",
       "pycparser==3.12",
       "pytest==9.2.0"
-    ]
+    ],
+    "static_linkage": "libffi3.8 ffi.h.in uses FFI_STATIC_BUILD; cffi old FFI_BUILDING alone produces16 __imp_ffi link errors in run42764087999. Enable the upstream static declaration macro in the opt-in ARM64 configuration; no C implementation change."
   }
 }

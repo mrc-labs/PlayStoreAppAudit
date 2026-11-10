@@ -271,8 +271,15 @@ assert cffi.__version__==_cffi_backend.__version__=='2.1.1'
 backend=ctypes.WinDLL(_cffi_backend.__file__)
 backend.ffi_get_version.restype=ctypes.c_char_p
 assert backend.ffi_get_version()==b'3.8.0' and backend.ffi_get_version_number()==30800
+ffi=cffi.FFI()
+ffi.cdef('int _snprintf(char *, size_t, const char *, ...);')
+ucrt=ffi.dlopen('ucrtbase.dll')
+buffer=ffi.new('char[128]')
+count=ucrt._snprintf(buffer,128,b'%s:%d:%.1f',ffi.new('char[]',b'ffi'),ffi.cast('int',13),ffi.cast('double',4.5))
+assert ffi.string(buffer)==b'ffi:13:4.5' and count==len(b'ffi:13:4.5')
 print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_cffi_backend.__file__,'rb').read()).hexdigest(),
- distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
+ distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800,
+ positive_variadic='UCRT _snprintf string/int/double result and length PASS')))
 '''
     measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
     backend = Path(measured['module'])
