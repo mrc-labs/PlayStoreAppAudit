@@ -1,6 +1,6 @@
 {
   "libffi_msvc_prerequisite_2026_11_10": {
-    "state": "PASS bounded native MSVC/header/call/closure/large-structure feasibility; CPython/cffi integration remains required",
+    "state": "PASS controlled native libffi3.8.0 and cffi2.1.1+psaa.libffi380 Windows ARM64 consumer; R05/R06 runtime/crypto/other-target acceptance remains required",
     "version": "3.8.0",
     "source": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
     "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
@@ -33,7 +33,7 @@
     "failed_source": "d79f6f20202da302599a5d161d078260d25105e2",
     "failed_run": 42742580293,
     "demonstrated_gate": "61 compile errors after native host/target prerequisites; missing version/type declarations",
-    "minimum_next_action": "Qualify controlled CPython ctypes and cffi consumers against this source-built provider; preserve native ARM64, /MD, existing OS floor and retained corresponding sources. No producing adoption.",
+    "minimum_next_action": "Qualify actual controlled CPython ctypes and cryptography consumers, plus remaining native targets; preserve ABI/OS floors and corresponding-source/legal acceptance. No producing adoption.",
     "configured_source": "d0f320292ae9d7e37b589c34363b9458caa3205d",
     "configured_run": 42743731127,
     "native_host_tools": "Git Bash/compiler/assembler all AA64; MSVC14.51.36231 SDK10.0.26100.0",
@@ -64,23 +64,32 @@
       }
     },
     "consumer_regression": "PASS native version3.8.0/30800, scalar42, closure45, ten 32-byte stack structures with native/computed alignment8 and value isolation",
-    "last_probe_source": "78c2c46f0b03201ed39c5f524193d47364e13bd9",
-    "last_probe_run": 42749266993,
+    "last_probe_source": "8793e22bb7dde6a5339654b2fbf43a900b8e0c2f",
+    "last_probe_run": 42799359470,
     "trace_source": "bfc13e638343dfc1c031b78e5697c3bbf6542729",
     "trace_run": 42748231047,
     "harness_contract": "doc/libffi.texi: initialize struct ffi_type size/alignment to0; compare computed native layout, then test ten stack structures. Prior over-aligned descriptor is not a component incompatibility exception.",
     "diagnostic_sdk_debugger": "10.0.26100.6584 ARM64, PE_AA64 hash efda8a8d73116ba97189e1bc638d888f41b592fcc1ba11d8a9039ff2a2472a75",
-    "quality_run": 42749270671,
-    "quality_tests": 1956,
-    "artifact": 13731939596,
-    "artifact_bytes": 1777380,
-    "artifact_sha256": "c6859c4f62ba687fddcb2ca54e4818a6bb08dd1f5e923807645d2d95cb2b281a",
-    "library_sha256": "bc1dd527d85d5643ff6fb6874b9857c93cfb86a8ac9101701c39422317229859",
-    "consumer_sha256": "ad8b65c381f003084b035a15834edb87bdf2ab21787a363a309716ff5bcd7944",
+    "quality_run": 42799367210,
+    "quality_tests": 1958,
+    "artifact": 13754823973,
+    "artifact_bytes": 5362224,
+    "artifact_sha256": "779c99617a5d2344ef40c9a8f20a6ce8dc1dd1b82cd87089249848d9ae4b822b",
+    "library_sha256": "8cfe440d11fd1388494c6199e8627a89086c549e3a76175748780a9a26cd06d7",
+    "consumer_sha256": "c3ba05e3a438aba471e0b797a986a5f13526c07cefaad1b8806dd15da7de36fd",
     "independent_byte_verification": "PASS ZIP size/digest, official source, generated/original headers, original MIT license, both patch bytes/base/post replay, seven AA64 COFF objects, dynamic MSVCRT/no LIBCMT, native consumer PE/hash/C source and actual execution report.",
     "prior_crash_disposition": "The over-aligned manually initialized descriptor was outside documented libffi usage. Only the harness changed for the successful repeat; no additional vendor ABI patch. No claim is made for that unsupported fixture.",
-    "next_cffi_consumer": {
-      "state": "Direct and cffi mixed ABI27.5 PASS; 290 tests PASS/13skip; 196 identical obsolete MSVC9 fixture errors. Native fixture seam prepared, complete suite repeat pending.",
+    "initial_standalone_qualification": {
+      "last_probe_source": "78c2c46f0b03201ed39c5f524193d47364e13bd9",
+      "last_probe_run": 42749266993,
+      "artifact": 13731939596,
+      "artifact_bytes": 1777380,
+      "artifact_sha256": "c6859c4f62ba687fddcb2ca54e4818a6bb08dd1f5e923807645d2d95cb2b281a",
+      "library_sha256": "bc1dd527d85d5643ff6fb6874b9857c93cfb86a8ac9101701c39422317229859",
+      "consumer_sha256": "ad8b65c381f003084b035a15834edb87bdf2ab21787a363a309716ff5bcd7944"
+    },
+    "cffi_consumer_qualification": {
+      "state": "PASS native source/static provider/call/closure/large-structure/mixed-variadic consumer and three upstream suites",
       "source_contract": {
         "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
         "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
@@ -127,13 +136,60 @@
       "failed_run": 42764087999,
       "source_quality_run": 42764092640,
       "source_quality_tests": 1958,
-      "last_source": "bf7b0914a52aac46f4e327d14f16b83647e6a578",
-      "last_run": 42798162553,
-      "last_quality_run": 42798167998,
+      "last_source": "8793e22bb7dde6a5339654b2fbf43a900b8e0c2f",
+      "last_run": 42799359470,
+      "last_quality_run": 42799367210,
       "fixture_scope": "Unmodified upstream TestOwnLib.SOURCE compiled natively with /MD into its existing cached-DLL seam; no MSVC9 shim or skipped assertion",
       "partial_artifact": 13754127964,
       "partial_artifact_bytes": 5362378,
-      "partial_artifact_sha256": "6b20b8d411e47a1c8ae0e5f681337afe2e0c3be709175b3337a96d4489bdbf40"
+      "partial_artifact_sha256": "6b20b8d411e47a1c8ae0e5f681337afe2e0c3be709175b3337a96d4489bdbf40",
+      "qualified_source": "8793e22bb7dde6a5339654b2fbf43a900b8e0c2f",
+      "qualified_run": 42799359470,
+      "quality_run": 42799367210,
+      "quality_tests": 1958,
+      "artifact": 13754823973,
+      "artifact_bytes": 5362224,
+      "artifact_sha256": "779c99617a5d2344ef40c9a8f20a6ce8dc1dd1b82cd87089249848d9ae4b822b",
+      "native_results": {
+        "module": "C:\\a\\_temp\\arm64-runtime-probe-42799359470-1\\cffi-environment\\Lib\\site-packages\\_cffi_backend.cp314-win_arm64.pyd",
+        "sha256": "6a8d218052000981f3f3da23f79bfa6495a005d9075c51f7ec40c618ef3476d4",
+        "distribution": "2.1.1+psaa.libffi380",
+        "api": "2.1.1",
+        "libffi": "3.8.0",
+        "libffi_number": 30800,
+        "machine": 43620,
+        "wheel_sha256": "e0657fbcd54bff578ef8efb540ebf4d714627c18c0c5fd24b391be41ee911b94",
+        "positive_variadic": {
+          "positive_variadic": "Native MSVC ARM64 string/int/double PASS",
+          "result": 27.5
+        },
+        "variadic_fixture_sha256": "10f86fd941f894a7a92c82a303e9de2e4414aac18049f206e4711bfb7a33dd24",
+        "libffi_static_sha256": "8cfe440d11fd1388494c6199e8627a89086c549e3a76175748780a9a26cd06d7",
+        "tests": 499,
+        "executed": 461,
+        "skipped": 38,
+        "scope": "Isolated source consumer only; no controlled CPython/cryptography or producing adoption"
+      },
+      "native_fixture": {
+        "machine": 43620,
+        "sha256": "400bb4b8f1fa5b4f8e2a954b4acd0a7c308981dcd0605a5d1d31dea4cdab2715",
+        "scope": "Unmodified upstream SOURCE and prebuilt-fixture seam; native /MD compiler, no MSVC9 shim or skipped assertions"
+      },
+      "bootstrap_packages": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "pycparser": "3.12",
+        "pytest": "9.2.0",
+        "pluggy": "1.7.0",
+        "colorama": "0.4.6",
+        "iniconfig": "2.3.1",
+        "packaging": "26.3",
+        "Pygments": "2.21.0"
+      },
+      "independent_byte_verification": "PASS independent source/patch replay/licenses/wheel/native PE/COFF/CRT/test report verification",
+      "minimum_next_action": "Controlled runtime/cryptography consumer qualification and remaining native targets; producing/package adoption remains separate and unauthorized.",
+      "previous_partial_source": "bf7b0914a52aac46f4e327d14f16b83647e6a578",
+      "previous_partial_run": 42798162553
     }
   },
   "provider_ca_security_delta_2026_11_10": {
@@ -149,7 +205,15 @@
     "compromised_spki": 8,
     "regular_chains": 14,
     "rollover_chains": 2,
-    "minimum_action": "Measure all16 TLS chains against actual Python/Qt/native providers and ordinary default positive trust; inspect entire chain and applicable OS revocation behavior. No root removal, fallback or leaf-only bypass."
+    "minimum_action": "Measure all16 TLS chains against actual Python/Qt/native providers and ordinary default positive trust; inspect entire chain and applicable OS revocation behavior. No root removal, fallback or leaf-only bypass.",
+    "certifi_input_membership": {
+      "version": "2026.10.23",
+      "ca_count": 118,
+      "pem_sha256": "2ef52ad56b4803e264045c915e55c236cbfa045b84b81efefc218a19eb44bd2b",
+      "incident_root_der_spki_members": 0,
+      "scope": "Exact input membership only, not chain/default-TLS/provider acceptance",
+      "parser_future_watch": "Observed cryptography50.0.2 warning: current PEM includes a non-positive-serial certificate which a future parser will reject. Audit parsing only; application cryptography path remains AESGCM/HKDF, not default X509 trust. Recheck stable parser/bundle support at freshness; no local trust-anchor removal or downgraded parser."
+    }
   },
   "controlled_compiler_delta_2026_11_10": {
     "date": "2026-11-10",
