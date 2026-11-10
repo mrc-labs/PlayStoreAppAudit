@@ -80,7 +80,7 @@
     "independent_byte_verification": "PASS ZIP size/digest, official source, generated/original headers, original MIT license, both patch bytes/base/post replay, seven AA64 COFF objects, dynamic MSVCRT/no LIBCMT, native consumer PE/hash/C source and actual execution report.",
     "prior_crash_disposition": "The over-aligned manually initialized descriptor was outside documented libffi usage. Only the harness changed for the successful repeat; no additional vendor ABI patch. No claim is made for that unsupported fixture.",
     "next_cffi_consumer": {
-      "state": "Native mixed variadic result23.0 instead of27.5; minimal existing ffi_prep_cif_var selection prepared, repeat pending",
+      "state": "Direct and cffi mixed ABI27.5 PASS; 290 tests PASS/13skip; 196 identical obsolete MSVC9 fixture errors. Native fixture seam prepared, complete suite repeat pending.",
       "source_contract": {
         "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
         "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
@@ -127,10 +127,13 @@
       "failed_run": 42764087999,
       "source_quality_run": 42764092640,
       "source_quality_tests": 1958,
-      "last_source": "46510d3f94db590f40e07ecb14e6407b7c96268f",
-      "last_run": 42796859017,
-      "last_quality_run": 42796865745,
-      "fixture_scope": "Require direct libffi and actual cffi native mixed string/int/double27.5, then upstream call/callback/variadic suites; no thresholds weakened"
+      "last_source": "bf7b0914a52aac46f4e327d14f16b83647e6a578",
+      "last_run": 42798162553,
+      "last_quality_run": 42798167998,
+      "fixture_scope": "Unmodified upstream TestOwnLib.SOURCE compiled natively with /MD into its existing cached-DLL seam; no MSVC9 shim or skipped assertion",
+      "partial_artifact": 13754127964,
+      "partial_artifact_bytes": 5362378,
+      "partial_artifact_sha256": "6b20b8d411e47a1c8ae0e5f681337afe2e0c3be709175b3337a96d4489bdbf40"
     }
   },
   "provider_ca_security_delta_2026_11_10": {

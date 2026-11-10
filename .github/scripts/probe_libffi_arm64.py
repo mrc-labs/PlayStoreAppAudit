@@ -333,9 +333,38 @@ assert result==27.5,result
 print(json.dumps(dict(positive_variadic='Native MSVC ARM64 string/int/double PASS',result=result)))
 '''
     variadic = json.loads(run([str(python), '-c', positive, str(fixture)], evidence / 'cffi-varargs.json', work))
+    # Upstream TestOwnLib accepts an already-built DLL, before its obsolete
+    # MSVC9/AMD64 discovery. Prepare that existing fixture seam with the
+    # measured native compiler in the same pytest process/temporary directory.
+    plugin = work / 'psaa_cffi_native_fixture.py'
+    plugin.write_text('''import hashlib,json,shutil,struct,subprocess
+from pathlib import Path
+def pytest_configure(config):
+    from testing.cffi0.test_ownlib import SOURCE
+    from testing.udir import udir
+    source=udir/'testownlib.c'
+    source.write_text(SOURCE,encoding='utf-8')
+    library=udir/'testownlib.dll'
+    command=[COMPILER,'/nologo','/MD','/LD',str(source),'/Fe:'+str(library)]
+    result=subprocess.run(command,cwd=udir,capture_output=True,text=True)
+    (EVIDENCE/'cffi-ownlib-build.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    result.check_returncode()
+    data=library.read_bytes()
+    offset=struct.unpack_from('<I',data,0x3c)[0]
+    assert data[offset:offset+4]==b'PE\\0\\0' and struct.unpack_from('<H',data,offset+4)[0]==0xAA64
+    for name in ['testownlib1.dll','testownlib\\u03be.dll']:
+        shutil.copy2(library,udir/name)
+    shutil.copy2(source,EVIDENCE/'cffi-ownlib.c')
+    shutil.copy2(library,EVIDENCE/'cffi-ownlib.dll')
+    (EVIDENCE/'cffi-ownlib.json').write_text(json.dumps(dict(machine=0xAA64,sha256=hashlib.sha256(data).hexdigest(),
+        scope='Unmodified upstream SOURCE and prebuilt-fixture seam; native /MD compiler, no MSVC9 shim or skipped assertions')),encoding='utf-8')
+'''.replace('COMPILER', repr(str(compiler))).replace('EVIDENCE', 'Path(' + repr(str(evidence)) + ')'), encoding='utf-8')
+    shutil.copy2(plugin, evidence)
+    test_environment = {**environment, 'PYTHONPATH': str(work) + os.pathsep + environment.get('PYTHONPATH', '')}
     tests = ['src/c/test_c.py', 'testing/cffi0/test_ffi_backend.py', 'testing/cffi1/test_ffi_obj.py']
     xml = evidence / 'cffi-tests.xml'
-    run([str(python), '-m', 'pytest', '-q', *tests, '--junitxml', str(xml)], evidence / 'cffi-tests.log', cffi_source, environment)
+    run([str(python), '-m', 'pytest', '-p', plugin.stem, '-q', *tests, '--junitxml', str(xml)],
+        evidence / 'cffi-tests.log', cffi_source, test_environment)
     cases = ET.parse(xml).findall('.//testcase')
     assert cases and not ET.parse(xml).findall('.//failure') and not ET.parse(xml).findall('.//error')
     executed = [case for case in cases if case.find('skipped') is None]
