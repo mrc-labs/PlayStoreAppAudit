@@ -13,6 +13,8 @@ import sys
 import sysconfig
 import tarfile
 import urllib.request
+import venv
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from inspect_pe import read_pe_machine
@@ -199,6 +201,100 @@ int main(void) {
     return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
 
 
+def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
+    patch = REPO / spec['path']
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != spec['sha256']:
+        raise ValueError('Changed reviewed cffi patch')
+    for name, hashes in spec['files'].items():
+        if hashlib.sha256((source / name).read_bytes()).hexdigest() != hashes['original_sha256']:
+            raise ValueError('Changed original cffi source')
+    command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent.resolve())}
+    run([*command, '--check', str(patch)], evidence / 'cffi-patch-check.log', source, environment)
+    run([*command, str(patch)], evidence / 'cffi-patch-apply.log', source, environment)
+    for name, hashes in spec['files'].items():
+        if hashlib.sha256((source / name).read_bytes()).hexdigest() != hashes['patched_sha256']:
+            raise ValueError('Unexpected post-patch cffi source')
+    shutil.copy2(patch, evidence)
+
+
+def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict) -> dict:
+    """Build one isolated cffi consumer; never replace a runtime's installed DLL."""
+    archive = evidence / 'cffi-2.1.1.tar.gz'
+    with urllib.request.urlopen(spec['source_url'], timeout=90) as response:
+        if not response.geturl().startswith('https://'):
+            raise ValueError('cffi source HTTPS downgrade rejected')
+        data = response.read()
+    if hashlib.sha256(data).hexdigest() != spec['source_sha256']:
+        raise ValueError('Unexpected official cffi source digest')
+    archive.write_bytes(data)
+    with tarfile.open(archive) as source_archive:
+        source_archive.extractall(work, filter='data')
+    cffi_source = work / 'cffi-2.1.1'
+    shutil.copy2(cffi_source / 'LICENSE', evidence / 'cffi-LICENSE')
+    apply_cffi_patch(cffi_source, evidence, spec['patch'])
+    prefix = work / 'cffi-libffi-prefix'
+    (prefix / 'include').mkdir(parents=True)
+    (prefix / 'lib').mkdir()
+    for name in ['ffi.h', 'fficonfig.h']:
+        shutil.copy2(source / 'msvc_build/aarch64/aarch64_include' / name, prefix / 'include' / name)
+    shutil.copy2(source / 'src/aarch64/ffitarget.h', prefix / 'include/ffitarget.h')
+    shutil.copy2(library, prefix / 'lib' / library.name)
+    assert hashlib.sha256((prefix / 'lib' / library.name).read_bytes()).hexdigest() == hashlib.sha256(library.read_bytes()).hexdigest()
+    venv_path = work / 'cffi-environment'
+    venv.EnvBuilder(with_pip=True).create(venv_path)
+    python = venv_path / 'Scripts/python.exe'
+    run([str(python), str(REPO / '.github/scripts/bootstrap_pip.py')], evidence / 'cffi-pip-bootstrap.log', work)
+    wheels = evidence / 'cffi-build-wheels'
+    wheels.mkdir()
+    run([str(python), '-m', 'pip', '--isolated', 'download', '--only-binary=:all:',
+         '--dest', str(wheels), *spec['bootstrap_pins']], evidence / 'cffi-build-dependencies.log', work)
+    run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--find-links', str(wheels),
+         '--report', str(evidence / 'cffi-build-install.json'), *spec['bootstrap_pins']],
+        evidence / 'cffi-build-install.log', work)
+    environment = {**os.environ, 'PSAA_LIBFFI_ARM64_ROOT': str(prefix),
+                   'DISTUTILS_USE_SDK': '1', 'MSSdk': '1'}
+    wheelhouse = evidence / 'cffi-wheel'
+    wheelhouse.mkdir()
+    run([str(python), '-m', 'pip', '--isolated', 'wheel', '--no-index', '--no-build-isolation',
+         '--no-deps', '--verbose', '--wheel-dir', str(wheelhouse), str(cffi_source)],
+        evidence / 'cffi-build.log', work, environment)
+    built = list(wheelhouse.glob('cffi-*.whl'))
+    assert len(built) == 1 and spec['distribution_version'] in built[0].name
+    run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--no-deps', str(built[0])],
+        evidence / 'cffi-install.log', work)
+    inspect = '''import ctypes,hashlib,importlib.metadata,json,platform,sysconfig
+import cffi,_cffi_backend
+assert platform.machine().upper()=='ARM64' and not sysconfig.get_config_var('Py_GIL_DISABLED')
+assert importlib.metadata.version('cffi')=='2.1.1+psaa.libffi380'
+assert cffi.__version__==_cffi_backend.__version__=='2.1.1'
+backend=ctypes.WinDLL(_cffi_backend.__file__)
+backend.ffi_get_version.restype=ctypes.c_char_p
+assert backend.ffi_get_version()==b'3.8.0' and backend.ffi_get_version_number()==30800
+print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_cffi_backend.__file__,'rb').read()).hexdigest(),
+ distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
+'''
+    measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
+    backend = Path(measured['module'])
+    assert read_pe_machine(backend) == 0xAA64
+    shutil.copy2(backend, evidence)
+    imports = run(['dumpbin.exe', '/imports', str(backend)], evidence / 'cffi-imports.txt', work)
+    assert not re.search(r'(?im)^\s*(?:lib)?ffi[^\s]*\.dll\s*$', imports), 'Unexpected dynamic libffi dependency'
+    assert 'VCRUNTIME140.dll' in imports, 'Missing dynamic CRT dependency'
+    tests = ['src/c/test_c.py', 'testing/cffi0/test_ffi_backend.py', 'testing/cffi1/test_ffi_obj.py']
+    xml = evidence / 'cffi-tests.xml'
+    run([str(python), '-m', 'pytest', '-q', *tests, '--junitxml', str(xml)], evidence / 'cffi-tests.log', cffi_source, environment)
+    cases = ET.parse(xml).findall('.//testcase')
+    assert cases and not ET.parse(xml).findall('.//failure') and not ET.parse(xml).findall('.//error')
+    executed = [case for case in cases if case.find('skipped') is None]
+    assert any('callback' in case.get('name', '') for case in executed), 'Callback regressions did not execute'
+    assert any('vararg' in case.get('name', '') for case in executed), 'Variadic regressions did not execute'
+    return {**measured, 'machine': 0xAA64, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
+            'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
+            'tests': len(cases), 'executed': len(executed), 'skipped': len(cases) - len(executed),
+            'scope': 'Isolated source consumer only; no controlled CPython/cryptography or producing adoption'}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
@@ -265,7 +361,9 @@ def main() -> None:
         shutil.copy2(libraries[0], evidence)
         report['gate'] = 'native version/call/closure consumer execution'
         report['consumer'] = exercise_library(source, work, libraries[0], compiler, evidence)
-        report.update(result='PASS controlled project/header configuration, native call/closure and dynamic CRT; CPython/cffi acceptance remains required',
+        report['gate'] = 'isolated source cffi consumer and actual native ABI/callback/variadic regressions'
+        report['cffi_consumer'] = exercise_cffi(source, work, libraries[0], evidence, patches['cffi_consumer'])
+        report.update(result='PASS controlled libffi and isolated cffi consumer; controlled CPython/crypto/package acceptance remains required',
                       library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
     except Exception as error:
         report['failure'] = f'{type(error).__name__}: {error}'

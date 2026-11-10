@@ -22,5 +22,33 @@
     "reason": "Official Makefile.am includes src/tramp.c; supplied MSVC project omits it, causing four native ffi_tramp unresolved symbols. Add the same official source, preserving build flags; normalize project line endings for reproducible patching.",
     "authority": "https://github.com/libffi/libffi/blob/v3.8.0/Makefile.am",
     "native_failure_run": 42745001966
+  },
+  "cffi_consumer": {
+    "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+    "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+    "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "distribution_version": "2.1.1+psaa.libffi380",
+    "api_version": "2.1.1",
+    "scope": "Project-authored opt-in ARM64 build selection and explicit local distribution identity; no upstream approval. Unchanged cffi implementation/API; no bundled ffi.lib on this route. Native consumer qualification only, not crypto or runtime adoption.",
+    "patch": {
+      "path": ".github/patches/cffi-2.1.1-controlled-arm64-libffi.patch",
+      "sha256": "147fa2ab9f3c3b22861d191cd671c59f78cffc79d3fec496818d13acd18c3dca",
+      "files": {
+        "setup.py": {
+          "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
+          "patched_sha256": "83d7a74c558a265656fcbf603c1e60a879835e4b647619002baea0c6639e9911"
+        },
+        "pyproject.toml": {
+          "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
+          "patched_sha256": "412e8a9e83a7dc1854aec82fa70c903be7804518fe6bfb8785f6202ae3b152b6"
+        }
+      }
+    },
+    "bootstrap_pins": [
+      "setuptools==84.2.1",
+      "wheel==0.48.0",
+      "pycparser==3.12",
+      "pytest==9.2.0"
+    ]
   }
 }

@@ -1,0 +1,39 @@
+--- a/setup.py
++++ b/setup.py
+@@ -131,8 +131,23 @@
+ 
+ if sys.platform == "win32" and uses_msvc():
+     if platform.machine() == "ARM64":
+-        include_dirs.append(os.path.join("src/c/libffi_arm64/include"))
+-        library_dirs.append(os.path.join("src/c/libffi_arm64"))
++        project_libffi = os.environ.get("PSAA_LIBFFI_ARM64_ROOT")
++        if project_libffi:
++            # Project-controlled native source build; never use bundled ffi.lib.
++            project_libffi = os.path.abspath(project_libffi)
++            project_library = os.path.join(project_libffi, "lib", "Ffi_staticLib_arm64.lib")
++            project_include = os.path.join(project_libffi, "include")
++            if not all(os.path.isfile(path) for path in [project_library,
++                    os.path.join(project_include, "ffi.h"),
++                    os.path.join(project_include, "ffitarget.h")]):
++                raise RuntimeError("Incomplete controlled ARM64 libffi prefix")
++            include_dirs[:] = [project_include]
++            library_dirs[:] = []
++            libraries[:] = []
++            extra_link_args.append(project_library)
++        else:
++            include_dirs.append(os.path.join("src/c/libffi_arm64/include"))
++            library_dirs.append(os.path.join("src/c/libffi_arm64"))
+     else:
+         COMPILE_LIBFFI = 'src/c/libffi_x86_x64'    # from the CPython distribution
+         assert os.path.isdir(COMPILE_LIBFFI), "directory not found!"
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7,7 +7,7 @@
+ 
+ [project]
+ name = "cffi"
+-version = "2.1.1"
++version = "2.1.1+psaa.libffi380"
+ dependencies = [
+     "pycparser; implementation_name != 'PyPy'",
+ ]

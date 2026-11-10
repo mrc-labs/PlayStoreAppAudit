@@ -59,3 +59,26 @@ def test_libffi_alignment_patch_integrity_fails_before_git(
     with pytest.raises(ValueError, match='Changed'):
         probe.apply_libffi_patch(tmp_path, tmp_path, spec)
     assert not called
+
+
+@pytest.mark.parametrize('changed', ['source', 'patch'])
+def test_cffi_build_selection_rejects_unreviewed_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str
+) -> None:
+    patch = tmp_path / 'cffi.patch'
+    patch.write_bytes(b'reviewed build selection')
+    target = tmp_path / 'setup.py'
+    target.write_bytes(b'original setup')
+    spec = {'path': patch.name, 'sha256': hashlib.sha256(patch.read_bytes()).hexdigest(),
+            'files': {'setup.py': {'original_sha256': hashlib.sha256(target.read_bytes()).hexdigest(),
+                                    'patched_sha256': '0' * 64}}}
+    if changed == 'source':
+        target.write_bytes(b'changed setup')
+    else:
+        patch.write_bytes(b'changed build selection')
+    called = []
+    monkeypatch.setattr(probe, 'REPO', tmp_path)
+    monkeypatch.setattr(probe, 'run', lambda *args, **kwargs: called.append(args))
+    with pytest.raises(ValueError, match='Changed'):
+        probe.apply_cffi_patch(tmp_path, tmp_path, spec)
+    assert not called
