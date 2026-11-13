@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, ffi-arm64-prerequisites]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -57,8 +57,8 @@ concurrency:
 jobs:
 
   native-toolchain-delta:
-    if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' }}
-    name: ${{ inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
+    if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' }}
+    name: ${{ inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
@@ -111,7 +111,7 @@ jobs:
           python -c "import platform,sys,sysconfig;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final';assert platform.python_version()=='3.14.10';assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
       - name: Qualify verified pip and current tool installs
-        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' }}
+        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,7 +132,7 @@ jobs:
             --evidence-dir toolchain-delta-evidence
 
       - name: Exercise selected native compiler and developer tools
-        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' }}
+        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -148,11 +148,22 @@ jobs:
           python -m pip install --only-binary=:all: 'PySide6-Essentials==6.12.0' --report toolchain-delta-evidence/qt-bootstrap-install.json
           python .github/scripts/probe_qt_ca_security.py --output-dir toolchain-delta-evidence
 
+      - name: Qualify actual isolated setuptools dependency candidate
+        if: ${{ inputs.linux_arm64_pilot == 'tools-build' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          python .github/scripts/probe_setuptools_build.py \
+            --work-root "$RUNNER_TEMP/setuptools-build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir toolchain-delta-evidence
+
       - name: Upload host tool diagnostic evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
           path: toolchain-delta-evidence/
           if-no-files-found: error
           retention-days: 0
