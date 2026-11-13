@@ -63,12 +63,14 @@ def test_source_download_preserves_tls_and_original_hash(tmp_path: Path, monkeyp
 
 
 @pytest.mark.parametrize('failure', ['foreign', 'openssl', 'missing_backend', 'foreign_plugin'])
-def test_native_consumer_rejects_foreign_framework_or_provider(tmp_path: Path, failure: str) -> None:
+def test_native_consumer_rejects_foreign_framework_or_provider(tmp_path: Path, monkeypatch, failure: str) -> None:
     prefix = tmp_path / 'controlled'
     executable = tmp_path / 'consumer.exe'
     modules = [prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll',
                prefix / 'plugins/tls/qschannelbackend.dll', executable]
-    modules += [tmp_path / 'system' / name for name in ['schannel.dll', 'crypt32.dll', 'vcruntime140.dll', 'msvcp140.dll']]
+    system = tmp_path / 'Windows/System32'
+    monkeypatch.setenv('SYSTEMROOT', str(system.parent))
+    modules += [system / name for name in ['secur32.dll', 'sspicli.dll', 'crypt32.dll', 'vcruntime140.dll', 'msvcp140.dll']]
     if failure == 'foreign':
         modules[0] = tmp_path / 'other/Qt6Core.dll'
     elif failure == 'openssl':
@@ -78,7 +80,8 @@ def test_native_consumer_rejects_foreign_framework_or_provider(tmp_path: Path, f
     else:
         modules.pop(2)
     with pytest.raises(AssertionError):
-        probe.validate_loaded_origins({'loaded_modules': list(map(str, modules))}, prefix, executable)
+        probe.validate_loaded_origins({'loaded_modules': list(map(str, modules)), 'backend': 'schannel',
+            'runtime_library': 'Secure Channel, Windows 10.0.26100'}, prefix, executable)
 
 
 def test_changed_original_contract_does_not_reach_a_build(tmp_path: Path, monkeypatch) -> None:
@@ -125,7 +128,23 @@ def test_native_schannel_library_is_required_for_tls_not_certificate_input_parsi
     modules += [tmp_path / 'system' / name for name in ['crypt32.dll', 'vcruntime140.dll', 'msvcp140.dll']]
     result = {'loaded_modules': list(map(str, modules))}
     if tls:
-        with pytest.raises(AssertionError, match='Actual TLS process'):
+        with pytest.raises(AssertionError):
             probe.validate_loaded_origins(result, prefix, executable, tls=tls)
     else:
         probe.validate_loaded_origins(result, prefix, executable, tls=tls)
+
+
+def test_rejected_tls_can_release_schannel_library_but_requires_system_sspi(tmp_path: Path, monkeypatch) -> None:
+    prefix = tmp_path / 'private'
+    system = tmp_path / 'Windows/System32'
+    monkeypatch.setenv('SYSTEMROOT', str(system.parent))
+    executable = prefix / 'bin/qt_ca_consumer.exe'
+    modules = [executable, prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll',
+               prefix / 'plugins/tls/qschannelbackend.dll']
+    modules += [system / name for name in ['crypt32.dll', 'secur32.dll', 'sspicli.dll', 'vcruntime140.dll', 'msvcp140.dll']]
+    result = {'loaded_modules': list(map(str, modules)), 'backend': 'schannel',
+              'runtime_library': 'Secure Channel, Windows 10.0.26100'}
+    probe.validate_loaded_origins(result, prefix, executable)
+    result['loaded_modules'] = [str(tmp_path / 'foreign/secur32.dll') if p.name == 'secur32.dll' else str(p) for p in modules]
+    with pytest.raises(AssertionError, match='Foreign native'):
+        probe.validate_loaded_origins(result, prefix, executable)

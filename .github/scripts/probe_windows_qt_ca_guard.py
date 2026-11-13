@@ -168,7 +168,15 @@ def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls
     assert {'qt6core.dll', 'qt6network.dll', 'qschannelbackend.dll', 'crypt32.dll',
             'vcruntime140.dll', 'msvcp140.dll'} <= names, names
     if tls:
-        assert 'schannel.dll' in names, 'Actual TLS process did not load the native Schannel provider'
+        assert result.get('backend') == 'schannel', 'Unexpected active TLS backend'
+        assert result.get('runtime_library', '').startswith('Secure Channel, Windows '), 'Unexpected native TLS implementation'
+        assert {'secur32.dll', 'sspicli.dll'} <= names, 'Actual TLS process did not load native SSPI entry points'
+        system = (Path(os.environ['SYSTEMROOT']) / 'System32').resolve()
+        assert all(path.parent == system for path in modules if path.name.lower() in
+                   {'secur32.dll', 'sspicli.dll', 'crypt32.dll'}), 'Foreign native SSPI/crypto provider'
+        # The C++ snapshot is taken after socket abort/destruction. The SSP's
+        # schannel.dll need not remain resident; its SSPI imports, explicit Qt
+        # backend and actual TLS outcomes are the provider contract.
     validate_imports('\n'.join(names))
     assert not any(re.search(r'lib(?:ssl|crypto)|libclang', name) for name in names)
     for path in modules:

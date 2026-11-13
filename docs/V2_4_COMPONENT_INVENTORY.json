@@ -2,7 +2,7 @@
   "windows_schannel_guard_2026_11_13": {
     "date": "2026-11-13",
     "starting_head": "d967163ca8b8d5a1fcee5c1b2ce20ccd0a8afb44",
-    "state": "Source QtCore/Network/C++ and input blacklists compiled/verified; actual TLS pending bounded replay after Python-only DLL guard correction",
+    "state": "Native default/fixture TLS and first incident PASS; remaining15 incident matrix pending Python-only replay",
     "scope": "R02 Windows x64 QtCore/Network+C++ only, not CPython/PySide/GUI/full dual-provider/package acceptance",
     "original_qt": {
       "version": "6.12.0",
@@ -140,7 +140,18 @@
       "failure": "Python origin guard demanded schannel.dll before any TLS. No native TLS verdict; same C++/Qt PE bytes eligible for bounded execution replay."
     },
     "replay_scope": "Exactly one immutable original ZIP/source/hash intake; unchanged four original PE images in one private prefix; original reports kept under compiled identity, new report has execution and compiled SHA. Enumeration-only cert-only plugin omitted; explicit Schannel, no fallback. No rebuild, generic cache, producer/final candidate or artifact relabeling.",
-    "replay_local_validation": "86 targeted PASS, Ruff/compile/PowerShell syntax; altered artifact/source/hash/consumer and foreign plugin failures; TLS still requires native schannel.dll."
+    "replay_local_validation": "86 targeted PASS, Ruff/compile/PowerShell syntax; altered artifact/source/hash/consumer and foreign plugin failures; TLS still requires native schannel.dll.",
+    "replay_8c41b30": {
+      "run": 43471658107,
+      "execution_sha": "8c41b30b662284f449d7c509f6b78ad250d4f874",
+      "compiled_source_sha": "0cf4c516132c5cb7c97dc1c2cdaf77d8a0f8f9b2",
+      "artifact": 14060867009,
+      "bytes": 113335863,
+      "sha256": "2074c5f5fd8430033bcfe98f13df48192d5ad8d5e190036eae084476ddd379c0",
+      "worker_verified": "Whole ZIP and four exact unchanged PE inputs; actual default trust/TLS1.2/TLS1.3/hostname/CA/expiry controls plus first incident PASS",
+      "gate": "Python snapshot after abort/destruction lacks resident schannel.dll. Native runtime Secure Channel/Schannel, system SSPI entry points and explicit compromised-key CertificateBlacklisted are observed. No transport failure.15 incidents not reached.",
+      "minimum_correction": "Require explicit backend/runtime identity, system secur32/sspicli/crypt32 origins and no OpenSSL fallback; do not require schannel.dll post-teardown residency.87 targeted PASS; same C++/Qt images, no rebuild or new vendor/offline API."
+    }
   },
   "setuptools_external_candidate_2026_11_13": {
     "date": "2026-11-13",
