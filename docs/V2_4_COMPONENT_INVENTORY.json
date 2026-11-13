@@ -537,7 +537,8 @@
       "equal_to_all_six_effective_candidate_inputs": true,
       "runtime_requirements_changed": false,
       "controlled_producing_profiles_adopted": false,
-      "remaining_consumers": "Six controlled PySide build environments; Nuitka source-wheel build; ARM64 cffi probe. Integrate same preferred external providers and repeat affected source/binding/compiler/cffi checks. Current runtime pilot inputs unchanged; no project-wheel evidence promoted to those consumers."
+      "remaining_consumers": "Six controlled PySide build environments; Nuitka source-wheel build; ARM64 cffi probe. Integrate same preferred external providers and repeat affected source/binding/compiler/cffi checks. Current runtime pilot inputs unchanged; no project-wheel evidence promoted to those consumers.",
+      "runtime_proof_after_alignment": "No runtime app/requirements/builder/verifier/manifest/patch or runtime job-body change after1980bcf. Project pyproject changes only build-system metadata, not consumed by runtime source builder; independent tools-build profile only. No artifact relabeling."
     }
   },
   "action_callpath_delta_2026_11_10": {
@@ -685,7 +686,7 @@
     "decision": "R04 remains required: latest stable parents unchanged; ownership/callpath narrowed. npm undici through @actions/http-client, XML through @azure/core-xml; upload/download runtime glob via archiver-utils. Checkout/setup glob entries are dev-only. No claim that runtime glob is unused or XML/HTTP advisories are resolved; no repository npm override changes remote bundled code."
   },
   "native_provider_consolidation_2026_11_10": {
-    "state": "CA native gap demonstrated; five-provider/Qt-guard Linux source qualification pending",
+    "state": "Complete Linux x64 source qualification PASS43391294393; other-target/producer/package work remains required",
     "date": "2026-11-10",
     "starting_head": "1c55bb5e9d445fbe6a8493eb3d5df6cb3acae40f",
     "scope": "Linux x64 source/provider delta plus six-host Qt CA bootstrap; no producer adoption",
@@ -1272,6 +1273,468 @@
       "minimum_correction": "Single-file common manual verifier retains backend errors and checks every supplied certificate; deduplicates blacklist errors. Eight compromised keys and socket blacklist hook retained. No omitted/reconstructed-chain guarantee.",
       "regressions": "16 metadata certificate blacklist checks;16 actual incident/rollover chain rejections with unique per-cert errors; healthy roots not blocked; OpenSSL manual API valid/hostname/untrusted/expired explicit fixtures plus unchanged default-positive and socket TLS gates.",
       "local_validation": "74 focused PASS, Ruff/compile, original/fuzz0/post replay PASS; stock Windows Qt SQL fixture API PASS only. Native full source acceptance pending."
+    },
+    "completed_2026_11_13": {
+      "source_sha": "1980bcf3e31c509144d36f2737642b92cc8c2610",
+      "artifact": 14022573962,
+      "zip_bytes": 254291267,
+      "zip_digest": "sha256:825c2f87dab75d9eee8ba27c5c9ff398a0268de34293798b5adf066b9da8c8b4",
+      "original_sources": [
+        "Python-3.14.10.tar.xz",
+        "openssl-4.0.3.tar.gz",
+        "libpng-1.6.59.tar.xz",
+        "pcre2-10.49.tar.gz",
+        "qtbase-everywhere-src-6.12.0.tar.xz",
+        "qtsvg-everywhere-src-6.12.0.tar.xz",
+        "pyside-setup-everywhere-src-6.12.0.tar.xz",
+        "sqlite-autoconf-3540100.tar.gz",
+        "mpdecimal-4.0.1.tar.gz",
+        "libffi-3.8.0.tar.gz",
+        "xz-5.8.4.tar.xz",
+        "zlib-1.4.tar.gz",
+        "cffi-2.1.1.tar.gz",
+        "gcc-11.5.0-14.el9.src.rpm",
+        "7z2605-src.tar.xz"
+      ],
+      "native_versions": {
+        "sqlite": "3.54.1",
+        "libmpdec": "4.0.1",
+        "zlib": "1.4",
+        "libffi": "3.8.0",
+        "liblzma": "5.8.4"
+      },
+      "tests": {
+        "cpython-native-regressions.xml": {
+          "executed": 2016,
+          "skipped": 57,
+          "total": 2073
+        },
+        "cpython-regressions.xml": {
+          "executed": 409,
+          "skipped": 33,
+          "total": 442
+        },
+        "cffi-tests.xml": {
+          "executed": 488,
+          "skipped": 11,
+          "total": 499
+        }
+      },
+      "legal_files_nonempty": 74,
+      "legal_original_bytes_matched": [
+        "legal/7zip/readme.txt",
+        "legal/Python-3.14.10/LICENSE",
+        "legal/cffi-2.1.1/LICENSE",
+        "legal/libffi-3.8.0/LICENSE",
+        "legal/libffi-3.8.0/LICENSE-BUILDTOOLS",
+        "legal/libpng-1.6.59/LICENSE",
+        "legal/libpng-1.6.59/LICENSES/MIT-0.txt",
+        "legal/libpng-1.6.59/LICENSES/MIT.txt",
+        "legal/mpdecimal-4.0.1/COPYRIGHT.txt",
+        "legal/openssl-4.0.3/LICENSE.txt",
+        "legal/pcre2-10.49/COPYING",
+        "legal/pcre2-10.49/LICENCE.md",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/Apache-2.0.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/BSD-3-Clause.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/GPL-2.0-only.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/GPL-3.0-only.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/LGPL-3.0-only.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "legal/pyside-setup-everywhere-src-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/AFL-2.1.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Apache-2.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/BSD-2-Clause.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/BSD-3-Clause.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/BSD-4-Clause.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/BSL-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Bitstream-Vera.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/CC0-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/FTL.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/GPL-2.0-only.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/GPL-2.0-or-later.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/GPL-3.0-only.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/HPND.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/IJG.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/IPL-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Imlib2.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LGPL-2.1-or-later.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LGPL-3.0-only.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Libpng.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LicenseRef-ICC-License.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LicenseRef-Lcs-Telegraphics.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Linux-syscall-note.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/MIT-Khronos-old.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/MIT-open-group.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/MIT.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/MPL-2.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/SPL-1.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Unicode-3.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/X11.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Xerox.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/Zlib.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/blessing.txt",
+        "legal/qtbase-everywhere-src-6.12.0/LICENSES/libpng-2.0.txt",
+        "legal/qtbase-everywhere-src-6.12.0/licenseRule.json",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/BSD-3-Clause.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/GPL-2.0-only.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/GPL-3.0-only.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/HPND-sell-variant.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/LGPL-3.0-only.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "legal/qtsvg-everywhere-src-6.12.0/licenseRule.json",
+        "legal/sqlite-autoconf-3540100/sqlite-copyright.html",
+        "legal/xz-5.8.4/COPYING",
+        "legal/xz-5.8.4/COPYING.0BSD",
+        "legal/xz-5.8.4/COPYING.GPLv2",
+        "legal/xz-5.8.4/COPYING.GPLv3",
+        "legal/xz-5.8.4/COPYING.LGPLv2.1",
+        "legal/zlib-1.4/LICENSE"
+      ],
+      "legal_host_distribution_texts_retained": [],
+      "cli_cases_executed": 26,
+      "retained_elf_images_independently_verified": [
+        {
+          "name": "libsqlite3.so.3.54.1",
+          "sha256": "581b2646836303daf8b6daca9e134732a0089e471ee249cc9899650c15c4506f",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.28",
+            "GLIBC_2.29",
+            "GLIBC_2.3.4",
+            "GLIBC_2.33",
+            "GLIBC_2.34",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libm.so.6",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "libmpdec.so.4.0.1",
+          "sha256": "5467d4487201653f14d031f6d92ab920d3907ff8407ad5c9a1daccd60e924d6f",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libm.so.6",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "libffi.so.8.5.0",
+          "sha256": "931a5336d7650b3e8f67463af45ac5bc348fa49053bb0eb3e8ad95a14e544e7c",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.27",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4",
+            "GLIBC_2.7"
+          ],
+          "needed": [
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "liblzma.so.5.8.4",
+          "sha256": "1a9dc4f1a143d95be40fefb74337b073b2d9a305ce5b7bb5d588247e975e055b",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.17",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.2",
+            "GLIBC_2.3.4",
+            "GLIBC_2.32",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "GLIBC_2.6"
+          ],
+          "needed": [
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "libz.so.1.4",
+          "sha256": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "_ctypes.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "d9bbff1a82434940de5d234a550142dafd7235b9fd2f17eabcfb445677638ffa",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "LIBFFI_BASE_8.0",
+            "LIBFFI_CLOSURE_8.0",
+            "LIBFFI_COMPLEX_8.0"
+          ],
+          "needed": [
+            "libffi.so.8",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "_decimal.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "7acb153819498adf1c7914313feac718ff41e5822ae9848bb8e3ef2b42175a48",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libmpdec.so.4",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "_lzma.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "f7d2a5633603886671d9d198e034a1718fdbabd9a5abc52654aa78dadf5f6a08",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.4",
+            "XZ_5.0"
+          ],
+          "needed": [
+            "liblzma.so.5",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "_sqlite3.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "f16a043d7d0bb31dbd543a4a6eda5ff676bf247a277e6fc2ef38a2c2675b1f3e",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libsqlite3.so",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "zlib.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "0edba946bb1f6ec138eb422ed123e3852b24a0544948ef01f2c3c88ee36f9f3c",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.4",
+            "ZLIB_1.2.0"
+          ],
+          "needed": [
+            "libz.so.1",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "_cffi_backend.cpython-314-x86_64-linux-gnu.so",
+          "sha256": "0da9e41bc5e3e767918328adffd19acf86618d3990331b638c36a6b6ebf3e870",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.4",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "GLIBC_2.7",
+            "LIBFFI_BASE_8.0",
+            "LIBFFI_CLOSURE_8.0"
+          ],
+          "needed": [
+            "libffi.so.8",
+            "libc.so.6",
+            "ld-linux-x86-64.so.2"
+          ]
+        },
+        {
+          "name": "libQt6Sql.so.6.12.0",
+          "sha256": "baf56dab660a860af560a42c77072eb2ce24221e48381b5bdf9387f54ff20d98",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GLIBCXX_3.4",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.4",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libc.so.6"
+          ]
+        },
+        {
+          "name": "libqsqlite.so",
+          "sha256": "5b16f1bc5d3a0479d77c718fdbc09cafa347ca0c7aae54ae9ba28958adbc2826",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GLIBCXX_3.4",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.4",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Sql.so.6",
+            "libQt6Core.so.6",
+            "/home/runner/work/_temp/native-runtime-pilot-43391294393-1/prefix/lib/libsqlite3.so",
+            "libstdc++.so.6",
+            "libc.so.6"
+          ]
+        }
+      ],
+      "native_loaded_images_reported": 77,
+      "python_default_trust": {
+        "paths": "DefaultVerifyPaths(cafile=None, capath='/usr/lib/ssl/certs', openssl_cafile_env='SSL_CERT_FILE', openssl_cafile='/usr/lib/ssl/cert.pem', openssl_capath_env='SSL_CERT_DIR', openssl_capath='/usr/lib/ssl/certs')",
+        "default_handshake": {
+          "host": "www.python.org",
+          "protocol": "TLSv1.3",
+          "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+          "verify_mode": "CERT_REQUIRED",
+          "check_hostname": true,
+          "store_before": {
+            "x509": 0,
+            "crl": 0,
+            "x509_ca": 0
+          },
+          "store_after": {
+            "x509": 1,
+            "crl": 0,
+            "x509_ca": 1
+          },
+          "result": "default-trust authenticated handshake PASS"
+        }
+      },
+      "python_tls": [
+        "TLSv1_2: trusted handshake PASS",
+        "TLSv1_3: trusted handshake PASS",
+        "hostname: rejected PASS",
+        "untrusted CA: rejected PASS",
+        "expired: rejected PASS"
+      ],
+      "qt_tls": [
+        {
+          "case": "TLS1.2",
+          "encrypted": true,
+          "negotiated_protocol": "TlsV1_2",
+          "errors": [],
+          "result": "PASS"
+        },
+        {
+          "case": "TLS1.3",
+          "encrypted": true,
+          "negotiated_protocol": "TlsV1_3",
+          "errors": [],
+          "result": "PASS"
+        },
+        {
+          "case": "hostname",
+          "encrypted": false,
+          "negotiated_protocol": null,
+          "errors": [
+            "HostNameMismatch"
+          ],
+          "result": "PASS"
+        },
+        {
+          "case": "untrusted CA",
+          "encrypted": false,
+          "negotiated_protocol": null,
+          "errors": [
+            "UnableToGetLocalIssuerCertificate",
+            "UnableToVerifyFirstCertificate"
+          ],
+          "result": "PASS"
+        },
+        {
+          "case": "expired",
+          "encrypted": false,
+          "negotiated_protocol": null,
+          "errors": [
+            "CertificateExpired"
+          ],
+          "result": "PASS"
+        },
+        {
+          "case": "OS default trust / www.python.org",
+          "encrypted": true,
+          "errors": [],
+          "negotiated_protocol": "TlsV1_3",
+          "peer_serial": "01:fc:68:fd:08:45:37:b3:93:b8:d6:c7:08:97:49:69",
+          "result": "PASS"
+        }
+      ],
+      "cffi_wheel_sha256": "2222b07d7c1eec155cdf938e872af8546e847de1743230d1294c901e122ed9a3",
+      "loaded_image_version_maxima": {
+        "GLIBC": [
+          2,
+          35
+        ],
+        "GLIBCXX": [
+          3,
+          4,
+          29
+        ]
+      },
+      "scope": "One native source diagnostic; loaded-image measurements from CI, retained13 image bytes independently checked; not final/all-file package acceptance",
+      "result": "PASS source/runtime/SQL/CA/security/hash/PNG/GUI/CLI diagnostic",
+      "run": 43391294393,
+      "job": 131771581938,
+      "status": "SUCCESS",
+      "source_quality": {
+        "run": 43391298018,
+        "tests": 1982,
+        "result": "SUCCESS exact source"
+      },
+      "provider_linkage": "Python/Qt shared OpenSSL4.0.3; cryptography independently static4.0.3; source cffi2.1.1/shared private libffi3.8.0",
+      "trust": "Python/Qt ordinary default www.python.org positive; Python lazy CA0 before/1 after, CERT_REQUIRED and hostname; Qt121 fingerprints; TLS1.2/1.3 positives plus hostname/untrusted/expired rejections",
+      "qt_security": {
+        "metadata_certs_blacklisted": 16,
+        "unique_spki": 8,
+        "supplied_chains_rejected": 16,
+        "rollover_ancestor_position": 2,
+        "healthy_root_controls": 4,
+        "patch_sha256": "5b65c6680c0cf3b58140e96cbfd3d4df1a7fb5328e3d4b3fd573f7dab366d9ad",
+        "original_sha256": "7ea8d8558b039607c72977059521e4b9670147b66184e2c49b4fe2effd5290e3",
+        "post_sha256": "3a1c1e44416926f0b0dd6f7283fd819afe633993d49cf94d46f059ee019edb8b",
+        "scope": "Supplied-chain and native Linux socket/API tests; no omitted/reconstructed-chain or other-native-provider acceptance",
+        "retained_detailed_report": "Original artifact diagnostic JSON, bound by ZIP SHA256; three original CA input hashes in provider_security_manifest. Sixteen per-chain errors and native default root fingerprints independently checked."
+      },
+      "effective_inputs_after_899c333": "No runtime app/requirements/builder/verifier/manifest/patch or runtime job-body change after1980bcf. Project pyproject changes only build-system metadata, not consumed by runtime source builder; independent tools-build profile only. No artifact relabeling.",
+      "remaining": "Other five source/provider profiles, remaining R10 consumers and finite ledger; producer/package adoption and second freshness/exact-Python freeze remain unaccepted"
     }
   },
   "libffi_msvc_prerequisite_2026_11_10": {
@@ -1747,8 +2210,8 @@
       },
       {
         "id": "R02",
-        "status": "REQUIRED security/provider acceptance",
-        "applicability_minimum_action": "Seven measured Qt6.12 bootstrap processes42808506948 prove Schannel/SecureTransport accept16/16 compromised chains on both Windows/macOS architectures, despite positive ordinary default trust. Host OpenSSL rejects16/16. A minimal hash-bound common Qt SPKI guard is prepared in the isolated Linux x64 delta; native correction and adoption/affected checks on all six targets remain required. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
+        "status": "REQUIRED security/provider acceptance; Linux source subset PASS43391294393",
+        "applicability_minimum_action": "Seven measured Qt6.12 bootstrap processes42808506948 prove Schannel/SecureTransport accept16/16 compromised chains on both Windows/macOS architectures, despite positive ordinary default trust. Host OpenSSL rejects16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS bootstrap acceptances are not closed by Linux OpenSSL evidence. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {
@@ -1765,14 +2228,14 @@
       },
       {
         "id": "R05",
-        "status": "REQUIRED controlled Python native freshness",
-        "applicability_minimum_action": "Reconcile measured target providers, then qualify SQLite3.54.1, libffi3.8.0, libmpdec4.0.1 and remaining XZ5.8.4/zlib-ng2.3.3 candidates through documented source/build selection. Mac XZ5.8.4/Zstd1.5.7 and source zlib1.3.2 are already qualified; OS SQLite/ffi and Windows copied/prebuilt providers remain distinct. Windows ARM64 source consumer42749266993 and cffi consumer42799359470 qualify static libffi3.8.0, not ctypes integration. New Linux x64 pilot42810658400 consolidates five private providers and source cffi; native acceptance pending. Official zlib1.4 (November4, security fixes) supersedes1.3.2 and requires affected updates across the other source profiles; zlib-ng remains a distinct provider. No historical evidence is relabeled. Tcl/Tk is incidental/excluded, not a Qt application migration.",
+        "status": "REQUIRED controlled Python native freshness; Linux source subset PASS43391294393",
+        "applicability_minimum_action": "Reconcile measured target providers, then qualify SQLite3.54.1, libffi3.8.0, libmpdec4.0.1 and remaining XZ5.8.4/zlib-ng2.3.3 candidates through documented source/build selection. Mac XZ5.8.4/Zstd1.5.7 and source zlib1.3.2 are already qualified; OS SQLite/ffi and Windows copied/prebuilt providers remain distinct. Windows ARM64 source consumer42749266993 and cffi consumer42799359470 qualify static libffi3.8.0, not ctypes integration. Complete Linux x64 pilot43391294393 now qualifies all five private providers (SQLite3.54.1/libffi3.8.0/libmpdec4.0.1/XZ5.8.4/zlib1.4), actual ctypes/SQL/codec consumers and supported SQLite column metadata. Native2016PASS/57skip, SSL/hash409PASS/33skip and full Qt/GUI/CLI/security/ABI gates pass; other targets remain REQUIRED. Official zlib1.4 (November4, security fixes) supersedes1.3.2 and requires affected updates across the other source profiles; zlib-ng remains a distinct provider. No historical evidence is relabeled. Tcl/Tk is incidental/excluded, not a Qt application migration.",
         "verification_evidence": "Stdlib sqlite/ctypes/decimal/compression regressions, security/hash/TLS and native CRT/ABI/OS/linkage on each actually changed runtime; original sources/patches/legal. No inferred compatibility failure from old parent pins."
       },
       {
         "id": "R06",
-        "status": "REQUIRED cffi provenance/native freshness",
-        "applicability_minimum_action": "cffi2.1.1 MSVC copied x86/x64 sources and ARM prebuilt ffi.lib do not supply a measurable libffi release; do not label them3.8.0 from Python's SBOM. Qualify current native libffi via supported source/pkg-config on POSIX and reviewed native MSVC route, or obtain concrete upstream compatibility/provenance evidence.",
+        "status": "REQUIRED cffi provenance/native freshness; Linux source subset PASS43391294393",
+        "applicability_minimum_action": "cffi2.1.1 MSVC copied x86/x64 sources and ARM prebuilt ffi.lib do not supply a measurable libffi release; do not label them3.8.0 from Python's SBOM. Windows ARM64 controlled cffi2.1.1+psaa.libffi380 consumer/source/static3.8.0 passes42799359470 (461PASS/38skip), with independent original/patch/wheel/license/native-byte checks. Linux x64 source cffi2.1.1/shared libffi3.8.0 now passes488 upstream cases/11skip in full pilot43391294393, with wheel/backend/original-license bytes independently checked. Remaining crypto consumers, Windows controlled-runtime integration and other targets remain required. Qualify actual consumers via supported source/pkg-config on POSIX and the reviewed native MSVC route, or obtain concrete upstream compatibility/provenance evidence.",
         "verification_evidence": "cffi/crypto integration, real architecture/CRT, FFI callbacks and native source/license closure on actual consuming targets."
       },
       {

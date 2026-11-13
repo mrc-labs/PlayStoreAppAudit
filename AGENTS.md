@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Current November13 Linux x64 source delta: full native43391294393 at1980bcf PASSes private SQLite3.54.1/libffi3.8.0/libmpdec4.0.1/XZ5.8.4/zlib1.4 and the Qt compromised-SPKI/supplied-chain guard, default trust/TLS negatives, SQL/hash/PNG/GUI/CLI and GLIBC2.35/GLIBCXX3.4.29. Worker verifies15 originals, patches,74 legal texts and13 retained ELF images; CI measures77 loaded changed images. Six-native source PEP51743393692050 at6068c47 qualifies current external setuptools providers; project build metadata now matches those effective inputs. Other five corrected source profiles, remaining PySide/compiler/cffi build consumers and the finite ledger stay required. No producing-profile/package adoption or release acceptance. See [active audit](docs/V2_4_RELEASE_PREP.md).
+
 Current November10 compiler delta: stock Nuitka4.3.5/Ruff0.17.4; controlled Nuitka4.3.5+psaa.scons4111/SCons4.11.1 now passes six-native source/module/legal checks42739540359 at a55768b; Quality42739545052 passes1952 tests. Producer/package adoption remains pending. See [active audit](docs/V2_4_RELEASE_PREP.md) for source/hash/patch/legal provenance and remaining gates.
 
 ## Project
