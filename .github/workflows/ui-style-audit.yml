@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.runtime_pilot && 'linux-x64' || inputs.windows_runtime_pilot && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.runtime_pilot && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
@@ -509,7 +509,7 @@ jobs:
           retention-days: 0
 
   windows-runtime-pilot:
-    if: ${{ inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -528,6 +528,7 @@ jobs:
           if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
           if ($env:RUNNER_ARCH -ne 'X64') { throw 'Native x64 runner required.' }
           if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows x64 pilot.' }
+          if ('${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-') -and ('${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false')) { throw 'Select only the bounded Schannel diagnostic mode.' }
 
       - name: Set up Windows pilot bootstrap Python
         uses: actions/setup-python@v7
@@ -542,11 +543,22 @@ jobs:
           python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'AMD64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
           if ($LASTEXITCODE -ne 0) { throw 'Stable native bootstrap required.' }
 
+      - name: Install existing tools for bounded Schannel diagnostic only
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'windows-ca-') }}
+        shell: pwsh
+        run: |
+          python .github/scripts/bootstrap_pip.py
+          if ($LASTEXITCODE -ne 0) { throw 'Secure bootstrap failed.' }
+          New-Item -ItemType Directory -Path windows-pilot-evidence -Force | Out-Null
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' 'cryptography==50.0.2' --report windows-pilot-evidence/qt-ca-tools-install.json
+          if ($LASTEXITCODE -ne 0) { throw 'Existing native diagnostic tools unavailable.' }
+
       - name: Qualify and exercise controlled Windows stack
         shell: pwsh
         run: |
-          $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true'
-          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly
+          $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true' -or '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-prerequisites'
+          $qtCaGuardOnly = '${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-')
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly -QtCaGuardOnly:$qtCaGuardOnly
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
 
       - name: Upload diagnostic Windows runtime evidence only

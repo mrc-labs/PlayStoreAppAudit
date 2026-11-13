@@ -1,4 +1,38 @@
 {
+  "windows_schannel_guard_2026_11_13": {
+    "date": "2026-11-13",
+    "starting_head": "d967163ca8b8d5a1fcee5c1b2ce20ccd0a8afb44",
+    "state": "Prepared; native prerequisites and Schannel guard acceptance pending",
+    "scope": "R02 Windows x64 QtCore/Network+C++ only, not CPython/PySide/GUI/full dual-provider/package acceptance",
+    "original_qt": {
+      "version": "6.12.0",
+      "sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "source": "https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz"
+    },
+    "guard": {
+      "metadata_certs_blacklisted": 16,
+      "unique_spki": 8,
+      "supplied_chains_rejected": 16,
+      "rollover_ancestor_position": 2,
+      "healthy_root_controls": 4,
+      "patch_sha256": "5b65c6680c0cf3b58140e96cbfd3d4df1a7fb5328e3d4b3fd573f7dab366d9ad",
+      "original_sha256": "7ea8d8558b039607c72977059521e4b9670147b66184e2c49b4fe2effd5290e3",
+      "post_sha256": "3a1c1e44416926f0b0dd6f7283fd819afe633993d49cf94d46f059ee019edb8b",
+      "scope": "Supplied-chain and native Linux socket/API tests; no omitted/reconstructed-chain or other-native-provider acceptance",
+      "retained_detailed_report": "Original artifact diagnostic JSON, bound by ZIP SHA256; three original CA input hashes in provider_security_manifest. Sixteen per-chain errors and native default root fingerprints independently checked."
+    },
+    "minimum_action": "Prerequisites-only native run before guarded private QtCore/Network source build. Reuse existing reviewed patch; native Schannel only, OpenSSL off for this diagnostic. No producer or existing full profile input change.",
+    "gates": [
+      "GIL3.14.10/AMD64/MSVC19.44/v143/SDK/CMake4.4.4/Ninja1.13.2",
+      "Actual secure /MD loader and bootstrap default trust before source downloads",
+      "16 key-encoding/blacklist and16 supplied-chain rejections including rollover, four healthy controls",
+      "Native default Windows trust separate from explicit fixture CA; TLS1.2/1.3 positives and hostname/CA/expiry negatives",
+      "PE/CRT/loaded private Qt/plugin origins, no OpenSSL or parser fallback",
+      "Original source/patch/base/post, legal, actual consumer/framework/plugin PE retention"
+    ],
+    "local_validation": "65 focused PASS; Ruff/compile/PowerShell syntax; exact official Qt archive/source and Schannel feature contract checked",
+    "impact": "Only opt-in existing Windows diagnostic routing changes; other full source-profile builders/manifests and Linux effective inputs unchanged. Full dual-provider/runtime/PySide/native/package validation remains required."
+  },
   "setuptools_external_candidate_2026_11_13": {
     "date": "2026-11-13",
     "state": "Six-native candidate PASS; PR source PEP517 metadata now aligned; other controlled build consumers remain required",
