@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$PrerequisitesOnly, [switch]$QtCaGuardOnly)
+param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$PrerequisitesOnly, [switch]$QtCaGuardOnly, [switch]$QtCaReplayOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:RUNNER_ARCH -ne 'X64' -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
@@ -19,5 +19,6 @@ $env:PILOT_VS_PATH = $vs
 $pilotScript = if ($QtCaGuardOnly) { '.github/scripts/probe_windows_qt_ca_guard.py' } else { '.github/scripts/build_windows_runtime_pilot.py' }
 $pilotArguments = @($pilotScript, '--work-root', $WorkRoot)
 if ($PrerequisitesOnly) { $pilotArguments += '--prerequisites-only' }
+if ($QtCaReplayOnly) { $pilotArguments += '--replay-compiled' }
 python @pilotArguments
 if ($LASTEXITCODE -ne 0) { throw 'Windows diagnostic source-stack pilot failed.' }

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import platform
@@ -41,6 +42,73 @@ def qualify_ninja_identity(tool: dict, distribution_version: str) -> None:
             or tool['version'].strip() != NINJA_WHEEL['native_version']
             or tool['sha256'] != NINJA_WHEEL['binary_sha256']):
         raise ValueError('Unqualified native Ninja distribution/version/bytes: ' + repr(tool))
+
+
+COMPILED_SOURCE = '0cf4c516132c5cb7c97dc1c2cdaf77d8a0f8f9b2'
+COMPILED_ARTIFACT = 14058369397
+COMPILED_ZIP_SHA256 = 'b8f5ce0533e2c1fcf9315ec04f5406804e5a8cb430292a6584957f90a83f2d11'
+
+
+def verify_compiled_intake(metadata: dict, data: bytes, consumer: bytes, expected_consumer: bytes) -> None:
+    if (metadata['id'] != COMPILED_ARTIFACT or metadata['workflow_run']['id'] != 43467086435
+            or metadata['workflow_run']['head_sha'] != COMPILED_SOURCE
+            or metadata['expired'] or len(data) != metadata['size_in_bytes']
+            or metadata['digest'] != 'sha256:' + COMPILED_ZIP_SHA256
+            or hashlib.sha256(data).hexdigest() != COMPILED_ZIP_SHA256):
+        raise ValueError('Changed immutable compiled diagnostic artifact/source identity')
+    if consumer.replace(b'\r\n', b'\n') != expected_consumer.replace(b'\r\n', b'\n'):
+        raise ValueError('Changed C++ consumer requires a new native compilation')
+
+
+def replay_compiled_consumer(work: Path, output: Path, head: str) -> None:
+    """Retest exactly one retained compiled diagnostic after a Python-only harness fix."""
+    api = '/repos/mrc-labs/PlayStoreAppAudit/actions/artifacts/' + str(COMPILED_ARTIFACT)
+    metadata = json.loads(subprocess.check_output(['gh', 'api', api], text=True, timeout=60))
+    data = subprocess.check_output(['gh', 'api', api + '/zip'], timeout=180)
+    # Token is needed only to read this immutable same-repository evidence.
+    os.environ.pop('GH_TOKEN', None)
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        def read(name: str) -> bytes:
+            matches = [n for n in archive.namelist() if n == name or n.endswith('/' + name)]
+            assert len(matches) == 1, (name, matches)
+            return archive.read(matches[0])
+        verify_compiled_intake(metadata, data, read('windows_qt_ca_consumer.cpp'),
+                               (REPO / '.github/scripts/windows_qt_ca_consumer.cpp').read_bytes())
+        # Never mutate/relabel the original ZIP. Unpack its source/legal evidence
+        # into this new run; old reports keep their original embedded source SHA.
+        (output / 'original-compiled-14058369397.zip').write_bytes(data)
+        compiled = output / 'compiled-evidence'
+        compiled.mkdir()
+        for name in archive.namelist():
+            path = PurePosixPath(name.replace('\\', '/'))
+            if path.is_absolute() or '..' in path.parts or ':' in name:
+                raise ValueError('Unsafe diagnostic archive path')
+        for name in archive.namelist():
+            if 'native-binaries' not in PurePosixPath(name).parts:
+                archive.extract(name, compiled)
+        prefix = work / 'replay-qt'
+        (prefix / 'bin').mkdir(parents=True)
+        (prefix / 'plugins/tls').mkdir(parents=True)
+        images = []
+        for name in ('qt_ca_consumer.exe', 'Qt6Core.dll', 'Qt6Network.dll', 'qschannelbackend.dll'):
+            target = prefix / ('plugins/tls' if name == 'qschannelbackend.dll' else 'bin') / name
+            target.write_bytes(read('native-binaries/' + name))
+            images.append(checked_image(target, output))
+    guard = json.loads((compiled / 'qt-ca-patch-provenance.json').read_text())
+    _, expected_guard = source_contract()
+    assert guard['sha256'] == expected_guard['sha256']
+    assert hashlib.sha256((compiled / 'qsslcertificate-project.cpp').read_bytes()).hexdigest() == expected_guard['patched_sha256']
+    executable = prefix / 'bin/qt_ca_consumer.exe'
+    (output / 'diagnostic-replay-provenance.json').write_text(json.dumps({
+        'execution_sha': head, 'compiled_source_sha': COMPILED_SOURCE,
+        'original_artifact': metadata, 'original_zip_sha256': COMPILED_ZIP_SHA256,
+        'compiled_evidence_directory': 'compiled-evidence; original source/reports are not relabelled as this execution',
+        'cpp_bytes_unchanged': True, 'images': images,
+        'selection': 'Same four original PE images in one private prefix; Schannel selected explicitly. Enumeration-only cert-only plugin omitted, not a replacement/fallback.',
+        'scope': 'Diagnostic execution replay only; no rebuilding, final candidate, producer adoption or artifact relabeling',
+    }, indent=2), encoding='utf-8')
+    exercise_schannel_consumer(executable, prefix, output, compiled / 'inputs', head, images,
+                               compiled_source=COMPILED_SOURCE)
 
 
 def source_contract() -> tuple[dict, dict]:
@@ -94,23 +162,71 @@ def checked_image(path: Path, output: Path) -> dict:
             'machine': 'AMD64', 'versions': versions, 'imports': imports}
 
 
-def validate_loaded_origins(result: dict, prefix: Path, executable: Path) -> None:
+def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls: bool = True) -> None:
     modules = [Path(name).resolve() for name in result['loaded_modules']]
     names = {p.name.lower() for p in modules}
-    assert {'qt6core.dll', 'qt6network.dll', 'qschannelbackend.dll', 'schannel.dll', 'crypt32.dll',
+    assert {'qt6core.dll', 'qt6network.dll', 'qschannelbackend.dll', 'crypt32.dll',
             'vcruntime140.dll', 'msvcp140.dll'} <= names, names
+    if tls:
+        assert 'schannel.dll' in names, 'Actual TLS process did not load the native Schannel provider'
     validate_imports('\n'.join(names))
     assert not any(re.search(r'lib(?:ssl|crypto)|libclang', name) for name in names)
     for path in modules:
-        if path.name.lower().startswith('qt6') or path.name.lower() == 'qschannelbackend.dll':
+        if path.name.lower().startswith('qt6') or (path.parent.name.lower() == 'tls' and path.suffix.lower() == '.dll'):
             assert path.is_relative_to(prefix.resolve()), ('Foreign Qt library', path)
     assert executable.resolve() in modules
+
+
+def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inputs: Path, head: str,
+                              images: list[dict], *, compiled_source: str) -> None:
+    os.environ['PATH'] = str(prefix / 'bin') + os.pathsep + os.environ['PATH']
+    os.environ['QT_PLUGIN_PATH'] = str(prefix / 'plugins')
+    for variable in ('SSL_CERT_FILE', 'SSL_CERT_DIR', 'QT_SSL_BACKEND'):
+        os.environ.pop(variable, None)
+    def exercise(label: str, *arguments: str) -> dict:
+        process = subprocess.run([str(executable), *arguments], capture_output=True, text=True)
+        (output / (label + '.log')).write_text(process.stdout + process.stderr, encoding='utf-8')
+        if process.returncode:
+            raise RuntimeError(f'Native consumer {label} failed: {process.stdout}\n{process.stderr}')
+        result = json.loads(process.stdout)
+        validate_loaded_origins(result, prefix, executable, tls=arguments[0] != 'policy')
+        (output / (label + '.json')).write_text(json.dumps(result, indent=2), encoding='utf-8')
+        return result
+    policy = exercise('qt-ca-policy', 'policy', str(inputs))
+    default = exercise('qt-default-trust', 'default')
+    fixtures = output / 'isolated-certificates'
+    fixtures.mkdir()
+    paths = certificate_material(fixtures)
+    rows = []
+    for label, protocol, hostname, trusted, leaf, error in [
+        ('tls12', 'tls12', 'localhost', True, 'valid', 'positive'),
+        ('tls13', 'tls13', 'localhost', True, 'valid', 'positive'),
+        ('hostname', 'negative', 'wrong.invalid', True, 'valid', 'hostname'),
+        ('untrusted', 'negative', 'localhost', False, 'valid', 'untrusted'),
+        ('expired', 'negative', 'localhost', True, 'expired', 'expired'),
+    ]:
+        with tls_server(paths, leaf) as port:
+            rows.append(exercise('qt-' + label, 'fixture', str(paths['ca']) if trusted else 'untrusted',
+                                 str(port), hostname, protocol, str(error)))
+    incidents = []
+    for index, path in enumerate(sorted((inputs / 'chains').rglob('*.pem'))):
+        incidents.append(exercise('qt-incident-' + str(index), 'incident', str(path)))
+    assert len(incidents) == 16
+    result = {'source_sha': head, 'compiled_source_sha': compiled_source, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
+        'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
+        'images': images,
+        'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
+        'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}
+    (output / 'qt-ca-results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+    assert all(row['result'] == 'PASS' for row in incidents), 'Native incident TLS gate failed/inconclusive; retained per-case JSON identifies cause'
+    print('PASS native Schannel guard/default trust/TLS positive-negative/AMD64/MD diagnostic.', flush=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--prerequisites-only', action='store_true')
+    parser.add_argument('--replay-compiled', action='store_true')
     args = parser.parse_args()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     assert re.fullmatch('[0-9a-f]{40}', head) and head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
@@ -123,6 +239,10 @@ def main() -> None:
     output = REPO / 'windows-pilot-evidence'
     output.mkdir(exist_ok=True)
     qt, guard = source_contract()
+    if args.replay_compiled:
+        assert not args.prerequisites_only
+        replay_compiled_consumer(work, output, head)
+        return
     tools = {}
     for name, flags in [('cl', ['/?']), ('link', ['/?']), ('cmake', ['--version']), ('ninja', ['--version'])]:
         path = Path(shutil.which(name) or '')
@@ -225,47 +345,8 @@ def main() -> None:
         str(consumer_build / 'CMakeFiles/qt_ca_consumer.dir/windows_qt_ca_consumer.cpp.obj')], text=True)
     assert re.search(r'DEFAULTLIB:"?MSVCRT', directives, re.I) and not re.search(r'DEFAULTLIB:"?LIBCMT', directives, re.I)
     (output / 'consumer-crt.txt').write_text(directives, encoding='utf-8')
-    os.environ['PATH'] = str(prefix / 'bin') + os.pathsep + os.environ['PATH']
-    os.environ['QT_PLUGIN_PATH'] = str(prefix / 'plugins')
-    for variable in ('SSL_CERT_FILE', 'SSL_CERT_DIR', 'QT_SSL_BACKEND'):
-        os.environ.pop(variable, None)
-    def exercise(label: str, *arguments: str) -> dict:
-        process = subprocess.run([str(executable), *arguments], capture_output=True, text=True)
-        (output / (label + '.log')).write_text(process.stdout + process.stderr, encoding='utf-8')
-        if process.returncode:
-            raise RuntimeError(f'Native consumer {label} failed: {process.stdout}\n{process.stderr}')
-        result = json.loads(process.stdout)
-        validate_loaded_origins(result, prefix, executable)
-        (output / (label + '.json')).write_text(json.dumps(result, indent=2), encoding='utf-8')
-        return result
-    policy = exercise('qt-ca-policy', 'policy', str(inputs))
-    default = exercise('qt-default-trust', 'default')
-    fixtures = output / 'isolated-certificates'
-    fixtures.mkdir()
-    paths = certificate_material(fixtures)
-    rows = []
-    for label, protocol, hostname, trusted, leaf, error in [
-        ('tls12', 'tls12', 'localhost', True, 'valid', 'positive'),
-        ('tls13', 'tls13', 'localhost', True, 'valid', 'positive'),
-        ('hostname', 'negative', 'wrong.invalid', True, 'valid', 'hostname'),
-        ('untrusted', 'negative', 'localhost', False, 'valid', 'untrusted'),
-        ('expired', 'negative', 'localhost', True, 'expired', 'expired'),
-    ]:
-        with tls_server(paths, leaf) as port:
-            rows.append(exercise('qt-' + label, 'fixture', str(paths['ca']) if trusted else 'untrusted',
-                                 str(port), hostname, protocol, str(error)))
-    incidents = []
-    for index, path in enumerate(sorted((inputs / 'chains').rglob('*.pem'))):
-        incidents.append(exercise('qt-incident-' + str(index), 'incident', str(path)))
-    assert len(incidents) == 16
-    result = {'source_sha': head, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
-        'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
-        'images': images,
-        'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
-        'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}
-    (output / 'qt-ca-results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
-    assert all(row['result'] == 'PASS' for row in incidents), 'Native incident TLS gate failed/inconclusive; retained per-case JSON identifies cause'
-    print('PASS native Schannel guard/default trust/TLS positive-negative/AMD64/MD diagnostic.', flush=True)
+    exercise_schannel_consumer(executable, prefix, output, inputs, head, images, compiled_source=head)
+
 
 
 if __name__ == '__main__':

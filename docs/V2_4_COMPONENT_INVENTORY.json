@@ -2,7 +2,7 @@
   "windows_schannel_guard_2026_11_13": {
     "date": "2026-11-13",
     "starting_head": "d967163ca8b8d5a1fcee5c1b2ce20ccd0a8afb44",
-    "state": "Native prerequisites PASS; first scoped source consumer builds but exposes unsupported Schannel manual API; corrected native socket repeat prepared",
+    "state": "Source QtCore/Network/C++ and input blacklists compiled/verified; actual TLS pending bounded replay after Python-only DLL guard correction",
     "scope": "R02 Windows x64 QtCore/Network+C++ only, not CPython/PySide/GUI/full dual-provider/package acceptance",
     "original_qt": {
       "version": "6.12.0",
@@ -50,9 +50,9 @@
       "correction": "Require exact stable distribution/native variant/hash, retain official wheel and licenses and compare actual executable bytes. No component/PATH fallback or weakened unknown-version check.70 targeted PASS."
     },
     "source_quality": {
-      "run": 43413391889,
-      "source": "6785ef140bf4e123afc9f38d0b924128f6542325",
-      "tests": 2003,
+      "source_sha": "0cf4c516132c5cb7c97dc1c2cdaf77d8a0f8f9b2",
+      "run": 43467096367,
+      "tests": 2014,
       "result": "SUCCESS exact checkout verified"
     },
     "prerequisites_verified": {
@@ -105,7 +105,42 @@
       "minimum_route": "Supported QSslSocket against16 hash-bound public incident hostnames, default trust, no HTTP/credentials; exact leaf and compromised-key CertificateBlacklisted required. Network/changed/expiry/hostname failures cannot pass. All outcomes and actual PE bytes retained.",
       "local_checks": "76 targeted PASS; helper Ruff/compile; local6.12 Schannel manual capability absent (3.14.9 feasibility only)",
       "linux_impact": "No change to runtime fetch_inputs/trust_rejected behavior or original sources/patches. Linux evidence unchanged; native bootstrap interpretation/repeat affected."
-    }
+    },
+    "compiled_intake_verified": {
+      "compiled_source_sha": "0cf4c516132c5cb7c97dc1c2cdaf77d8a0f8f9b2",
+      "run": 43467086435,
+      "artifact": 14058369397,
+      "bytes": 56613242,
+      "zip_sha256": "b8f5ce0533e2c1fcf9315ec04f5406804e5a8cb430292a6584957f90a83f2d11",
+      "images": [
+        {
+          "name": "qt_ca_consumer.exe",
+          "sha256": "c920c003c755bf2afeceb279bf3078406df0f4aa188ec6fdfeef9fd7183b5902",
+          "machine": "AMD64"
+        },
+        {
+          "name": "Qt6Core.dll",
+          "sha256": "bbadce832570ff2a48e0b2b6bb13fbfaf824f6d82f084f52e61b67170db90b71",
+          "machine": "AMD64"
+        },
+        {
+          "name": "Qt6Network.dll",
+          "sha256": "1809eadd1f3b4f21f45870fa6fa9c564741d54836e361c20c4829e3541fec6a3",
+          "machine": "AMD64"
+        },
+        {
+          "name": "qschannelbackend.dll",
+          "sha256": "c65e3750e9219e8b0d67da87698d534f0b5e10d3494fe303cac42e3dda25e447",
+          "machine": "AMD64"
+        }
+      ],
+      "input_keys_blacklisted": 16,
+      "input_chains": 16,
+      "manual_supported": false,
+      "failure": "Python origin guard demanded schannel.dll before any TLS. No native TLS verdict; same C++/Qt PE bytes eligible for bounded execution replay."
+    },
+    "replay_scope": "Exactly one immutable original ZIP/source/hash intake; unchanged four original PE images in one private prefix; original reports kept under compiled identity, new report has execution and compiled SHA. Enumeration-only cert-only plugin omitted; explicit Schannel, no fallback. No rebuild, generic cache, producer/final candidate or artifact relabeling.",
+    "replay_local_validation": "86 targeted PASS, Ruff/compile/PowerShell syntax; altered artifact/source/hash/consumer and foreign plugin failures; TLS still requires native schannel.dll."
   },
   "setuptools_external_candidate_2026_11_13": {
     "date": "2026-11-13",

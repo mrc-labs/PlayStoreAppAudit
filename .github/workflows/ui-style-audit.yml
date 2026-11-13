@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -509,7 +509,10 @@ jobs:
           retention-days: 0
 
   windows-runtime-pilot:
-    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard' || inputs.linux_arm64_pilot == 'windows-ca-replay') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -555,10 +558,13 @@ jobs:
 
       - name: Qualify and exercise controlled Windows stack
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ inputs.linux_arm64_pilot == 'windows-ca-replay' && github.token || '' }}
         run: |
           $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true' -or '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-prerequisites'
           $qtCaGuardOnly = '${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-')
-          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly -QtCaGuardOnly:$qtCaGuardOnly
+          $qtCaReplayOnly = '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-replay'
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly -QtCaGuardOnly:$qtCaGuardOnly -QtCaReplayOnly:$qtCaReplayOnly
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
 
       - name: Upload diagnostic Windows runtime evidence only

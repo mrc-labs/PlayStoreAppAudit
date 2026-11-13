@@ -62,7 +62,7 @@ def test_source_download_preserves_tls_and_original_hash(tmp_path: Path, monkeyp
         assert not target.exists()
 
 
-@pytest.mark.parametrize('failure', ['foreign', 'openssl', 'missing_backend'])
+@pytest.mark.parametrize('failure', ['foreign', 'openssl', 'missing_backend', 'foreign_plugin'])
 def test_native_consumer_rejects_foreign_framework_or_provider(tmp_path: Path, failure: str) -> None:
     prefix = tmp_path / 'controlled'
     executable = tmp_path / 'consumer.exe'
@@ -73,6 +73,8 @@ def test_native_consumer_rejects_foreign_framework_or_provider(tmp_path: Path, f
         modules[0] = tmp_path / 'other/Qt6Core.dll'
     elif failure == 'openssl':
         modules.append(tmp_path / 'other/libssl-4-x64.dll')
+    elif failure == 'foreign_plugin':
+        modules.append(tmp_path / 'other/plugins/tls/qcertonlybackend.dll')
     else:
         modules.pop(2)
     with pytest.raises(AssertionError):
@@ -88,3 +90,42 @@ def test_changed_original_contract_does_not_reach_a_build(tmp_path: Path, monkey
     monkeypatch.setattr(probe, 'REPO', tmp_path)
     with pytest.raises(ValueError, match='Changed qualified Qt original'):
         probe.source_contract()
+@pytest.mark.parametrize('failure', ['artifact', 'source', 'digest', 'bytes', 'cpp', 'expired', None])
+def test_compiled_replay_rejects_changed_intake_before_binary_execution(monkeypatch, failure) -> None:
+    data = b'immutable diagnostic fixture'
+    monkeypatch.setattr(probe, 'COMPILED_ZIP_SHA256', hashlib.sha256(data).hexdigest())
+    metadata = {'id': probe.COMPILED_ARTIFACT, 'workflow_run': {'id': 43467086435, 'head_sha': probe.COMPILED_SOURCE},
+                'expired': False, 'size_in_bytes': len(data), 'digest': 'sha256:' + hashlib.sha256(data).hexdigest()}
+    cpp = b'original\r\nconsumer'
+    if failure == 'artifact':
+        metadata['id'] += 1
+    elif failure == 'source':
+        metadata['workflow_run']['head_sha'] = '0' * 40
+    elif failure == 'digest':
+        metadata['digest'] = 'sha256:' + '0' * 64
+    elif failure == 'bytes':
+        data = b'changed'
+    elif failure == 'cpp':
+        cpp = b'changed consumer'
+    elif failure == 'expired':
+        metadata['expired'] = True
+    if failure:
+        with pytest.raises(ValueError, match='Changed'):
+            probe.verify_compiled_intake(metadata, data, cpp, b'original\nconsumer')
+    else:
+        probe.verify_compiled_intake(metadata, data, cpp, b'original\nconsumer')
+
+
+@pytest.mark.parametrize('tls', [False, True])
+def test_native_schannel_library_is_required_for_tls_not_certificate_input_parsing(tmp_path: Path, tls: bool) -> None:
+    prefix = tmp_path / 'private'
+    executable = prefix / 'bin/qt_ca_consumer.exe'
+    modules = [executable, prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll',
+               prefix / 'plugins/tls/qschannelbackend.dll']
+    modules += [tmp_path / 'system' / name for name in ['crypt32.dll', 'vcruntime140.dll', 'msvcp140.dll']]
+    result = {'loaded_modules': list(map(str, modules))}
+    if tls:
+        with pytest.raises(AssertionError, match='Actual TLS process'):
+            probe.validate_loaded_origins(result, prefix, executable, tls=tls)
+    else:
+        probe.validate_loaded_origins(result, prefix, executable, tls=tls)
