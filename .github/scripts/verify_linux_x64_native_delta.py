@@ -123,6 +123,43 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool) -> dict:
     return result
 
 
+def qt_manual_verify_regressions(directory: Path) -> list[dict]:
+    """Test OpenSSL manual API fixtures; ordinary default trust is measured separately."""
+    from PySide6.QtNetwork import QSslCertificate, QSslConfiguration, QSslSocket
+
+    assert QSslSocket.activeBackend() == 'openssl', 'This Linux regression qualifies the OpenSSL manual API only'
+    original = QSslConfiguration.defaultConfiguration()
+    ca = QSslCertificate.fromData((directory / 'ca.pem').read_bytes())
+    assert len(ca) == 1
+    rows = []
+    try:
+        for label, name, hostname, trusted, reason in [
+            ('valid', 'valid', 'localhost', True, None),
+            ('hostname', 'valid', 'wrong.invalid', True, 'HostNameMismatch'),
+            ('expired', 'expired', 'localhost', True, 'CertificateExpired'),
+            ('untrusted', 'valid', 'localhost', False, 'trust rejection'),
+        ]:
+            config = QSslConfiguration(original)
+            if trusted:
+                config.setCaCertificates(ca)
+            QSslConfiguration.setDefaultConfiguration(config)
+            chain = QSslCertificate.fromData((directory / (name + '.pem')).read_bytes()) + ca
+            errors = QSslCertificate.verify(chain, hostname)
+            labels = [error.error().name for error in errors]
+            if reason == 'trust rejection':
+                assert trust_rejected(labels), (label, labels)
+            elif reason:
+                assert reason in labels, (label, labels)
+            else:
+                assert not errors, labels
+            assert 'CertificateBlacklisted' not in labels, 'Healthy fixture overblocked'
+            rows.append({'fixture': label, 'errors': labels, 'scope': 'Explicit isolated fixture; not default trust'})
+    finally:
+        QSslConfiguration.setDefaultConfiguration(original)
+    assert QSslConfiguration.defaultConfiguration() == original
+    return rows
+
+
 def qt_ca_security(output: Path) -> dict:
     from cryptography import x509
     from cryptography.hazmat.primitives import serialization
@@ -176,11 +213,14 @@ def qt_ca_security(output: Path) -> dict:
             errors = QSslCertificate.verify(chain, hostname)
             labels = [error.error().name for error in errors]
             assert trust_rejected(labels) and 'CertificateBlacklisted' in labels, (name, labels)
+            expected_blocked = {bytes(cert.toDer()) for cert, key in zip(chain, keys, strict=True) if key in bad_keys}
+            assert len([error for error in errors if error.error().name == 'CertificateBlacklisted']) == len(expected_blocked)
             results.append({'fixture': name, 'hostname': hostname, 'errors': labels,
                             'compromised_key_positions': [i for i, key in enumerate(keys) if key in bad_keys],
                             'sha256': hashlib.sha256(data).hexdigest(), 'result': 'Qt actual-default chain rejection PASS'})
     assert any('rollover/' in row['fixture'] for row in results)
     return {'provider': QSslSocket.activeBackend(), 'library': QSslSocket.sslLibraryVersionString(),
+            'manual_backend_regressions': qt_manual_verify_regressions(output / 'isolated-certificates'),
             'project_guard': guard, 'compromised_certificates': key_checks,
             'default_root_fingerprints': sorted(root_fingerprints), 'incident_root_membership': membership,
             'chains': results, 'scope': 'Actual default Qt/OpenSSL chain policy; ordinary authenticated default handshake separately required by full pilot'}

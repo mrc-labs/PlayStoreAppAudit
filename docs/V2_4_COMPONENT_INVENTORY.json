@@ -228,10 +228,10 @@
       },
       "qt_ca_patch": {
         "path": ".github/patches/qtbase-6.12.0-compromised-spki.patch",
-        "sha256": "fb993b8dc7209082e6cbc1980bb93cbe6bfc3b76e3c95f9c2788dba75993e2ca",
+        "sha256": "5b65c6680c0cf3b58140e96cbfd3d4df1a7fb5328e3d4b3fd573f7dab366d9ad",
         "file": "src/network/ssl/qsslcertificate.cpp",
         "base_sha256": "7ea8d8558b039607c72977059521e4b9670147b66184e2c49b4fe2effd5290e3",
-        "patched_sha256": "60d77f087bad6dea64fce2c46fe6695ef7d710ba81d237c117939022dcf31535",
+        "patched_sha256": "3a1c1e44416926f0b0dd6f7283fd819afe633993d49cf94d46f059ee019edb8b",
         "blocked_spki_sha256": [
           "43bffa19d6ef651451f6841e019931e96f6f2eaeff28ab4b6f1ce4576de2717b",
           "49dd353dc2b919a3770645117d0e60c16115e7d1bc259eefe734b00ea434fe5f",
@@ -242,9 +242,14 @@
           "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
           "ec4ffa1ad0ac88081314b7aaffef6a91f97cd57291bb5ba686c5415f5eb4f6b6"
         ],
-        "origin": "Project-authored minimal common blacklist extension; not upstream approval. Qt6.12.0 official original archive; public incident keys agree with existing CPython security input. No unchanged-official-binary claim.",
+        "origin": "Project-authored common SPKI blacklist extension plus whole-provided-chain manual verification, preserving native/backend errors and deduplicating blacklist errors. Required by observed native acceptance and OpenSSL manual verifier leaf-only source check; not upstream approval.",
         "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE",
-        "scope": "Initially qualified only in Linux x64 isolated source pilot; other five profiles remain unchanged and still require guard adoption/requalification."
+        "scope": "Initially qualified only in Linux x64 isolated source pilot; other five profiles remain unchanged and still require guard adoption/requalification.",
+        "manual_verification_evidence": {
+          "source": "https://github.com/qt/qtbase/blob/v6.12.0/src/plugins/tls/openssl/qx509_openssl.cpp",
+          "original_sha256": "271abbff4ffcca4b786131fb32dfc4a4420e1a1c980e73b3d91ceef734d7ef28",
+          "finding": "X509CertificateOpenSSL::verify tests certificateChain[0].isBlacklisted only. Common QSslCertificate::verify now retains backend errors then checks every supplied certificate. This is not a claim about unprovided/reconstructed OS-store chain members."
+        }
       },
       "zlib_delta": {
         "released": "2026-11-04",
@@ -711,6 +716,21 @@
         "gate": "SQLite column-metadata disabled; Qt requires sqlite3_column_table_name16"
       },
       "validation": "74 focused tests, Ruff/compile and Bash syntax PASS; repeated full native profile pending"
+    },
+    "whole_chain_guard_2026_11_13": {
+      "date": "2026-11-13",
+      "cancelled_run": 43390111631,
+      "source_sha": "1b3ce58ca3b2b1cf7ac8199ecd3b930ce021ceb7",
+      "reason": "Review of official X509CertificateOpenSSL::verify demonstrates leaf-only blacklist check; old manual regression would never report an intermediate CertificateBlacklisted. Avoid another known-invalid Qt rebuild.",
+      "source_quality": {
+        "run": 43390115014,
+        "source_sha": "1b3ce58ca3b2b1cf7ac8199ecd3b930ce021ceb7",
+        "result": "SUCCESS1982",
+        "checkout_verified": true
+      },
+      "minimum_correction": "Single-file common manual verifier retains backend errors and checks every supplied certificate; deduplicates blacklist errors. Eight compromised keys and socket blacklist hook retained. No omitted/reconstructed-chain guarantee.",
+      "regressions": "16 metadata certificate blacklist checks;16 actual incident/rollover chain rejections with unique per-cert errors; healthy roots not blocked; OpenSSL manual API valid/hostname/untrusted/expired explicit fixtures plus unchanged default-positive and socket TLS gates.",
+      "local_validation": "74 focused PASS, Ruff/compile, original/fuzz0/post replay PASS; stock Windows Qt SQL fixture API PASS only. Native full source acceptance pending."
     }
   },
   "libffi_msvc_prerequisite_2026_11_10": {

@@ -1,6 +1,33 @@
 --- a/src/network/ssl/qsslcertificate.cpp
 +++ b/src/network/ssl/qsslcertificate.cpp
-@@ -914,6 +914,29 @@
+@@ -103,6 +103,7 @@
+ #include "qsslcertificateextension_p.h"
+ #include "qsslcertificate_p.h"
+ #include "qsslcertificate.h"
++#include "qsslerror.h"
+ #include "qssl_p.h"
+ 
+ #ifndef QT_NO_SSL
+@@ -804,7 +805,17 @@
+         qCWarning(lcSsl, "Available TLS backend does not support manual certificate verification");
+         return {};
+     }
+-    return verifyPtr(certificateChain, hostName);
++    auto errors = verifyPtr(certificateChain, hostName);
++    // Match socket verification: distrust applies to intermediate keys too,
++    // including the compromised ancestor in rollover/cross-signed chains.
++    for (const auto &certificate : certificateChain) {
++        if (certificate.isBlacklisted()) {
++            const QSslError error(QSslError::CertificateBlacklisted, certificate);
++            if (!errors.contains(error))
++                errors.append(error);
++        }
++    }
++    return errors;
+ }
+ 
+ /*!
+@@ -914,6 +925,29 @@
  
  bool QSslCertificatePrivate::isBlacklisted(const QSslCertificate &certificate)
  {
