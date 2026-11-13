@@ -81,6 +81,9 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool) -> dict:
     spec = json.loads((REPO / '.github/scripts/linux_x64_native_delta_sources.json').read_text())
     versions = {'sqlite': sqlite3.sqlite_version, 'libmpdec': _decimal.__libmpdec_version__,
                 'zlib': zlib.ZLIB_RUNTIME_VERSION}
+    with sqlite3.connect(':memory:') as database:
+        sqlite_options = sorted(row[0] for row in database.execute('pragma compile_options'))
+    assert 'ENABLE_COLUMN_METADATA' in sqlite_options, 'Qt system-SQLite column-origin API missing'
     for name, symbol in [('libffi', 'ffi_get_version'), ('liblzma', 'lzma_version_string')]:
         lib = ctypes.CDLL(str(prefix / 'lib' / STEMS[name]))
         query = getattr(lib, symbol)
@@ -93,6 +96,7 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool) -> dict:
     providers = provider_paths(paths, prefix)
     modules = [_ctypes, _decimal, _lzma, _sqlite3, zlib]
     result = {'source_sha': os.environ['GITHUB_SHA'], 'scope': 'Native source runtime/provider delta; not final package',
+              'sqlite_compile_options': sqlite_options,
               'versions': versions, 'providers': {name: elf_record(path, output) for name, path in providers.items()},
               'modules': {module.__name__: elf_record(Path(module.__file__).resolve(), output) for module in modules},
               'executed_upstream': executed_native_suites(output / 'cpython-native-regressions.xml')}
@@ -199,6 +203,7 @@ def main() -> None:
         assert app.platformName() == 'xcb'
         log = (args.output_dir / 'qt-sqlite-consumer.log').read_text()
         assert 'Qt 6.12.0 actual SQLite 3.54.1' in log and str(args.prefix.resolve() / 'qt/lib') in log
+        assert 'table metadata fixture PASS' in log
         result['qt_sqlite'] = {'executed': log.strip(), 'images': [elf_record(path.resolve(), args.output_dir) for path in
             [args.prefix / 'qt/lib/libQt6Sql.so.6', args.prefix / 'qt/plugins/sqldrivers/libqsqlite.so']]}
         result['qt_security'] = qt_ca_security(args.output_dir)

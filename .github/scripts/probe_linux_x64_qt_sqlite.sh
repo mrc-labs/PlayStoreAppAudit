@@ -19,7 +19,9 @@ cat > "$probe/main.cpp" <<'CPP'
 #include <QLibraryInfo>
 #include <QSqlDatabase>
 #include <QSqlError>
+#include <QSqlField>
 #include <QSqlQuery>
+#include <QSqlRecord>
 #include <QVariant>
 #include <iostream>
 int main(int argc, char **argv) {
@@ -30,7 +32,11 @@ int main(int argc, char **argv) {
     QSqlQuery query(db);
     if (!query.exec("select sqlite_version()") || !query.next()) return 2;
     if (query.value(0).toString() != "3.54.1") return 3;
-    std::cout << "Qt " << qVersion() << " actual SQLite " << query.value(0).toString().toStdString()
+    if (!query.exec("create table fixture(value integer)")) return 4;
+    if (!query.exec("insert into fixture values(42)")) return 5;
+    if (!query.exec("select value from fixture") || !query.next() || query.value(0).toInt() != 42) return 6;
+    if (query.record().field(0).tableName() != "fixture") return 7;
+    std::cout << "Qt " << qVersion() << " actual SQLite 3.54.1 table metadata fixture PASS"
               << " libraries " << QLibraryInfo::path(QLibraryInfo::LibrariesPath).toStdString() << " PASS\n";
     return 0;
 }

@@ -26,8 +26,14 @@ int main(void) {
     sqlite3 *db = NULL;
     sqlite3_stmt *query = NULL;
     if (sqlite3_open(":memory:", &db) != SQLITE_OK) return 1;
-    if (sqlite3_prepare_v2(db, "select 21*2", -1, &query, NULL) != SQLITE_OK) return 2;
+    if (!sqlite3_compileoption_used("ENABLE_COLUMN_METADATA")) return 14;
+    if (sqlite3_exec(db, "create table fixture(value integer); insert into fixture values(42)", NULL, NULL, NULL) != SQLITE_OK) return 15;
+    if (sqlite3_prepare_v2(db, "select value from fixture", -1, &query, NULL) != SQLITE_OK) return 2;
     if (sqlite3_step(query) != SQLITE_ROW || sqlite3_column_int(query, 0) != 42) return 3;
+    const uint16_t expected_table[] = {'f', 'i', 'x', 't', 'u', 'r', 'e', 0};
+    const void *table16 = sqlite3_column_table_name16(query, 0);
+    if (!table16 || memcmp(table16, expected_table, sizeof(expected_table))) return 16;
+    if (!sqlite3_column_table_name(query, 0) || strcmp(sqlite3_column_table_name(query, 0), "fixture")) return 17;
     sqlite3_finalize(query);
     sqlite3_close(db);
     const unsigned char input[] = "controlled native codec roundtrip";
@@ -60,7 +66,7 @@ int main(void) {
     if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, 1, 4, &ffi_type_double, mixed_types) != FFI_OK) return 12;
     ffi_call(&cif, FFI_FN(mixed), &total, mixed_args);
     if (total != 27.5) return 13;
-    printf("{\"sqlite\":\"%s\",\"libmpdec\":\"%s\",\"libffi\":\"%s\",\"liblzma\":\"%s\",\"zlib\":\"%s\",\"mixed\":%.1f,\"calls\":\"SQL/codec/callback PASS\"}\n",
+    printf("{\"sqlite\":\"%s\",\"sqlite_column_metadata\":true,\"libmpdec\":\"%s\",\"libffi\":\"%s\",\"liblzma\":\"%s\",\"zlib\":\"%s\",\"mixed\":%.1f,\"calls\":\"SQL/codec/callback PASS\"}\n",
            sqlite3_libversion(), mpd_version(), ffi_get_version(), lzma_version_string(), zlibVersion(), total);
     return 0;
 }

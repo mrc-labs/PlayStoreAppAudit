@@ -34,7 +34,8 @@ logged mpdecimal-build make -j2
 logged mpdecimal-regressions make check_local
 logged mpdecimal-install make install
 cd "$work/src/sqlite-autoconf-3540100"
-logged sqlite-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --disable-static --disable-readline
+# Qt's supported system-SQLite driver requires the optional UTF-16 column-origin API.
+logged sqlite-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --disable-static --disable-readline --column-metadata
 logged sqlite-build make -j2
 logged sqlite-install make install
 cd "$work/src/libffi-3.8.0"
@@ -56,5 +57,6 @@ actual = json.loads(Path(sys.argv[1]).read_text())
 for name in ('sqlite', 'libmpdec', 'libffi', 'liblzma', 'zlib'):
     assert actual[name] == spec['expected'][name], (name, actual)
 assert actual['mixed'] == 27.5 and actual['calls'] == 'SQL/codec/callback PASS'
+assert actual['sqlite_column_metadata'] is True
 print('Five native source providers and actual consumer prerequisites PASS:', actual)
 PY

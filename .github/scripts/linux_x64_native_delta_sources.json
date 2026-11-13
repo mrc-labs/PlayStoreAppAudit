@@ -108,5 +108,14 @@
       "existing PNG malformed metadata corpus"
     ],
     "other_targets": "Old evidence retains1.3.2; future source update and affected native validations required. No shared source manifest silently changed."
+  },
+  "sqlite_configuration": {
+    "option": "--column-metadata",
+    "macro": "SQLITE_ENABLE_COLUMN_METADATA",
+    "authority": "https://www.sqlite.org/compile.html#enable_column_metadata",
+    "required_by": "Qt6.12.0 system-SQLite QSQLiteResultPrivate::initColumns uses sqlite3_column_table_name16",
+    "demonstrated_gate": "42810658400 at f5eefb7: Qt plugin undefined sqlite3_column_table_name16; configure log marks column-metadata disabled",
+    "source_change": "None. Supported original SQLite autosetup option; no Qt source/API adaptation, renamed symbol or fallback.",
+    "early_regression": "Real native C consumer links and executes both UTF-8/UTF-16 column-origin APIs and compileoption_used before OpenSSL/Python/Qt rebuilds. Python records compile_options and Qt actual QSqlField.tableName verifies fixture table."
   }
 }

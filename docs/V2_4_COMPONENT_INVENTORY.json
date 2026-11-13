@@ -1,4 +1,148 @@
 {
+  "action_callpath_delta_2026_11_10": {
+    "date": "2026-11-10",
+    "scope": "Four existing R04 parents only; no new exhaustive audit or Action fork/producer modification",
+    "parents": [
+      {
+        "action": "checkout",
+        "ref": "v7",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "latest_release": "v7.0.1",
+        "published_at": "2026-07-20T15:10:05Z",
+        "lock_sha256": "4f8c64aa3807a20365c0b9c1ef4c4639549146a1ebd9ebe379e8fde1dff7938e",
+        "dependencies": [
+          {
+            "path": "node_modules/glob",
+            "version": "7.2.3",
+            "dev_only": true
+          },
+          {
+            "path": "node_modules/undici",
+            "version": "6.27.0",
+            "dev_only": false
+          }
+        ]
+      },
+      {
+        "action": "setup-python",
+        "ref": "v7",
+        "commit": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "latest_release": "v7.1.0",
+        "published_at": "2026-10-22T02:56:04Z",
+        "lock_sha256": "75ff9899550d072e1b6c82d2ab23786f9b3c91b0a045271809bd05955bbb7471",
+        "dependencies": [
+          {
+            "path": "node_modules/fast-xml-parser",
+            "version": "5.11.2",
+            "dev_only": false
+          },
+          {
+            "path": "node_modules/glob",
+            "version": "10.5.0",
+            "dev_only": true
+          },
+          {
+            "path": "node_modules/test-exclude/node_modules/glob",
+            "version": "7.2.3",
+            "dev_only": true
+          },
+          {
+            "path": "node_modules/undici",
+            "version": "6.29.0",
+            "dev_only": false
+          }
+        ]
+      },
+      {
+        "action": "upload-artifact",
+        "ref": "v7",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "latest_release": "v7.0.2",
+        "published_at": "2026-10-07T10:08:14Z",
+        "lock_sha256": "1d91c8ae4f454eb20c364e8c6498258c467daf11d48b703d007a7010b3c85415",
+        "dependencies": [
+          {
+            "path": "node_modules/fast-xml-parser",
+            "version": "5.4.1",
+            "dev_only": false
+          },
+          {
+            "path": "node_modules/glob",
+            "version": "10.5.0",
+            "dev_only": false
+          },
+          {
+            "path": "node_modules/test-exclude/node_modules/glob",
+            "version": "7.2.3",
+            "dev_only": true
+          },
+          {
+            "path": "node_modules/undici",
+            "version": "6.23.0",
+            "dev_only": false
+          }
+        ]
+      },
+      {
+        "action": "download-artifact",
+        "ref": "v8",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "latest_release": "v8.0.2",
+        "published_at": "2026-10-07T10:09:51Z",
+        "lock_sha256": "0c3b588cf7742b8c6fd86cd11dfb4a91b73140845dbd7bd9c63ed0b8e2d87f6a",
+        "dependencies": [
+          {
+            "path": "node_modules/fast-xml-parser",
+            "version": "5.3.4",
+            "dev_only": false
+          },
+          {
+            "path": "node_modules/glob",
+            "version": "10.5.0",
+            "dev_only": false
+          },
+          {
+            "path": "node_modules/test-exclude/node_modules/glob",
+            "version": "7.2.3",
+            "dev_only": true
+          },
+          {
+            "path": "node_modules/undici",
+            "version": "6.23.0",
+            "dev_only": false
+          }
+        ]
+      }
+    ],
+    "dist": [
+      {
+        "file": "checkout-dist-index.js",
+        "bytes": 1452487,
+        "sha256": "086f5d69833562b3e91940544a05ad3f7c50046768d8151d50fc18f5ebb6f0ac"
+      },
+      {
+        "file": "download-artifact-dist-index.js",
+        "bytes": 4432890,
+        "sha256": "6f37bb970bdcffafd5a5e6461e3e27d48a04c23b3cc59b63baec1b8d1430c7d7"
+      },
+      {
+        "file": "setup-python-dist-cache-save-index.js",
+        "bytes": 3577544,
+        "sha256": "40851cda6adb156611810c50d3d0ffd19d6c916fd30a582c985555ab4c24610c"
+      },
+      {
+        "file": "setup-python-dist-setup-index.js",
+        "bytes": 3671726,
+        "sha256": "b3c03ce5ef5469fed7e8497cc71d4ed927c3ce27b22e88f552fb4f522d9766f0"
+      },
+      {
+        "file": "upload-artifact-dist-upload-index.js",
+        "bytes": 4452788,
+        "sha256": "7199f63dd3e149ca4b8071705021fb3a680d03dd71cd3a4e8d3049e3f117380b"
+      }
+    ],
+    "decision": "R04 remains required: latest stable parents unchanged; ownership/callpath narrowed. npm undici through @actions/http-client, XML through @azure/core-xml; upload/download runtime glob via archiver-utils. Checkout/setup glob entries are dev-only. No claim that runtime glob is unused or XML/HTTP advisories are resolved; no repository npm override changes remote bundled code."
+  },
   "native_provider_consolidation_2026_11_10": {
     "state": "CA native gap demonstrated; five-provider/Qt-guard Linux source qualification pending",
     "date": "2026-11-10",
@@ -114,6 +258,15 @@
           "existing PNG malformed metadata corpus"
         ],
         "other_targets": "Old evidence retains1.3.2; future source update and affected native validations required. No shared source manifest silently changed."
+      },
+      "sqlite_configuration": {
+        "option": "--column-metadata",
+        "macro": "SQLITE_ENABLE_COLUMN_METADATA",
+        "authority": "https://www.sqlite.org/compile.html#enable_column_metadata",
+        "required_by": "Qt6.12.0 system-SQLite QSQLiteResultPrivate::initColumns uses sqlite3_column_table_name16",
+        "demonstrated_gate": "42810658400 at f5eefb7: Qt plugin undefined sqlite3_column_table_name16; configure log marks column-metadata disabled",
+        "source_change": "None. Supported original SQLite autosetup option; no Qt source/API adaptation, renamed symbol or fallback.",
+        "early_regression": "Real native C consumer links and executes both UTF-8/UTF-16 column-origin APIs and compileoption_used before OpenSSL/Python/Qt rebuilds. Python records compile_options and Qt actual QSqlField.tableName verifies fixture table."
       }
     },
     "provider_security_manifest": {
@@ -288,8 +441,276 @@
     },
     "qt_guard_source_quality": {
       "run": 42810144504,
-      "source_sha": "240a8af93ac96ef7e1977d69f7433d3fef5eb312",
-      "result": "SUCCESS; detailed count checked separately"
+      "event": "pull_request virtual merge",
+      "result": "SUCCESS1982; not an exact-source checkout"
+    },
+    "source_quality": {
+      "run": 42810707893,
+      "source_sha": "f5eefb7d1cf74a597aafff050df6f05342967778",
+      "checkout_verified": true,
+      "result": "SUCCESS1982/Ruff/compile/helper syntax/Qt smoke"
+    },
+    "full_pilot": {
+      "run": 42810658400,
+      "source_sha": "f5eefb7d1cf74a597aafff050df6f05342967778",
+      "state": "FAILURE at Qt system-SQLite link: sqlite3_column_table_name16 absent; no Qt/CA/GUI/CLI acceptance"
+    },
+    "local_legal_preflight": {
+      "result": "PASS",
+      "python": "3.14.9 local tool only",
+      "nuitka": "4.3.5",
+      "qt": "6.12.0",
+      "scope": "Official source/license preflight; not full native package closure"
+    },
+    "sqlite_metadata_correction_2026_11_13": {
+      "date": "2026-11-13",
+      "starting_head": "f5eefb7d1cf74a597aafff050df6f05342967778",
+      "scope": "Supported --column-metadata selection and early C/Python/Qt metadata regressions only; no new vendor patch or other-target input change",
+      "partial_verification": {
+        "source_sha": "f5eefb7d1cf74a597aafff050df6f05342967778",
+        "scope": "Verified partial source/runtime evidence only; Qt link fails, full Qt/CA/GUI/CLI not accepted",
+        "artifact_id": 13763069662,
+        "zip_sha256": "a99ad352fc69656815c3db220c1c27ddb800d2eac0d24f15014b6fe0b4f8c75f",
+        "original_source_archives": [
+          "Python-3.14.10.tar.xz",
+          "openssl-4.0.3.tar.gz",
+          "libpng-1.6.59.tar.xz",
+          "pcre2-10.49.tar.gz",
+          "qtbase-everywhere-src-6.12.0.tar.xz",
+          "qtsvg-everywhere-src-6.12.0.tar.xz",
+          "pyside-setup-everywhere-src-6.12.0.tar.xz",
+          "sqlite-autoconf-3540100.tar.gz",
+          "mpdecimal-4.0.1.tar.gz",
+          "libffi-3.8.0.tar.gz",
+          "xz-5.8.4.tar.xz",
+          "zlib-1.4.tar.gz",
+          "cffi-2.1.1.tar.gz",
+          "gcc-11.5.0-14.el9.src.rpm",
+          "7z2605-src.tar.xz"
+        ],
+        "versions": {
+          "sqlite": "3.54.1",
+          "libmpdec": "4.0.1",
+          "zlib": "1.4",
+          "libffi": "3.8.0",
+          "liblzma": "5.8.4"
+        },
+        "tests": {
+          "cpython-native-regressions.xml": {
+            "executed": 2016,
+            "skipped": 57,
+            "total": 2073
+          },
+          "cpython-regressions.xml": {
+            "executed": 409,
+            "skipped": 33,
+            "total": 442
+          },
+          "cffi-tests.xml": {
+            "executed": 488,
+            "skipped": 11,
+            "total": 499
+          }
+        },
+        "native_suites": {
+          "test_ctypes": 579,
+          "test_sqlite3": 509,
+          "test_decimal": 652,
+          "test_lzma": 120,
+          "test_zlib": 77,
+          "test_decimal_C": 334
+        },
+        "images": [
+          {
+            "name": "libsqlite3.so.3.54.1",
+            "sha256": "c0be5b25e8ed5cb3bf867a26a0a5052754a7ecba3b3f01b96effd7f4d79b91a8",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.28",
+              "GLIBC_2.29",
+              "GLIBC_2.3.4",
+              "GLIBC_2.33",
+              "GLIBC_2.34",
+              "GLIBC_2.4"
+            ],
+            "needed": [
+              "libm.so.6",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "libmpdec.so.4.0.1",
+            "sha256": "5467d4487201653f14d031f6d92ab920d3907ff8407ad5c9a1daccd60e924d6f",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3",
+              "GLIBC_2.3.4",
+              "GLIBC_2.4"
+            ],
+            "needed": [
+              "libm.so.6",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "libffi.so.8.5.0",
+            "sha256": "931a5336d7650b3e8f67463af45ac5bc348fa49053bb0eb3e8ad95a14e544e7c",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.27",
+              "GLIBC_2.3.4",
+              "GLIBC_2.4",
+              "GLIBC_2.7"
+            ],
+            "needed": [
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "liblzma.so.5.8.4",
+            "sha256": "2bb08767f12de754a536793cdb079394de03ef6f143396a80444d174ef1003c2",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.17",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3.2",
+              "GLIBC_2.3.4",
+              "GLIBC_2.32",
+              "GLIBC_2.34",
+              "GLIBC_2.4",
+              "GLIBC_2.6"
+            ],
+            "needed": [
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "libz.so.1.4",
+            "sha256": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3.4",
+              "GLIBC_2.4"
+            ],
+            "needed": [
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "_ctypes.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "24093552c5cec59fec9afbfe064cb7b34761d762ad127e2947cabe82ac5251a8",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3.4",
+              "GLIBC_2.34",
+              "GLIBC_2.4",
+              "LIBFFI_BASE_8.0",
+              "LIBFFI_CLOSURE_8.0",
+              "LIBFFI_COMPLEX_8.0"
+            ],
+            "needed": [
+              "libffi.so.8",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "_decimal.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "454ff3d496b5305433b6fd282e39ed4900ade5e6569a08b333e305240073921c",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3.4",
+              "GLIBC_2.4"
+            ],
+            "needed": [
+              "libmpdec.so.4",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "_lzma.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "66deb2b810a051f0f7af5aa18db72fae53cd2bde67853bf22d53f7da27c0195a",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.4",
+              "XZ_5.0"
+            ],
+            "needed": [
+              "liblzma.so.5",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "_sqlite3.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "098371e16fe71864f1b8919f814d1ff6954c54aa32b216fd68bdee725348b1e6",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3.4",
+              "GLIBC_2.4"
+            ],
+            "needed": [
+              "libsqlite3.so",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "zlib.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "f0333cc892dca61bee94473f99f20392a9578338deaa73a552028063098103ef",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.4",
+              "ZLIB_1.2.0"
+            ],
+            "needed": [
+              "libz.so.1",
+              "libc.so.6"
+            ]
+          },
+          {
+            "name": "_cffi_backend.cpython-314-x86_64-linux-gnu.so",
+            "sha256": "bfbbcecdc0be61b795ad72836bfe066b648713aab574b05cd0155ded89c7f2c4",
+            "machine": 62,
+            "version_needs": [
+              "GLIBC_2.14",
+              "GLIBC_2.2.5",
+              "GLIBC_2.3",
+              "GLIBC_2.3.4",
+              "GLIBC_2.34",
+              "GLIBC_2.4",
+              "GLIBC_2.7",
+              "LIBFFI_BASE_8.0",
+              "LIBFFI_CLOSURE_8.0"
+            ],
+            "needed": [
+              "libffi.so.8",
+              "libc.so.6",
+              "ld-linux-x86-64.so.2"
+            ]
+          }
+        ],
+        "cffi_wheel_sha256": "ed0e0e8e472f2434c5c42b01f839fa74f07715fec985ac43e96bbb122030b6ce",
+        "qt_patch_source_hash": "60d77f087bad6dea64fce2c46fe6695ef7d710ba81d237c117939022dcf31535",
+        "gate": "SQLite column-metadata disabled; Qt requires sqlite3_column_table_name16"
+      },
+      "validation": "74 focused tests, Ruff/compile and Bash syntax PASS; repeated full native profile pending"
     }
   },
   "libffi_msvc_prerequisite_2026_11_10": {
@@ -766,7 +1187,7 @@
       {
         "id": "R02",
         "status": "REQUIRED security/provider acceptance",
-        "applicability_minimum_action": "Functional trust and Python compromised-SPKI rejection do not establish Qt/OpenSSL, Schannel or SecureTransport/Keychain root/security policy. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
+        "applicability_minimum_action": "Seven measured Qt6.12 bootstrap processes42808506948 prove Schannel/SecureTransport accept16/16 compromised chains on both Windows/macOS architectures, despite positive ordinary default trust. Host OpenSSL rejects16/16. A minimal hash-bound common Qt SPKI guard is prepared in the isolated Linux x64 delta; native correction and adoption/affected checks on all six targets remain required. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {
@@ -778,13 +1199,13 @@
       {
         "id": "R04",
         "status": "REQUIRED Action network/security/deprecation",
-        "applicability_minimum_action": "Latest parents still bundle older undici/XML and explicitly unsupported glob10.5.0. Assess actual prebundled HTTP/XML call paths, then stable corrected parent/SDK or direct stable CLI for the affected operation. Repo npm overrides do not alter remote dist. No general Action framework/fork is selected.",
+        "applicability_minimum_action": "November10 official checks confirm checkout7.0.1/setup-python7.1.0/upload7.0.2/download8.0.2 are still the latest stable selected parents. Retained exact dist/lock bytes show npm undici through @actions/http-client, XML through @azure/core-xml, and runtime glob10.5.0 through archiver-utils for upload/download; checkout/setup glob entries are development-only. This narrows applicability without claiming runtime glob unused or XML advisories resolved. Assess actual bundled call paths and supported corrected SDK/alternative for affected operations; no newer corrected Action parent was found. Repo npm overrides do not alter remote dist. No general Action framework/fork is selected.",
         "verification_evidence": "Download/artifact/cache/Azure service-response tests, exact-SHA/provenance/retention/permissions and source/legal validation for affected jobs. WebSocket/EventSource/cookie/template/untrusted-glob conditions are scoped watches where repository inputs never select them, not blanket vendor waivers."
       },
       {
         "id": "R05",
         "status": "REQUIRED controlled Python native freshness",
-        "applicability_minimum_action": "Reconcile measured target providers, then qualify SQLite3.54.1, libffi3.8.0, libmpdec4.0.1 and remaining XZ5.8.4/zlib-ng2.3.3 candidates through documented source/build selection. Mac XZ5.8.4/Zstd1.5.7 and source zlib1.3.2 are already qualified; OS SQLite/ffi and Windows copied/prebuilt providers remain distinct. Tcl/Tk is incidental/excluded, not a Qt application migration.",
+        "applicability_minimum_action": "Reconcile measured target providers, then qualify SQLite3.54.1, libffi3.8.0, libmpdec4.0.1 and remaining XZ5.8.4/zlib-ng2.3.3 candidates through documented source/build selection. Mac XZ5.8.4/Zstd1.5.7 and source zlib1.3.2 are already qualified; OS SQLite/ffi and Windows copied/prebuilt providers remain distinct. Windows ARM64 source consumer42749266993 and cffi consumer42799359470 qualify static libffi3.8.0, not ctypes integration. New Linux x64 pilot42810658400 consolidates five private providers and source cffi; native acceptance pending. Official zlib1.4 (November4, security fixes) supersedes1.3.2 and requires affected updates across the other source profiles; zlib-ng remains a distinct provider. No historical evidence is relabeled. Tcl/Tk is incidental/excluded, not a Qt application migration.",
         "verification_evidence": "Stdlib sqlite/ctypes/decimal/compression regressions, security/hash/TLS and native CRT/ABI/OS/linkage on each actually changed runtime; original sources/patches/legal. No inferred compatibility failure from old parent pins."
       },
       {
@@ -802,13 +1223,13 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 -> 15.0, MD4C0.5.3 -> 0.6.0, TinyCBOR7.0 -> 7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Use stable system-library configuration where exposed, otherwise minimal reviewed Qt source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected.",
+        "applicability_minimum_action": "HarfBuzz14.5 -> 15.0, MD4C0.5.3 -> 0.6.0, TinyCBOR7.0 -> 7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Exact6.12 source confirms INPUT_harfbuzz=system and INPUT_libmd4c=system / WrapSystemHarfbuzz / WrapSystemMd4c; qualify current private source providers through those existing switches first. Other copied internals require minimal reviewed source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected.",
         "verification_evidence": "Matched binding build, text/font/markdown/CBOR/rendering regressions, GUI/PNG/TLS and native ABI/legal on changed targets. No arbitrary framework/dylib substitution."
       },
       {
         "id": "R09",
         "status": "REQUIRED Qt data / conditional plugins",
-        "applicability_minimum_action": "UCD report36 -> 38, CLDR48.2 -> 49, PSL May14 -> Oct22, copied libpsl -> 0.23.3 and tl::expected -> 1.3.1 require supported parent/generator/source comparison and relevant schema/API tests. Qt SQLite3.53.4 -> 3.54.1 applies if its built plugin is retained; Mac cache builds it even though current runtime closure does not load QtSql. D3D12 allocator3.1 -> 3.2 is Windows-conditional; Vulkan allocator3.3 -> 3.4 requires actual feature/plugin inclusion.",
+        "applicability_minimum_action": "UCD report36 -> 38 means actual Unicode17 -> 18: exact Qt generated tables/generator select Unicode_17_0 and QChar has no18 enum. Use documented util/unicode update plus required enum/map/data and normalization/segmentation/IDNA checks; no arbitrary attribution-only version edit. CLDR48.2 -> 49, PSL May14 -> Oct22, copied libpsl -> 0.23.3 and tl::expected -> 1.3.1 require supported parent/generator/source comparison and relevant schema/API tests. Qt SQLite3.53.4 -> 3.54.1 applies if its built plugin is retained; Mac cache builds it even though current runtime closure does not load QtSql. D3D12 allocator3.1 -> 3.2 is Windows-conditional; Vulkan allocator3.3 -> 3.4 requires actual feature/plugin inclusion.",
         "verification_evidence": "Locale/domain/security-list and corresponding-source checks; plugin/target membership before update, native build/ABI checks where selected. Mac Vulkan is OFF; Android Gradle is absent from all six desktop build paths; copied DBus headers/protocol revisions are not an OS runtime version. Final package membership must prove exclusions."
       },
       {
