@@ -112,9 +112,16 @@ def main() -> None:
         assert path.is_file() and read_pe_machine(path) == 0x8664, name
         process = subprocess.run([str(path), *flags], capture_output=True, text=True)
         tools[name] = {'path': str(path), 'version': process.stdout + process.stderr,
+                       'returncode': process.returncode,
                        'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    (output / 'qt-ca-tools-discovery.json').write_text(json.dumps({
+        'source_sha': head, 'tools': tools, 'PATH': os.environ['PATH'],
+        'scope': 'Actual native tool selection before version guards or component downloads',
+    }, indent=2), encoding='utf-8')
+    print('Native tools before version guards:', json.dumps(tools), flush=True)
     assert '19.44.' in tools['cl']['version'], tools['cl']
-    assert '4.4.4' in tools['cmake']['version'] and tools['ninja']['version'].strip() == '1.13.2'
+    assert tools['cmake']['returncode'] == 0 and '4.4.4' in tools['cmake']['version'], tools['cmake']
+    assert tools['ninja']['returncode'] == 0 and tools['ninja']['version'].strip() == '1.13.2', tools['ninja']
     defaults = default_trust_handshake()
     windows_roots = sorted(hashlib.sha256(cert).hexdigest() for cert, encoding, trust in ssl.enum_certificates('ROOT')
                            if encoding == 'x509_asn')
