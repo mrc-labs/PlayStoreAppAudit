@@ -2,7 +2,7 @@
   "windows_schannel_guard_2026_11_13": {
     "date": "2026-11-13",
     "starting_head": "d967163ca8b8d5a1fcee5c1b2ce20ccd0a8afb44",
-    "state": "Prepared; native prerequisites and Schannel guard acceptance pending",
+    "state": "Native prerequisites PASS; first scoped source consumer builds but exposes unsupported Schannel manual API; corrected native socket repeat prepared",
     "scope": "R02 Windows x64 QtCore/Network+C++ only, not CPython/PySide/GUI/full dual-provider/package acceptance",
     "original_qt": {
       "version": "6.12.0",
@@ -54,6 +54,57 @@
       "source": "6785ef140bf4e123afc9f38d0b924128f6542325",
       "tests": 2003,
       "result": "SUCCESS exact checkout verified"
+    },
+    "prerequisites_verified": {
+      "source": "878917d5e3d3b8eea53ab98f5fd98bd1ce825917",
+      "run": 43414274141,
+      "artifact": 14031550618,
+      "zip_bytes": 368361,
+      "zip_sha256": "d36ea614321f55acf30dd136246ba94cf632bbed743d640260293a5b5d943103",
+      "sdk": "10.0.26100.0\\",
+      "vc_tools": "14.44.35207",
+      "default_trust": {
+        "host": "www.python.org",
+        "protocol": "TLSv1.3",
+        "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+        "verify_mode": "CERT_REQUIRED",
+        "check_hostname": true,
+        "store_before": {
+          "x509": 419,
+          "crl": 0,
+          "x509_ca": 414
+        },
+        "store_after": {
+          "x509": 419,
+          "crl": 0,
+          "x509_ca": 414
+        },
+        "result": "default-trust authenticated handshake PASS"
+      },
+      "ROOT_count": 564,
+      "native_loader": "PATH rejected; registered actual DLL answer42 twice",
+      "ninja": "Exact official wheel/native image/license bytes PASS",
+      "qt_download_or_build": false,
+      "result": "PASS prerequisites only"
+    },
+    "latest_source_quality": {
+      "run": 43414277718,
+      "source_sha": "878917d5e3d3b8eea53ab98f5fd98bd1ce825917",
+      "result": "SUCCESS exact checkout verified",
+      "tests": 2008
+    },
+    "native_run": {
+      "run": 43414553677,
+      "source_sha": "878917d5e3d3b8eea53ab98f5fd98bd1ce825917",
+      "state": "FAIL at manual-chain harness assertion; not a native trust acceptance verdict"
+    },
+    "manual_capability_correction": {
+      "scope": "Schannel6.12 supportedFeatures excludes CertificateVerification; no X509Verifier override; base returns nullptr. Earlier empty native manual results are inconclusive, not accepted chains. Mac rows also require capability-aware requalification. Historical raw bytes retained.",
+      "official_source": "https://github.com/qt/qtbase/blob/v6.12.0/src/network/ssl/qtlsbackend.cpp",
+      "new_vendor_patch": false,
+      "minimum_route": "Supported QSslSocket against16 hash-bound public incident hostnames, default trust, no HTTP/credentials; exact leaf and compromised-key CertificateBlacklisted required. Network/changed/expiry/hostname failures cannot pass. All outcomes and actual PE bytes retained.",
+      "local_checks": "76 targeted PASS; helper Ruff/compile; local6.12 Schannel manual capability absent (3.14.9 feasibility only)",
+      "linux_impact": "No change to runtime fetch_inputs/trust_rejected behavior or original sources/patches. Linux evidence unchanged; native bootstrap interpretation/repeat affected."
     }
   },
   "setuptools_external_candidate_2026_11_13": {
@@ -2268,7 +2319,7 @@
       {
         "id": "R02",
         "status": "REQUIRED security/provider acceptance; Linux source subset PASS43391294393",
-        "applicability_minimum_action": "Seven measured Qt6.12 bootstrap processes42808506948 prove Schannel/SecureTransport accept16/16 compromised chains on both Windows/macOS architectures, despite positive ordinary default trust. Host OpenSSL rejects16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS bootstrap acceptances are not closed by Linux OpenSSL evidence. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
+        "applicability_minimum_action": "Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {

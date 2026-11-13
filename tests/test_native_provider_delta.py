@@ -10,6 +10,21 @@ import pytest
 from verify_linux_x64_native_delta import STEMS, SUITES, executed_native_suites, provider_paths
 
 
+@pytest.mark.parametrize('labels', [[], ['CertificateBlacklisted'], ['NoSslSupport']])
+def test_unsupported_manual_verifier_never_claims_chain_acceptance_or_security_rejection(labels: list[str]) -> None:
+    result = ca_probe.manual_chain_outcome(labels, supported=False)
+    assert result['accepted'] is None and result['trust_rejected'] is None
+    assert not result['manual_verification_supported']
+
+
+@pytest.mark.parametrize('labels,accepted,rejected', [
+    ([], True, False), (['CertificateBlacklisted'], False, True), (['HostNameMismatch'], False, False),
+])
+def test_supported_manual_verifier_preserves_actual_acceptance_and_rejection_reasons(labels, accepted, rejected) -> None:
+    result = ca_probe.manual_chain_outcome(labels, supported=True)
+    assert result['accepted'] is accepted and result['trust_rejected'] is rejected
+
+
 @pytest.mark.parametrize('labels,expected', [
     ([], False), (['NoSslSupport'], False), (['CertificateSignatureFailed'], False),
     (['CertificateUntrusted'], True), (['CertificateBlacklisted'], True),

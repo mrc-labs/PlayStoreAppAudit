@@ -25,6 +25,13 @@ def trust_rejected(labels: list[str]) -> bool:
     return bool(reasons.intersection(labels)) and not invalid_fixture.intersection(labels)
 
 
+def manual_chain_outcome(labels: list[str], *, supported: bool) -> dict:
+    """An unsupported verifier's empty result is neither acceptance nor rejection."""
+    return {'accepted': not labels if supported else None,
+            'trust_rejected': trust_rejected(labels) if supported else None,
+            'errors': labels, 'manual_verification_supported': supported}
+
+
 def fetch_inputs(output: Path) -> dict:
     spec = json.loads((REPO / '.github/scripts/provider_ca_security_sources.json').read_text())
     context = ssl.create_default_context()
@@ -54,6 +61,10 @@ def backend_probe(output: Path, name: str) -> dict:
     result.update(available=True, backend=QSslSocket.activeBackend(),
                   build_library=QSslSocket.sslLibraryBuildVersionString(),
                   runtime_library=QSslSocket.sslLibraryVersionString())
+    features = QSslSocket.supportedFeatures(name)
+    manual = QSsl.SupportedFeature.CertificateVerification in features
+    result['supported_features'] = [feature.name for feature in features]
+    result['manual_verification_supported'] = manual
     roots = QSslConfiguration.systemCaCertificates()
     def fingerprint(c: QSslCertificate) -> str:
         return bytes(c.digest(QCryptographicHash.Algorithm.Sha256)).hex()
@@ -78,10 +89,9 @@ def backend_probe(output: Path, name: str) -> dict:
             assert len(chain) >= 2 and all(c.effectiveDate() <= now < c.expiryDate() for c in chain), filename
             hostnames = chain[0].subjectAlternativeNames().get(QSsl.AlternativeNameEntryType.DnsEntry, [])
             assert hostnames and not hostnames[0].startswith('*'), filename
-            errors = QSslCertificate.verify(chain, hostnames[0])
+            errors = QSslCertificate.verify(chain, hostnames[0]) if manual else []
             labels = [e.error().name for e in errors]
-            rows.append({'fixture': filename, 'hostname': hostnames[0], 'accepted': not errors,
-                         'trust_rejected': trust_rejected(labels), 'errors': labels})
+            rows.append({'fixture': filename, 'hostname': hostnames[0], **manual_chain_outcome(labels, supported=manual)})
     result['chains'] = rows
     connection = QSslSocket()
     connection.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
@@ -93,9 +103,10 @@ def backend_probe(output: Path, name: str) -> dict:
         'errors': errors, 'socket_error': connection.errorString(),
         'peer_sha256': fingerprint(connection.peerCertificate()) if encrypted else None}
     connection.abort()
-    result['result'] = 'BLOCKED compromised chain accepted' if any(r['accepted'] for r in rows) else (
+    result['result'] = 'INCONCLUSIVE manual certificate verification unsupported; native socket evidence required' if not manual else (
+        'BLOCKED compromised chain accepted' if any(r['accepted'] for r in rows) else (
         'PASS bootstrap default-policy probe only' if encrypted and not errors and all(r['trust_rejected'] for r in rows)
-        else 'INCONCLUSIVE default handshake or chain rejection cause')
+        else 'INCONCLUSIVE default handshake or chain rejection cause'))
     return result
 
 

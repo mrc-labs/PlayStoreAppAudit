@@ -37,7 +37,8 @@ static QJsonArray errorsJson(const QList<QSslError> &errors)
 {
     QJsonArray result;
     for (const auto &error : errors)
-        result.append(QJsonObject{{"code", int(error.error())}, {"text", error.errorString()}});
+        result.append(QJsonObject{{"code", int(error.error())}, {"text", error.errorString()},
+            {"certificate", sha(error.certificate().toDer())}, {"spki", sha(error.certificate().publicKey().toDer())}});
     return result;
 }
 static QJsonArray loadedModules()
@@ -56,6 +57,8 @@ static QJsonArray loadedModules()
 }
 static QJsonObject policy(const QString &root)
 {
+    const bool manual = QSslSocket::supportedFeatures("schannel").contains(QSsl::SupportedFeature::CertificateVerification);
+    require(!manual, "Schannel manual-verification capability changed; review required");
     QSet<QString> badKeys;
     QJsonArray keyChecks, chains, rootChecks;
     const auto metadata = QJsonDocument::fromJson(bytes(root + "/impacted-intermediates.json")).array();
@@ -86,7 +89,7 @@ static QJsonObject policy(const QString &root)
         const auto path = files.next();
         const auto chain = QSslCertificate::fromData(bytes(path));
         require(chain.size() >= 2, "chain truncated");
-        QSet<QByteArray> badCerts, actualBadCerts;
+        QSet<QByteArray> badCerts;
         QJsonArray positions;
         for (qsizetype i = 0; i < chain.size(); ++i) {
             require(chain[i].effectiveDate() <= QDateTime::currentDateTimeUtc()
@@ -99,23 +102,52 @@ static QJsonObject policy(const QString &root)
         require(!badCerts.isEmpty(), "fixture has no compromised key");
         const auto names = chain[0].subjectAlternativeNames().values(QSsl::DnsEntry);
         require(!names.isEmpty() && !names[0].startsWith('*'), "explicit fixture hostname required");
-        const auto errors = QSslCertificate::verify(chain, names[0]);
-        int blacklisted = 0;
-        for (const auto &error : errors) {
-            require(error.error() != QSslError::HostNameMismatch && error.error() != QSslError::CertificateExpired
-                && error.error() != QSslError::CertificateNotYetValid && error.error() != QSslError::NoSslSupport,
-                "unrelated error cannot qualify chain rejection");
-            if (error.error() == QSslError::CertificateBlacklisted) {
-                ++blacklisted; actualBadCerts.insert(error.certificate().toDer());
-            }
-        }
-        require(actualBadCerts == badCerts && blacklisted == badCerts.size(), "whole-chain blacklist missing or duplicated");
         chains.append(QJsonObject{{"fixture", QDir(root + "/chains").relativeFilePath(path)},
-            {"hostname", names[0]}, {"compromised_positions", positions}, {"errors", errorsJson(errors)}});
+            {"hostname", names[0]}, {"compromised_positions", positions},
+            {"scope", "Input/key membership only; manual verification unsupported"}});
     }
     require(chains.size() == 16 && rollover, "sixteen chains including rollover required");
     return {{"keys", keyChecks}, {"chains", chains}, {"healthy_roots", rootChecks},
-        {"scope", "Supplied-chain policy; no omitted/reconstructed-chain or live incident claim"}};
+        {"manual_verification_supported", false},
+        {"scope", "Input/key membership and actual common blacklist only; socket tests qualify native verification"}};
+}
+static QJsonObject incident(const QString &path)
+{
+    const auto expected = QSslCertificate::fromData(bytes(path));
+    require(expected.size() >= 2, "incident chain incomplete");
+    const auto names = expected[0].subjectAlternativeNames().values(QSsl::DnsEntry);
+    require(!names.isEmpty() && names[0].endsWith("-emudhra.we-have-a-problem.com")
+        && !names[0].contains('*') && !names[0].contains('/'), "incident hostname outside reviewed test service");
+    QSet<QString> badKeys;
+    for (const auto &cert : expected)
+        if (cert.isBlacklisted()) badKeys.insert(sha(cert.publicKey().toDer()));
+    require(!badKeys.isEmpty(), "incident has no reviewed compromised key");
+    QSslSocket socket;
+    socket.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    QList<QSslError> errors;
+    QObject::connect(&socket, &QSslSocket::sslErrors, [&errors](const QList<QSslError> &values) { errors.append(values); });
+    socket.connectToHostEncrypted(names[0], 443);
+    const bool encrypted = socket.waitForEncrypted(20000);
+    const auto actual = socket.peerCertificateChain();
+    QJsonArray peerChain;
+    for (const auto &cert : actual) peerChain.append(QJsonObject{{"certificate", sha(cert.toDer())},
+        {"spki", sha(cert.publicKey().toDer())}, {"blacklisted", cert.isBlacklisted()}});
+    QJsonObject evidence{{"hostname", names[0]}, {"encrypted", encrypted}, {"errors", errorsJson(errors)},
+        {"peer_chain", peerChain}, {"socket_error", socket.errorString()},
+        {"scope", "Actual native default-trust TLS; no HTTP request, credentials, bypass or explicit fixture roots"}};
+    socket.abort();
+    // Persist all failure details too: network/fixture failures are not security passes.
+    bool matched = !actual.isEmpty() && actual[0].toDer() == expected[0].toDer();
+    bool rejectedKey = false;
+    for (const auto &error : errors) {
+        if (error.error() == QSslError::CertificateBlacklisted)
+            rejectedKey |= badKeys.contains(sha(error.certificate().publicKey().toDer()));
+        matched &= error.error() != QSslError::HostNameMismatch && error.error() != QSslError::CertificateExpired
+            && error.error() != QSslError::CertificateNotYetValid && error.error() != QSslError::NoSslSupport;
+    }
+    evidence["result"] = !encrypted && matched && rejectedKey ? "PASS" : encrypted
+        ? "FAIL compromised peer encrypted" : "INCONCLUSIVE transport, changed fixture or missing specific compromised-key rejection";
+    return evidence;
 }
 static QJsonObject handshake(const QStringList &args)
 {
@@ -179,7 +211,8 @@ int main(int argc, char **argv)
         require(QSslSocket::setActiveBackend("schannel") && QSslSocket::supportsSsl()
             && QSslSocket::activeBackend() == "schannel", "native Schannel backend unavailable");
         require(args.size() >= 2, "mode required");
-        QJsonObject result = args[1] == "policy" ? policy(args.value(2)) : handshake(args);
+        QJsonObject result = args[1] == "policy" ? policy(args.value(2))
+            : args[1] == "incident" ? incident(args.value(2)) : handshake(args);
         result["backend"] = QSslSocket::activeBackend(); result["qt"] = qVersion();
         result["runtime_library"] = QSslSocket::sslLibraryVersionString();
         result["loaded_modules"] = loadedModules();

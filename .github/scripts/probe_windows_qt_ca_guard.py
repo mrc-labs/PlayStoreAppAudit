@@ -218,6 +218,9 @@ def main() -> None:
          '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL'], log=output / 'consumer-configure.log')
     run(['cmake', '--build', consumer_build], log=output / 'consumer-build.log')
     executable = consumer_build / 'qt_ca_consumer.exe'
+    selected = [executable, prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll',
+                prefix / 'plugins/tls/qschannelbackend.dll']
+    images = [checked_image(path, output) for path in selected]
     directives = subprocess.check_output(['dumpbin', '/nologo', '/directives',
         str(consumer_build / 'CMakeFiles/qt_ca_consumer.dir/windows_qt_ca_consumer.cpp.obj')], text=True)
     assert re.search(r'DEFAULTLIB:"?MSVCRT', directives, re.I) and not re.search(r'DEFAULTLIB:"?LIBCMT', directives, re.I)
@@ -251,14 +254,17 @@ def main() -> None:
         with tls_server(paths, leaf) as port:
             rows.append(exercise('qt-' + label, 'fixture', str(paths['ca']) if trusted else 'untrusted',
                                  str(port), hostname, protocol, str(error)))
-    selected = [executable, prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll',
-                prefix / 'plugins/tls/qschannelbackend.dll']
+    incidents = []
+    for index, path in enumerate(sorted((inputs / 'chains').rglob('*.pem'))):
+        incidents.append(exercise('qt-incident-' + str(index), 'incident', str(path)))
+    assert len(incidents) == 16
     result = {'source_sha': head, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
-        'policy': policy, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
-        'images': [checked_image(path, output) for path in selected],
+        'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
+        'images': images,
         'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
         'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}
     (output / 'qt-ca-results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+    assert all(row['result'] == 'PASS' for row in incidents), 'Native incident TLS gate failed/inconclusive; retained per-case JSON identifies cause'
     print('PASS native Schannel guard/default trust/TLS positive-negative/AMD64/MD diagnostic.', flush=True)
 
 
