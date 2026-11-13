@@ -1,4 +1,4 @@
-"""Qualify one copied-project setuptools dependency candidate; no producer adoption."""
+"""Qualify the source PEP517 dependency contract; no controlled producer-profile adoption."""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +22,20 @@ REPO = Path(__file__).resolve().parents[2]
 IMPORTS = {'setuptools': 'setuptools/', 'packaging': 'packaging/',
            'more_itertools': 'more_itertools/', 'jaraco.text': 'jaraco/text/',
            'jaraco.functools': 'jaraco/functools/', 'jaraco.context': 'jaraco/context/'}
+
+
+def candidate_metadata(original: str, spec: dict) -> str:
+    """Source metadata may use the exact already-qualified candidate."""
+    project = tomllib.loads(original)
+    selected = project['build-system']['requires']
+    if selected == spec['requirements']:
+        return original
+    if selected != ['setuptools==84.2.1', 'wheel==0.48.0']:
+        raise ValueError('Unreviewed project build requirements')
+    candidate = original.replace('requires = ["setuptools==84.2.1", "wheel==0.48.0"]', 'requires = ' + json.dumps(spec['requirements']), 1)
+    parsed = tomllib.loads(candidate)
+    assert parsed['build-system']['requires'] == spec['requirements'] and parsed['project'] == project['project']
+    return candidate
 
 
 def isolated_imports(trace: str) -> dict[str, str]:
@@ -89,10 +103,7 @@ def main() -> None:
         hashes[name] = hashlib.sha256(target.read_bytes()).hexdigest()
     original = (source / 'pyproject.toml').read_text(encoding='utf-8')
     project = tomllib.loads(original)
-    assert project['build-system']['requires'] == ['setuptools==84.2.1', 'wheel==0.48.0']
-    candidate = original.replace('requires = ["setuptools==84.2.1", "wheel==0.48.0"]', 'requires = ' + json.dumps(spec['requirements']), 1)
-    parsed = tomllib.loads(candidate)
-    assert parsed['build-system']['requires'] == spec['requirements'] and parsed['project'] == project['project']
+    candidate = candidate_metadata(original, spec)
     (source / 'pyproject.toml').write_text(candidate, encoding='utf-8')
     (output / 'candidate-pyproject.toml').write_text(candidate, encoding='utf-8')
     constraints = output / 'build-constraints.txt'
@@ -141,7 +152,7 @@ def main() -> None:
               'source_file_hashes': hashes, 'wheel': artifacts[0].name, 'wheel_sha256': hashlib.sha256(artifacts[0].read_bytes()).hexdigest(),
               'wheel_contents': 'Project package bytes/runtime requirements unchanged; build-only dependencies excluded',
               'executed_setuptools_fallbacks': [],
-              'result': 'PASS isolated diagnostic candidate only; no live pyproject/producer adoption'}
+              'result': 'PASS isolated diagnostic source-wheel test; no controlled producer-profile adoption'}
     (output / 'setuptools-build-results.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({key: value for key, value in report.items() if key != 'source_file_hashes'}, indent=2), flush=True)
 
