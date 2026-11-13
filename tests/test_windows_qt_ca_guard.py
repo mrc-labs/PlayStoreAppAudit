@@ -10,6 +10,26 @@ import probe_windows_qt_ca_guard as probe
 import pytest
 
 
+@pytest.mark.parametrize('failure', ['distribution', 'version', 'binary', 'execution', None])
+def test_stable_ninja_wheel_requires_exact_native_variant_and_bytes(failure: str | None) -> None:
+    tool = {'returncode': 0, 'version': probe.NINJA_WHEEL['native_version'] + '\n',
+            'sha256': probe.NINJA_WHEEL['binary_sha256']}
+    distribution = '1.13.2'
+    if failure == 'distribution':
+        distribution = '1.13.2rc1'
+    elif failure == 'version':
+        tool['version'] = '1.13.2.git.unreviewed'
+    elif failure == 'binary':
+        tool['sha256'] = '0' * 64
+    elif failure == 'execution':
+        tool['returncode'] = 1
+    if failure:
+        with pytest.raises(ValueError, match='Unqualified native Ninja'):
+            probe.qualify_ninja_identity(tool, distribution)
+    else:
+        probe.qualify_ninja_identity(tool, distribution)
+
+
 @pytest.mark.parametrize('name', ['../escape.pem', '/escape.pem', 'C:/escape.pem', r'..\escape.pem'])
 def test_chain_archive_traversal_is_rejected_before_extraction(tmp_path: Path, name: str) -> None:
     with zipfile.ZipFile(tmp_path / 'chains.zip', 'w') as archive:

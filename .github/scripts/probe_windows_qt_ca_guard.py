@@ -15,6 +15,7 @@ import sysconfig
 import tarfile
 import urllib.request
 import zipfile
+from importlib.metadata import version
 from pathlib import Path, PurePosixPath
 
 from build_windows_runtime_pilot import native_loader_preflight, patch_source, run
@@ -24,6 +25,22 @@ from verify_native_runtime_pilot import certificate_material, default_trust_hand
 from verify_windows_runtime_pilot import pe_versions, validate_imports, validate_qtcore_imports
 
 REPO = Path(__file__).resolve().parents[2]
+NINJA_WHEEL = {
+    'name': 'ninja-1.13.2-py3-none-win_amd64.whl',
+    'url': 'https://files.pythonhosted.org/packages/3f/dd/3766b5f4d32e8a9b97d195496b0b01fbbe2e1a41669dab0cd6492a6ce199/ninja-1.13.2-py3-none-win_amd64.whl',
+    'sha256': '1293f4078278b70d0ee4b6cc8f3a9e030656c9b2f59909970343c4fe76070118',
+    'authority': 'https://pypi.org/pypi/ninja/1.13.2/json',
+    'binary_sha256': 'a7f084e8ee37bff0872aa8bd3d17cc19632d2a37734f6c242dd3dee22d77c0b4',
+    'native_version': '1.13.2.git.kitware.jobserver-pipe-1',
+}
+
+
+def qualify_ninja_identity(tool: dict, distribution_version: str) -> None:
+    """The stable Python wheel includes the documented Kitware jobserver variant."""
+    if (distribution_version != '1.13.2' or tool['returncode'] != 0
+            or tool['version'].strip() != NINJA_WHEEL['native_version']
+            or tool['sha256'] != NINJA_WHEEL['binary_sha256']):
+        raise ValueError('Unqualified native Ninja distribution/version/bytes: ' + repr(tool))
 
 
 def source_contract() -> tuple[dict, dict]:
@@ -121,7 +138,19 @@ def main() -> None:
     print('Native tools before version guards:', json.dumps(tools), flush=True)
     assert '19.44.' in tools['cl']['version'], tools['cl']
     assert tools['cmake']['returncode'] == 0 and '4.4.4' in tools['cmake']['version'], tools['cmake']
-    assert tools['ninja']['returncode'] == 0 and tools['ninja']['version'].strip() == '1.13.2', tools['ninja']
+    qualify_ninja_identity(tools['ninja'], version('ninja'))
+    ninja_original = output / NINJA_WHEEL['name']
+    verified_download(NINJA_WHEEL, ninja_original)
+    with zipfile.ZipFile(ninja_original) as wheel:
+        original = wheel.read('ninja-1.13.2.data/scripts/ninja.exe')
+        assert hashlib.sha256(original).hexdigest() == tools['ninja']['sha256']
+        tool_legal = output / 'ninja-original-licenses'
+        tool_legal.mkdir()
+        licenses = [name for name in wheel.namelist() if '.dist-info/licenses/' in name and not name.endswith('/')]
+        assert licenses, 'Original Ninja wheel licenses absent'
+        for index, name in enumerate(licenses):
+            (tool_legal / (str(index) + '-' + Path(name).name)).write_bytes(wheel.read(name))
+    (output / 'ninja-original-provenance.json').write_text(json.dumps(NINJA_WHEEL, indent=2), encoding='utf-8')
     defaults = default_trust_handshake()
     windows_roots = sorted(hashlib.sha256(cert).hexdigest() for cert, encoding, trust in ssl.enum_certificates('ROOT')
                            if encoding == 'x509_asn')

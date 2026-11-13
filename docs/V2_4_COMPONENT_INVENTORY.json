@@ -31,7 +31,30 @@
       "Original source/patch/base/post, legal, actual consumer/framework/plugin PE retention"
     ],
     "local_validation": "65 focused PASS; Ruff/compile/PowerShell syntax; exact official Qt archive/source and Schannel feature contract checked",
-    "impact": "Only opt-in existing Windows diagnostic routing changes; other full source-profile builders/manifests and Linux effective inputs unchanged. Full dual-provider/runtime/PySide/native/package validation remains required."
+    "impact": "Only opt-in existing Windows diagnostic routing changes; other full source-profile builders/manifests and Linux effective inputs unchanged. Full dual-provider/runtime/PySide/native/package validation remains required.",
+    "prerequisite_gate": {
+      "runs": [
+        43413388219,
+        43413802348
+      ],
+      "sources": [
+        "6785ef140bf4e123afc9f38d0b924128f6542325",
+        "314e0158f3426b6a391b54addfceb78692640ef7"
+      ],
+      "result": "FAIL before Qt download; diagnostic assumed a bare native Ninja version",
+      "actual_msvc": "19.44.35229",
+      "actual_cmake": "4.4.4",
+      "actual_ninja": "1.13.2.git.kitware.jobserver-pipe-1",
+      "official_wheel_sha256": "1293f4078278b70d0ee4b6cc8f3a9e030656c9b2f59909970343c4fe76070118",
+      "native_image_sha256": "a7f084e8ee37bff0872aa8bd3d17cc19632d2a37734f6c242dd3dee22d77c0b4",
+      "correction": "Require exact stable distribution/native variant/hash, retain official wheel and licenses and compare actual executable bytes. No component/PATH fallback or weakened unknown-version check.70 targeted PASS."
+    },
+    "source_quality": {
+      "run": 43413391889,
+      "source": "6785ef140bf4e123afc9f38d0b924128f6542325",
+      "tests": 2003,
+      "result": "SUCCESS exact checkout verified"
+    }
   },
   "setuptools_external_candidate_2026_11_13": {
     "date": "2026-11-13",
