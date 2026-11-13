@@ -77,7 +77,7 @@ jobs:
       - name: Validate PowerShell helper syntax
         shell: pwsh
         run: |
-          foreach ($helper in @('scripts/export_chat_handoff.ps1', '.github/scripts/build_windows_standalone.ps1', '.github/scripts/provision_windows_arm64_openssl.ps1', '.github/scripts/build_windows_runtime_pilot.ps1', '.github/scripts/probe_windows_arm64_runtime.ps1')) {
+          foreach ($helper in @('scripts/export_chat_handoff.ps1', '.github/scripts/build_windows_standalone.ps1', '.github/scripts/provision_windows_arm64_openssl.ps1', '.github/scripts/build_windows_runtime_pilot.ps1', '.github/scripts/verify_windows_native_chain.ps1', '.github/scripts/probe_windows_arm64_runtime.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(

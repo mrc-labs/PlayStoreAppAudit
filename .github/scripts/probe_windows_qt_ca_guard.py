@@ -60,7 +60,7 @@ def verify_compiled_intake(metadata: dict, data: bytes, consumer: bytes, expecte
         raise ValueError('Changed C++ consumer requires a new native compilation')
 
 
-def replay_compiled_consumer(work: Path, output: Path, head: str) -> None:
+def replay_compiled_consumer(work: Path, output: Path, head: str, *, native_rollover: bool = False) -> None:
     """Retest exactly one retained compiled diagnostic after a Python-only harness fix."""
     api = '/repos/mrc-labs/PlayStoreAppAudit/actions/artifacts/' + str(COMPILED_ARTIFACT)
     metadata = json.loads(subprocess.check_output(['gh', 'api', api], text=True, timeout=60))
@@ -108,7 +108,7 @@ def replay_compiled_consumer(work: Path, output: Path, head: str) -> None:
         'scope': 'Diagnostic execution replay only; no rebuilding, final candidate, producer adoption or artifact relabeling',
     }, indent=2), encoding='utf-8')
     exercise_schannel_consumer(executable, prefix, output, compiled / 'inputs', head, images,
-                               compiled_source=COMPILED_SOURCE)
+                               compiled_source=COMPILED_SOURCE, native_rollover=native_rollover)
 
 
 def source_contract() -> tuple[dict, dict]:
@@ -185,8 +185,36 @@ def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls
     assert executable.resolve() in modules
 
 
+def validate_native_rollover(report: dict, policy: dict, head: str) -> set[str]:
+    """Require native distrust on the exact ancestor independently measured by Qt."""
+    if report['execution_sha'] != head or report['architecture'] != 'X64':
+        raise ValueError('Native chain execution identity mismatch')
+    positive = report['positive']
+    if (not all(positive[k] for k in ('authenticated', 'encrypted', 'chain_accepted'))
+            or positive['host'] != 'www.python.org' or positive['protocol'] not in {'Tls12', 'Tls13'}
+            or not positive['peer_sha256']):
+        raise ValueError('Native default-trust positive missing')
+    for row in (report, positive, *report['rollover']):
+        if (row['trust_mode'], row['verification_flags'], row['revocation']) != ('System', 'NoFlag', 'Online'):
+            raise ValueError('Native chain verification/trust policy changed')
+    expected = {r['hostname'] for r in policy['chains'] if 'rollover/' in r['fixture']}
+    if len(expected) != 2 or {r['hostname'] for r in report['rollover']} != expected or len(report['rollover']) != 2:
+        raise ValueError('Two exact original rollover cases required')
+    qt_certificates = {(r['certificate'], r['spki']) for r in policy['keys'] if r['blacklisted']}
+    for row in report['rollover']:
+        if row['accepted'] or not row['hostname_matches'] or not row['validity_checked'] or row['custom_trust_count']:
+            raise ValueError('Native rollover accepted or fixture/custom trust invalid')
+        if not row['elements'] or row['elements'][0]['sha256'] != row['leaf_sha256']:
+            raise ValueError('Native chain leaf does not match the original fixture')
+        ancestors = [r for r in row['elements'][2:] if (r['sha256'], r['spki_sha256']) in qt_certificates
+                     and any(s in {'Revoked', 'ExplicitDistrust'} for s in r['status'])]
+        if not ancestors or row['result'] != 'PASS native chain rejection':
+            raise ValueError('Specific native ancestor distrust / measured Qt blacklist missing')
+    return expected
+
+
 def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inputs: Path, head: str,
-                              images: list[dict], *, compiled_source: str) -> None:
+                              images: list[dict], *, compiled_source: str, native_rollover: bool = False) -> None:
     os.environ['PATH'] = str(prefix / 'bin') + os.pathsep + os.environ['PATH']
     os.environ['QT_PLUGIN_PATH'] = str(prefix / 'plugins')
     for variable in ('SSL_CERT_FILE', 'SSL_CERT_DIR', 'QT_SSL_BACKEND'):
@@ -220,13 +248,31 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
     for index, path in enumerate(sorted((inputs / 'chains').rglob('*.pem'))):
         incidents.append(exercise('qt-incident-' + str(index), 'incident', str(path)))
     assert len(incidents) == 16
+    native = None
+    offline_hosts: set[str] = set()
+    if native_rollover:
+        native_path = output / 'native-rollover-chain.json'
+        run(['pwsh', '-NoProfile', '-File', REPO / '.github/scripts/verify_windows_native_chain.ps1',
+             '-InputsPath', inputs, '-OutputPath', native_path], log=output / 'native-rollover-chain.log')
+        native = json.loads(native_path.read_text(encoding='utf-8-sig'))
+        offline_hosts = validate_native_rollover(native, policy, head)
     result = {'source_sha': head, 'compiled_source_sha': compiled_source, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
         'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
-        'images': images,
+        'images': images, 'native_rollover_chain': native,
+        'qualification_route': '14 native Qt sockets plus two native Windows chain-engine checks; no rollover TLS-handshake claim'
+                               if native_rollover else '16 native Qt socket checks required',
         'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
         'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}
     (output / 'qt-ca-results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
-    assert all(row['result'] == 'PASS' for row in incidents), 'Native incident TLS gate failed/inconclusive; retained per-case JSON identifies cause'
+    for row in incidents:
+        if row['result'] == 'PASS':
+            continue
+        # This explicit profile handles only the two known offline fixtures via
+        # the independently checked Windows chain engine. Never excuse an
+        # accepted/changed peer, expiry, hostname error or a generic TLS failure.
+        assert (row['hostname'] in offline_hosts and not row['encrypted'] and not row['peer_chain']
+                and not row['errors'] and row['socket_error'] == 'Host not found'), (
+                    'Native incident TLS gate failed/inconclusive', row['hostname'], row['result'])
     print('PASS native Schannel guard/default trust/TLS positive-negative/AMD64/MD diagnostic.', flush=True)
 
 
@@ -235,6 +281,7 @@ def main() -> None:
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--prerequisites-only', action='store_true')
     parser.add_argument('--replay-compiled', action='store_true')
+    parser.add_argument('--native-rollover', action='store_true')
     args = parser.parse_args()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     assert re.fullmatch('[0-9a-f]{40}', head) and head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
@@ -249,8 +296,9 @@ def main() -> None:
     qt, guard = source_contract()
     if args.replay_compiled:
         assert not args.prerequisites_only
-        replay_compiled_consumer(work, output, head)
+        replay_compiled_consumer(work, output, head, native_rollover=args.native_rollover)
         return
+    assert not args.native_rollover, 'Native rollover profile requires the pinned compiled replay'
     tools = {}
     for name, flags in [('cl', ['/?']), ('link', ['/?']), ('cmake', ['--version']), ('ninja', ['--version'])]:
         path = Path(shutil.which(name) or '')

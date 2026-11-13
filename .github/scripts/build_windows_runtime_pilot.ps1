@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$PrerequisitesOnly, [switch]$QtCaGuardOnly, [switch]$QtCaReplayOnly)
+param([Parameter(Mandatory = $true)][string]$WorkRoot, [switch]$PrerequisitesOnly, [switch]$QtCaGuardOnly, [switch]$QtCaReplayOnly, [switch]$NativeRollover)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:RUNNER_ARCH -ne 'X64' -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
@@ -20,5 +20,6 @@ $pilotScript = if ($QtCaGuardOnly) { '.github/scripts/probe_windows_qt_ca_guard.
 $pilotArguments = @($pilotScript, '--work-root', $WorkRoot)
 if ($PrerequisitesOnly) { $pilotArguments += '--prerequisites-only' }
 if ($QtCaReplayOnly) { $pilotArguments += '--replay-compiled' }
+if ($NativeRollover) { $pilotArguments += '--native-rollover' }
 python @pilotArguments
 if ($LASTEXITCODE -ne 0) { throw 'Windows diagnostic source-stack pilot failed.' }

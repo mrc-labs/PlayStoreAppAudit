@@ -268,7 +268,75 @@
       ],
       "incident_records": "Full14 pinned-leaf/specific compromised-key rejection records and two exact DNS-only outcomes remain in immutable artifact14083093378; worker verifies all records. No duplicated loaded-module/root lists in inventory."
     },
-    "minimum_next_action": "Supported native Windows chain-engine verification of the two retained rollover PEMs with actual system trust/hostname/date/revocation and compromised-key evidence, paired explicitly with actual Qt blacklist/ancestor memberships and TLS controls; or reviewed upstream live fixtures. No Qt rebuild required. Do not substitute unsupported Qt manual API or count DNS failures."
+    "minimum_next_action": "Supported native Windows chain-engine verification of the two retained rollover PEMs with actual system trust/hostname/date/revocation and compromised-key evidence, paired explicitly with actual Qt blacklist/ancestor memberships and TLS controls; or reviewed upstream live fixtures. No Qt rebuild required. Do not substitute unsupported Qt manual API or count DNS failures.",
+    "native_rollover_route_2026_11_14": {
+      "state": "Prepared; local native API feasibility PASS, CI pending",
+      "profile": "windows-ca-native:14 real Qt TLS incidents plus two native Windows chain-engine checks; no16-handshake claim",
+      "provider": "Windows native X509Chain/CryptoAPI via existing PowerShell host",
+      "local_host": {
+        "powershell": "7.7.0",
+        "runtime": ".NET 11.0.0",
+        "architecture": "X64",
+        "scope": "Local feasibility only, not CI qualification"
+      },
+      "local_positive": {
+        "protocol": "Tls13",
+        "trust_mode": "System",
+        "authenticated": true,
+        "encrypted": true,
+        "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+        "scope": "Ordinary defaults, no explicit CA or validation callback",
+        "chain_accepted": true,
+        "host": "www.python.org",
+        "revocation": "Online",
+        "verification_flags": "NoFlag"
+      },
+      "local_rollover": [
+        {
+          "hostname": "dv-g3b-aaa-noct-rollover-emudhra.we-have-a-problem.com",
+          "accepted": false,
+          "status": [
+            "PartialChain",
+            "Revoked",
+            "RevocationStatusUnknown",
+            "OfflineRevocation",
+            "ExplicitDistrust"
+          ],
+          "native_ancestor": {
+            "status": [
+              "Revoked",
+              "ExplicitDistrust"
+            ],
+            "sha256": "45a883f349aedfd5f3a649b5498ffb121712ba8b448f3f2a91dbc5a766fcddbe",
+            "spki_sha256": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105"
+          },
+          "custom_trust_count": 0
+        },
+        {
+          "hostname": "dv-g3b-noct-rollover-emudhra.we-have-a-problem.com",
+          "accepted": false,
+          "status": [
+            "PartialChain",
+            "Revoked",
+            "RevocationStatusUnknown",
+            "OfflineRevocation",
+            "ExplicitDistrust"
+          ],
+          "native_ancestor": {
+            "status": [
+              "Revoked",
+              "ExplicitDistrust"
+            ],
+            "sha256": "42c4accd12c4f59597925e1a08a7a90102608543809308d50ec427e118ba1493",
+            "spki_sha256": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105"
+          },
+          "custom_trust_count": 0
+        }
+      ],
+      "policy": "System/NoFlag/Online/serverAuth; extra chain material in memory, no custom root/store write/callback. Must observe specific native distrust at exact Qt-measured DER/SPKI ancestor index>=2; absent positive, unknown revocation, wrong hostname/date or accepted peer fails.",
+      "unchanged": "Four compiled0cf4c51 PE bytes, original source/patch/runtime selections and Linux-used functions; no producer adoption",
+      "preflight": "101 targeted PASS, Ruff/compile/PS syntax. Existing old16-socket profile remains strict."
+    }
   },
   "setuptools_external_candidate_2026_11_13": {
     "date": "2026-11-13",

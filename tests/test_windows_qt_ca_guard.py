@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import io
 import json
@@ -148,3 +149,51 @@ def test_rejected_tls_can_release_schannel_library_but_requires_system_sspi(tmp_
     result['loaded_modules'] = [str(tmp_path / 'foreign/secur32.dll') if p.name == 'secur32.dll' else str(p) for p in modules]
     with pytest.raises(AssertionError, match='Foreign native'):
         probe.validate_loaded_origins(result, prefix, executable)
+@pytest.mark.parametrize('failure', [None, 'identity', 'architecture', 'positive', 'hostname', 'validity',
+                                   'accepted', 'custom_trust', 'revocation', 'ancestor', 'reason', 'qt_key', 'case', 'leaf'])
+def test_native_rollover_requires_system_policy_positive_and_exact_distrusted_ancestor(failure) -> None:
+    settings = {'trust_mode': 'System', 'verification_flags': 'NoFlag', 'revocation': 'Online'}
+    first = {**settings, 'hostname': 'first', 'accepted': False, 'hostname_matches': True,
+             'validity_checked': True, 'custom_trust_count': 0, 'leaf_sha256': 'leaf',
+             'elements': [{'sha256': 'leaf'}, {'sha256': 'new-issuer'},
+                          {'sha256': 'bad-cert', 'spki_sha256': 'bad-key', 'status': ['Revoked', 'ExplicitDistrust']}],
+             'result': 'PASS native chain rejection'}
+    second = copy.deepcopy(first)
+    second['hostname'] = 'second'
+    report = {**settings, 'execution_sha': 'head', 'architecture': 'X64', 'rollover': [first, second],
+              'positive': {**settings, 'authenticated': True, 'encrypted': True, 'chain_accepted': True,
+                           'host': 'www.python.org', 'protocol': 'Tls13', 'peer_sha256': 'peer'}}
+    policy = {'chains': [{'hostname': 'first', 'fixture': 'rollover/first.pem'},
+                         {'hostname': 'second', 'fixture': 'rollover/second.pem'}],
+              'keys': [{'certificate': 'bad-cert', 'spki': 'bad-key', 'blacklisted': True}]}
+    if failure == 'identity':
+        report['execution_sha'] = 'other'
+    elif failure == 'architecture':
+        report['architecture'] = 'ARM64'
+    elif failure == 'positive':
+        report['positive']['chain_accepted'] = False
+    elif failure == 'hostname':
+        first['hostname_matches'] = False
+    elif failure == 'validity':
+        first['validity_checked'] = False
+    elif failure == 'accepted':
+        first['accepted'] = True
+    elif failure == 'custom_trust':
+        first['custom_trust_count'] = 1
+    elif failure == 'revocation':
+        first['revocation'] = 'NoCheck'
+    elif failure == 'ancestor':
+        first['elements'] = first['elements'][:2]
+    elif failure == 'reason':
+        first['elements'][2]['status'] = ['OfflineRevocation']
+    elif failure == 'qt_key':
+        first['elements'][2]['spki_sha256'] = 'unmeasured-key'
+    elif failure == 'case':
+        second['hostname'] = 'unreviewed'
+    elif failure == 'leaf':
+        first['leaf_sha256'] = 'different'
+    if failure:
+        with pytest.raises(ValueError):
+            probe.validate_native_rollover(report, policy, 'head')
+    else:
+        assert probe.validate_native_rollover(report, policy, 'head') == {'first', 'second'}
