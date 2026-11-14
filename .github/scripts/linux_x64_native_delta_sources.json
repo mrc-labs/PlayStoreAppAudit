@@ -133,6 +133,6 @@
   },
   "qt_http_manifest": {
     "path": "qt_http_security_sources.json",
-    "canonical_sha256": "71639b779f2fbeee5d54d1b3b705f8030a08846b9dc8010d539a7a5235c90479"
+    "canonical_sha256": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
   }
 }

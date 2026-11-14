@@ -74,24 +74,28 @@ def test_limits(source: Path, prefix: Path, build: Path, evidence: Path) -> dict
     cmake = ('cmake_minimum_required(VERSION 3.22)\n'
              'project(QtHttpLimits LANGUAGES CXX)\n'
              'set(CMAKE_AUTOMOC ON)\n'
-             'find_package(Qt6 6.12.0 EXACT REQUIRED COMPONENTS Core Network Test)\n'
+             'find_package(Qt6 6.12.0 EXACT REQUIRED COMPONENTS Core CorePrivate Network NetworkPrivate Test)\n'
              f'add_executable(qt_http_limits "{(source / TEST).resolve().as_posix()}")\n'
              'target_link_libraries(qt_http_limits PRIVATE Qt6::CorePrivate Qt6::NetworkPrivate Qt6::Test)\n')
     (build / 'CMakeLists.txt').write_text(cmake, encoding='utf-8')
     evidence.mkdir(parents=True, exist_ok=True)
     commands = [
         ['cmake', '-S', str(build), '-B', str(build / 'out'), '-GNinja', '-DCMAKE_BUILD_TYPE=Release',
-         '-DCMAKE_PREFIX_PATH=' + str(prefix)],
+         '-DCMAKE_PREFIX_PATH=' + str(prefix) + ';' + str(prefix.parent),
+         '-DOPENSSL_ROOT_DIR=' + str(prefix.parent)],
         ['cmake', '--build', str(build / 'out'), '--parallel', '2'],
         [str(build / 'out/qt_http_limits'), '-o', str(evidence / 'qt-http-tests.xml') + ',junitxml',
          '-o', str(evidence / 'qt-http-tests.txt') + ',txt'],
     ]
     for number, command in enumerate(commands):
         with (evidence / f'qt-http-command-{number}.log').open('w', encoding='utf-8') as log:
-            subprocess.run(command, check=True, stdout=log, stderr=subprocess.STDOUT)
+            completed = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+        if completed.returncode:
+            print('\n'.join((evidence / f'qt-http-command-{number}.log').read_text(encoding='utf-8', errors='replace').splitlines()[-80:]), flush=True)
+        completed.check_returncode()
         if number == 0:
             cache = (build / 'out/CMakeCache.txt').read_text(encoding='utf-8')
-            for component in ['Qt6', 'Qt6Core', 'Qt6Network', 'Qt6Test']:
+            for component in ['Qt6', 'Qt6Core', 'Qt6CorePrivate', 'Qt6Network', 'Qt6NetworkPrivate', 'Qt6Test']:
                 selected = next(line.split('=', 1)[1] for line in cache.splitlines()
                                 if line.startswith(component + '_DIR:PATH='))
                 if not Path(selected).resolve().is_relative_to(prefix.resolve()):

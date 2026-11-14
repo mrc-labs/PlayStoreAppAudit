@@ -138,8 +138,27 @@ def main() -> None:
     shutil.copy2(build / 'CMakeCache.txt', output / 'qtbase-CMakeCache.txt')
     run(['cmake', '--build', '.', '--parallel', '2'], 'qt-build', build)
     run(['cmake', '--install', '.'], 'qt-install', build)
+    # Retain the compiled diagnostic SDK before harness configuration/execution.
+    # A later harness-only fix can reuse these exact bytes instead of rebuilding.
+    sdk_files = {}
+    for path in sorted(prefix.rglob('*')):
+        relative = path.relative_to(prefix).as_posix()
+        if path.is_symlink():
+            assert path.resolve().is_relative_to(prefix), 'Diagnostic SDK symlink escapes private prefix'
+            sdk_files[relative] = {'symlink': os.readlink(path)}
+        elif path.is_file():
+            sdk_files[relative] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    sdk_archive = output / 'qt-http-sdk.tar.gz'
+    with tarfile.open(sdk_archive, 'w:gz', compresslevel=1) as archive:
+        archive.add(prefix, arcname='prefix')
+    (output / 'qt-http-sdk-provenance.json').write_text(json.dumps({
+        'source_sha': head, 'scope': 'Compiled private Core/Network diagnostic SDK only; tests/acceptance pending',
+        'archive_sha256': hashlib.sha256(sdk_archive.read_bytes()).hexdigest(),
+        'files': sdk_files, 'qt_configuration_sha256': hashlib.sha256(cache.encode()).hexdigest(),
+    }, indent=2) + '\n', encoding='utf-8')
     os.environ['LD_LIBRARY_PATH'] = str(prefix / 'qt/lib') + ':' + str(prefix / 'lib')
     os.environ['QT_PLUGIN_PATH'] = str(prefix / 'qt/plugins')
+    os.environ['PKG_CONFIG_PATH'] = env['PKG_CONFIG_PATH']
     regression = test_limits(qt, prefix / 'qt', work / 'http-tests', output)
     consumer = work / 'consumer'
     consumer.mkdir()

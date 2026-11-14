@@ -60,5 +60,13 @@
   "application_applicability": "QtNetwork QNetworkAccessManager is used by app_icon_loader. Existing transfer timeout and body download-progress cap do not enforce early response status/header accumulation limits. No confirmed application denial-of-service or higher upstream severity is claimed.",
   "validation": "Execute exact patched original Qt test against rebuilt private QtNetwork; preserve upstream accepted boundary/CRLF/LF cases, early truncated-header rejection/cleared fragment and status line limits. Source replay alone is not native acceptance.",
   "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised. Disable unrelated documentation snippets explicitly via QT_BUILD_DOC_SNIPPETS=OFF (documented QtBuildOptionsHelpers option); the Qt parser regression suite stays enabled.",
-  "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds"
+  "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds",
+  "private_test_components": [
+    "Core",
+    "CorePrivate",
+    "Network",
+    "NetworkPrivate",
+    "Test"
+  ],
+  "private_component_authority": "https://doc.qt.io/qt-6/qtcoreprivate-module.html"
 }

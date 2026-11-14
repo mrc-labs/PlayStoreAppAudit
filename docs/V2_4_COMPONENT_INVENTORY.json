@@ -30,7 +30,42 @@
       "authority": "https://github.com/mity/md4c/blob/v0.6.0/src/md4c.h",
       "reason": "Demonstrated run43554126327 compiler guard failure; MD4C0.6 GitHub aggregate adds admonitions/footnotes and MD_FLAG_FOOTNOTES aliases Qt-owned FeatureFrontMatter0x100000. Preserve fixed Qt public dialect, all individual compile assertions, and Qt front-matter handling; never forward Qt-only flag to provider. No new Markdown feature."
     },
-    "state": "Minimal reviewed source adaptation/local actual-parser flags PASS; native QtGui/PySide/GUI integration pending. No unchanged Python/provider/cffi retest required."
+    "state": "Native Jammy actual-parser flag prerequisite PASS; rebuilt QtGui/PySide/GUI adoption pending; unchanged Python/provider/cffi evidence reused.",
+    "native_linux_prerequisite": {
+      "source_sha": "d89679f8b69e3d36d3529214f95b77b11951eabd",
+      "run": 43559336625,
+      "artifact": 14099267218,
+      "zip_sha256": "41e739315629859bc34b78f608f2776873894b70c7619a7cec5fc4a096b90c49",
+      "zip_bytes": 51711760,
+      "official_sources": {
+        "md4c-0.6.0.tar.gz": "4d151298125a81da3b2efa2e0eed8bdb7a9318569804e4fa4d7a2375ab83ef70",
+        "qtbase-everywhere-src-6.12.0.tar.xz": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307"
+      },
+      "original_legal_texts_matched": 40,
+      "other_host_legal_texts": [],
+      "patch_sha256": "b4780161063d54acfb11db27a94a78578d0a6e3f1e780214b9fe81ee1da565ef",
+      "consumer_sha256": "619d9e9697778df259b51984be20375c2c07541de5dc71e1dce4174a933fba36",
+      "generated_flags_sha256": "c2e0e52e4c32ce55e6d092d1a98780550da0d1154a5285cf5428cfa3e2a3d696",
+      "native_image_sha256": "b98f152b87c6e8576949c858093dcede08d39642fa3d0e575a19de435efd6565",
+      "version_needs": [
+        "CXXABI_1.3",
+        "GCC_3.0",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.9",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.34",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "result": "PASS original collision/Qt-only mask/CommonMark/reference/no-admonitions/GFM table-task-strike",
+      "scope": "Actual MD4C0.6 and exact guarded Qt flags; not QtGui/binding/GUI acceptance"
+    }
   },
   "qt_http_security_2026_11_14": {
     "scope": "Controlled Qt6.12.0 official HTTP resource-limit security backports; not unchanged official Qt",
@@ -110,7 +145,22 @@
         "zip_bytes": 108464391,
         "zip_sha256": "d8f2e587efc2462b4393e5a2295b1ce95dd17c9b0b23134da1b606a897721af7",
         "result": "FAIL unrelated developer documentation snippet includes intentionally absent QtGui; supported QT_BUILD_DOC_SNIPPETS=OFF excludes only documentation build, not security tests; original parser patches compile, native tests not reached"
+      },
+      {
+        "run": 43559067853,
+        "source_sha": "948292ca83965af739f1487bc126ed7cf116e9b5",
+        "artifact": 14099873361,
+        "zip_bytes": 108509019,
+        "zip_sha256": "7ea46399ba4cce69f2b5559a32bd23d12fd4596255306a793a89479d30462325",
+        "result": "Core/Network/Test build/install PASS; original-test wrapper configuration FAIL missing explicit CorePrivate/NetworkPrivate package components; correct harness only, no native runtime acceptance"
       }
+    ],
+    "private_test_components": [
+      "Core",
+      "CorePrivate",
+      "Network",
+      "NetworkPrivate",
+      "Test"
     ]
   },
   "r08_partial_runtime_evidence_2026_11_14": {
