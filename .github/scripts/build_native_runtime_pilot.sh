@@ -307,6 +307,7 @@ with archive.open('rb') as stream:
 (output / (label + '-provenance.json')).write_text(json.dumps({
     'source_sha': os.environ['GITHUB_SHA'], 'original_prefix': str(prefix),
     'scope': 'Internal intermediate diagnostic SDK; not a candidate or producer input',
+    'capture_stage': os.environ.get('PILOT_SDK_STAGE', 'qtbase-and-qtsvg-installed'),
     'archive_sha256': digest, 'files': files}, indent=2) + '\n', encoding='utf-8')
 print('Retained intermediate SDK:', label, archive.stat().st_size, digest, flush=True)
 PYSDK
@@ -332,6 +333,10 @@ cmake --build . --parallel 2
 cmake --install .
 cp CMakeCache.txt "$evidence/qtbase-CMakeCache.txt"
 cp config.summary "$evidence/qtbase-config.summary"
+if [ ${#reuse_flags[@]} != 0 ]; then
+  export PILOT_SDK_STAGE=qtbase-installed
+  retain_sdk qt-sdk
+fi
 bash "$repo/.github/scripts/probe_linux_x64_qt_sqlite.sh"
 mkdir "$work/qtsvg-build"
 cd "$work/qtsvg-build"
@@ -340,7 +345,10 @@ cd "$work/qtsvg-build"
 cmake --build . --parallel 2
 cmake --install .
 
-if [ ${#reuse_flags[@]} != 0 ]; then retain_sdk qt-sdk; fi
+if [ ${#reuse_flags[@]} != 0 ]; then
+  export PILOT_SDK_STAGE=qtbase-and-qtsvg-installed
+  retain_sdk qt-sdk
+fi
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 export LD_LIBRARY_PATH="$prefix/qt/lib:$LLVM_INSTALL_DIR/lib:$LD_LIBRARY_PATH"

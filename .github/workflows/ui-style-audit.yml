@@ -719,7 +719,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
-          path: pilot-evidence/
+          # Original unchanged-suite ZIP is already retained at14098850639;
+          # keep its hash/provenance and exact XML here, avoiding duplicate278MB.
+          path: |
+            pilot-evidence/
+            !pilot-evidence/original-python-14098850639.zip
           if-no-files-found: error
           retention-days: 0
 

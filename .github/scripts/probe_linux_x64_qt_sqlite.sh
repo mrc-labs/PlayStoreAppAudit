@@ -3,7 +3,7 @@
 set -euo pipefail
 work=${PILOT_WORK:?}
 evidence=${PILOT_EVIDENCE:?}
-prefix="$work/prefix"
+prefix="${PILOT_PREFIX:-$work/prefix}"
 probe="$work/qt-sqlite-probe"
 mkdir -p "$probe"
 cat > "$probe/CMakeLists.txt" <<'CMAKE'
