@@ -1,5 +1,9 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Demonstrated ADB libusb prerequisite (2026-11-14)
+
+Native ADB43621967021/sourcea39077e passes source/offline-Rust/configure but stops on missing LIBUSB_SPEED_SUPER_PLUS_X2/SSP descriptor APIs in Noble's system libusb. No runtime/ABI PASS or producer adoption is claimed. The minimal supported remedy is the port's existing external pkg-config interface with official stable libusb1.0.30, private shared linkage and original LGPL/source texts; no ADB/vendor patch or OS-library replacement. The corrected profile first configures/builds/checks libusb and executes a native API/version consumer, then builds adb and inspects its actual loaded dependency ABI. Hash-bound source and logs remain distinct from the failed run; libadbmdns stays enabled. Other target/runtime evidence is unaffected.
+
 ## Selected Rust graph reconciliation (2026-11-14)
 
 R11 now resolves the current official Ruff0.17.5 and cryptography50.0.2 source lockfiles from their hash-bound PyPI sdists, using the actual Maturin package roots. A single source-analysis job selects normal/build edges for all six target triples with Cargo1.99.1 and --locked; no vendor/application compilation or target-execution claim. Development-only workspace records are excluded from each selected set. This replaces inference from the historical Ruff0.17.2 workspace; it neither rewrites those observations nor declares all lock entries deployed. Exact selected graph/advisory/support decisions remain required after the resolver result. No Cargo update or unsupported dependency override is applied by this diagnostic.

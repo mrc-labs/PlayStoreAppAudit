@@ -14,6 +14,13 @@
       "name": "android-tools-37.0.0p1-vendor.tar.xz",
       "url": "https://github.com/nmeum/android-tools/releases/download/37.0.0p1/android-tools-37.0.0p1-vendor.tar.xz",
       "sha256": "0ab5d7b24cb20365f9dfeddace6720095b2f4a86e4eb69ee2cfc3465115c4f9a"
+    },
+    {
+      "name": "libusb-1.0.30.tar.bz2",
+      "url": "https://github.com/libusb/libusb/releases/download/v1.0.30/libusb-1.0.30.tar.bz2",
+      "sha256": "fea36f34f9156400209595e300840767ab1a385ede1dc7ee893015aea9c6dbaf",
+      "authority": "https://github.com/libusb/libusb/releases/tag/v1.0.30",
+      "reason": "Native43621967021 proves Noble libusb1.0.27 lacks SUPER_PLUS_X2 and SSP capability APIs needed by stable adb37; use supported external pkg-config integration with private shared current1.0.30, no source patch."
     }
   ],
   "native_contract": "Ubuntu24.04 AArch64/GNU13; GLIBC<=2.38, GLIBCXX<=3.4.32; native Rust1.99.1; no x64 SDK, emulation or system trust changes",

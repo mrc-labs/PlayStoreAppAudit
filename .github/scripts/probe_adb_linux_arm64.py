@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import tarfile
@@ -71,17 +72,41 @@ def main() -> None:
     run(['cargo', 'generate-lockfile', '--offline'], out / 'cargo-lock.log', env=env, cwd=rust_source)
     shutil.copy2(rust_source / 'Cargo.lock', out)
     assert spec['boringssl_revision'] in (source / 'CMakeLists.txt').read_text()
+    usb = args.work / 'libusb-1.0.30'
+    usb_prefix = args.work / 'libusb-prefix'
+    run([str(usb / 'configure'), '--prefix=' + str(usb_prefix), '--libdir=' + str(usb_prefix / 'lib'),
+         '--disable-static', '--enable-tests-build'], out / 'libusb-configure.log', env=env, cwd=usb)
+    run(['make', '-j2'], out / 'libusb-build.log', env=env, cwd=usb)
+    run(['make', 'check'], out / 'libusb-check.log', env=env, cwd=usb)
+    run(['make', 'install'], out / 'libusb-install.log', env=env, cwd=usb)
+    env.update(PKG_CONFIG_PATH=str(usb_prefix / 'lib/pkgconfig'), LD_LIBRARY_PATH=str(usb_prefix / 'lib'))
+    selected_usb = run(['pkg-config', '--modversion', 'libusb-1.0'], out / 'libusb-selected.txt', env=env)
+    assert selected_usb.strip() == '1.0.30'
+    probe = out / 'libusb-api-probe.c'
+    probe.write_text('#include <libusb.h>\n#include <stdio.h>\nint main(void) {\n'
+                     ' (void)&libusb_get_ssplus_usb_device_capability_descriptor;\n'
+                     ' (void)&libusb_free_ssplus_usb_device_capability_descriptor;\n'
+                     ' if (sizeof(struct libusb_ssplus_usb_device_capability_descriptor) == 0 || LIBUSB_SPEED_SUPER_PLUS_X2 <= 0) return 1;\n'
+                     ' const struct libusb_version *v = libusb_get_version();\n'
+                     ' printf("%u.%u.%u\\n", v->major, v->minor, v->micro);\n'
+                     ' return !(v->major == 1 && v->minor == 0 && v->micro == 30); }\n')
+    flags = run(['pkg-config', '--cflags', '--libs', 'libusb-1.0'], out / 'libusb-flags.txt', env=env)
+    consumer = out / 'libusb-api-probe'
+    run(['gcc-13', str(probe), *shlex.split(flags), '-o', str(consumer)], out / 'libusb-probe-build.log', env=env)
+    run([str(consumer)], out / 'libusb-probe-run.log', env=env)
     legal = out / 'legal'
-    for path in source.rglob('*'):
+    for path in [*source.rglob('*'), *usb.rglob('*')]:
         if path.is_file() and path.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'NOTICE', 'COPYRIGHT')):
-            target = legal / path.relative_to(source)
+            origin = source if path.is_relative_to(source) else usb
+            target = legal / origin.name / path.relative_to(origin)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
     assert len(list(legal.rglob('*'))) > 20
     build = args.work / 'build'
     run(['cmake', '-S', str(source), '-B', str(build), '-GNinja', '-DCMAKE_BUILD_TYPE=Release',
          '-DANDROID_TOOLS_PATCH_VENDOR=OFF', '-DANDROID_TOOLS_ADB_ENABLE_MDNS=ON',
-         '-DANDROID_TOOLS_USE_BUNDLED_CORROSION=ON', '-DANDROID_TOOLS_USE_BUNDLED_FMT=ON'],
+         '-DANDROID_TOOLS_USE_BUNDLED_CORROSION=ON', '-DANDROID_TOOLS_USE_BUNDLED_FMT=ON',
+         '-DCMAKE_BUILD_RPATH=' + str(usb_prefix / 'lib')],
         out / 'configure.log', env=env)
     cache = (build / 'CMakeCache.txt').read_text()
     assert 'ANDROID_TOOLS_ADB_ENABLE_MDNS:BOOL=ON' in cache
@@ -119,7 +144,9 @@ def main() -> None:
     finally:
         run([str(adb), '-P', '15037', 'kill-server'], out / 'adb-private-server-stop.txt', env=env)
     shutil.copy2(adb, out / 'adb')
+    shutil.copytree(usb_prefix / 'lib', out / 'private-libusb', symlinks=True)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': spec['identity'], 'images': images,
+              'libusb': {'version': '1.0.30', 'prefix': str(usb_prefix), 'linkage': 'private shared LGPL library'},
               'version': version, 'mdns': 'enabled; native private-server check executed',
               'result': 'PASS native source/ABI/read-only host diagnostic; physical USB/wireless device not tested',
               'producer_adoption': False}
