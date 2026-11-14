@@ -1,5 +1,9 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Unicode stable-data generator prerequisite (2026-11-14)
+
+R09 now has an isolated supported-path prerequisite, not runtime adoption: run original Qt6.12 util/unicode generator with official final Unicode18 UCD ZIP SHA256`7b3e555514060b92290d154f53655c5eb0fa62b16eb04c03434ff72d1a66a0d8` and IDNA mapping SHA256`a03b1eb38032268c696406a83f0972d6a815acd2c8d4151d42ec0fda70ffced1`. Reuse exact qualified QtCore SDK from43570953718, validating its whole ZIP/receipt and original Qt source hash before tool execution; no Python or Qt rebuild. Follow the original README's explicit enum/age/script additions: append Unicode18 and Jurchen/Proto_Cuneiform/Seal values without renumbering existing values; preserve generator assertions. Retain the candidate unified diff, logs and generated-table hashes. This prerequisite is not a claim that new tables, shaping maps, normalization/segmentation/IDNA conformance or six-target runtime adoption pass. Those changed dependants remain required after successful generation.
+
 ## Affected Windows parser retry and retained Qt evidence (2026-11-14)
 
 Run43594977950/source00d7f28 PASSes all four POSIX parser targets, including fresh thin native macOS ARM64/x64 wheels with original sources, static current libxml2.15.4/libxslt1.1.45, parser regressions and deployment checks. Windows-only mode excludes these four already-passing targets from the retry matrix; no unchanged POSIX source rebuild or test repeat.
