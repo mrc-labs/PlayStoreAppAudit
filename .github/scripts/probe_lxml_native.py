@@ -232,7 +232,9 @@ def main() -> None:
                                 text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         (output / (label + '.log')).write_text(result.stdout, encoding='utf-8')
         if result.returncode:
-            print(result.stdout[-9000:], flush=True)
+            failures = [line for line in result.stdout.splitlines() if re.search(
+                r'ModuleNotFoundError|BackendUnavailable|fatal error|error:|ERROR:', line)]
+            print('\n'.join(failures[:25]) + '\n' + result.stdout[-2500:], flush=True)
         result.check_returncode()
         return result.stdout
     run([compiler, '/?' if sys.platform == 'win32' else '--version'], 'native-compiler')
@@ -318,6 +320,8 @@ def main() -> None:
         LXML_STATIC_LIBRARY_DIRS=str(prefix / 'lib'),
         PKG_CONFIG_PATH=str(prefix / 'lib/pkgconfig'), PKG_CONFIG_LIBDIR=str(prefix / 'lib/pkgconfig'),
         XML2_CONFIG=str(prefix / 'bin/xml2-config'), XSLT_CONFIG=str(prefix / 'bin/xslt-config'))
+    if sys.platform == 'win32':
+        env['LXML_STATIC_CFLAGS'] = '/DLIBXML_STATIC /DLIBXSLT_STATIC /DLIBEXSLT_STATIC'
     if sys.platform != 'win32':
         env['WITH_XML2_CONFIG'] = str(prefix / 'bin/xml2-config')
         env['WITH_XSLT_CONFIG'] = str(prefix / 'bin/xslt-config')

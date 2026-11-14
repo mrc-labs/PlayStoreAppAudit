@@ -1,5 +1,11 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Parser source-build prerequisite corrections (2026-11-14)
+
+Third native run43593584186 confirms both Linux wheels again. Actual Windows x64 inventory proves GA image18.11 has14.51.36231/14.44 only; the ARM64 image18.12 has14.52.37025. Do not invent compiler incompatibility or downgrade: only the missing x64 compiler is provisioned into a fresh runner-temporary Build Tools prefix from Microsoft's stable18.12 channel. Require published SHA256 and valid Microsoft Authenticode signature, explicit existing26100 SDK, native host/target and actual14.52 version; retain channel/installer provenance. No workstation installation, production signing, preview or OS-floor change.
+
+Windows ARM64 successfully compiles both current libraries, but lxml's manual static interface needs explicit LIBXML_STATIC/LIBXSLT_STATIC/LIBEXSLT_STATIC flags. The original setup helper only sets these automatically for its own downloader route; the documented LXML_STATIC_CFLAGS resolves the observed __imp_* linker mismatch without a vendor patch. Mac architecture correction requires a source rebuild, so restore its isolated setuptools build prerequisites; no missing-backend error is a parser incompatibility. New errors print relevant diagnostics before verbose cleanup. Fresh Quality has proved PIL absent and2109 tests passed; its sole failure was the old explicit tool-profile allowlist test, now updated to include only tools-lxml and preserve all expensive-profile exclusions.
+
 ## Native parser follow-up gates (2026-11-14)
 
 Retry43593122880/source7c739e9 PASSes actual Linux x64 and ARM64 replay: original native wheels/static current parser inputs remain unchanged. Mac replay rejects source-wheel universal2 output inherited from the bootstrap interpreter. Preserve that failed architecture gate: source-built controlled Mac wheels must set ARCHFLAGS and CMake architecture explicitly, so only those two changed configurations rebuild. No Rosetta/foreign slice is adopted or called native acceptance. Padded component deployment comparisons preserve10.15 Intel/11 ARM64.

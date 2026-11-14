@@ -171,7 +171,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/lxml-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           probe_python=$(python -c 'import os; from pathlib import Path; p=Path(os.environ["RUNNER_TEMP"])/("lxml-tools-"+os.environ["GITHUB_RUN_ID"]+"-"+os.environ["GITHUB_RUN_ATTEMPT"]); print(p/("Scripts/python.exe" if os.name=="nt" else "bin/python"))')
           "$probe_python" .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
-          if [ '${{ runner.os }}' = Windows ]; then
+          if [ '${{ runner.os }}' != Linux ]; then
             "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
           fi
           echo "LXML_PROBE_PYTHON=$probe_python" >> "$GITHUB_ENV"
@@ -199,6 +199,30 @@ jobs:
             }
           }
           $available | ConvertTo-Json -Depth 4 | Set-Content toolchain-delta-evidence/native-toolsets.json
+          if (-not $selected -and $arch -eq 'x64') {
+            # The GA x64 hosted image still carries18.11/14.51. Provision only
+            # current stable Build Tools in this ephemeral diagnostic runner.
+            $channelPath = Join-Path $env:RUNNER_TEMP 'psaa-vs18-release-channel.json'
+            Invoke-WebRequest 'https://aka.ms/vs/18/release/channel' -OutFile $channelPath
+            $channel = Get-Content -Raw -LiteralPath $channelPath | ConvertFrom-Json
+            $product = @($channel.channelItems | Where-Object { $_.id -eq 'Microsoft.VisualStudio.Product.BuildTools' })
+            if ($product.Count -ne 1 -or $product[0].version -notlike '18.12.*') { throw 'Unreviewed stable VS release channel.' }
+            $payload = @($product[0].payloads | Where-Object { $_.fileName -eq 'vs_BuildTools.exe' })
+            if ($payload.Count -ne 1 -or $payload[0].url -notlike 'https://download.visualstudio.microsoft.com/*') { throw 'Unqualified official installer provenance.' }
+            $bootstrapper = Join-Path $env:RUNNER_TEMP 'psaa-vs-buildtools.exe'
+            Invoke-WebRequest $payload[0].url -OutFile $bootstrapper
+            $digest = (Get-FileHash -LiteralPath $bootstrapper -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($digest -ne $payload[0].sha256.ToLowerInvariant()) { throw 'Official installer hash mismatch.' }
+            $signature = Get-AuthenticodeSignature -LiteralPath $bootstrapper
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'Official installer signature invalid.' }
+            Copy-Item -LiteralPath $channelPath -Destination toolchain-delta-evidence/vs-release-channel.json
+            @{ url = $payload[0].url; sha256 = $digest; product_version = $product[0].version; signer = $signature.SignerCertificate.Subject; scope = 'Ephemeral host Build Tools only; no production signing' } | ConvertTo-Json | Set-Content toolchain-delta-evidence/vs-bootstrapper-provenance.json
+            $install = Join-Path $env:RUNNER_TEMP 'psaa-native-msvc'
+            $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--installPath', $install, '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.26100')
+            $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+            if ($process.ExitCode -notin @(0, 3010)) { throw "Stable Build Tools installation failed: $($process.ExitCode)" }
+            $selected = $install
+          }
           if (-not $selected) { throw 'BLOCKER: native stable MSVC14.52 unavailable; no parser rebuild started.' }
           Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
           Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"
