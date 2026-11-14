@@ -1,4 +1,214 @@
 {
+  "selected_rust_graphs_2026_11_14": {
+  "date": "2026-11-14",
+  "run": 43622683264,
+  "source_sha": "b52da21ccd7cb0b5a261a21bc0059b1c84b6caac",
+  "artifact": 14125210287,
+  "zip_bytes": 21075837,
+  "zip_sha256": "e96fd87d3fab26897f00d0f74aaf4d70cfee550a15dbcf1cb0f8ce0b8ac05585",
+  "graphs": [
+    {
+      "package": "ruff",
+      "target": "x86_64-pc-windows-msvc",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 322,
+      "selected_packages_sha256": "880c01871273a506e52a68530a140d7394adc85c3d40976e296f69c6d6d090f6",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "ruff",
+      "target": "aarch64-pc-windows-msvc",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 322,
+      "selected_packages_sha256": "9d710aba0b060ffbd4263d142a8b2735b18c73c6debc637862df24793479b5c2",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "ruff",
+      "target": "x86_64-unknown-linux-gnu",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 316,
+      "selected_packages_sha256": "e7b557a9d707601566e17ab44a440a65770a12c350af8282e9709cac68257886",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "ruff",
+      "target": "aarch64-unknown-linux-gnu",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 316,
+      "selected_packages_sha256": "e7b557a9d707601566e17ab44a440a65770a12c350af8282e9709cac68257886",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "ruff",
+      "target": "x86_64-apple-darwin",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 315,
+      "selected_packages_sha256": "cb4a0b88f31b38869e62ac34884ff8b015304b2df92930163899b07ed8354889",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "ruff",
+      "target": "aarch64-apple-darwin",
+      "source_sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 315,
+      "selected_packages_sha256": "cb4a0b88f31b38869e62ac34884ff8b015304b2df92930163899b07ed8354889",
+      "watches": [
+        {
+          "name": "crossbeam-channel",
+          "version": "0.5.15"
+        },
+        {
+          "name": "paste",
+          "version": "1.0.15"
+        },
+        {
+          "name": "zip",
+          "version": "9.0.5"
+        }
+      ]
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "x86_64-pc-windows-msvc",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "aarch64-pc-windows-msvc",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "x86_64-unknown-linux-gnu",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "aarch64-unknown-linux-gnu",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "x86_64-apple-darwin",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    },
+    {
+      "package": "cryptography-rust",
+      "target": "aarch64-apple-darwin",
+      "source_sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "lock_sha256": "98778208027ce05bfff0db88c290f28355eb20e685f0c728775359fb91a1a4c4",
+      "edges": "normal,build; dev excluded",
+      "selected_count": 39,
+      "selected_packages_sha256": "4d6956f08ec9247bfc2f4b46d051bd185b5608d8f8efb355c9cc40c79789bbbb",
+      "watches": []
+    }
+  ],
+  "provenance": "Worker verifies whole ZIP and all three original source archives. Ruff official complete tag restores19 omitted sdist workspace manifests with identical original root Cargo.toml/lock; no lock edits.",
+  "scope": "Locked normal/build target selection only, not native target execution. proc-macro-error2 absent from all selected graphs; paste1.0.15 belongs to libcst compile-time macros; crossbeam-channel0.5.15 through crossbeam/lsp-server and zip9.0.5 through ruff_db/ruff_graph are actually selected. Current freshness/advisory/support decisions remain required; original0.17.2 workspace observations are not relabeled."
+},
   "qt_data_native_qualification_2026_11_14": {
   "date": "2026-11-14",
   "source_sha": "7a37389dde4ed3b8be814ff004fda47b545352d2",

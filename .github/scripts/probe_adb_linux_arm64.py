@@ -83,7 +83,7 @@ def main() -> None:
     selected_usb = run(['pkg-config', '--modversion', 'libusb-1.0'], out / 'libusb-selected.txt', env=env)
     assert selected_usb.strip() == '1.0.30'
     probe = out / 'libusb-api-probe.c'
-    probe.write_text('#include <libusb.h>\n#include <stdio.h>\nint main(void) {\n'
+    probe.write_text('#include <libusb-1.0/libusb.h>\n#include <stdio.h>\nint main(void) {\n'
                      ' (void)&libusb_get_ssplus_usb_device_capability_descriptor;\n'
                      ' (void)&libusb_free_ssplus_usb_device_capability_descriptor;\n'
                      ' if (sizeof(struct libusb_ssplus_usb_device_capability_descriptor) == 0 || LIBUSB_SPEED_SUPER_PLUS_X2 <= 0) return 1;\n'
@@ -92,7 +92,7 @@ def main() -> None:
                      ' return !(v->major == 1 && v->minor == 0 && v->micro == 30); }\n')
     flags = run(['pkg-config', '--cflags', '--libs', 'libusb-1.0'], out / 'libusb-flags.txt', env=env)
     consumer = out / 'libusb-api-probe'
-    run(['gcc-13', str(probe), *shlex.split(flags), '-o', str(consumer)], out / 'libusb-probe-build.log', env=env)
+    run(['gcc-13', '-I' + str(usb_prefix / 'include'), str(probe), *shlex.split(flags), '-o', str(consumer)], out / 'libusb-probe-build.log', env=env)
     run([str(consumer)], out / 'libusb-probe-run.log', env=env)
     legal = out / 'legal'
     for path in [*source.rglob('*'), *usb.rglob('*')]:
@@ -106,11 +106,15 @@ def main() -> None:
     run(['cmake', '-S', str(source), '-B', str(build), '-GNinja', '-DCMAKE_BUILD_TYPE=Release',
          '-DANDROID_TOOLS_PATCH_VENDOR=OFF', '-DANDROID_TOOLS_ADB_ENABLE_MDNS=ON',
          '-DANDROID_TOOLS_USE_BUNDLED_CORROSION=ON', '-DANDROID_TOOLS_USE_BUNDLED_FMT=ON',
-         '-DCMAKE_BUILD_RPATH=' + str(usb_prefix / 'lib')],
+         '-DCMAKE_BUILD_RPATH=' + str(usb_prefix / 'lib'),
+         '-DCMAKE_C_FLAGS=-I' + str(usb_prefix / 'include'),
+         '-DCMAKE_CXX_FLAGS=-I' + str(usb_prefix / 'include')],
         out / 'configure.log', env=env)
     cache = (build / 'CMakeCache.txt').read_text()
     assert 'ANDROID_TOOLS_ADB_ENABLE_MDNS:BOOL=ON' in cache
     shutil.copy2(build / 'CMakeCache.txt', out)
+    run(['cmake', '--build', str(build), '--target', 'vendor/CMakeFiles/libadb.dir/adb/client/usb_libusb_device.cpp.o',
+         '--parallel', '2'], out / 'adb-actual-usb-unit.log', env=env)
     run(['cmake', '--build', str(build), '--target', 'adb', '--parallel', '2'], out / 'build.log', env=env)
     adb = build / 'vendor/adb'
     assert adb.is_file()
