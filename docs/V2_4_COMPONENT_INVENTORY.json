@@ -1,4 +1,264 @@
 {
+  "unicode18_compatibility_2026_11_14": {
+  "date": "2026-11-14",
+  "run": 43609547679,
+  "source_sha": "d1bb33403180afafe5799453987a5e63b734953c",
+  "candidate": "Unicode18.0.0",
+  "selected_compatible": "Unicode17.0.0",
+  "qt_original": "6.12.0",
+  "result": "Original generator compiles but fails closed at BidiMirroring18 line105: U+221D/U+1DB10 crosses BMP/supplementary boundary. Actual QTextEngine uses char16_t for this path. No supported stable fix; current dev keeps the guard. Preserve17 and watch; no arbitrary guard deletion.",
+  "qtextengine_sha256": "e072b6ce45339b39d1f352f12d49294877bd10cc597d87d1163e0b49dc363e56",
+  "upstream_dev_generator_sha256": "40f15e61346d78914e4d9ab2122adf754de4442446d29a222112f558f302f398",
+  "scope": "Shared Qt source/type assumption across six profiles; not a blanket parent/version exemption."
+},
+  "lxml_native_qualification_2026_11_14": {
+  "date": "2026-11-14",
+  "versions": {
+    "lxml": "6.1.3",
+    "libxml2": "2.15.4",
+    "libxslt": "1.1.45",
+    "libiconv": "1.19",
+    "zlib": "1.4"
+  },
+  "windows_toolset": "14.52.37025",
+  "windows_sdk": "10.0.26100.0",
+  "windows_crt": "MD; actual object directives and native PE imports verified",
+  "targets": [
+    {
+      "target": "windows-x64",
+      "source_sha": "89c1ff8997257048ba981b576fb10dd191f7c950",
+      "compiled_source_sha": "89c1ff8997257048ba981b576fb10dd191f7c950",
+      "run": 43610233189,
+      "artifact": 14120375427,
+      "zip_bytes": 28437494,
+      "zip_sha256": "f62e2373132f4d06f09ed9500eeae8206c31f394824165bd996e9592aff857b8",
+      "wheel_sha256": "60c964c8e9d999a9fdc697bcec1fc3fe0b9a81e7000de2b124d659d378bcfba9",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+        "winlibs-libiconv-accac417.tar.gz": "431cc47e65488b929bdeb3688b773209eeb9dfd39584b4eb21fb39172398b839"
+      },
+      "legal_texts": 12,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cp314-win_amd64.pyd": "f68ea5751d9a95296843bdcab0738f9bcb9d6b231b8043f117b8ee9e2a0d7aa8",
+        "builder.cp314-win_amd64.pyd": "d6c0edd428f9543ffc9707f1e784d8f6448719594ef410d8bc22c4ed62ceb432",
+        "etree.cp314-win_amd64.pyd": "13ca282c398ea7e9d9e02fc6282b3fc7ef84d8a8c7829c0c7e69a2f67f4bdf77",
+        "_difflib.cp314-win_amd64.pyd": "edcc3e733c688155e795aa1eab68381c9957f8ba169a47a5bc1a6f8657a0a34e",
+        "diff.cp314-win_amd64.pyd": "80386b3243a8e68ce21edc1987b59e6d6a2932899645010c952e98be96cb7a09",
+        "objectify.cp314-win_amd64.pyd": "8dd804ff9910f91696917daac22556e15ebe6257c915cc24f70ed25f12826e37",
+        "sax.cp314-win_amd64.pyd": "39cadf2274f75314e60387d3dc786084416fc72e6080afc196f02ac74eee209e"
+      }
+    },
+    {
+      "target": "windows-arm64",
+      "source_sha": "89c1ff8997257048ba981b576fb10dd191f7c950",
+      "compiled_source_sha": "89c1ff8997257048ba981b576fb10dd191f7c950",
+      "run": 43610233189,
+      "artifact": 14119723022,
+      "zip_bytes": 28007120,
+      "zip_sha256": "6ca963698515d00e11b840bd4bfb77a8da95924929c81e2fabf10d1145e996db",
+      "wheel_sha256": "48dfe8bf737a5d19ee3d556f2b1f46540e2abaad3851d3cf10ad91725c085abb",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+        "winlibs-libiconv-accac417.tar.gz": "431cc47e65488b929bdeb3688b773209eeb9dfd39584b4eb21fb39172398b839"
+      },
+      "legal_texts": 12,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cp314-win_arm64.pyd": "51184285f8d766a993c566b0a3ae9235d07a935b70ca842cbf2cf8f73708d28d",
+        "builder.cp314-win_arm64.pyd": "82e443dc7fc6356db69069dfc1ff5335f855aa1ef15eaad5522dde3b08e7d38a",
+        "etree.cp314-win_arm64.pyd": "dfde9e1dbc042d026c36b891f3dde596b5f6dc992c4ea7edb59dfeae205bbc97",
+        "_difflib.cp314-win_arm64.pyd": "d78b2f2c259a85fb4345a2cfce556ed72acbe2c9de27eb2bbee0680446206fcc",
+        "diff.cp314-win_arm64.pyd": "1ed0f2fb8c79ee5fbd096c1ea41227a26a4e7592c3c5f0613bb603936ca0b1b8",
+        "objectify.cp314-win_arm64.pyd": "a5711be7bde210a4939b412cf861670a053f1b47c1334e2cf13640a5efb32e81",
+        "sax.cp314-win_arm64.pyd": "223dc3610f766a7b19c2799f12ee002fc94868298af0bf9fe4ade2583d6f8e0a"
+      }
+    },
+    {
+      "target": "linux-arm64",
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "compiled_source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43594977950,
+      "artifact": 14114052290,
+      "zip_bytes": 55205942,
+      "zip_sha256": "c4c8478e9db980d2aac20ecaf1966852a58b6ed8beb97a6853f45a36c2563459",
+      "wheel_sha256": "7d4af2bd1a1be13d75c082a0e6024de93675c4d80601471551757b519be1df7b",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+      },
+      "legal_texts": 9,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cpython-314-aarch64-linux-gnu.so": "92dadef0cda6360afb06fd003afaa52fa696c9c3a149ed2fd872cb70ec2d3c18",
+        "builder.cpython-314-aarch64-linux-gnu.so": "3eabdfddf668d441918e62f4fece5131870f3b51b0e03d284ee47c49fa763954",
+        "etree.cpython-314-aarch64-linux-gnu.so": "c810da7089a840bd9ab8bbc8a29bd670599a7fedd47b627342bd378494a099ab",
+        "_difflib.cpython-314-aarch64-linux-gnu.so": "a09be484653d6301ff10000670d379b7edeef7903090e74e53f21f2f2be68478",
+        "diff.cpython-314-aarch64-linux-gnu.so": "a1932be0e6f0b8bf8b72e348b5f89cbacb3f1b23657e2ee9e05588cd4f15cbbd",
+        "objectify.cpython-314-aarch64-linux-gnu.so": "54a4ec3906bc5c525d3ea57af35f6eef69f98ab6736d2c0d2de1c48b5d042023",
+        "sax.cpython-314-aarch64-linux-gnu.so": "169319d3a7fc099d584aa0155d12197d8960d54a34ba9e54e455392573a35ff5"
+      }
+    },
+    {
+      "target": "macos-x64",
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "compiled_source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "run": 43594977950,
+      "artifact": 14114038492,
+      "zip_bytes": 24674765,
+      "zip_sha256": "4e70ee085215635e4e453d1fe1cabf04ec73fc9c083c71966e89478e377dbf26",
+      "wheel_sha256": "e3d2bfe3e582138de3981d9adc00a262fd12295982af5de93e86117c531ccdba",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+      },
+      "legal_texts": 9,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cpython-314-darwin.so": "0fca1968ad71bbb77a7d0ae27ea9723e0b72cf223494ddbecc2b330f2dfb7d99",
+        "builder.cpython-314-darwin.so": "fe3aea7a1454e0d15f945504ccf49b66bcb368bafa76678558f833a53381b975",
+        "etree.cpython-314-darwin.so": "4d5022e03c6245ad19ee22c830e22a737bc4feae92424aeaa9b7c4291d8aee37",
+        "_difflib.cpython-314-darwin.so": "c3c3ea6a339289f0747bdacc9b560a50a9b5b1f7c02ad22c70ada9d8b289fb68",
+        "diff.cpython-314-darwin.so": "dd1d3e62784c4120bade4cd5fb582c5e3f28f9ea30a2daca713f7aaa191bb3c0",
+        "objectify.cpython-314-darwin.so": "22f6b786b3fd801a1252fdcc94b8c9599f49d3abe80d6c4a44f998a448f18f7f",
+        "sax.cpython-314-darwin.so": "49c534ec41024549cd9a8c02265fbf04db9b6e0d39c895d53ae03c3901b94064"
+      }
+    },
+    {
+      "target": "macos-arm64",
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "compiled_source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "run": 43594977950,
+      "artifact": 14113708955,
+      "zip_bytes": 24434924,
+      "zip_sha256": "0a1f125879890f85a018e3f5c7c24f2d576b145e5ecb6dbb9d26de67e650158d",
+      "wheel_sha256": "3abb14239703e08ad9757f0b27ac63beedb19e28c90b598751b94ba6a69d008a",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+      },
+      "legal_texts": 9,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cpython-314-darwin.so": "13ed971146e4e5babadace3a6f174aa3d978eb8ddbc39de81c8b8dd000e57a16",
+        "builder.cpython-314-darwin.so": "6539814881afb4f53e41b7dd5c8e509f5aa505dfd06849cdbe46adf399d3b7fa",
+        "etree.cpython-314-darwin.so": "4ae31e5616845414901c75a33e802a2805731f407933df9778893e4ad50640ba",
+        "_difflib.cpython-314-darwin.so": "84e973062a145e3cfdf147bced022eccfa0513eb02218397373d9c57d53175d4",
+        "diff.cpython-314-darwin.so": "9877d5de650b1f824ef3499cd717ddd374cc6ed83ad16c3b38e2f308ff9fd441",
+        "objectify.cpython-314-darwin.so": "5988e007b422d6a691eca0be4ffd8c0364b06644ad83c7f2adb0fe86dc353010",
+        "sax.cpython-314-darwin.so": "c2d0efe6b85605c2e4b594912de4d38269288bf7146a11cb11a4b090040f197a"
+      }
+    },
+    {
+      "target": "linux-x64",
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "compiled_source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43594977950,
+      "artifact": 14113559200,
+      "zip_bytes": 55215724,
+      "zip_sha256": "acd93dbca6b5372d14a741152c47728ff72e5721fb6be778042760915ad53963",
+      "wheel_sha256": "06802db49d3286c8ac26799a38d9d86ff21d95415b8ff13673ce98816a593b50",
+      "sources": {
+        "lxml-6.1.3.tar.gz": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+        "libxml2-2.15.4.tar.xz": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+        "libxslt-1.1.45.tar.xz": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+        "libiconv-1.19.tar.gz": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+      },
+      "legal_texts": 9,
+      "tests": {
+        "xml_namespace_xpath": true,
+        "utf8_utf16": true,
+        "gzip_xml": true,
+        "html_recovery": true,
+        "external_entity_unresolved": true,
+        "depth_limit": true,
+        "xslt": true,
+        "external_read_denied": true
+      },
+      "result": "PASS independently verified source/legal/wheel/native bytes; CI consumer tests pass; no final-package adoption",
+      "native_image_sha256": {
+        "_elementpath.cpython-314-x86_64-linux-gnu.so": "b2d760a2e7713b9ba40f26958b50fde18441bd113755e058e75787dfad0c61de",
+        "builder.cpython-314-x86_64-linux-gnu.so": "f7b1916256de9535d5ea034431b136d3dcf87365655589524c5d09e9b87c5b91",
+        "etree.cpython-314-x86_64-linux-gnu.so": "db16415f48476b3ec9d7ccc3ef5bebf613bac7388094a132458b0197cce9418c",
+        "_difflib.cpython-314-x86_64-linux-gnu.so": "c8e6d8bef9c0aa3b7a01211bd1f40c18184a2614386980c73e2d9b0282d9cdc8",
+        "diff.cpython-314-x86_64-linux-gnu.so": "752556e7b0f01e5e7edb352c325a48a0ce1a0b2d56bfdd6549c989207f958261",
+        "objectify.cpython-314-x86_64-linux-gnu.so": "05cdc64faff72bdd8733de241709aa8b3763b9ab015f2cbceb6bf870d304777e",
+        "sax.cpython-314-x86_64-linux-gnu.so": "d3ef369d2f66c9b5038eb01ae9641a822e2a574d31d3d11cf7578d7379c80d4a"
+      }
+    }
+  ],
+  "unchanged_linux_wheels_compiled_source": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+  "native_images_verified": 42,
+  "result": "PASS six native source/parser consumers, independently verified whole ZIP/source/legal/wheel/native bytes. Controlled source selections qualified; producer/runtime/package adoption still required."
+},
   "qt_integrated_byte_verification_2026_11_14": {
   "date": "2026-11-14",
   "run": 43587421820,
