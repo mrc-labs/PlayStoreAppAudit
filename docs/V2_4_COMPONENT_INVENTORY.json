@@ -32,7 +32,24 @@
     "local_validation": "143 targeted PASS, helper Ruff/compilation; native build remains pending",
     "impact": "No existing runtime/framework/vendor-patch/source input changes. Diagnostic route only in existing Jammy job/setup; previous six results retain actual SHAs. Producing workflows unchanged.",
     "windows_constraint": "MD4C0.6 root CMakeLists explicitly overwrites release C flags with /MT. Do not transfer Linux recipe/result to Windows /MD; use reviewed supported embedding/configuration and native proof before Windows adoption. No Windows patch here.",
-    "remaining": "Actual coherent Qt/PySide/GUI/text/Markdown/native provider/ABI/source/legal acceptance still required; this prerequisite cannot close R08 or substitute final packages."
+    "remaining": "Actual coherent Qt/PySide/GUI/text/Markdown/native provider/ABI/source/legal acceptance still required; this prerequisite cannot close R08 or substitute final packages.",
+    "first_native": {
+      "run": 43541461598,
+      "source_sha": "911efca88bde9253d4dfff3cbc4376683b762194",
+      "artifact": 14092565109,
+      "bytes": 76094866,
+      "sha256": "69caa4644ffdb93e88c64c747253781a53f820c368870f26911b0e56a9ff5224",
+      "result": "FAIL wrapper discovery; actual native C++/ABI completion not reached",
+      "harfbuzz_upstream": {
+        "passed": 233,
+        "skipped": 8
+      },
+      "md4c_upstream": {
+        "CommonMark": 652,
+        "regressions": 85
+      },
+      "cause_fix": "Private CMAKE_PREFIX_PATH/PKG_CONFIG_PATH missing from probe configure; expose supported private routes, assert actual pkg-config15.1.0/0.6.0, no vendor source/ABI change"
+    }
   },
   "source_build_consumers_2026_11_14": {
     "date": "2026-11-14",

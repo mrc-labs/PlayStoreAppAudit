@@ -184,6 +184,11 @@ def main() -> None:
             assert counts and int(counts[1]) > 0 and all(int(counts[n]) == 0 for n in [2, 3, 4]), text
             report['md4c_upstream'][suite] = int(counts[1])
         report['gate'] = 'original Qt system wrappers and actual native text consumer'
+        # Qt's wrapper also supports pkg-config (including newer HarfBuzz majors).
+        # The supported private prefix must participate in both discovery routes.
+        os.environ['PKG_CONFIG_PATH'] = str(prefix / 'lib/pkgconfig') + os.pathsep + os.environ.get('PKG_CONFIG_PATH', '')
+        for name in ['harfbuzz', 'md4c']:
+            assert run(['pkg-config', '--modversion', name], name + '-pkgconfig-version.txt').strip() == spec['versions'][name]
         consumer = work / 'consumer'
         consumer.mkdir()
         shutil.copy2(REPO / '.github/scripts/qt_text_consumer.cpp', consumer)
@@ -204,6 +209,7 @@ file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/selected-libraries.txt" CONTENT "$<TAR
         build = work / 'consumer-build'
         run(['cmake', '-S', consumer, '-B', build, '-GNinja', '-DCMAKE_BUILD_TYPE=Release',
              '-DPRIVATE_PREFIX=' + str(prefix), '-DQT_SOURCE=' + str(qt),
+             '-DCMAKE_PREFIX_PATH=' + str(prefix),
              '-DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF', '-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF'], 'qt-wrapper-configure.log')
         run(['cmake', '--build', build, '--parallel', '2'], 'qt-wrapper-build.log')
         selections = (build / 'selected-libraries.txt').read_text().splitlines()
