@@ -187,11 +187,18 @@ jobs:
           $inventory | ConvertTo-Json -Depth 8 | Set-Content toolchain-delta-evidence/visual-studio-inventory.json
           $arch = if ($env:EXPECTED_ARCH -eq 'arm64') { 'arm64' } else { 'x64' }
           $selected = $null
+          $available = @()
           foreach ($installation in $inventory) {
-            if ($installation.isPrerelease -or $installation.channelId -ne 'VisualStudio.18.Release') { continue }
-            $compiler = Join-Path $installation.installationPath "VC/Tools/MSVC/14.52.37025/bin/Host$arch/$arch/cl.exe"
-            if (Test-Path -LiteralPath $compiler) { $selected = $installation.installationPath }
+            if ($installation.isPrerelease -or -not $installation.channelId.StartsWith('VisualStudio.18.Release')) { continue }
+            $tools = Join-Path $installation.installationPath 'VC/Tools/MSVC'
+            if (-not (Test-Path -LiteralPath $tools)) { continue }
+            foreach ($version in (Get-ChildItem -LiteralPath $tools -Directory | Sort-Object { [version]$_.Name } -Descending)) {
+              $compiler = Join-Path $version.FullName "bin/Host$arch/$arch/cl.exe"
+              $available += @{ toolset = $version.Name; compiler = $compiler; exists = (Test-Path -LiteralPath $compiler) }
+              if (-not $selected -and $version.Name -like '14.52.*' -and (Test-Path -LiteralPath $compiler)) { $selected = $installation.installationPath }
+            }
           }
+          $available | ConvertTo-Json -Depth 4 | Set-Content toolchain-delta-evidence/native-toolsets.json
           if (-not $selected) { throw 'BLOCKER: native stable MSVC14.52 unavailable; no parser rebuild started.' }
           Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
           Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"

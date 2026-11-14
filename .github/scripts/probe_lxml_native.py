@@ -90,7 +90,8 @@ def binary_record(path: Path, output: Path, arch: str, deployment: str | None) -
         else:
             from probe_macos_x64_runtime import macho
         record.update(macho(path, target=True, output=output))
-        assert all(tuple(map(int, value.split('.'))) <= tuple(map(int, deployment.split('.')))
+        assert all((tuple(map(int, value.split('.'))) + (0, 0, 0))[:3] <=
+                   (tuple(map(int, deployment.split('.'))) + (0, 0, 0))[:3]
                    for value in record['minimum_os'])
         assert not any(re.search(r'lib(?:xml2|xslt|exslt|iconv|zlib)', value) for value in record['dependencies'])
     else:
@@ -156,7 +157,7 @@ def main() -> None:
     spec_path = REPO / '.github/scripts/lxml_native_sources.json'
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
     shutil.copy2(spec_path, output)
-    if sys.platform != 'win32':
+    if sys.platform == 'linux':
         from download_diagnostic_artifact import fetch_artifact
 
         label = ('macos' if sys.platform == 'darwin' else 'linux') + '-' + ('arm64' if arch == 'arm64' else 'x64')
@@ -188,6 +189,8 @@ def main() -> None:
                           {}, head, prior['source_sha'], {**prior, 'original_zip': original.name,
                           'scope': 'Original source/static-library/worker/legal bytes reused; only fixture/execution changed'})
         return
+    os.environ.pop('GH_TOKEN', None)
+    os.environ.pop('GITHUB_TOKEN', None)
     sources = output / 'sources'
     sources.mkdir()
     legal = output / 'legal'
@@ -213,6 +216,7 @@ def main() -> None:
     if sys.platform == 'darwin':
         deployment = '11.0' if arch == 'arm64' else '10.15'
         env['MACOSX_DEPLOYMENT_TARGET'] = deployment
+        env['ARCHFLAGS'] = '-arch ' + ('arm64' if arch == 'arm64' else 'x86_64')
         env['LDFLAGS'] = env.get('LDFLAGS', '') + ' -Wl,-dead_strip_dylibs'
     compiler = shutil.which('cl' if sys.platform == 'win32' else 'cc')
     assert compiler
@@ -220,7 +224,7 @@ def main() -> None:
         from inspect_pe import read_pe_machine
 
         assert read_pe_machine(Path(compiler)) == (0xAA64 if arch == 'arm64' else 0x8664)
-        assert env['VCTOOLSVERSION'].rstrip('\\/') == '14.52.37025'
+        assert env['VCTOOLSVERSION'].rstrip('\\/').startswith('14.52.')
         env.update(DISTUTILS_USE_SDK='1', MSSdk='1')
     def run(command: list, label: str, *, directory: Path = work) -> str:
         print('lxml native stage:', label, flush=True)
@@ -254,7 +258,8 @@ def main() -> None:
         common += ['-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL',
                    '-DIconv_INCLUDE_DIR=' + str(prefix / 'include'), '-DIconv_LIBRARY=' + str(prefix / 'lib/iconv_a.lib')]
     if deployment:
-        common += ['-DCMAKE_OSX_DEPLOYMENT_TARGET=' + deployment]
+        common += ['-DCMAKE_OSX_DEPLOYMENT_TARGET=' + deployment,
+                   '-DCMAKE_OSX_ARCHITECTURES=' + ('arm64' if arch == 'arm64' else 'x86_64')]
     if sys.platform != 'win32':
         # Use the same current GNU iconv source on POSIX, not a stale copied
         # implementation. The host make is recorded; R13 tool gates stay separate.

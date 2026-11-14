@@ -1,5 +1,11 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Native parser follow-up gates (2026-11-14)
+
+Retry43593122880/source7c739e9 PASSes actual Linux x64 and ARM64 replay: original native wheels/static current parser inputs remain unchanged. Mac replay rejects source-wheel universal2 output inherited from the bootstrap interpreter. Preserve that failed architecture gate: source-built controlled Mac wheels must set ARCHFLAGS and CMake architecture explicitly, so only those two changed configurations rebuild. No Rosetta/foreign slice is adopted or called native acceptance. Padded component deployment comparisons preserve10.15 Intel/11 ARM64.
+
+Windows prerequisities still reject the old literal14.52.37025 directory after hosted patch propagation. Select the highest installed14.52 patch only from a non-preview VS18 Release channel, retain compiler inventory and validate actual native host/target plus full version in results. Never fall back to14.51 or14.44. Windows current parser static archive aliases remain source-CMake-derived, not arbitrary libraries. Existing Linux wheels/sources and Qt/Python evidence are not invalidated by these Mac/Windows configuration-only corrections.
+
 ## Pillow removal and precise lxml retry (2026-11-14)
 
 R12 has a smaller supported resolution: Pillow was used only by four icon tests for PNG/embedded-ICO decode, size and alpha extrema. Production and icon generators already use Qt; no ImageCms, ImageFont, RAQM, shaping or color-management consumer exists. Those tests now use existing QImage with explicit PNG signature/size/transparency assertions. Remove the sole Pillow development pin and the audit's obsolete import; keep production nofollow-PIL exclusions. Fresh Quality must prove Pillow is absent. This removes the entire unused Pillow/native dependency path, not a claim to upgrade its old LCMS/FriBidi/HarfBuzz binaries. Local four icon tests/lint pass; final Quality remains required. Original1094 observations stay historical.
