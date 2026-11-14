@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import platform
@@ -13,15 +14,112 @@ import sys
 import sysconfig
 import tarfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 from apply_qt_ca_guard import apply_guard
 from apply_qt_cbor_upgrade import apply_upgrade
 from apply_qt_http_limits import apply_limits, test_limits
+from download_diagnostic_artifact import fetch_artifact
 from probe_qt_text_providers import checked_source
 from verify_linux_x64_native_delta import elf_record
 
 REPO = Path(__file__).resolve().parents[2]
+COMPILED_SOURCE = 'b4fdfddb4924dd8b0b6e85bb5b1d79973017a8fd'
+COMPILED_ARTIFACT = 14104662162
+COMPILED_ZIP_SHA256 = 'f8b767f8ceeaa304ec97b02bb0062d45fbf9c0259bafa9ed951122002f6a6f6c'
+SDK_SHA256 = '3af894d7753756f89cb918c0338bdb0729c61a0647e748ccae6da771ec98f803'
+CORE_SHA256 = '2934d792f14875ada02afba49d44dc126c3410552cf0e0cd4ba0a1faf879ba59'
+
+
+def verified_sdk(metadata: dict, data: bytes) -> tuple[bytes, dict]:
+    """Closed intake of an already qualified SDK, before executing any of its tools."""
+    run = metadata['workflow_run']
+    if (metadata['id'] != COMPILED_ARTIFACT or run['id'] != 43570953718
+            or run['head_sha'] != COMPILED_SOURCE or run['repository_id'] != 1334403620
+            or run['head_repository_id'] != 1334403620 or metadata['expired']
+            or metadata['size_in_bytes'] != 138377365
+            or metadata['digest'] != 'sha256:' + COMPILED_ZIP_SHA256):
+        raise ValueError('Changed immutable Qt diagnostic SDK artifact/source')
+    if len(data) != 138377365 or hashlib.sha256(data).hexdigest() != COMPILED_ZIP_SHA256:
+        raise ValueError('Changed immutable Qt diagnostic SDK bytes')
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if any(archive.namelist().count(name) != 1 for name in (
+                'qt-http-sdk.tar.gz', 'qt-http-sdk-provenance.json', 'qt_cbor_provider_sources.json')):
+            raise ValueError('Ambiguous diagnostic SDK archive members')
+        spec = (REPO / '.github/scripts/qt_cbor_provider_sources.json').read_bytes()
+        if json.loads(archive.read('qt_cbor_provider_sources.json')) != json.loads(spec):
+            raise ValueError('Changed CBOR source/patch contract requires a new Qt build')
+        sdk = archive.read('qt-http-sdk.tar.gz')
+        receipt = json.loads(archive.read('qt-http-sdk-provenance.json'))
+    if (len(sdk) != 21937237 or hashlib.sha256(sdk).hexdigest() != SDK_SHA256
+            or receipt['source_sha'] != COMPILED_SOURCE or receipt['archive_sha256'] != SDK_SHA256
+            or receipt['files']['qt/lib/libQt6Core.so.6.12.0']['sha256'] != CORE_SHA256):
+        raise ValueError('Changed compiled Qt SDK bytes/provenance')
+    return sdk, receipt
+
+
+def retained_cbor(work: Path, output: Path, head: str) -> None:
+    metadata, data = fetch_artifact(COMPILED_ARTIFACT)
+    # The read-only token never reaches a native tool or consumer process.
+    os.environ.pop('GH_TOKEN', None)
+    os.environ.pop('GITHUB_TOKEN', None)
+    sdk, receipt = verified_sdk(metadata, data)
+    work.mkdir()
+    (output / 'original-compiled-14104662162.zip').write_bytes(data)
+    (output / 'compiled-sdk-metadata.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')
+    with tarfile.open(fileobj=io.BytesIO(sdk)) as archive:
+        archive.extractall(work, filter='data')
+    prefix = work / 'prefix'
+    # Reuse the exact original SDK/legal/ABI proof by byte identity, including links.
+    for relative, record in receipt['files'].items():
+        path = prefix / relative
+        if not path.resolve().is_relative_to(prefix):
+            raise ValueError('SDK link escapes private prefix')
+        if 'symlink' in record:
+            if not path.is_symlink() or os.readlink(path) != record['symlink']:
+                raise ValueError('Changed retained SDK symlink')
+        elif hashlib.sha256(path.read_bytes()).hexdigest() != record['sha256']:
+            raise ValueError('Changed retained SDK file')
+    consumer = work / 'consumer'
+    consumer.mkdir()
+    cpp = REPO / '.github/scripts/qt_cbor_sdk_consumer.cpp'
+    shutil.copy2(cpp, output)
+    (consumer / 'CMakeLists.txt').write_text('cmake_minimum_required(VERSION 3.22)\n'
+        'project(QtCborRetained LANGUAGES CXX)\nfind_package(Qt6 6.12.0 EXACT REQUIRED COMPONENTS Core)\n'
+        f'add_executable(qt_cbor_retained "{cpp.as_posix()}")\n'
+        'target_link_libraries(qt_cbor_retained PRIVATE Qt6::Core)\n', encoding='utf-8')
+    env = {**os.environ, 'LD_LIBRARY_PATH': f'{prefix}/qt/lib:{prefix}/lib'}
+    commands = [(['cmake', '-S', consumer, '-B', consumer / 'out', '-GNinja', '-DCMAKE_BUILD_TYPE=Release',
+                  '-DCMAKE_PREFIX_PATH=' + str(prefix / 'qt') + ';' + str(prefix)], 'cbor-configure'),
+                (['cmake', '--build', consumer / 'out', '--parallel', '2'], 'cbor-build'),
+                ([consumer / 'out/qt_cbor_retained'], 'cbor-execute')]
+    for command, label in commands:
+        result = subprocess.run(list(map(str, command)), env=env, text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        (output / (label + '.log')).write_text(result.stdout, encoding='utf-8')
+        print(label, result.returncode, result.stdout[-6000:], flush=True)
+        result.check_returncode()
+    result = json.loads((output / 'cbor-execute.log').read_text(encoding='utf-8'))
+    assert result['result'] == 'PASS retained QtCore CBOR memory/device/parser regressions'
+    paths = {Path(line.split()[-1]).resolve() for line in result['loaded']}
+    private = {p for p in paths if p.name.startswith(('libQt6', 'libcrypto.so', 'libssl.so', 'libz.so'))}
+    expected = {'qt/lib/libQt6Core.so.6.12.0', 'lib/libcrypto.so.4', 'lib/libz.so.1.4'}
+    assert {p.relative_to(prefix).as_posix() for p in private} == expected, private
+    assert all(hashlib.sha256(p.read_bytes()).hexdigest() == receipt['files'][p.relative_to(prefix).as_posix()]['sha256']
+               for p in private)
+    link_sdk = Path(json.loads((output / 'cxx-sdk-qualified.json').read_text(encoding='utf-8'))['link_directory'])
+    assert not any(p.is_relative_to(link_sdk) for p in paths), 'Link-only SDK loaded'
+    binary = consumer / 'out/qt_cbor_retained'
+    result.update(source_sha=head, compiled_source_sha=COMPILED_SOURCE, compiled_run=43570953718,
+                  compiled_artifact=COMPILED_ARTIFACT, compiled_zip_sha256=COMPILED_ZIP_SHA256,
+                  sdk_archive_sha256=SDK_SHA256, sdk_records_verified=len(receipt['files']),
+                  scope='CBOR consumer only; unchanged Qt SDK/source/legal/ABI reused, no framework rebuild or package acceptance',
+                  new_consumer=elf_record(binary, output),
+                  consumer_source_sha256=hashlib.sha256(cpp.read_bytes()).hexdigest(),
+                  unchanged_loaded_images={str(p.relative_to(prefix)): hashlib.sha256(p.read_bytes()).hexdigest()
+                                           for p in sorted(private)})
+    (output / 'qt-cbor-sdk-results.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
 
 
 def loaded_images(lines: list[str], prefix: Path, sdk: Path) -> list[Path]:
@@ -43,6 +141,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--retained-cbor-sdk', action='store_true')
     args = parser.parse_args()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     assert head == os.environ['GITHUB_SHA'] == os.environ['EXPECTED_SHA']
@@ -56,6 +155,9 @@ def main() -> None:
     assert sdk['source_sha'] == trust['source_sha'] == head and sdk['compatible']
     assert sdk['thread_probe'] == 'PASS' and sdk['runtime_sdk_loaded'] is False
     assert trust['default_trust']['result'] == 'default-trust authenticated handshake PASS'
+    if args.retained_cbor_sdk:
+        retained_cbor(work, output, head)
+        return
     with urllib.request.urlopen('https://pypi.org/pypi/PySide6-Essentials/json', timeout=60) as response:
         parent = json.load(response)['info']['version']
     assert parent == '6.12.0', 'New stable matched parent requires review before modified Qt build'

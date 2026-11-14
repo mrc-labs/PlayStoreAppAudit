@@ -1,5 +1,11 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Reused QtCore SDK / CBOR-only continuation (2026-11-14)
+
+The `qt-cbor-sdk` diagnostic compiles only one QtCore consumer against the exact already qualified internal SDK from source **b4fdfddb4924dd8b0b6e85bb5b1d79973017a8fd**, run43570953718/artifact14104662162. It checks memory and QIODevice read/write roundtrips plus four malformed/truncated parser/error-offset cases. No Qt/Python/PySide rebuild, full upstream suite repeat, TLS retest, other-target dispatch or producer adoption. New execution provenance stays separate from compiled SDK provenance. Native result is pending; it is not full QtGui/binding/package acceptance.
+
+Intake requires the original whole ZIP size/hash/source/repository identity, SDK archive hash, unchanged CBOR source/patch manifest and all2532 file/link records before execution. Original source/legal/ABI evidence remains available in the retained immutable ZIP. The new consumer is measured independently for AMD64/GLIBC2.35/GLIBCXX3.4.29 and actual private QtCore/crypto/zlib loader origins. GitHub artifact access uses standard-library verified HTTPS; its read-only API token is never forwarded to signed storage or native tools.54 focused downloader/source/HTTP/Markdown checks and actual saved-SDK intake pass locally; existing Python/provider/cffi/HTTP security results remain linked to their original SHAs.
+
 ## Impact-scoped continuation and Qt HTTP security (2026-11-14)
 
 **Bounded native HTTP PASS.** [43570953718](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/43570953718) at **b4fdfddb4924dd8b0b6e85bb5b1d79973017a8fd** executes **40 original Qt tests**, including all7 header-limit data rows and the status-line guard. It also completes public QNetworkAccessManager HTTP/1 over authenticated **default trust**, active private Qt/OpenSSL **4.0.3**, no SSL errors/VerifyNone/OpenSSL3/GNU-link-SDK fallback. No explicit test CA is supplied to the default-trust request. Python/PySide/GUI and their full suites are not rebuilt/repeated by this bounded diagnostic.
