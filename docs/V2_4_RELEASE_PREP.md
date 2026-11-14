@@ -1,5 +1,9 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Selected Rust graph reconciliation (2026-11-14)
+
+R11 now resolves the current official Ruff0.17.5 and cryptography50.0.2 source lockfiles from their hash-bound PyPI sdists, using the actual Maturin package roots. A single source-analysis job selects normal/build edges for all six target triples with Cargo1.99.1 and --locked; no vendor/application compilation or target-execution claim. Development-only workspace records are excluded from each selected set. This replaces inference from the historical Ruff0.17.2 workspace; it neither rewrites those observations nor declares all lock entries deployed. Exact selected graph/advisory/support decisions remain required after the resolver result. No Cargo update or unsupported dependency override is applied by this diagnostic.
+
 ## Native Linux ARM64 ADB source route (2026-11-14)
 
 R14 now has a bounded native-only diagnostic, not producer adoption: the stable nmeum/android-tools37.0.0p1 source distribution and matching offline Rust vendor archive are pinned to the official release asset SHA256 digests. Google37.0.1 remains the latest stable Google archive; official notes explicitly keep37.0.2/37.0.3 in Canary. The native port is identified as a project-built port37.0.0p1, never mislabeled as an unchanged Google37.0.1 binary. Preserve libadbmdns via the port's supported Rust/Corrosion route; only the adb target is built. No new project source patch, emulation, updater or implicit runtime floor increase. The port's pinned BoringSSL is a separate integration from application Python/Qt/cryptography.

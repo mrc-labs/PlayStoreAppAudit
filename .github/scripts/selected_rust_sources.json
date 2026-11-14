@@ -1,0 +1,20 @@
+{
+  "sources": [
+    {
+      "name": "ruff-0.17.5.tar.gz",
+      "package": "ruff",
+      "version": "0.17.5",
+      "sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
+      "authority": "https://pypi.org/pypi/ruff/0.17.5/json"
+    },
+    {
+      "name": "cryptography-50.0.2.tar.gz",
+      "package": "cryptography-rust",
+      "version": "50.0.2",
+      "sha256": "7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5",
+      "authority": "https://pypi.org/pypi/cryptography/50.0.2/json"
+    }
+  ],
+  "targets": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin"],
+  "scope": "Locked normal/build dependency selection for actual Maturin roots; source graph analysis only, not six native executions or compiler/package acceptance"
+}
