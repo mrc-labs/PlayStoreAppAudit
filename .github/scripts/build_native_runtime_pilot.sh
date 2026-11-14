@@ -58,6 +58,9 @@ cbor = providers['qt_cbor_manifest']
 # The qualified text-provider inputs are unchanged; Qt itself is already in spec.
 extra_sources = [item for item in text['sources'] if not item['name'].startswith('qtbase-')]
 extra_sources += text['meson'] + [cbor['source']]
+for name in ['qt_data_refresh_sources.json', 'qt_cldr49_sources.json']:
+    selection = json.loads((manifest.parent / name).read_text())
+    extra_sources += selection['sources']
 patch = Path(spec['cpython_patch']['path'])
 assert hashlib.sha256(patch.read_bytes()).hexdigest() == spec['cpython_patch']['sha256']
 shutil.copy2(patch, evidence / patch.name)
@@ -72,7 +75,7 @@ def fetch(item):
         raise
     with dest.open('rb') as stream:
         assert hashlib.file_digest(stream, 'sha256').hexdigest() == item['sha256'], item['name']
-    if dest.suffix == '.whl':
+    if dest.suffix in {'.whl', '.zip', '.dat'}:
         pass  # Original build-tool wheel retained; the full pilot executes matching source.
     elif dest.suffix == '.7z':
         # The generator uses libclang's API with GCC; unused driver aliases form link chains.
@@ -126,6 +129,10 @@ python "$repo/.github/scripts/apply_qt_cbor_upgrade.py" \
   --archive "$evidence/sources/tinycbor-7.1.tar.gz" --evidence "$evidence"
 python "$repo/.github/scripts/apply_qt_http_limits.py" apply \
   --source "$work/src/qtbase-everywhere-src-6.12.0" --evidence "$evidence"
+python "$repo/.github/scripts/apply_qt_data_refresh.py" \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" --archives "$evidence/sources" --evidence "$evidence"
+python "$repo/.github/scripts/apply_qt_cldr49.py" \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" --archives "$evidence/sources" --evidence "$evidence"
 python - <<'PY'
 import hashlib, json, os, shutil, sys
 from pathlib import Path
@@ -150,13 +157,20 @@ md4c = Path(os.environ['PILOT_WORK']) / 'src/md4c-0.6.0'
 native_md4c_flags(source, md4c, probe, evidence)
 PY
 prefix="$work/prefix"
+if [ ${#reuse_flags[@]} != 0 ]; then
+  prefix=$(cat "$evidence/reused-prefix.txt")
+  test -d "$prefix/python" && test ! -e "$prefix/qt"
+fi
+export PILOT_PREFIX="$prefix"
 ssl_prefix="$prefix/openssl"
 mkdir -p "$prefix"
 export CMAKE_BUILD_PARALLEL_LEVEL=2
 export LD_LIBRARY_PATH="$ssl_prefix/lib:$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
+if [ ${#reuse_flags[@]} = 0 ]; then
 bash "$repo/.github/scripts/build_linux_x64_native_libraries.sh"
+fi
 for dependency in sqlite3 libffi libmpdec liblzma zlib; do
   test "$(pkg-config --variable=libdir "$dependency")" = "$prefix/lib"
   pkg-config --modversion "$dependency"
@@ -166,6 +180,7 @@ done
 python "$repo/.github/scripts/apply_qt_ca_guard.py" \
   --source "$work/src/qtbase-everywhere-src-6.12.0" --evidence "$evidence"
 
+if [ ${#reuse_flags[@]} = 0 ]; then
 cd "$work/src/openssl-4.0.3"
 # Preserve measured OS defaults; hashed CA directories may load certificates lazily.
 # install_sw installs software only; it does not run install_ssldirs or edit OS trust.
@@ -182,12 +197,6 @@ cd "$work/src/Python-3.14.10"
   --with-pkg-config=yes --with-system-libmpdec=yes
 make -j2
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -c "import _ssl, _hashlib, ssl, sysconfig; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); print('Built _ssl/_hashlib import:', ssl.OPENSSL_VERSION)"
-if [ ${#reuse_flags[@]} != 0 ]; then
-  # The changed framework needs integration, not another unchanged full Python suite.
-  # Still execute the two security regressions on this freshly built interpreter.
-  LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j1 --match '*test_distrusted_spki*' \
-    --junit-xml "$evidence/cpython-security-regressions.xml" test_ssl > "$evidence/cpython-security-regressions.log" 2>&1
-else
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-native-regressions.xml" \
   test_ctypes test_sqlite3 test_decimal test_lzma test_zlib > "$evidence/cpython-native-regressions.log" 2>&1 \
@@ -197,7 +206,6 @@ LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python "$repo/.github/scripts/verify_l
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_upstream_suites; print('Executed upstream cases:', executed_upstream_suites(Path(sys.argv[1])))" \
   "$evidence/cpython-regressions.xml"
-fi
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_cpython_security; print('Executed upstream security:', executed_cpython_security(Path(sys.argv[1]), Path(sys.argv[2])))" \
@@ -206,6 +214,14 @@ make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
 cp "$evidence/linux_x64_native_delta_sources.json" "$prefix/python/linux_x64_native_delta_sources.json"
+else
+  # The whole original SDK and every file are hash-verified before this script.
+  # Keep its absolute prefix and original compiled-source identity.
+  export LD_LIBRARY_PATH="$prefix/python/lib:$LD_LIBRARY_PATH"
+  "$prefix/python/bin/python3.14" -m test -j1 --match '*test_distrusted_spki*' \
+    --junit-xml "$evidence/cpython-security-regressions.xml" test_ssl > "$evidence/cpython-security-regressions.log" 2>&1
+  "$prefix/python/bin/python3.14" -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
+fi
 # Do not let setup-python's same-SONAME libpython or CMake roots satisfy this build.
 export LD_LIBRARY_PATH="$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
 unset PYTHONHOME Python_ROOT_DIR Python2_ROOT_DIR Python3_ROOT_DIR
@@ -226,6 +242,7 @@ python -m pip install --no-index --no-deps "$evidence"/cffi-wheel/cffi-*.whl
   || { tail -n 100 "$evidence/cffi-tests.log"; exit 1; }
 python "$repo/.github/scripts/verify_linux_x64_native_delta.py" --prefix "$prefix" --output-dir "$evidence" --native-only --cffi "${reuse_flags[@]}"
 
+if [ ${#reuse_flags[@]} = 0 ]; then
 cmake -S "$work/src/libpng-1.6.59" -B "$work/png-build" -GNinja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
   -DPNG_TESTS=ON -DPNG_SHARED=ON -DPNG_STATIC=OFF
@@ -264,13 +281,14 @@ for suite in spec regressions; do
     --program "$prefix/bin/md2html" --spec "$work/src/md4c-0.6.0/test/$suite.txt" > "$evidence/md4c-$suite.log" 2>&1
 done
 fi
+fi
 # Preserve the compiled pre-Qt SDK before the next possible framework gate.
 retain_sdk() {
   local label=$1
   PILOT_SDK_LABEL="$label" python - <<'PYSDK'
 import hashlib, json, os, tarfile
 from pathlib import Path
-prefix = Path(os.environ['PILOT_WORK']) / 'prefix'
+prefix = Path(os.environ['PILOT_PREFIX'])
 output = Path(os.environ['PILOT_EVIDENCE'])
 label = os.environ['PILOT_SDK_LABEL']
 files = {}
@@ -293,7 +311,7 @@ with archive.open('rb') as stream:
 print('Retained intermediate SDK:', label, archive.stat().st_size, digest, flush=True)
 PYSDK
 }
-if [ ${#reuse_flags[@]} != 0 ]; then retain_sdk pre-qt-sdk; fi
+# Reused SDK remains identified by its original receipt; do not relabel it.
 mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
@@ -345,6 +363,8 @@ export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.10"
 unset SSL_CERT_FILE SSL_CERT_DIR
 export XDG_CONFIG_HOME="$work/profile/config" XDG_DATA_HOME="$work/profile/data" XDG_CACHE_HOME="$work/profile/cache"
 export QT_QPA_PLATFORM=xcb
+python .github/scripts/probe_qt_cldr49_runtime.py \
+  --xml "$work/src/cldr49-generator-input/cldr49.xml" --output "$evidence/qt-cldr49-runtime.json"
 xvfb-run -a python .github/scripts/verify_native_runtime_pilot.py --output-dir "$evidence" "${reuse_flags[@]}"
 xvfb-run -a python .github/scripts/verify_linux_x64_native_delta.py --prefix "$prefix" --output-dir "$evidence" --cffi "${reuse_flags[@]}"
 python main.py cli audit --help > "$evidence/cli-smoke.txt"

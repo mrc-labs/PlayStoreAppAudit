@@ -1,0 +1,83 @@
+From e7f52631d2778549a61933afa9fb3d56c280af41 Mon Sep 17 00:00:00 2001
+From: Edward Welbourne <edward.welbourne@qt.io>
+Date: Mon, 2 Nov 2026 20:05:50 +0100
+Subject: [PATCH] Warn on missing Windows zone IDs and update zonedata for CLDR
+ v49
+
+On updating to CLDR v49 I got a rather cryptic message from
+qlocalexml2cpp.py about a KeyError, actually caused by there being new
+Windows IDs that zonedata.py didn't know about. When generating the
+QLocale XML data, CldrReader previously whittered (when verbose) about
+any zones that we could drop. Add a grumble about the converse, so the
+updater gets advance warning of these and can update
+zonedata.windowsIdList in time to generate source code.
+
+Duly update windowsIdList with the three Canadian zones MS now gives
+its own names to.
+
+Pick-to: 6.12 6.8
+Task-number: QTBUG-151179
+Task-number: QTBUG-151816
+Change-Id: I12a990491ff696762d74b000d9a78610caf30105
+Reviewed-by: Thiago Macieira <thiago.macieira@intel.com>
+---
+ util/locale_database/cldr.py     | 12 ++++++++++--
+ util/locale_database/zonedata.py |  3 +++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/util/locale_database/cldr.py b/util/locale_database/cldr.py
+index c2ae0b3f802f..b1752b229bd1 100644
+--- a/util/locale_database/cldr.py
++++ b/util/locale_database/cldr.py
+@@ -120,13 +120,21 @@ def zoneData(self) -> tuple[dict[str, str],
+         metamap, zones, territorial = self.root.readMetaZoneMap(alias)
+ 
+         from zonedata import windowsIdList
+-        winUnused: set[str] = set(n for n, o in windowsIdList).difference(
+-            set(defaults).union(w for w, t, ids in winIds))
++        known: set[str] = set(n for n, o in windowsIdList)
++        found: set[str] = set(defaults).union(w for w, t, ids in winIds)
++        winUnused: set[str] = known.difference(found)
+         if winUnused:
+             joined = "\n\t".join(winUnused)
+             self.whitter.write(
+                 f'No Windows ID in\n\t{joined}\nis still in use.\n'
+                 'They could be removed at the next major version.\n')
++        winMissing: set[str] = found.difference(known)
++        if winMissing:
++            joined = '\n\t'.join(winMissing)
++            self.grumble(
++                f'Need Windows ID data for\n\t{joined}\n'
++                'found in CLDR, but not in zonedata.windowsIdList -\n'
++                'add before running qlocalexml2cpp.py\n')
+ 
+         # Check for duplicate entries in winIds:
+         last: tuple[str, str, str] = ('', '', '')
+diff --git a/util/locale_database/zonedata.py b/util/locale_database/zonedata.py
+index b73290f3305f..173f02247ae3 100644
+--- a/util/locale_database/zonedata.py
++++ b/util/locale_database/zonedata.py
+@@ -86,6 +86,7 @@
+ windowsIdList = (
+     ('Afghanistan Standard Time',        16200),
+     ('Alaskan Standard Time',           -32400),
++    ('Alberta Standard Time',           -21600),
+     ('Aleutian Standard Time',          -36000),
+     ('Altai Standard Time',              25200),
+     ('Arab Standard Time',               10800),
+@@ -102,6 +103,7 @@
+     ('Bahia Standard Time',             -10800),
+     ('Bangladesh Standard Time',         21600),
+     ('Belarus Standard Time',            10800),
++    ('British Columbia Standard Time',  -25200),
+     ('Bougainville Standard Time',       39600),
+     ('Canada Central Standard Time',    -21600),
+     ('Cape Verde Standard Time',         -3600),
+@@ -148,6 +150,7 @@
+     ('Lord Howe Standard Time',          37800),
+     ('Magadan Standard Time',            36000),
+     ('Magallanes Standard Time',        -10800), # permanent DST
++    ('Manitoba Standard Time',          -18000),
+     ('Marquesas Standard Time',         -34200),
+     ('Mauritius Standard Time',          14400),
+     ('Middle East Standard Time',         7200),

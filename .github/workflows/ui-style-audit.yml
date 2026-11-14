@@ -114,7 +114,7 @@ jobs:
           set -euo pipefail
           mkdir toolchain-delta-evidence
           python .github/scripts/bootstrap_pip.py | tee toolchain-delta-evidence/pip-bootstrap.log
-          python -m pip install 'pytest==9.2.0' 'ruff==0.17.4' 'mypy==2.4.1' -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'certifi==2026.10.23' --report toolchain-delta-evidence/install.json
+          python -m pip install 'pytest==9.2.0' 'ruff==0.17.5' 'mypy==2.4.1' -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'certifi==2026.10.23' --report toolchain-delta-evidence/install.json
           if [ '${{ inputs.linux_arm64_pilot }}' = tools ]; then
             python -m pip install 'Nuitka==4.3.5'
           fi
@@ -622,6 +622,7 @@ jobs:
         run: |
           set -euo pipefail
           python .github/scripts/reuse_linux_python_evidence.py --output-dir pilot-evidence
+          python .github/scripts/reuse_linux_pre_qt_sdk.py
 
       - name: Build and exercise one controlled native stack
         if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' && inputs.linux_arm64_pilot != 'qt-unicode-prerequisites' && inputs.linux_arm64_pilot != 'qt-data-prerequisites' }}
