@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,34 @@ def reviewed_md4c_flags(qt: Path, md4c: Path, output: Path) -> Path:
                       f'static unsigned qtProviderFlags(unsigned m_features) {{ return {expression}; }}\n', encoding='utf-8')
     shutil.copy2(REPO / '.github/scripts/qt_md4c_flags_consumer.cpp', output)
     return header
+
+
+def native_md4c_flags(qt: Path, md4c: Path, build: Path, output: Path) -> dict:
+    """Compile only the original parser and the guarded flag-policy consumer."""
+    from verify_linux_x64_native_delta import elf_record
+
+    header = reviewed_md4c_flags(qt, md4c, build)
+    obj, binary = build / 'md4c.o', build / 'qt-md4c-flags'
+    commands = [
+        [os.environ.get('CC', 'cc'), '-std=c11', '-O2', '-c', str(md4c / 'src/md4c.c'), '-o', str(obj)],
+        [os.environ.get('CXX', 'c++'), '-std=c++17', '-O2', '-I' + str(md4c / 'src'),
+         *shlex.split(os.environ.get('CXXFLAGS', '')), str(build / 'qt_md4c_flags_consumer.cpp'), str(obj), '-o', str(binary)],
+    ]
+    for number, command in enumerate(commands):
+        with (output / f'md4c-flags-compile-{number}.log').open('w', encoding='utf-8') as log:
+            subprocess.run(command, check=True, stdout=log, stderr=subprocess.STDOUT)
+    log = subprocess.check_output([str(binary)], text=True)
+    assert log.startswith('PASS original collision/Qt-only mask/'), log
+    linkage = subprocess.check_output(['ldd', str(binary)], text=True)
+    assert os.environ['PILOT_CXX_LINK_DIR'] not in linkage, 'Link SDK loaded at runtime'
+    (output / 'qt-md4c-flags.log').write_text(log, encoding='utf-8')
+    (output / 'qt-md4c-flags-linkage.txt').write_text(linkage, encoding='utf-8')
+    shutil.copy2(header, output)
+    shutil.copy2(build / 'qt_md4c_flags_consumer.cpp', output)
+    result = {'source_sha': os.environ['GITHUB_SHA'], 'image': elf_record(binary, output),
+              'result': log.strip(), 'scope': 'Actual MD4C0.6 and exact guarded Qt flags; not QtGui/binding/GUI acceptance'}
+    (output / 'qt-md4c-flags-native.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    return result
 
 
 def checked_source(item: dict, directory: Path) -> Path:
@@ -105,6 +134,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--md4c-flags-only', action='store_true')
     args = parser.parse_args()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
     assert head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
@@ -119,6 +149,29 @@ def main() -> None:
     spec_path = REPO / '.github/scripts/qt_text_provider_sources.json'
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
     shutil.copy2(spec_path, output)
+    if args.md4c_flags_only:
+        from provision_nuitka_scons import apply_source_patch
+
+        sdk = json.loads((output / 'cxx-sdk-qualified.json').read_text(encoding='utf-8'))
+        assert sdk['source_sha'] == head and sdk['compatible'] and not sdk['runtime_sdk_loaded']
+        assert '-L' + sdk['link_directory'] in os.environ['CXXFLAGS'].split()
+        assert subprocess.check_output(['gcc', '-dumpmachine'], text=True).strip() == 'x86_64-linux-gnu'
+        sources = output / 'sources'
+        sources.mkdir(exist_ok=True)
+        selected = [item for item in spec['sources'] if item['name'].startswith(('md4c-', 'qtbase-'))]
+        for item in selected:
+            with tarfile.open(checked_source(item, sources)) as archive:
+                archive.extractall(work, filter='data')
+        md, qt = [work / item['directory'] for item in selected]
+        apply_source_patch(qt, spec['qt_md4c_patch'])
+        shutil.copy2(REPO / spec['qt_md4c_patch']['path'], output)
+        shutil.copy2(qt / 'src/gui/text/qtextmarkdownimporter.cpp', output / 'qtextmarkdownimporter-project.cpp')
+        legal = output / 'legal'
+        legal.mkdir(exist_ok=True)
+        shutil.copytree(qt / 'LICENSES', legal / 'Qt6.12.0-LICENSES')
+        shutil.copy2(md / 'LICENSE.md', legal / 'MD4C-LICENSE.md')
+        print(json.dumps(native_md4c_flags(qt, md, work / 'flags', output), indent=2), flush=True)
+        return
     report = {'source_sha': head, 'scope': spec['scope'], 'limits': spec['limits'], 'result': 'BLOCKED'}
 
     def run(command: list, name: str, *, cwd: Path = work, env: dict | None = None) -> str:
