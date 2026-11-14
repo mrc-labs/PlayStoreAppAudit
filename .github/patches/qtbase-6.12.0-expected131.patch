@@ -1,7 +1,6 @@
 --- a/src/corelib/global/qexpected_p.h
 +++ b/src/corelib/global/qexpected_p.h
-@@ -32,8 +32,8 @@
- //
+@@ -33,6 +33,6 @@
  
  #define Q23_TL_EXPECTED_VERSION_MAJOR 1
 -#define Q23_TL_EXPECTED_VERSION_MINOR 1
@@ -10,9 +9,7 @@
 +#define Q23_TL_EXPECTED_VERSION_PATCH 1
  
  #include <QtCore/private/qglobal_p.h>
- #include <QtCore/qassert.h>
-@@ -75,6 +75,12 @@
- #if (defined(__GNUC__) && __GNUC__ == 5 && __GNUC_MINOR__ <= 5 &&              \
+@@ -76,4 +76,10 @@
       !defined(__clang__))
  #define Q23_TL_EXPECTED_GCC55
 +#endif
@@ -23,9 +20,7 @@
 +#define Q23_TL_CPLUSPLUS __cplusplus
  #endif
  
- #if !defined(Q23_TL_ASSERT)
-@@ -137,11 +143,6 @@
-   std::is_trivially_destructible<T>
+@@ -138,9 +144,4 @@
  #endif
  
 -#ifdef _MSVC_LANG
@@ -35,9 +30,7 @@
 -#endif
  
  #if Q23_TL_CPLUSPLUS > 201103L
- #define Q23_TL_EXPECTED_CXX14
-@@ -162,7 +163,13 @@
- 
+@@ -163,5 +164,11 @@
  QT_BEGIN_NAMESPACE
  namespace q23 {
 -template <class T, class E> class expected;
@@ -50,9 +43,7 @@
 +template <class T, class E> class Q23_TL_EXPECTED_NODISCARD expected;
  
  #ifndef Q23_TL_MONOSTATE_INPLACE_MUTEX
- #define Q23_TL_MONOSTATE_INPLACE_MUTEX
-@@ -244,21 +251,13 @@
- };
+@@ -245,19 +252,11 @@
  static constexpr unexpect_t unexpect{};
  
 +#ifdef Q23_TL_EXPECTED_EXCEPTIONS_ENABLED
@@ -78,46 +69,38 @@
 -
  #ifndef Q23_TL_TRAITS_MUTEX
  #define Q23_TL_TRAITS_MUTEX
- // C++14-style aliases for brevity
-@@ -1308,7 +1307,7 @@
- /// has been destroyed. The initialization state of the contained object is
+@@ -1309,5 +1308,5 @@
  /// tracked by the expected object.
  template <class T, class E>
 -class expected : private detail::expected_move_assign_base<T, E>,
 +class Q23_TL_EXPECTED_NODISCARD expected : private detail::expected_move_assign_base<T, E>,
                   private detail::expected_delete_ctor_base<T, E>,
                   private detail::expected_delete_assign_base<T, E>,
-                  private detail::expected_default_ctor_base<T, E> {
-@@ -2049,28 +2048,28 @@
-             detail::enable_if_t<!std::is_void<U>::value> * = nullptr>
+@@ -2050,5 +2049,5 @@
    Q23_TL_EXPECTED_11_CONSTEXPR const U &value() const & {
      if (!has_value())
 -      detail::throw_exception(bad_expected_access<E>(err().error()));
 +      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(err().error()));
      return val();
    }
-   template <class U = T,
-             detail::enable_if_t<!std::is_void<U>::value> * = nullptr>
+@@ -2057,5 +2056,5 @@
    Q23_TL_EXPECTED_11_CONSTEXPR U &value() & {
      if (!has_value())
 -      detail::throw_exception(bad_expected_access<E>(err().error()));
 +      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(err().error()));
      return val();
    }
-   template <class U = T,
-             detail::enable_if_t<!std::is_void<U>::value> * = nullptr>
+@@ -2064,5 +2063,5 @@
    Q23_TL_EXPECTED_11_CONSTEXPR const U &&value() const && {
      if (!has_value())
 -      detail::throw_exception(bad_expected_access<E>(std::move(err()).error()));
 +      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(std::move(err()).error()));
      return std::move(val());
    }
-   template <class U = T,
-             detail::enable_if_t<!std::is_void<U>::value> * = nullptr>
+@@ -2071,5 +2070,5 @@
    Q23_TL_EXPECTED_11_CONSTEXPR U &&value() && {
      if (!has_value())
 -      detail::throw_exception(bad_expected_access<E>(std::move(err()).error()));
 +      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(std::move(err()).error()));
      return std::move(val());
    }
- 

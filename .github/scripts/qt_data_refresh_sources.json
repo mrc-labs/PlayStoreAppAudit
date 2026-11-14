@@ -33,7 +33,7 @@
   ],
   "expected_patch": {
     "path": ".github/patches/qtbase-6.12.0-expected131.patch",
-    "sha256": "6ed9dd984d6c94a708c505c9a995cbba3aae33697652a4eec480328639bdc9a9",
+    "sha256": "f3dabee1d6d218c068fe56ea9f019d33c382c9ab6979aaa2b1bc4d5ad234a0ea",
     "files": {
       "src/corelib/global/qexpected_p.h": {
         "base_sha256": "61cf7e096fef0f3dc61a184561fabd9935a7e3a5f68510fb764514fdadf36014",
