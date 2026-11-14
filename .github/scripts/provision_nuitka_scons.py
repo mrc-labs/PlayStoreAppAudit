@@ -89,7 +89,7 @@ def main() -> None:
     wheels = evidence / 'compiler-wheels'
     wheels.mkdir()
     log = evidence / 'compiler-wheel-build.log'
-    result = subprocess.run([sys.executable, '-m', 'pip', 'wheel', '--no-deps', '--no-build-isolation',
+    result = subprocess.run([sys.executable, '-m', 'pip', 'wheel', '--verbose', '--no-deps', '--no-build-isolation',
                              '--no-cache-dir', '--wheel-dir', str(wheels), str(nuitka)],
                             env={**os.environ, 'PYTHONVERBOSE': '1', 'PYTHONUTF8': '1'},
                             text=True, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

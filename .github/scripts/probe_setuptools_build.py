@@ -52,6 +52,8 @@ def backend_imports(trace: str, environment: str) -> dict[str, str]:
             continue
         if '/setuptools/_vendor/' in normalized:
             raise ValueError('Active setuptools fallback path: ' + line.strip())
+        if '/site-packages/pip/_vendor/' in normalized:
+            continue  # The pip frontend is distinct from the source-build backend.
         prefix = environment.replace('\\', '/').lower().rstrip('/')
         if (prefix if prefix == 'pip-build-env-' else prefix + '/') not in normalized:
             continue
@@ -89,6 +91,8 @@ def record_consumer_build(trace: Path, output: Path, consumer: str) -> None:
     report = {'source_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
               'consumer': consumer, 'python': platform.python_version(), 'architecture': platform.machine(),
               'environment': sys.prefix, 'actually_installed': selected, 'actual_backend_imports': imports,
+              'pip_frontend_vendor_paths': sorted({line.strip() for line in trace.read_text(encoding='utf-8', errors='replace').splitlines()
+                  if 'code object from' in line and '/site-packages/pip/_vendor/' in line.replace('\\', '/').lower()}),
               'trace_sha256': hashlib.sha256(trace.read_bytes()).hexdigest(), 'executed_setuptools_fallbacks': [],
               'scope': 'Actual source-build worker; no producing-profile or package acceptance', 'result': 'PASS'}
     (output / (consumer + '-build-dependencies.json')).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')

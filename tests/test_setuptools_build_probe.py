@@ -75,3 +75,11 @@ def test_source_builder_constraints_match_the_six_native_qualified_contract() ->
     spec = json.loads((scripts / 'setuptools_build_probe_sources.json').read_text())
     assert (scripts / 'source_build_requirements.txt').read_text().splitlines() == spec['requirements']
     assert (scripts / 'source_build_constraints.txt').read_text().splitlines() == spec['build_constraints']
+
+
+def test_pip_frontend_vendor_is_not_a_setuptools_backend_fallback() -> None:
+    lines = trace().replace('/tmp/pip-build-env-case/overlay', '/native/venv')
+    pip = "# code object from '/native/venv/lib/python3.14/site-packages/pip/_vendor/packaging/__init__.py'"
+    assert set(backend_imports(pip + '\n' + lines, '/native/venv')) == set(IMPORTS)
+    with pytest.raises(ValueError, match='fallback'):
+        backend_imports(pip + '\n' + lines.replace('/site-packages/jaraco/text/', '/site-packages/setuptools/_vendor/jaraco/text/'), '/native/venv')

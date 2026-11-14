@@ -13,7 +13,24 @@
       "Linux x64 cffi/shared libffi source consumer"
     ],
     "gates": "Retain actual PYTHONVERBOSE worker trace; reject any executed setuptools/_vendor fallback, missing external core imports, wrong environment or mismatched installed constraints; preserve install reports and contract/source hashes",
-    "impact": "All six controlled source-builder build environments change. Earlier source artifacts keep actual SHAs and remain historical; requalification of changed bindings still required. Runtime/provider/Qt/CPython/vendor patches unchanged; no producing-profile adoption."
+    "impact": "All six controlled source-builder build environments change. Earlier source artifacts keep actual SHAs and remain historical; requalification of changed bindings still required. Runtime/provider/Qt/CPython/vendor patches unchanged; no producing-profile adoption.",
+    "first_native_gates": {
+      "compiler_run": 43536994736,
+      "cffi_run": 43536998371,
+      "result": "Precondition failures; compiler wheel built but frontend pip vendor misclassified/worker trace hidden; ARM64 pinned14.51 absent before any source download",
+      "trace_fix": "pip --verbose retains actual worker output; pip frontend vendor paths recorded separately, setuptools fallback remains fail-closed",
+      "arm64_stable_selection": {
+        "toolset": "14.52.37025",
+        "compiler": "19.52.37025",
+        "visual_studio": "18.12.12405.243",
+        "channel": "VisualStudio.18.Release",
+        "isPrerelease": false,
+        "official_release": "https://learn.microsoft.com/en-us/visualstudio/releases/2026/release-notes",
+        "available_native_inventory_artifact": 14089902314,
+        "artifact_sha256": "2c41eb6e57df342da53e16ef1a3de395b422a498c4f0fff7675e009dcdc1948a",
+        "scope": "Isolated libffi consumer only; full-stack14.44 and vendor patches unchanged"
+      }
+    }
   },
   "windows_schannel_guard_2026_11_13": {
     "date": "2026-11-13",

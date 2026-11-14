@@ -11,10 +11,11 @@ $inventory = & $vswhere -all -products '*' -format json
 if ($LASTEXITCODE -ne 0) { throw 'Visual Studio inventory failed.' }
 $inventory | Set-Content (Join-Path $evidence 'visual-studio-inventory.json')
 $selected = $null
-$toolsetPattern = if ($FfiPrerequisitesOnly) { '14.51.*' } else { '14.44.*' }
-$toolsetVersion = if ($FfiPrerequisitesOnly) { '14.51' } else { '14.44' }
+$toolsetPattern = if ($FfiPrerequisitesOnly) { '14.52.37025' } else { '14.44.*' }
+$toolsetVersion = if ($FfiPrerequisitesOnly) { '14.52' } else { '14.44' }
 $available = @()
 foreach ($installation in ($inventory | ConvertFrom-Json)) {
+    if ($FfiPrerequisitesOnly -and ($installation.isPrerelease -or $installation.channelId -ne 'VisualStudio.18.Release' -or [version]$installation.installationVersion -lt [version]'18.12')) { continue }
     $tools = Join-Path $installation.installationPath 'VC/Tools/MSVC'
     if (-not (Test-Path -LiteralPath $tools)) { continue }
     foreach ($version in (Get-ChildItem -LiteralPath $tools -Directory)) {
@@ -28,6 +29,7 @@ if (-not $selected) { throw "BLOCKER: supported $toolsetVersion native ARM64 hos
 Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
 Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=arm64 -host_arch=arm64 -vcvars_ver=$toolsetVersion"
 if ($env:VSCMD_ARG_HOST_ARCH -ne 'arm64' -or $env:VSCMD_ARG_TGT_ARCH -ne 'arm64') { throw 'MSVC host and target must both be ARM64.' }
+if ($FfiPrerequisitesOnly -and $env:VCTOOLSVERSION.TrimEnd([char[]]'\/') -ne '14.52.37025') { throw 'Exact stable libffi diagnostic toolset mismatch.' }
 $env:PILOT_VS_PATH = $selected
 if ($FfiPrerequisitesOnly) {
     if ($HostTools -or $FullPilot) { throw 'libffi prerequisites cannot run a source-stack or host-tool build.' }
