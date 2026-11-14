@@ -84,7 +84,7 @@ def main() -> None:
     apply_limits(qt, output)
     apply_guard(qt, output)
     legal = output / 'legal'
-    legal.mkdir()
+    legal.mkdir(exist_ok=True)  # The qualified link-SDK preflight already retains legal material here.
     shutil.copytree(qt / 'LICENSES', legal / 'Qt6.12.0-LICENSES')
     shutil.copy2(qt / 'licenseRule.json', legal)
     shutil.copy2(work / 'openssl-4.0.3/LICENSE.txt', legal / 'OpenSSL-LICENSE.txt')
