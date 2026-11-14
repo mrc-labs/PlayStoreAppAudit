@@ -32,7 +32,17 @@ def parser_regressions() -> dict:
     with tempfile.TemporaryDirectory() as directory:
         compressed = Path(directory) / 'fixture.xml.gz'
         compressed.write_bytes(gzip.compress(b'<r><v>kept</v></r>'))
-        assert etree.parse(str(compressed), parser).getroot()[0].text == 'kept'
+        if etree.LIBXML_VERSION >= (2, 15, 0):
+            try:
+                etree.parse(str(compressed), parser)
+            except etree.XMLSyntaxError:
+                pass
+            else:
+                raise AssertionError('Modern parser unexpectedly auto-decompresses by default')
+        # Upstream documents explicit opt-in for this isolated, trusted fixture.
+        # Never enable decompression globally or change application defaults.
+        trusted_gzip = etree.XMLParser(no_network=True, resolve_entities=False, huge_tree=False, decompress=True)
+        assert etree.parse(str(compressed), trusted_gzip).getroot()[0].text == 'kept'
     doc = html.fromstring('<html><p>caf\u00e8<br><b>bold</b></p></html>'.encode(),
                          parser=html.HTMLParser(encoding='utf-8', no_network=True))
     assert doc.xpath('string(//p)') == 'caf\u00e8bold'
@@ -101,6 +111,32 @@ def binary_record(path: Path, output: Path, arch: str, deployment: str | None) -
     return record
 
 
+def installed_results(spec: dict, output: Path, arch: str, deployment: str | None,
+                      compiler: str, wheel: Path, aliases: dict, head: str,
+                      compiled_source: str, reused: dict | None = None) -> None:
+    from lxml import etree
+
+    assert etree.LXML_VERSION[:3] == (6, 1, 3)
+    assert etree.LIBXML_VERSION == etree.LIBXML_COMPILED_VERSION == (2, 15, 4)
+    assert etree.LIBXSLT_VERSION == etree.LIBXSLT_COMPILED_VERSION == (1, 1, 45)
+    tests = parser_regressions()
+    package = Path(etree.__file__).parent
+    native = sorted([*package.rglob('*.pyd'), *package.rglob('*.so')])
+    assert len(native) >= 2
+    images = []
+    with zipfile.ZipFile(wheel) as bundle:
+        for path in native:
+            assert bundle.read('lxml/' + path.relative_to(package).as_posix()) == path.read_bytes()
+            images.append(binary_record(path, output, arch, deployment))
+    result = {'source_sha': head, 'scope': spec['scope'], 'machine': platform.machine(),
+              'compiler': compiler, 'compiled_source_sha': compiled_source, 'reused_provenance': reused, 'deployment': deployment, 'patches': [], 'static_library_aliases': aliases,
+              'libxml': etree.LIBXML_VERSION, 'libxslt': etree.LIBXSLT_VERSION, 'tests': tests,
+              'images': images, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+              'result': 'PASS native controlled lxml/current static parsers; not package acceptance'}
+    (output / 'lxml-native-results.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps(result, indent=2), flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
@@ -120,6 +156,38 @@ def main() -> None:
     spec_path = REPO / '.github/scripts/lxml_native_sources.json'
     spec = json.loads(spec_path.read_text(encoding='utf-8'))
     shutil.copy2(spec_path, output)
+    if sys.platform != 'win32':
+        from download_diagnostic_artifact import fetch_artifact
+
+        label = ('macos' if sys.platform == 'darwin' else 'linux') + '-' + ('arm64' if arch == 'arm64' else 'x64')
+        prior = next(item for item in spec['compiled_posix_wheels'] if item['label'] == label)
+        metadata, data = fetch_artifact(prior['id'])
+        os.environ.pop('GH_TOKEN', None)
+        os.environ.pop('GITHUB_TOKEN', None)
+        assert metadata['id'] == prior['id'] and not metadata['expired']
+        assert metadata['workflow_run']['id'] == prior['run']
+        assert metadata['workflow_run']['head_sha'] == prior['source_sha']
+        assert len(data) == metadata['size_in_bytes'] == prior['size']
+        assert metadata['digest'] == 'sha256:' + prior['sha256']
+        assert hashlib.sha256(data).hexdigest() == prior['sha256']
+        original = output / ('original-lxml-' + str(prior['id']) + '.zip')
+        original.write_bytes(data)
+        import io
+        with zipfile.ZipFile(io.BytesIO(data)) as bundle:
+            old = json.loads(bundle.read('lxml_native_sources.json'))
+            assert old == {key: value for key, value in spec.items() if key != 'compiled_posix_wheels'}, 'Changed compiled parser inputs'
+            names = [name for name in bundle.namelist() if name.startswith('wheels/lxml-6.1.3-') and name.endswith('.whl')]
+            assert len(names) == 1
+            wheels = output / 'wheels'
+            wheels.mkdir()
+            wheel = wheels / Path(names[0]).name
+            wheel.write_bytes(bundle.read(names[0]))
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-index', '--no-deps', str(wheel)], check=True)
+        deployment = ('11.0' if arch == 'arm64' else '10.15') if sys.platform == 'darwin' else None
+        installed_results(spec, output, arch, deployment, 'Original compiler retained in immutable ZIP', wheel,
+                          {}, head, prior['source_sha'], {**prior, 'original_zip': original.name,
+                          'scope': 'Original source/static-library/worker/legal bytes reused; only fixture/execution changed'})
+        return
     sources = output / 'sources'
     sources.mkdir()
     legal = output / 'legal'
@@ -236,10 +304,8 @@ def main() -> None:
     if sys.platform == 'win32':
         # Match lxml's documented static linker basenames; these are identical
         # newly source-built static archives, never replacement runtime DLLs.
-        for original, target in [('libxml2.lib', 'libxml2_a.lib'), ('xslt.lib', 'libxslt_a.lib'), ('exslt.lib', 'libexslt_a.lib')]:
+        for original, target in [('libxml2s.lib', 'libxml2_a.lib'), ('libxslts.lib', 'libxslt_a.lib'), ('libexslts.lib', 'libexslt_a.lib')]:
             source = prefix / 'lib' / original
-            if not source.is_file() and original == 'libxml2.lib':
-                source = prefix / 'lib/xml2.lib'
             shutil.copy2(source, prefix / 'lib' / target)
             aliases[target] = {'original': source.name, 'sha256': hashlib.sha256(source.read_bytes()).hexdigest()}
     env.update(STATIC='true', WITHOUT_CYTHON='true', LXML_STATIC_INCLUDE_DIRS=os.pathsep.join(
@@ -263,27 +329,8 @@ def main() -> None:
     record_consumer_build(output / 'lxml-wheel.log', output / 'build-dependencies', 'lxml')
     wheel = next(wheels.glob('lxml-6.1.3-*.whl'))
     run([sys.executable, '-m', 'pip', 'install', '--no-index', '--no-deps', wheel], 'lxml-install')
-    from lxml import etree
+    installed_results(spec, output, arch, deployment, compiler, wheel, aliases, head, head)
 
-    assert etree.LXML_VERSION[:3] == (6, 1, 3)
-    assert etree.LIBXML_VERSION == etree.LIBXML_COMPILED_VERSION == (2, 15, 4)
-    assert etree.LIBXSLT_VERSION == etree.LIBXSLT_COMPILED_VERSION == (1, 1, 45)
-    tests = parser_regressions()
-    package = Path(etree.__file__).parent
-    native = sorted([*package.rglob('*.pyd'), *package.rglob('*.so')])
-    assert len(native) >= 2
-    images = []
-    with zipfile.ZipFile(wheel) as bundle:
-        for path in native:
-            assert bundle.read('lxml/' + path.relative_to(package).as_posix()) == path.read_bytes()
-            images.append(binary_record(path, output, arch, deployment))
-    result = {'source_sha': head, 'scope': spec['scope'], 'machine': platform.machine(),
-              'compiler': compiler, 'deployment': deployment, 'patches': [], 'static_library_aliases': aliases,
-              'libxml': etree.LIBXML_VERSION, 'libxslt': etree.LIBXSLT_VERSION, 'tests': tests,
-              'images': images, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
-              'result': 'PASS native controlled lxml/current static parsers; not package acceptance'}
-    (output / 'lxml-native-results.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(result, indent=2), flush=True)
 
 
 if __name__ == '__main__':

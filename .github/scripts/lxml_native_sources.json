@@ -80,5 +80,39 @@
     }
   ],
   "vendor_patches": [],
-  "supported_build_options": "https://lxml.de/build.html; original setup.py/ setupinfo.py STATIC=true plus LXML_STATIC_* interfaces; pre-generated release C, no Cython regeneration"
+  "supported_build_options": "https://lxml.de/build.html; original setup.py/ setupinfo.py STATIC=true plus LXML_STATIC_* interfaces; pre-generated release C, no Cython regeneration",
+  "compiled_posix_wheels": [
+    {
+      "label": "macos-x64",
+      "id": 14113076783,
+      "size": 21922799,
+      "sha256": "b142b5a29b967060fbce625be16268aa9f54c963fa9620344bb38f1791429417",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "linux-x64",
+      "id": 14112568650,
+      "size": 29066561,
+      "sha256": "942a4fdfd5feeda10d47f9756e3dc7906cb5b01750598289e39f57399c7861eb",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "linux-arm64",
+      "id": 14112472701,
+      "size": 29058695,
+      "sha256": "2a0067270c3bac12b3fea35e11abd29d49bac51a9bb4bf93144cc5b07e709e10",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "macos-arm64",
+      "id": 14112223888,
+      "size": 21849301,
+      "sha256": "3991e89c6a4e7f219530eedfe916c334b16a78392d129b51a997bc42ed62475d",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    }
+  ]
 }

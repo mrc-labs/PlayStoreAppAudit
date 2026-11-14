@@ -1,4 +1,13 @@
 {
+  "pillow_dependency_removal_2026_11_14": {
+    "date": "2026-11-14",
+    "decision": "Remove unused Pillow development dependency; existing Qt reads PNG/ICO tests",
+    "application_code_changed": false,
+    "icon_tests": 4,
+    "local_result": "PASS size/alpha/signature checks and lint",
+    "quality": "Pending fresh exact-head PIL-absence/full test/smoke gate",
+    "observations_1094_unchanged": true
+  },
   "qt_cbor_sdk_consumer_2026_11_14": {
     "run": 43585928248,
     "artifact": 14109733250,
@@ -4098,9 +4107,9 @@
       },
       {
         "id": "R12",
-        "status": "REQUIRED development Pillow natives",
-        "applicability_minimum_action": "Development-only Pillow13.0.0 LittleCMS2.19 -> 2.19.1/FriBidi1.0.11 -> 1.0.17/HarfBuzz14.5 -> 15.0: corrected stable parent first, otherwise documented source build against current libraries. Production nofollow-PIL remains unchanged.",
-        "verification_evidence": "Actual feature/provider reports and icon/image tooling tests; affected build/Quality environments and source provenance, not a claim of shipped app exposure."
+        "status": "RESOLVED by unused development dependency removal; fresh Quality pending",
+        "applicability_minimum_action": "Only four PNG/ICO tests imported Pillow. Existing Qt QImage now preserves dimensions, alpha extrema and PNG payload signature checks. No application/generator/font/color consumer. Sole dev pin and audit import removed; nofollow-PIL exclusions retained. Old Pillow-native versions are no longer selected; no upgrade or shipped exposure claim.",
+        "verification_evidence": "Four icon tests and lint PASS locally; fresh exact-head Quality must assert PIL absent and complete full tests/GUI smoke."
       },
       {
         "id": "R13",

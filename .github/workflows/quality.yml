@@ -71,6 +71,7 @@ jobs:
         env:
           EXPECTED_PYTHON: ${{ matrix.python-version }}
         run: |
+          python -c "import importlib.util; assert importlib.util.find_spec('PIL') is None, 'Unexpected Pillow dependency'; print('Pillow absent; PNG/ICO validation uses Qt')"
           python -c "import os, platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert '.'.join(map(str, sys.version_info[:2])) == os.environ['EXPECTED_PYTHON'] and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
           if ($LASTEXITCODE -ne 0) { throw 'Python/Qt runtime verification failed.' }
 

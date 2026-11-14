@@ -57,6 +57,9 @@ concurrency:
 jobs:
 
   native-toolchain-delta:
+    permissions:
+      contents: read
+      actions: read
     if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || inputs.linux_arm64_pilot == 'tools-lxml' }}
     name: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && 'Controlled native lxml parsers' || inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
     strategy:
@@ -69,7 +72,7 @@ jobs:
           - {os: ubuntu-24.04-arm, label: linux-arm64, arch: arm64}
           - {os: macos-26-intel, label: macos-x64, arch: x64}
           - {os: macos-26, label: macos-arm64, arch: arm64}
-    runs-on: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && matrix.label == 'linux-x64' && 'ubuntu-22.04' || matrix.os }}
+    runs-on: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && matrix.label == 'linux-x64' && 'ubuntu-22.04' || inputs.linux_arm64_pilot == 'tools-lxml' && matrix.label == 'windows-x64' && 'windows-2025-vs2026' || matrix.os }}
     timeout-minutes: 35
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -168,9 +171,11 @@ jobs:
           python -m venv "$RUNNER_TEMP/lxml-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           probe_python=$(python -c 'import os; from pathlib import Path; p=Path(os.environ["RUNNER_TEMP"])/("lxml-tools-"+os.environ["GITHUB_RUN_ID"]+"-"+os.environ["GITHUB_RUN_ATTEMPT"]); print(p/("Scripts/python.exe" if os.name=="nt" else "bin/python"))')
           "$probe_python" .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
-          "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
+          if [ '${{ runner.os }}' = Windows ]; then
+            "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
+          fi
           echo "LXML_PROBE_PYTHON=$probe_python" >> "$GITHUB_ENV"
-          dirname "$probe_python" >> "$GITHUB_PATH"
+          "$probe_python" -c 'from pathlib import Path; import sys; print(Path(sys.executable).parent.as_posix())' >> "$GITHUB_PATH"
 
       - name: Qualify native Windows lxml compiler then controlled parsers
         if: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && runner.os == 'Windows' }}
@@ -179,6 +184,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
           $inventory = & $vswhere -all -products '*' -format json | ConvertFrom-Json
+          $inventory | ConvertTo-Json -Depth 8 | Set-Content toolchain-delta-evidence/visual-studio-inventory.json
           $arch = if ($env:EXPECTED_ARCH -eq 'arm64') { 'arm64' } else { 'x64' }
           $selected = $null
           foreach ($installation in $inventory) {
@@ -196,6 +202,8 @@ jobs:
       - name: Qualify controlled POSIX lxml parsers only
         if: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && runner.os != 'Windows' }}
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           "$LXML_PROBE_PYTHON" .github/scripts/probe_lxml_native.py --work-root "$RUNNER_TEMP/lxml-native-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"

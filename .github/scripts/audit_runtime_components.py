@@ -124,7 +124,6 @@ def main() -> None:
 
     from cryptography.hazmat.backends.openssl.backend import backend
     from lxml import etree
-    from PIL import features
     from PySide6 import QtCore, QtGui, QtNetwork
 
     app = QtCore.QCoreApplication([])
@@ -195,7 +194,7 @@ def main() -> None:
         "zlib_api": zlib.ZLIB_VERSION, "zlib_runtime_api": zlib.ZLIB_RUNTIME_VERSION,
         "lxml": {"libxml_runtime": etree.LIBXML_VERSION, "libxml_compiled": etree.LIBXML_COMPILED_VERSION,
                  "libxslt_runtime": etree.LIBXSLT_VERSION, "libxslt_compiled": etree.LIBXSLT_COMPILED_VERSION},
-        "pillow_development_only": {name: features.version(name) for name in features.get_supported()},
+        "pillow_development_only": {"selected": False, "reason": "PNG/ICO test decoding uses existing Qt; Pillow is no longer a runtime, build or development dependency"},
         "qt": {"version": QtCore.qVersion(), "build": QtCore.QLibraryInfo.build(),
                "default_tls_backend": active, "tls_backends": qt_backends,
                "png_roundtrip": "PASS", "embedded_binary_literals": qt_embedded_literals},
