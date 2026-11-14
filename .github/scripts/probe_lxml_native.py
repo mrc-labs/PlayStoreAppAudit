@@ -259,7 +259,7 @@ def main() -> None:
         assert read_pe_machine(msbuild) == (0xAA64 if arch == 'arm64' else 0x8664)
         out = work / 'iconv-native'
         project = iconv / 'MSVC18/libiconv_static/libiconv_static.vcxproj'
-        sdk = env['WindowsSDKVersion'].rstrip('\\/')
+        sdk = env['WINDOWSSDKVERSION'].rstrip('\\/')
         run([msbuild, project, '/m:2', '/v:normal', '/p:Configuration=Release',
              '/p:Platform=' + ('ARM64' if arch == 'arm64' else 'x64'),
              '/p:PlatformToolset=v145', '/p:VCToolsVersion=' + env['VCTOOLSVERSION'].rstrip('\\/'),
