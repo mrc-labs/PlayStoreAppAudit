@@ -1,5 +1,13 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Native Linux ARM64 ADB source route (2026-11-14)
+
+R14 now has a bounded native-only diagnostic, not producer adoption: the stable nmeum/android-tools37.0.0p1 source distribution and matching offline Rust vendor archive are pinned to the official release asset SHA256 digests. Google37.0.1 remains the latest stable Google archive; official notes explicitly keep37.0.2/37.0.3 in Canary. The native port is identified as a project-built port37.0.0p1, never mislabeled as an unchanged Google37.0.1 binary. Preserve libadbmdns via the port's supported Rust/Corrosion route; only the adb target is built. No new project source patch, emulation, updater or implicit runtime floor increase. The port's pinned BoringSSL is a separate integration from application Python/Qt/cryptography.
+
+Before compile, native Noble/AArch64/GNU13/Rust1.99.1, closed source hashes, offline Rust resolution and CMake feature selection must pass. After build, inspect actual executable and every dynamically loaded ELF against accepted GLIBC2.38/GLIBCXX3.4.32 ceilings, record original source/legal/Cargo/native bytes, then execute version/help/devices/mDNS/server-status on a private server port/profile. Only that private server is stopped. Physical USB/wireless device behavior remains untested; no extra user hardware gate or final-package acceptance is invented. The source route remains pending native results and adoption; it does not silently close the37.0.1 integration/freshness requirement.
+
+Quality43621221050 PASSes atd629bc67b414503d5fc320d345ef965154948ac9:2116 tests, lint/compile/helper syntax/Qt smoke. Changed coherent Qt integration43621218665 is running; unchanged source and runtime identities remain separate.
+
 ## CLDR49 closed generation and current R09 native results (2026-11-14)
 
 CLDR49 source generation now PASSes with the official common and exemplars-delta archives, all21 original Qt source guards, three exact patches and nine generated post-hashes. All711 previous locale keys remain; three are added (Kako/Chad, Kwasio/Equatorial Guinea, Turkmen/Arabic/Iran). The original349 Qt language-code records are byte-identical to the current official ISO639-3 selected entries. A small opt-in generator adaptation reuses those existing records; the complete registry is neither a build input nor redistributed, preserving its distribution terms. Two reviewed upstream generator fixes supply historical Monrovia minute metadata and three new Windows zone IDs. This is controlled project-modified Qt, not an unchanged official binary. Native locale/date/zone checks and coherent framework/binding integration remain required.

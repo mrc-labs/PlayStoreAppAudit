@@ -1,0 +1,23 @@
+{
+  "version": "37.0.0p1",
+  "identity": "Project-built native Linux AArch64 adb from the stable android-tools port; not an unchanged Google 37.0.1 binary",
+  "authority": "https://github.com/nmeum/android-tools/releases/tag/37.0.0p1",
+  "google_stable": "37.0.1; 37.0.2 never left Canary and 37.0.3 is Canary, excluded",
+  "google_release_notes": "https://developer.android.com/tools/releases/platform-tools",
+  "sources": [
+    {
+      "name": "android-tools-37.0.0p1.tar.xz",
+      "url": "https://github.com/nmeum/android-tools/releases/download/37.0.0p1/android-tools-37.0.0p1.tar.xz",
+      "sha256": "2c6de1abe16b211c7d9f59276217e14fd9e0e18b20e331d3c84358f5dffd576e"
+    },
+    {
+      "name": "android-tools-37.0.0p1-vendor.tar.xz",
+      "url": "https://github.com/nmeum/android-tools/releases/download/37.0.0p1/android-tools-37.0.0p1-vendor.tar.xz",
+      "sha256": "0ab5d7b24cb20365f9dfeddace6720095b2f4a86e4eb69ee2cfc3465115c4f9a"
+    }
+  ],
+  "native_contract": "Ubuntu24.04 AArch64/GNU13; GLIBC<=2.38, GLIBCXX<=3.4.32; native Rust1.99.1; no x64 SDK, emulation or system trust changes",
+  "features": "Original stable port with libadbmdns enabled and its bundled Corrosion; offline original Rust vendor source. Only adb target; no fastboot execution or device mutations.",
+  "boringssl_revision": "d32c35e573fc9c8dbe0436805cd557065892de4c",
+  "scope": "Isolated source prerequisite/consumer diagnostic; runtime/producer/package adoption and actual device acceptance remain separate"
+}
