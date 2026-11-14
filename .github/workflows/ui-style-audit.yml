@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -57,8 +57,8 @@ concurrency:
 jobs:
 
   native-toolchain-delta:
-    if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' }}
-    name: ${{ inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
+    if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || inputs.linux_arm64_pilot == 'tools-lxml' }}
+    name: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && 'Controlled native lxml parsers' || inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
@@ -69,7 +69,7 @@ jobs:
           - {os: ubuntu-24.04-arm, label: linux-arm64, arch: arm64}
           - {os: macos-26-intel, label: macos-x64, arch: x64}
           - {os: macos-26, label: macos-arm64, arch: arm64}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && matrix.label == 'linux-x64' && 'ubuntu-22.04' || matrix.os }}
     timeout-minutes: 35
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -111,7 +111,7 @@ jobs:
           python -c "import platform,sys,sysconfig;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final';assert platform.python_version()=='3.14.10';assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
       - name: Qualify verified pip and current tool installs
-        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' }}
+        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && inputs.linux_arm64_pilot != 'tools-lxml' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,7 +132,7 @@ jobs:
             --evidence-dir toolchain-delta-evidence
 
       - name: Exercise selected native compiler and developer tools
-        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' }}
+        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && inputs.linux_arm64_pilot != 'tools-lxml' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -159,11 +159,52 @@ jobs:
             --work-root "$RUNNER_TEMP/setuptools-build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --output-dir toolchain-delta-evidence
 
+      - name: Prepare isolated current lxml build tools
+        if: ${{ inputs.linux_arm64_pilot == 'tools-lxml' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python -m venv "$RUNNER_TEMP/lxml-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          probe_python=$(python -c 'import os; from pathlib import Path; p=Path(os.environ["RUNNER_TEMP"])/("lxml-tools-"+os.environ["GITHUB_RUN_ID"]+"-"+os.environ["GITHUB_RUN_ATTEMPT"]); print(p/("Scripts/python.exe" if os.name=="nt" else "bin/python"))')
+          "$probe_python" .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
+          echo "LXML_PROBE_PYTHON=$probe_python" >> "$GITHUB_ENV"
+          dirname "$probe_python" >> "$GITHUB_PATH"
+
+      - name: Qualify native Windows lxml compiler then controlled parsers
+        if: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $inventory = & $vswhere -all -products '*' -format json | ConvertFrom-Json
+          $arch = if ($env:EXPECTED_ARCH -eq 'arm64') { 'arm64' } else { 'x64' }
+          $selected = $null
+          foreach ($installation in $inventory) {
+            if ($installation.isPrerelease -or $installation.channelId -ne 'VisualStudio.18.Release') { continue }
+            $compiler = Join-Path $installation.installationPath "VC/Tools/MSVC/14.52.37025/bin/Host$arch/$arch/cl.exe"
+            if (Test-Path -LiteralPath $compiler) { $selected = $installation.installationPath }
+          }
+          if (-not $selected) { throw 'BLOCKER: native stable MSVC14.52 unavailable; no parser rebuild started.' }
+          Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"
+          if ($env:VSCMD_ARG_HOST_ARCH -ne $arch -or $env:VSCMD_ARG_TGT_ARCH -ne $arch) { throw 'Native host/target required.' }
+          & $env:LXML_PROBE_PYTHON .github/scripts/probe_lxml_native.py --work-root "$env:RUNNER_TEMP/lxml-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if ($LASTEXITCODE -ne 0) { throw 'Controlled lxml native qualification failed.' }
+
+      - name: Qualify controlled POSIX lxml parsers only
+        if: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$LXML_PROBE_PYTHON" .github/scripts/probe_lxml_native.py --work-root "$RUNNER_TEMP/lxml-native-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
       - name: Upload host tool diagnostic evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'tools-lxml' && 'diagnostic-lxml-native' || inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
           path: toolchain-delta-evidence/
           if-no-files-found: error
           retention-days: 0
