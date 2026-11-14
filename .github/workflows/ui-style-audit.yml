@@ -193,9 +193,9 @@ jobs:
             }
           }
           $available | ConvertTo-Json -Depth 4 | Set-Content toolchain-delta-evidence/native-toolsets.json
-          if (-not $selected -and $arch -eq 'x64') {
-            # The GA x64 hosted image still carries18.11/14.51. Provision only
-            # current stable Build Tools in this ephemeral diagnostic runner.
+          if (-not $selected) {
+            # Both native hosted pools may still supply18.11/14.51. Provision only
+            # current stable native Build Tools in this ephemeral diagnostic runner.
             $channelPath = Join-Path $env:RUNNER_TEMP 'psaa-vs18-release-channel.json'
             Invoke-WebRequest 'https://aka.ms/vs/stable/channel' -OutFile $channelPath
             $channel = Get-Content -Raw -LiteralPath $channelPath | ConvertFrom-Json
@@ -213,7 +213,8 @@ jobs:
             Copy-Item -LiteralPath $channelPath -Destination toolchain-delta-evidence/vs-release-channel.json
             @{ url = $payload[0].url; sha256 = $digest; product_version = $product[0].version; signer = $signature.SignerCertificate.Subject; scope = 'Ephemeral host Build Tools only; no production signing' } | ConvertTo-Json | Set-Content toolchain-delta-evidence/vs-bootstrapper-provenance.json
             $install = Join-Path $env:RUNNER_TEMP 'psaa-native-msvc'
-            $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--productId', 'Microsoft.VisualStudio.Product.BuildTools', '--channelId', 'VisualStudio.18.Release', '--channelUri', 'https://aka.ms/vs/stable/channel', '--installPath', $install, '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.26100')
+            $component = if ($arch -eq 'arm64') { 'Microsoft.VisualStudio.Component.VC.Tools.ARM64' } else { 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64' }
+            $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--productId', 'Microsoft.VisualStudio.Product.BuildTools', '--channelId', 'VisualStudio.18.Release', '--channelUri', 'https://aka.ms/vs/stable/channel', '--installPath', $install, '--add', $component, '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.26100')
             $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
             if ($process.ExitCode -notin @(0, 3010)) { throw "Stable Build Tools installation failed: $($process.ExitCode)" }
             $selected = $install

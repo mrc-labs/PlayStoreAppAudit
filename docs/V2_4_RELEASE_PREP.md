@@ -1,5 +1,13 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Affected Windows parser retry and retained Qt evidence (2026-11-14)
+
+Run43594977950/source00d7f28 PASSes all four POSIX parser targets, including fresh thin native macOS ARM64/x64 wheels with original sources, static current libxml2.15.4/libxslt1.1.45, parser regressions and deployment checks. Windows-only mode excludes these four already-passing targets from the retry matrix; no unchanged POSIX source rebuild or test repeat.
+
+Windows-only43597106208/source3c84acb demonstrates actual x64 stable14.52 provisioning before compiling the parsers. The small static consumer then identifies missing BCryptGenRandom linkage. Original libxml2 CMakeLists explicitly links bcrypt on WIN32; select the actual native SDK bcrypt.lib through lxml's existing LXML_STATIC_BINARIES interface and the small consumer. No source patch or random-provider weakening. ARM64 receives an older18.11/14.51 image in this run despite previous18.12 availability; extend the same hash/Authenticode-verified stable BuildTools provisioner with Microsoft's documented VC.Tools.ARM64 component, preserving native compiler PE/host/target guards and no14.51 fallback. No workstation installation.
+
+Read-only43597105970/source3c84acb PASSes original integrated Qt ZIP verification and recovers all65 retained SDK images without execution/rebuild. Reduced artifact14115290436,321078033bytes,SHA256`a71502a1f0894573141f8c65014422ab2928313ec28e303a1ff3e76fcee66f7e`, is downloaded and whole-ZIP rehashed locally; detailed source/legal/native checks follow. The14 absent intermediate-venv images remain CI-observed only. Guard-only Quality43596634580 fails two stale setup-count/retention expectations;2108 tests pass. Add the missing fail-closed stable Python guard to the extractor and align those two counts;24 affected local checks/lint PASS. No application behavior change.
+
 ## Current integrated result and evidence transport (2026-11-14)
 
 Native43587421820 atf2bdb04 PASSes the changed Qt/PySide stack: source-built HB15.1/MD4C0.6, fixed Markdown/front-matter/reference behavior, real named DejaVu Latin/Arabic shaping, TinyCBOR7.1 memory/device/parser cases, default trust and TLS positives/hostname-CA-expiry rejections, newly executed Python SPKI/tarfile, hash/PNG/xcb MainWindow/CLI and16 Qt actual-default incident-chain refusals. Actual79 changed AMD64 images remain within GLIBC2.35/GLIBCXX3.4.29. Actual current Python providers and fresh cffi488PASS/11skip retain distinct original-suite reuse provenance69c3d04. Source Quality43587423916 PASS2110; subsequent edits leave those runtime/framework inputs unchanged. Other targets/package gates remain open.

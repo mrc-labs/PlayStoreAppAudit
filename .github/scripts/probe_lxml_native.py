@@ -322,6 +322,12 @@ def main() -> None:
         XML2_CONFIG=str(prefix / 'bin/xml2-config'), XSLT_CONFIG=str(prefix / 'bin/xslt-config'))
     if sys.platform == 'win32':
         env['LXML_STATIC_CFLAGS'] = '/DLIBXML_STATIC /DLIBXSLT_STATIC /DLIBEXSLT_STATIC'
+        # libxml2's original WIN32 CMake target requires the OS CNG library.
+        # lxml's public static interface accepts these additional link objects.
+        bcrypt = [Path(folder) / 'bcrypt.lib' for folder in env['LIB'].split(os.pathsep)
+                  if (Path(folder) / 'bcrypt.lib').is_file()]
+        assert bcrypt, 'Native Windows SDK bcrypt import library unavailable'
+        env['LXML_STATIC_BINARIES'] = str(bcrypt[0])
         contract = work / 'xml-static-contract.c'
         contract.write_text('#include <libxml/parser.h>\n#include <libxslt/xslt.h>\n'
             '#include <libexslt/exslt.h>\n#include <string.h>\n#include <stdio.h>\n'
@@ -332,7 +338,7 @@ def main() -> None:
         run([compiler, '/nologo', '/MD', *env['LXML_STATIC_CFLAGS'].split(),
              '/I' + str(prefix / 'include'), '/I' + str(prefix / 'include/libxml2'), contract,
              *[prefix / 'lib' / name for name in ('libexslt_a.lib', 'libxslt_a.lib', 'libxml2_a.lib', 'iconv_a.lib', 'zlib.lib')],
-             'WS2_32.lib', '/Fe:' + str(executable)], 'xml-static-contract-build')
+             'WS2_32.lib', bcrypt[0], '/Fe:' + str(executable)], 'xml-static-contract-build')
         run([executable], 'xml-static-contract-execute')
     if sys.platform != 'win32':
         env['WITH_XML2_CONFIG'] = str(prefix / 'bin/xml2-config')
