@@ -332,7 +332,8 @@ def main() -> None:
         contract.write_text('#include <libxml/parser.h>\n#include <libxslt/xslt.h>\n'
             '#include <libexslt/exslt.h>\n#include <string.h>\n#include <stdio.h>\n'
             'int main(void) { xmlInitParser(); exsltRegisterAll(); '
-            'if (strcmp(xmlParserVersion,"21504") || strcmp(xsltEngineVersion,"1.1.45")) return 1; '
+            'printf("Runtime libxml=%s libxslt=%d\\n",xmlParserVersion,xsltLibxsltVersion); '
+            'if (strcmp(xmlParserVersion,"21504") || xsltLibxsltVersion != 10145) return 1; '
             'puts("PASS current XML/XSLT static header/library contract"); return 0; }\n', encoding='utf-8')
         executable = work / 'xml-static-contract.exe'
         run([compiler, '/nologo', '/MD', *env['LXML_STATIC_CFLAGS'].split(),

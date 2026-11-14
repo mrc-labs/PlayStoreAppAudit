@@ -1,13 +1,1215 @@
 {
-  "pillow_dependency_removal_2026_11_14": {
-    "date": "2026-11-14",
-    "decision": "Remove unused Pillow development dependency; existing Qt reads PNG/ICO tests",
-    "application_code_changed": false,
-    "icon_tests": 4,
-    "local_result": "PASS size/alpha/signature checks and lint",
-    "quality": "Pending fresh exact-head PIL-absence/full test/smoke gate",
-    "observations_1094_unchanged": true
+  "qt_integrated_byte_verification_2026_11_14": {
+  "date": "2026-11-14",
+  "run": 43587421820,
+  "source_sha": "f2bdb0443a3c659fa464dd253fdd4c1bd829a91f",
+  "extract_run": 43597105970,
+  "extract_source_sha": "3c84acbba5ed42300e2167b337f675c8618b33b5",
+  "artifact": 14115290436,
+  "bytes": 321078033,
+  "sha256": "a71502a1f0894573141f8c65014422ab2928313ec28e303a1ff3e76fcee66f7e",
+  "original_sources": {
+    "Python-3.14.10.tar.xz": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+    "openssl-4.0.3.tar.gz": "325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9",
+    "libpng-1.6.59.tar.xz": "d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389",
+    "pcre2-10.49.tar.gz": "929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae",
+    "qtbase-everywhere-src-6.12.0.tar.xz": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+    "qtsvg-everywhere-src-6.12.0.tar.xz": "e4ab39534ec97987b1b9b60ef7f4d3253d5912a69f8c713a01753174a4029331",
+    "pyside-setup-everywhere-src-6.12.0.tar.xz": "099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751",
+    "sqlite-autoconf-3540100.tar.gz": "926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e",
+    "mpdecimal-4.0.1.tar.gz": "96d33abb4bb0070c7be0fed4246cd38416188325f820468214471938545b1ac8",
+    "libffi-3.8.0.tar.gz": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+    "xz-5.8.4.tar.xz": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+    "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+    "cffi-2.1.1.tar.gz": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+    "harfbuzz-15.1.0.tar.xz": "0fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d",
+    "md4c-0.6.0.tar.gz": "4d151298125a81da3b2efa2e0eed8bdb7a9318569804e4fa4d7a2375ab83ef70",
+    "meson-1.12.1-py3-none-any.whl": "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02",
+    "meson-1.12.1.tar.gz": "ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743",
+    "tinycbor-7.1.tar.gz": "08c0a4c0a983000806f3d8c1599ec07995789ae49e9a23034db4cbfccc81c2e5",
+    "gcc-11.5.0-14.el9.src.rpm": "19dec462f2880508570ca42a82c2f76fbd95fcad8d3e3ff812e9ca50cdeb2d8f",
+    "7z2605-src.tar.xz": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e"
   },
+  "original_legal_texts": 78,
+  "matching_meson_modules": 243,
+  "retained_sdk_images": [
+    {
+      "name": "lib/libffi.so.8.5.0",
+      "sha256": "931a5336d7650b3e8f67463af45ac5bc348fa49053bb0eb3e8ad95a14e544e7c",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.27",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4",
+        "GLIBC_2.7"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libharfbuzz.so.0.61510.0",
+      "sha256": "29e700e34ce6141ee8b52de067c0f50e360980a36ff43a4afc312777d43795cc",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3",
+        "GLIBC_2.3.4",
+        "GLIBC_2.33",
+        "GLIBC_2.35",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libm.so.6",
+        "libglib-2.0.so.0",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/liblzma.so.5.8.4",
+      "sha256": "1fbab7687f135e67f3679d0a828cc0a814cbcbec7a1477adef9aad9c37324351",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.17",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.2",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "GLIBC_2.6"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libmd4c.so.0.6.0",
+      "sha256": "8d0e2b0c78c7839698d12a25c5515a949892c27141aa5735e9d7ef12892a9a84",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libpcre2-16.so.0.16.1",
+      "sha256": "fd832fa1ec9140e8023740ec0339230bce3f0920e220e47ee0409acd9dd45d0e",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libpng16.so.16.59.0",
+      "sha256": "2ac2dac99ee29410fc0de22b29e73f721041a51ee2da22fff94dc9f3e4ce76bc",
+      "version_needs": [
+        "GLIBC_2.11",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.29",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4",
+        "ZLIB_1.2.3.4"
+      ],
+      "needed": [
+        "libz.so.1",
+        "libm.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libsqlite3.so.3.54.1",
+      "sha256": "50460dfcf31b1de1a34e333f7dd225c5b32b1400b103dd376af19fd1807b764f",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.28",
+        "GLIBC_2.29",
+        "GLIBC_2.3.4",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libm.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "lib/libz.so.1.4",
+      "sha256": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "openssl/lib/libcrypto.so.4",
+      "sha256": "c4aa9b7d1c055f189c6b20c7b898f3e20492bd280b52513804ff03919d5b8986",
+      "version_needs": [
+        "GLIBC_2.12",
+        "GLIBC_2.14",
+        "GLIBC_2.15",
+        "GLIBC_2.16",
+        "GLIBC_2.17",
+        "GLIBC_2.2.5",
+        "GLIBC_2.25",
+        "GLIBC_2.3",
+        "GLIBC_2.3.2",
+        "GLIBC_2.3.4",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "GLIBC_2.7"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "openssl/lib/libssl.so.4",
+      "sha256": "c17a7f5db3a88c3b3657434b3a7e562308bdce6d70e5d28bb390f4f86fdb4ef5",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.16",
+        "GLIBC_2.17",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3",
+        "GLIBC_2.3.2",
+        "GLIBC_2.3.4",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "OPENSSL_4.0.0"
+      ],
+      "needed": [
+        "libcrypto.so.4",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/bin/python3.14",
+      "sha256": "41d0e9cc4d997f7837a298b405573e969d31ef36fbd667375c804358dc858e57",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.34"
+      ],
+      "needed": [
+        "libpython3.14.so.1.0",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/libpython3.14.so.1.0",
+      "sha256": "e0a699562332a4ad914b8ea5f83533575982f0755b8f668462458b1ddf01738c",
+      "version_needs": [
+        "GLIBC_2.10",
+        "GLIBC_2.14",
+        "GLIBC_2.15",
+        "GLIBC_2.16",
+        "GLIBC_2.17",
+        "GLIBC_2.2.5",
+        "GLIBC_2.25",
+        "GLIBC_2.26",
+        "GLIBC_2.27",
+        "GLIBC_2.28",
+        "GLIBC_2.29",
+        "GLIBC_2.3",
+        "GLIBC_2.3.2",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "GLIBC_2.5",
+        "GLIBC_2.6",
+        "GLIBC_2.7",
+        "GLIBC_2.8",
+        "GLIBC_2.9"
+      ],
+      "needed": [
+        "libm.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_bisect.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "882650f0223e40cd9c8472c10eba74440f7325c74b1729046c634721bc86568f",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_blake2.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "fd4e45e53a5461881cdb4d9587138cf6eee34c4f687bb248158ae7a032f58266",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.16",
+        "GLIBC_2.2.5",
+        "GLIBC_2.25",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_bz2.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "e444c3e66e7e3b8a23f1121a160654561d76afc72d7ba2cfb6a796f715a1bbde",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libbz2.so.1.0",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_cn.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "a9da6497ae4746bd028626186d78fbe0098da663ca6f74dde77d3b9af790b2dd",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_hk.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "e067ad21202d1b8519df33d4716295ac8d311aa85f0885138ff230eae977ce5c",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_iso2022.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "43b2e22325235bb2b629f1af4ecdf38c302ad7259e626e47fbe3fbda71635873",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_jp.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "5294648a44a1264b8c49a222e5ed38983daa7ae4ab3bd00893489941e3bd4541",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_kr.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "e54be85781950ef25ebcfab88d056a5764bf47ff9b000b4c96207bf93d8758f3",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_codecs_tw.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "cd05820edd0f2062a1a115910ff920ca2942843aa9db7b859feb23d958496493",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_csv.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "46486784778233029159d704d1be05893bdb5a594e2d26b4a2515503f1bf49a4",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_ctypes.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "ac093de8e24bd38200243b1fd0c1f0c493cab2d462868f2b27cf142496028f67",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "LIBFFI_BASE_8.0",
+        "LIBFFI_CLOSURE_8.0",
+        "LIBFFI_COMPLEX_8.0"
+      ],
+      "needed": [
+        "libffi.so.8",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_elementtree.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "444b89d8794a3a85ae43e55088e10e22ec9b5febff5078b35c7ffd713f930a84",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_hashlib.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "79ba30ef8f4e8ea8aa498f58ea1c425aecb626314833f8b530025696ca56f4ec",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "OPENSSL_4.0.0"
+      ],
+      "needed": [
+        "libcrypto.so.4",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_heapq.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "11b5703ee271d51bb624484e9e2290f4c2100b76f202cd9c2671d8855d25686e",
+      "version_needs": [],
+      "needed": []
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_hmac.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "8a938ff97ed79a7ede4163761bea4dfb08bbaf6ec483be7a77e8826103dc89e3",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.16",
+        "GLIBC_2.2.5",
+        "GLIBC_2.25",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_interpreters.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "3ec557b72d8e0296c55ad9c7d3177fad3ab8d9293e696f73c68a3d5f2d9592b3",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_json.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "7953af48e6878f03d11aafb69b7e31fd7b44b7a74929a8d64b7d87a40bbb6eeb",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_lzma.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "ad3ff248e62469994e30ba091f03f477b9b527dca4f28d03d7b1c9074998f144",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "XZ_5.0"
+      ],
+      "needed": [
+        "liblzma.so.5",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_multibytecodec.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "55604844ccfc37462a63cf701c35a344066d1b9e6fab775ada7b99b8e397c548",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_posixsubprocess.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "15f15bbb4a928c0c4bb4a4b60b409e9199ffdff74d1cbfdfc4f595eff94c8767",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.32",
+        "GLIBC_2.34",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_queue.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "855ce9f62658b3ca4ca7d2ad4461ec3d529cb57f905cc81d70d653e5a13ec2eb",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_random.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "8d55310ce290ed2fe41ea1eb86df5c580569bfd9b8dfcf2900863891401c0ab5",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_socket.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "fc548b6e65272857ead8e2f1eb5c87474b5149a1ca38a5ef29767f36a1c96dc7",
+      "version_needs": [
+        "GLIBC_2.10",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_sqlite3.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "0c75d9fc7102b818c436f92132da639986f40ef8bf0e41f30ca78200bf0ebdcc",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libsqlite3.so",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_ssl.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "fdb0fd1325544cc229ca6971cfb643b470520b48e37acf398ae881bc9c55bdfc",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "OPENSSL_4.0.0"
+      ],
+      "needed": [
+        "libssl.so.4",
+        "libcrypto.so.4",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_struct.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "8f444c88e50d54cb2c72d853ef2e4c0e2cd247bc6a0c1856786d72ceff60e982",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_uuid.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "3bd443a438d583838516906d3a0879d0bee066abd307ad0a86a218573e4bce2b",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "UUID_2.20"
+      ],
+      "needed": [
+        "libuuid.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/_zstd.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "687d9fdd4302af2fb0cc41f590f5d4e68be39c47525ab1f5c9c28a91e7f0bd16",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libzstd.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/array.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "4cf7bc9ff34aba2978a30a32e4d22cd64472e2b705393208fe6897c9cbc2eb81",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/binascii.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "36364d849c268f5b3d948a421e5140a74555a1c71fff7aa171c0ffc624e0091e",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libz.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/fcntl.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "41c2cb68a44266d17e66035d8a0aee5cc83c79385256d1f174fa4325101d42ca",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.28",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/grp.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "a71e6234caf44877f7ec86c5f5ff19e0e695c5a0a984d1f281eaeb61a2fed83b",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/math.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "e15ecf72aee5fbfd6adf39f5788ae5f87bf5d5512edf7c10219d1646848ec71c",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.29",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libm.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/pyexpat.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "6496c536130c6d0417d0641616179ec3eaccbd6ed87a9446de28fcd0f5707bd6",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/select.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "87894d4ebc442cf0d125375f25b141d0bb9311cdb92c7d2ab68cd78859e9d314",
+      "version_needs": [
+        "GLIBC_2.15",
+        "GLIBC_2.16",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.2",
+        "GLIBC_2.4",
+        "GLIBC_2.9"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/termios.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "2e8954f8cd64bf5bcc5978211897264e7833bf480a2dd13117b36baea12d288a",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/unicodedata.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "0dec2623e5013e1f52d4e636b51a6dff9b1ea35530807891fe8af085719a0ded",
+      "version_needs": [
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "python/lib/python3.14/lib-dynload/zlib.cpython-314-x86_64-linux-gnu.so",
+      "sha256": "1c7e16488c333679afaf89be264638ebbab2ce26693575b6003a3386cfb68f36",
+      "version_needs": [
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "ZLIB_1.2.0"
+      ],
+      "needed": [
+        "libz.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6Core.so.6.12.0",
+      "sha256": "b21e261ccb91cdd49e88d622e601bcea8d53e94733bd5aec8f2c9c9829e0be2f",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.11",
+        "CXXABI_1.3.13",
+        "CXXABI_1.3.3",
+        "CXXABI_1.3.7",
+        "CXXABI_1.3.8",
+        "CXXABI_1.3.9",
+        "GCC_3.0",
+        "GCC_3.4",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.11",
+        "GLIBCXX_3.4.14",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.19",
+        "GLIBCXX_3.4.20",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.26",
+        "GLIBCXX_3.4.28",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.14",
+        "GLIBC_2.16",
+        "GLIBC_2.17",
+        "GLIBC_2.2.5",
+        "GLIBC_2.25",
+        "GLIBC_2.27",
+        "GLIBC_2.28",
+        "GLIBC_2.29",
+        "GLIBC_2.3",
+        "GLIBC_2.3.2",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "GLIBC_2.6",
+        "GLIBC_2.7",
+        "GLIBC_2.9",
+        "OPENSSL_4.0.0",
+        "PCRE2_10.47",
+        "ZLIB_1.2.0"
+      ],
+      "needed": [
+        "libicui18n.so.70",
+        "libicuuc.so.70",
+        "libzstd.so.1",
+        "libglib-2.0.so.0",
+        "libz.so.1",
+        "libpcre2-16.so.0",
+        "libcrypto.so.4",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6DBus.so.6.12.0",
+      "sha256": "820f0cd297084a336b2c4bfa7b7a6a7a2ddb8ac92bc7bd910388a48f9ce31d5d",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "LIBDBUS_1_3",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libdbus-1.so.3",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6Gui.so.6.12.0",
+      "sha256": "b11469385293beba80603f1b3cdf822ddb284496b71bf72515d0b06f6cdf6152",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GCC_3.4",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.14",
+        "GLIBCXX_3.4.15",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.26",
+        "GLIBCXX_3.4.28",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.11",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.27",
+        "GLIBC_2.29",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.34",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "GLIBC_2.7",
+        "PNG16_0",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API",
+        "V_0.5.0"
+      ],
+      "needed": [
+        "libEGL.so.1",
+        "libX11.so.6",
+        "libglib-2.0.so.0",
+        "libQt6DBus.so.6",
+        "libxkbcommon.so.0",
+        "libGLX.so.0",
+        "libOpenGL.so.0",
+        "libpng16.so.16",
+        "libharfbuzz.so.0",
+        "libmd4c.so.0",
+        "libfreetype.so.6",
+        "libfontconfig.so.1",
+        "libz.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6Network.so.6.12.0",
+      "sha256": "b7ea92787acf562bf7ac6a010dbc6f60fdaaa97eaf85b6c94db6a6166cf908c6",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GCC_3.4",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.26",
+        "GLIBCXX_3.4.28",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.10",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "GLIBC_2.7",
+        "OPENSSL_4.0.0",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libzstd.so.1",
+        "libQt6Core.so.6",
+        "libbrotlidec.so.1",
+        "libz.so.1",
+        "libcrypto.so.4",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6Svg.so.6.12.0",
+      "sha256": "cb9bb95c1d7f0a4ced87b270f2c9f3780b7614659b02d752c7ecfff49f99c3db",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.15",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.20",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.32",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libz.so.1",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6Widgets.so.6.12.0",
+      "sha256": "986c59fa6a2ad1b13f5579b698b13ddc243033a27fde2ebb0176f4bca47c17be",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GCC_3.4",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.14",
+        "GLIBCXX_3.4.15",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.26",
+        "GLIBCXX_3.4.28",
+        "GLIBCXX_3.4.29",
+        "GLIBCXX_3.4.9",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.29",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/lib/libQt6XcbQpa.so.6.12.0",
+      "sha256": "34e0ee9177bc3e3eacb59b293f7a16d26d24bb7f81e1b6ecc895f049c4cfc7a5",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GCC_3.4",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API",
+        "V_0.5.0"
+      ],
+      "needed": [
+        "libxcb-cursor.so.0",
+        "libxcb-icccm.so.4",
+        "libxcb-image.so.0",
+        "libxcb-keysyms.so.1",
+        "libxcb-randr.so.0",
+        "libxcb-render.so.0",
+        "libxcb-render-util.so.0",
+        "libxcb-shape.so.0",
+        "libxcb-shm.so.0",
+        "libxcb-sync.so.1",
+        "libxcb.so.1",
+        "libxcb-xfixes.so.0",
+        "libxcb-xkb.so.1",
+        "libxkbcommon.so.0",
+        "libglib-2.0.so.0",
+        "libX11-xcb.so.1",
+        "libX11.so.6",
+        "libSM.so.6",
+        "libICE.so.6",
+        "libxkbcommon-x11.so.0",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/imageformats/libqgif.so",
+      "sha256": "680851f4c0ecc94899bfe69e149a2c2ef5f275910a57e4ee63079a3dfde4f602",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12"
+      ],
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/imageformats/libqico.so",
+      "sha256": "5467f7260d4f7440cb60eb2b3ad1aad72a1673a1d23e884a963ca6f6e0fdb7e7",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12"
+      ],
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/imageformats/libqjpeg.so",
+      "sha256": "53185256084da9dce7d10a0f80a24658cb78db08e448c17e72291f00dfb70959",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.11",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "LIBJPEG_8.0",
+        "Qt_6",
+        "Qt_6.12"
+      ],
+      "needed": [
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libjpeg.so.8",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/imageformats/libqsvg.so",
+      "sha256": "0c11a5fb37fa05d9e93bdcabf9c505223af00f830e78e00eede2899308c0aedf",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6Svg.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so",
+      "sha256": "dfd12e684340f43b997b36766d2010e148a88e67ee5a59380cd6f109c56ec21c",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API",
+        "V_0.5.0"
+      ],
+      "needed": [
+        "libxkbcommon.so.0",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/platforms/libqxcb.so",
+      "sha256": "828993dcb8f97b14f59e88f8c738da98ce93bec0b4e09776b73ae8453a5d6f74",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6XcbQpa.so.6",
+        "libQt6Gui.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/tls/libqcertonlybackend.so",
+      "sha256": "aa3246599acbd03e704d27fd06785245de9c223ecad43894f73491307d480aad",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6Network.so.6",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "qt/plugins/tls/libqopensslbackend.so",
+      "sha256": "69c80b54b7cb470d04961134e5359b2d24a90ef9b432cc8cf390e297f1f6e9a7",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.32",
+        "GLIBC_2.4",
+        "OPENSSL_4.0.0",
+        "Qt_6",
+        "Qt_6.12",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libQt6Network.so.6",
+        "libQt6Core.so.6",
+        "libssl.so.4",
+        "libcrypto.so.4",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    }
+  ],
+  "ci_observed_binding_images_not_retained": 14,
+  "scope": "PASS independently verified retained Qt source/patch/legal/SDK bytes; binding images remain CI-only",
+  "native_result": "PASS changed Qt/PySide text/CBOR/TLS/SPKI/tarfile/hash/PNG/xcb GUI/CLI; 79 loaded AMD64 images within GLIBC2.35/GLIBCXX3.4.29; 16 Qt incident refusals",
+  "unchanged_python_upstream_suite_source": "69c3d04a7b3af5db8c8847f5a7e7df75a586dcf2",
+  "fresh_cffi_tests": {
+    "passed": 488,
+    "skipped": 11
+  },
+  "remaining": "Other five changed full profiles, current residual ledger and producer/package/final freshness gates remain required"
+},
+  "pillow_dependency_removal_2026_11_14": {
+  "date": "2026-11-14",
+  "decision": "Remove unused Pillow development dependency; existing Qt reads PNG/ICO tests",
+  "application_code_changed": false,
+  "icon_tests": 4,
+  "local_result": "PASS size/alpha/signature checks and lint",
+  "quality": {
+    "run": 43594980129,
+    "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+    "result": "PASS fresh PIL absence, 2110 tests, lint/compile/Qt smoke"
+  },
+  "observations_1094_unchanged": true
+},
   "qt_cbor_sdk_consumer_2026_11_14": {
     "run": 43585928248,
     "artifact": 14109733250,
