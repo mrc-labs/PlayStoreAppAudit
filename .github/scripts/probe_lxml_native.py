@@ -176,7 +176,7 @@ def main() -> None:
         import io
         with zipfile.ZipFile(io.BytesIO(data)) as bundle:
             old = json.loads(bundle.read('lxml_native_sources.json'))
-            assert old == {key: value for key, value in spec.items() if key != 'compiled_posix_wheels'}, 'Changed compiled parser inputs'
+            assert old == {key: value for key, value in spec.items() if key not in {'compiled_posix_wheels', 'windows_iconv_source'}}, 'Changed compiled parser inputs'
             names = [name for name in bundle.namelist() if name.startswith('wheels/lxml-6.1.3-') and name.endswith('.whl')]
             assert len(names) == 1
             wheels = output / 'wheels'
@@ -240,19 +240,41 @@ def main() -> None:
     run([compiler, '/?' if sys.platform == 'win32' else '--version'], 'native-compiler')
     aliases = {}
     if sys.platform == 'win32':
-        for item in spec['windows_assets']:
-            if item['arch'] != arch:
-                continue
-            archive = checked_source(item, sources)
-            with zipfile.ZipFile(archive) as bundle:
-                assert all(not Path(name).is_absolute() and '..' not in Path(name).parts for name in bundle.namelist())
-                bundle.extractall(work / 'vendor')
-            source = work / 'vendor' / item['name'].removesuffix('.zip')
-            shutil.copytree(source / 'include', prefix / 'include', dirs_exist_ok=True)
-            shutil.copytree(source / 'lib', prefix / 'lib', dirs_exist_ok=True)
-        for library in (prefix / 'lib').glob('*.lib'):
-            directives = run(['dumpbin', '/nologo', '/directives', library], library.stem + '-crt')
-            assert not re.search(r'(?:^|\s)/DEFAULTLIB:"?LIBCMT', directives, re.I | re.M), 'Vendor static archive requires incompatible static CRT'
+        # The stable lxml Windows parent selects this exact GNU iconv source
+        # adaptation. Rebuild with our native toolset: its vendor LTCG objects
+        # demonstrably fail C1047 against14.52. No compiler/version fallback.
+        item = spec['windows_iconv_source']
+        archive = checked_source(item, sources)
+        with tarfile.open(archive) as bundle:
+            bundle.extractall(work, filter='data')
+        iconv = work / item['directory']
+        iconv_legal = legal / item['directory']
+        for name in ['source/COPYING', 'source/COPYING.LIB', 'source/libcharset/COPYING.LIB']:
+            destination = iconv_legal / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(iconv / name, destination)
+        msbuild = Path(env['VSINSTALLDIR']) / 'MSBuild/Current/Bin' / (
+            'arm64' if arch == 'arm64' else 'amd64') / 'MSBuild.exe'
+        assert msbuild.is_file()
+        assert read_pe_machine(msbuild) == (0xAA64 if arch == 'arm64' else 0x8664)
+        out = work / 'iconv-native'
+        project = iconv / 'MSVC18/libiconv_static/libiconv_static.vcxproj'
+        sdk = env['WindowsSDKVersion'].rstrip('\\/')
+        run([msbuild, project, '/m:2', '/v:normal', '/p:Configuration=Release',
+             '/p:Platform=' + ('ARM64' if arch == 'arm64' else 'x64'),
+             '/p:PlatformToolset=v145', '/p:VCToolsVersion=' + env['VCTOOLSVERSION'].rstrip('\\/'),
+             '/p:WindowsTargetPlatformVersion=' + sdk, '/p:WholeProgramOptimization=false',
+             '/p:OutDir=' + str(out) + os.sep], 'iconv-native-build')
+        archives = list(out.rglob('libiconv_a.lib'))
+        assert len(archives) == 1
+        (prefix / 'lib').mkdir()
+        shutil.copytree(iconv / 'source/include', prefix / 'include')
+        shutil.copy2(archives[0], prefix / 'lib/iconv_a.lib')
+        (output / 'iconv-build-provenance.json').write_text(json.dumps({
+            'source': item, 'project_sha256': hashlib.sha256(project.read_bytes()).hexdigest(),
+            'compiler': compiler, 'toolset': env['VCTOOLSVERSION'], 'sdk': sdk,
+            'native_msbuild': str(msbuild), 'archive_sha256': hashlib.sha256(archives[0].read_bytes()).hexdigest(),
+        }, indent=2) + '\n', encoding='utf-8')
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(prefix),
               '-DCMAKE_INSTALL_LIBDIR=lib', '-DBUILD_SHARED_LIBS=OFF', '-DCMAKE_POSITION_INDEPENDENT_CODE=ON',
               '-DCMAKE_PREFIX_PATH=' + str(prefix)]
@@ -273,12 +295,21 @@ def main() -> None:
             'iconv-configure', directory=iconv)
         run([make, '-j2'], 'iconv-build', directory=iconv)
         run([make, 'install'], 'iconv-install', directory=iconv)
-        run(['cmake', '-S', work / 'zlib-1.4', '-B', work / 'zlib-build', *common,
-             '-DZLIB_BUILD_SHARED=OFF', '-DZLIB_BUILD_STATIC=ON', '-DZLIB_BUILD_TESTING=OFF'], 'zlib-configure')
-        run(['cmake', '--build', work / 'zlib-build', '--parallel', '2'], 'zlib-build')
-        run(['cmake', '--install', work / 'zlib-build'], 'zlib-install')
         common += ['-DIconv_INCLUDE_DIR=' + str(prefix / 'include'),
                    '-DIconv_LIBRARY=' + str(prefix / 'lib/libiconv.a'), '-DIconv_IS_BUILT_IN=FALSE']
+    run(['cmake', '-S', work / 'zlib-1.4', '-B', work / 'zlib-build', *common,
+         '-DZLIB_BUILD_SHARED=OFF', '-DZLIB_BUILD_STATIC=ON', '-DZLIB_BUILD_TESTING=OFF'], 'zlib-configure')
+    run(['cmake', '--build', work / 'zlib-build', '--parallel', '2'], 'zlib-build')
+    run(['cmake', '--install', work / 'zlib-build'], 'zlib-install')
+    if sys.platform == 'win32':
+        candidates = [path for path in (prefix / 'lib').glob('*.lib') if path.name != 'iconv_a.lib']
+        assert len(candidates) == 1, candidates
+        if candidates[0].name != 'zlib.lib':
+            shutil.copy2(candidates[0], prefix / 'lib/zlib.lib')
+        for name in ['iconv_a.lib', 'zlib.lib']:
+            directives = run(['dumpbin', '/nologo', '/directives', prefix / 'lib' / name], name + '-crt')
+            assert not re.search(r'(?:^|\s)/DEFAULTLIB:"?LIBCMT', directives, re.I | re.M)
+            assert re.search(r'/DEFAULTLIB:"?MSVCRT', directives, re.I), 'Dynamic CRT not proved'
     common += ['-DZLIB_INCLUDE_DIR=' + str(prefix / 'include'), '-DZLIB_LIBRARY=' + str(prefix / 'lib' / (
         'zlib.lib' if sys.platform == 'win32' else 'libz.a'))]
     prerequisite = work / 'encoding-provider.c'

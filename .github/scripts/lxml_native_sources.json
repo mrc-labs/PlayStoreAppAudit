@@ -114,5 +114,14 @@
       "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
       "run": 43591550005
     }
-  ]
+  ],
+  "windows_iconv_source": {
+    "name": "winlibs-libiconv-accac417.tar.gz",
+    "url": "https://github.com/winlibs/libiconv/archive/accac417318a3eef7402685a268cab8037e62ba1.tar.gz",
+    "directory": "libiconv-accac417318a3eef7402685a268cab8037e62ba1",
+    "sha256": "431cc47e65488b929bdeb3688b773209eeb9dfd39584b4eb21fb39172398b839",
+    "authority": "https://github.com/lxml/libxml2-win-binaries/tree/2026.11.07/libiconv",
+    "version": "1.19",
+    "reason": "Stable parent-selected source/MSVC18 project; vendor LTCG archive fails C1047 under current MSVC14.52. Build exact source natively with same toolset and dynamic CRT; no library/API version change."
+  }
 }
