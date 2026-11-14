@@ -1,0 +1,12 @@
+--- a/build_scripts/platforms/windows_desktop.py
++++ b/build_scripts/platforms/windows_desktop.py
+@@ -377,7 +377,8 @@
+         copydir("{qt_plugins_dir}", plugins_target,
+                 file_filter_function=plugin_dll_filter,
+                 _vars=_vars)
+-        if not is_pypy:
++        # Match the UiTools prerequisite of the CMake Designer plugin target.
++        if not is_pypy and "UiTools" in built_modules:
+             copydir("{install_dir}/plugins/designer",
+                     f"{plugins_target}/designer",
+                     _filter=["*.dll"],

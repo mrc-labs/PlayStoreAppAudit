@@ -1,0 +1,138 @@
+{
+  "scope": "Native Ubuntu22.04 x64 controlled Python/provider delta only; no producing adoption or other-target effective input change",
+  "date": "2026-11-10",
+  "base_manifest": "native_runtime_pilot_sources.json",
+  "base_manifest_canonical_sha256": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
+  "baseline": "Native x86_64/GIL3.14.10; GNU11/GLIBC2.35/GLIBCXX3.4.29; existing OpenSSL4.0.3/matched Qt6.12.0/PNG1.6.59/PCRE2 10.49 unchanged",
+  "sources": [
+    {
+      "name": "sqlite-autoconf-3540100.tar.gz",
+      "directory": "sqlite-autoconf-3540100",
+      "url": "https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz",
+      "sha256": "926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e",
+      "official_sha3_256": "b6ced585c750916b1052667239a12c25a7ff34e7f06e1e6e01ecb0427657d9c4",
+      "authority": "https://www.sqlite.org/download.html"
+    },
+    {
+      "name": "mpdecimal-4.0.1.tar.gz",
+      "directory": "mpdecimal-4.0.1",
+      "url": "https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.1.tar.gz",
+      "sha256": "96d33abb4bb0070c7be0fed4246cd38416188325f820468214471938545b1ac8",
+      "authority": "https://www.bytereef.org/mpdecimal/download.html"
+    },
+    {
+      "name": "libffi-3.8.0.tar.gz",
+      "directory": "libffi-3.8.0",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+      "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.0"
+    },
+    {
+      "name": "xz-5.8.4.tar.xz",
+      "directory": "xz-5.8.4",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.xz",
+      "sha256": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+      "authority": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.4"
+    },
+    {
+      "name": "zlib-1.4.tar.gz",
+      "directory": "zlib-1.4",
+      "url": "https://zlib.net/zlib-1.4.tar.gz",
+      "sha256": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+      "authority": "https://zlib.net/"
+    },
+    {
+      "name": "cffi-2.1.1.tar.gz",
+      "directory": "cffi-2.1.1",
+      "url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+      "sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+      "authority": "https://pypi.org/pypi/cffi/2.1.1/json"
+    }
+  ],
+  "sqlite_legal_notice": {
+    "name": "sqlite-copyright.html",
+    "url": "https://www.sqlite.org/copyright.html",
+    "sha256": "44ca9f793055c8e32fc65f65a4f5bcf813a33f5bdaaa084067dd617a4ed3cc70",
+    "authority": "https://www.sqlite.org/copyright.html",
+    "scope": "Official public-domain/legal notice retained byte-exact alongside original amalgamation source"
+  },
+  "expected": {
+    "sqlite": "3.54.1",
+    "libmpdec": "4.0.1",
+    "libffi": "3.8.0",
+    "liblzma": "5.8.4",
+    "zlib": "1.4",
+    "cffi": "2.1.1"
+  },
+  "cffi_identity": "Unmodified official2.1.1 source via documented POSIX pkg-config; project-built wheel distinct from an unchanged official binary. Controlled runtime provenance and wheel/provider hashes identify the integration. No Windows source patch or compiler selection transferred.",
+  "python_regressions": [
+    "test_ctypes",
+    "test_sqlite3",
+    "test_decimal",
+    "test_lzma",
+    "test_zlib"
+  ],
+  "provider_security_manifest": {
+    "path": "provider_ca_security_sources.json",
+    "canonical_sha256": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f"
+  },
+  "qt_ca_patch": {
+    "path": ".github/patches/qtbase-6.12.0-compromised-spki.patch",
+    "sha256": "5b65c6680c0cf3b58140e96cbfd3d4df1a7fb5328e3d4b3fd573f7dab366d9ad",
+    "file": "src/network/ssl/qsslcertificate.cpp",
+    "base_sha256": "7ea8d8558b039607c72977059521e4b9670147b66184e2c49b4fe2effd5290e3",
+    "patched_sha256": "3a1c1e44416926f0b0dd6f7283fd819afe633993d49cf94d46f059ee019edb8b",
+    "blocked_spki_sha256": [
+      "43bffa19d6ef651451f6841e019931e96f6f2eaeff28ab4b6f1ce4576de2717b",
+      "49dd353dc2b919a3770645117d0e60c16115e7d1bc259eefe734b00ea434fe5f",
+      "5c0660a2b164910d8ff589c18e14552e9e0ec237dcefe2cb736d41a4811f81a0",
+      "63ecefee431d49523bc1136c4e72d0206a477086caf606cd5cf025686c109cf8",
+      "92c063d67e8f14db71d288e11266ffdaf69cbf115f7bab14f3bc2f68d25e0e30",
+      "e0254c7fcdc265e2f0f8a428dabb75ab4ae039b4872d62f5ee57f0877d5a8a41",
+      "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+      "ec4ffa1ad0ac88081314b7aaffef6a91f97cd57291bb5ba686c5415f5eb4f6b6"
+    ],
+    "origin": "Project-authored common SPKI blacklist extension plus whole-provided-chain manual verification, preserving native/backend errors and deduplicating blacklist errors. Required by observed native acceptance and OpenSSL manual verifier leaf-only source check; not upstream approval.",
+    "authority": "https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE",
+    "scope": "Initially qualified only in Linux x64 isolated source pilot; other five profiles remain unchanged and still require guard adoption/requalification.",
+    "manual_verification_evidence": {
+      "source": "https://github.com/qt/qtbase/blob/v6.12.0/src/plugins/tls/openssl/qx509_openssl.cpp",
+      "original_sha256": "271abbff4ffcca4b786131fb32dfc4a4420e1a1c980e73b3d91ceef734d7ef28",
+      "finding": "X509CertificateOpenSSL::verify tests certificateChain[0].isBlacklisted only. Common QSslCertificate::verify now retains backend errors then checks every supplied certificate. This is not a claim about unprovided/reconstructed OS-store chain members."
+    }
+  },
+  "zlib_delta": {
+    "released": "2026-11-04",
+    "authority": "https://zlib.net/",
+    "reason": "Stable1.4 replaces1.3.2; official download removed old URL. Security corrections include CVE-2026-85091 and malformed-window/dictionary/prime operations. Actual application exposure is not assumed. Linux supported configure/shared route; no Windows CMake name/offset assumptions transferred.",
+    "regressions": [
+      "make test",
+      "make infcover",
+      "./infcover",
+      "CPython test_zlib",
+      "existing PNG malformed metadata corpus"
+    ],
+    "other_targets": "Old evidence retains1.3.2; future source update and affected native validations required. No shared source manifest silently changed."
+  },
+  "sqlite_configuration": {
+    "option": "--column-metadata",
+    "macro": "SQLITE_ENABLE_COLUMN_METADATA",
+    "authority": "https://www.sqlite.org/compile.html#enable_column_metadata",
+    "required_by": "Qt6.12.0 system-SQLite QSQLiteResultPrivate::initColumns uses sqlite3_column_table_name16",
+    "demonstrated_gate": "42810658400 at f5eefb7: Qt plugin undefined sqlite3_column_table_name16; configure log marks column-metadata disabled",
+    "source_change": "None. Supported original SQLite autosetup option; no Qt source/API adaptation, renamed symbol or fallback.",
+    "early_regression": "Real native C consumer links and executes both UTF-8/UTF-16 column-origin APIs and compileoption_used before OpenSSL/Python/Qt rebuilds. Python records compile_options and Qt actual QSqlField.tableName verifies fixture table."
+  },
+  "qt_text_manifest": {
+    "path": "qt_text_provider_sources.json",
+    "canonical_sha256": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94"
+  },
+  "qt_cbor_manifest": {
+    "path": "qt_cbor_provider_sources.json",
+    "canonical_sha256": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6"
+  },
+  "qt_http_manifest": {
+    "path": "qt_http_security_sources.json",
+    "canonical_sha256": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
+  }
+}

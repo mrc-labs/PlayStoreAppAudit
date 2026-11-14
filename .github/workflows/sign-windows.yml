@@ -256,9 +256,9 @@ jobs:
       - name: Install legal-validation dependencies
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip
+          python .github/scripts/bootstrap_pip.py
           if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
-          python -m pip install -r requirements-dev.txt "Nuitka==4.2.2"
+          python -m pip install -r requirements-dev.txt "Nuitka==4.3.5"
           if ($LASTEXITCODE -ne 0) { throw 'Could not install legal-validation dependencies.' }
 
       - name: Download unsigned Windows build artifact

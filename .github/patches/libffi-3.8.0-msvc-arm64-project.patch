@@ -1,0 +1,10 @@
+--- a/msvc_build/aarch64/Ffi_staticLib.vcxproj
++++ b/msvc_build/aarch64/Ffi_staticLib.vcxproj
+@@ -110,6 +110,7 @@
+     <ClCompile Include="..\..\src\aarch64\ffi.c" />
+     <ClCompile Include="..\..\src\prep_cif.c" />
+     <ClCompile Include="..\..\src\types.c" />
++    <ClCompile Include="..\..\src\tramp.c" />
+   </ItemGroup>
+   <!--ItemGroup>
+     <Object Include="..\..\..\..\Downloads\libffi-master-win64\src\aarch64\win64_armasm.obj" />

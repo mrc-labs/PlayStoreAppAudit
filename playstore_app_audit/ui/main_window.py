@@ -1044,14 +1044,16 @@ class MainWindow(results_ui.ResultsWindow):
                                 len(candidates),
                                 len(artifacts),
                             )
-                    elif parsed.failure is not None:
-                        if parsed.failure.kind is not LocalArtifactFailureKind.CANCELLED:
-                            logger.info(
-                                "local_container_rejected format=%s reason=%s",
-                                path.suffix.casefold().lstrip("."),
-                                parsed.failure.kind.value,
-                            )
-                            failures.append(parsed.failure)
+                    elif (
+                        parsed.failure is not None
+                        and parsed.failure.kind is not LocalArtifactFailureKind.CANCELLED
+                    ):
+                        logger.info(
+                            "local_container_rejected format=%s reason=%s",
+                            path.suffix.casefold().lstrip("."),
+                            parsed.failure.kind.value,
+                        )
+                        failures.append(parsed.failure)
                 self.audit_control_signals.progress.emit(
                     session, index, len(candidates), f"Parsing package • {path.name}"
                 )

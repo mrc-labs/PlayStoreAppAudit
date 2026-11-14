@@ -1,0 +1,466 @@
+"""Probe the official libffi MSVC ARM64 project; never adopt a runtime library."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import sysconfig
+import tarfile
+import urllib.request
+import venv
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+from inspect_pe import read_pe_machine
+
+URL = 'https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz'
+SHA256 = '7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4'
+REPO = Path(__file__).resolve().parents[2]
+
+
+def fetch_source(work: Path, evidence: Path) -> Path:
+    archive = evidence / 'libffi-3.8.0.tar.gz'
+    with urllib.request.urlopen(URL, timeout=90) as response:
+        if not response.geturl().startswith('https://'):
+            raise ValueError('Source HTTPS downgrade rejected')
+        data = response.read()
+    if hashlib.sha256(data).hexdigest() != SHA256:
+        raise ValueError('Unexpected official libffi source digest')
+    archive.write_bytes(data)
+    with tarfile.open(archive) as source:
+        source.extractall(work, filter='data')
+    return work / 'libffi-3.8.0'
+
+
+def run(command: list[str], log: Path, cwd: Path, environment: dict[str, str] | None = None) -> str:
+    result = subprocess.run(command, cwd=cwd, env=environment, capture_output=True, text=True)
+    log.write_text(result.stdout + result.stderr, encoding='utf-8')
+    if result.returncode:
+        print((result.stdout + result.stderr)[-14000:], flush=True)
+    result.check_returncode()
+    return result.stdout + result.stderr
+
+
+def apply_libffi_patch(source: Path, evidence: Path, spec: dict) -> None:
+    patch = REPO / spec['path']
+    target = source / spec['source_file']
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != spec['sha256']:
+        raise ValueError('Changed reviewed libffi patch')
+    if hashlib.sha256(target.read_bytes()).hexdigest() != spec['original_sha256']:
+        raise ValueError('Changed original libffi source')
+    if 'normalized_sha256' in spec:
+        normalized = target.read_bytes().replace(b'\r\n', b'\n')
+        if hashlib.sha256(normalized).hexdigest() != spec['normalized_sha256']:
+            raise ValueError('Unexpected normalized libffi project')
+        target.write_bytes(normalized)
+    command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent.resolve())}
+    run([*command, '--check', str(patch)], evidence / (patch.stem + '-check.log'), source, environment)
+    run([*command, str(patch)], evidence / (patch.stem + '-apply.log'), source, environment)
+    if hashlib.sha256(target.read_bytes()).hexdigest() != spec['patched_sha256']:
+        raise ValueError('Unexpected post-patch libffi source')
+    shutil.copy2(patch, evidence)
+    shutil.copy2(REPO / '.github/scripts/libffi_arm64_probe_sources.json', evidence)
+
+
+def configure_headers(source: Path, work: Path, evidence: Path, compiler: Path) -> dict:
+    """Generate matching upstream headers instead of editing stale declarations."""
+    bash = Path(os.environ['PROGRAMFILES']) / 'Git/bin/bash.exe'
+    assert bash.is_file(), f'Git Bash missing: {bash}'
+    configured = work / 'configured'
+    configured.mkdir()
+    script = r'''set -euo pipefail
+src=$(cygpath -u "$1")
+build=$(cygpath -u "$2")
+native_bin=$(cygpath -u "$3")
+export PATH="$native_bin:$PATH"
+cd "$build"
+"$src/configure" --build=aarch64-w64-mingw32 --host=aarch64-w64-mingw32 \
+  --disable-shared --enable-static --disable-dependency-tracking \
+  CC="$src/msvcc.sh -marm64" CXX="$src/msvcc.sh -marm64" LD=link \
+  CPP="cl -nologo -EP" CXXCPP="cl -nologo -EP" CPPFLAGS="-DFFI_BUILDING_DLL"
+'''
+    try:
+        run([str(bash), '--noprofile', '--norc', '-c', script, 'libffi-headers',
+             str(source), str(configured), str(compiler.parent)], evidence / 'configure.log', configured)
+    finally:
+        if (configured / 'config.log').is_file():
+            shutil.copy2(configured / 'config.log', evidence)
+    generated = {'ffi.h': configured / 'include/ffi.h', 'fficonfig.h': configured / 'fficonfig.h'}
+    assert re.search(r'FFI_VERSION_STRING\s+"3\.8\.0"', generated['ffi.h'].read_text()), 'Wrong/unconfigured libffi header version'
+    hashes = {}
+    for name, path in generated.items():
+        destination = source / 'msvc_build/aarch64/aarch64_include' / name
+        shutil.copy2(destination, evidence / ('original-' + name))
+        shutil.copy2(path, evidence / ('configured-' + name))
+        hashes[name] = {'original_sha256': hashlib.sha256(destination.read_bytes()).hexdigest(),
+                        'configured_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+        shutil.copy2(path, destination)
+    return {'bash': str(bash), 'bash_host_machine': read_pe_machine(bash), 'compiler': 'MSVC -marm64 wrapper, native ARM64',
+            'abi_triple': 'aarch64-w64-mingw32 identifies Windows ABI; no GNU target compiler', 'headers': hashes}
+
+
+def exercise_library(source: Path, work: Path, library: Path, compiler: Path, evidence: Path) -> dict:
+    client = work / 'ffi_consumer.c'
+    client.write_text(r'''#include <ffi.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+static int64_t add(int64_t a, int64_t b) { return a + b; }
+static double mixed_variadic(int base, ...) {
+    va_list args;
+    va_start(args, base);
+    const char *text = va_arg(args, const char *);
+    int integer = va_arg(args, int);
+    double real = va_arg(args, double);
+    va_end(args);
+    return base + strlen(text) + integer + real;
+}
+static void callback(ffi_cif *cif, void *result, void **args, void *data) {
+    (void)cif;
+    *(int64_t *)result = *(int64_t *)args[0] + *(int64_t *)args[1] + *(int64_t *)data;
+}
+typedef struct { uint64_t q[4]; } Big;
+static uint64_t stacked(Big a, Big b, Big c, Big d, Big e,
+                        Big f, Big g, Big h, Big i, Big j) {
+    Big all[] = {a,b,c,d,e,f,g,h,i,j};
+    uint64_t sum = 0;
+    for (int x=0; x<10; x++) for (int y=0; y<4; y++) sum += all[x].q[y];
+    volatile Big *local = &a;
+    local->q[0] = 0;
+    return sum;
+}
+int main(void) {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    puts("stage: version API");
+    ffi_cif cif;
+    ffi_type *types[] = { &ffi_type_sint64, &ffi_type_sint64 };
+    int64_t a = 11, b = 31, result = 0, extra = 3;
+    void *args[] = { &a, &b }, *code = NULL;
+    if (strcmp(ffi_get_version(), "3.8.0") || ffi_get_version_number() != 30800) return 1;
+    puts("stage: scalar CIF");
+    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 2, &ffi_type_sint64, types) != FFI_OK) return 2;
+    puts("stage: scalar ffi_call");
+    ffi_call(&cif, FFI_FN(add), &result, args);
+    if (result != 42) return 3;
+    puts("stage: closure allocation");
+    ffi_closure *closure = ffi_closure_alloc(sizeof(ffi_closure), &code);
+    puts("stage: closure preparation");
+    if (!closure || ffi_prep_closure_loc(closure, &cif, callback, &extra, code) != FFI_OK) return 4;
+    int64_t (*call)(int64_t, int64_t) = (int64_t (*)(int64_t, int64_t))code;
+    puts("stage: closure invocation");
+    if (call(a, b) != 45) return 5;
+    puts("stage: closure free");
+    ffi_closure_free(closure);
+    Big big[10];
+    ffi_type *elements[] = { &ffi_type_uint64, &ffi_type_uint64,
+                             &ffi_type_uint64, &ffi_type_uint64, NULL };
+    ffi_type aggregate = {0, 0, FFI_TYPE_STRUCT, elements};
+    ffi_type *big_types[10];
+    void *big_args[10];
+    uint64_t expected=0, total=0;
+    for (int x=0; x<10; x++) {
+        for (int y=0; y<4; y++) { big[x].q[y]=(uint64_t)(100*x+y+1); expected+=big[x].q[y]; }
+        big_types[x]=&aggregate; big_args[x]=&big[x];
+    }
+    printf("stage: natural struct CIF native size=%zu alignment=%u\n", sizeof(Big), __alignof(Big));
+    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 10, &ffi_type_uint64, big_types) != FFI_OK) return 6;
+    if (aggregate.size != sizeof(Big) || aggregate.alignment != __alignof(Big)) return 8;
+    printf("stage: natural struct ffi_call computed size=%zu alignment=%u\n", aggregate.size, aggregate.alignment);
+    ffi_call(&cif, FFI_FN(stacked), &total, big_args);
+    if (total!=expected || big[0].q[0]!=1) return 7;
+    puts("stage: direct ffi_prep_cif_var string/int/double");
+    int fixed=7, integer=13;
+    const char *text="ffi";
+    double real=4.5, mixed_result=0;
+    ffi_type *mixed_types[]={&ffi_type_sint, &ffi_type_pointer, &ffi_type_sint, &ffi_type_double};
+    void *mixed_args[]={&fixed, &text, &integer, &real};
+    if (ffi_prep_cif_var(&cif, FFI_DEFAULT_ABI, 1, 4, &ffi_type_double, mixed_types)!=FFI_OK) return 9;
+    ffi_call(&cif, FFI_FN(mixed_variadic), &mixed_result, mixed_args);
+    if (mixed_result!=27.5) return 10;
+    printf("direct variadic result=%.1f PASS\n",mixed_result);
+    printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());
+    return 0;
+}
+''', encoding='utf-8')
+    shutil.copy2(client, evidence)
+    executable = work / 'ffi_consumer.exe'
+    run([str(compiler), '/nologo', '/MD', '/Zi', '/std:c17', '/DFFI_BUILDING_DLL',
+         '/I' + str(source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
+         str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
+    assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
+    shutil.copy2(executable, evidence)
+    try:
+        output = run([str(executable)], evidence / 'consumer.log', work)
+    except subprocess.CalledProcessError:
+        debugger = Path(os.environ['PROGRAMFILES(X86)']) / 'Windows Kits/10/Debuggers/arm64/cdb.exe'
+        if debugger.is_file():
+            debugger_machine = read_pe_machine(debugger)
+            (evidence / 'consumer-debugger.json').write_text(json.dumps({
+                'path': str(debugger), 'machine': debugger_machine,
+                'sha256': hashlib.sha256(debugger.read_bytes()).hexdigest(),
+                'scope': 'Optional installed SDK diagnostic only; no compiler or runtime adoption',
+            }, indent=2), encoding='utf-8')
+            if debugger_machine != 0xAA64:
+                raise
+            try:
+                trace = subprocess.run([str(debugger), '-c', 'g;.ecxr;kv;q', str(executable)],
+                                       cwd=work, capture_output=True, text=True, timeout=40)
+                (evidence / 'consumer-native-debug.log').write_text(trace.stdout + trace.stderr, encoding='utf-8')
+            except subprocess.TimeoutExpired:
+                (evidence / 'consumer-native-debug.log').write_text('Native debugger deadline reached', encoding='utf-8')
+        raise
+    assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
+    return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
+
+
+def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
+    patch = REPO / spec['path']
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != spec['sha256']:
+        raise ValueError('Changed reviewed cffi patch')
+    for name, hashes in spec['files'].items():
+        if hashlib.sha256((source / name).read_bytes()).hexdigest() != hashes['original_sha256']:
+            raise ValueError('Changed original cffi source')
+    command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.parent.resolve())}
+    run([*command, '--check', str(patch)], evidence / 'cffi-patch-check.log', source, environment)
+    run([*command, str(patch)], evidence / 'cffi-patch-apply.log', source, environment)
+    for name, hashes in spec['files'].items():
+        if hashlib.sha256((source / name).read_bytes()).hexdigest() != hashes['patched_sha256']:
+            raise ValueError('Unexpected post-patch cffi source')
+    shutil.copy2(patch, evidence)
+
+
+def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict) -> dict:
+    """Build one isolated cffi consumer; never replace a runtime's installed DLL."""
+    archive = evidence / 'cffi-2.1.1.tar.gz'
+    with urllib.request.urlopen(spec['source_url'], timeout=90) as response:
+        if not response.geturl().startswith('https://'):
+            raise ValueError('cffi source HTTPS downgrade rejected')
+        data = response.read()
+    if hashlib.sha256(data).hexdigest() != spec['source_sha256']:
+        raise ValueError('Unexpected official cffi source digest')
+    archive.write_bytes(data)
+    with tarfile.open(archive) as source_archive:
+        source_archive.extractall(work, filter='data')
+    cffi_source = work / 'cffi-2.1.1'
+    shutil.copy2(cffi_source / 'LICENSE', evidence / 'cffi-LICENSE')
+    apply_cffi_patch(cffi_source, evidence, spec['patch'])
+    prefix = work / 'cffi-libffi-prefix'
+    (prefix / 'include').mkdir(parents=True)
+    (prefix / 'lib').mkdir()
+    for name in ['ffi.h', 'fficonfig.h']:
+        shutil.copy2(source / 'msvc_build/aarch64/aarch64_include' / name, prefix / 'include' / name)
+    shutil.copy2(source / 'src/aarch64/ffitarget.h', prefix / 'include/ffitarget.h')
+    shutil.copy2(library, prefix / 'lib' / library.name)
+    assert hashlib.sha256((prefix / 'lib' / library.name).read_bytes()).hexdigest() == hashlib.sha256(library.read_bytes()).hexdigest()
+    venv_path = work / 'cffi-environment'
+    venv.EnvBuilder(with_pip=True).create(venv_path)
+    python = venv_path / 'Scripts/python.exe'
+    run([str(python), str(REPO / '.github/scripts/bootstrap_pip.py')], evidence / 'cffi-pip-bootstrap.log', work)
+    wheels = evidence / 'cffi-build-wheels'
+    wheels.mkdir()
+    build_dependencies = ['-r', str(REPO / '.github/scripts/source_build_requirements.txt'),
+                          '-c', str(REPO / '.github/scripts/source_build_constraints.txt')]
+    run([str(python), '-m', 'pip', '--isolated', 'download', '--only-binary=:all:',
+         '--dest', str(wheels), *build_dependencies, *spec['bootstrap_pins']], evidence / 'cffi-build-dependencies.log', work)
+    run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--find-links', str(wheels),
+         '--report', str(evidence / 'cffi-build-install.json'), *build_dependencies, *spec['bootstrap_pins']],
+        evidence / 'cffi-build-install.log', work)
+    environment = {**os.environ, 'PSAA_LIBFFI_ARM64_ROOT': str(prefix),
+                   'DISTUTILS_USE_SDK': '1', 'MSSdk': '1'}
+    wheelhouse = evidence / 'cffi-wheel'
+    wheelhouse.mkdir()
+    run([str(python), '-m', 'pip', '--isolated', 'wheel', '--no-index', '--no-build-isolation',
+         '--no-deps', '--verbose', '--wheel-dir', str(wheelhouse), str(cffi_source)],
+        evidence / 'cffi-build.log', work, {**environment, 'PYTHONVERBOSE': '1', 'PYTHONUTF8': '1'})
+    run([str(python), str(REPO / '.github/scripts/probe_setuptools_build.py'), '--consumer', 'cffi',
+         '--consumer-log', str(evidence / 'cffi-build.log'), '--output-dir', str(evidence / 'build-dependencies')],
+        evidence / 'cffi-build-dependency-check.log', REPO)
+    built = list(wheelhouse.glob('cffi-*.whl'))
+    assert len(built) == 1 and spec['distribution_version'] in built[0].name
+    run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--no-deps', str(built[0])],
+        evidence / 'cffi-install.log', work)
+    inspect = '''import ctypes,hashlib,importlib.metadata,json,platform,sysconfig
+import cffi,_cffi_backend
+assert platform.machine().upper()=='ARM64' and not sysconfig.get_config_var('Py_GIL_DISABLED')
+assert importlib.metadata.version('cffi')=='2.1.1+psaa.libffi380'
+assert cffi.__version__==_cffi_backend.__version__=='2.1.1'
+backend=ctypes.WinDLL(_cffi_backend.__file__)
+backend.ffi_get_version.restype=ctypes.c_char_p
+assert backend.ffi_get_version()==b'3.8.0' and backend.ffi_get_version_number()==30800
+print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_cffi_backend.__file__,'rb').read()).hexdigest(),
+ distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
+'''
+    measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
+    backend = Path(measured['module'])
+    assert read_pe_machine(backend) == 0xAA64
+    shutil.copy2(backend, evidence)
+    imports = run(['dumpbin.exe', '/imports', str(backend)], evidence / 'cffi-imports.txt', work)
+    assert not re.search(r'(?im)^\s*(?:lib)?ffi[^\s]*\.dll\s*$', imports), 'Unexpected dynamic libffi dependency'
+    assert 'VCRUNTIME140.dll' in imports, 'Missing dynamic CRT dependency'
+    # UCRT printf-family names may be SDK inline wrappers rather than exports.
+    # Compile a real variadic ABI boundary instead of guessing system symbols.
+    client = work / 'cffi_varargs.c'
+    client.write_text('''#include <stdarg.h>
+#include <string.h>
+__declspec(dllexport) double psaa_variadic(int base, ...) {
+    va_list args;
+    va_start(args, base);
+    const char *text = va_arg(args, const char *);
+    int integer = va_arg(args, int);
+    double real = va_arg(args, double);
+    va_end(args);
+    return base + strlen(text) + integer + real;
+}
+''', encoding='utf-8')
+    compiler = Path(shutil.which('cl.exe') or '')
+    assert read_pe_machine(compiler) == 0xAA64
+    fixture = work / 'cffi_varargs.dll'
+    run([str(compiler), '/nologo', '/MD', '/LD', '/std:c17', str(client), '/Fe:' + str(fixture)],
+        evidence / 'cffi-varargs-build.log', work)
+    assert read_pe_machine(fixture) == 0xAA64
+    for file in [client, fixture]:
+        shutil.copy2(file, evidence)
+    positive = '''import cffi,json,sys
+ffi=cffi.FFI()
+ffi.cdef('double psaa_variadic(int, ...);')
+library=ffi.dlopen(sys.argv[1])
+result=library.psaa_variadic(7,ffi.new('char[]',b'ffi'),ffi.cast('int',13),ffi.cast('double',4.5))
+assert result==27.5,result
+print(json.dumps(dict(positive_variadic='Native MSVC ARM64 string/int/double PASS',result=result)))
+'''
+    variadic = json.loads(run([str(python), '-c', positive, str(fixture)], evidence / 'cffi-varargs.json', work))
+    # Upstream TestOwnLib accepts an already-built DLL, before its obsolete
+    # MSVC9/AMD64 discovery. Prepare that existing fixture seam with the
+    # measured native compiler in the same pytest process/temporary directory.
+    plugin = work / 'psaa_cffi_native_fixture.py'
+    plugin.write_text('''import hashlib,json,shutil,struct,subprocess
+from pathlib import Path
+def pytest_configure(config):
+    from testing.cffi0.test_ownlib import SOURCE
+    from testing.udir import udir
+    source=udir/'testownlib.c'
+    source.write_text(SOURCE,encoding='utf-8')
+    library=udir/'testownlib.dll'
+    command=[COMPILER,'/nologo','/MD','/LD',str(source),'/Fe:'+str(library)]
+    result=subprocess.run(command,cwd=udir,capture_output=True,text=True)
+    (EVIDENCE/'cffi-ownlib-build.log').write_text(result.stdout+result.stderr,encoding='utf-8')
+    result.check_returncode()
+    data=library.read_bytes()
+    offset=struct.unpack_from('<I',data,0x3c)[0]
+    assert data[offset:offset+4]==b'PE\\0\\0' and struct.unpack_from('<H',data,offset+4)[0]==0xAA64
+    for name in ['testownlib1.dll','testownlib\\u03be.dll']:
+        shutil.copy2(library,udir/name)
+    shutil.copy2(source,EVIDENCE/'cffi-ownlib.c')
+    shutil.copy2(library,EVIDENCE/'cffi-ownlib.dll')
+    (EVIDENCE/'cffi-ownlib.json').write_text(json.dumps(dict(machine=0xAA64,sha256=hashlib.sha256(data).hexdigest(),
+        scope='Unmodified upstream SOURCE and prebuilt-fixture seam; native /MD compiler, no MSVC9 shim or skipped assertions')),encoding='utf-8')
+'''.replace('COMPILER', repr(str(compiler))).replace('EVIDENCE', 'Path(' + repr(str(evidence)) + ')'), encoding='utf-8')
+    shutil.copy2(plugin, evidence)
+    test_environment = {**environment, 'PYTHONPATH': str(work) + os.pathsep + environment.get('PYTHONPATH', '')}
+    tests = ['src/c/test_c.py', 'testing/cffi0/test_ffi_backend.py', 'testing/cffi1/test_ffi_obj.py']
+    xml = evidence / 'cffi-tests.xml'
+    run([str(python), '-m', 'pytest', '-p', plugin.stem, '-q', *tests, '--junitxml', str(xml)],
+        evidence / 'cffi-tests.log', cffi_source, test_environment)
+    cases = ET.parse(xml).findall('.//testcase')
+    assert cases and not ET.parse(xml).findall('.//failure') and not ET.parse(xml).findall('.//error')
+    executed = [case for case in cases if case.find('skipped') is None]
+    assert any('callback' in case.get('name', '') for case in executed), 'Callback regressions did not execute'
+    # This upstream case invokes _testfunc(9) with real promoted varargs.
+    # printf-based cases can legitimately skip on the Windows C runtime.
+    assert any(case.get('name') == 'test_call_function_9' for case in executed), 'Native upstream variadic regression did not execute'
+    return {**measured, 'machine': 0xAA64, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
+            'positive_variadic': variadic, 'variadic_fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
+            'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
+            'tests': len(cases), 'executed': len(executed), 'skipped': len(cases) - len(executed),
+            'scope': 'Isolated source consumer only; no controlled CPython/cryptography or producing adoption'}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--work-root', type=Path, required=True)
+    args = parser.parse_args()
+    assert sys.platform == 'win32' and platform.machine().upper() == 'ARM64', 'Native Windows ARM64 Python required'
+    assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED'), 'Exact stable3.14.10/GIL bootstrap required'
+    assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == 'arm64', 'MSVC host and target must both be ARM64'
+    head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    assert head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
+    work = args.work_root.resolve()
+    assert not work.exists(), 'Fresh source workspace required'
+    work.mkdir(parents=True)
+    evidence = Path('windows-arm64-pilot-evidence/libffi-prerequisites').resolve()
+    evidence.mkdir(parents=True)
+    report = {'source_sha': head, 'scope': 'Official MSVC project feasibility only; no CPython/cffi or runtime adoption',
+              'libffi_source': URL, 'libffi_sha256': SHA256, 'vendor_patches': [], 'result': 'BLOCKED',
+              'source_authority': 'https://api.github.com/repos/libffi/libffi/releases/tags/v3.8.0'}
+    try:
+        report['gate'] = 'native compiler and assembler host architecture'
+        compiler = Path(shutil.which('cl.exe') or '')
+        assembler = Path(shutil.which('armasm64.exe') or '')
+        compiler_machine = read_pe_machine(compiler)
+        assembler_machine = read_pe_machine(assembler)
+        assert compiler_machine == 0xAA64, f'Non-native compiler host: {compiler} machine={compiler_machine}'
+        assert assembler_machine == 0xAA64, f'Non-native assembler host: {assembler} machine={assembler_machine}'
+        report.update(compiler=str(compiler), assembler=str(assembler), host_target='native ARM64/ARM64',
+                      compiler_machine=compiler_machine, assembler_machine=assembler_machine,
+                      toolset=os.environ['VCTOOLSVERSION'], sdk=os.environ['WINDOWSSDKVERSION'])
+        report['gate'] = 'official source digest/extraction/provenance'
+        source = fetch_source(work, evidence)
+        project = source / 'msvc_build/aarch64/Ffi_staticLib.vcxproj'
+        report['official_project_sha256'] = hashlib.sha256(project.read_bytes()).hexdigest()
+        report['official_header_sha256'] = hashlib.sha256((source / 'msvc_build/aarch64/aarch64_include/ffi.h').read_bytes()).hexdigest()
+        shutil.copy2(source / 'LICENSE', evidence / 'libffi-LICENSE')
+        report['gate'] = 'upstream configure/MSVC wrapper header generation'
+        report['project_configuration'] = configure_headers(source, work, evidence, compiler)
+        patches = json.loads((REPO / '.github/scripts/libffi_arm64_probe_sources.json').read_text())
+        report['gate'] = 'reviewed unsigned alignment/project source-list compatibility patches'
+        for key in ['alignment_patch', 'msvc_project_patch']:
+            apply_libffi_patch(source, evidence, patches[key])
+            report['vendor_patches'].append(patches[key])
+        build = work / 'build'
+        build.mkdir()
+        msbuild = Path(os.environ['PILOT_VS_PATH']) / 'MSBuild/Current/Bin/arm64/MSBuild.exe'
+        assert msbuild.is_file(), f'Native ARM64 MSBuild missing: {msbuild}'
+        report['gate'] = 'MSVC project with upstream-generated headers and equivalent unsigned mask; SDL preserved'
+        run([str(msbuild), str(project), '/t:Build', '/m:2', '/v:normal', '/p:Configuration=Release',
+             '/p:Platform=ARM64', '/p:PlatformToolset=' + os.environ['PILOT_MSVC_TOOLSET'], '/p:PreferredToolArchitecture=ARM64',
+             '/p:WholeProgramOptimization=false',
+             '/p:VCToolsVersion=' + os.environ['VCTOOLSVERSION'].rstrip('\\/'),
+             '/p:WindowsTargetPlatformVersion=' + os.environ['WINDOWSSDKVERSION'].rstrip('\\/'),
+             '/p:OutDir=' + str(build) + os.sep, '/p:IntDir=' + str(build / 'obj') + os.sep],
+            evidence / 'msbuild.log', project.parent)
+        libraries = list(build.glob('*.lib'))
+        assert len(libraries) == 1, libraries
+        report['gate'] = 'library target architecture and CRT provenance'
+        headers = run(['dumpbin.exe', '/headers', str(libraries[0])], evidence / 'coff-headers.txt', work)
+        machines = re.findall(r'\b([0-9A-Fa-f]{3,4}) machine \(', headers)
+        assert machines and {m.upper() for m in machines} == {'AA64'}, f'Unexpected library COFF architectures: {machines}'
+        directives = run(['dumpbin.exe', '/directives', str(libraries[0])], evidence / 'crt-directives.txt', work)
+        normalized = directives.upper().replace('"', '')
+        assert '/DEFAULTLIB:MSVCRT' in normalized and '/DEFAULTLIB:LIBCMT' not in normalized, 'Dynamic release CRT provenance failed'
+        report.update(library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
+        shutil.copy2(libraries[0], evidence)
+        report['gate'] = 'native version/call/closure consumer execution'
+        report['consumer'] = exercise_library(source, work, libraries[0], compiler, evidence)
+        report['gate'] = 'isolated source cffi consumer and actual native ABI/callback/variadic regressions'
+        report['cffi_consumer'] = exercise_cffi(source, work, libraries[0], evidence, patches['cffi_consumer'])
+        report.update(result='PASS controlled libffi and isolated cffi consumer; controlled CPython/crypto/package acceptance remains required',
+                      library_machines=machines, library_sha256=hashlib.sha256(libraries[0].read_bytes()).hexdigest())
+    except Exception as error:
+        report['failure'] = f'{type(error).__name__}: {error}'
+        raise
+    finally:
+        (evidence / 'libffi-probe.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+        print(json.dumps(report, indent=2), flush=True)
+
+
+if __name__ == '__main__':
+    main()
