@@ -130,7 +130,7 @@
     "validation": "Execute exact patched original Qt test against rebuilt private QtNetwork; preserve upstream accepted boundary/CRLF/LF cases, early truncated-header rejection/cleared fragment and status line limits. Source replay alone is not native acceptance.",
     "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised. Disable unrelated documentation snippets explicitly via QT_BUILD_DOC_SNIPPETS=OFF (documented QtBuildOptionsHelpers option); the Qt parser regression suite stays enabled.",
     "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds",
-    "state": "Official unchanged patch bytes/source replay and focused helper tests PASS; bounded native Core/Network HTTP-only diagnostic pending",
+    "state": "PASS bounded native Linux Core/Network original HTTP tests and public default-trust HTTPS/HTTP1; other-target adoption/full package acceptance remain required",
     "validation_scope": "No CPython/PySide/GUI/SQLite/cffi rebuild or other-target repetition for HTTP-only changes; unchanged evidence reused with exact input/source provenance. Final package integration remains required.",
     "diagnostic_attempts": [
       {
@@ -161,7 +161,323 @@
       "Network",
       "NetworkPrivate",
       "Test"
-    ]
+    ],
+    "native_acceptance": {
+      "source_sha": "b4fdfddb4924dd8b0b6e85bb5b1d79973017a8fd",
+      "run": 43570953718,
+      "artifact": 14104662162,
+      "zip_bytes": 138377365,
+      "zip_sha256": "f8b767f8ceeaa304ec97b02bb0062d45fbf9c0259bafa9ed951122002f6a6f6c",
+      "official_source_hashes": {
+        "openssl-4.0.3.tar.gz": "325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9",
+        "qtbase-everywhere-src-6.12.0.tar.xz": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+        "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+        "tinycbor-7.1.tar.gz": "08c0a4c0a983000806f3d8c1599ec07995789ae49e9a23034db4cbfccc81c2e5"
+      },
+      "reused_source_legal_provenance": {
+        "source_sha": "69c3d04a7b3af5db8c8847f5a7e7df75a586dcf2",
+        "run": 43554126327,
+        "artifact": 14098850639,
+        "zip_sha256": "d33de909db30a6f56ff438ec57f08091c72e486ffbb0b68b257de6f7c883579a"
+      },
+      "original_legal_texts_reused": 42,
+      "new_original_legal_source_matches": 2,
+      "tests_executed": 40,
+      "specific_limit_cases": {
+        "headerSizeLimit": 7,
+        "statusLineSizeLimit": 1
+      },
+      "default_trust_http1": "PASS default-trust authenticated HTTP/1 response",
+      "provider": "OpenSSL 4.0.3 29 Sep 2026",
+      "backend": "openssl",
+      "peer_verify_mode": 3,
+      "sdk_archive_sha256": "3af894d7753756f89cb918c0338bdb0729c61a0647e748ccae6da771ec98f803",
+      "sdk_files_verified": 2532,
+      "sdk_hardlink_aliases": 5,
+      "sdk_archive_bytes": 21937237,
+      "native_images": {
+        "qt_http_default": {
+          "sha256": "227078c4ad4fc80999524cdfdcd78afcad31c03bd9453f8adf334fd003b08912",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GCC_3.0",
+            "GLIBCXX_3.4",
+            "GLIBC_2.2.5",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "Qt_6",
+            "Qt_6.12"
+          ],
+          "needed": [
+            "libQt6Network.so.6",
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6"
+          ]
+        },
+        "libcrypto.so.4": {
+          "sha256": "54a22b9cda5d60dd14b1ecf30f77339d5b1d153f0b9eb1b5f3723f912ba11394",
+          "version_needs": [
+            "GLIBC_2.12",
+            "GLIBC_2.14",
+            "GLIBC_2.15",
+            "GLIBC_2.16",
+            "GLIBC_2.17",
+            "GLIBC_2.2.5",
+            "GLIBC_2.25",
+            "GLIBC_2.3",
+            "GLIBC_2.3.2",
+            "GLIBC_2.3.4",
+            "GLIBC_2.33",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "GLIBC_2.7"
+          ],
+          "needed": [
+            "libc.so.6"
+          ]
+        },
+        "libssl.so.4": {
+          "sha256": "c17a7f5db3a88c3b3657434b3a7e562308bdce6d70e5d28bb390f4f86fdb4ef5",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.16",
+            "GLIBC_2.17",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.2",
+            "GLIBC_2.3.4",
+            "GLIBC_2.33",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "OPENSSL_4.0.0"
+          ],
+          "needed": [
+            "libcrypto.so.4",
+            "libc.so.6"
+          ]
+        },
+        "libQt6Core.so.6.12.0": {
+          "sha256": "2934d792f14875ada02afba49d44dc126c3410552cf0e0cd4ba0a1faf879ba59",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.11",
+            "CXXABI_1.3.13",
+            "CXXABI_1.3.3",
+            "CXXABI_1.3.7",
+            "CXXABI_1.3.8",
+            "CXXABI_1.3.9",
+            "GCC_3.0",
+            "GCC_3.4",
+            "GLIBCXX_3.4",
+            "GLIBCXX_3.4.11",
+            "GLIBCXX_3.4.14",
+            "GLIBCXX_3.4.18",
+            "GLIBCXX_3.4.19",
+            "GLIBCXX_3.4.20",
+            "GLIBCXX_3.4.21",
+            "GLIBCXX_3.4.26",
+            "GLIBCXX_3.4.28",
+            "GLIBCXX_3.4.29",
+            "GLIBC_2.14",
+            "GLIBC_2.16",
+            "GLIBC_2.17",
+            "GLIBC_2.2.5",
+            "GLIBC_2.25",
+            "GLIBC_2.27",
+            "GLIBC_2.28",
+            "GLIBC_2.29",
+            "GLIBC_2.3",
+            "GLIBC_2.3.2",
+            "GLIBC_2.3.4",
+            "GLIBC_2.32",
+            "GLIBC_2.33",
+            "GLIBC_2.34",
+            "GLIBC_2.35",
+            "GLIBC_2.4",
+            "GLIBC_2.6",
+            "GLIBC_2.7",
+            "GLIBC_2.9",
+            "OPENSSL_4.0.0",
+            "ZLIB_1.2.0"
+          ],
+          "needed": [
+            "libicui18n.so.70",
+            "libicuuc.so.70",
+            "libzstd.so.1",
+            "libglib-2.0.so.0",
+            "libz.so.1",
+            "libpcre2-16.so.0",
+            "libcrypto.so.4",
+            "libstdc++.so.6",
+            "libm.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6",
+            "ld-linux-x86-64.so.2"
+          ]
+        },
+        "libQt6Network.so.6.12.0": {
+          "sha256": "e956e2a45dec2cf076c11c78b920ca254b2f0b52e2785bd6b774c99e24549756",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GCC_3.4",
+            "GLIBCXX_3.4",
+            "GLIBCXX_3.4.18",
+            "GLIBCXX_3.4.26",
+            "GLIBCXX_3.4.28",
+            "GLIBCXX_3.4.29",
+            "GLIBC_2.10",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.32",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "GLIBC_2.7",
+            "OPENSSL_4.0.0",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libzstd.so.1",
+            "libQt6Core.so.6",
+            "libbrotlidec.so.1",
+            "libz.so.1",
+            "libcrypto.so.4",
+            "libstdc++.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6"
+          ]
+        },
+        "libqopensslbackend.so": {
+          "sha256": "2e1d7b4c3f4042f83432ea386e8890219047a69672a6dda947b2b55b0e66aaa8",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GLIBCXX_3.4",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.32",
+            "GLIBC_2.4",
+            "OPENSSL_4.0.0",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Network.so.6",
+            "libQt6Core.so.6",
+            "libssl.so.4",
+            "libcrypto.so.4",
+            "libstdc++.so.6",
+            "libc.so.6"
+          ]
+        },
+        "qt_http_limits": {
+          "sha256": "4ae9923c28fa6d8274bdf9b1b7236559a0003bdc58f2a8fdb0a7ca6faac52aba",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GCC_3.0",
+            "GLIBC_2.2.5",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Test.so.6",
+            "libQt6Network.so.6",
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6"
+          ]
+        },
+        "libQt6Test.so.6.12.0": {
+          "sha256": "8a66ac48213568087d02cb2ae6cc3eb6ee3754622e9d1d6da9f3d78ca38365bb",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.13",
+            "CXXABI_1.3.3",
+            "CXXABI_1.3.5",
+            "CXXABI_1.3.8",
+            "CXXABI_1.3.9",
+            "GCC_3.0",
+            "GLIBCXX_3.4",
+            "GLIBCXX_3.4.11",
+            "GLIBCXX_3.4.18",
+            "GLIBCXX_3.4.19",
+            "GLIBCXX_3.4.21",
+            "GLIBCXX_3.4.26",
+            "GLIBCXX_3.4.28",
+            "GLIBCXX_3.4.29",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.4",
+            "GLIBC_2.32",
+            "GLIBC_2.34",
+            "GLIBC_2.4",
+            "GLIBC_2.7",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libm.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6",
+            "ld-linux-x86-64.so.2"
+          ]
+        },
+        "libqcertonlybackend.so": {
+          "sha256": "991f370bd9969db9d6d36fb8271aa7b1be3086fdbb1480d06f89487b72d621ce",
+          "version_needs": [
+            "CXXABI_1.3",
+            "CXXABI_1.3.9",
+            "GLIBCXX_3.4",
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.4",
+            "Qt_6",
+            "Qt_6.12",
+            "Qt_6_PRIVATE_API"
+          ],
+          "needed": [
+            "libQt6Network.so.6",
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libc.so.6"
+          ]
+        },
+        "libz.so.1.4": {
+          "sha256": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ],
+          "needed": [
+            "libc.so.6"
+          ]
+        }
+      },
+      "additional_actual_loaded_images": [
+        "qt/plugins/tls/libqcertonlybackend.so",
+        "lib/libz.so.1.4"
+      ],
+      "scope": "Native Core/Network HTTP security diagnostic only; no Python/PySide/GUI rebuild or final package",
+      "result": "PASS independent ZIP/input-delta/patch/SDK/native-ELF/upstream/default-trust evidence"
+    }
   },
   "r08_partial_runtime_evidence_2026_11_14": {
     "source_sha": "69c3d04a7b3af5db8c8847f5a7e7df75a586dcf2",
@@ -3661,7 +3977,7 @@
       {
         "id": "R02",
         "status": "REQUIRED security/provider acceptance",
-        "applicability_minimum_action": "New applicable QtNetwork CVE-2026-116337 official source backports are prepared above; bounded native HTTP acceptance remains required. Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 bounded Schannel43531162571 now passes14 live compromised-key TLS rejections plus2 supported native Windows chain-path/default-trust rejections joined by exact ancestor DER/SPKI to the actual compiled Qt blacklist. The2 DNS-only socket observations are retained, not16 handshakes or raw OS key-revocation acceptance. Worker verifies source/patch/legal/four PE bytes. Full-stack dual-provider/binding and other-target gates remain required.",
+        "applicability_minimum_action": "New applicable QtNetwork CVE-2026-116337 official backports pass bounded native Linux43570953718 above; other-target source adoption/native/package acceptance remains required. Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 bounded Schannel43531162571 now passes14 live compromised-key TLS rejections plus2 supported native Windows chain-path/default-trust rejections joined by exact ancestor DER/SPKI to the actual compiled Qt blacklist. The2 DNS-only socket observations are retained, not16 handshakes or raw OS key-revocation acceptance. Worker verifies source/patch/legal/four PE bytes. Full-stack dual-provider/binding and other-target gates remain required.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {
@@ -3697,7 +4013,7 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence; the one-file reviewed flag adaptation and small actual-parser local preflight above are prepared. Affected native Qt/PySide/CBOR/text/GUI/ABI qualification remains required, without repeating unchanged Python/cffi suites. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
+        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence; the one-file reviewed flag adaptation passes local and native GNU43559336625 actual-parser prerequisites above. Affected native Qt/PySide/CBOR/text/GUI/ABI qualification remains required, without repeating unchanged Python/cffi suites. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
         "verification_evidence": "Coherent native Qt/binding/GUI/text/CBOR/provider/ABI/source/legal evidence; exact source/patch guards."
       },
       {
