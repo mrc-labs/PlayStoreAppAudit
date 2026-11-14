@@ -1,5 +1,11 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Release continuation and bounded artifact-tool migration (2026-11-14)
+
+The maintainer now explicitly authorizes continuing through the release without the former automatic tranche STOPs. This does not waive required component, security, independent review, native/package, exact-SHA, legal/source or public-byte gates; production signing/features remain outside scope. Preserve normal merge commits, immutable published assets and all accepted floors. Do not claim release readiness while finite technical blockers remain.
+
+While integrated Qt/PySide43587421820 compiles atf2bdb0443a3c659fa464dd253fdd4c1bd829a91f (same-source Quality43587423916 PASS2110), the Windows diagnostic's two `gh api` artifact calls move to the already qualified standard-library HTTPS reader. This removes that external CLI/internal dependency path; it is not a fictitious upgrade of every runner utility or closure of all R13. The immutable original artifact/source/ZIP/consumer guards remain. Native `windows-ca-intake` tests only download/identity with no compiler, Qt build, DLL execution or TLS-suite repeat. Native intake is pending;58 affected downloader/Windows guards and syntax/lint pass before dispatch. Linux runtime/provider/compiler inputs are unchanged, so its running pilot is not invalidated.
+
 ## Integrated Qt/PySide continuation (2026-11-14)
 
 The maintainer requests closing actual blockers while conserving Codex credits. The existing isolated Jammy profile now offers `qt-integration`: it keeps the qualified source/hash/patch/compiler/ABI contracts and actually rebuilds matched Qt/PySide/Shiboken with HarfBuzz15.1/MD4C0.6/TinyCBOR7.1 and corrected Qt security. No new vendor patch, application change, producer adoption or final candidate. Native integration result is pending.

@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -584,7 +584,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard' || inputs.linux_arm64_pilot == 'windows-ca-replay' || inputs.linux_arm64_pilot == 'windows-ca-native') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard' || inputs.linux_arm64_pilot == 'windows-ca-replay' || inputs.linux_arm64_pilot == 'windows-ca-native' || inputs.linux_arm64_pilot == 'windows-ca-intake') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: Native runtime-framework pilot / Windows x64
     runs-on: windows-2025
     timeout-minutes: 180
@@ -619,7 +619,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Stable native bootstrap required.' }
 
       - name: Install existing tools for bounded Schannel diagnostic only
-        if: ${{ startsWith(inputs.linux_arm64_pilot, 'windows-ca-') }}
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'windows-ca-') && inputs.linux_arm64_pilot != 'windows-ca-intake' }}
         shell: pwsh
         run: |
           python .github/scripts/bootstrap_pip.py
@@ -628,7 +628,17 @@ jobs:
           python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' 'cryptography==50.0.2' --report windows-pilot-evidence/qt-ca-tools-install.json
           if ($LASTEXITCODE -ne 0) { throw 'Existing native diagnostic tools unavailable.' }
 
+      - name: Verify original compiled artifact through native Windows HTTPS only
+        if: ${{ inputs.linux_arm64_pilot == 'windows-ca-intake' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/probe_windows_qt_ca_guard.py --compiled-intake-only --work-root "$env:RUNNER_TEMP/windows-intake-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if ($LASTEXITCODE -ne 0) { throw 'Immutable Windows artifact intake failed.' }
+
       - name: Qualify and exercise controlled Windows stack
+        if: ${{ inputs.linux_arm64_pilot != 'windows-ca-intake' }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ (inputs.linux_arm64_pilot == 'windows-ca-replay' || inputs.linux_arm64_pilot == 'windows-ca-native') && github.token || '' }}

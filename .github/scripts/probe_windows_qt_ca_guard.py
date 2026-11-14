@@ -20,6 +20,7 @@ from importlib.metadata import version
 from pathlib import Path, PurePosixPath
 
 from build_windows_runtime_pilot import native_loader_preflight, patch_source, run
+from download_diagnostic_artifact import fetch_artifact
 from inspect_pe import read_pe_machine
 from probe_qt_ca_security import fetch_inputs
 from verify_native_runtime_pilot import certificate_material, default_trust_handshake, tls_server
@@ -60,13 +61,23 @@ def verify_compiled_intake(metadata: dict, data: bytes, consumer: bytes, expecte
         raise ValueError('Changed C++ consumer requires a new native compilation')
 
 
-def replay_compiled_consumer(work: Path, output: Path, head: str, *, native_rollover: bool = False) -> None:
-    """Retest exactly one retained compiled diagnostic after a Python-only harness fix."""
-    api = '/repos/mrc-labs/PlayStoreAppAudit/actions/artifacts/' + str(COMPILED_ARTIFACT)
-    metadata = json.loads(subprocess.check_output(['gh', 'api', api], text=True, timeout=60))
-    data = subprocess.check_output(['gh', 'api', api + '/zip'], timeout=180)
+def compiled_artifact() -> tuple[dict, bytes]:
+    metadata, data = fetch_artifact(COMPILED_ARTIFACT)
     # Token is needed only to read this immutable same-repository evidence.
     os.environ.pop('GH_TOKEN', None)
+    os.environ.pop('GITHUB_TOKEN', None)
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        names = [n for n in archive.namelist() if n == 'windows_qt_ca_consumer.cpp'
+                 or n.endswith('/windows_qt_ca_consumer.cpp')]
+        assert len(names) == 1, 'Ambiguous original consumer'
+        verify_compiled_intake(metadata, data, archive.read(names[0]),
+                               (REPO / '.github/scripts/windows_qt_ca_consumer.cpp').read_bytes())
+    return metadata, data
+
+
+def replay_compiled_consumer(work: Path, output: Path, head: str, *, native_rollover: bool = False) -> None:
+    """Retest exactly one retained compiled diagnostic after a Python-only harness fix."""
+    metadata, data = compiled_artifact()
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         def read(name: str) -> bytes:
             matches = [n for n in archive.namelist() if n == name or n.endswith('/' + name)]
@@ -288,17 +299,32 @@ def main() -> None:
     parser.add_argument('--prerequisites-only', action='store_true')
     parser.add_argument('--replay-compiled', action='store_true')
     parser.add_argument('--native-rollover', action='store_true')
+    parser.add_argument('--compiled-intake-only', action='store_true')
     args = parser.parse_args()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     assert re.fullmatch('[0-9a-f]{40}', head) and head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
     assert sys.platform == 'win32' and platform.machine().upper() == 'AMD64'
     assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')
-    assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == 'x64'
     work = args.work_root.resolve()
     assert not work.exists(), 'Fresh private work root required'
     work.mkdir()
     output = REPO / 'windows-pilot-evidence'
     output.mkdir(exist_ok=True)
+    if args.compiled_intake_only:
+        assert not (args.prerequisites_only or args.replay_compiled or args.native_rollover)
+        metadata, data = compiled_artifact()
+        (output / 'original-compiled-14058369397.zip').write_bytes(data)
+        (output / 'compiled-intake-results.json').write_text(json.dumps({
+            'execution_sha': head, 'compiled_source_sha': COMPILED_SOURCE,
+            'artifact': metadata, 'zip_sha256': COMPILED_ZIP_SHA256,
+            'python': platform.python_version(), 'machine': platform.machine(),
+            'transport': 'stdlib verified HTTPS; read token used only at GitHub API',
+            'scope': 'Artifact intake only; unchanged native source/PE/legal/TLS evidence reused, no native execution or build',
+            'result': 'PASS immutable original Windows diagnostic intake without gh',
+        }, indent=2) + '\n', encoding='utf-8')
+        print('PASS immutable original Windows diagnostic intake without gh', flush=True)
+        return
+    assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == 'x64'
     qt, guard = source_contract()
     if args.replay_compiled:
         assert not args.prerequisites_only
