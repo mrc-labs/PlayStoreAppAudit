@@ -1,0 +1,64 @@
+{
+  "scope": "R08 native Jammy x64 text-provider prerequisite only; not a Qt/Python rebuild or producing adoption",
+  "date": "2026-11-14",
+  "versions": {
+    "qt": "6.12.0",
+    "harfbuzz": "15.1.0",
+    "md4c": "0.6.0",
+    "meson": "1.12.1",
+    "cmake": "4.4.4",
+    "ninja": "1.13.2"
+  },
+  "sources": [
+    {
+      "name": "harfbuzz-15.1.0.tar.xz",
+      "directory": "harfbuzz-15.1.0",
+      "url": "https://github.com/harfbuzz/harfbuzz/releases/download/15.1.0/harfbuzz-15.1.0.tar.xz",
+      "sha256": "0fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d",
+      "authority": "https://github.com/harfbuzz/harfbuzz/releases/tag/15.1.0"
+    },
+    {
+      "name": "md4c-0.6.0.tar.gz",
+      "directory": "md4c-0.6.0",
+      "url": "https://github.com/mity/md4c/archive/refs/tags/v0.6.0.tar.gz",
+      "sha256": "4d151298125a81da3b2efa2e0eed8bdb7a9318569804e4fa4d7a2375ab83ef70",
+      "authority": "https://github.com/mity/md4c/tree/v0.6.0"
+    },
+    {
+      "name": "qtbase-everywhere-src-6.12.0.tar.xz",
+      "directory": "qtbase-everywhere-src-6.12.0",
+      "url": "https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz",
+      "sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "authority": "https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qtbase-everywhere-src-6.12.0.tar.xz.sha256"
+    }
+  ],
+  "meson": [
+    {
+      "name": "meson-1.12.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/57/99/36cd25f9598eef70db97577440a70a360af505f6f01c2338a18d1556079c/meson-1.12.1-py3-none-any.whl",
+      "sha256": "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02",
+      "authority": "https://pypi.org/pypi/meson/1.12.1/json"
+    },
+    {
+      "name": "meson-1.12.1.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/f9/c9/8c9983f4f3d9c4e22fd76bcf8cd053e4472aefae45fd044669b6daa34b53/meson-1.12.1.tar.gz",
+      "sha256": "ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743",
+      "authority": "https://pypi.org/pypi/meson/1.12.1/json"
+    }
+  ],
+  "qt_wrapper_hashes": {
+    "cmake/FindWrapSystemHarfbuzz.cmake": "6bcd91af8637bd240781d3f38a56319fe97315b18b1f0cfcbd5c5dadeba1c02e",
+    "cmake/FindWrapSystemMd4c.cmake": "d486b67a2abe516d556d153623348944c73c73bc289eddef4d588fec94875a38"
+  },
+  "fonts": {
+    "Roboto-Regular.gsub.fi.ttf": "d650c07580759a9389190c8cd39b2d1acaa489ab9e951d094f4358bd6081fb2b",
+    "Roboto-Regular.nogsub.fi.ttf": "122150df46ffe5f99aa23a5e5db75f1f510772965e59e1c72fe3d58c67216dbe"
+  },
+  "limits": [
+    "One native x64 prerequisite, no Qt/PySide/GUI/provider-package adoption",
+    "GLIBC<=2.35 / GLIBCXX<=3.4.29; system C++ runtime, no link SDK runtime load",
+    "HarfBuzz primary Meson; no wrap downloads/experimental API/benchmarks",
+    "GLib from accepted Jammy OS is required for upstream API test driver and explicitly selected HarfBuzz GLib integration; actual version/ELF needs retained",
+    "Windows MD4C root CMake forces /MT; Linux result must not be transferred to Windows /MD without a controlled configuration and native proof"
+  ]
+}

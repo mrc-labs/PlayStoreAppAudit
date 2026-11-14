@@ -1,4 +1,39 @@
 {
+  "qt_text_preflight_2026_11_14": {
+    "date": "2026-11-14",
+    "starting_head": "970127916a8bcdf5934e35291b04ccb9283984c6",
+    "state": "Prepared; native prerequisites/source/link/ABI/upstream suites pending",
+    "scope": "R08 native Jammy x64 text-provider prerequisite only; not a Qt/Python rebuild or producing adoption",
+    "ownership": {
+      "HarfBuzz": "B original Qt bundled14.5; independently selected candidate15.1.0 is now A under controlled source prerequisite",
+      "MD4C": "B original Qt bundled0.5.3; candidate0.6.0 via existing system wrapper, A controlled source",
+      "Meson": "A new build-only1.12.1, justified by upstream primary supported HarfBuzz build system",
+      "Qt": "B matched6.12.0 parent remains latest stable in official PyPI; original archive/wrapper hashes bound",
+      "GLib/compiler/OS": "D accepted Jammy x64 native baseline and current supported OS package/test driver; retain actual versions/ELF needs, no floor increase or wholesale standalone replacement"
+    },
+    "source_contract": ".github/scripts/qt_text_provider_sources.json",
+    "versions": {
+      "qt": "6.12.0",
+      "harfbuzz": "15.1.0",
+      "md4c": "0.6.0",
+      "meson": "1.12.1",
+      "cmake": "4.4.4",
+      "ninja": "1.13.2"
+    },
+    "validation_contract": [
+      "Native x86_64/GIL3.14.10/compiler/link SDK/GLib/bootstrap checks before vendor downloads",
+      "Recheck official latest stable parent/provider before source builds",
+      "Original HTTPS/hash sources, Meson wheel strictly offline/no dependencies, retained original legal/test font bytes",
+      "HarfBuzz primary Meson, no wrap downloads/experimental APIs/benchmarks; upstream font/map/shaping/nullable-output cases must execute",
+      "MD4C official CMake, full CommonMark and regression suites with zero failure/error/filter skip",
+      "Compile/link actual C++ shaper/Markdown callbacks through unchanged original Qt CMake wrappers",
+      "Loaded private HB/MD4C origins, no GNU link SDK at runtime, real AMD64 ELF GLIBC<=2.35 / GLIBCXX<=3.4.29"
+    ],
+    "local_validation": "143 targeted PASS, helper Ruff/compilation; native build remains pending",
+    "impact": "No existing runtime/framework/vendor-patch/source input changes. Diagnostic route only in existing Jammy job/setup; previous six results retain actual SHAs. Producing workflows unchanged.",
+    "windows_constraint": "MD4C0.6 root CMakeLists explicitly overwrites release C flags with /MT. Do not transfer Linux recipe/result to Windows /MD; use reviewed supported embedding/configuration and native proof before Windows adoption. No Windows patch here.",
+    "remaining": "Actual coherent Qt/PySide/GUI/text/Markdown/native provider/ABI/source/legal acceptance still required; this prerequisite cannot close R08 or substitute final packages."
+  },
   "source_build_consumers_2026_11_14": {
     "date": "2026-11-14",
     "state": "PASS actual six-native Nuitka and current Windows ARM64 cffi source consumers; six changed binding profiles/Linux full consumer still REQUIRED",
