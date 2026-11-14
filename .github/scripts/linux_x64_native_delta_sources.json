@@ -130,5 +130,9 @@
   "qt_cbor_manifest": {
     "path": "qt_cbor_provider_sources.json",
     "canonical_sha256": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6"
+  },
+  "qt_http_manifest": {
+    "path": "qt_http_security_sources.json",
+    "canonical_sha256": "cf8e49b4bf36a25e2ca6d9883c535d310f7ec7f87aa4e15baa7599de170d242a"
   }
 }

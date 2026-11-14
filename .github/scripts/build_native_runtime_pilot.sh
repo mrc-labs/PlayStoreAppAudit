@@ -42,7 +42,7 @@ work, evidence = Path(os.environ['PILOT_WORK']), Path(os.environ['PILOT_EVIDENCE
 shutil.copy2(manifest, evidence / manifest.name)
 shutil.copy2(delta_manifest, evidence / delta_manifest.name)
 providers = {}
-for key in ['qt_text_manifest', 'qt_cbor_manifest']:
+for key in ['qt_text_manifest', 'qt_cbor_manifest', 'qt_http_manifest']:
     path = manifest.parent / delta[key]['path']
     value = json.loads(path.read_text())
     assert hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == delta[key]['canonical_sha256']
@@ -119,6 +119,8 @@ PY
 python "$repo/.github/scripts/apply_qt_cbor_upgrade.py" \
   --source "$work/src/qtbase-everywhere-src-6.12.0" \
   --archive "$evidence/sources/tinycbor-7.1.tar.gz" --evidence "$evidence"
+python "$repo/.github/scripts/apply_qt_http_limits.py" apply \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" --evidence "$evidence"
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"
 mkdir -p "$prefix"

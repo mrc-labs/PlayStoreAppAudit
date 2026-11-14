@@ -1,4 +1,419 @@
 {
+  "qt_http_security_2026_11_14": {
+    "scope": "Controlled Qt6.12.0 official HTTP resource-limit security backports; not unchanged official Qt",
+    "advisory": "https://www.qt.io/blog/security-issue-cve-2026-116337?hsLang=en",
+    "cve": "CVE-2026-116337",
+    "upstream_cvss_4_0": "0.6 Low",
+    "source_archive_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+    "patch_order": "0002 header block precedes0001 status line: original upstream source/test hunks depend on this order",
+    "patches": [
+      {
+        "path": ".github/patches/CVE-2026-116337-qtbase-6.12-0002.patch",
+        "sha256": "83abc89d507dbd9a94dc5718b0125492c1c37b0609a8f404a1f164925940faec",
+        "official_url": "https://download.qt.io/archive/qt/6.12/CVE-2026-116337-qtbase-6.12-0002.diff",
+        "official_commit": "aac1d303c0329241ac59c0c23cb5e4b82251fcfa",
+        "files": {
+          "src/network/access/qhttpnetworkreply.cpp": {
+            "base_sha256": "3119e4bb303f913599c0a781b4d0624843ca6e4a96e3e070687f9ecfc1a622f3",
+            "patched_sha256": "d0d973e0c2f7200a1eec29a19f1708158b620db94f368bc6b0524cec5d23ffcf"
+          },
+          "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": {
+            "base_sha256": "687673f36e3de633a64785f71333c7270055b6ef40a3abde2475784db9c65292",
+            "patched_sha256": "170239262a5325e803eead68b864782009106cdc96cf1b642dbb5d9f9154f5f5"
+          },
+          "src/network/access/qhttpheaderparser_p.h": {
+            "base_sha256": "b4b5b9ab97115b1ca7ad1e5ed8837924b68962638a8cf9e6ab6e9e4e67fb45b0",
+            "patched_sha256": "33f43b11477fd8c8626a0df9b4ee79afd4ccf8a691bdbdf32f8a1ba822f7cb6d"
+          }
+        }
+      },
+      {
+        "path": ".github/patches/CVE-2026-116337-qtbase-6.12-0001.patch",
+        "sha256": "74c5028985dcc0455255909de4dc80f50cf5472dbf465ce46ebc791a7b080f12",
+        "official_url": "https://download.qt.io/archive/qt/6.12/CVE-2026-116337-qtbase-6.12-0001.diff",
+        "official_commit": "f78a3740281d26af7116517a2b20df36f8deffd7",
+        "files": {
+          "src/network/access/qhttpnetworkreply.cpp": {
+            "base_sha256": "d0d973e0c2f7200a1eec29a19f1708158b620db94f368bc6b0524cec5d23ffcf",
+            "patched_sha256": "393b4c235e6f4323fe643524a384236c3deb66b7c343bf5e6acc20a0bc4013e0"
+          },
+          "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": {
+            "base_sha256": "170239262a5325e803eead68b864782009106cdc96cf1b642dbb5d9f9154f5f5",
+            "patched_sha256": "4b78e997f8392af98c0e817f58534a5c1d2e634a0559165fd42c6ed388e243d3"
+          }
+        }
+      }
+    ],
+    "original_files": {
+      "src/network/access/qhttpnetworkreply.cpp": "3119e4bb303f913599c0a781b4d0624843ca6e4a96e3e070687f9ecfc1a622f3",
+      "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": "687673f36e3de633a64785f71333c7270055b6ef40a3abde2475784db9c65292",
+      "src/network/access/qhttpheaderparser_p.h": "b4b5b9ab97115b1ca7ad1e5ed8837924b68962638a8cf9e6ab6e9e4e67fb45b0"
+    },
+    "final_files": {
+      "src/network/access/qhttpnetworkreply.cpp": "393b4c235e6f4323fe643524a384236c3deb66b7c343bf5e6acc20a0bc4013e0",
+      "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": "4b78e997f8392af98c0e817f58534a5c1d2e634a0559165fd42c6ed388e243d3",
+      "src/network/access/qhttpheaderparser_p.h": "33f43b11477fd8c8626a0df9b4ee79afd4ccf8a691bdbdf32f8a1ba822f7cb6d"
+    },
+    "required_tests": [
+      "headerSizeLimit",
+      "statusLineSizeLimit"
+    ],
+    "application_applicability": "QtNetwork QNetworkAccessManager is used by app_icon_loader. Existing transfer timeout and body download-progress cap do not enforce early response status/header accumulation limits. No confirmed application denial-of-service or higher upstream severity is claimed.",
+    "validation": "Execute exact patched original Qt test against rebuilt private QtNetwork; preserve upstream accepted boundary/CRLF/LF cases, early truncated-header rejection/cleared fragment and status line limits. Source replay alone is not native acceptance.",
+    "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised.",
+    "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds",
+    "state": "Official unchanged patch bytes/source replay and focused helper tests PASS; bounded native Core/Network HTTP-only diagnostic pending",
+    "validation_scope": "No CPython/PySide/GUI/SQLite/cffi rebuild or other-target repetition for HTTP-only changes; unchanged evidence reused with exact input/source provenance. Final package integration remains required."
+  },
+  "r08_partial_runtime_evidence_2026_11_14": {
+    "source_sha": "69c3d04a7b3af5db8c8847f5a7e7df75a586dcf2",
+    "artifact": 14098850639,
+    "zip_bytes": 278768547,
+    "zip_sha256": "d33de909db30a6f56ff438ec57f08091c72e486ffbb0b68b257de6f7c883579a",
+    "original_sources": {
+      "Python-3.14.10.tar.xz": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "openssl-4.0.3.tar.gz": "325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9",
+      "libpng-1.6.59.tar.xz": "d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389",
+      "pcre2-10.49.tar.gz": "929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae",
+      "qtbase-everywhere-src-6.12.0.tar.xz": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "qtsvg-everywhere-src-6.12.0.tar.xz": "e4ab39534ec97987b1b9b60ef7f4d3253d5912a69f8c713a01753174a4029331",
+      "pyside-setup-everywhere-src-6.12.0.tar.xz": "099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751",
+      "sqlite-autoconf-3540100.tar.gz": "926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e",
+      "mpdecimal-4.0.1.tar.gz": "96d33abb4bb0070c7be0fed4246cd38416188325f820468214471938545b1ac8",
+      "libffi-3.8.0.tar.gz": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "xz-5.8.4.tar.xz": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+      "zlib-1.4.tar.gz": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+      "cffi-2.1.1.tar.gz": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+      "harfbuzz-15.1.0.tar.xz": "0fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d",
+      "md4c-0.6.0.tar.gz": "4d151298125a81da3b2efa2e0eed8bdb7a9318569804e4fa4d7a2375ab83ef70",
+      "meson-1.12.1-py3-none-any.whl": "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02",
+      "meson-1.12.1.tar.gz": "ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743",
+      "tinycbor-7.1.tar.gz": "08c0a4c0a983000806f3d8c1599ec07995789ae49e9a23034db4cbfccc81c2e5",
+      "gcc-11.5.0-14.el9.src.rpm": "19dec462f2880508570ca42a82c2f76fbd95fcad8d3e3ff812e9ca50cdeb2d8f",
+      "7z2605-src.tar.xz": "0b6080b8c3e7a579161d2d495224c0e51c467576cb4c7048b0ab485ef44cc22e"
+    },
+    "original_legal_texts": 78,
+    "meson_matching_python_files": 243,
+    "retained_images": [
+      {
+        "name": "libsqlite3.so.3.54.1",
+        "sha256": "91397d9dd3caf1468f11058dbed6a7214fbe4b38b6ba9a8c019ad5baa77e901c",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.28",
+          "GLIBC_2.29",
+          "GLIBC_2.3.4",
+          "GLIBC_2.33",
+          "GLIBC_2.34",
+          "GLIBC_2.4"
+        ],
+        "needed": [
+          "libm.so.6",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "libmpdec.so.4.0.1",
+        "sha256": "5467d4487201653f14d031f6d92ab920d3907ff8407ad5c9a1daccd60e924d6f",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4"
+        ],
+        "needed": [
+          "libm.so.6",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "libffi.so.8.5.0",
+        "sha256": "931a5336d7650b3e8f67463af45ac5bc348fa49053bb0eb3e8ad95a14e544e7c",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.27",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4",
+          "GLIBC_2.7"
+        ],
+        "needed": [
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "liblzma.so.5.8.4",
+        "sha256": "77748d35eaf3729013c364a556828b8c719f6e364f059a3bce1eb3284a58998a",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.17",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3.2",
+          "GLIBC_2.3.4",
+          "GLIBC_2.32",
+          "GLIBC_2.34",
+          "GLIBC_2.4",
+          "GLIBC_2.6"
+        ],
+        "needed": [
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "libz.so.1.4",
+        "sha256": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4"
+        ],
+        "needed": [
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "_ctypes.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "a5f796527256a33c22f08d92b4f73e89e6b297c9e12c26fee48467950e61ddd5",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3.4",
+          "GLIBC_2.34",
+          "GLIBC_2.4",
+          "LIBFFI_BASE_8.0",
+          "LIBFFI_CLOSURE_8.0",
+          "LIBFFI_COMPLEX_8.0"
+        ],
+        "needed": [
+          "libffi.so.8",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "_decimal.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "bf20d1f62a5fead7cb6135c8183ad7844a8edbe6182148dfc73c501986dcf5d3",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4"
+        ],
+        "needed": [
+          "libmpdec.so.4",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "_lzma.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "dbdaf3d02ee8c77022590a6007e45cfe02fe79b7218dde42781e4707d5ed3f33",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.4",
+          "XZ_5.0"
+        ],
+        "needed": [
+          "liblzma.so.5",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "_sqlite3.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "5cb262005cb644d7a4a782a250a98ad0a1f7ab048df0e20f69ccfdaa131222de",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4"
+        ],
+        "needed": [
+          "libsqlite3.so",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "zlib.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "bf73da1f5d2b73a5a542f4610a846745ab25b007951ad2087003078327e6af7e",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.4",
+          "ZLIB_1.2.0"
+        ],
+        "needed": [
+          "libz.so.1",
+          "libc.so.6"
+        ]
+      },
+      {
+        "name": "_cffi_backend.cpython-314-x86_64-linux-gnu.so",
+        "sha256": "a2458592c0d526a8d918e5a95e90056b0b852d01de083135b7b1fde65754409c",
+        "version_needs": [
+          "GLIBC_2.14",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3",
+          "GLIBC_2.3.4",
+          "GLIBC_2.34",
+          "GLIBC_2.4",
+          "GLIBC_2.7",
+          "LIBFFI_BASE_8.0",
+          "LIBFFI_CLOSURE_8.0"
+        ],
+        "needed": [
+          "libffi.so.8",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ]
+      }
+    ],
+    "native_versions": {
+      "sqlite": "3.54.1",
+      "libmpdec": "4.0.1",
+      "zlib": "1.4",
+      "libffi": "3.8.0",
+      "liblzma": "5.8.4"
+    },
+    "tests": {
+      "cpython-regressions.xml": {
+        "executed": 409,
+        "skipped": 33,
+        "total": 442
+      },
+      "cpython-native-regressions.xml": {
+        "executed": 2016,
+        "skipped": 57,
+        "total": 2073
+      },
+      "cffi-tests.xml": {
+        "executed": 488,
+        "skipped": 11,
+        "total": 499
+      }
+    },
+    "cffi_worker_imports": {
+      "setuptools": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/setuptools/__pycache__/__init__.cpython-314.pyc'",
+      "jaraco.functools": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/jaraco/functools/__pycache__/__init__.cpython-314.pyc'",
+      "more_itertools": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/more_itertools/__pycache__/__init__.cpython-314.pyc'",
+      "jaraco.text": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/jaraco/text/__pycache__/__init__.cpython-314.pyc'",
+      "jaraco.context": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/jaraco/context/__pycache__/__init__.cpython-314.pyc'",
+      "packaging": "# code object from '/home/runner/work/_temp/native-runtime-pilot-43554126327-1/venv/lib/python3.14/site-packages/packaging/__pycache__/__init__.cpython-314.pyc'"
+    },
+    "cffi_wheel_sha256": "ebc72ca3f1886d55e2ffd9ea9a7e7fd7f27782c17e6188f8251090d7ce4f1829",
+    "harfbuzz": {
+      "passed": 233,
+      "skipped": 8
+    },
+    "md4c": {
+      "commonmark": 652,
+      "regressions": 85
+    },
+    "gate": "Qt qtextmarkdownimporter.cpp54 static assertion: MD4C0.6 GitHub composite differs",
+    "scope": "Partial source/runtime/provider/cffi and upstream tests only; no rebuilt Qt/PySide/GUI/CLI/R08 acceptance",
+    "result": "FAIL Qt integration; independently verified retained partial evidence",
+    "run": 43554126327,
+    "quality_run": 43554124112,
+    "quality_tests": 2065
+  },
+  "r09_applicability_2026_11_14": {
+    "source_hashes": {
+      "src/gui/CMakeLists.txt": "c996a751de6dc8db20770bb537f7273a8a1a02740de2a9bfa4834c1c0f29428f",
+      "src/gui/rhi/qrhivulkan.cpp": "4fb04eae5867215c2da84a25e7c519d7bc222ca3003674e3253639f1804b8120",
+      "util/unicode/README": "fc19a7cbb78741e2ad134ec9193f57b123c5c789fd0515f0c0047ef2bd592c77",
+      "util/unicode/main.cpp": "40f15e61346d78914e4d9ab2122adf754de4442446d29a222112f558f302f398",
+      "src/corelib/text/qchar.h": "9ade315c5a428661ef81f2a717fa33452a955517a587ae5650f1b91d496718f3"
+    },
+    "native_caches": [
+      {
+        "run": 40402101612,
+        "source_sha": "95c4ba5f3765647f712eb80a519368bfc486b6c3",
+        "zip_sha256": "b319d7930f143b429ee48befb69c255d2fb81b63fa12ff301ac289c18540ed64",
+        "qt_cache_sha256": "5da8d9374f1c3297905a1e1d10d7f90e0b060581612a5c4bb555db3a63ee4f97",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "arm64"
+        },
+        "d3d12_allocator": "Not compiled by WIN32 source branch"
+      },
+      {
+        "run": 40412794087,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "aa4a0d8a09b119cb859cab726e4f0073dc30fcfeeee8c19ca06052b738802e19",
+        "qt_cache_sha256": "44a550b615f54c38a8aceea947f2b8c5b8187af8c3c452eb8fd36c1f1924a39e",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "d3d12_allocator": "Not compiled by WIN32 source branch"
+      },
+      {
+        "run": 40412798113,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "6c4741ef862a57c4808e4f30d11255801b57f65599bf2c05e138513279fd9b0a",
+        "qt_cache_sha256": "4b7dda51b4a0ffa72b7d29ee17c2191e46b004593abfbfd287862c815f5c03f4",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "d3d12_allocator": "Compiled by unconditional WIN32 source branch",
+        "actual_d3d12_build_lines": [
+          "[695/1853] Building CXX object src\\gui\\CMakeFiles\\Gui.dir\\__\\3rdparty\\D3D12MemoryAllocator\\D3D12MemAlloc.cpp.obj"
+        ]
+      },
+      {
+        "run": 40413173398,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "5fa5a67263b997979d82ecfb2da7a051a9a2d17b6bf3616b4b1187861298fdfc",
+        "qt_cache_sha256": "aa7539a68fc0a7b90c40da0fd519dc1f8fbf68fe624ee2f28aff3cdfeff7b6f2",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "arm64"
+        },
+        "d3d12_allocator": "Compiled by unconditional WIN32 source branch",
+        "actual_d3d12_build_lines": [
+          "[695/1841] Building CXX object src\\gui\\CMakeFiles\\Gui.dir\\__\\3rdparty\\D3D12MemoryAllocator\\D3D12MemAlloc.cpp.obj"
+        ]
+      },
+      {
+        "run": 40602044274,
+        "source_sha": "f6efa133161a78cef72c2611ce83671fb7d57589",
+        "zip_sha256": "3b0683b1983d8cd0e0781e92e2e0a03fee14058eab5c4be3d97efe72dc3efdd5",
+        "qt_cache_sha256": "a3bbcc4f0b4e788de6675d2240247cb7070820c4f29ed727a34725b04e6dec05",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "arm64"
+        },
+        "d3d12_allocator": "Not compiled by WIN32 source branch"
+      },
+      {
+        "run": 40639680469,
+        "source_sha": "8e153d954fc4506144ea321946bb8be3831bacb8",
+        "zip_sha256": "5c5a1759b0b5a640ff4f9339eb496bcea385c2899b9790b17c9cbfa9c8668102",
+        "qt_cache_sha256": "e88e889ad5ffb14af5c64c31c00b6a91f2ccd6b3e7be38c445dc4708219191d8",
+        "features": {
+          "QT_FEATURE_sql_sqlite": "ON",
+          "QT_FEATURE_vulkan": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "d3d12_allocator": "Not compiled by WIN32 source branch"
+      }
+    ],
+    "scope": "Historical actual six source configurations only; no new runtime/package acceptance",
+    "unicode18_stability": {
+      "state": "Final UCD, required migration; stale draft landing-page wording superseded by release data and announcement",
+      "sources": [
+        "https://www.unicode.org/Public/18.0.0/ucd/ReadMe.txt",
+        "https://blog.unicode.org/2026/09/announcing-unicode-standard-version-180.html"
+      ]
+    }
+  },
   "pixman_applicability_2026_11_14": {
     "state": "NOT APPLICABLE to executable sources in current six native Qt6.12 profiles; keep metadata as an upstream observation and reopen on source/architecture changes",
     "original_qt_archive_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
@@ -3147,8 +3562,8 @@
       },
       {
         "id": "R02",
-        "status": "REQUIRED overall provider acceptance; Linux source subset and bounded Windows Schannel PASS",
-        "applicability_minimum_action": "Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 bounded Schannel43531162571 now passes14 live compromised-key TLS rejections plus2 supported native Windows chain-path/default-trust rejections joined by exact ancestor DER/SPKI to the actual compiled Qt blacklist. The2 DNS-only socket observations are retained, not16 handshakes or raw OS key-revocation acceptance. Worker verifies source/patch/legal/four PE bytes. Full-stack dual-provider/binding and other-target gates remain required.",
+        "status": "REQUIRED security/provider acceptance",
+        "applicability_minimum_action": "New applicable QtNetwork CVE-2026-116337 official source backports are prepared above; bounded native HTTP acceptance remains required. Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 bounded Schannel43531162571 now passes14 live compromised-key TLS rejections plus2 supported native Windows chain-path/default-trust rejections joined by exact ancestor DER/SPKI to the actual compiled Qt blacklist. The2 DNS-only socket observations are retained, not16 handshakes or raw OS key-revocation acceptance. Worker verifies source/patch/legal/four PE bytes. Full-stack dual-provider/binding and other-target gates remain required.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {
@@ -3184,20 +3599,20 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete coherent Qt/PySide/CBOR/text/GUI/native tests remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
-        "verification_evidence": "Matched binding build, text/font/markdown/CBOR/rendering regressions, GUI/PNG/TLS and native ABI/legal on changed targets. No arbitrary framework/dylib substitution."
+        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence and correct only that vendor integration before affected Qt/PySide/CBOR/text/GUI/native tests. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
+        "verification_evidence": "Coherent native Qt/binding/GUI/text/CBOR/provider/ABI/source/legal evidence; exact source/patch guards."
       },
       {
         "id": "R09",
         "status": "REQUIRED Qt data / conditional plugins",
-        "applicability_minimum_action": "UCD report36 -> 38 means actual Unicode17 -> 18: exact Qt generated tables/generator select Unicode_17_0 and QChar has no18 enum. Use documented util/unicode update plus required enum/map/data and normalization/segmentation/IDNA checks; no arbitrary attribution-only version edit. CLDR48.2 -> 49, PSL May14 -> Oct22, copied libpsl -> 0.23.3 and tl::expected -> 1.3.1 require supported parent/generator/source comparison and relevant schema/API tests. Qt SQLite3.53.4 -> 3.54.1 applies if its built plugin is retained; Mac cache builds it even though current runtime closure does not load QtSql. D3D12 allocator3.1 -> 3.2 is Windows-conditional; Vulkan allocator3.3 -> 3.4 requires actual feature/plugin inclusion.",
-        "verification_evidence": "Locale/domain/security-list and corresponding-source checks; plugin/target membership before update, native build/ABI checks where selected. Mac Vulkan is OFF; Android Gradle is absent from all six desktop build paths; copied DBus headers/protocol revisions are not an OS runtime version. Final package membership must prove exclusions."
+        "applicability_minimum_action": "UCD report36 -> 38 means actual Unicode17 -> 18: exact Qt generated tables/generator select Unicode_17_0 and QChar has no18 enum. Use documented util/unicode update plus required enum/map/data and normalization/segmentation/IDNA checks; no arbitrary attribution-only version edit. CLDR48.2 -> 49, PSL May14 -> Oct22, copied libpsl -> 0.23.3 and tl::expected -> 1.3.1 require supported parent/generator/source comparison and relevant schema/API tests. Qt SQLite3.53.4 -> 3.54.1 is required on all six source profiles that build its plugin (actual caches ON; Linux x64 already qualified current system3.54.1). D3D12 allocator3.1 -> 3.2 is compiled on both Windows targets by actual object logs. Vulkan allocator is NOT compiled on any current six profiles: actual caches OFF and original source gate proved above; retain observation/source/legal and reopen on selection changes.",
+        "verification_evidence": "Locale/domain/security-list and corresponding-source checks; plugin/target membership before update, native build/ABI checks where selected. All six Vulkan caches are OFF; Android Gradle is absent from all six desktop build paths; copied DBus headers/protocol revisions are not an OS runtime version. Final package membership must prove exclusions."
       },
       {
         "id": "R10",
-        "status": "REQUIRED remaining binding/Linux full-profile acceptance; project PEP517, six-native compiler and current ARM64 cffi source consumers PASS",
-        "applicability_minimum_action": "Project PEP51743393692050, actual six-native Nuitka source workers/native cold-warm modules43537354719 and current Windows ARM64 cffi/static libffi43538466498 PASS with external core providers and independently verified source/patch/legal/wheel/native bytes. Six diagnostic PySide environments and Windows ARM64/Linux cffi builders now select the same six requirements/21 constraints. Still REQUIRED: actual six changed PySide binding profiles and Linux cffi/full source consumer repetition, to be combined with remaining supported provider deltas. ARM64 actually uses GA14.52.37025/native ARM64/MD and461 upstream PASS/38skip, no new vendor patch. Previous14.51 source artifacts keep their actual identities. No producing adoption.",
-        "verification_evidence": "Clean isolated wheel/source builds, actual resolved external imports and build reports on affected platforms; reproducible constraints/provenance."
+        "status": "REQUIRED remaining binding/Linux full-profile acceptance",
+        "applicability_minimum_action": "Project PEP51743393692050, actual six-native Nuitka source workers/native cold-warm modules43537354719 and current Windows ARM64 cffi/static libffi43538466498 PASS with external core providers and independently verified source/patch/legal/wheel/native bytes. Six diagnostic PySide environments and Windows ARM64/Linux cffi builders now select the same six requirements/21 constraints. Linux cffi worker/native suite now executes in partial43554126327 before the unrelated Qt importer failure. Still REQUIRED: actual six changed PySide binding profiles and affected Qt integration, to be combined with remaining supported provider deltas; unchanged Python/provider/cffi evidence is reusable with its source identity. ARM64 actually uses GA14.52.37025/native ARM64/MD and461 upstream PASS/38skip, no new vendor patch. Previous14.51 source artifacts keep their actual identities. No producing adoption.",
+        "verification_evidence": "Actual source worker traces/versions/provenance, native binding/compiler/cffi regressions."
       },
       {
         "id": "R11",

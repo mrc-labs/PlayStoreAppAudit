@@ -88,4 +88,7 @@ def test_text_preflight_cannot_dispatch_the_full_stack():
     job = workflow.split('\n  runtime-pilot:', 1)[1].split('\n  windows-runtime-pilot:', 1)[0]
     assert "test '${{ inputs.runtime_pilot }}' = false" in job
     assert "test '${{ inputs.trust_diagnostics_only }}' = false" in job
-    assert "Build and exercise one controlled native stack\n        if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-text-prerequisites' }}" in job
+    condition = job.split('Build and exercise one controlled native stack\n        if: ', 1)[1].splitlines()[0]
+    assert '!inputs.trust_diagnostics_only' in condition
+    for profile in ['qt-text-prerequisites', 'qt-http-limits']:
+        assert "inputs.linux_arm64_pilot != '" + profile + "'" in condition
