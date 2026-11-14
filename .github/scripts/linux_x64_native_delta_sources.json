@@ -122,5 +122,13 @@
     "demonstrated_gate": "42810658400 at f5eefb7: Qt plugin undefined sqlite3_column_table_name16; configure log marks column-metadata disabled",
     "source_change": "None. Supported original SQLite autosetup option; no Qt source/API adaptation, renamed symbol or fallback.",
     "early_regression": "Real native C consumer links and executes both UTF-8/UTF-16 column-origin APIs and compileoption_used before OpenSSL/Python/Qt rebuilds. Python records compile_options and Qt actual QSqlField.tableName verifies fixture table."
+  },
+  "qt_text_manifest": {
+    "path": "qt_text_provider_sources.json",
+    "canonical_sha256": "f4cdfe60f9671a3f695e526a722091d656c95f0eccbd8ff34ddecdd0925a686d"
+  },
+  "qt_cbor_manifest": {
+    "path": "qt_cbor_provider_sources.json",
+    "canonical_sha256": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6"
   }
 }

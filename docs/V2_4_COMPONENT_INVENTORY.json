@@ -1,8 +1,146 @@
 {
+  "pixman_applicability_2026_11_14": {
+    "state": "NOT APPLICABLE to executable sources in current six native Qt6.12 profiles; keep metadata as an upstream observation and reopen on source/architecture changes",
+    "original_qt_archive_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+    "qtgui_cmake_sha256": "c996a751de6dc8db20770bb537f7273a8a1a02740de2a9bfa4834c1c0f29428f",
+    "qtsimd_cmake_sha256": "2e1dab7208c94de4a4eeb20cf23276a7da59a397d40204c5b7f582a6405d5e28",
+    "source_condition": "QtGui excludes Pixman assembly on Windows and ARM64. qt_internal_add_simd_part condition is QT_FEATURE_neon; native x64 caches have neon OFF. SIMD intrinsics elsewhere are not the copied Pixman assembly.",
+    "native_cache_proofs": [
+      {
+        "run": 40402101612,
+        "source_sha": "95c4ba5f3765647f712eb80a519368bfc486b6c3",
+        "zip_sha256": "b319d7930f143b429ee48befb69c255d2fb81b63fa12ff301ac289c18540ed64",
+        "qt_cache_sha256": "5da8d9374f1c3297905a1e1d10d7f90e0b060581612a5c4bb555db3a63ee4f97",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "ON",
+          "TEST_architecture_arch": "arm64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      },
+      {
+        "run": 40412794087,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "aa4a0d8a09b119cb859cab726e4f0073dc30fcfeeee8c19ca06052b738802e19",
+        "qt_cache_sha256": "44a550b615f54c38a8aceea947f2b8c5b8187af8c3c452eb8fd36c1f1924a39e",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      },
+      {
+        "run": 40412798113,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "6c4741ef862a57c4808e4f30d11255801b57f65599bf2c05e138513279fd9b0a",
+        "qt_cache_sha256": "4b7dda51b4a0ffa72b7d29ee17c2191e46b004593abfbfd287862c815f5c03f4",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      },
+      {
+        "run": 40413173398,
+        "source_sha": "5f6484e9ce7f1b23e4d353769ec84b88a2dea59f",
+        "zip_sha256": "5fa5a67263b997979d82ecfb2da7a051a9a2d17b6bf3616b4b1187861298fdfc",
+        "qt_cache_sha256": "aa7539a68fc0a7b90c40da0fd519dc1f8fbf68fe624ee2f28aff3cdfeff7b6f2",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "ON",
+          "TEST_architecture_arch": "arm64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      },
+      {
+        "run": 40602044274,
+        "source_sha": "f6efa133161a78cef72c2611ce83671fb7d57589",
+        "zip_sha256": "3b0683b1983d8cd0e0781e92e2e0a03fee14058eab5c4be3d97efe72dc3efdd5",
+        "qt_cache_sha256": "a3bbcc4f0b4e788de6675d2240247cb7070820c4f29ed727a34725b04e6dec05",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "ON",
+          "QT_IS_MACOS_UNIVERSAL": "OFF",
+          "TEST_architecture_arch": "arm64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      },
+      {
+        "run": 40639680469,
+        "source_sha": "8e153d954fc4506144ea321946bb8be3831bacb8",
+        "zip_sha256": "5c5a1759b0b5a640ff4f9339eb496bcea385c2899b9790b17c9cbfa9c8668102",
+        "qt_cache_sha256": "e88e889ad5ffb14af5c64c31c00b6a91f2ccd6b3e7be38c445dc4708219191d8",
+        "selected_architecture": {
+          "QT_FEATURE_neon": "OFF",
+          "QT_IS_MACOS_UNIVERSAL": "OFF",
+          "TEST_architecture_arch": "x86_64"
+        },
+        "pixman_32bit_neon_assembly": "Not compiled: arm64 excluded by QtGui CMake; x64 NEON disabled",
+        "limits": "Source/build applicability only, not a new runtime/Qt qualification"
+      }
+    ],
+    "decision": "No arbitrary Pixman replacement or unnecessary assembly migration on these six targets. Retain original Qt legal/source/attribution, distinguish unused copied code from shipped executable implementation."
+  },
+  "qt_linux_integration_2026_11_14": {
+    "date": "2026-11-14",
+    "state": "Prepared, complete native Jammy source-stack repeat required before acceptance",
+    "source_contracts": [
+      "qt_text_provider_sources.json",
+      "qt_cbor_provider_sources.json"
+    ],
+    "selection": "Only Linux x64 source profile adopts private HarfBuzz15.1.0/MD4C0.6.0 plus controlled selected TinyCBOR7.1 inside Qt6.12.0; all other five profiles unchanged",
+    "cbor_original": {
+      "name": "tinycbor-7.1.tar.gz",
+      "directory": "tinycbor-7.1",
+      "url": "https://github.com/intel/tinycbor/archive/refs/tags/v7.1.tar.gz",
+      "sha256": "08c0a4c0a983000806f3d8c1599ec07995789ae49e9a23034db4cbfccc81c2e5",
+      "authority": "https://github.com/intel/tinycbor/releases/tag/v7.1"
+    },
+    "qt_cbor_patch": {
+      "path": ".github/patches/qtbase-6.12.0-tinycbor71.patch",
+      "sha256": "de70d9239b72690bd017b4a1decb635c03db72ac79d3e8cfc25c426c673a8ff5",
+      "files": {
+        "src/3rdparty/tinycbor/src/cborparser.c": {
+          "base_sha256": "28f5f23480108ddf4a4c6666a3e7f036ca7f13b001f2f748c428b7d17c858893",
+          "patched_sha256": "bb18dced594ad71be0edb1edcaad9ca7f03348483cf894a539e685ccfb049a0c"
+        },
+        "src/3rdparty/tinycbor/src/compilersupport_p.h": {
+          "base_sha256": "10924328a0a38d3c027b009c59501b05bd2a8a157eb81b04f612c4cd424fd1ef",
+          "patched_sha256": "8cbe48d182d4e08ccfbcba507bbd927bb803f65367852b116d78a19bc165ad7b"
+        },
+        "src/3rdparty/tinycbor/qt_attribution.json": {
+          "base_sha256": "788408509fb7967042640f24ba78b263712e816d886303ba1733f49753d33863",
+          "patched_sha256": "2ba318cc1262c0fa760265215bcf9dd49205524d67f7699329352f6e6cd6ec2e"
+        },
+        "src/3rdparty/tinycbor/README": {
+          "base_sha256": "260649e7dfd228e4a2d14c8913a2d408b21b6e7a3d6dda4dbd361f269413ab1b",
+          "patched_sha256": "c2ca906409ad102a5a1dc2db1ce9e310987a49abe4d7f238a5e8ef2b881ff3a5"
+        }
+      }
+    },
+    "cbor_compatibility": "cborparser.c change is upstream documentation-only; compilersupport_p.h includes the existing Qt unreachable fix and correct C/C++ fallthrough detection. Preserve Qt-owned exports/version sentinel, reader/writer flags/callbacks and all public Qt APIs. No bundled pretty/JSON implementation added.",
+    "qt_owned_source_hashes": {
+      "src/3rdparty/tinycbor/src/tinycbor-export.h": "5bc6bf806fef83e4a238806bb14ec89acfa1e3dd56b1f441aa61d6c2f6411046",
+      "src/3rdparty/tinycbor/src/tinycbor-version.h": "58e0c54f1a7b5c7d63e01aec32f7c0ae82a7d30a499113466bc3045bd2341100",
+      "src/3rdparty/tinycbor/LICENSE": "3c6ba0b5bfa7830505301ffb336a17b0748e0d61c4d34216e9dc98f10e40395e"
+    },
+    "cheap_validation": "86 targeted PASS; original source/patch/post replay and unchanged Qt glue/13 upstream selected-file hashes verified locally; actual Qt CBOR memory/QIODevice/negative fixture API passes on old local6.12 only, not source7.1 native acceptance",
+    "required_native": [
+      "Rebuild all modified Python/OpenSSL4/Qt/PySide/Shiboken profile inputs together, retain new source/patch/legal bytes",
+      "Actual private HB15.1 runtime query and loaded HB/MD4C prefix paths; Qt system-provider cache must be ON",
+      "Qt real named DejaVu font/Latin+Arabic glyph shaping and Markdown heading/strong/link/UTF8; dummy font/glyph success is rejected",
+      "CBOR memory and QIODevice roundtrips, explicit parser error/offset for partial/truncated/unexpected-break cases; plugin/GUI paths",
+      "Repeat full prior SSL/hash/SPKI/tarfile/default-trust/TLS negatives/native ABI/source/GUI/CLI and changed R10 source-worker traces"
+    ],
+    "provenance": "Meson1.12.1 source entrypoint executes outside runtime dependency installation; all243 Python module bytes equal the qualified official wheel. GNU11 link SDK remains link-only. Host OS GLib/DejaVu font are explicit native test prerequisites, not bundled app libraries.",
+    "impact": "Linux x64 delta manifest/build/verifier inputs change and require full repeat. Prior Linux profile1980bcf remains historical; source hashes/patches for CPython and prior five providers unchanged. Other five target profiles/manifests unchanged; shared TLS/hash/PNG/security helpers preserve their behavior. No producer/packaging adoption."
+  },
   "qt_text_preflight_2026_11_14": {
     "date": "2026-11-14",
     "starting_head": "970127916a8bcdf5934e35291b04ccb9283984c6",
-    "state": "Prepared; native prerequisites/source/link/ABI/upstream suites pending",
+    "state": "PASS native source/link/upstream/ABI prerequisite43542421989; full coherent Qt/PySide integration now prepared, not qualified",
     "scope": "R08 native Jammy x64 text-provider prerequisite only; not a Qt/Python rebuild or producing adoption",
     "ownership": {
       "HarfBuzz": "B original Qt bundled14.5; independently selected candidate15.1.0 is now A under controlled source prerequisite",
@@ -49,6 +187,88 @@
         "regressions": 85
       },
       "cause_fix": "Private CMAKE_PREFIX_PATH/PKG_CONFIG_PATH missing from probe configure; expose supported private routes, assert actual pkg-config15.1.0/0.6.0, no vendor source/ABI change"
+    },
+    "qualified_native": {
+      "source_sha": "928b518be39370b5452d08c3a6c55c5057d73cc4",
+      "run": 43542421989,
+      "artifact": 14092930390,
+      "zip_bytes": 77109557,
+      "zip_sha256": "6ba74bb45b00b7664e27aeac58d792505cf38ec5f913ab02f6350dd0ce7914fb",
+      "original_inputs": {
+        "harfbuzz-15.1.0.tar.xz": "0fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d",
+        "md4c-0.6.0.tar.gz": "4d151298125a81da3b2efa2e0eed8bdb7a9318569804e4fa4d7a2375ab83ef70",
+        "qtbase-everywhere-src-6.12.0.tar.xz": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+        "meson-1.12.1-py3-none-any.whl": "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02",
+        "meson-1.12.1.tar.gz": "ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743"
+      },
+      "original_legal_texts": 44,
+      "meson_wheel_source_python_files_equal": 243,
+      "harfbuzz_pass": 233,
+      "harfbuzz_skip": 8,
+      "md4c_commonmark": 652,
+      "md4c_regressions": 85,
+      "images": [
+        {
+          "name": "qt_text_consumer",
+          "sha256": "3e5555b5b152873253317821f27343a4f5d52394286a8727ce2b0bb4b7d3b844",
+          "needed": [
+            "libharfbuzz.so.0",
+            "libmd4c.so.0",
+            "libstdc++.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6"
+          ],
+          "version_needs": [
+            "CXXABI_1.3",
+            "GCC_3.0",
+            "GLIBCXX_3.4",
+            "GLIBCXX_3.4.9",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.34",
+            "GLIBC_2.4"
+          ]
+        },
+        {
+          "name": "libharfbuzz.so.0.61510.0",
+          "sha256": "29e700e34ce6141ee8b52de067c0f50e360980a36ff43a4afc312777d43795cc",
+          "needed": [
+            "libm.so.6",
+            "libglib-2.0.so.0",
+            "libc.so.6"
+          ],
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.4",
+            "GLIBC_2.33",
+            "GLIBC_2.35",
+            "GLIBC_2.4"
+          ]
+        },
+        {
+          "name": "libmd4c.so.0.6.0",
+          "sha256": "8d0e2b0c78c7839698d12a25c5515a949892c27141aa5735e9d7ef12892a9a84",
+          "needed": [
+            "libc.so.6"
+          ],
+          "version_needs": [
+            "GLIBC_2.14",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4"
+          ]
+        }
+      ],
+      "scope": "Native Jammy source/link prerequisite only; no rebuilt Qt/PySide/GUI acceptance",
+      "result": "PASS independently verified bytes/sources/legal/ELF/actual test evidence"
+    },
+    "source_quality": {
+      "run": 43542425031,
+      "source_sha": "928b518be39370b5452d08c3a6c55c5057d73cc4",
+      "tests": 2061,
+      "result": "SUCCESS direct checkout verified"
     }
   },
   "source_build_consumers_2026_11_14": {
@@ -2964,7 +3184,7 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 -> 15.0, MD4C0.5.3 -> 0.6.0, TinyCBOR7.0 -> 7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Exact6.12 source confirms INPUT_harfbuzz=system and INPUT_libmd4c=system / WrapSystemHarfbuzz / WrapSystemMd4c; qualify current private source providers through those existing switches first. Other copied internals require minimal reviewed source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected. November14 source recheck: stable HarfBuzz15.1.0 (published November4) official archive SHA2560fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d is downloaded/verified. Its own BUILD.md/CMakeLists require preferring primary Meson; CMake is community-maintained/not actively supported upstream. Current Meson1.12.1 requiresPython>=3.10, original wheel930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02/sourceab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743. PySide stable remains6.12.0; MD4C tagv0.6.0/TinyCBORv7.1 unchanged. Qt original configure exposes INPUT_harfbuzz=system and INPUT_libmd4c=system. This is source-route evidence only; no HarfBuzz/Meson/MD4C adoption or Qt binding acceptance claim.",
+        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete coherent Qt/PySide/CBOR/text/GUI/native tests remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
         "verification_evidence": "Matched binding build, text/font/markdown/CBOR/rendering regressions, GUI/PNG/TLS and native ABI/legal on changed targets. No arbitrary framework/dylib substitution."
       },
       {

@@ -374,6 +374,83 @@ def qt_tls_checks(paths: dict[str, Path]) -> list[dict[str, Any]]:
     return results
 
 
+def qt_cbor_regressions() -> dict[str, Any]:
+    """Exercise Qt's actual CBOR memory and QIODevice reader/writer paths."""
+    from PySide6.QtCore import (
+        QBuffer,
+        QByteArray,
+        QCborError,
+        QCborParserError,
+        QCborStreamReader,
+        QCborStreamWriter,
+        QCborValue,
+        QIODevice,
+    )
+
+    original = {'integer': 42, 'text': 'caf\u00e8', 'array': [True, None, -12]}
+    encoded = QCborValue.fromVariant(original).toCbor()
+    error = QCborParserError()
+    assert QCborValue.fromCbor(encoded, error).toVariant() == original
+    assert error.error.c == QCborError.Code.NoError
+    device = QBuffer()
+    device.setData(encoded)
+    assert device.open(QIODevice.OpenModeFlag.ReadOnly)
+    reader = QCborStreamReader(device)
+    assert QCborValue.fromCbor(reader).toVariant() == original
+    assert reader.lastError().c == QCborError.Code.NoError
+    device.close()
+    output = QByteArray()
+    target = QBuffer(output)
+    assert target.open(QIODevice.OpenModeFlag.WriteOnly)
+    writer = QCborStreamWriter(target)
+    writer.startMap(1)
+    writer.append('value')
+    writer.append(42)
+    assert writer.endMap()
+    target.close()
+    assert QCborValue.fromCbor(output).toVariant() == {'value': 42}
+    negative = []
+    for data, offset, expected in [(b'\x1b\x00', 0, QCborError.Code.EndOfFile),
+                                   (b'\xbf\x61a', 3, QCborError.Code.EndOfFile),
+                                   (b'\xff', 0, QCborError.Code.UnexpectedBreak),
+                                   (b'\x82\x01', 2, QCborError.Code.EndOfFile)]:
+        # Qt may return a partially decoded value; the explicit error is authoritative.
+        QCborValue.fromCbor(QByteArray(data), error)
+        assert error.error.c == expected and error.offset == offset
+        negative.append({'input': data.hex(), 'offset': offset, 'error': expected.name})
+    return {'memory_roundtrip': 'PASS', 'qiodevice_read_write': 'PASS', 'negative': negative}
+
+
+def qt_text_regressions() -> dict[str, Any]:
+    """Exercise actual QtGui shaping and Markdown callbacks after source adoption."""
+    from PySide6.QtGui import QFont, QTextDocument, QTextLayout
+
+    shaping = []
+    for text in ['office', '\u0633\u0644\u0627\u0645']:
+        layout = QTextLayout(text, QFont('DejaVu Sans', 12))
+        layout.beginLayout()
+        line = layout.createLine()
+        assert line.isValid()
+        line.setLineWidth(500)
+        layout.endLayout()
+        runs = layout.glyphRuns()
+        glyphs = [glyph for run in runs for glyph in run.glyphIndexes()]
+        assert glyphs and all(glyph != 0 for glyph in glyphs) and len(set(glyphs)) > 1
+        fonts = [run.rawFont() for run in runs]
+        assert fonts and all(font.isValid() and font.familyName() == 'DejaVu Sans' for font in fonts)
+        assert all(any(font.supportsCharacter(ord(character)) for font in fonts) for character in text)
+        assert line.naturalTextWidth() > 0
+        shaping.append({'text': text, 'glyphs': glyphs, 'fonts': [font.familyName() for font in fonts],
+                        'width': line.naturalTextWidth()})
+    document = QTextDocument()
+    document.setMarkdown('# Heading\n\n**bold** [link](https://example.com) text \u00e8')
+    assert document.firstBlock().blockFormat().headingLevel() == 1
+    assert document.find('bold').charFormat().fontWeight() == QFont.Weight.Bold
+    assert document.find('link').charFormat().anchorHref() == 'https://example.com'
+    assert document.toPlainText() == 'Heading\nbold link text \u00e8'
+    return {'shaping': shaping, 'markdown': 'Heading/strong/anchor/UTF8 PASS'}
+
+
 def native_images(prefix: Path) -> list[dict[str, Any]]:
     paths = {Path(line.split()[-1]).resolve() for line in Path('/proc/self/maps').read_text().splitlines()
              if '/' in line and not line.endswith(' (deleted)')}
@@ -418,6 +495,13 @@ def native_images(prefix: Path) -> list[dict[str, Any]]:
     assert not any(p.is_relative_to(sdk_prefix) for p in paths), 'Target link SDK must never be loaded at runtime'
     for stem in ('libssl.so.4', 'libcrypto.so.4', 'libQt6Core.so.6', 'libQt6Network.so.6'):
         assert any(p.name.startswith(stem) and p.is_relative_to(prefix) for p in paths), stem
+    for stem in ('libharfbuzz.so.0', 'libmd4c.so.0'):
+        providers = [p for p in paths if p.name.startswith(stem)]
+        assert providers and all(p.is_relative_to(prefix / 'lib') for p in providers), providers
+    harfbuzz = next(p for p in paths if p.name.startswith('libharfbuzz.so.0'))
+    hb_version = ctypes.CDLL(str(harfbuzz)).hb_version_string
+    hb_version.restype = ctypes.c_char_p
+    assert hb_version() == b'15.1.0'
     return results
 
 
@@ -461,6 +545,10 @@ def main() -> None:
     paths = certificate_material(cert_root)
     app = QApplication([])
     assert app.platformName() == 'xcb', app.platformName()
+    cbor = qt_cbor_regressions()
+    text = qt_text_regressions()
+    (output / 'qt-cbor-results.json').write_text(json.dumps(cbor, indent=2) + '\n')
+    (output / 'qt-text-results.json').write_text(json.dumps(text, indent=2) + '\n')
     default_trust = default_trust_handshake()
     (output / 'python-default-trust.json').write_text(json.dumps(default_trust, indent=2) + '\n')
     print('Python default trust:', json.dumps(default_trust), flush=True)
@@ -500,6 +588,7 @@ def main() -> None:
               'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(),
               'qt_ssl_build': QSslSocket.sslLibraryBuildVersionString(), 'qt_ssl_runtime': QSslSocket.sslLibraryVersionString(),
               'qt_backend': QSslSocket.activeBackend(), 'python_tls': python_tls, 'qt_tls': qt_tls,
+              'qt_cbor': cbor, 'qt_text': text,
               'hash_vectors': 'SHA256/HMAC-SHA256/PBKDF2-SHA256 PASS', 'png': png_results,
               'gui': 'native xcb MainWindow event-loop PASS', 'loaded_changed_images': images,
               'trust': {'paths': str(ssl.get_default_verify_paths()), 'default_handshake': default_trust},

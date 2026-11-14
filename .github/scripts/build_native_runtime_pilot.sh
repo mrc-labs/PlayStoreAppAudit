@@ -41,6 +41,18 @@ assert hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(',', ':')).en
 work, evidence = Path(os.environ['PILOT_WORK']), Path(os.environ['PILOT_EVIDENCE'])
 shutil.copy2(manifest, evidence / manifest.name)
 shutil.copy2(delta_manifest, evidence / delta_manifest.name)
+providers = {}
+for key in ['qt_text_manifest', 'qt_cbor_manifest']:
+    path = manifest.parent / delta[key]['path']
+    value = json.loads(path.read_text())
+    assert hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == delta[key]['canonical_sha256']
+    providers[key] = value
+    shutil.copy2(path, evidence)
+text = providers['qt_text_manifest']
+cbor = providers['qt_cbor_manifest']
+# The qualified text-provider inputs are unchanged; Qt itself is already in spec.
+extra_sources = [item for item in text['sources'] if not item['name'].startswith('qtbase-')]
+extra_sources += text['meson'] + [cbor['source']]
 patch = Path(spec['cpython_patch']['path'])
 assert hashlib.sha256(patch.read_bytes()).hexdigest() == spec['cpython_patch']['sha256']
 shutil.copy2(patch, evidence / patch.name)
@@ -55,7 +67,9 @@ def fetch(item):
         raise
     with dest.open('rb') as stream:
         assert hashlib.file_digest(stream, 'sha256').hexdigest() == item['sha256'], item['name']
-    if dest.suffix == '.7z':
+    if dest.suffix == '.whl':
+        pass  # Original build-tool wheel retained; the full pilot executes matching source.
+    elif dest.suffix == '.7z':
         # The generator uses libclang's API with GCC; unused driver aliases form link chains.
         exclusions = ['-x!' + name for name in item.get('exclude_paths', [])]
         subprocess.run(['7z', 'x', '-y', *exclusions, f'-o{work / "src"}', str(dest)],
@@ -65,7 +79,7 @@ def fetch(item):
             archive.extractall(work / 'src', filter='data')
     print('Verified official source/tool:', item['name'], flush=True)
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-    list(pool.map(fetch, [*spec['sources'], *delta['sources']]))
+    list(pool.map(fetch, [*spec['sources'], *delta['sources'], *extra_sources]))
 for sdk_source in (spec['cxx_link_sdk']['source'], spec['extractor']['source']):
     sdk_archive = evidence / 'sources' / sdk_source['name']
     with urllib.request.urlopen(sdk_source['url'], timeout=180) as src, sdk_archive.open('wb') as out:
@@ -102,6 +116,9 @@ for item in [delta['sqlite_legal_notice'], *security['sources']]:
     if item is delta['sqlite_legal_notice']:
         (evidence / 'legal/sqlite-autoconf-3540100' / item['name']).write_bytes(data)
 PY
+python "$repo/.github/scripts/apply_qt_cbor_upgrade.py" \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" \
+  --archive "$evidence/sources/tinycbor-7.1.tar.gz" --evidence "$evidence"
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"
 mkdir -p "$prefix"
@@ -186,12 +203,32 @@ cmake --build "$work/pcre-build"
 ctest --test-dir "$work/pcre-build" --output-on-failure > "$evidence/pcre2-regressions.log" 2>&1
 cmake --install "$work/pcre-build"
 
+# Use the primary Meson source whose243 Python modules equal the qualified wheel.
+meson_source="$work/src/meson-1.12.1/meson.py"
+python "$meson_source" setup "$work/harfbuzz-build" "$work/src/harfbuzz-15.1.0" \
+  --prefix="$prefix" --libdir=lib --buildtype=release --wrap-mode=nofallback \
+  -Dauto_features=disabled -Dglib=enabled -Dtests=enabled -Dutilities=enabled \
+  -Dsubset=enabled -Draster=disabled -Dvector=disabled -Dgpu=disabled \
+  -Dbenchmark=disabled -Dexperimental_api=false -Db_ndebug=false > "$evidence/harfbuzz-configure.log" 2>&1
+python "$meson_source" compile -C "$work/harfbuzz-build" -j 2 > "$evidence/harfbuzz-build.log" 2>&1
+python "$meson_source" test -C "$work/harfbuzz-build" --no-rebuild --print-errorlogs --num-processes 2 > "$evidence/harfbuzz-tests.log" 2>&1
+cp "$work/harfbuzz-build/meson-logs/testlog.json" "$evidence/harfbuzz-testlog.json"
+python "$meson_source" install -C "$work/harfbuzz-build" --no-rebuild > "$evidence/harfbuzz-install.log" 2>&1
+cmake -S "$work/src/md4c-0.6.0" -B "$work/md4c-build" -GNinja \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
+  -DBUILD_SHARED_LIBS=ON > "$evidence/md4c-configure.log" 2>&1
+cmake --build "$work/md4c-build" --parallel 2 > "$evidence/md4c-build.log" 2>&1
+cmake --install "$work/md4c-build" > "$evidence/md4c-install.log" 2>&1
+for suite in spec regressions; do
+  LD_LIBRARY_PATH="$prefix/lib" python "$work/src/md4c-0.6.0/test/run-testsuite.py" \
+    --program "$prefix/bin/md2html" --spec "$work/src/md4c-0.6.0/test/$suite.txt" > "$evidence/md4c-$suite.log" 2>&1
+done
 mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
   -release -opensource -confirm-license -nomake tests -nomake examples \
   -openssl-linked -system-libpng -system-pcre -system-zlib -system-sqlite -no-feature-openssl-runtime \
-  -- -DOPENSSL_ROOT_DIR="$ssl_prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
+  -- -DINPUT_harfbuzz=system -DINPUT_libmd4c=system -DOPENSSL_ROOT_DIR="$ssl_prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
   -DCMAKE_INSTALL_RPATH="$ssl_prefix/lib;$prefix/lib"
 python - <<'PY'
 import os
@@ -199,6 +236,8 @@ from pathlib import Path
 flags = next(line for line in Path('CMakeCache.txt').read_text().splitlines() if line.startswith('CMAKE_CXX_FLAGS:STRING='))
 assert '-L' + os.environ['PILOT_CXX_LINK_DIR'] in flags, flags
 print('Qt target link SDK flags verified:', flags, flush=True)
+for feature in ['system_harfbuzz', 'system_textmarkdownreader']:
+    assert f'QT_FEATURE_{feature}:INTERNAL=ON' in Path('CMakeCache.txt').read_text(), feature
 PY
 cmake --build . --parallel 2
 cmake --install .
@@ -247,7 +286,8 @@ summary = {'source_sha':os.environ['GITHUB_SHA'],'scope':'non-release native run
  'python':sys.version,'architecture':platform.machine(),'prefix':os.environ['PILOT_PREFIX'],
  'gil_disabled':__import__('sysconfig').get_config_var('Py_GIL_DISABLED'),
  'tools':{name:subprocess.run(command,capture_output=True,text=True,check=True).stdout for name,command in {
- 'gcc':['gcc','--version'],'cmake':['cmake','--version'],'ninja':['ninja','--version']}.items()}}
+ 'gcc':['gcc','--version'],'cmake':['cmake','--version'],'ninja':['ninja','--version'],
+ 'meson':[sys.executable,os.path.join(os.environ['PILOT_WORK'],'src/meson-1.12.1/meson.py'),'--version']}.items()}}
 Path('pilot-evidence/build-provenance.json').write_text(json.dumps(summary,indent=2))
 PY
 echo 'Native runtime/framework pilot PASS; no application package produced.'

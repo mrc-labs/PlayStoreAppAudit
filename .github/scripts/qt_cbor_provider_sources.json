@@ -1,0 +1,54 @@
+{
+  "scope": "Controlled selected-source TinyCBOR7.1 integration in project-modified Qt6.12.0; not an unchanged official Qt distribution",
+  "source": {
+    "name": "tinycbor-7.1.tar.gz",
+    "directory": "tinycbor-7.1",
+    "url": "https://github.com/intel/tinycbor/archive/refs/tags/v7.1.tar.gz",
+    "sha256": "08c0a4c0a983000806f3d8c1599ec07995789ae49e9a23034db4cbfccc81c2e5",
+    "authority": "https://github.com/intel/tinycbor/releases/tag/v7.1"
+  },
+  "patch": {
+    "path": ".github/patches/qtbase-6.12.0-tinycbor71.patch",
+    "sha256": "de70d9239b72690bd017b4a1decb635c03db72ac79d3e8cfc25c426c673a8ff5",
+    "files": {
+      "src/3rdparty/tinycbor/src/cborparser.c": {
+        "base_sha256": "28f5f23480108ddf4a4c6666a3e7f036ca7f13b001f2f748c428b7d17c858893",
+        "patched_sha256": "bb18dced594ad71be0edb1edcaad9ca7f03348483cf894a539e685ccfb049a0c"
+      },
+      "src/3rdparty/tinycbor/src/compilersupport_p.h": {
+        "base_sha256": "10924328a0a38d3c027b009c59501b05bd2a8a157eb81b04f612c4cd424fd1ef",
+        "patched_sha256": "8cbe48d182d4e08ccfbcba507bbd927bb803f65367852b116d78a19bc165ad7b"
+      },
+      "src/3rdparty/tinycbor/qt_attribution.json": {
+        "base_sha256": "788408509fb7967042640f24ba78b263712e816d886303ba1733f49753d33863",
+        "patched_sha256": "2ba318cc1262c0fa760265215bcf9dd49205524d67f7699329352f6e6cd6ec2e"
+      },
+      "src/3rdparty/tinycbor/README": {
+        "base_sha256": "260649e7dfd228e4a2d14c8913a2d408b21b6e7a3d6dda4dbd361f269413ab1b",
+        "patched_sha256": "c2ca906409ad102a5a1dc2db1ce9e310987a49abe4d7f238a5e8ef2b881ff3a5"
+      }
+    }
+  },
+  "qt_owned_unchanged": {
+    "src/3rdparty/tinycbor/src/tinycbor-export.h": "5bc6bf806fef83e4a238806bb14ec89acfa1e3dd56b1f441aa61d6c2f6411046",
+    "src/3rdparty/tinycbor/src/tinycbor-version.h": "58e0c54f1a7b5c7d63e01aec32f7c0ae82a7d30a499113466bc3045bd2341100",
+    "src/3rdparty/tinycbor/LICENSE": "3c6ba0b5bfa7830505301ffb336a17b0748e0d61c4d34216e9dc98f10e40395e"
+  },
+  "upstream_selected_files": {
+    "src/cbor.h": "4de3076ed4c09c81388a9e70387cc551c16b8312b2a4cae3014fcafb2cb37cff",
+    "src/cborencoder.c": "b236e5c080b952986bd737ad33df05e48c85c6c8a247feafc67201209c8082f2",
+    "src/cborencoder_close_container_checked.c": "c398fde2f23909f86f2887d19aa8b30d05ddf6859e712acf628e500c6a122aec",
+    "src/cborencoder_float.c": "bb34cfd8502e14c3e5501ffafe3d81f2a73e0bf757393d1fa540b22b29779ab3",
+    "src/cborerrorstrings.c": "c5b8931317863f936011dfe0c1e437a434e9d4501cd91bedc06596fabc9e1a52",
+    "src/cborinternalmacros_p.h": "10deb0959b71262595396564e9083e2e888885918404efee5a3fc26dfa2fb7d2",
+    "src/cborinternal_p.h": "aedf9a9b0dd24e50a45cbfac8949c0226e674bcc8d6d3e877ac1599e87aa6660",
+    "src/cborjson.h": "ca64f0ec5c89512e3142990fa1369d813a0b0f5e108f2061be109d3326cbbf77",
+    "src/cborparser.c": "bb18dced594ad71be0edb1edcaad9ca7f03348483cf894a539e685ccfb049a0c",
+    "src/cborparser_dup_string.c": "9aefece550836da12b9f465786213ebe436cff11feb56fe4184243610ff06944",
+    "src/cborparser_float.c": "78c4222c48f38ae2ecf713803041047c255b84507801cc5f3c5b2e6b6b6b68a1",
+    "src/compilersupport_p.h": "8cbe48d182d4e08ccfbcba507bbd927bb803f65367852b116d78a19bc165ad7b",
+    "src/memory.h": "e2c454d07bc2c3a0a5f5bea8c6cbe40567c566f228cb80d3d7989dd020a09220"
+  },
+  "compatibility": "cborparser.c change is upstream documentation-only; compilersupport_p.h includes the existing Qt unreachable fix and correct C/C++ fallthrough detection. Preserve Qt-owned exports/version sentinel, reader/writer flags/callbacks and all public Qt APIs. No bundled pretty/JSON implementation added.",
+  "required_validation": "Actual rebuilt QtCore/PySide CBOR positive/negative/QIODevice callbacks and plugin/GUI tests, source/legal/ABI on affected native profiles; source-only comparison is not native adoption."
+}
