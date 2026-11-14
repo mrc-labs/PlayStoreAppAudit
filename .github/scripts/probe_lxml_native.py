@@ -322,6 +322,18 @@ def main() -> None:
         XML2_CONFIG=str(prefix / 'bin/xml2-config'), XSLT_CONFIG=str(prefix / 'bin/xslt-config'))
     if sys.platform == 'win32':
         env['LXML_STATIC_CFLAGS'] = '/DLIBXML_STATIC /DLIBXSLT_STATIC /DLIBEXSLT_STATIC'
+        contract = work / 'xml-static-contract.c'
+        contract.write_text('#include <libxml/parser.h>\n#include <libxslt/xslt.h>\n'
+            '#include <libexslt/exslt.h>\n#include <string.h>\n#include <stdio.h>\n'
+            'int main(void) { xmlInitParser(); exsltRegisterAll(); '
+            'if (strcmp(xmlParserVersion,"21504") || strcmp(xsltEngineVersion,"1.1.45")) return 1; '
+            'puts("PASS current XML/XSLT static header/library contract"); return 0; }\n', encoding='utf-8')
+        executable = work / 'xml-static-contract.exe'
+        run([compiler, '/nologo', '/MD', *env['LXML_STATIC_CFLAGS'].split(),
+             '/I' + str(prefix / 'include'), '/I' + str(prefix / 'include/libxml2'), contract,
+             *[prefix / 'lib' / name for name in ('libexslt_a.lib', 'libxslt_a.lib', 'libxml2_a.lib', 'iconv_a.lib', 'zlib.lib')],
+             'WS2_32.lib', '/Fe:' + str(executable)], 'xml-static-contract-build')
+        run([executable], 'xml-static-contract-execute')
     if sys.platform != 'win32':
         env['WITH_XML2_CONFIG'] = str(prefix / 'bin/xml2-config')
         env['WITH_XSLT_CONFIG'] = str(prefix / 'bin/xslt-config')
