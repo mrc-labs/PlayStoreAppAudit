@@ -258,7 +258,7 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
     os.environ['PATH'] = os.pathsep.join(map(str, [py.parent, *directories])) + os.pathsep + os.environ['PATH']
     register_private_dll_directories(py, directories, evidence)
     run([py, REPO / '.github/scripts/bootstrap_pip.py'])
-    run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])
+    run([py, '-m', 'pip', 'install', '-r', REPO / '.github/scripts/source_build_requirements.txt', '-c', REPO / '.github/scripts/source_build_constraints.txt', 'cmake==4.4.4', 'ninja==1.13.2', '--report', evidence / 'build-tools-install.json'])
     crypto_source(work, prefix, sources, evidence, arm, base, host, py)
     os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '2'
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL']
@@ -293,7 +293,10 @@ def build_stack(work: Path, arm: dict, base: dict, evidence: Path, host: dict[st
     run(['cmake', '--install', svg], log=evidence / 'qtsvg-install.log')
     run([py, '-I', '-c', 'import ctypes,sys; d=ctypes.WinDLL(sys.argv[1]); print("Controlled ARM64 QtCore secure-load PASS",d._name)', prefix / 'qt/bin/Qt6Core.dll'], log=evidence / 'qtcore-loader-preflight.log')
     os.environ['LLVM_INSTALL_DIR'] = str(work / 'libclang')
+    os.environ['PYTHONVERBOSE'] = '1'
     run([py, 'setup.py', 'install', '--ignore-git', '--qtpaths=' + str(prefix / 'qt/bin/qtpaths6.exe'), '--parallel=2', '--limited-api=yes', '--module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test', '--no-qt-tools'], cwd=pyside, log=evidence / 'pyside-build.log')
+    os.environ.pop('PYTHONVERBOSE')
+    run([py, REPO / '.github/scripts/probe_setuptools_build.py', '--consumer', 'pyside', '--consumer-log', evidence / 'pyside-build.log', '--output-dir', evidence / 'build-dependencies'])
     requirements = evidence / 'runtime-requirements.txt'
     requirements.write_text('\n'.join(line for line in (REPO / 'requirements.txt').read_text(encoding='utf-8').splitlines() if not line.startswith('PySide6-Essentials==')) + '\n', encoding='utf-8')
     run([py, '-m', 'pip', 'install', '-r', requirements, 'pytest==9.2.0', '--report', evidence / 'runtime-install.json'])

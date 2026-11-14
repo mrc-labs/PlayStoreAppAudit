@@ -1,8 +1,24 @@
 {
+  "source_build_consumers_2026_11_14": {
+    "date": "2026-11-14",
+    "state": "Prepared; affected compiler/cffi native repetitions pending; six binding profiles remain required",
+    "requirements": ".github/scripts/source_build_requirements.txt",
+    "constraints": ".github/scripts/source_build_constraints.txt",
+    "contract_origin": "Six-native43393692050 at6068c475b7681946219569a01d94e4db13d5af30; original21 source selections unchanged",
+    "official_pypi_recheck": "All21 selected versions still current in official PyPI JSON on2026-11-14; no new exhaustive inventory scan",
+    "consumers": [
+      "six controlled PySide source builders",
+      "Nuitka controlled source-wheel builder",
+      "native Windows ARM64 cffi/static libffi consumer",
+      "Linux x64 cffi/shared libffi source consumer"
+    ],
+    "gates": "Retain actual PYTHONVERBOSE worker trace; reject any executed setuptools/_vendor fallback, missing external core imports, wrong environment or mismatched installed constraints; preserve install reports and contract/source hashes",
+    "impact": "All six controlled source-builder build environments change. Earlier source artifacts keep actual SHAs and remain historical; requalification of changed bindings still required. Runtime/provider/Qt/CPython/vendor patches unchanged; no producing-profile adoption."
+  },
   "windows_schannel_guard_2026_11_13": {
     "date": "2026-11-13",
     "starting_head": "d967163ca8b8d5a1fcee5c1b2ce20ccd0a8afb44",
-    "state": "PARTIAL:14 actual native incident TLS rejections and default/negative controls PASS; two rollover DNS outcomes INCONCLUSIVE, strict native aggregate FAILURE/R02 open",
+    "state": "PASS bounded Windows Schannel gate43531162571:14 actual TLS rejections plus2 native-path/Qt-policy checks; full-stack and other providers remain REQUIRED",
     "scope": "R02 Windows x64 QtCore/Network+C++ only, not CPython/PySide/GUI/full dual-provider/package acceptance",
     "original_qt": {
       "version": "6.12.0",
@@ -268,9 +284,9 @@
       ],
       "incident_records": "Full14 pinned-leaf/specific compromised-key rejection records and two exact DNS-only outcomes remain in immutable artifact14083093378; worker verifies all records. No duplicated loaded-module/root lists in inventory."
     },
-    "minimum_next_action": "Supported native Windows chain-engine verification of the two retained rollover PEMs with actual system trust/hostname/date/revocation and compromised-key evidence, paired explicitly with actual Qt blacklist/ancestor memberships and TLS controls; or reviewed upstream live fixtures. No Qt rebuild required. Do not substitute unsupported Qt manual API or count DNS failures.",
+    "minimum_next_action": "Repeat corrected dual-provider/binding/full-stack and other-target provider security profiles; no more Qt rebuild needed solely for this bounded Schannel diagnostic.",
     "native_rollover_route_2026_11_14": {
-      "state": "Native path/trust rejection measured in CI; composed exact native ancestor + actual Qt blacklist gate prepared for repeat",
+      "state": "PASS native43531162571; worker independently verifies ZIP/source/patch/legal/four original PE bytes and native controls",
       "profile": "windows-ca-native:14 real Qt TLS incidents plus two native Windows chain-engine checks; no16-handshake claim",
       "provider": "Windows native X509Chain/CryptoAPI via existing PowerShell host",
       "local_host": {
@@ -398,6 +414,79 @@
             "custom_trust_count": 0
           }
         ]
+      },
+      "qualified_native_run": {
+        "run": 43531162571,
+        "execution_sha": "29ea76e1009836eaf087143940109dcf3db66cdb",
+        "compiled_source_sha": "0cf4c516132c5cb7c97dc1c2cdaf77d8a0f8f9b2",
+        "artifact": 14087860795,
+        "bytes": 113394409,
+        "sha256": "e90fef62cd1546241576cff0c6e1f58c09b3eb80b6383a728e15707daf09966d",
+        "provider": "Windows native X509Chain/CryptoAPI via existing PowerShell host",
+        "architecture": "X64",
+        "powershell": "7.6.9",
+        "runtime": ".NET 10.0.14",
+        "positive": {
+          "scope": "Ordinary defaults, no explicit CA or validation callback",
+          "chain_accepted": true,
+          "protocol": "Tls13",
+          "host": "www.python.org",
+          "verification_flags": "NoFlag",
+          "trust_mode": "System",
+          "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+          "revocation": "Online",
+          "encrypted": true,
+          "authenticated": true
+        },
+        "rollover": [
+          {
+            "hostname": "dv-g3b-aaa-noct-rollover-emudhra.we-have-a-problem.com",
+            "native_accepted": false,
+            "native_status": [
+              "PartialChain",
+              "RevocationStatusUnknown",
+              "OfflineRevocation"
+            ],
+            "custom_trust_count": 0,
+            "measured_qt_guard": [
+              {
+                "native_index": 2,
+                "certificate": "45a883f349aedfd5f3a649b5498ffb121712ba8b448f3f2a91dbc5a766fcddbe",
+                "spki": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+                "qt_is_blacklisted": true
+              }
+            ],
+            "combined_result": "PASS native default-trust rejection plus measured project Qt ancestor blacklist"
+          },
+          {
+            "hostname": "dv-g3b-noct-rollover-emudhra.we-have-a-problem.com",
+            "native_accepted": false,
+            "native_status": [
+              "UntrustedRoot",
+              "RevocationStatusUnknown",
+              "OfflineRevocation"
+            ],
+            "custom_trust_count": 0,
+            "measured_qt_guard": [
+              {
+                "native_index": 2,
+                "certificate": "42c4accd12c4f59597925e1a08a7a90102608543809308d50ec427e118ba1493",
+                "spki": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+                "qt_is_blacklisted": true
+              }
+            ],
+            "combined_result": "PASS native default-trust rejection plus measured project Qt ancestor blacklist"
+          }
+        ],
+        "actual_incident_tls_rejections": 14,
+        "rollover_tls": "Two Host not found observations remain unexecuted; not16 live handshakes",
+        "worker_checks": "Whole ZIP digest/size, immutable compiled source/four PE byte identity/AMD64/MD/imports, original Qt/base/post/patch/39 legal texts/Ninja bytes and all actual TLS/native-path records verified"
+      },
+      "exact_source_quality": {
+        "run": 43531166483,
+        "sha": "29ea76e1009836eaf087143940109dcf3db66cdb",
+        "result": "SUCCESS",
+        "tests": 2041
       }
     }
   },
@@ -2612,8 +2701,8 @@
       },
       {
         "id": "R02",
-        "status": "REQUIRED security/provider acceptance; Linux source subset PASS43391294393",
-        "applicability_minimum_action": "Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 source Schannel replay43522312461 now proves14 live compromised-key TLS rejections and all ordinary/negative controls; two rollover hostnames are unresolved DNS, so R02 remains open pending supported native Windows verification of those retained offline chains. No new Qt build or unsupported manual API is required.",
+        "status": "REQUIRED overall provider acceptance; Linux source subset and bounded Windows Schannel PASS",
+        "applicability_minimum_action": "Seven Qt6.12 bootstrap processes42808506948 measured positive ordinary default trust and16 empty native manual-API outcomes. The November13 correction proves Schannel lacks manual CertificateVerification: those empty lists are inconclusive, not compromised-chain acceptance. Mac rows also lack capability proof and require corrected native validation. Supported host OpenSSL manual APIs reject16/16. The hash-bound common Qt SPKI/supplied-chain guard now passes the complete Linux x64 source pilot43391294393, with16 blacklist/chain rejections, four healthy-root controls, ordinary default trust and TLS negatives. Other five corrected source profiles and their actual native backends remain REQUIRED; Windows/macOS native socket security acceptance remains required; Linux OpenSSL evidence is distinct. Python compromised-SPKI rejection does not establish other-provider security. Repository cryptography use is AESGCM/HKDF config-secret protection (services/config_secret_protection.py), with no application X509 Store/PolicyBuilder or default TLS trust store; diagnostic X509 fixtures do not change that applicability. Assess its independent OpenSSL advisories/crypto operations separately. The current public fixture corpus includes14 regular plus two rollover chains; require whole-chain compromised-key rejection, not leaf-only checks. Compare actual default TLS providers/roots and upstream incident/advisory applicability separately; use supported root/provider refresh or reviewed scoped rejection where genuinely needed. Do not inject arbitrary fallback roots or mutate OS trust. Windows x64 bounded Schannel43531162571 now passes14 live compromised-key TLS rejections plus2 supported native Windows chain-path/default-trust rejections joined by exact ancestor DER/SPKI to the actual compiled Qt blacklist. The2 DNS-only socket observations are retained, not16 handshakes or raw OS key-revocation acceptance. Worker verifies source/patch/legal/four PE bytes. Full-stack dual-provider/binding and other-target gates remain required.",
         "verification_evidence": "Per-provider root/SPKI/advisory evidence, ordinary default handshake plus hostname/CA/expiry negatives on every affected native target. Python PEM118, Intel read-only Keychain158 and both Qt default sets157/intersection157 are distinct observed inputs, not equivalent security acceptance; one excluded anchor is not attributed without retained per-Qt fingerprint membership."
       },
       {
@@ -2661,7 +2750,7 @@
       {
         "id": "R10",
         "status": "REQUIRED setuptools/build isolation",
-        "applicability_minimum_action": "Project PEP517 route now passes six-native43393692050: actual isolated workers import current external providers, original21 source hashes and wheel/project/runtime/license bytes are independently verified. PR source build requirements match all six effective candidates byte-for-byte. Python3.14 markers exclude importlib_metadata/tomli; no executed setuptools fallback is observed. REQUIRED remaining consumers: six controlled PySide source builds, Nuitka source-wheel environment and ARM64 cffi consumer environment. Apply the same supported external providers there and repeat affected binding/compiler/cffi checks; no producer-profile adoption or project-wheel proof substituted for those builds.",
+        "applicability_minimum_action": "Project PEP517 route now passes six-native43393692050: actual isolated workers import current external providers, original21 source hashes and wheel/project/runtime/license bytes are independently verified. PR source build requirements match all six effective candidates byte-for-byte. Python3.14 markers exclude importlib_metadata/tomli; no executed setuptools fallback is observed. REQUIRED remaining consumers: six controlled PySide source builds, Nuitka source-wheel environment and ARM64 cffi consumer environment. Apply the same supported external providers there and repeat affected binding/compiler/cffi checks; no producer-profile adoption or project-wheel proof substituted for those builds. November14: six diagnostic PySide environments, Nuitka source-wheel and ARM64/Linux cffi environments are aligned to the six qualified requirements/21 constraints; actual worker import-trace/version/provenance gates added. Compiler six-native and ARM64 cffi repetitions are pending; PySide checks remain required in the next corrected source-stack profiles.",
         "verification_evidence": "Clean isolated wheel/source builds, actual resolved external imports and build reports on affected platforms; reproducible constraints/provenance."
       },
       {

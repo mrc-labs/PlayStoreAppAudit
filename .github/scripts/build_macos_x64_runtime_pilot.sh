@@ -170,7 +170,7 @@ export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 "$prefix/python/bin/python3.14" -m venv "$work/venv"
 export PATH="$work/venv/bin:$PATH"
 python "$repo/.github/scripts/bootstrap_pip.py"
-python -m pip install 'setuptools==84.2.1' 'wheel==0.48.0' 'cmake==4.4.4' 'ninja==1.13.2' 'packaging==26.3' --report "$evidence/build-tools-install.json"
+python -m pip install -r "$repo/.github/scripts/source_build_requirements.txt" -c "$repo/.github/scripts/source_build_constraints.txt" 'cmake==4.4.4' 'ninja==1.13.2' --report "$evidence/build-tools-install.json"
 cd "$repo"
 # Default verification uses the configured private PEM, not an env/cafile fallback.
 python - <<'PY'
@@ -267,9 +267,10 @@ cmake --install .
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 cd "$work/src/pyside-setup-everywhere-src-6.12.0"
-python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
+PYTHONVERBOSE=1 python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
   --parallel=2 --limited-api=yes --module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test \
-  --no-qt-tools --macos-arch=x86_64 --macos-deployment-target=14.4 --macos-sysroot="$SDKROOT" --rpath="$prefix/qt/lib"
+  --no-qt-tools --macos-arch=x86_64 --macos-deployment-target=14.4 --macos-sysroot="$SDKROOT" --rpath="$prefix/qt/lib" > "$evidence/pyside-build.log" 2>&1
+python "$repo/.github/scripts/probe_setuptools_build.py" --consumer pyside --consumer-log "$evidence/pyside-build.log" --output-dir "$evidence/build-dependencies"
 unset LLVM_INSTALL_DIR
 cd "$repo"
 python - <<'PY'

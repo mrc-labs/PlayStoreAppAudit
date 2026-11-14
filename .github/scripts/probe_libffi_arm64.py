@@ -267,10 +267,12 @@ def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec:
     run([str(python), str(REPO / '.github/scripts/bootstrap_pip.py')], evidence / 'cffi-pip-bootstrap.log', work)
     wheels = evidence / 'cffi-build-wheels'
     wheels.mkdir()
+    build_dependencies = ['-r', str(REPO / '.github/scripts/source_build_requirements.txt'),
+                          '-c', str(REPO / '.github/scripts/source_build_constraints.txt')]
     run([str(python), '-m', 'pip', '--isolated', 'download', '--only-binary=:all:',
-         '--dest', str(wheels), *spec['bootstrap_pins']], evidence / 'cffi-build-dependencies.log', work)
+         '--dest', str(wheels), *build_dependencies, *spec['bootstrap_pins']], evidence / 'cffi-build-dependencies.log', work)
     run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--find-links', str(wheels),
-         '--report', str(evidence / 'cffi-build-install.json'), *spec['bootstrap_pins']],
+         '--report', str(evidence / 'cffi-build-install.json'), *build_dependencies, *spec['bootstrap_pins']],
         evidence / 'cffi-build-install.log', work)
     environment = {**os.environ, 'PSAA_LIBFFI_ARM64_ROOT': str(prefix),
                    'DISTUTILS_USE_SDK': '1', 'MSSdk': '1'}
@@ -278,7 +280,10 @@ def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec:
     wheelhouse.mkdir()
     run([str(python), '-m', 'pip', '--isolated', 'wheel', '--no-index', '--no-build-isolation',
          '--no-deps', '--verbose', '--wheel-dir', str(wheelhouse), str(cffi_source)],
-        evidence / 'cffi-build.log', work, environment)
+        evidence / 'cffi-build.log', work, {**environment, 'PYTHONVERBOSE': '1', 'PYTHONUTF8': '1'})
+    run([str(python), str(REPO / '.github/scripts/probe_setuptools_build.py'), '--consumer', 'cffi',
+         '--consumer-log', str(evidence / 'cffi-build.log'), '--output-dir', str(evidence / 'build-dependencies')],
+        evidence / 'cffi-build-dependency-check.log', REPO)
     built = list(wheelhouse.glob('cffi-*.whl'))
     assert len(built) == 1 and spec['distribution_version'] in built[0].name
     run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--no-deps', str(built[0])],

@@ -160,11 +160,12 @@ export PKG_CONFIG_PATH="$prefix/python/lib/pkgconfig:$prefix/lib/pkgconfig:$ssl_
 "$prefix/python/bin/python3.14" -m venv "$work/venv"
 export PATH="$work/venv/bin:$PATH"
 python "$repo/.github/scripts/bootstrap_pip.py"
-python -m pip install 'setuptools==84.2.1' 'wheel==0.48.0' 'cmake==4.4.4' 'ninja==1.13.2' 'packaging==26.3' 'pycparser==3.12' 'pytest==9.2.0' --report "$evidence/build-tools-install.json"
+python -m pip install -r "$repo/.github/scripts/source_build_requirements.txt" -c "$repo/.github/scripts/source_build_constraints.txt" 'cmake==4.4.4' 'ninja==1.13.2' 'pycparser==3.12' 'pytest==9.2.0' --report "$evidence/build-tools-install.json"
 mkdir "$evidence/cffi-wheel"
-python -m pip wheel --no-index --no-build-isolation --no-deps --verbose \
+PYTHONVERBOSE=1 python -m pip wheel --no-index --no-build-isolation --no-deps --verbose \
   --wheel-dir "$evidence/cffi-wheel" "$work/src/cffi-2.1.1" > "$evidence/cffi-build.log" 2>&1 \
   || { tail -n 100 "$evidence/cffi-build.log"; exit 1; }
+python "$repo/.github/scripts/probe_setuptools_build.py" --consumer cffi --consumer-log "$evidence/cffi-build.log" --output-dir "$evidence/build-dependencies"
 python -m pip install --no-index --no-deps "$evidence"/cffi-wheel/cffi-*.whl
 (cd "$work/src/cffi-2.1.1" && python -m pytest -q src/c/test_c.py testing/cffi0/test_ffi_backend.py testing/cffi1/test_ffi_obj.py \
   --junitxml "$evidence/cffi-tests.xml") > "$evidence/cffi-tests.log" 2>&1 \
@@ -215,9 +216,10 @@ export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 export LD_LIBRARY_PATH="$prefix/qt/lib:$LLVM_INSTALL_DIR/lib:$LD_LIBRARY_PATH"
 cd "$work/src/pyside-setup-everywhere-src-6.12.0"
-python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
+PYTHONVERBOSE=1 python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
   --parallel=2 --limited-api=yes --module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test \
-  --no-qt-tools
+  --no-qt-tools > "$evidence/pyside-build.log" 2>&1
+python "$repo/.github/scripts/probe_setuptools_build.py" --consumer pyside --consumer-log "$evidence/pyside-build.log" --output-dir "$evidence/build-dependencies"
 cd "$repo"
 # libclang is a generator prerequisite, never an application runtime search path.
 export LD_LIBRARY_PATH="$prefix/qt/lib:$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"

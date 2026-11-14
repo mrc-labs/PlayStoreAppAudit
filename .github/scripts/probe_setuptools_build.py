@@ -15,7 +15,7 @@ import sysconfig
 import tomllib
 import urllib.request
 import zipfile
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -40,13 +40,21 @@ def candidate_metadata(original: str, spec: dict) -> str:
 
 def isolated_imports(trace: str) -> dict[str, str]:
     """Global installs and fallback copies cannot qualify the PEP517 worker."""
+    return backend_imports(trace, 'pip-build-env-')
+
+
+def backend_imports(trace: str, environment: str) -> dict[str, str]:
+    """Read executed backend code paths inside the selected build environment."""
     found = {}
     for line in trace.splitlines():
         normalized = re.sub('/+', '/', line.replace('\\', '/')).lower()
-        if 'code object from' not in normalized or 'pip-build-env-' not in normalized:
+        if 'code object from' not in normalized:
             continue
         if '/setuptools/_vendor/' in normalized:
             raise ValueError('Active setuptools fallback path: ' + line.strip())
+        prefix = environment.replace('\\', '/').lower().rstrip('/')
+        if (prefix if prefix == 'pip-build-env-' else prefix + '/') not in normalized:
+            continue
         for name, fragment in IMPORTS.items():
             if '/_vendor/' + fragment in normalized:
                 raise ValueError('Active setuptools fallback: ' + name)
@@ -55,6 +63,35 @@ def isolated_imports(trace: str) -> dict[str, str]:
     if set(found) != set(IMPORTS):
         raise ValueError('Missing actual isolated backend imports: ' + str(set(IMPORTS) - set(found)))
     return found
+
+
+def record_consumer_build(trace: Path, output: Path, consumer: str) -> None:
+    """Retain the actual non-isolated source worker's imports and pin provenance."""
+    spec_path = REPO / '.github/scripts/setuptools_build_probe_sources.json'
+    spec = json.loads(spec_path.read_text(encoding='utf-8'))
+    imports = backend_imports(trace.read_text(encoding='utf-8', errors='replace'), sys.prefix)
+    selected = {}
+    required = {re.sub(r'[-_.]+', '-', entry.split('==')[0]).lower() for entry in spec['requirements']}
+    for entry in spec['build_constraints']:
+        name, expected = entry.split('==')
+        try:
+            actual = version(name)
+        except PackageNotFoundError:
+            if name in required:
+                raise
+            continue  # Platform-conditional constraints are not installation requirements.
+        if actual != expected:
+            raise ValueError(f'Unexpected consumer build dependency: {name} {actual}, expected {expected}')
+        selected[name] = actual
+    output.mkdir(parents=True, exist_ok=True)
+    for name in ('setuptools_build_probe_sources.json', 'source_build_requirements.txt', 'source_build_constraints.txt'):
+        shutil.copy2(REPO / '.github/scripts' / name, output / name)
+    report = {'source_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
+              'consumer': consumer, 'python': platform.python_version(), 'architecture': platform.machine(),
+              'environment': sys.prefix, 'actually_installed': selected, 'actual_backend_imports': imports,
+              'trace_sha256': hashlib.sha256(trace.read_bytes()).hexdigest(), 'executed_setuptools_fallbacks': [],
+              'scope': 'Actual source-build worker; no producing-profile or package acceptance', 'result': 'PASS'}
+    (output / (consumer + '-build-dependencies.json')).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
 
 
 def selected_versions(trace: str, spec: dict) -> dict[str, str]:
@@ -78,9 +115,18 @@ def selected_versions(trace: str, spec: dict) -> dict[str, str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--work-root', type=Path, required=True)
+    parser.add_argument('--work-root', type=Path)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--consumer-log', type=Path)
+    parser.add_argument('--consumer', choices=('pyside', 'nuitka', 'cffi'))
     args = parser.parse_args()
+    if args.consumer_log:
+        if not args.consumer or args.work_root:
+            parser.error('Consumer evidence requires --consumer and no --work-root')
+        record_consumer_build(args.consumer_log, args.output_dir, args.consumer)
+        return
+    if not args.work_root or args.consumer:
+        parser.error('Isolated qualification requires --work-root')
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     assert head == os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA']
     assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')

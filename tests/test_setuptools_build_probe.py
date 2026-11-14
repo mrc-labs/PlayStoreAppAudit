@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
-from probe_setuptools_build import IMPORTS, candidate_metadata, isolated_imports, selected_versions
+from probe_setuptools_build import (
+    IMPORTS,
+    backend_imports,
+    candidate_metadata,
+    isolated_imports,
+    selected_versions,
+)
 
 
 def trace() -> str:
@@ -49,3 +56,22 @@ def test_live_metadata_adoption_preserves_the_exact_qualified_pep517_input(stage
             candidate_metadata(baseline.replace('84.2.1', '0.0'), spec)
     else:
         assert candidate_metadata(expected if stage == 'adopted' else baseline, spec) == expected
+
+
+@pytest.mark.parametrize('platform_prefix', ['/tmp/controlled/venv', 'C:/controlled/venv'])
+def test_actual_nonisolated_source_worker_requires_every_external_provider(platform_prefix: str) -> None:
+    lines = trace().replace('/tmp/pip-build-env-case/overlay', platform_prefix)
+    assert set(backend_imports(lines, platform_prefix)) == set(IMPORTS)
+    with pytest.raises(ValueError, match='Missing actual'):
+        backend_imports(lines, platform_prefix + '-other')
+    with pytest.raises(ValueError, match='Missing actual'):
+        backend_imports(lines.replace(platform_prefix, platform_prefix + '-other'), platform_prefix)
+    with pytest.raises(ValueError, match='fallback'):
+        backend_imports(lines + '\n# code object from /foreign/setuptools/_vendor/packaging/version.py', platform_prefix)
+
+
+def test_source_builder_constraints_match_the_six_native_qualified_contract() -> None:
+    scripts = Path(__file__).resolve().parents[1] / '.github/scripts'
+    spec = json.loads((scripts / 'setuptools_build_probe_sources.json').read_text())
+    assert (scripts / 'source_build_requirements.txt').read_text().splitlines() == spec['requirements']
+    assert (scripts / 'source_build_constraints.txt').read_text().splitlines() == spec['build_constraints']

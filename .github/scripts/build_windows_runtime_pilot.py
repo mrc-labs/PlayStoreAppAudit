@@ -317,7 +317,7 @@ def main() -> None:
         directory.mkdir(parents=True, exist_ok=True)
     register_private_dll_directories(py, dll_directories, evidence)
     run([py, REPO / '.github/scripts/bootstrap_pip.py'])
-    run([py, '-m', 'pip', 'install', 'setuptools==84.2.1', 'wheel==0.48.0', 'cmake==4.4.4', 'ninja==1.13.2', 'packaging==26.3', '--report', evidence / 'build-tools-install.json'])
+    run([py, '-m', 'pip', 'install', '-r', REPO / '.github/scripts/source_build_requirements.txt', '-c', REPO / '.github/scripts/source_build_constraints.txt', 'cmake==4.4.4', 'ninja==1.13.2', '--report', evidence / 'build-tools-install.json'])
     os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '2'
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(prefix), '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL']
     for directory, label, extra in [('zlib-1.3.2', 'zlib', ['-DZLIB_BUILD_TESTING=ON']), ('libpng-1.6.59', 'libpng', ['-DPNG_TESTS=ON','-DPNG_SHARED=ON','-DPNG_STATIC=OFF']), ('pcre2-10.49', 'pcre2', ['-DBUILD_SHARED_LIBS=ON','-DPCRE2_BUILD_PCRE2_16=ON','-DPCRE2_SUPPORT_JIT=ON','-DPCRE2_BUILD_TESTS=ON'])]:
@@ -354,7 +354,10 @@ def main() -> None:
          prefix / 'qt/bin/Qt6Core.dll'], log=evidence / 'qtcore-loader-preflight.log')
     run(['dumpbin', '/dependents', prefix / 'qt/bin/Qt6Core.dll'], log=evidence / 'qtcore-dependents.log')
     os.environ['LLVM_INSTALL_DIR'] = str(src / 'libclang')
+    os.environ['PYTHONVERBOSE'] = '1'
     run([py, 'setup.py', 'install', '--ignore-git', '--qtpaths=' + str(prefix / 'qt/bin/qtpaths6.exe'), '--parallel=2', '--limited-api=yes', '--module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test', '--no-qt-tools'], cwd=src / 'pyside-setup-everywhere-src-6.12.0', log=evidence / 'pyside-build.log')
+    os.environ.pop('PYTHONVERBOSE')
+    run([py, REPO / '.github/scripts/probe_setuptools_build.py', '--consumer', 'pyside', '--consumer-log', evidence / 'pyside-build.log', '--output-dir', evidence / 'build-dependencies'])
     requirements = evidence / 'runtime-requirements.txt'
     requirements.write_text('\n'.join(x for x in (REPO / 'requirements.txt').read_text().splitlines() if not x.startswith('PySide6-Essentials==')) + '\n')
     run([py, '-m', 'pip', 'install', '-r', requirements, 'pytest==9.2.0', '--report', evidence / 'runtime-install.json'])

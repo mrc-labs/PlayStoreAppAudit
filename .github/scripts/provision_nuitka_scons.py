@@ -91,11 +91,15 @@ def main() -> None:
     log = evidence / 'compiler-wheel-build.log'
     result = subprocess.run([sys.executable, '-m', 'pip', 'wheel', '--no-deps', '--no-build-isolation',
                              '--no-cache-dir', '--wheel-dir', str(wheels), str(nuitka)],
-                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                            env={**os.environ, 'PYTHONVERBOSE': '1', 'PYTHONUTF8': '1'},
+                            text=True, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     log.write_text(result.stdout, encoding='utf-8')
     if result.returncode:
         print(result.stdout[-16000:], flush=True)
     result.check_returncode()
+    subprocess.run([sys.executable, str(REPO / '.github/scripts/probe_setuptools_build.py'),
+                    '--consumer', 'nuitka', '--consumer-log', str(log),
+                    '--output-dir', str(evidence / 'build-dependencies')], check=True)
     wheel = next(wheels.glob('nuitka-4.3.5+psaa.scons4111-*.whl'))
     with zipfile.ZipFile(wheel) as archive:
         assert json.loads(archive.read('nuitka/PROJECT_MODIFIED_TOOLCHAIN.json')) == marker
