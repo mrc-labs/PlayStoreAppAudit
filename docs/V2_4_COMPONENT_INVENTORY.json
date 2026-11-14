@@ -1,4 +1,66 @@
 {
+  "qt_cbor_sdk_consumer_2026_11_14": {
+    "run": 43585928248,
+    "artifact": 14109733250,
+    "zip_bytes": 138432241,
+    "zip_sha256": "62c0f331c24bfb1646d649d0e46dd5f761cbaef0819e6174efdaf1efc8ea7ee4",
+    "source_sha": "4eeee2d8366960e758e407391cce015e30f54525",
+    "compiled_source_sha": "b4fdfddb4924dd8b0b6e85bb5b1d79973017a8fd",
+    "reused_artifact": 14104662162,
+    "reused_zip_sha256": "f8b767f8ceeaa304ec97b02bb0062d45fbf9c0259bafa9ed951122002f6a6f6c",
+    "sdk_records_verified": 2532,
+    "consumer_sha256": "46324cfea56b101b6eef9637e9979c7f95e962d96f409019c21a40d1ffa0c154",
+    "consumer_source_sha256": "91647563eb15f403b5b697ed7f02fd2932597c6bca5ea869dbdd023328df0512",
+    "machine": 62,
+    "version_needs": [
+      "CXXABI_1.3",
+      "GCC_3.0",
+      "GLIBC_2.2.5",
+      "GLIBC_2.34",
+      "GLIBC_2.4",
+      "Qt_6",
+      "Qt_6.12"
+    ],
+    "needed": [
+      "libQt6Core.so.6",
+      "libstdc++.so.6",
+      "libgcc_s.so.1",
+      "libc.so.6"
+    ],
+    "unchanged_loaded_images": {
+      "lib/libcrypto.so.4": "54a22b9cda5d60dd14b1ecf30f77339d5b1d153f0b9eb1b5f3723f912ba11394",
+      "lib/libz.so.1.4": "d09bd9aaf747f16be547cecd00441d63de688a4da7b80c646c921b3e85e3ab09",
+      "qt/lib/libQt6Core.so.6.12.0": "2934d792f14875ada02afba49d44dc126c3410552cf0e0cd4ba0a1faf879ba59"
+    },
+    "negative": [
+      {
+        "error": 257,
+        "input": "1b00",
+        "offset": 0
+      },
+      {
+        "error": 257,
+        "input": "bf6161",
+        "offset": 3
+      },
+      {
+        "error": 258,
+        "input": "ff",
+        "offset": 0
+      },
+      {
+        "error": 257,
+        "input": "8201",
+        "offset": 2
+      }
+    ],
+    "scope": "New CBOR public QtCore consumer only; prior exact SDK/source/legal/ABI evidence reused, no new TLS/GUI/package claim",
+    "result": "PASS independent ZIP/new ELF/input identity/actual parser execution",
+    "validation_policy": "Changed consumer/download path and dependants only; unchanged prior compiled SDK/source/legal/ABI/HTTP and Python suites reused with original identities",
+    "native_result": "PASS; no Qt/Python/PySide rebuild or final package acceptance",
+    "remaining": "Changed QtGui/HarfBuzz/MD4C/PySide adoption and other-target/finite ledger gates remain required",
+    "observations_1094_unchanged": true
+  },
   "qt_md4c_flag_adaptation_2026_11_14": {
     "scope": "Local Windows x64 feasibility of exact guarded Qt flag expressions plus official MD4C0.6 source; not rebuilt QtGui/PySide, Linux acceptance or Windows provider adoption",
     "compiler": "Existing MSVC14.44 toolset from C:/VSBT2022; not selected current14.52 release-toolchain qualification",
@@ -957,11 +1019,11 @@
     },
     "cheap_validation": "86 targeted PASS; original source/patch/post replay and unchanged Qt glue/13 upstream selected-file hashes verified locally; actual Qt CBOR memory/QIODevice/negative fixture API passes on old local6.12 only, not source7.1 native acceptance",
     "required_native": [
-      "Rebuild all modified Python/OpenSSL4/Qt/PySide/Shiboken profile inputs together, retain new source/patch/legal bytes",
-      "Actual private HB15.1 runtime query and loaded HB/MD4C prefix paths; Qt system-provider cache must be ON",
-      "Qt real named DejaVu font/Latin+Arabic glyph shaping and Markdown heading/strong/link/UTF8; dummy font/glyph success is rejected",
-      "CBOR memory and QIODevice roundtrips, explicit parser error/offset for partial/truncated/unexpected-break cases; plugin/GUI paths",
-      "Repeat full prior SSL/hash/SPKI/tarfile/default-trust/TLS negatives/native ABI/source/GUI/CLI and changed R10 source-worker traces"
+      "Only affected QtGui/text/binding/GUI/ABI integration; retain immutable QtCore/CBOR and source69c3d04 Python/provider/cffi evidence where source/build inputs are unchanged",
+      "Actual private HB15.1 runtime query and loaded HB/MD4C paths; Qt system-provider cache ON",
+      "Real named DejaVu Latin/Arabic shaping plus Markdown/front-matter/reference/GFM regressions through modified QtGui/PySide",
+      "CBOR memory/QIODevice/parser negatives now PASS43585928248 against byte-identical compiled SDK; repeat only if Core/TinyCBOR source/configuration changes",
+      "Execute changed binding-worker traces, GUI/CLI/PNG and loaded native ABI/origins; rerun SSL/hash/SPKI/tarfile/TLS suites only if their actual inputs or integration change"
     ],
     "provenance": "Meson1.12.1 source entrypoint executes outside runtime dependency installation; all243 Python module bytes equal the qualified official wheel. GNU11 link SDK remains link-only. Host OS GLib/DejaVu font are explicit native test prerequisites, not bundled app libraries.",
     "impact": "Linux x64 delta manifest/build/verifier inputs change and require full repeat. Prior Linux profile1980bcf remains historical; source hashes/patches for CPython and prior five providers unchanged. Other five target profiles/manifests unchanged; shared TLS/hash/PNG/security helpers preserve their behavior. No producer/packaging adoption."
@@ -4013,7 +4075,7 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence; the one-file reviewed flag adaptation passes local and native GNU43559336625 actual-parser prerequisites above. Affected native Qt/PySide/CBOR/text/GUI/ABI qualification remains required, without repeating unchanged Python/cffi suites. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
+        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence; the one-file reviewed flag adaptation passes local and native GNU43559336625 actual-parser prerequisites above. Retained-SDK QtCore/TinyCBOR7.1 consumer43585928248 now PASSes memory/QIODevice/four parser-negative cases with independently verified new ELF and byte-identical old SDK/source/legal provenance. Affected QtGui/PySide/text/GUI/ABI integration remains required, without repeating unchanged QtCore/Python/cffi suites. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
         "verification_evidence": "Coherent native Qt/binding/GUI/text/CBOR/provider/ABI/source/legal evidence; exact source/patch guards."
       },
       {
