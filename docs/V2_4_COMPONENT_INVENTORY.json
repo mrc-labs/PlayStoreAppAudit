@@ -1,7 +1,7 @@
 {
   "source_build_consumers_2026_11_14": {
     "date": "2026-11-14",
-    "state": "Prepared; affected compiler/cffi native repetitions pending; six binding profiles remain required",
+    "state": "PASS actual six-native Nuitka and current Windows ARM64 cffi source consumers; six changed binding profiles/Linux full consumer still REQUIRED",
     "requirements": ".github/scripts/source_build_requirements.txt",
     "constraints": ".github/scripts/source_build_constraints.txt",
     "contract_origin": "Six-native43393692050 at6068c475b7681946219569a01d94e4db13d5af30; original21 source selections unchanged",
@@ -30,6 +30,163 @@
         "artifact_sha256": "2c41eb6e57df342da53e16ef1a3de395b422a498c4f0fff7675e009dcdc1948a",
         "scope": "Isolated libffi consumer only; full-stack14.44 and vendor patches unchanged"
       }
+    },
+    "qualified_compiler_consumer": {
+      "run": 43537354719,
+      "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+      "result": "SUCCESS six native GIL3.14.10 hosts",
+      "quality": {
+        "run": 43537361221,
+        "tests": 2045,
+        "result": "SUCCESS exact source checkout"
+      },
+      "external_backend_imports": [
+        "setuptools",
+        "packaging",
+        "more_itertools",
+        "jaraco.text",
+        "jaraco.functools",
+        "jaraco.context"
+      ],
+      "resolved_build_distributions": "20 POSIX /21 Windows; colorama conditional; no Pydantic-core native extension import occurs in these actual wheel-build traces",
+      "constraints_canonical_lf_sha256": "3dd06d02e1c1c36204048c429350b76b8673fe8bac964041f536ec1a8f27a14a",
+      "worker_verification": "All six ZIP size/digests/source identities, original Nuitka/SCons/patches/wheel/PEP639 license bytes, selected native modules and cold/warm execution, actual backend trace/environment/installed constraints independently verified. Pip frontend vendor imports are separate from setuptools fallback.",
+      "artifacts": [
+        {
+          "target": "macos-x64",
+          "artifact": 14090731689,
+          "bytes": 13165469,
+          "sha256": "sha256:8a0312665cb4b7b0cff053b47f63b89e917073aa503496b7d7bec543905d2c64",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "12009e2832f6c996db0046ff499fd44776f0d7bb55efab2e48aa65f9fef4fdc1",
+          "actual_machine": 16777223,
+          "wheel_sha256": "c775abc7e3b1cffa1075aa6191d0b3eda94300c0f39955f6c7147f48c999b961",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        },
+        {
+          "target": "linux-x64",
+          "artifact": 14090721385,
+          "bytes": 13021068,
+          "sha256": "sha256:5624409ae3d33d769d9565e8758189678f259f3af4c54f57385d1ccaa450b179",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "27538fb415d1275e8e15b6e9c8a9b5d615da3b6c601e3be5eb9b6f1b3666e833",
+          "actual_machine": 62,
+          "wheel_sha256": "76d25b7fdcef9d6dda634ce615ebf82c83f2524da690ff88e6a8cfbcdb7ada9d",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        },
+        {
+          "target": "windows-arm64",
+          "artifact": 14090241734,
+          "bytes": 15316956,
+          "sha256": "sha256:5eebb5f424b69d70e94fc1ed18190a8af6d57500df067231a3174c45add13945",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "c33cc2fc3977dada851c377c426782c5b471e5e179c4be241c7b090d95d04fc3",
+          "actual_machine": 43620,
+          "wheel_sha256": "5ebca62233948b862d8adc556ff4cf2ae8e89a8cf53e8a3b89f5dcd5a4571a93",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        },
+        {
+          "target": "linux-arm64",
+          "artifact": 14090107447,
+          "bytes": 13017715,
+          "sha256": "sha256:d488802f30f308aa9eccc8bceea50da260aa5caec7bda0daf6f79636af9ebb34",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "9cae4a7d0a3cc6148d71d506bb3789d8bc6fedb6e9aa310486244c813cc865df",
+          "actual_machine": 183,
+          "wheel_sha256": "ccc8e9dc20c50b7689cab11b649a7dede38ac8c2d878709cf0b77eaec28076e7",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        },
+        {
+          "target": "macos-arm64",
+          "artifact": 14089977084,
+          "bytes": 13160456,
+          "sha256": "sha256:3d864edc79eb3b3bbe3537b7e6de36e41645e5af12fdb65a9c7173e7b8e6c3ab",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "942a2a091ccf4948a7bc49b4167d5958daaf4345803392cf8f8ae839718ce67c",
+          "actual_machine": 16777228,
+          "wheel_sha256": "7ae4024a62b8fb8de10adb1a0eae13d75f5538b56168840f00f5a89ce3b8959a",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        },
+        {
+          "target": "windows-x64",
+          "artifact": 14089922977,
+          "bytes": 15302621,
+          "sha256": "sha256:519eed41b125e01fdfa1bd815b53e724be05f3d174e153a844b05b258252680b",
+          "source_sha": "d79c0cf50230a33849f9ce229fb4bc6c11bf9c24",
+          "native_module_sha256": "cb16398b6d52d0809fc5dc566492f9f34b9fe52c69347f7aaa786d8f57779a53",
+          "actual_machine": 34404,
+          "wheel_sha256": "218a06b0b863c7d213c1d1c0d75ceb15b1035f7029371a255c6109d1d7fff27a",
+          "pip_frontend_separately_observed": true,
+          "result": "Independent original-source/patch/wheel/licenses/native-binary/warm-execution and actual external backend verification PASS"
+        }
+      ],
+      "actual_windows_compiler": "Both compiler-module hosts actually use14.51.36231/SDK10.0.26100.0. This qualifies R10 imports, not current14.52 or R13 final compiler adoption."
+    },
+    "cffi_repeat_gate": {
+      "runs": [
+        43536998371,
+        43537357738,
+        43538151289
+      ],
+      "result": "Historical precondition failures; corrected all-toolset inventory at11cedce now passes exact GA14.52 native source consumer43538466498",
+      "measured": "First image has stableVS18.12/native14.52 and no14.51. Subsequent jobs expose stableVS18.11; initial parent-version filter hid toolsets.11cedce removes IDE-version inference, inventories all toolsets, keeps exact14.52.37025/Release/native guards and reports rejection explicitly.",
+      "next": "Resolved within this bounded source consumer; no older toolset adopted."
+    },
+    "qualified_cffi_consumer": {
+      "run": 43538466498,
+      "source_sha": "11cedced38c89fe350a0918f138664b94b4a4c34",
+      "artifact": 14090737696,
+      "bytes": 8836195,
+      "sha256": "e210e199c4a6f0b2f2412d5b8e4d3477423103fd8500c1fddac410b3f53e9dec",
+      "toolset": "14.52.37025",
+      "sdk": "10.0.26100.0",
+      "architecture": "Native ARM64 host/assembler/library/backend/fixtures",
+      "crt": "Dynamic release /MD; libffi static",
+      "native_tests": {
+        "passed": 461,
+        "skipped": 38,
+        "total": 499,
+        "variadic_result": 27.5,
+        "callbacks_and_structures": "Executed upstream and direct native consumers"
+      },
+      "backend_sha256": "80dea929ebe55023448a21be7636c3298600a777aae7048376a36eb6ead7fd09",
+      "wheel_sha256": "e844b5aa1c9c0654521f5aa0baa45c73eaabbb9bacb4767d3252e4c2715744b3",
+      "libffi_static_sha256": "95d41ce461d52b88c9a8a6811aac198eab83b8e3e8b9469b52fbf473d2f6bf29",
+      "build_distributions": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "pycparser": "3.12",
+        "pytest": "9.2.0",
+        "packaging": "26.3",
+        "more-itertools": "11.2.1",
+        "jaraco.text": "4.3.0",
+        "jaraco.functools": "4.6.0",
+        "pluggy": "1.7.0",
+        "colorama": "0.4.6",
+        "iniconfig": "2.3.1",
+        "jaraco.context": "6.1.2",
+        "Pygments": "2.21.0",
+        "typer-slim": "0.24.0",
+        "typer": "0.29.1",
+        "annotated-doc": "0.0.6",
+        "pydantic": "2.14.3",
+        "pydantic_core": "2.50.4",
+        "annotated-types": "0.8.0",
+        "rich": "15.0.0",
+        "markdown-it-py": "4.3.0",
+        "mdurl": "0.1.2",
+        "shellingham": "1.5.4",
+        "typing_extensions": "4.16.0",
+        "typing-inspection": "0.4.5"
+      },
+      "worker_verification": "Whole ZIP/source hashes and all unchanged patch replays/headers/legal bytes, cffi wheel/backend/fixture PE and static COFF/CRT,499-case XML and actual external worker traces,25 original downloaded dependency wheels/installer hashes verified",
+      "new_vendor_patches": false,
+      "limits": "No controlled CPython/crypto/producer/final-package acceptance; no Pydantic native execution claim"
     }
   },
   "windows_schannel_guard_2026_11_13": {
@@ -2755,7 +2912,7 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 -> 15.0, MD4C0.5.3 -> 0.6.0, TinyCBOR7.0 -> 7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Exact6.12 source confirms INPUT_harfbuzz=system and INPUT_libmd4c=system / WrapSystemHarfbuzz / WrapSystemMd4c; qualify current private source providers through those existing switches first. Other copied internals require minimal reviewed source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected.",
+        "applicability_minimum_action": "HarfBuzz14.5 -> 15.0, MD4C0.5.3 -> 0.6.0, TinyCBOR7.0 -> 7.1; assess Pixman copied0.17.12 against maintained0.46.4 by actual source subset/API rather than attribution count. Exact6.12 source confirms INPUT_harfbuzz=system and INPUT_libmd4c=system / WrapSystemHarfbuzz / WrapSystemMd4c; qualify current private source providers through those existing switches first. Other copied internals require minimal reviewed source integration/parent. Mac accepted cache proves bundled HarfBuzz, CBOR and MD4C are selected. November14 source recheck: stable HarfBuzz15.1.0 (published November4) official archive SHA2560fc7c565443a5f4be7da65ac5ee5bd737d9b158dc908708b7689a0a5796b0c8d is downloaded/verified. Its own BUILD.md/CMakeLists require preferring primary Meson; CMake is community-maintained/not actively supported upstream. Current Meson1.12.1 requiresPython>=3.10, original wheel930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02/sourceab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743. PySide stable remains6.12.0; MD4C tagv0.6.0/TinyCBORv7.1 unchanged. Qt original configure exposes INPUT_harfbuzz=system and INPUT_libmd4c=system. This is source-route evidence only; no HarfBuzz/Meson/MD4C adoption or Qt binding acceptance claim.",
         "verification_evidence": "Matched binding build, text/font/markdown/CBOR/rendering regressions, GUI/PNG/TLS and native ABI/legal on changed targets. No arbitrary framework/dylib substitution."
       },
       {
@@ -2766,8 +2923,8 @@
       },
       {
         "id": "R10",
-        "status": "REQUIRED setuptools/build isolation",
-        "applicability_minimum_action": "Project PEP517 route now passes six-native43393692050: actual isolated workers import current external providers, original21 source hashes and wheel/project/runtime/license bytes are independently verified. PR source build requirements match all six effective candidates byte-for-byte. Python3.14 markers exclude importlib_metadata/tomli; no executed setuptools fallback is observed. REQUIRED remaining consumers: six controlled PySide source builds, Nuitka source-wheel environment and ARM64 cffi consumer environment. Apply the same supported external providers there and repeat affected binding/compiler/cffi checks; no producer-profile adoption or project-wheel proof substituted for those builds. November14: six diagnostic PySide environments, Nuitka source-wheel and ARM64/Linux cffi environments are aligned to the six qualified requirements/21 constraints; actual worker import-trace/version/provenance gates added. Compiler six-native and ARM64 cffi repetitions are pending; PySide checks remain required in the next corrected source-stack profiles.",
+        "status": "REQUIRED remaining binding/Linux full-profile acceptance; project PEP517, six-native compiler and current ARM64 cffi source consumers PASS",
+        "applicability_minimum_action": "Project PEP51743393692050, actual six-native Nuitka source workers/native cold-warm modules43537354719 and current Windows ARM64 cffi/static libffi43538466498 PASS with external core providers and independently verified source/patch/legal/wheel/native bytes. Six diagnostic PySide environments and Windows ARM64/Linux cffi builders now select the same six requirements/21 constraints. Still REQUIRED: actual six changed PySide binding profiles and Linux cffi/full source consumer repetition, to be combined with remaining supported provider deltas. ARM64 actually uses GA14.52.37025/native ARM64/MD and461 upstream PASS/38skip, no new vendor patch. Previous14.51 source artifacts keep their actual identities. No producing adoption.",
         "verification_evidence": "Clean isolated wheel/source builds, actual resolved external imports and build reports on affected platforms; reproducible constraints/provenance."
       },
       {
@@ -2785,7 +2942,7 @@
       {
         "id": "R13",
         "status": "REQUIRED selected tool/runner freshness",
-        "applicability_minimum_action": "Qualify remaining actual compiler/SDK/utility gaps: VS18.11.1, LLVM23.1.4 where a supported generator/assembler exists, curl8.23.0, libarchive3.8.10 and gh2.103.2. Match each to invoked executable; an image inventory entry alone is neither selection nor exemption. Current CMake4.4.4/Ninja1.13.2, Perl5.44, NASM3.02 where applicable and7-Zip26.05 are already selected in bounded profiles. The newly measured Intel Rust1.99.1 compiler embeds LLVM23.1.1 (rust-toolchain.txt), distinct from the Qt parser and the inventory23.1.4 stable candidate: qualify a supported newer Rust parent/backend source integration, not an arbitrary libLLVM replacement or a current-parent exemption. LLVM parser22.1.8 is a supported Qt integration, so newer parser compatibility needs an actual wrapper/build probe.",
+        "applicability_minimum_action": "Qualify remaining actual compiler/SDK/utility gaps: VS18.12.0/current MSVC14.52, LLVM23.1.4 where a supported generator/assembler exists, curl8.23.0, libarchive3.8.10 and gh2.103.2. Match each to invoked executable; an image inventory entry alone is neither selection nor exemption. Current CMake4.4.4/Ninja1.13.2, Perl5.44, NASM3.02 where applicable and7-Zip26.05 are already selected in bounded profiles. The newly measured Intel Rust1.99.1 compiler embeds LLVM23.1.1 (rust-toolchain.txt), distinct from the Qt parser and the inventory23.1.4 stable candidate: qualify a supported newer Rust parent/backend source integration, not an arbitrary libLLVM replacement or a current-parent exemption. LLVM parser22.1.8 is a supported Qt integration, so newer parser compatibility needs an actual wrapper/build probe. November14: Microsoft stable18.12 release qualifies MSVC14.52.37025/19.52.37025. Hosted pool exposes both18.11 and18.12; current six-host compiler module evidence actually uses14.51 on Windows, not14.52. ARM64 isolated cffi43538466498 now proves exact native14.52.37025/SDK26100/MD and ABI regressions; affected controlled runtime/crypto/compiler/package integrations remain required. No preview or whole-toolchain completion claim.",
         "verification_evidence": "Cheap native host/target/SDK/parser probes before affected rebuilds; preserve /MD and Linux ceilings2.35/3.4.29 x64 and2.38/3.4.32 ARM. Current Xcode26.6 supported; Xcode27 preview excluded. No Ubuntu26 migration or local software/Docker changes."
       },
       {
