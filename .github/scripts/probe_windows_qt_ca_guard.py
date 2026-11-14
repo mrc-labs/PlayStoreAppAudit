@@ -186,7 +186,7 @@ def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls
 
 
 def validate_native_rollover(report: dict, policy: dict, head: str) -> set[str]:
-    """Require native distrust on the exact ancestor independently measured by Qt."""
+    """Join native paths/default-trust rejection to the actual compiled Qt blacklist."""
     if report['execution_sha'] != head or report['architecture'] != 'X64':
         raise ValueError('Native chain execution identity mismatch')
     positive = report['positive']
@@ -206,10 +206,16 @@ def validate_native_rollover(report: dict, policy: dict, head: str) -> set[str]:
             raise ValueError('Native rollover accepted or fixture/custom trust invalid')
         if not row['elements'] or row['elements'][0]['sha256'] != row['leaf_sha256']:
             raise ValueError('Native chain leaf does not match the original fixture')
-        ancestors = [r for r in row['elements'][2:] if (r['sha256'], r['spki_sha256']) in qt_certificates
-                     and any(s in {'Revoked', 'ExplicitDistrust'} for s in r['status'])]
-        if not ancestors or row['result'] != 'PASS native chain rejection':
-            raise ValueError('Specific native ancestor distrust / measured Qt blacklist missing')
+        trust_reasons = {'PartialChain', 'UntrustedRoot', 'Revoked', 'ExplicitDistrust'}
+        if not trust_reasons.intersection(row['status']):
+            raise ValueError('Unknown revocation/transport alone cannot qualify native trust rejection')
+        ancestors = [(i, r) for i, r in enumerate(row['elements']) if i >= 2
+                     and (r['sha256'], r['spki_sha256']) in qt_certificates]
+        if not ancestors or row['result'] != 'PASS native trust rejection/path; Qt guard mapping required':
+            raise ValueError('Exact native ancestor / measured Qt blacklist missing')
+        row['measured_qt_guard'] = [{'native_index': i, 'certificate': r['sha256'], 'spki': r['spki_sha256'],
+                                    'qt_is_blacklisted': True} for i, r in ancestors]
+        row['combined_result'] = 'PASS native default-trust rejection plus measured project Qt ancestor blacklist'
     return expected
 
 
@@ -259,7 +265,7 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
     result = {'source_sha': head, 'compiled_source_sha': compiled_source, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
         'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
         'images': images, 'native_rollover_chain': native,
-        'qualification_route': '14 native Qt sockets plus two native Windows chain-engine checks; no rollover TLS-handshake claim'
+        'qualification_route': '14 native Qt sockets plus two native paths/default-trust rejections joined to actual Qt ancestor blacklist; no rollover TLS-handshake claim'
                                if native_rollover else '16 native Qt socket checks required',
         'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
         'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}

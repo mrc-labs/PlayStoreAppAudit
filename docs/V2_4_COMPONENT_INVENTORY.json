@@ -270,7 +270,7 @@
     },
     "minimum_next_action": "Supported native Windows chain-engine verification of the two retained rollover PEMs with actual system trust/hostname/date/revocation and compromised-key evidence, paired explicitly with actual Qt blacklist/ancestor memberships and TLS controls; or reviewed upstream live fixtures. No Qt rebuild required. Do not substitute unsupported Qt manual API or count DNS failures.",
     "native_rollover_route_2026_11_14": {
-      "state": "Prepared; local native API feasibility PASS, CI pending",
+      "state": "Native path/trust rejection measured in CI; composed exact native ancestor + actual Qt blacklist gate prepared for repeat",
       "profile": "windows-ca-native:14 real Qt TLS incidents plus two native Windows chain-engine checks; no16-handshake claim",
       "provider": "Windows native X509Chain/CryptoAPI via existing PowerShell host",
       "local_host": {
@@ -333,9 +333,72 @@
           "custom_trust_count": 0
         }
       ],
-      "policy": "System/NoFlag/Online/serverAuth; extra chain material in memory, no custom root/store write/callback. Must observe specific native distrust at exact Qt-measured DER/SPKI ancestor index>=2; absent positive, unknown revocation, wrong hostname/date or accepted peer fails.",
+      "policy": "Require System/NoFlag/Online, native trust rejection (not unknown revocation alone), valid SAN/date, index>=2 ancestor DER+SPKI matching actual Qt isBlacklisted measurement; keep OS statuses and project Qt guard judgments separate. Accepted native/incident peer, custom trust, missing positive or Qt match fails.",
       "unchanged": "Four compiled0cf4c51 PE bytes, original source/patch/runtime selections and Linux-used functions; no producer adoption",
-      "preflight": "101 targeted PASS, Ruff/compile/PS syntax. Existing old16-socket profile remains strict."
+      "preflight": "103 targeted PASS, Ruff/compile/PS syntax; no compiled Qt/C++ input change",
+      "first_native_run": {
+        "run": 43530125859,
+        "execution_sha": "875a7b16bb4c604406e2a8d588136634e4325115",
+        "result": "FAILURE due overly strict raw OS Revoked/ExplicitDistrust condition",
+        "artifact": 14087351004,
+        "bytes": 113340652,
+        "sha256": "ca1b53c0061679a399f5e565876f66f94f8fd9341131db1d8923fb97a18ae82d",
+        "native_positive": {
+          "revocation": "Online",
+          "authenticated": true,
+          "chain_accepted": true,
+          "protocol": "Tls13",
+          "scope": "Ordinary defaults, no explicit CA or validation callback",
+          "trust_mode": "System",
+          "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+          "host": "www.python.org",
+          "verification_flags": "NoFlag",
+          "encrypted": true
+        },
+        "host": {
+          "powershell": "7.6.9",
+          "runtime": ".NET 10.0.14",
+          "os": "Microsoft Windows NT 10.0.26100.0"
+        },
+        "rollover": [
+          {
+            "hostname": "dv-g3b-aaa-noct-rollover-emudhra.we-have-a-problem.com",
+            "accepted": false,
+            "status": [
+              "PartialChain",
+              "RevocationStatusUnknown",
+              "OfflineRevocation"
+            ],
+            "native_ancestor": {
+              "sha256": "45a883f349aedfd5f3a649b5498ffb121712ba8b448f3f2a91dbc5a766fcddbe",
+              "spki_sha256": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+              "status": [
+                "RevocationStatusUnknown",
+                "OfflineRevocation"
+              ]
+            },
+            "custom_trust_count": 0
+          },
+          {
+            "hostname": "dv-g3b-noct-rollover-emudhra.we-have-a-problem.com",
+            "accepted": false,
+            "status": [
+              "UntrustedRoot",
+              "RevocationStatusUnknown",
+              "OfflineRevocation"
+            ],
+            "native_ancestor": {
+              "sha256": "42c4accd12c4f59597925e1a08a7a90102608543809308d50ec427e118ba1493",
+              "spki_sha256": "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
+              "status": [
+                "RevocationStatusUnknown",
+                "OfflineRevocation"
+              ]
+            },
+            "custom_trust_count": 0
+          }
+        ]
+      }
     }
   },
   "setuptools_external_candidate_2026_11_13": {

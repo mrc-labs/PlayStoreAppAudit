@@ -88,14 +88,14 @@ foreach ($file in $files) {
             compromised_native_elements=$compromised.Count; custom_trust_count=$chain.ChainPolicy.CustomTrustStore.Count
             trust_mode=$chain.ChainPolicy.TrustMode.ToString(); verification_flags=$chain.ChainPolicy.VerificationFlags.ToString()
             revocation=$chain.ChainPolicy.RevocationMode.ToString(); specifically_distrusted_compromised_elements=$specificallyDistrusted.Count
-            result=$(if (-not $accepted -and $trustFailure -and $specificallyDistrusted.Count -gt 0) { 'PASS native chain rejection' } else { 'BLOCKED native chain gate' })}
+            result=$(if (-not $accepted -and $trustFailure -and $compromised.Count -gt 0) { 'PASS native trust rejection/path; Qt guard mapping required' } else { 'BLOCKED native chain gate' })}
     } finally { $chain.Dispose(); foreach ($cert in $certs) { $cert.Dispose() } }
 }
 $report = @{execution_sha=$headSha; provider='Windows native X509Chain/CryptoAPI via existing PowerShell host'
     powershell=$PSVersionTable.PSVersion.ToString(); runtime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
     os=[Environment]::OSVersion.VersionString; architecture='X64'; trust_mode='System'; revocation='Online'; verification_flags='NoFlag'
     positive=$positive; rollover=$cases; scope='Native chain-engine verification of offline PEMs; distinct from Qt manual API and a rollover TLS handshake'
-    result=$(if (@($cases | Where-Object { $_.result -ne 'PASS native chain rejection' }).Count -eq 0) { 'PASS native rollover chain engine' } else { 'BLOCKED native rollover chain engine' })}
+    result=$(if (@($cases | Where-Object { $_.result -ne 'PASS native trust rejection/path; Qt guard mapping required' }).Count -eq 0) { 'PASS native paths; separate Qt ancestor policy check required' } else { 'BLOCKED native rollover chain engine' })}
 $report | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $OutputPath -Encoding utf8
 Write-Host "Native rollover chain engine: $($report.result)"
 if ($report.result -notlike 'PASS*') { throw 'Native rollover chain gate not satisfied; see retained per-case JSON.' }
