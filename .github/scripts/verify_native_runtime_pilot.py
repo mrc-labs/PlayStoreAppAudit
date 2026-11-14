@@ -534,6 +534,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--diagnose-system-trust', action='store_true')
+    parser.add_argument('--reuse-python-suites', action='store_true')
     arguments = parser.parse_args()
     output = arguments.output_dir
     if arguments.diagnose_system_trust:
@@ -605,7 +606,8 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
-    security = executed_cpython_security(output / 'cpython-regressions.xml', output / 'tarfile-security-regression.log')
+    security_xml = 'cpython-security-regressions.xml' if arguments.reuse_python_suites else 'cpython-regressions.xml'
+    security = executed_cpython_security(output / security_xml, output / 'tarfile-security-regression.log')
     images = native_images(prefix)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': 'native source-stack pilot; not final package acceptance',
               'identity': 'project-modified CPython 3.14.10 / source-built matched Qt-PySide-Shiboken 6.12.0',
@@ -620,6 +622,11 @@ def main() -> None:
               'limits': ['One source environment only; no application binary/candidate built.',
                          'Remaining five targets, package closure and other inventory migrations remain open.',
                          'Malformed PNG corpus is regression coverage, not a demonstrated CVE exploit.']}
+    if arguments.reuse_python_suites:
+        from reuse_linux_python_evidence import evidence
+
+        report['scope'] = 'Changed Qt/PySide integration; original Python upstream suites reused, targeted security rerun'
+        report['python_upstream_reused'] = evidence(output)
     (output / 'pilot-results.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 

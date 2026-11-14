@@ -4,6 +4,11 @@ set -euo pipefail
 repo=$(pwd)
 work=${1:?Pass a new isolated work directory}
 evidence="$repo/pilot-evidence"
+reuse_flags=()
+if [ "${PILOT_QT_INTEGRATION_ONLY:-0}" = 1 ]; then
+  python -c 'import sys; from pathlib import Path; sys.path.insert(0,".github/scripts"); from reuse_linux_python_evidence import evidence; print(evidence(Path("pilot-evidence")))'
+  reuse_flags=(--reuse-python-suites)
+fi
 test "$(uname -m)" = x86_64
 test "$(. /etc/os-release; echo "$VERSION_ID")" = 22.04
 test ! -e "$work"
@@ -166,7 +171,7 @@ cd "$work/src/openssl-4.0.3"
 # install_sw installs software only; it does not run install_ssldirs or edit OS trust.
 ./Configure linux-x86_64 shared --prefix="$ssl_prefix" --libdir=lib --openssldir="$openssl_dir"
 make -j2
-make test TESTS='test_evp test_x509 test_verify test_ssl_new'
+if [ ${#reuse_flags[@]} = 0 ]; then make test TESTS='test_evp test_x509 test_verify test_ssl_new'; fi
 make install_sw
 cp configdata.pm "$evidence/openssl-configdata.pm"
 
@@ -177,6 +182,12 @@ cd "$work/src/Python-3.14.10"
   --with-pkg-config=yes --with-system-libmpdec=yes
 make -j2
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -c "import _ssl, _hashlib, ssl, sysconfig; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); print('Built _ssl/_hashlib import:', ssl.OPENSSL_VERSION)"
+if [ ${#reuse_flags[@]} != 0 ]; then
+  # The changed framework needs integration, not another unchanged full Python suite.
+  # Still execute the two security regressions on this freshly built interpreter.
+  LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j1 --match '*test_distrusted_spki*' \
+    --junit-xml "$evidence/cpython-security-regressions.xml" test_ssl > "$evidence/cpython-security-regressions.log" 2>&1
+else
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m test -j2 --junit-xml "$evidence/cpython-native-regressions.xml" \
   test_ctypes test_sqlite3 test_decimal test_lzma test_zlib > "$evidence/cpython-native-regressions.log" 2>&1 \
@@ -186,10 +197,11 @@ LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python "$repo/.github/scripts/verify_l
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_upstream_suites; print('Executed upstream cases:', executed_upstream_suites(Path(sys.argv[1])))" \
   "$evidence/cpython-regressions.xml"
+fi
 LD_LIBRARY_PATH="$PWD:$LD_LIBRARY_PATH" ./python -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
 PYTHONPATH="$repo/.github/scripts" python -c \
   "import sys; from pathlib import Path; from verify_native_runtime_pilot import executed_cpython_security; print('Executed upstream security:', executed_cpython_security(Path(sys.argv[1]), Path(sys.argv[2])))" \
-  "$evidence/cpython-regressions.xml" "$evidence/tarfile-security-regression.log"
+  "$evidence/$(if [ ${#reuse_flags[@]} != 0 ]; then echo cpython-security-regressions.xml; else echo cpython-regressions.xml; fi)" "$evidence/tarfile-security-regression.log"
 make install
 cp config.log "$evidence/cpython-config.log"
 cp "$evidence/native_runtime_pilot_sources.json" "$prefix/python/PROJECT_MODIFIED_RUNTIME.json"
@@ -212,20 +224,20 @@ python -m pip install --no-index --no-deps "$evidence"/cffi-wheel/cffi-*.whl
 (cd "$work/src/cffi-2.1.1" && python -m pytest -q src/c/test_c.py testing/cffi0/test_ffi_backend.py testing/cffi1/test_ffi_obj.py \
   --junitxml "$evidence/cffi-tests.xml") > "$evidence/cffi-tests.log" 2>&1 \
   || { tail -n 100 "$evidence/cffi-tests.log"; exit 1; }
-python "$repo/.github/scripts/verify_linux_x64_native_delta.py" --prefix "$prefix" --output-dir "$evidence" --native-only --cffi
+python "$repo/.github/scripts/verify_linux_x64_native_delta.py" --prefix "$prefix" --output-dir "$evidence" --native-only --cffi "${reuse_flags[@]}"
 
 cmake -S "$work/src/libpng-1.6.59" -B "$work/png-build" -GNinja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
   -DPNG_TESTS=ON -DPNG_SHARED=ON -DPNG_STATIC=OFF
 cmake --build "$work/png-build"
-ctest --test-dir "$work/png-build" --output-on-failure > "$evidence/libpng-regressions.log" 2>&1
+if [ ${#reuse_flags[@]} = 0 ]; then ctest --test-dir "$work/png-build" --output-on-failure > "$evidence/libpng-regressions.log" 2>&1; fi
 cmake --install "$work/png-build"
 cmake -S "$work/src/pcre2-10.49" -B "$work/pcre-build" -GNinja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
   -DBUILD_SHARED_LIBS=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_SUPPORT_JIT=ON \
   -DPCRE2_BUILD_TESTS=ON
 cmake --build "$work/pcre-build"
-ctest --test-dir "$work/pcre-build" --output-on-failure > "$evidence/pcre2-regressions.log" 2>&1
+if [ ${#reuse_flags[@]} = 0 ]; then ctest --test-dir "$work/pcre-build" --output-on-failure > "$evidence/pcre2-regressions.log" 2>&1; fi
 cmake --install "$work/pcre-build"
 
 # Use the primary Meson source whose243 Python modules equal the qualified wheel.
@@ -236,18 +248,52 @@ python "$meson_source" setup "$work/harfbuzz-build" "$work/src/harfbuzz-15.1.0" 
   -Dsubset=enabled -Draster=disabled -Dvector=disabled -Dgpu=disabled \
   -Dbenchmark=disabled -Dexperimental_api=false -Db_ndebug=false > "$evidence/harfbuzz-configure.log" 2>&1
 python "$meson_source" compile -C "$work/harfbuzz-build" -j 2 > "$evidence/harfbuzz-build.log" 2>&1
+if [ ${#reuse_flags[@]} = 0 ]; then
 python "$meson_source" test -C "$work/harfbuzz-build" --no-rebuild --print-errorlogs --num-processes 2 > "$evidence/harfbuzz-tests.log" 2>&1
 cp "$work/harfbuzz-build/meson-logs/testlog.json" "$evidence/harfbuzz-testlog.json"
+fi
 python "$meson_source" install -C "$work/harfbuzz-build" --no-rebuild > "$evidence/harfbuzz-install.log" 2>&1
 cmake -S "$work/src/md4c-0.6.0" -B "$work/md4c-build" -GNinja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
   -DBUILD_SHARED_LIBS=ON > "$evidence/md4c-configure.log" 2>&1
 cmake --build "$work/md4c-build" --parallel 2 > "$evidence/md4c-build.log" 2>&1
 cmake --install "$work/md4c-build" > "$evidence/md4c-install.log" 2>&1
+if [ ${#reuse_flags[@]} = 0 ]; then
 for suite in spec regressions; do
   LD_LIBRARY_PATH="$prefix/lib" python "$work/src/md4c-0.6.0/test/run-testsuite.py" \
     --program "$prefix/bin/md2html" --spec "$work/src/md4c-0.6.0/test/$suite.txt" > "$evidence/md4c-$suite.log" 2>&1
 done
+fi
+# Preserve the compiled pre-Qt SDK before the next possible framework gate.
+retain_sdk() {
+  local label=$1
+  PILOT_SDK_LABEL="$label" python - <<'PYSDK'
+import hashlib, json, os, tarfile
+from pathlib import Path
+prefix = Path(os.environ['PILOT_WORK']) / 'prefix'
+output = Path(os.environ['PILOT_EVIDENCE'])
+label = os.environ['PILOT_SDK_LABEL']
+files = {}
+for path in sorted(prefix.rglob('*')):
+    if path.is_symlink():
+        assert path.resolve().is_relative_to(prefix), path
+        files[path.relative_to(prefix).as_posix()] = {'symlink': os.readlink(path)}
+    elif path.is_file():
+        with path.open('rb') as stream:
+            files[path.relative_to(prefix).as_posix()] = {'sha256': hashlib.file_digest(stream, 'sha256').hexdigest()}
+archive = output / (label + '.tar.gz')
+with tarfile.open(archive, 'w:gz', compresslevel=1) as bundle:
+    bundle.add(prefix, arcname='prefix')
+with archive.open('rb') as stream:
+    digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+(output / (label + '-provenance.json')).write_text(json.dumps({
+    'source_sha': os.environ['GITHUB_SHA'], 'original_prefix': str(prefix),
+    'scope': 'Internal intermediate diagnostic SDK; not a candidate or producer input',
+    'archive_sha256': digest, 'files': files}, indent=2) + '\n', encoding='utf-8')
+print('Retained intermediate SDK:', label, archive.stat().st_size, digest, flush=True)
+PYSDK
+}
+if [ ${#reuse_flags[@]} != 0 ]; then retain_sdk pre-qt-sdk; fi
 mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
@@ -276,6 +322,7 @@ cd "$work/qtsvg-build"
 cmake --build . --parallel 2
 cmake --install .
 
+if [ ${#reuse_flags[@]} != 0 ]; then retain_sdk qt-sdk; fi
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 export LD_LIBRARY_PATH="$prefix/qt/lib:$LLVM_INSTALL_DIR/lib:$LD_LIBRARY_PATH"
@@ -298,8 +345,8 @@ export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.10"
 unset SSL_CERT_FILE SSL_CERT_DIR
 export XDG_CONFIG_HOME="$work/profile/config" XDG_DATA_HOME="$work/profile/data" XDG_CACHE_HOME="$work/profile/cache"
 export QT_QPA_PLATFORM=xcb
-xvfb-run -a python .github/scripts/verify_native_runtime_pilot.py --output-dir "$evidence"
-xvfb-run -a python .github/scripts/verify_linux_x64_native_delta.py --prefix "$prefix" --output-dir "$evidence" --cffi
+xvfb-run -a python .github/scripts/verify_native_runtime_pilot.py --output-dir "$evidence" "${reuse_flags[@]}"
+xvfb-run -a python .github/scripts/verify_linux_x64_native_delta.py --prefix "$prefix" --output-dir "$evidence" --cffi "${reuse_flags[@]}"
 python main.py cli audit --help > "$evidence/cli-smoke.txt"
 xvfb-run -a python -m pytest tests/test_cli_headless.py -q > "$evidence/project-cli-regressions.log" 2>&1
 python -m compileall -q playstore_app_audit
@@ -308,6 +355,7 @@ import json, os, platform, subprocess, sys
 from pathlib import Path
 summary = {'source_sha':os.environ['GITHUB_SHA'],'scope':'non-release native runtime/framework pilot',
  'runtime_identity':'project-modified CPython 3.14.10, not unchanged official binary',
+ 'python_upstream_suite_reuse':os.environ.get('PILOT_QT_INTEGRATION_ONLY') == '1',
  'python':sys.version,'architecture':platform.machine(),'prefix':os.environ['PILOT_PREFIX'],
  'gil_disabled':__import__('sysconfig').get_config_var('Py_GIL_DISABLED'),
  'tools':{name:subprocess.run(command,capture_output=True,text=True,check=True).stdout for name,command in {

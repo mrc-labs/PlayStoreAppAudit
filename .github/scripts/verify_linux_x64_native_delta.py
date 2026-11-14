@@ -70,7 +70,7 @@ def elf_record(path: Path, output: Path) -> dict:
     return {'path': str(path), 'sha256': digest, 'machine': 62, 'needed_versions': needed}
 
 
-def native_measurements(prefix: Path, output: Path, *, cffi: bool) -> dict:
+def native_measurements(prefix: Path, output: Path, *, cffi: bool, reuse_python_suites: bool = False) -> dict:
     import _ctypes
     import _decimal
     import _lzma
@@ -99,7 +99,12 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool) -> dict:
               'sqlite_compile_options': sqlite_options,
               'versions': versions, 'providers': {name: elf_record(path, output) for name, path in providers.items()},
               'modules': {module.__name__: elf_record(Path(module.__file__).resolve(), output) for module in modules},
-              'executed_upstream': executed_native_suites(output / 'cpython-native-regressions.xml')}
+              'executed_upstream': executed_native_suites(output / ('reused-python' if reuse_python_suites else '.') / 'cpython-native-regressions.xml')}
+    if reuse_python_suites:
+        from reuse_linux_python_evidence import evidence
+
+        result['upstream_reused_provenance'] = evidence(output)
+        result['reused_upstream'] = result.pop('executed_upstream')
     if cffi:
         import _cffi_backend
         import cffi as cffi_module
@@ -232,10 +237,12 @@ def main() -> None:
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--native-only', action='store_true')
     parser.add_argument('--cffi', action='store_true')
+    parser.add_argument('--reuse-python-suites', action='store_true')
     args = parser.parse_args()
     assert sys.platform == 'linux' and platform.machine() == 'x86_64'
     assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')
-    result = native_measurements(args.prefix.resolve(), args.output_dir, cffi=args.cffi)
+    result = native_measurements(args.prefix.resolve(), args.output_dir, cffi=args.cffi,
+                                 reuse_python_suites=args.reuse_python_suites)
     if not args.native_only:
         from PySide6.QtWidgets import QApplication
 

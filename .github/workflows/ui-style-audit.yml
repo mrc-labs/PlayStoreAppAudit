@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk]
+        options: ['off', prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.linux_arm64_pilot == 'qt-cbor-sdk' && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && 'toolchain-delta' || inputs.linux_arm64_pilot == 'qt-cbor-sdk' && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-integration') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
@@ -423,8 +423,8 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ (inputs.runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-http-limits' || inputs.linux_arm64_pilot == 'qt-md4c-flags' || inputs.linux_arm64_pilot == 'qt-cbor-sdk') && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
-    name: ${{ inputs.linux_arm64_pilot == 'qt-cbor-sdk' && 'Retained QtCore CBOR consumer / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'Qt MD4C flags only / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'Qt HTTP security / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-text-prerequisites' && 'Qt text provider prerequisite / Linux x64 Jammy' || 'Native runtime-framework pilot / Linux x64 Jammy' }}
+    if: ${{ (inputs.runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-http-limits' || inputs.linux_arm64_pilot == 'qt-md4c-flags' || inputs.linux_arm64_pilot == 'qt-cbor-sdk' || inputs.linux_arm64_pilot == 'qt-integration') && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    name: ${{ inputs.linux_arm64_pilot == 'qt-integration' && 'Changed Qt-PySide integration / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-cbor-sdk' && 'Retained QtCore CBOR consumer / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'Qt MD4C flags only / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'Qt HTTP security / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-text-prerequisites' && 'Qt text provider prerequisite / Linux x64 Jammy' || 'Native runtime-framework pilot / Linux x64 Jammy' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     env:
@@ -444,7 +444,7 @@ jobs:
           test '${{ inputs.component_audit }}' = false
           test "$RUNNER_ARCH" = X64
           test "$(uname -m)" = x86_64
-          if [[ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-http-limits || '${{ inputs.linux_arm64_pilot }}' = qt-md4c-flags || '${{ inputs.linux_arm64_pilot }}' = qt-cbor-sdk ]]; then
+          if [[ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-http-limits || '${{ inputs.linux_arm64_pilot }}' = qt-md4c-flags || '${{ inputs.linux_arm64_pilot }}' = qt-cbor-sdk || '${{ inputs.linux_arm64_pilot }}' = qt-integration ]]; then
             test '${{ inputs.runtime_pilot }}' = false
             test '${{ inputs.trust_diagnostics_only }}' = false
           fi
@@ -496,9 +496,20 @@ jobs:
           python .github/scripts/bootstrap_pip.py
           python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
 
+      - name: Verify unchanged Python suite provenance before integrated Qt rebuild
+        if: ${{ inputs.linux_arm64_pilot == 'qt-integration' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/reuse_linux_python_evidence.py --output-dir pilot-evidence
+
       - name: Build and exercise one controlled native stack
         if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' }}
         shell: bash
+        env:
+          PILOT_QT_INTEGRATION_ONLY: ${{ inputs.linux_arm64_pilot == 'qt-integration' && '1' || '0' }}
         run: |
           set -euo pipefail
           test -d pilot-evidence

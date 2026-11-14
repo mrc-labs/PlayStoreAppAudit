@@ -18,20 +18,26 @@ logged() {
 cd "$work/src/zlib-1.4"
 logged zlib-configure ./configure --prefix="$prefix" --libdir="$prefix/lib"
 logged zlib-build make -j2
+if [ "${PILOT_QT_INTEGRATION_ONLY:-0}" != 1 ]; then
 logged zlib-regressions make test
 logged zlib-inflate-build make infcover
 logged zlib-inflate-regressions ./infcover
+fi
 logged zlib-install make install
 cd "$work/src/xz-5.8.4"
 logged xz-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --disable-static \
   --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-scripts --disable-doc --disable-nls
 logged xz-build make -j2
+if [ "${PILOT_QT_INTEGRATION_ONLY:-0}" != 1 ]; then
 logged xz-regressions make check
+fi
 logged xz-install make install
 cd "$work/src/mpdecimal-4.0.1"
 logged mpdecimal-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --disable-cxx --disable-static --enable-shared --enable-pc
 logged mpdecimal-build make -j2
+if [ "${PILOT_QT_INTEGRATION_ONLY:-0}" != 1 ]; then
 logged mpdecimal-regressions make check_local
+fi
 logged mpdecimal-install make install
 cd "$work/src/sqlite-autoconf-3540100"
 # Qt's supported system-SQLite driver requires the optional UTF-16 column-origin API.
