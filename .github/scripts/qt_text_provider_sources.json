@@ -60,5 +60,27 @@
     "HarfBuzz primary Meson; no wrap downloads/experimental API/benchmarks",
     "GLib from accepted Jammy OS is required for upstream API test driver and explicitly selected HarfBuzz GLib integration; actual version/ELF needs retained",
     "Windows MD4C root CMake forces /MT; Linux result must not be transferred to Windows /MD without a controlled configuration and native proof"
-  ]
+  ],
+  "qt_md4c_patch": {
+    "path": ".github/patches/qtbase-6.12.0-md4c06-flags.patch",
+    "sha256": "b4780161063d54acfb11db27a94a78578d0a6e3f1e780214b9fe81ee1da565ef",
+    "files": {
+      "src/gui/text/qtextmarkdownimporter.cpp": {
+        "base_sha256": "e122b60a4c07c43b197c6db96d048eb4cc580413c5323732e3cfce99b0116b10",
+        "patched_sha256": "29af65209da02f9d09b3b8dae35cd8ca7f84caab741ac8f53ef6ae87cab733cb"
+      }
+    },
+    "origin": "Project-authored minimal Qt6.12/official MD4C0.6 API flag adaptation; no upstream approval or public Qt ABI change",
+    "authority": "https://github.com/mity/md4c/blob/v0.6.0/src/md4c.h",
+    "reason": "Demonstrated run43554126327 compiler guard failure; MD4C0.6 GitHub aggregate adds admonitions/footnotes and MD_FLAG_FOOTNOTES aliases Qt-owned FeatureFrontMatter0x100000. Preserve fixed Qt public dialect, all individual compile assertions, and Qt front-matter handling; never forward Qt-only flag to provider. No new Markdown feature."
+  },
+  "qt_public_markdown_header": {
+    "file": "src/gui/text/qtextdocument.h",
+    "sha256": "be0bfb038b50957c25db746e39e7ac0138070028e1bc3dd0683a7ef2dbf21f8d"
+  },
+  "md4c_header_sha256": "d0c14762f1eac3cd9d1c08c3a287b61d93ee2382e5a22ee48f5a6f3ad2c2349d",
+  "qt_private_markdown_header": {
+    "file": "src/gui/text/qtextmarkdownimporter_p.h",
+    "sha256": "906be58ee58d13510567ff6a595dbaaa7514be7a9032df026d5d91ccec841747"
+  }
 }

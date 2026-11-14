@@ -421,6 +421,30 @@ def qt_cbor_regressions() -> dict[str, Any]:
     return {'memory_roundtrip': 'PASS', 'qiodevice_read_write': 'PASS', 'negative': negative}
 
 
+def qt_markdown_flag_regressions() -> dict[str, Any]:
+    """Preserve Qt's fixed public dialect when MD4C adds provider extensions."""
+    from PySide6.QtGui import QTextDocument
+
+    document = QTextDocument()
+    document.setMarkdown('---\ntitle: Test\n---\n\nbody')
+    assert document.metaInformation(QTextDocument.MetaInformation.FrontMatter) == 'title: Test\n'
+    assert document.toPlainText() == 'body'
+    document.setMarkdown('before[^n]\n\n[^n]: after\n')
+    assert document.toPlainText() == 'before^n', document.toPlainText()
+    fragment = document.begin().begin()
+    links = []
+    while not fragment.atEnd():
+        item = fragment.fragment()
+        if item.isValid() and item.charFormat().isAnchor():
+            links.append((item.text(), item.charFormat().anchorHref()))
+        fragment += 1
+    assert links == [('^n', 'after')], links
+    document.setMarkdown('> [!NOTE]\n> note body\n')
+    assert document.toPlainText() == '[!NOTE] note body', document.toPlainText()
+    return {'front_matter': 'Qt metadata/body preserved', 'reference': 'Legacy ordinary reference link preserved',
+            'admonition': 'No implicit new provider feature', 'result': 'PASS fixed Qt Markdown dialect'}
+
+
 def qt_text_regressions() -> dict[str, Any]:
     """Exercise actual QtGui shaping and Markdown callbacks after source adoption."""
     from PySide6.QtGui import QFont, QTextDocument, QTextLayout
@@ -448,7 +472,8 @@ def qt_text_regressions() -> dict[str, Any]:
     assert document.find('bold').charFormat().fontWeight() == QFont.Weight.Bold
     assert document.find('link').charFormat().anchorHref() == 'https://example.com'
     assert document.toPlainText() == 'Heading\nbold link text \u00e8'
-    return {'shaping': shaping, 'markdown': 'Heading/strong/anchor/UTF8 PASS'}
+    return {'shaping': shaping, 'markdown': 'Heading/strong/anchor/UTF8 PASS',
+            'dialect_flags': qt_markdown_flag_regressions()}
 
 
 def native_images(prefix: Path) -> list[dict[str, Any]]:

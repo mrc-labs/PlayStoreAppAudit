@@ -97,9 +97,13 @@ def main() -> None:
            'PKG_CONFIG_PATH': str(prefix / 'lib/pkgconfig')}
 
     def run(command: list, name: str, cwd: Path = work) -> None:
+        print('Qt HTTP diagnostic stage:', name, flush=True)
         with (output / (name + '.log')).open('w', encoding='utf-8') as log:
-            subprocess.run(list(map(str, command)), cwd=cwd, env=env, check=True,
-                           stdout=log, stderr=subprocess.STDOUT)
+            result = subprocess.run(list(map(str, command)), cwd=cwd, env=env,
+                                    stdout=log, stderr=subprocess.STDOUT)
+        if result.returncode:
+            print('\n'.join((output / (name + '.log')).read_text(encoding='utf-8', errors='replace').splitlines()[-80:]), flush=True)
+        result.check_returncode()
 
     run(['./configure', '--prefix=' + str(prefix)], 'zlib-configure', work / 'zlib-1.4')
     run(['make', '-j2'], 'zlib-build', work / 'zlib-1.4')
@@ -120,7 +124,8 @@ def main() -> None:
          '-nomake', 'tests', '-nomake', 'examples', '-no-gui', '-no-widgets', '-no-dbus',
          '-no-feature-sql', '-no-feature-xml', '-system-zlib', '-openssl-linked',
          '-no-feature-openssl-runtime', '--', '-DOPENSSL_ROOT_DIR=' + str(prefix),
-         '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_INSTALL_RPATH=' + str(prefix / 'lib')],
+         '-DCMAKE_PREFIX_PATH=' + str(prefix), '-DCMAKE_INSTALL_RPATH=' + str(prefix / 'lib'),
+         '-DQT_BUILD_DOC_SNIPPETS=OFF'],
         'qt-configure', build)
     cache = (build / 'CMakeCache.txt').read_text(encoding='utf-8')
     for feature, value in [('developer_build', 'ON'), ('testlib', 'ON'), ('gui', 'OFF'),
@@ -129,9 +134,10 @@ def main() -> None:
         assert f'QT_FEATURE_{feature}:INTERNAL={value}' in cache, feature
     flags = next(line for line in cache.splitlines() if line.startswith('CMAKE_CXX_FLAGS:STRING='))
     assert '-L' + sdk['link_directory'] in flags, 'Qualified C++ link SDK was not selected'
+    assert 'QT_BUILD_DOC_SNIPPETS:BOOL=OFF' in cache
+    shutil.copy2(build / 'CMakeCache.txt', output / 'qtbase-CMakeCache.txt')
     run(['cmake', '--build', '.', '--parallel', '2'], 'qt-build', build)
     run(['cmake', '--install', '.'], 'qt-install', build)
-    shutil.copy2(build / 'CMakeCache.txt', output / 'qtbase-CMakeCache.txt')
     os.environ['LD_LIBRARY_PATH'] = str(prefix / 'qt/lib') + ':' + str(prefix / 'lib')
     os.environ['QT_PLUGIN_PATH'] = str(prefix / 'qt/plugins')
     regression = test_limits(qt, prefix / 'qt', work / 'http-tests', output)

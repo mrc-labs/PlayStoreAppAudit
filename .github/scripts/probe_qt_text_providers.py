@@ -21,6 +21,36 @@ from inspect_linux_abi import readelf, required_versions, version_floor
 REPO = Path(__file__).resolve().parents[2]
 
 
+def reviewed_md4c_flags(qt: Path, md4c: Path, output: Path) -> Path:
+    """Generate a tiny prerequisite from actual guarded Qt declarations and patched expression."""
+    spec = json.loads((REPO / '.github/scripts/qt_text_provider_sources.json').read_text(encoding='utf-8'))
+    for key in ['qt_public_markdown_header', 'qt_private_markdown_header']:
+        item = spec[key]
+        if hashlib.sha256((qt / item['file']).read_bytes()).hexdigest() != item['sha256']:
+            raise ValueError('Changed original Qt Markdown declarations')
+    if hashlib.sha256((md4c / 'src/md4c.h').read_bytes()).hexdigest() != spec['md4c_header_sha256']:
+        raise ValueError('Changed original MD4C interface')
+    patch = spec['qt_md4c_patch']
+    for name, guard in patch['files'].items():
+        if hashlib.sha256((qt / name).read_bytes()).hexdigest() != guard['patched_sha256']:
+            raise ValueError('Reviewed Qt flag adaptation not applied')
+    public = (qt / spec['qt_public_markdown_header']['file']).read_text(encoding='utf-8')
+    private = (qt / spec['qt_private_markdown_header']['file']).read_text(encoding='utf-8')
+    importer = (qt / 'src/gui/text/qtextmarkdownimporter.cpp').read_text(encoding='utf-8')
+    dialect = re.search(r'MarkdownDialectGitHub\s*=\s*([^\n,]+)', public)[1].strip()
+    front_matter = re.search(r'FeatureFrontMatter\s*=\s*(0x[0-9a-fA-F]+)', private)[1]
+    expression = re.search(r'^\s+(unsigned\(m_features\)[^\n]+),$', importer, re.MULTILINE)[1]
+    if not re.fullmatch(r'(?:0x[0-9a-fA-F]+|\s|\|)+', dialect):
+        raise ValueError('Unreviewed Qt public dialect expression')
+    output.mkdir(parents=True, exist_ok=True)
+    header = output / 'qt-md4c-reviewed-flags.h'
+    header.write_text(f'constexpr unsigned qtDialectGitHub = {dialect};\n'
+                      f'constexpr unsigned FeatureFrontMatter = {front_matter};\n'
+                      f'static unsigned qtProviderFlags(unsigned m_features) {{ return {expression}; }}\n', encoding='utf-8')
+    shutil.copy2(REPO / '.github/scripts/qt_md4c_flags_consumer.cpp', output)
+    return header
+
+
 def checked_source(item: dict, directory: Path) -> Path:
     """Only the closed HTTPS/hash contract may provide build inputs."""
     if not item['url'].startswith('https://'):

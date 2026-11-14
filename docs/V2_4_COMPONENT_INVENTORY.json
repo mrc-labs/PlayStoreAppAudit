@@ -1,4 +1,37 @@
 {
+  "qt_md4c_flag_adaptation_2026_11_14": {
+    "scope": "Local Windows x64 feasibility of exact guarded Qt flag expressions plus official MD4C0.6 source; not rebuilt QtGui/PySide, Linux acceptance or Windows provider adoption",
+    "compiler": "Existing MSVC14.44 toolset from C:/VSBT2022; not selected current14.52 release-toolchain qualification",
+    "compiler_flags": [
+      "/TC",
+      "/std:c17",
+      "/O2",
+      "/MD",
+      "/std:c++17",
+      "/EHsc"
+    ],
+    "machine": "AMD64",
+    "binary_sha256": "1b022a0b520e693159c94f1bb73a7051fc130f83912d0c7f7343e11f75497281",
+    "md4c_source_sha256": "b9102e0ddfdfd494fdda903f79c554ffaab7e87b4eeb85b4c113057dee3e0728",
+    "md4c_header_sha256": "d0c14762f1eac3cd9d1c08c3a287b61d93ee2382e5a22ee48f5a6f3ad2c2349d",
+    "consumer_sha256": "619d9e9697778df259b51984be20375c2c07541de5dc71e1dce4174a933fba36",
+    "generated_guarded_flags_sha256": "5b159af71ad77d74abf3d6b2c019a36984b19faf8021c260e93779c1a6fc495f",
+    "result": "PASS original collision/Qt-only mask/CommonMark/reference/no-admonitions/GFM table-task-strike",
+    "patch": {
+      "path": ".github/patches/qtbase-6.12.0-md4c06-flags.patch",
+      "sha256": "b4780161063d54acfb11db27a94a78578d0a6e3f1e780214b9fe81ee1da565ef",
+      "files": {
+        "src/gui/text/qtextmarkdownimporter.cpp": {
+          "base_sha256": "e122b60a4c07c43b197c6db96d048eb4cc580413c5323732e3cfce99b0116b10",
+          "patched_sha256": "29af65209da02f9d09b3b8dae35cd8ca7f84caab741ac8f53ef6ae87cab733cb"
+        }
+      },
+      "origin": "Project-authored minimal Qt6.12/official MD4C0.6 API flag adaptation; no upstream approval or public Qt ABI change",
+      "authority": "https://github.com/mity/md4c/blob/v0.6.0/src/md4c.h",
+      "reason": "Demonstrated run43554126327 compiler guard failure; MD4C0.6 GitHub aggregate adds admonitions/footnotes and MD_FLAG_FOOTNOTES aliases Qt-owned FeatureFrontMatter0x100000. Preserve fixed Qt public dialect, all individual compile assertions, and Qt front-matter handling; never forward Qt-only flag to provider. No new Markdown feature."
+    },
+    "state": "Minimal reviewed source adaptation/local actual-parser flags PASS; native QtGui/PySide/GUI integration pending. No unchanged Python/provider/cffi retest required."
+  },
   "qt_http_security_2026_11_14": {
     "scope": "Controlled Qt6.12.0 official HTTP resource-limit security backports; not unchanged official Qt",
     "advisory": "https://www.qt.io/blog/security-issue-cve-2026-116337?hsLang=en",
@@ -60,10 +93,25 @@
     ],
     "application_applicability": "QtNetwork QNetworkAccessManager is used by app_icon_loader. Existing transfer timeout and body download-progress cap do not enforce early response status/header accumulation limits. No confirmed application denial-of-service or higher upstream severity is claimed.",
     "validation": "Execute exact patched original Qt test against rebuilt private QtNetwork; preserve upstream accepted boundary/CRLF/LF cases, early truncated-header rejection/cleared fragment and status line limits. Source replay alone is not native acceptance.",
-    "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised.",
+    "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised. Disable unrelated documentation snippets explicitly via QT_BUILD_DOC_SNIPPETS=OFF (documented QtBuildOptionsHelpers option); the Qt parser regression suite stays enabled.",
     "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds",
     "state": "Official unchanged patch bytes/source replay and focused helper tests PASS; bounded native Core/Network HTTP-only diagnostic pending",
-    "validation_scope": "No CPython/PySide/GUI/SQLite/cffi rebuild or other-target repetition for HTTP-only changes; unchanged evidence reused with exact input/source provenance. Final package integration remains required."
+    "validation_scope": "No CPython/PySide/GUI/SQLite/cffi rebuild or other-target repetition for HTTP-only changes; unchanged evidence reused with exact input/source provenance. Final package integration remains required.",
+    "diagnostic_attempts": [
+      {
+        "run": 43557529358,
+        "source_sha": "a255b3639bf49c9e7897822958e7190bef8bdc29",
+        "result": "FAIL before compilation: common preflight legal directory already exists; preserve files/exist_ok parent only"
+      },
+      {
+        "run": 43557686872,
+        "source_sha": "6064a0166d3fbe8020463f7107b5be41514c90f1",
+        "artifact": 14100040268,
+        "zip_bytes": 108464391,
+        "zip_sha256": "d8f2e587efc2462b4393e5a2295b1ce95dd17c9b0b23134da1b606a897721af7",
+        "result": "FAIL unrelated developer documentation snippet includes intentionally absent QtGui; supported QT_BUILD_DOC_SNIPPETS=OFF excludes only documentation build, not security tests; original parser patches compile, native tests not reached"
+      }
+    ]
   },
   "r08_partial_runtime_evidence_2026_11_14": {
     "source_sha": "69c3d04a7b3af5db8c8847f5a7e7df75a586dcf2",
@@ -3599,7 +3647,7 @@
       {
         "id": "R08",
         "status": "REQUIRED active Qt natives",
-        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence and correct only that vendor integration before affected Qt/PySide/CBOR/text/GUI/native tests. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
+        "applicability_minimum_action": "HarfBuzz14.5 ->15.1.0/MD4C0.5.3 ->0.6.0 now PASS native Jammy source/upstream/link/ABI prerequisite43542421989; worker verifies original inputs,44 legal texts,three ELF bytes and test records. Existing Qt system wrappers are used through explicit private CMake/pkg-config paths. Linux full source profile now selects these sources plus controlled TinyCBOR7.1 with four-file upstream-derived patch; Qt-owned exports/version sentinel/callbacks preserved. Complete run43554126327 stops at the demonstrated MD4C0.6 GitHub aggregate/front-matter flag incompatibility; preserve partial Python/cffi evidence; the one-file reviewed flag adaptation and small actual-parser local preflight above are prepared. Affected native Qt/PySide/CBOR/text/GUI/ABI qualification remains required, without repeating unchanged Python/cffi suites. These remain REQUIRED before adoption; other five targets still require equivalent supported updates, including MD4C /MD configuration on Windows. Pixman copied0.17.12 is NOT compiled on the six native profiles: QtGui CMake excludes ARM64/Windows; original QtSimd function gates x64 on neon OFF. Six ZIP/hash-bound actual caches prove this; retain attribution/legal and upstream watch, not a fictitious Pixman executable migration.",
         "verification_evidence": "Coherent native Qt/binding/GUI/text/CBOR/provider/ABI/source/legal evidence; exact source/patch guards."
       },
       {

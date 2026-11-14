@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 from probe_qt_text_providers import (
     checked_source,
+    reviewed_md4c_flags,
     upstream_harfbuzz_results,
     validate_abi,
     validate_loaded_paths,
@@ -92,3 +94,53 @@ def test_text_preflight_cannot_dispatch_the_full_stack():
     assert '!inputs.trust_diagnostics_only' in condition
     for profile in ['qt-text-prerequisites', 'qt-http-limits']:
         assert "inputs.linux_arm64_pilot != '" + profile + "'" in condition
+
+
+def test_qt_markdown_public_dialect_keeps_front_matter_and_legacy_reference_links():
+    # Existing official Qt behavior fixture; modified-source native adoption remains separate.
+    from PySide6.QtWidgets import QApplication
+    from verify_native_runtime_pilot import qt_markdown_flag_regressions
+
+    app = QApplication.instance() or QApplication([])
+    assert app
+    assert qt_markdown_flag_regressions()['result'] == 'PASS fixed Qt Markdown dialect'
+
+
+@pytest.mark.parametrize('changed', ['', 'public', 'private', 'provider', 'patched', 'expression'])
+def test_md4c_early_probe_uses_only_guarded_actual_qt_flag_declarations(tmp_path, monkeypatch, changed):
+    import probe_qt_text_providers as probe
+
+    scripts = tmp_path / '.github/scripts'
+    scripts.mkdir(parents=True)
+    qt, md4c = tmp_path / 'qt', tmp_path / 'md4c'
+    (qt / 'src/gui/text').mkdir(parents=True)
+    (md4c / 'src').mkdir(parents=True)
+    public, private = qt / 'public.h', qt / 'private.h'
+    provider, patched = md4c / 'src/md4c.h', qt / 'src/gui/text/qtextmarkdownimporter.cpp'
+    public.write_text('MarkdownDialectGitHub = 0x4 | 0x100000,\n')
+    private.write_text('FeatureFrontMatter = 0x100000,\n')
+    provider.write_bytes(b'original provider interface fixture')
+    patched.write_text('        unsigned(m_features) & ~unsigned(FeatureFrontMatter),\n')
+    if changed == 'expression':
+        public.write_text('MarkdownDialectGitHub = 0x4 | unreviewed(),\n')
+    def digest(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    spec = {'qt_public_markdown_header': {'file': 'public.h', 'sha256': digest(public)},
+            'qt_private_markdown_header': {'file': 'private.h', 'sha256': digest(private)},
+            'md4c_header_sha256': digest(provider),
+            'qt_md4c_patch': {'files': {'src/gui/text/qtextmarkdownimporter.cpp': {'patched_sha256': digest(patched)}}}}
+    (scripts / 'qt_text_provider_sources.json').write_text(json.dumps(spec))
+    (scripts / 'qt_md4c_flags_consumer.cpp').write_text('// consumer fixture\n')
+    paths = {'public': public, 'private': private, 'provider': provider, 'patched': patched}
+    if changed in paths:
+        paths[changed].write_bytes(b'unreviewed source')
+    monkeypatch.setattr(probe, 'REPO', tmp_path)
+    output = tmp_path / 'output'
+    if changed:
+        with pytest.raises(ValueError, match='Changed|not applied|Unreviewed'):
+            reviewed_md4c_flags(qt, md4c, output)
+        assert not output.exists()
+    else:
+        header = reviewed_md4c_flags(qt, md4c, output).read_text()
+        assert 'qtDialectGitHub = 0x4 | 0x100000;' in header
+        assert 'return unsigned(m_features) & ~unsigned(FeatureFrontMatter);' in header

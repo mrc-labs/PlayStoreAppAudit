@@ -125,7 +125,7 @@
   },
   "qt_text_manifest": {
     "path": "qt_text_provider_sources.json",
-    "canonical_sha256": "f4cdfe60f9671a3f695e526a722091d656c95f0eccbd8ff34ddecdd0925a686d"
+    "canonical_sha256": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94"
   },
   "qt_cbor_manifest": {
     "path": "qt_cbor_provider_sources.json",
@@ -133,6 +133,6 @@
   },
   "qt_http_manifest": {
     "path": "qt_http_security_sources.json",
-    "canonical_sha256": "cf8e49b4bf36a25e2ca6d9883c535d310f7ec7f87aa4e15baa7599de170d242a"
+    "canonical_sha256": "71639b779f2fbeee5d54d1b3b705f8030a08846b9dc8010d539a7a5235c90479"
   }
 }

@@ -121,6 +121,43 @@ python "$repo/.github/scripts/apply_qt_cbor_upgrade.py" \
   --archive "$evidence/sources/tinycbor-7.1.tar.gz" --evidence "$evidence"
 python "$repo/.github/scripts/apply_qt_http_limits.py" apply \
   --source "$work/src/qtbase-everywhere-src-6.12.0" --evidence "$evidence"
+python - <<'PY'
+import hashlib, json, os, shlex, shutil, subprocess, sys
+from pathlib import Path
+sys.path.insert(0, '.github/scripts')
+from provision_nuitka_scons import apply_source_patch
+from probe_qt_text_providers import reviewed_md4c_flags
+from verify_linux_x64_native_delta import elf_record
+spec = json.loads(Path('.github/scripts/qt_text_provider_sources.json').read_text())
+source = Path(os.environ['PILOT_WORK']) / 'src/qtbase-everywhere-src-6.12.0'
+for key in ['qt_public_markdown_header', 'qt_private_markdown_header']:
+    item = spec[key]
+    assert hashlib.sha256((source / item['file']).read_bytes()).hexdigest() == item['sha256']
+header = Path(os.environ['PILOT_WORK']) / 'src/md4c-0.6.0/src/md4c.h'
+assert hashlib.sha256(header.read_bytes()).hexdigest() == spec['md4c_header_sha256']
+apply_source_patch(source, spec['qt_md4c_patch'])
+evidence = Path(os.environ['PILOT_EVIDENCE'])
+shutil.copy2(spec['qt_md4c_patch']['path'], evidence)
+shutil.copy2(source / 'src/gui/text/qtextmarkdownimporter.cpp', evidence / 'qtextmarkdownimporter-project.cpp')
+(evidence / 'qt-md4c-patch-provenance.json').write_text(json.dumps(spec['qt_md4c_patch'], indent=2) + '\n')
+# Fail on the actual new parser flag policy before any OpenSSL/Python/Qt rebuild.
+probe = Path(os.environ['PILOT_WORK']) / 'md4c-policy'
+md4c = Path(os.environ['PILOT_WORK']) / 'src/md4c-0.6.0'
+header = reviewed_md4c_flags(source, md4c, probe)
+obj, binary = probe / 'md4c.o', probe / 'qt-md4c-flags'
+subprocess.run([os.environ.get('CC', 'cc'), '-std=c11', '-O2', '-c', str(md4c / 'src/md4c.c'), '-o', str(obj)], check=True)
+subprocess.run([os.environ.get('CXX', 'c++'), '-std=c++17', '-O2', '-I' + str(md4c / 'src'),
+                *shlex.split(os.environ.get('CXXFLAGS', '')), str(probe / 'qt_md4c_flags_consumer.cpp'),
+                str(obj), '-o', str(binary)], check=True)
+log = subprocess.check_output([str(binary)], text=True)
+assert log.startswith('PASS original collision/Qt-only mask/'), log
+(evidence / 'qt-md4c-flags.log').write_text(log)
+shutil.copy2(header, evidence)
+shutil.copy2(probe / 'qt_md4c_flags_consumer.cpp', evidence)
+(evidence / 'qt-md4c-flags-native.json').write_text(json.dumps({'source_sha': os.environ['GITHUB_SHA'],
+    'image': elf_record(binary, evidence), 'result': log.strip(),
+    'scope': 'Actual MD4C0.6 and exact guarded Qt flag expressions; not QtGui/binding/GUI acceptance'}, indent=2) + '\n')
+PY
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"
 mkdir -p "$prefix"
