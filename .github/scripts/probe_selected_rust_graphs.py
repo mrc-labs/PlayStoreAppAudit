@@ -51,6 +51,20 @@ def main() -> None:
         with tarfile.open(archive_path) as archive:
             archive.extractall(args.work, filter='data')
         root = args.work / item['name'].removesuffix('.tar.gz')
+        if completion := item.get('workspace_completion'):
+            originals = {name: (root / name).read_bytes() for name in ['Cargo.toml', 'Cargo.lock']}
+            assert hashlib.sha256(originals['Cargo.lock']).hexdigest() == completion['cargo_lock_sha256']
+            assert hashlib.sha256(originals['Cargo.toml']).hexdigest() == completion['cargo_manifest_sha256']
+            with urllib.request.urlopen(completion['url'], timeout=120) as response:
+                assert response.geturl().startswith('https:')
+                full = response.read()
+            assert hashlib.sha256(full).hexdigest() == completion['sha256']
+            complete_path = args.output / 'sources' / (item['name'].removesuffix('.tar.gz') + '-upstream.tar.gz')
+            complete_path.write_bytes(full)
+            with tarfile.open(complete_path) as archive:
+                for name, original in originals.items():
+                    assert archive.extractfile(root.name + '/' + name).read() == original
+                archive.extractall(args.work, filter='data')
         lock = root / 'Cargo.lock'
         digest = hashlib.sha256(lock.read_bytes()).hexdigest()
         for target in spec['targets']:

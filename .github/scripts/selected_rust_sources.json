@@ -5,7 +5,15 @@
       "package": "ruff",
       "version": "0.17.5",
       "sha256": "625e57d80cd43352d12ea81690f3eac46cddc8c0f35026d137fb0f157f94592e",
-      "authority": "https://pypi.org/pypi/ruff/0.17.5/json"
+      "authority": "https://pypi.org/pypi/ruff/0.17.5/json",
+      "workspace_completion": {
+        "url": "https://github.com/astral-sh/ruff/archive/refs/tags/0.17.5.tar.gz",
+        "sha256": "3d920afb666d51ebec3c80ec2847ae7ad14cca3badaaf39f1c0a175d100a4506",
+        "commit": "c91de8a012cb87efe279b762020a0d28dd75ddb5",
+        "cargo_lock_sha256": "a1ee3ec631775c021f353774fe90c8470a74d880d3dbbdcd9b48f66ca253724f",
+        "cargo_manifest_sha256": "936ebd63a5bc306492f898d31b2768bb2fb20ed199803f05ef2d5ac8d6c647bb",
+        "reason": "PyPI sdist omits19 workspace manifests but retains full upstream lock; complete official tag restores graph context. Root Cargo manifest/lock byte-identical; no lock update or native build."
+      }
     },
     {
       "name": "cryptography-50.0.2.tar.gz",
@@ -15,6 +23,13 @@
       "authority": "https://pypi.org/pypi/cryptography/50.0.2/json"
     }
   ],
-  "targets": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin"],
+  "targets": [
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin"
+  ],
   "scope": "Locked normal/build dependency selection for actual Maturin roots; source graph analysis only, not six native executions or compiler/package acceptance"
 }
