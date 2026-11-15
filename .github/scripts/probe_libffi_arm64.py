@@ -239,7 +239,8 @@ def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
     shutil.copy2(patch, evidence)
 
 
-def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict) -> dict:
+def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict,
+                  *, arch: str = 'ARM64', include: Path | None = None) -> dict:
     """Build one isolated cffi consumer; never replace a runtime's installed DLL."""
     archive = evidence / 'cffi-2.1.1.tar.gz'
     with urllib.request.urlopen(spec['source_url'], timeout=90) as response:
@@ -254,12 +255,17 @@ def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec:
     cffi_source = work / 'cffi-2.1.1'
     shutil.copy2(cffi_source / 'LICENSE', evidence / 'cffi-LICENSE')
     apply_cffi_patch(cffi_source, evidence, spec['patch'])
+    machine = {'ARM64': 0xAA64, 'AMD64': 0x8664}[arch]
     prefix = work / 'cffi-libffi-prefix'
     (prefix / 'include').mkdir(parents=True)
     (prefix / 'lib').mkdir()
-    for name in ['ffi.h', 'fficonfig.h']:
-        shutil.copy2(source / 'msvc_build/aarch64/aarch64_include' / name, prefix / 'include' / name)
-    shutil.copy2(source / 'src/aarch64/ffitarget.h', prefix / 'include/ffitarget.h')
+    if include is None:
+        for name in ['ffi.h', 'fficonfig.h']:
+            shutil.copy2(source / 'msvc_build/aarch64/aarch64_include' / name, prefix / 'include' / name)
+        shutil.copy2(source / 'src/aarch64/ffitarget.h', prefix / 'include/ffitarget.h')
+    else:
+        for name in ['ffi.h', 'ffitarget.h']:
+            shutil.copy2(include / name, prefix / 'include' / name)
     shutil.copy2(library, prefix / 'lib' / library.name)
     assert hashlib.sha256((prefix / 'lib' / library.name).read_bytes()).hexdigest() == hashlib.sha256(library.read_bytes()).hexdigest()
     venv_path = work / 'cffi-environment'
@@ -275,7 +281,7 @@ def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec:
     run([str(python), '-m', 'pip', '--isolated', 'install', '--no-index', '--find-links', str(wheels),
          '--report', str(evidence / 'cffi-build-install.json'), *build_dependencies, *spec['bootstrap_pins']],
         evidence / 'cffi-build-install.log', work)
-    environment = {**os.environ, 'PSAA_LIBFFI_ARM64_ROOT': str(prefix),
+    environment = {**os.environ, ('PSAA_LIBFFI_ARM64_ROOT' if arch == 'ARM64' else 'PSAA_LIBFFI_X64_ROOT'): str(prefix),
                    'DISTUTILS_USE_SDK': '1', 'MSSdk': '1'}
     wheelhouse = evidence / 'cffi-wheel'
     wheelhouse.mkdir()
@@ -300,9 +306,10 @@ assert backend.ffi_get_version()==b'3.8.0' and backend.ffi_get_version_number()=
 print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_cffi_backend.__file__,'rb').read()).hexdigest(),
  distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
 '''
+    inspect = inspect.replace("=='ARM64'", "==" + repr(arch))
     measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
     backend = Path(measured['module'])
-    assert read_pe_machine(backend) == 0xAA64
+    assert read_pe_machine(backend) == machine
     shutil.copy2(backend, evidence)
     imports = run(['dumpbin.exe', '/imports', str(backend)], evidence / 'cffi-imports.txt', work)
     assert not re.search(r'(?im)^\s*(?:lib)?ffi[^\s]*\.dll\s*$', imports), 'Unexpected dynamic libffi dependency'
@@ -323,11 +330,11 @@ __declspec(dllexport) double psaa_variadic(int base, ...) {
 }
 ''', encoding='utf-8')
     compiler = Path(shutil.which('cl.exe') or '')
-    assert read_pe_machine(compiler) == 0xAA64
+    assert read_pe_machine(compiler) == machine
     fixture = work / 'cffi_varargs.dll'
     run([str(compiler), '/nologo', '/MD', '/LD', '/std:c17', str(client), '/Fe:' + str(fixture)],
         evidence / 'cffi-varargs-build.log', work)
-    assert read_pe_machine(fixture) == 0xAA64
+    assert read_pe_machine(fixture) == machine
     for file in [client, fixture]:
         shutil.copy2(file, evidence)
     positive = '''import cffi,json,sys
@@ -338,6 +345,7 @@ result=library.psaa_variadic(7,ffi.new('char[]',b'ffi'),ffi.cast('int',13),ffi.c
 assert result==27.5,result
 print(json.dumps(dict(positive_variadic='Native MSVC ARM64 string/int/double PASS',result=result)))
 '''
+    positive = positive.replace('MSVC ARM64', 'MSVC ' + arch)
     variadic = json.loads(run([str(python), '-c', positive, str(fixture)], evidence / 'cffi-varargs.json', work))
     # Upstream TestOwnLib accepts an already-built DLL, before its obsolete
     # MSVC9/AMD64 discovery. Prepare that existing fixture seam with the
@@ -364,7 +372,7 @@ def pytest_configure(config):
     shutil.copy2(library,EVIDENCE/'cffi-ownlib.dll')
     (EVIDENCE/'cffi-ownlib.json').write_text(json.dumps(dict(machine=0xAA64,sha256=hashlib.sha256(data).hexdigest(),
         scope='Unmodified upstream SOURCE and prebuilt-fixture seam; native /MD compiler, no MSVC9 shim or skipped assertions')),encoding='utf-8')
-'''.replace('COMPILER', repr(str(compiler))).replace('EVIDENCE', 'Path(' + repr(str(evidence)) + ')'), encoding='utf-8')
+'''.replace('0xAA64', hex(machine)).replace('COMPILER', repr(str(compiler))).replace('EVIDENCE', 'Path(' + repr(str(evidence)) + ')'), encoding='utf-8')
     shutil.copy2(plugin, evidence)
     test_environment = {**environment, 'PYTHONPATH': str(work) + os.pathsep + environment.get('PYTHONPATH', '')}
     tests = ['src/c/test_c.py', 'testing/cffi0/test_ffi_backend.py', 'testing/cffi1/test_ffi_obj.py']

@@ -51,6 +51,38 @@ def restore_ffi(data: bytes, prefix: Path) -> None:
                 (prefix / Path(name).name).write_bytes(bundle.read(name))
 
 
+def exercise_ctypes(source: Path, prefix: Path, library: Path, modules: Path, output: Path, compiler: Path,
+                    *, machine: int = 0xAA64) -> dict:
+    files = project_sources(source / 'PCbuild/_ctypes.vcxproj', source, source)
+    assert len(files) == 6
+    run([compiler, '/nologo', '/MD', '/O2', '/LD', '/DPy_BUILD_CORE_MODULE',
+         '/DUSING_MALLOC_CLOSURE_DOT_C=1', '/DHAVE_FFI_PREP_CIF_VAR=1', '/DFFI_BUILDING_DLL',
+         *(['/DFFI_STATIC_BUILD=1'] if machine == 0x8664 else []),
+         '/I' + str(source / 'PC'), '/I' + str(source / 'Include'), '/I' + str(source / 'Include/internal'),
+         '/I' + str(prefix), *files, '/link', Path(sys.base_prefix) / 'libs/python314.lib', library,
+         'ole32.lib', 'oleaut32.lib',
+         '/OUT:' + str(modules / '_ctypes.pyd')], cwd=modules, log=output / 'ctypes-build.log')
+    native = modules / '_ctypes.pyd'
+    assert read_pe_machine(native) == machine
+    versions = pe_versions(native)
+    assert max(versions.values()) <= (10, 0)
+    imports = subprocess.check_output(['dumpbin', '/dependents', native], text=True)
+    assert 'ffi.dll' not in imports.lower() and 'libffi' not in imports.lower()
+    assert 'VCRUNTIME140' in imports.upper(), 'Dynamic release CRT import required'
+    (output / 'ctypes-imports.txt').write_text(imports)
+    # Original Windows closure allocation remains selected. Only this isolated
+    # child imports the new module; neither the runner nor application is changed.
+    cases = ['test_callbacks', 'test_parameters', 'test_functions', 'test_structures', 'test_as_parameter']
+    code = ('import sys,unittest; sys.path.insert(0,sys.argv[1]); sys.path.append(sys.argv[2]); '
+            'import _ctypes,ctypes; assert _ctypes.__file__.startswith(sys.argv[1]); '
+            'suite=unittest.defaultTestLoader.loadTestsFromNames(sys.argv[3:]); '
+            'r=unittest.TextTestRunner(verbosity=1).run(suite); assert r.testsRun>0; sys.exit(not r.wasSuccessful())')
+    run([sys.executable, '-I', '-c', code, modules, source / 'Lib',
+         *['test.test_ctypes.' + name for name in cases]], log=output / 'ctypes-upstream-tests.log')
+    return {'module_sha256': hashlib.sha256(native.read_bytes()).hexdigest(), 'machine': machine,
+            'pe_versions': versions, 'upstream_modules': cases}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
@@ -83,36 +115,12 @@ def main() -> None:
     shutil.copy2(source / 'LICENSE', output / 'Python-LICENSE')
     modules = output / 'native-ctypes'
     modules.mkdir()
-    files = project_sources(source / 'PCbuild/_ctypes.vcxproj', source, source)
-    assert len(files) == 6
-    run([compiler, '/nologo', '/MD', '/O2', '/LD', '/DPy_BUILD_CORE_MODULE',
-         '/DUSING_MALLOC_CLOSURE_DOT_C=1', '/DHAVE_FFI_PREP_CIF_VAR=1', '/DFFI_BUILDING_DLL',
-         '/I' + str(source / 'PC'), '/I' + str(source / 'Include'), '/I' + str(source / 'Include/internal'),
-         '/I' + str(prefix), *files, '/link', Path(sys.base_prefix) / 'libs/python314.lib', prefix / 'ffi.lib',
-         'ole32.lib', 'oleaut32.lib',
-         '/OUT:' + str(modules / '_ctypes.pyd')], cwd=modules, log=output / 'ctypes-build.log')
-    native = modules / '_ctypes.pyd'
-    assert read_pe_machine(native) == 0xAA64
-    versions = pe_versions(native)
-    assert max(versions.values()) <= (10, 0)
-    imports = subprocess.check_output(['dumpbin', '/dependents', native], text=True)
-    assert 'ffi.dll' not in imports.lower() and 'libffi' not in imports.lower()
-    assert 'VCRUNTIME140' in imports.upper(), 'Dynamic release CRT import required'
-    (output / 'ctypes-imports.txt').write_text(imports)
-    # Original Windows closure allocation remains selected. Only this isolated
-    # child imports the new module; neither the runner nor application is changed.
-    cases = ['test_callbacks', 'test_parameters', 'test_functions', 'test_structures', 'test_as_parameter']
-    code = ('import sys,unittest; sys.path.insert(0,sys.argv[1]); sys.path.append(sys.argv[2]); '
-            'import _ctypes,ctypes; assert _ctypes.__file__.startswith(sys.argv[1]); '
-            'suite=unittest.defaultTestLoader.loadTestsFromNames(sys.argv[3:]); '
-            'r=unittest.TextTestRunner(verbosity=1).run(suite); assert r.testsRun>0; sys.exit(not r.wasSuccessful())')
-    run([sys.executable, '-I', '-c', code, modules, source / 'Lib',
-         *['test.test_ctypes.' + name for name in cases]], log=output / 'ctypes-upstream-tests.log')
+    measured = exercise_ctypes(source, prefix, prefix / 'ffi.lib', modules, output, compiler)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'python_source': python,
               'ffi_original_source_sha': FFI_SOURCE, 'ffi_artifact': FFI_ARTIFACT,
               'ffi_zip_sha256': FFI_ZIP_SHA256, 'ffi_library_sha256': FFI_LIBRARY_SHA256,
-              'module_sha256': hashlib.sha256(native.read_bytes()).hexdigest(), 'machine': 0xAA64,
-              'compiler': str(compiler), 'crt': '/MD', 'pe_versions': versions, 'upstream_modules': cases,
+              **measured,
+              'compiler': str(compiler), 'crt': '/MD',
               'project_cpython_source_patches': [], 'configuration': ['USING_MALLOC_CLOSURE_DOT_C', 'HAVE_FFI_PREP_CIF_VAR'],
               'scope': 'Original same-patch private ctypes consumer only; no whole Python/SSL/crypto/package adoption', 'result': 'PASS'}
     (output / 'arm64-ctypes-results.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -185,7 +185,7 @@ jobs:
       - name: Qualify native Windows compiler then selected consumers
         if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' || inputs.linux_arm64_pilot == 'tools-ctypes-arm64-windows'))) && runner.os == 'Windows' && inputs.linux_arm64_pilot != 'tools-codec-consumers-windows' }}
         env:
-          GH_TOKEN: ${{ inputs.linux_arm64_pilot == 'tools-ctypes-arm64-windows' && github.token || '' }}
+          GH_TOKEN: ${{ (inputs.linux_arm64_pilot == 'tools-ctypes-arm64-windows' || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows') && github.token || '' }}
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -239,7 +239,7 @@ jobs:
           if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_ctypes.py --work-root "$env:RUNNER_TEMP/ctypes-arm64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ffi-x64-windows') {
-            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_x64_libffi.py --work-root "$env:RUNNER_TEMP/ffi-x64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_x64_libffi.py --consumers-only --work-root "$env:RUNNER_TEMP/ffi-x64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-codecs-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_codec_providers.py --work-root "$env:RUNNER_TEMP/codecs-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-sql-decimal*') {

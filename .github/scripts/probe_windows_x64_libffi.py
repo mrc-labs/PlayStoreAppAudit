@@ -35,7 +35,13 @@ def run(command: list, *, log: Path, cwd: Path = REPO, env: dict | None = None) 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
+    parser.add_argument('--consumers-only', action='store_true', help='Reuse exact qualified SDK; no libffi rebuild')
     args = parser.parse_args()
+    if args.consumers_only:
+        from probe_windows_x64_ffi_consumers import qualify
+
+        qualify(args.work_root.resolve())
+        return
     assert os.name == 'nt' and platform.machine().lower() == 'amd64'
     assert os.environ['EXPECTED_ARCH'] == 'x64'
     assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == 'x64'
