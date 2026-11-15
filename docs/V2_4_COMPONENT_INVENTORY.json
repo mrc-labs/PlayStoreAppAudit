@@ -287,7 +287,7 @@
     "result": "PASS prerequisite; runtime/cffi/crypto adoption pending"
   },
   "macos_current_integration": {
-    "status": "Prepared; full native results pending",
+    "status": "Both cheap native prerequisites PASS; controlled source builds in progress",
     "effective_delta": [
       "five proven stdlib providers",
       "source cffi against controlled runtime",
@@ -298,7 +298,30 @@
     ],
     "source_reuse": "Nine identical generated CLDR49 source files, not old release binaries",
     "prior_linux_effective_inputs": "Unchanged; provision/inspection branches preserve final guarded source bytes",
-    "local_gates": "81 targeted tests/lint/shell/source-only transforms PASS; not native Mac acceptance"
+    "local_gates": "81 targeted tests/lint/shell/source-only transforms PASS; not native Mac acceptance",
+    "source_sha": "7971b550adb827d31c036fdbf89ca71cb1697464",
+    "arm64_run": 43726926268,
+    "intel_run": 43726928654,
+    "quality_run": 43726908861,
+    "quality_passed": 2153
+  },
+  "windows_x64_ffi_consumers": {
+    "run": 43727469177,
+    "job": 132852442338,
+    "source_sha": "d2112a744d3fc5a24b53cdbb0fd0cd77c594bec1",
+    "quality_run": 43727435841,
+    "artifact_id": 14167216791,
+    "artifact_bytes": 39119271,
+    "artifact_sha256": "0d4c924e5d9e76eb1bac9fb5f176baaa67a240cdf96bd9ae80e8cc5c9fc9d91a",
+    "ctypes_cases": 150,
+    "ctypes_skipped": 6,
+    "cffi_passed": 461,
+    "cffi_skipped": 38,
+    "mixed_variadic": 27.5,
+    "measured_pe_machine": "8664 AMD64 for both actual ctypes and wheel backend",
+    "historical_report_erratum": "cffi.machine was hardcoded AA64; build-time native guard and worker PE byte parser prove8664. Future metadata corrected; no binary change or rebuild.",
+    "worker_bytes": "Original SDK/source/license/patch/wheel/native module bytes independently verified",
+    "result": "PASS native consumers; whole runtime/crypto/framework/package adoption pending"
   }
 },
   "linux_current_maintenance_consumers_2026_11_15": [

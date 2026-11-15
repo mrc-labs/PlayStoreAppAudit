@@ -386,7 +386,7 @@ def pytest_configure(config):
     # This upstream case invokes _testfunc(9) with real promoted varargs.
     # printf-based cases can legitimately skip on the Windows C runtime.
     assert any(case.get('name') == 'test_call_function_9' for case in executed), 'Native upstream variadic regression did not execute'
-    return {**measured, 'machine': 0xAA64, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
+    return {**measured, 'machine': machine, 'wheel_sha256': hashlib.sha256(built[0].read_bytes()).hexdigest(),
             'positive_variadic': variadic, 'variadic_fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
             'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
             'tests': len(cases), 'executed': len(executed), 'skipped': len(cases) - len(executed),
