@@ -4,6 +4,13 @@
 
 
 
+
+## Both Windows SQL/decimal prerequisites PASS; codec source delta (2026-11-15)
+
+Original CPython3.14.10 C wrappers/current SQLite3.54.1/mpdecimal4.0.1 now PASS on native x64 job132690293272/run43674086225 at91fd3f7 and ARM64 run43674727814 at3a3860d. Native MSVC14.52.37025, dynamic CRT and accepted PE/deployment bounds are preserved; no provider/application source patch. x64 executes1253 upstream decimal/SQLite cases,14 skipped, with private-module/version/API assertions. Worker independently verifies the x64 ZIP14145522360/29,043,973 bytes/SHA256`0043379fa3c861adc52c5b3cf943149268b5d9e5f06bd3bdd90be4ae38bd410c`, three original source archives and retained native file hashes. ARM artifact14146395519/28,867,827 bytes/SHA256`a2e15cce4007a020db3b4e2835630eabbe8808f865dee2d5d8a1149ecb0a3b96` remains native job/metadata evidence pending separate byte verification. These are provider/C-wrapper prerequisites, not whole modified-runtime/TLS/framework/package adoption.
+
+Next qualify only XZ5.8.4 and the inventoried stable zlib-ng2.3.3 against the original same-patch Windows codec wrappers. Sources/hashes are closed; zlib-ng's official2.3.3 tag resolves to12731092979c6d07f42da27da673a9f6c7b13586. Supported native CMake builds preserve static zlib-ng with /MD (separate from Qt's shared zlib1.4), current shared liblzma, runtime CPU dispatch and existing Windows floors. Upstream native tests and Python zlib/lzma suites must pass before adoption. No arbitrary DLL replacement, source patch, Qt rebuild or benchmark is introduced. Windows FFI/ctypes and the coherent whole-stack source profiles remain required; unchanged Linux evidence is reused without rerunning it.
+
 ## Bounded remaining Windows source prerequisites (2026-11-15)
 
 Native x64 prerequisite43674086225 at91fd3f7 PASSes original CPython wrappers, SQLite3.54.1/mpdecimal4.0.1, /MD and native PE/deployment gates without a vendor patch. ARM64 in the same run stops before source downloads/compilation because VCToolsVersion is absent after fresh18.12 DevShell setup; that is not evidence of provider incompatibility. The corrected guard measures the actual cl.exe path/toolset/native PE and checks any declared version against it. It still requires14.52/native host+target and does not fall back to14.51, x64 or an unverified compiler. Repeat only the ARM64 prerequisite; x64 source/wrapper evidence is unchanged.
