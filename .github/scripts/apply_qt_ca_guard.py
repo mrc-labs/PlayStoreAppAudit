@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +20,10 @@ def apply_guard(source: Path, evidence: Path) -> dict:
     target = source / spec['file']
     if hashlib.sha256(target.read_bytes()).hexdigest() != spec['base_sha256']:
         raise ValueError('Unexpected original Qt certificate source')
-    subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(patch.resolve())], cwd=source, check=True)
+    command = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    environment = {**os.environ, 'GIT_CEILING_DIRECTORIES': str(source.resolve().parent)}
+    for flags in (['--check'], []):
+        subprocess.run([*command, *flags, str(patch.resolve())], cwd=source, env=environment, check=True)
     if hashlib.sha256(target.read_bytes()).hexdigest() != spec['patched_sha256']:
         raise ValueError('Unexpected patched Qt certificate source')
     evidence.mkdir(parents=True, exist_ok=True)

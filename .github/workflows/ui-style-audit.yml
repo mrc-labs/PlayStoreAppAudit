@@ -1023,6 +1023,9 @@ jobs:
     name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
     timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
@@ -1074,6 +1077,13 @@ jobs:
             --work-root "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
 
+      - name: Verify retained native parser bytes before source rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/intake_lxml_native.py --target macos-arm64 --output-dir macos-arm64-pilot-evidence/lxml-qualified
+
       - name: Build and exercise the gated native ARM64 controlled source prefix
         if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
         shell: bash
@@ -1098,6 +1108,9 @@ jobs:
     name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'Native runtime-framework pilot / macOS Intel/x64' || 'Native runtime prerequisites / macOS Intel/x64' }}
     runs-on: macos-26-intel
     timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
@@ -1148,6 +1161,13 @@ jobs:
           python .github/scripts/probe_macos_x64_runtime.py \
             --work-root "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee macos-x64-pilot-evidence/prerequisite-build.log
+
+      - name: Verify retained native parser bytes before source rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/intake_lxml_native.py --target macos-x64 --output-dir macos-x64-pilot-evidence/lxml-qualified
 
       - name: Build and exercise the gated native Intel/x64 controlled source prefix
         if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}

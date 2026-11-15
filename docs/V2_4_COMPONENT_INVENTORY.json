@@ -271,6 +271,34 @@
     "whole_zip_verified": true,
     "python_original_and_license_verified": true,
     "retained_module_and_ffi_bytes_verified": true
+  },
+  "windows_x64_ffi": {
+    "run": 43705994557,
+    "source_sha": "522202f8c683cb1c8e4fcd61318277a7899a0e4f",
+    "quality_run": 43705998191,
+    "artifact_id": 14158148246,
+    "artifact_bytes": 7346750,
+    "artifact_sha256": "3c102bf3476c326849fdc77a6b2efab87a9e415bd2d2ee7473435389fe4c5b3d",
+    "version": "3.8.0",
+    "compiler": "14.52.37025",
+    "linkage": "static libffi/dynamic CRT",
+    "project_change": "Official port invocation selects upstream msvcc C/C++ driver; no libffi implementation patch",
+    "worker_bytes": "Original source/port/license/library/consumer PE/CRT independently verified",
+    "result": "PASS prerequisite; runtime/cffi/crypto adoption pending"
+  },
+  "macos_current_integration": {
+    "status": "Prepared; full native results pending",
+    "effective_delta": [
+      "five proven stdlib providers",
+      "source cffi against controlled runtime",
+      "HarfBuzz15.1.0/MD4C0.6",
+      "CBOR7.1/HTTP limits/CLDR49/expected1.3.1/retained PSL",
+      "common CA supplied-chain guard",
+      "exact qualified lxml wheel intake"
+    ],
+    "source_reuse": "Nine identical generated CLDR49 source files, not old release binaries",
+    "prior_linux_effective_inputs": "Unchanged; provision/inspection branches preserve final guarded source bytes",
+    "local_gates": "81 targeted tests/lint/shell/source-only transforms PASS; not native Mac acceptance"
   }
 },
   "linux_current_maintenance_consumers_2026_11_15": [

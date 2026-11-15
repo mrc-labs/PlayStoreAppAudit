@@ -8,6 +8,16 @@ test "$(uname -m)" = x86_64
 test -d "$work"
 test ! -e "$work/prefix/python"
 export PILOT_WORK="$work" PILOT_EVIDENCE="$evidence"
+retain_diagnostic_sdk() {
+  original_status=$?
+  trap - EXIT
+  if ! python "$repo/.github/scripts/retain_macos_runtime_sdk.py" --work "$work" --output "$evidence" --exit-code "$original_status"; then
+    echo 'Diagnostic SDK retention failed; do not claim a reusable prefix.' >&2
+    exit 1
+  fi
+  exit "$original_status"
+}
+trap retain_diagnostic_sdk EXIT
 python - <<'PY'
 import hashlib, json, os, sys
 from pathlib import Path
@@ -74,6 +84,10 @@ export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$ssl_prefix/lib/pkgconfig"
 export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 export CMAKE_PREFIX_PATH="$prefix:$ssl_prefix"
 export CMAKE_BUILD_PARALLEL_LEVEL=2
+# Guard common source migrations and actual native text wrappers before runtime/Qt rebuilds.
+MACOSX_DEPLOYMENT_TARGET=14.4 CFLAGS="-arch x86_64 -mmacosx-version-min=14.4 -isysroot $SDKROOT" \
+  CXXFLAGS="-arch x86_64 -mmacosx-version-min=14.4 -isysroot $SDKROOT" \
+  python "$repo/.github/scripts/prepare_macos_qt_maintenance.py" --work "$work" --evidence "$evidence" --arch x86_64
 cd "$work/src/openssl-4.0.3"
 "$work/host-perl/bin/perl" Configure darwin64-x86_64-cc shared \
   --prefix="$ssl_prefix" --libdir=lib --openssldir="$prefix/trust"
@@ -125,28 +139,25 @@ report={'source_sha':os.environ['GITHUB_SHA'],'provider':backend.openssl_version
 PY
 "$work/host-tools/bin/python" .github/scripts/verify_macos_x64_runtime_pilot.py --native-prerequisites --output-dir "$evidence" > "$evidence/host-native-tls.log" 2>&1
 
-# Required compression source is already qualified on Windows; keep libpng/Qt coherent.
-cmake -S "$work/src/zlib-1.3.2" -B "$work/zlib-build" -GNinja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
-  -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DCMAKE_OSX_SYSROOT="$SDKROOT" \
-  -DCMAKE_INSTALL_NAME_DIR=@rpath -DCMAKE_INSTALL_RPATH="$prefix/lib" \
-  '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local' -DZLIB_BUILD_TESTING=ON
-cmake --build "$work/zlib-build"
-ctest --test-dir "$work/zlib-build" --output-on-failure > "$evidence/zlib-regressions.log" 2>&1
-cmake --install "$work/zlib-build"
+# Same source selections/configuration already qualified by native provider probes.
+EXPECTED_ARCH=x64 PSAA_MAC_PROVIDER_LIBRARY_STAGE=1 PSAA_MAC_PROVIDER_EVIDENCE="$evidence" \
+  bash "$repo/.github/scripts/probe_macos_native_providers.sh" "$work"
 
 mkdir "$work/python-build"
 cd "$work/python-build"
 export LDFLAGS="$python_link_flags"
 "$work/src/Python-3.14.10/configure" --prefix="$prefix/python" --enable-shared \
-  --with-openssl="$ssl_prefix" --with-openssl-rpath=auto --with-ensurepip=install --with-pkg-config=yes
+  --with-openssl="$ssl_prefix" --with-openssl-rpath=auto --with-ensurepip=install --with-pkg-config=yes --with-system-libmpdec \
+  LIBFFI_CFLAGS="-I$prefix/include" LIBFFI_LIBS="-L$prefix/lib -lffi" \
+  LIBSQLITE3_CFLAGS="-I$prefix/include" LIBSQLITE3_LIBS="-L$prefix/lib -lsqlite3" \
+  LIBMPDEC_CFLAGS="-I$prefix/include" LIBMPDEC_LIBS="-L$prefix/lib -lmpdec"
 make -j2
 # Upstream uses .exe on case-insensitive macOS to avoid the Python/ directory.
 test -f ./python.exe && test -x ./python.exe
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -c "import ssl,_ssl,_hashlib,ctypes,sqlite3,zlib,lzma,sysconfig; from compression import zstd; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); assert zlib.ZLIB_RUNTIME_VERSION=='1.3.2'; assert lzma.decompress(lzma.compress(b'native'))==zstd.decompress(zstd.compress(b'native'))==b'native'; print('Built native SSL/hash/ctypes/sqlite/zlib/lzma/zstd PASS',ssl.OPENSSL_VERSION)"
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -c "import ssl,_ssl,_hashlib,ctypes,sqlite3,zlib,lzma,sysconfig; from compression import zstd; assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 '); assert not sysconfig.get_config_var('Py_GIL_DISABLED'); assert zlib.ZLIB_RUNTIME_VERSION=='1.4'; assert lzma.decompress(lzma.compress(b'native'))==zstd.decompress(zstd.compress(b'native'))==b'native'; print('Built native SSL/hash/ctypes/sqlite/zlib/lzma/zstd PASS',ssl.OPENSSL_VERSION)"
 DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m test -j2 --junit-xml "$evidence/cpython-regressions.xml" test_ssl test_hashlib test_hmac > "$evidence/cpython-regressions.log" 2>&1
 DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m unittest -v test.test_tarfile.TestExtractionFilters.test_link_at_destination > "$evidence/tarfile-security-regression.log" 2>&1
-DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m test -j2 --junit-xml "$evidence/cpython-codec-regressions.xml" test_lzma test_zstd > "$evidence/cpython-codec-regressions.log" 2>&1
+DYLD_LIBRARY_PATH="$PWD:$ssl_prefix/lib:$prefix/lib" ./python.exe -m test -j2 --junit-xml "$evidence/cpython-codec-regressions.xml" test_lzma test_zstd test_zlib test_ctypes test_decimal test_sqlite3 > "$evidence/cpython-codec-regressions.log" 2>&1
 PYTHONPATH="$repo/.github/scripts" python - "$evidence" <<'PY'
 import sys
 from pathlib import Path
@@ -172,6 +183,12 @@ export PATH="$work/venv/bin:$PATH"
 python "$repo/.github/scripts/bootstrap_pip.py"
 python -m pip install -r "$repo/.github/scripts/source_build_requirements.txt" -c "$repo/.github/scripts/source_build_constraints.txt" 'cmake==4.4.4' 'ninja==1.13.2' --report "$evidence/build-tools-install.json"
 cd "$repo"
+# Rebuild only this CFFI extension against the actual new private runtime/FFI.
+python -m pip install 'pycparser==3.12' 'pytest==9.2.0' -c "$repo/.github/scripts/source_build_constraints.txt"
+mkdir -p "$evidence/cffi-wheel"
+python -m pip wheel --no-build-isolation --no-deps "$work/src/cffi-2.1.1" -w "$evidence/cffi-wheel" > "$evidence/cffi-runtime-build.log" 2>&1
+python -m pip install --no-index --no-deps "$evidence"/cffi-wheel/cffi-*.whl
+python -m pytest "$work/src/cffi-2.1.1/src/c/test_c.py" -q --junitxml="$evidence/cffi-runtime-tests.xml" > "$evidence/cffi-runtime-tests.log" 2>&1
 # Default verification uses the configured private PEM, not an env/cafile fallback.
 python - <<'PY'
 import os, ssl, sys
@@ -206,8 +223,8 @@ mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
   -release -opensource -confirm-license -nomake tests -nomake examples \
-  -openssl-linked -securetransport -system-libpng -system-pcre -system-zlib -no-feature-openssl-runtime \
-  -- -DOPENSSL_ROOT_DIR="$ssl_prefix" -DZLIB_ROOT="$prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
+  -openssl-linked -securetransport -system-libpng -system-pcre -system-zlib -system-sqlite -no-feature-openssl-runtime \
+  -- -DINPUT_harfbuzz=system -DINPUT_libmd4c=system -DOPENSSL_ROOT_DIR="$ssl_prefix" -DZLIB_ROOT="$prefix" -DCMAKE_PREFIX_PATH="$prefix;$ssl_prefix" \
   -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=14.4 -DCMAKE_OSX_SYSROOT="$SDKROOT" \
   '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local' -DCMAKE_INSTALL_RPATH="$prefix/qt/lib;$prefix/lib;$ssl_prefix/lib"
 python - <<'PY'
@@ -264,6 +281,10 @@ cd "$work/qtsvg-build"
   '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local' -DCMAKE_INSTALL_RPATH="$prefix/qt/lib;$prefix/lib;$ssl_prefix/lib"
 cmake --build . --parallel 2
 cmake --install .
+cd "$repo"
+MACOSX_DEPLOYMENT_TARGET=14.4 python "$repo/.github/scripts/apply_qt_http_limits.py" test \
+  --source "$work/src/qtbase-everywhere-src-6.12.0" --qt-prefix "$prefix/qt" \
+  --build "$work/qt-http-tests" --evidence "$evidence/qt-http"
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 cd "$work/src/pyside-setup-everywhere-src-6.12.0"
@@ -279,6 +300,7 @@ lines = Path('requirements.txt').read_text().splitlines()
 Path('macos-x64-pilot-evidence/runtime-requirements.txt').write_text('\n'.join(x for x in lines if not x.startswith('PySide6-Essentials==')) + '\n')
 PY
 python -m pip install "$evidence"/wheels/cryptography-50.0.2-*.whl --report "$evidence/cryptography-install.json"
+python "$repo/.github/scripts/intake_lxml_native.py" --target macos-x64 --output-dir "$evidence/lxml-qualified" --qualify
 python -m pip install -r "$evidence/runtime-requirements.txt" 'pytest==9.2.0' --report "$evidence/runtime-install.json"
 python -m pip check
 export PILOT_PREFIX="$prefix" QT_QPA_PLATFORM=cocoa QT_PLUGIN_PATH="$prefix/qt/plugins"

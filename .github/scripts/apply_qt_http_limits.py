@@ -4,8 +4,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 import shutil
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -101,20 +103,32 @@ def test_limits(source: Path, prefix: Path, build: Path, evidence: Path) -> dict
                 if not Path(selected).resolve().is_relative_to(prefix.resolve()):
                     raise ValueError('Foreign Qt selected by HTTP regression: ' + selected)
     counts = executed_limits(evidence / 'qt-http-tests.xml')
-    # This entry point is used only by the controlled Jammy x64 diagnostic.
-    # Independently retain/inspect the test executable and actual Qt linkage.
-    from verify_linux_x64_native_delta import elf_record
-
     binary = build / 'out/qt_http_limits'
-    linkage = subprocess.check_output(['ldd', str(binary)], text=True)
+    # Retain architecture, deployment and linkage of the actual native test.
+    if sys.platform == 'darwin':
+        if platform.machine() == 'arm64':
+            from probe_macos_arm64_runtime import macho
+        else:
+            from probe_macos_x64_runtime import macho
+        linkage = subprocess.check_output(['otool', '-L', str(binary)], text=True)
+        images = [macho(binary, target=True, output=evidence)]
+        for name in ['QtCore', 'QtNetwork', 'QtTest']:
+            path = (prefix / 'lib' / (name + '.framework/Versions/A/' + name)).resolve()
+            image = macho(path, target=True, output=evidence)
+            assert path.is_relative_to(prefix.resolve()) and any(item in linkage for item in image['install_names'])
+            images.append(image)
+    else:
+        from verify_linux_x64_native_delta import elf_record
+
+        linkage = subprocess.check_output(['ldd', str(binary)], text=True)
+        images = [elf_record(binary, evidence)]
+        for stem in ['libQt6Core.so', 'libQt6Network.so', 'libQt6Test.so']:
+            line = next(line for line in linkage.splitlines() if line.strip().startswith(stem))
+            path = Path(line.split('=>', 1)[1].split()[0]).resolve()
+            if not path.is_relative_to(prefix.resolve()):
+                raise ValueError('Foreign Qt loaded by HTTP regression: ' + str(path))
+            images.append(elf_record(path, evidence))
     (evidence / 'qt-http-linkage.txt').write_text(linkage, encoding='utf-8')
-    images = [elf_record(binary, evidence)]
-    for stem in ['libQt6Core.so', 'libQt6Network.so', 'libQt6Test.so']:
-        line = next(line for line in linkage.splitlines() if line.strip().startswith(stem))
-        path = Path(line.split('=>', 1)[1].split()[0]).resolve()
-        if not path.is_relative_to(prefix.resolve()):
-            raise ValueError('Foreign Qt loaded by HTTP regression: ' + str(path))
-        images.append(elf_record(path, evidence))
     result = {'cve': spec['cve'], 'executed': counts,
               'original_test_sha256': hashlib.sha256((source / TEST).read_bytes()).hexdigest(),
               'images': images,

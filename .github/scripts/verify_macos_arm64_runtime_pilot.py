@@ -18,6 +18,7 @@ import zlib
 from pathlib import Path
 
 from probe_macos_arm64_runtime import contract, macho
+from verify_macos_maintenance import qt_incident_security, verify_maintenance
 from verify_native_runtime_pilot import (
     certificate_material,
     default_trust_handshake,
@@ -211,6 +212,8 @@ def main() -> None:
             assert Path(sys.base_prefix).resolve() == Path(os.environ['PILOT_PREFIX']) / 'python'
         report = qt_checks(paths, 'securetransport')
         if args.qt_native_backend:
+            report['incident_security'] = qt_incident_security(output, 'securetransport')
+        if args.qt_native_backend:
             report['changed_images'] = changed_images(Path(os.environ['PILOT_PREFIX']), loaded_images())
         report.update(source_sha=os.environ['GITHUB_SHA'], scope='stock native backend prerequisite only' if args.native_prerequisites else 'controlled Qt native backend; separate from OpenSSL')
         (output / ('native-tls-prerequisites.json' if args.native_prerequisites else 'qt-securetransport.json')).write_text(json.dumps(report, indent=2))
@@ -231,7 +234,7 @@ def main() -> None:
     from PySide6.QtGui import QImage, QPixmap
 
     assert PySide6.__version__ == shiboken6.__version__ == qVersion() == '6.12.0'
-    assert zlib.ZLIB_RUNTIME_VERSION == '1.3.2'
+    assert zlib.ZLIB_RUNTIME_VERSION == '1.4'
     assert lzma.decompress(lzma.compress(b'native')) == zstd.decompress(zstd.compress(b'native')) == b'native'
     codec_suites = executed_codec_suites(output / 'cpython-codec-regressions.xml')
     assert backend.openssl_version_text().startswith('OpenSSL 4.0.3 ')
@@ -251,6 +254,7 @@ def main() -> None:
     default_qt_backend = QSslSocket.activeBackend()
     assert default_qt_backend in ('openssl', 'securetransport'), default_qt_backend
     qt_tls = qt_checks(paths, 'openssl')
+    maintenance = verify_maintenance(output, prefix, 'arm64')
     subprocess.run([sys.executable, __file__, '--output-dir', str(output), '--qt-native-backend'], check=True)
     pixmap = QPixmap()
     assert QImage.fromData(png_fixture()).width() == 1 and pixmap.loadFromData(png_fixture())
@@ -277,6 +281,7 @@ def main() -> None:
     assert not window.isVisible()
     report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': 'project-modified CPython3.14.10 and matched source Qt/PySide/Shiboken6.12.0; native macOS ARM64 diagnostic, not unchanged official binaries', 'python': sys.version, 'machine': platform.machine(), 'gil_disabled': sysconfig.get_config_var('Py_GIL_DISABLED'), 'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(), 'cryptography_provider': 'independent official native-capable wheel/static OpenSSL4; actual selected ARM64 slice, not a Rosetta target', 'default_trust': defaults, 'python_tls': python_tls, 'cpython_security': security, 'qt_default_backend': default_qt_backend, 'qt_openssl': qt_tls, 'qt_securetransport': json.loads((output / 'qt-securetransport.json').read_text()), 'hash_vectors': 'SHA256/HMAC/PBKDF2 PASS', 'png': png_rows, 'gui': 'native Cocoa MainWindow event-loop PASS', 'native': images(prefix, output), 'limits': ['Source prefix only; no Nuitka package, portability/signing/final acceptance.', 'Python SPKI does not qualify Qt/native/OS/cryptography CA security.', 'SecureTransport is legacy TLS1.2; qualified OpenSSL backend provides TLS1.3.']}
     report['cpython_codec_suites'] = codec_suites
+    report['maintenance'] = maintenance
     all_rows = {row['path']: row for row in [*report['native']['changed'], *report['qt_securetransport']['changed_images']]}
     report['all_backend_loaded_changed_images'] = len(all_rows)
     report['all_backend_maximum_minos'] = max((v for row in all_rows.values() for v in row['minimum_os']), key=lambda v: tuple(map(int, v.split('.'))))

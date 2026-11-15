@@ -3,9 +3,9 @@
 set -euo pipefail
 repo=$(pwd)
 work=${1:?new isolated work directory required}
-evidence="$repo/toolchain-delta-evidence"
+evidence="${PSAA_MAC_PROVIDER_EVIDENCE:-$repo/toolchain-delta-evidence}"
 test "$(uname -s)" = Darwin
-test ! -e "$work"
+if [ "${PSAA_MAC_PROVIDER_LIBRARY_STAGE:-0}" = 1 ]; then test -d "$work"; else test ! -e "$work"; fi
 case "$EXPECTED_ARCH" in
   arm64) test "$(uname -m)" = arm64; deployment=11.0; cpu=arm64 ;;
   x64) test "$(uname -m)" = x86_64; deployment=10.15; cpu=x86_64 ;;
@@ -51,7 +51,7 @@ def stage(item):
         bundle.extractall(work / 'src', filter='data')
     source = work / 'src' / item['directory']
     legal = root / 'legal' / source.name
-    legal.mkdir(parents=True)
+    legal.mkdir(parents=True, exist_ok=True)
     for path in source.iterdir():
         if path.is_file() and path.name.upper().startswith(('LICENSE','COPYING','COPYRIGHT','NOTICE','AUTHORS')):
             shutil.copy2(path, legal / path.name)
@@ -96,6 +96,10 @@ cd "$repo"
   -lffi -lmpdec -lsqlite3 -llzma -lz -o "$evidence/native-provider-consumer"
 cp .github/scripts/native_provider_consumer.c "$evidence/"
 "$evidence/native-provider-consumer" | tee "$evidence/native-provider-prerequisites.json"
+if [ "${PSAA_MAC_PROVIDER_LIBRARY_STAGE:-0}" = 1 ]; then
+  echo 'Qualified native provider configuration integrated; controlled Python consumers follow.'
+  exit 0
+fi
 python -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'pycparser==3.12' 'pytest==9.2.0' --report "$evidence/provider-build-worker-install.json"
 mkdir "$evidence/cffi-wheel"
 test "$(pkg-config --modversion libffi)" = 3.8.0

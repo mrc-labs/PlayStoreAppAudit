@@ -80,9 +80,9 @@ def test_controlled_target_is_native_and_vendor_universal_slice_is_explicit(tmp_
 
 def test_mac_contract_reuses_qualified_sources_without_changing_prior_profiles() -> None:
     arm, base = probe.contract()
-    windows = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text())
     assert base['sources'][0]['directory'] == 'Python-3.14.10'
-    assert arm['zlib_source'] == windows['sources'][-1]
+    native = json.loads((ROOT / '.github/scripts/linux_x64_native_delta_sources.json').read_text())
+    assert arm['zlib_source'] == next(row for row in native['sources'] if row['name'] == 'zlib-1.4.tar.gz')
     assert arm['python_deployment'] == '11.0'
     assert arm['framework_deployment'] == '14.4'
     assert arm['accepted_package_maximum'] == '15.0'
@@ -201,3 +201,18 @@ def test_loaded_png_framework_is_measured_without_accepting_foreign_or_ambiguous
     else:
         with pytest.raises(AssertionError, match='controlled loaded libpng'):
             loaded_png(paths, tmp_path)
+
+
+def test_changed_mac_profiles_intake_qualified_parsers_before_dependency_resolution() -> None:
+    workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
+    for arch, mode in [('arm64', 'macos-full'), ('x64', 'macos-x64-full')]:
+        recipe = (ROOT / f'.github/scripts/build_macos_{arch}_runtime_pilot.sh').read_text()
+        fetch = f'intake_lxml_native.py --target macos-{arch} --output-dir macos-{arch}-pilot-evidence/lxml-qualified'
+        assert fetch in workflow
+        assert recipe.index('--qualify') < recipe.index('pip install -r "$evidence/runtime-requirements.txt"')
+        assert 'test_lzma test_zstd test_zlib test_ctypes test_decimal test_sqlite3' in recipe
+        assert 'apply_qt_http_limits.py" test' in recipe
+        # Job permissions are explicit; the token is confined to intake.
+        job = workflow.split(f'\n  macos-{arch}-runtime-pilot:', 1)[1]
+        assert job.index('actions: read') < job.index('steps:')
+        assert f"inputs.linux_arm64_pilot == '{mode}'" in job

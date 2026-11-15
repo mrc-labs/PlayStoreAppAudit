@@ -1,13 +1,53 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import tarfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import apply_qt_cldr49 as cldr
 import pytest
 from probe_qt_cldr49_runtime import locale_identifiers
+
+
+def test_qualified_cldr_cache_preserves_exact_locale_and_language_code_identity():
+    spec = json.loads((cldr.REPO / '.github/scripts/qt_cldr49_sources.json').read_text())
+    cache, files = cldr.qualified_generated(spec)
+    assert len(files) == 9 and cache['origin']['artifact_id'] == 14143608998
+    header = files['src/corelib/text/qlocale_data_p.h'].decode()
+    assert len(cldr.locale_keys(header)) == 714
+    import re
+
+    codes = re.search(cldr.CODE_ARRAY, header, re.S)
+    assert codes and int(codes[1]) == 349
+    assert hashlib.sha256(codes[0].encode()).hexdigest() == spec['retained_code_sha256']
+
+
+@pytest.mark.parametrize('extra_member,content', [(True, b'original'), (False, b'changed')])
+def test_qualified_cldr_cache_rejects_unreviewed_members_and_output(tmp_path, monkeypatch, extra_member, content):
+    scripts, sources = tmp_path / '.github/scripts', tmp_path / '.github/sources'
+    scripts.mkdir(parents=True)
+    sources.mkdir()
+    spec = {'generated_files': {'locale.h': hashlib.sha256(b'original').hexdigest()}}
+    archive = sources / 'cache.tar.xz'
+    with tarfile.open(archive, 'w:xz') as bundle:
+        member = tarfile.TarInfo('locale.h')
+        member.size = len(content)
+        bundle.addfile(member, io.BytesIO(content))
+        if extra_member:
+            member = tarfile.TarInfo('../../unexpected.h')
+            member.size = 1
+            bundle.addfile(member, io.BytesIO(b'x'))
+    cache = {'source_contract_canonical_sha256': hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+             'archive': '.github/sources/cache.tar.xz', 'bytes': archive.stat().st_size,
+             'sha256': hashlib.sha256(archive.read_bytes()).hexdigest()}
+    (scripts / 'qt_cldr49_generated_cache.json').write_text(json.dumps(cache))
+    monkeypatch.setattr(cldr, 'REPO', tmp_path)
+    with pytest.raises(ValueError, match='Unexpected qualified|Changed qualified CLDR generated'):
+        cldr.qualified_generated(spec)
+    assert not (tmp_path / 'unexpected.h').exists()
 
 
 def test_cldr_display_names_and_qt_zero_sentinels_are_distinct():
