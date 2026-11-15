@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -60,13 +60,13 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') || inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal'))) }}
-    name: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'Controlled native Mac providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'Controlled native codecs' || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') && 'Controlled native SQL/decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal')) && 'Controlled native D3D12 data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'Controlled native lxml parsers' || inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') || inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows'))) }}
+    name: ${{ inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' && 'Controlled native FFI' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'Controlled native Mac providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'Controlled native codecs' || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows') && 'Controlled native SQL/decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows')) && 'Controlled native D3D12 data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'Controlled native lxml parsers' || inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.linux_arm64_pilot == 'tools-mac-providers-arm64' && '[{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && '[{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || inputs.linux_arm64_pilot == 'tools-sql-decimal-arm64-windows' && '[{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || endsWith(inputs.linux_arm64_pilot, '-windows') && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]') }}
-    runs-on: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal'))) && matrix.label == 'linux-x64' && 'ubuntu-22.04' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal'))) && matrix.label == 'windows-x64' && 'windows-2025-vs2026' || matrix.os }}
+        include: ${{ fromJSON(inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"}]' || inputs.linux_arm64_pilot == 'tools-mac-providers-arm64' && '[{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && '[{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || inputs.linux_arm64_pilot == 'tools-sql-decimal-arm64-windows' && '[{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || endsWith(inputs.linux_arm64_pilot, '-windows') && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]') }}
+    runs-on: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows'))) && matrix.label == 'linux-x64' && 'ubuntu-22.04' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows'))) && matrix.label == 'windows-x64' && 'windows-2025-vs2026' || matrix.os }}
     timeout-minutes: 35
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -108,7 +108,7 @@ jobs:
           python -c "import platform,sys,sysconfig;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final';assert platform.python_version()=='3.14.10';assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
       - name: Qualify verified pip and current tool installs
-        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal')) }}
+        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !(startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows')) }}
         shell: bash
         run: |
           set -euo pipefail
@@ -129,7 +129,7 @@ jobs:
             --evidence-dir toolchain-delta-evidence
 
       - name: Exercise selected native compiler and developer tools
-        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal')) }}
+        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !(startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows')) }}
         shell: bash
         run: |
           set -euo pipefail
@@ -168,7 +168,7 @@ jobs:
           bash .github/scripts/probe_macos_native_providers.sh "$RUNNER_TEMP/macos-provider-sources-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" 2>&1 | tee toolchain-delta-evidence/macos-provider-build.log
 
       - name: Prepare isolated native parser/data tools
-        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal'))) }}
+        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows'))) }}
         shell: bash
         run: |
           set -euo pipefail
@@ -183,7 +183,7 @@ jobs:
           "$probe_python" -c 'from pathlib import Path; import sys; print(Path(sys.executable).parent.as_posix())' >> "$GITHUB_PATH"
 
       - name: Qualify native Windows compiler then selected consumers
-        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal'))) && runner.os == 'Windows' && inputs.linux_arm64_pilot != 'tools-codec-consumers-windows' }}
+        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows'))) && runner.os == 'Windows' && inputs.linux_arm64_pilot != 'tools-codec-consumers-windows' }}
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -234,7 +234,9 @@ jobs:
           Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
           Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"
           if ($env:VSCMD_ARG_HOST_ARCH -ne $arch -or $env:VSCMD_ARG_TGT_ARCH -ne $arch) { throw 'Native host/target required.' }
-          if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-codecs-windows') {
+          if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ffi-x64-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_x64_libffi.py --work-root "$env:RUNNER_TEMP/ffi-x64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-codecs-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_codec_providers.py --work-root "$env:RUNNER_TEMP/codecs-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-sql-decimal*') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_sql_decimal.py --work-root "$env:RUNNER_TEMP/sql-decimal-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
@@ -268,7 +270,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'diagnostic-macos-providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'diagnostic-native-codecs' || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') && 'diagnostic-sql-decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal')) && 'diagnostic-qt-data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'diagnostic-lxml-native' || inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' && 'diagnostic-libffi' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'diagnostic-macos-providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'diagnostic-native-codecs' || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows') && 'diagnostic-sql-decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || (startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows')) && 'diagnostic-qt-data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'diagnostic-lxml-native' || inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
           path: toolchain-delta-evidence/
           if-no-files-found: error
           retention-days: 0

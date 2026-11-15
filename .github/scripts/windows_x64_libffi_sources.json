@@ -1,0 +1,25 @@
+{
+  "scope": "Native Windows x64 libffi prerequisite through official stable vcpkg port only; no runtime or wheel adoption",
+  "authority": "https://github.com/microsoft/vcpkg/releases/tag/2026.10.16",
+  "sources": [
+    {
+      "name": "vcpkg-2026.10.16.tar.gz",
+      "url": "https://github.com/microsoft/vcpkg/archive/9eec002df1cd109f8f104cd966a763daf9751489.tar.gz",
+      "sha256": "0e41e3fc97abf18bd84f52e711eff88ba88726aa316c4f0f41d5bbd7d7b4690e",
+      "directory": "vcpkg-9eec002df1cd109f8f104cd966a763daf9751489"
+    }
+  ],
+  "commit": "9eec002df1cd109f8f104cd966a763daf9751489",
+  "guarded_files": {
+    "ports/libffi/vcpkg.json": "84527704156a9a450efa86cb84e0d3ce75b9743dc74d93ea025fdca46a149e85",
+    "ports/libffi/portfile.cmake": "7915550ae2ec74e86fc35cbbabcb4e064c93ef5af471445c08c69fefdd0363d1",
+    "ports/libffi/dll-bindir.diff": "97e9f11ca9f344820dc3b9cba548f4a8818231b1751c518d04ed3c733b8fa8b6",
+    "scripts/vcpkg-tool-metadata.txt": "44e7a8763d73c9aada61519845235baf55a97d2f931d5ae3a01ae338a591f397"
+  },
+  "libffi_source_sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+  "target": "x64-windows-static-md",
+  "crt": "dynamic",
+  "library_linkage": "static",
+  "upstream_port_patch": "ports/libffi/dll-bindir.diff",
+  "project_source_patches": []
+}

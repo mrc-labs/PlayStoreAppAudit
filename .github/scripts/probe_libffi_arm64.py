@@ -106,7 +106,8 @@ cd "$build"
             'abi_triple': 'aarch64-w64-mingw32 identifies Windows ABI; no GNU target compiler', 'headers': hashes}
 
 
-def exercise_library(source: Path, work: Path, library: Path, compiler: Path, evidence: Path) -> dict:
+def exercise_library(source: Path, work: Path, library: Path, compiler: Path, evidence: Path,
+                     *, machine: int = 0xAA64, include: Path | None = None) -> dict:
     client = work / 'ffi_consumer.c'
     client.write_text(r'''#include <ffi.h>
 #include <stdint.h>
@@ -193,14 +194,14 @@ int main(void) {
     shutil.copy2(client, evidence)
     executable = work / 'ffi_consumer.exe'
     run([str(compiler), '/nologo', '/MD', '/Zi', '/std:c17', '/DFFI_BUILDING_DLL',
-         '/I' + str(source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
+         '/I' + str(include or source / 'msvc_build/aarch64/aarch64_include'), '/I' + str(source / 'src/aarch64'),
          str(client), str(library), '/Fe:' + str(executable)], evidence / 'consumer-build.log', work)
-    assert read_pe_machine(executable) == 0xAA64, 'Consumer executable must be native ARM64'
+    assert read_pe_machine(executable) == machine, 'Consumer executable must match the native target'
     shutil.copy2(executable, evidence)
     try:
         output = run([str(executable)], evidence / 'consumer.log', work)
     except subprocess.CalledProcessError:
-        debugger = Path(os.environ['PROGRAMFILES(X86)']) / 'Windows Kits/10/Debuggers/arm64/cdb.exe'
+        debugger = Path(os.environ['PROGRAMFILES(X86)']) / ('Windows Kits/10/Debuggers/arm64/cdb.exe' if machine == 0xAA64 else 'Windows Kits/10/Debuggers/x64/cdb.exe')
         if debugger.is_file():
             debugger_machine = read_pe_machine(debugger)
             (evidence / 'consumer-debugger.json').write_text(json.dumps({
@@ -208,7 +209,7 @@ int main(void) {
                 'sha256': hashlib.sha256(debugger.read_bytes()).hexdigest(),
                 'scope': 'Optional installed SDK diagnostic only; no compiler or runtime adoption',
             }, indent=2), encoding='utf-8')
-            if debugger_machine != 0xAA64:
+            if debugger_machine != machine:
                 raise
             try:
                 trace = subprocess.run([str(debugger), '-c', 'g;.ecxr;kv;q', str(executable)],
@@ -218,7 +219,7 @@ int main(void) {
                 (evidence / 'consumer-native-debug.log').write_text('Native debugger deadline reached', encoding='utf-8')
         raise
     assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
-    return {'machine': 0xAA64, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
+    return {'machine': machine, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
 
 
 def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
