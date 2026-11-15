@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import json
 import os
@@ -56,6 +57,25 @@ def main() -> None:
     for name, digest in spec['guarded_files'].items():
         assert hashlib.sha256((source / name).read_bytes()).hexdigest() == digest
     assert json.loads((source / 'ports/libffi/vcpkg.json').read_text())['version'] == '3.8.0'
+    # Automake's generic `compile cl` driver loses the CRT selection here.
+    # Use libffi's own supported MSVC driver for C as already used for ASM.
+    port = source / 'ports/libffi/portfile.cmake'
+    before = port.read_bytes()
+    anchor = b'    vcpkg_list(APPEND options "CCAS=msvcc.sh")'
+    assert before.count(anchor) == 1
+    replacement = anchor + b'''\n    vcpkg_list(APPEND options
+        "CC=${SOURCE_PATH}/msvcc.sh -m64"
+        "CXX=${SOURCE_PATH}/msvcc.sh -m64"
+        "CFLAGS=-DWIN32 -D_WINDOWS -O2 -Ob2 -DNDEBUG -DFFI_STATIC_BUILD"
+        "CXXFLAGS=-DWIN32 -D_WINDOWS -O2 -Ob2 -DNDEBUG -DFFI_STATIC_BUILD"
+    )'''
+    after = before.replace(anchor, replacement)
+    port.write_bytes(after)
+    (output / 'libffi-native-msvc-driver.patch').write_text(''.join(difflib.unified_diff(
+        before.decode().splitlines(True), after.decode().splitlines(True), 'a/portfile.cmake', 'b/portfile.cmake')))
+    port_config = {'original_sha256': hashlib.sha256(before).hexdigest(),
+                   'configured_sha256': hashlib.sha256(after).hexdigest(),
+                   'scope': 'MSVC driver/build flags only; libffi implementation unchanged; upstream msvcc defaults to dynamic CRT'}
     # Official static-md triplet, with only release builds selected to avoid
     # compiling unused debug copies. The native selected compiler is inherited.
     triplets = work / 'triplets'
@@ -129,7 +149,7 @@ def main() -> None:
     assert max(versions.values()) <= (10, 0), versions
     report = {'source_sha': os.environ['GITHUB_SHA'], 'sources': spec, 'compiler': str(compiler),
               'library_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
-              'vcpkg_sha256': hashlib.sha256(tool.read_bytes()).hexdigest(), 'crt': '/MD',
+              'vcpkg_sha256': hashlib.sha256(tool.read_bytes()).hexdigest(), 'crt': '/MD', 'port_configuration': port_config,
               'consumer': consumer, 'pe_versions': versions, 'result': 'PASS native static libffi prerequisite; CPython/cffi/crypto adoption remains required'}
     (output / 'windows-x64-libffi.json').write_text(json.dumps(report, indent=2) + '\n')
 
