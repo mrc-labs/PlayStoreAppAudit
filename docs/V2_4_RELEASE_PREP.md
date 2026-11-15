@@ -7,6 +7,11 @@
 
 
 
+
+## Minimal R11 maintained macro candidate (2026-11-15)
+
+Both compatible Cargo API checks are green above. The remaining selected unmaintained paste1.0.15 comes only through libcst1.9.0. [RustSec RUSTSEC-2024-0436](https://rustsec.org/advisories/RUSTSEC-2024-0436.html) names maintained replacements; current non-yanked pastey0.2.3 requires Rust1.54, below the selected1.99.1 compiler. The bounded candidate changes only libcst's dependency selector under the existing paste alias and adds the standard Cargo path patch to Ruff's parent manifest. No Rust implementation, lint rule or application code changes. Original libcst crate checksum is independently bound to the already-verified Ruff lock; both official crate archives and original/post manifest hashes are retained. All six actual normal/build graphs must exclude paste and select pastey0.2.3, and native Ruff API compilation must pass before any native compiler/wheel adoption. This uses the supported Cargo source route, not a general framework or preview feature. Further consumer/runtime/package validation remains required after this cheap gate.
+
 ## Native Mac provider/cffi prerequisites prepared (2026-11-15)
 
 First native43697800412 stops before any source download/build on both architectures: a shell export expands CXXFLAGS before CFLAGS is assigned under nounset. Split the assignments; capture complete xcodebuild version output instead of cutting its pipe. Two clean-environment Bash startup regressions now execute both architecture/deployment branches without downloads or file mutation. No provider compatibility conclusion or compile rerun is inferred from this preflight failure.
