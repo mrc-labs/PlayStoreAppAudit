@@ -48,7 +48,9 @@ def native_ruff(root: Path, output: Path) -> dict:
         environment['MACOSX_DEPLOYMENT_TARGET'] = '11.0' if arch == 'arm64' else '10.15'
     lock_hash = hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest()
     for label, command in [
-        ('libcst-tests', ['cargo', 'test', '--locked', '-p', 'libcst', '--no-default-features', '--lib']),
+        # LibCST is a dependency outside Ruff's workspace: Cargo rejects feature
+        # switches here. Use exactly the feature selection of the parent graph.
+        ('libcst-tests', ['cargo', 'test', '--locked', '-p', 'libcst', '--lib']),
         ('ruff-build', ['cargo', 'build', '--locked', '--release', '-p', 'ruff'])]:
         result = subprocess.run(command, cwd=root, env=environment, capture_output=True, text=True, encoding='utf-8', timeout=2400)
         (output / (label + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
