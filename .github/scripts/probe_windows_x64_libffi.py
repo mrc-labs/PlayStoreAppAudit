@@ -63,20 +63,42 @@ def main() -> None:
     triplet = triplets / 'x64-windows-static-md.cmake'
     original = source / 'triplets' / triplet.name
     assert original.is_file()
+    # Stable vcpkg's automatic VS discovery rejects the actual new18.12 host.
+    # Its documented external-toolchain interface uses the already-validated
+    # native DevShell compiler instead, without selecting an older toolset.
+    chainload = work / 'native-msvc.cmake'
+    chainload.write_text('set(CMAKE_SYSTEM_NAME Windows)\n'
+                        f'set(CMAKE_C_COMPILER "{compiler.as_posix()}")\n'
+                        f'set(CMAKE_CXX_COMPILER "{compiler.as_posix()}")\n'
+                        f'set(CMAKE_ASM_MASM_COMPILER "{(compiler.parent / "ml64.exe").as_posix()}")\n'
+                        'set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)\n')
     triplet.write_bytes(original.read_bytes() + ('\nset(VCPKG_BUILD_TYPE release)\n'
-                        'set(VCPKG_PLATFORM_TOOLSET_VERSION "' + compiler.parents[3].name + '")\n').encode())
+                        'set(VCPKG_LOAD_VCVARS_ENV OFF)\n'
+                        f'set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "{chainload.as_posix()}")\n'
+                        'set(VCPKG_ENV_PASSTHROUGH PATH INCLUDE LIB LIBPATH WindowsSdkDir WindowsSDKVersion VCToolsInstallDir)\n').encode())
     shutil.copy2(original, output / 'original-triplet.cmake')
     shutil.copy2(triplet, output)
+    shutil.copy2(chainload, output)
     environment = {**os.environ, 'VCPKG_DISABLE_METRICS': '1', 'VCPKG_BINARY_SOURCES': 'clear',
-                   'VCPKG_VISUAL_STUDIO_PATH': os.environ['VSINSTALLDIR'],
                    'VCPKG_MAX_CONCURRENCY': '2'}
+    preflight = work / 'compiler-preflight'
+    preflight.mkdir()
+    (preflight / 'CMakeLists.txt').write_text('cmake_minimum_required(VERSION 3.21)\n'
+        'project(NativeFFIToolchain LANGUAGES C CXX ASM_MASM)\nadd_executable(native_compiler main.c)\n')
+    (preflight / 'main.c').write_text('#include <stdint.h>\nint main(void) { return sizeof(void *) != 8; }\n')
+    run(['cmake', '-S', preflight, '-B', preflight / 'build', '-GNinja',
+         '-DCMAKE_TOOLCHAIN_FILE=' + str(chainload)], env=environment, log=output / 'compiler-preflight-configure.log')
+    run(['cmake', '--build', preflight / 'build'], env=environment, log=output / 'compiler-preflight-build.log')
+    executable = preflight / 'build/native_compiler.exe'
+    assert read_pe_machine(executable) == 0x8664
+    run([executable], log=output / 'compiler-preflight-execute.log')
     run(['cmd', '/d', '/c', source / 'bootstrap-vcpkg.bat', '-disableMetrics'], cwd=source,
         env=environment, log=output / 'vcpkg-bootstrap.log')
     tool = source / 'vcpkg.exe'
     assert read_pe_machine(tool) == 0x8664
     install = work / 'installed'
     try:
-        run([tool, 'install', 'libffi:x64-windows-static-md', '--host-triplet=x64-windows',
+        run([tool, 'install', 'libffi:x64-windows-static-md', '--host-triplet=x64-windows-static-md',
              '--overlay-triplets=' + str(triplets), '--x-install-root=' + str(install),
              '--disable-metrics'], cwd=source, env=environment, log=output / 'vcpkg-libffi.log')
     finally:
