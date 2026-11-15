@@ -180,7 +180,7 @@ jobs:
             "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
           fi
           if [ '${{ inputs.linux_arm64_pilot }}' = tools-cpython-providers-windows ]; then
-            "$probe_python" -m pip install 'cmake==4.4.4' 'ninja==1.13.2' 'cryptography==50.0.2' --report toolchain-delta-evidence/install.json
+            "$probe_python" -m pip install 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
           fi
           echo "LXML_PROBE_PYTHON=$probe_python" >> "$GITHUB_ENV"
           "$probe_python" -c 'from pathlib import Path; import sys; print(Path(sys.executable).parent.as_posix())' >> "$GITHUB_PATH"

@@ -232,7 +232,7 @@ def certificate_material(root: Path) -> dict[str, Path]:
 
 
 @contextlib.contextmanager
-def tls_server(paths: dict[str, Path], cert: str = 'valid') -> Iterator[int]:
+def tls_server(paths: dict[str, Path], cert: str = 'valid', *, expected_rejection: bool = False) -> Iterator[int]:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(paths[cert], paths['key'])
     listener = socket.socket()
@@ -252,6 +252,12 @@ def tls_server(paths: dict[str, Path], cert: str = 'valid') -> Iterator[int]:
                                str(len(body)).encode() + b'\r\nConnection: close\r\n\r\n' + body)
         except ssl.SSLError:
             pass  # Negative clients must reject the peer and abort the handshake.
+        except ConnectionResetError as exc:
+            # Windows may reset the server socket after the client's required
+            # certificate rejection. The caller still asserts the exact client
+            # SSLCertVerificationError/code; positive handshakes remain strict.
+            if not expected_rejection:
+                failures.append(exc)
         except Exception as exc:
             failures.append(exc)
 
@@ -285,7 +291,7 @@ def python_tls_checks(paths: dict[str, Path]) -> list[str]:
         ('expired', 'localhost', True, 'expired', 10),
     ]:
         context = ssl.create_default_context(cafile=str(paths['ca']) if trusted else None)
-        with tls_server(paths, cert) as port, socket.create_connection(('127.0.0.1', port), timeout=5) as raw:
+        with tls_server(paths, cert, expected_rejection=True) as port, socket.create_connection(('127.0.0.1', port), timeout=5) as raw:
             try:
                 context.wrap_socket(raw, server_hostname=hostname)
             except ssl.SSLCertVerificationError as exc:

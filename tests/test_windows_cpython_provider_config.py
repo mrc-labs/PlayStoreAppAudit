@@ -50,3 +50,37 @@ def test_cpp_profile_has_only_the_two_native_windows_hosts_and_explicit_guards()
     assert 'probe_windows_cpython_providers.py --work-root' in block
     script = (ROOT / '.github/scripts/probe_windows_cpython_providers.py').read_text()
     assert script.index('Qualify current stable MSBuild') < script.index("fetch_artifact(ffi['artifact'])")
+
+
+
+@pytest.mark.parametrize('kind', ['TLSv1_2', 'TLSv1_3', 'hostname', 'untrusted', 'expired'])
+def test_isolated_tls_fixtures_authenticate_and_reject_all_three_negatives(tmp_path: Path, kind: str) -> None:
+    import socket
+    import ssl
+
+    import probe_windows_cpython_providers as probe
+    from verify_native_runtime_pilot import tls_server
+
+    openssl = Path('C:/Program Files/Git/usr/bin/openssl.exe')
+    if not openssl.is_file():
+        import shutil
+        selected = shutil.which('openssl')
+        if selected is None:
+            pytest.skip('Fixture generator requires an OpenSSL CLI; native diagnostic never skips')
+        openssl = Path(selected)
+    paths = probe.tls_fixtures(tmp_path, openssl)
+    positive = kind.startswith('TLS')
+    context = ssl.create_default_context(cafile=str(paths['ca']) if kind != 'untrusted' else None)
+    if positive:
+        context.minimum_version = context.maximum_version = getattr(ssl.TLSVersion, kind)
+    with (tls_server(paths, 'expired' if kind == 'expired' else 'valid', expected_rejection=not positive) as port,
+          socket.create_connection(('127.0.0.1', port), timeout=5) as raw):
+        if positive:
+            with context.wrap_socket(raw, server_hostname='localhost') as connection:
+                assert connection.version() == kind.replace('TLSv1_', 'TLSv1.')
+                connection.sendall(b'GET / HTTP/1.0\r\n\r\n')
+                assert b'200 OK' in connection.recv(4096)
+        else:
+            with pytest.raises(ssl.SSLCertVerificationError) as error:
+                context.wrap_socket(raw, server_hostname='wrong.invalid' if kind == 'hostname' else 'localhost')
+            assert error.value.verify_code == {'hostname': 62, 'untrusted': 20, 'expired': 10}[kind]

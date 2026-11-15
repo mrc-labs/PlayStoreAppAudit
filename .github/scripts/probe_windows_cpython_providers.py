@@ -23,10 +23,40 @@ from probe_windows_arm64_ctypes import FFI_ARTIFACT, FFI_LIBRARY_SHA256, FFI_SOU
 from probe_windows_arm64_ctypes import restore_ffi as restore_arm_ffi
 from probe_windows_x64_ffi_consumers import restore_ffi as restore_x64_ffi
 from retain_macos_runtime_sdk import retain
-from verify_native_runtime_pilot import certificate_material, default_trust_handshake
+from verify_native_runtime_pilot import default_trust_handshake
 from verify_windows_runtime_pilot import pe_versions
 
 REPO = Path(__file__).resolve().parents[2]
+
+
+def tls_fixtures(destination: Path, openssl: Path) -> dict[str, Path]:
+    """Generate disposable fixtures with the already-built OpenSSL, not crypto."""
+    destination.mkdir(exist_ok=True)
+    (destination / 'index.txt').write_text('')
+    (destination / 'serial').write_text('1000\n')
+    config = destination / 'ca.cnf'
+    config.write_text('[ca]\ndefault_ca=isolated\n[isolated]\n'
+        'database=index.txt\nserial=serial\nnew_certs_dir=.\ncertificate=ca.pem\nprivate_key=ca-key.pem\n'
+        'unique_subject=no\ndefault_md=sha256\npolicy=identity\n[identity]\ncommonName=supplied\n'
+        '[server]\nbasicConstraints=critical,CA:FALSE\n'
+        'keyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n'
+        'subjectAltName=DNS:localhost\nauthorityKeyIdentifier=keyid,issuer\n')
+    commands = [
+        ['genpkey', '-algorithm', 'RSA', '-pkeyopt', 'rsa_keygen_bits:2048', '-out', 'ca-key.pem'],
+        ['req', '-new', '-x509', '-key', 'ca-key.pem', '-sha256', '-days', '30', '-out', 'ca.pem',
+         '-subj', '/CN=Isolated pilot CA never install', '-addext', 'basicConstraints=critical,CA:TRUE,pathlen:0',
+         '-addext', 'keyUsage=critical,keyCertSign,cRLSign', '-addext', 'subjectKeyIdentifier=hash'],
+        ['genpkey', '-algorithm', 'RSA', '-pkeyopt', 'rsa_keygen_bits:2048', '-out', 'server-key.pem'],
+        ['req', '-new', '-key', 'server-key.pem', '-subj', '/CN=localhost', '-out', 'server.csr'],
+    ]
+    for name, start, end in [('valid', '20200101000000Z', '20400101000000Z'),
+                             ('expired', '20000101000000Z', '20010101000000Z')]:
+        commands.append(['ca', '-batch', '-notext', '-config', config.name, '-extensions', 'server',
+                         '-in', 'server.csr', '-out', name + '.pem', '-startdate', start, '-enddate', end])
+    for number, command in enumerate(commands):
+        run([openssl, *command], cwd=destination, log=destination / f'fixture-command-{number}.log')
+    return {name: destination / filename for name, filename in
+            {'ca': 'ca.pem', 'key': 'server-key.pem', 'valid': 'valid.pem', 'expired': 'expired.pem'}.items()}
 
 
 def qualify(work: Path) -> None:
@@ -95,7 +125,7 @@ def qualify(work: Path) -> None:
                 assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in bundle.namelist())
                 bundle.extractall(work / 'nasm')
             continue
-        if item.get('source_only'):
+        if item.get('source_only') or item == base['nasm_source']:
             continue
         with tarfile.open(archive) as bundle:
             bundle.extractall(work, filter='data')
@@ -213,9 +243,8 @@ def qualify(work: Path) -> None:
     suites = ['test_ssl', 'test_hashlib', 'test_hmac', 'test_zlib', 'test_lzma', 'test_ctypes', 'test_decimal', 'test_sqlite3']
     run([python, '-m', 'test', '-j2', '--junit-xml', output / 'cpython-regressions.xml', *suites], cwd=python_source, log=output / 'cpython-regressions.log')
     run([python, '-m', 'unittest', '-v', 'test.test_tarfile.TestExtractionFilters.test_link_at_destination'], cwd=python_source, log=output / 'tarfile-security-regression.log')
-    certs = output / 'certs'
-    certs.mkdir()
-    paths = certificate_material(certs)
+    certs = work / 'tls-fixtures'
+    paths = tls_fixtures(certs, ssl_prefix / 'bin/openssl.exe')
     (output / 'tls-fixtures.json').write_text(json.dumps({k: str(v) for k, v in paths.items()}))
     code = ('import sys,json,pathlib;sys.path.insert(0,sys.argv[1]); '
             'from verify_native_runtime_pilot import default_trust_handshake,python_tls_checks,executed_cpython_security; '
