@@ -1,0 +1,17 @@
+{
+  "scope": "Native Windows ARM64 OpenSSL integrated assembler only; separate from Qt libclang22 parser and Rust LLVM fork. Official stable portable archive, ephemeral prefix, no OS/global installation.",
+  "version": "23.1.5",
+  "source_commit": "392dfff97d29b59d77e5cac6d4b6ef2585fe7117",
+  "authority": "https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.5",
+  "binary": {
+    "name": "clang+llvm-23.1.5-aarch64-pc-windows-msvc.tar.zst",
+    "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/clang%2Bllvm-23.1.5-aarch64-pc-windows-msvc.tar.zst",
+    "sha256": "cb523582d9fe00862c5584ce5f7715f963037c11bba95181fa98425f48e06863",
+    "bytes": 257889937
+  },
+  "corresponding_source": {
+    "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/llvm-project-23.1.5.src.tar.xz",
+    "sha256": "fb50b1eac93ddeb3aa8dab4cfe324dff74f4a9c2bdee6160c9e36188f8d06a6e",
+    "bytes": 179220264
+  }
+}
