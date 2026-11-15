@@ -25,7 +25,13 @@
     "artifact_sha256": "c2298e586e9ae4e17e39e97b875c9ea96c9b25ba5caf149961881f21db7bdc75",
     "cffi_passed": 224,
     "cffi_skipped": 5,
-    "result": "PASS five native provider/CFFI prerequisites; worker archive verification and runtime/framework adoption pending"
+    "result": "PASS native provider/cffi prerequisite; original archive/legal/native bytes independently verified; whole runtime/framework adoption pending",
+    "worker_verified": {
+      "original_sources": 6,
+      "legal_texts": 13,
+      "native_images": 8,
+      "maximum_deployment": "10.15"
+    }
   },
   "macos_arm64": {
     "failed_run": 43700540081,
@@ -47,13 +53,224 @@
       "failure_run": 43700540081,
       "failure_job": 132770481930
     },
-    "result": "ARM64-only controlled correction awaiting native repeat"
+    "result": "PASS native provider/cffi prerequisite; original archive/legal/native bytes independently verified; whole runtime/framework adoption pending",
+    "worker_verified": {
+      "original_sources": 6,
+      "legal_texts": 13,
+      "native_images": 8,
+      "maximum_deployment": "11.0"
+    },
+    "run": 43702635525,
+    "source_sha": "6ac35ac19b1932706d3ad03a18fe069b21d25bf7",
+    "artifact_id": 14157461179,
+    "artifact_bytes": 11103695,
+    "artifact_sha256": "cbc0ec1dcdc0a74813aaf0014277ebd472d629437a52608b5dcc55f02b294254",
+    "cffi_passed": 224,
+    "cffi_skipped": 5
   },
   "ruff_candidate": {
     "api_run": 43699447519,
     "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
     "pastey": "0.2.3",
     "result": "Six selected graphs and native API PASS; native consumer jobs pending; no tool adoption"
+  },
+  "ruff_native_consumers": {
+    "run": 43702086707,
+    "source_sha": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+    "upstream_cases_per_target": 33,
+    "proofs": [
+      {
+        "id": 14157845675,
+        "name": "selected-rust-graphs-macos-x64-43702086707",
+        "bytes": 31324106,
+        "sha": "c5877a91dedd5cf591e90901560d98218a53aa927507225970566fe47828812c",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "x86_64-apple-darwin",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "c16cfdf4932f6834fcb96f6713501e25264e22ea8c1b22a4fef503666c6c62b8",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      },
+      {
+        "id": 14157655211,
+        "name": "selected-rust-graphs-windows-arm64-43702086707",
+        "bytes": 30665505,
+        "sha": "3c5a9d60e8ea4736073ebfbb6efe6167358bd2235640672e9a1f45cf30c9d6ff",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "aarch64-pc-windows-msvc",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "85f0b383a36cb1048356b8532281b76b001b665677e700dacf7ac9edf167e9e1",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      },
+      {
+        "id": 14157357606,
+        "name": "selected-rust-graphs-linux-x64-43702086707",
+        "bytes": 31644246,
+        "sha": "6d5a18c864e7eef7642c5ad3a1c4fd37d7709a4bbbdfa3c3fc3b895c6763fb7f",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "x86_64-unknown-linux-gnu",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "5e106207760bd1122a79b51f0c7cf3f05e3fd5e7262bf966dba43be5547f0341",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      },
+      {
+        "id": 14157183559,
+        "name": "selected-rust-graphs-macos-arm64-43702086707",
+        "bytes": 30802101,
+        "sha": "bd6a7e37696fda32f12a3a5e7891a23bf4e669dd2c7e8fca8d807e02da63ce08",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "aarch64-apple-darwin",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "6c9b1919f3f667185b3abfb604b0fad8f70d61afca6a27415cc49a1bd51175eb",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      },
+      {
+        "id": 14157053765,
+        "name": "selected-rust-graphs-windows-x64-43702086707",
+        "bytes": 31264969,
+        "sha": "5d51c6034ef8a74b45accfad0c4d4880103845f77b12eb0acba1c981b9dfb395",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "x86_64-pc-windows-msvc",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "92f5b2728d8de973f97f7a140e4a9cba86caeb8666f033d0b0d9c15e0e85a3de",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      },
+      {
+        "id": 14156928978,
+        "name": "selected-rust-graphs-linux-arm64-43702086707",
+        "bytes": 31323904,
+        "sha": "374f1cad223eca9a7d8afcf4a6f6c9e80d64d7c8c174b3aa930373a60c7e9ebf",
+        "source": "de44c8c0c404d36627b32013c0e70baa80ef6b3c",
+        "native": {
+          "target": "aarch64-unknown-linux-gnu",
+          "version": "ruff 0.17.5",
+          "binary_sha256": "ae176ec22e573e6556a1a9f30317c0f908d0bb9ae74d373d30d6da16fa75be92",
+          "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+          "source_modified": true,
+          "checks": [
+            "upstream Ruff flake8_comprehensions tests consuming LibCST",
+            "actual libcst-backed C400/C401 fixes and executed Python semantics",
+            "repository lint"
+          ],
+          "scope": "Native developer-tool consumer only; not application/package ABI or producing-profile adoption",
+          "result": "PASS"
+        },
+        "upstream_consumer_tests": 33,
+        "original_sources_verified": 4,
+        "whole_zip_verified": true
+      }
+    ],
+    "result": "PASS six native source consumers; wheel/producer adoption pending"
+  },
+  "windows_arm64_ctypes": {
+    "source_sha": "99f230a1fbf1cdf608de6e0b04a2d734bf90feb3",
+    "python_source": {
+      "name": "Python-3.14.10.tar.xz",
+      "directory": "Python-3.14.10",
+      "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+      "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "authority": "https://www.python.org/downloads/release/python-31410/"
+    },
+    "ffi_original_source_sha": "11cedced38c89fe350a0918f138664b94b4a4c34",
+    "ffi_artifact": 14090737696,
+    "ffi_zip_sha256": "e210e199c4a6f0b2f2412d5b8e4d3477423103fd8500c1fddac410b3f53e9dec",
+    "ffi_library_sha256": "95d41ce461d52b88c9a8a6811aac198eab83b8e3e8b9469b52fbf473d2f6bf29",
+    "module_sha256": "b16f51c14c9e8f8b6474f50ba41bc133f8b9442c9b05335a9f003a7510a7ef65",
+    "machine": 43620,
+    "compiler": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.52.37025\\bin\\Hostarm64\\arm64\\cl.exe",
+    "crt": "/MD",
+    "pe_versions": {
+      "os": [
+        6,
+        2
+      ],
+      "subsystem": [
+        6,
+        2
+      ]
+    },
+    "upstream_modules": [
+      "test_callbacks",
+      "test_parameters",
+      "test_functions",
+      "test_structures",
+      "test_as_parameter"
+    ],
+    "project_cpython_source_patches": [],
+    "configuration": [
+      "USING_MALLOC_CLOSURE_DOT_C",
+      "HAVE_FFI_PREP_CIF_VAR"
+    ],
+    "scope": "Original same-patch private ctypes consumer only; no whole Python/SSL/crypto/package adoption",
+    "result": "PASS",
+    "upstream_cases": 150,
+    "whole_zip_verified": true,
+    "python_original_and_license_verified": true,
+    "retained_module_and_ffi_bytes_verified": true
   }
 },
   "linux_current_maintenance_consumers_2026_11_15": [
