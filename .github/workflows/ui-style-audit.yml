@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -1206,9 +1206,17 @@ jobs:
           retention-days: 0
 
   selected-rust-graphs:
+    name: Selected Rust / ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.linux_arm64_pilot == 'rust-native-ruff' && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || '[{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"}]') }}
+    env:
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.label, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
     if: ${{ startsWith(inputs.linux_arm64_pilot, 'rust-') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
       - name: Verify exact diagnostic source
@@ -1221,6 +1229,7 @@ jobs:
         with:
           python-version: "3.14"
           check-latest: true
+          architecture: ${{ matrix.arch }}
       - name: Verify stable Python 3.14 before source resolver
         shell: bash
         run: |
@@ -1231,12 +1240,25 @@ jobs:
             python -m pip install -c .github/scripts/source_build_constraints.txt -r .github/scripts/source_build_requirements.txt 'cffi==2.1.1' 'pycparser==3.12'
             python -c "from cffi import FFI; FFI().cdef('int api_check(void);'); print('CFFI source-build frontend ready')"
           fi
-          rustup toolchain install 1.99.1 --profile minimal
+          if [ '${{ inputs.linux_arm64_pilot }}' = rust-native-ruff ] && [ '${{ matrix.label }}' = macos-x64 ]; then
+            export CARGO_HOME="$RUNNER_TEMP/ruff-cargo" RUSTUP_HOME="$RUNNER_TEMP/ruff-rustup"
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/ruff-rustup-init" https://static.rust-lang.org/rustup/archive/1.29.2/x86_64-apple-darwin/rustup-init
+            echo "b9610730ddeef52765723847866fd1e3540b2bf7d5ab0c324aa143a5edf25ba0  $RUNNER_TEMP/ruff-rustup-init" | shasum -a 256 -c -
+            chmod +x "$RUNNER_TEMP/ruff-rustup-init"
+            "$RUNNER_TEMP/ruff-rustup-init" -y --no-modify-path --profile minimal --default-toolchain 1.99.1
+            export PATH="$CARGO_HOME/bin:$PATH"
+          else
+            rustup toolchain install 1.99.1 --profile minimal
+          fi
+          if [ '${{ inputs.linux_arm64_pilot }}' = rust-native-ruff ]; then
+            RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence --only-package ruff --maintained-paste --qualified-lock .github/sources/ruff-0.17.5-psaa.Cargo.lock --native-ruff
+          else
           RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ (startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--update-compatible' || '' }} ${{ (endsWith(inputs.linux_arm64_pilot, 'check') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-maintained-ruff' && '--only-package ruff --check-package ruff --maintained-paste' || '' }}
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: selected-rust-graphs-${{ github.run_id }}
+          name: selected-rust-graphs-${{ matrix.label }}-${{ github.run_id }}
           path: selected-rust-evidence
           if-no-files-found: warn
           retention-days: 0

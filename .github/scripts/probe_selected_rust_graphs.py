@@ -6,6 +6,7 @@ import difflib
 import hashlib
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -15,6 +16,77 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+QUALIFIED_RUFF_LOCK_SHA256 = 'e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9'
+
+
+def qualified_ruff_lock(path: Path) -> bytes:
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != QUALIFIED_RUFF_LOCK_SHA256:
+        raise ValueError('Ruff qualified lock hash mismatch')
+    packages = tomllib.loads(data.decode())['package']
+    assert not any(p['name'] == 'paste' for p in packages)
+    assert any(p['name'] == 'pastey' and p['version'] == '0.2.3' for p in packages)
+    return data
+
+
+def native_ruff(root: Path, output: Path) -> dict:
+    """Exercise the changed macro/parser consumer; never build the application."""
+    host = subprocess.check_output(['rustc', '-vV'], text=True)
+    (output / 'rustc.txt').write_text(host, encoding='utf-8')
+    arch = os.environ['EXPECTED_ARCH']
+    target = ('aarch64' if arch == 'arm64' else 'x86_64') + {
+        'win32': '-pc-windows-msvc', 'darwin': '-apple-darwin', 'linux': '-unknown-linux-gnu'}[__import__('sys').platform]
+    assert 'release: 1.99.1\n' in host and f'host: {target}\n' in host
+    assert platform.machine().lower() in ({'arm64', 'aarch64'} if arch == 'arm64' else {'amd64', 'x86_64'})
+    environment = {**os.environ, 'CARGO_BUILD_JOBS': '2'}
+    if os.name == 'nt':
+        from inspect_pe import read_pe_machine
+        compiler = Path(subprocess.check_output(['rustup', 'which', 'rustc'], text=True).strip())
+        assert read_pe_machine(compiler) == (0xAA64 if arch == 'arm64' else 0x8664)
+        environment['RUSTFLAGS'] = '-C target-feature=-crt-static'
+    if __import__('sys').platform == 'darwin':
+        environment['MACOSX_DEPLOYMENT_TARGET'] = '11.0' if arch == 'arm64' else '10.15'
+    lock_hash = hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest()
+    for label, command in [
+        ('libcst-tests', ['cargo', 'test', '--locked', '-p', 'libcst', '--no-default-features', '--lib']),
+        ('ruff-build', ['cargo', 'build', '--locked', '--release', '-p', 'ruff'])]:
+        result = subprocess.run(command, cwd=root, env=environment, capture_output=True, text=True, encoding='utf-8', timeout=2400)
+        (output / (label + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
+        if result.returncode:
+            print((result.stdout + result.stderr)[-5000:], flush=True)
+            result.check_returncode()
+        assert hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest() == lock_hash
+        print(label, 'PASS', flush=True)
+    binary = root / 'target/release' / ('ruff.exe' if os.name == 'nt' else 'ruff')
+    if os.name == 'nt':
+        assert read_pe_machine(binary) == (0xAA64 if arch == 'arm64' else 0x8664)
+    elif __import__('sys').platform == 'linux':
+        data = binary.read_bytes()[:20]
+        assert data[:6] == b'\x7fELF\x02\x01' and int.from_bytes(data[18:20], 'little') == (183 if arch == 'arm64' else 62)
+    else:
+        assert subprocess.check_output(['lipo', '-archs', binary], text=True).split() == [('arm64' if arch == 'arm64' else 'x86_64')]
+        (output / 'ruff-otool.txt').write_text(subprocess.check_output(['otool', '-l', binary], text=True))
+    actual = subprocess.check_output([binary, '--version'], text=True).strip()
+    assert actual.startswith('ruff 0.17.5'), actual
+    fixture = output / 'macro_consumer.py'
+    fixture.write_text('values = list(x for x in range(3))\nunique = set(x for x in range(3))\n', encoding='utf-8')
+    result = subprocess.run([binary, 'check', '--isolated', '--select', 'C400,C401', '--fix', fixture], capture_output=True, text=True)
+    (output / 'codemod.log').write_text(result.stdout + result.stderr, encoding='utf-8')
+    result.check_returncode()
+    assert fixture.read_text() == 'values = [x for x in range(3)]\nunique = {x for x in range(3)}\n'
+    namespace = {}
+    exec(compile(fixture.read_text(), str(fixture), 'exec'), namespace)
+    assert namespace['values'] == [0, 1, 2] and namespace['unique'] == {0, 1, 2}
+    result = subprocess.run([binary, 'check', '--no-cache', 'playstore_app_audit', 'tests', 'main.py'], cwd=REPO, capture_output=True, text=True)
+    (output / 'repository-lint.log').write_text(result.stdout + result.stderr, encoding='utf-8')
+    if result.returncode:
+        print(result.stdout + result.stderr, flush=True)
+    result.check_returncode()
+    shutil.copy2(binary, output / binary.name)
+    return {'target': target, 'version': actual, 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+            'lock_sha256': lock_hash, 'source_modified': True,
+            'checks': ['upstream LibCST library tests', 'actual libcst-backed C400/C401 fixes and executed Python semantics', 'repository lint'],
+            'scope': 'Native developer-tool consumer only; not application/package ABI or producing-profile adoption', 'result': 'PASS'}
 
 
 def selected_packages(tree: str) -> list[dict[str, str]]:
@@ -80,9 +152,15 @@ def main() -> None:
     parser.add_argument('--check-package', choices=['ruff', 'cryptography-rust'], help='Repeat only this affected native API check')
     parser.add_argument('--maintained-paste', action='store_true', help='Qualify the minimal maintained macro dependency configuration for Ruff only')
     parser.add_argument('--only-package', choices=['ruff', 'cryptography-rust'])
+    parser.add_argument('--qualified-lock', type=Path, help='Reuse the one hash-qualified maintained Ruff lock; never resolve new versions')
+    parser.add_argument('--native-ruff', action='store_true')
     args = parser.parse_args()
-    if args.maintained_paste and (not args.update_compatible or args.only_package != 'ruff'):
-        parser.error('--maintained-paste requires --update-compatible --only-package ruff')
+    if args.qualified_lock and (args.update_compatible or args.only_package != 'ruff' or not args.maintained_paste):
+        parser.error('--qualified-lock requires --only-package ruff --maintained-paste without update')
+    if args.native_ruff and not args.qualified_lock:
+        parser.error('--native-ruff requires the qualified lock')
+    if args.maintained_paste and (not (args.update_compatible or args.qualified_lock) or args.only_package != 'ruff'):
+        parser.error('--maintained-paste requires a compatible update or qualified lock and --only-package ruff')
     if args.check_package and not args.check_candidate:
         parser.error('--check-package requires --check-candidate')
     if args.check_candidate and not args.update_compatible:
@@ -127,6 +205,9 @@ def main() -> None:
             adaptation = maintained_paste(root, args.output)
         lock = root / 'Cargo.lock'
         original_lock = lock.read_bytes()
+        if args.qualified_lock:
+            lock.write_bytes(qualified_ruff_lock(args.qualified_lock))
+            shutil.copy2(args.qualified_lock, args.output / 'ruff-qualified.Cargo.lock')
         if args.update_compatible:
             candidate = subprocess.run(['cargo', 'update', '--package', item['package'], '--recursive'],
                                        cwd=root, capture_output=True, text=True, encoding='utf-8', timeout=600)
@@ -173,9 +254,10 @@ def main() -> None:
                 checked.check_returncode()
             assert hashlib.sha256(lock.read_bytes()).hexdigest() == digest
             print(item['package'], 'PASS native candidate API compile check; not runtime/ABI/adoption acceptance', flush=True)
-    report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results,
+    native_result = native_ruff(root, args.output) if args.native_ruff else None
+    report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results, 'native_ruff': native_result,
               'candidate_update_only': args.update_compatible, 'maintained_macro_candidate': adaptation, 'native_candidate_api_check': args.check_candidate, 'native_checked_packages': ([args.check_package] if args.check_package else [item['package'] for item in selected_sources]) if args.check_candidate else [],
-              'check_scope': 'Native Ubuntu24.04 x64 compiler API only; OpenSSL host provider is used only for a crypto package check. No target ABI/runtime/provider/package acceptance or changed pins.',
+              'check_scope': native_result['scope'] if native_result else 'Native Ubuntu24.04 x64 compiler API only; OpenSSL host provider is used only for a crypto package check. No target ABI/runtime/provider/package acceptance or changed pins.',
               'result': 'PASS selected source graph' + (' and native API compile checks' if args.check_candidate else '') + '; candidate updates still require native regression/compatibility acceptance before adoption'}
     (args.output / 'selected-rust-graphs.json').write_text(json.dumps(report, indent=2) + '\n')
 
