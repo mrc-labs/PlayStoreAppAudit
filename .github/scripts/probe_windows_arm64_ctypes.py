@@ -100,7 +100,7 @@ def main() -> None:
     (output / 'ctypes-imports.txt').write_text(imports)
     # Original Windows closure allocation remains selected. Only this isolated
     # child imports the new module; neither the runner nor application is changed.
-    cases = ['test_callbacks', 'test_callargs', 'test_functions', 'test_structures', 'test_as_parameter']
+    cases = ['test_callbacks', 'test_parameters', 'test_functions', 'test_structures', 'test_as_parameter']
     code = ('import sys,unittest; sys.path.insert(0,sys.argv[1]); sys.path.append(sys.argv[2]); '
             'import _ctypes,ctypes; assert _ctypes.__file__.startswith(sys.argv[1]); '
             'suite=unittest.defaultTestLoader.loadTestsFromNames(sys.argv[3:]); '

@@ -61,7 +61,7 @@ def main() -> None:
     triplets = work / 'triplets'
     triplets.mkdir()
     triplet = triplets / 'x64-windows-static-md.cmake'
-    original = source / 'triplets/community' / triplet.name
+    original = source / 'triplets' / triplet.name
     assert original.is_file()
     triplet.write_bytes(original.read_bytes() + ('\nset(VCPKG_BUILD_TYPE release)\n'
                         'set(VCPKG_PLATFORM_TOOLSET_VERSION "' + compiler.parents[3].name + '")\n').encode())
