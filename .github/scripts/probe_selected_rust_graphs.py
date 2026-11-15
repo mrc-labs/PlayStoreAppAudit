@@ -48,15 +48,18 @@ def native_ruff(root: Path, output: Path) -> dict:
         environment['MACOSX_DEPLOYMENT_TARGET'] = '11.0' if arch == 'arm64' else '10.15'
     lock_hash = hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest()
     for label, command in [
-        # LibCST is a dependency outside Ruff's workspace: Cargo rejects feature
-        # switches here. Use exactly the feature selection of the parent graph.
-        ('libcst-tests', ['cargo', 'test', '--locked', '-p', 'libcst', '--lib']),
+        # Cargo cannot execute a non-workspace dependency's dev tests. Exercise
+        # the upstream Ruff suite that actually consumes LibCST for codemods.
+        ('libcst-consumer-tests', ['cargo', 'test', '--locked', '--release', '-p', 'ruff_linter', '--lib', 'flake8_comprehensions']),
         ('ruff-build', ['cargo', 'build', '--locked', '--release', '-p', 'ruff'])]:
         result = subprocess.run(command, cwd=root, env=environment, capture_output=True, text=True, encoding='utf-8', timeout=2400)
         (output / (label + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
         if result.returncode:
             print((result.stdout + result.stderr)[-5000:], flush=True)
             result.check_returncode()
+        if label == 'libcst-consumer-tests':
+            match = re.search(r'test result: ok\. (\d+) passed;', result.stdout)
+            assert match and int(match[1]) > 0, 'No actual LibCST consumer tests executed'
         assert hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest() == lock_hash
         print(label, 'PASS', flush=True)
     binary = root / 'target/release' / ('ruff.exe' if os.name == 'nt' else 'ruff')
@@ -87,7 +90,7 @@ def native_ruff(root: Path, output: Path) -> dict:
     shutil.copy2(binary, output / binary.name)
     return {'target': target, 'version': actual, 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
             'lock_sha256': lock_hash, 'source_modified': True,
-            'checks': ['upstream LibCST library tests', 'actual libcst-backed C400/C401 fixes and executed Python semantics', 'repository lint'],
+            'checks': ['upstream Ruff flake8_comprehensions tests consuming LibCST', 'actual libcst-backed C400/C401 fixes and executed Python semantics', 'repository lint'],
             'scope': 'Native developer-tool consumer only; not application/package ABI or producing-profile adoption', 'result': 'PASS'}
 
 
