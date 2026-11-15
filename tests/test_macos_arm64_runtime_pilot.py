@@ -159,7 +159,7 @@ def test_diagnostic_route_preserves_ten_inputs_and_does_not_dispatch_intel_or_li
 
 
 def test_darwin_build_tests_use_upstreams_case_insensitive_executable_name() -> None:
-    recipe = (ROOT / '.github/scripts/build_macos_arm64_runtime_pilot.sh').read_text()
+    recipe = (ROOT / '.github/scripts/build_macos_arm64_runtime_pilot.sh').read_text() + (ROOT / '.github/scripts/finish_macos_arm64_runtime_pilot.sh').read_text()
     assert 'test -f ./python.exe && test -x ./python.exe' in recipe
     assert './python -' not in recipe
     assert recipe.count('./python.exe -') == 4
@@ -207,6 +207,8 @@ def test_changed_mac_profiles_intake_qualified_parsers_before_dependency_resolut
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     for arch, mode in [('arm64', 'macos-full'), ('x64', 'macos-x64-full')]:
         recipe = (ROOT / f'.github/scripts/build_macos_{arch}_runtime_pilot.sh').read_text()
+        if arch == 'arm64':
+            recipe += (ROOT / '.github/scripts/finish_macos_arm64_runtime_pilot.sh').read_text()
         fetch = f'intake_lxml_native.py --target macos-{arch} --output-dir macos-{arch}-pilot-evidence/lxml-qualified'
         assert fetch in workflow
         assert recipe.index('--qualify') < recipe.index('pip install -r "$evidence/runtime-requirements.txt"')

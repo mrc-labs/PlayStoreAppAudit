@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -1024,7 +1024,7 @@ jobs:
           retention-days: 0
 
   macos-arm64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' }}
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-public-http' }}
     name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
     timeout-minutes: 240
@@ -1080,6 +1080,7 @@ jobs:
         run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
 
       - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
+        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1111,11 +1112,18 @@ jobs:
             "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
             2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
 
+      - name: Exercise public HTTP against exact compiled SDK only
+        if: ${{ inputs.linux_arm64_pilot == 'macos-public-http' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/reuse_macos_arm64_compiled_sdk.py
+
       - name: Upload diagnostic macOS ARM64 evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
+          name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: macos-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0
