@@ -10,7 +10,8 @@ import tarfile
 from pathlib import Path
 
 
-def retain(work: Path, output: Path, exit_code: int) -> dict | None:
+def retain(work: Path, output: Path, exit_code: int, *, sdk_name: str = 'macos-runtime-sdk') -> dict | None:
+    assert sdk_name and all(c.isascii() and (c.isalnum() or c == '-') for c in sdk_name)
     work = work.resolve()
     roots = [work / name for name in ['prefix', 'venv'] if (work / name).is_dir()]
     if not roots:
@@ -24,7 +25,7 @@ def retain(work: Path, output: Path, exit_code: int) -> dict | None:
             elif path.is_file():
                 with path.open('rb') as stream:
                     index[name] = {'sha256': hashlib.file_digest(stream, 'sha256').hexdigest(), 'bytes': path.stat().st_size}
-    archive = output / 'macos-runtime-sdk.tar.zst'
+    archive = output / (sdk_name + '.tar.zst')
     with tarfile.open(archive, 'w:zst') as bundle:
         for root in roots:
             bundle.add(root, arcname=root.name)
@@ -35,7 +36,7 @@ def retain(work: Path, output: Path, exit_code: int) -> dict | None:
               'pilot_exit_code': exit_code, 'complete_pilot': exit_code == 0,
               'archive': archive.name, 'archive_sha256': digest, 'paths': index,
               'scope': 'Diagnostic SDK only; partial output is not qualified; reuse requires original source/input/byte guards and affected native consumer checks. Never a final candidate.'}
-    (output / 'macos-runtime-sdk.json').write_text(json.dumps(result, indent=2) + '\n')
+    (output / (sdk_name + '.json')).write_text(json.dumps(result, indent=2) + '\n')
     return result
 
 
