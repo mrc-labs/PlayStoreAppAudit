@@ -89,6 +89,7 @@ def main() -> None:
          '/DUSING_MALLOC_CLOSURE_DOT_C=1', '/DHAVE_FFI_PREP_CIF_VAR=1', '/DFFI_BUILDING_DLL',
          '/I' + str(source / 'PC'), '/I' + str(source / 'Include'), '/I' + str(source / 'Include/internal'),
          '/I' + str(prefix), *files, '/link', Path(sys.base_prefix) / 'libs/python314.lib', prefix / 'ffi.lib',
+         'ole32.lib', 'oleaut32.lib',
          '/OUT:' + str(modules / '_ctypes.pyd')], cwd=modules, log=output / 'ctypes-build.log')
     native = modules / '_ctypes.pyd'
     assert read_pe_machine(native) == 0xAA64
