@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -188,6 +189,7 @@ def test_windows_sources_reuse_accepted_linux_runtime_inputs() -> None:
 def test_windows_profile_is_isolated_from_production_and_other_targets() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     job = workflow.split('\n  windows-runtime-pilot:', 1)[1]
+    job = re.split(r"(?m)^  [a-z][a-z0-9-]*:\s*$", job, maxsplit=1)[0]
     assert 'runs-on: windows-2025' in job and 'matrix:' not in job
     assert 'Dispatch SHA mismatch' in job and 'Checkout SHA mismatch' in job
     assert 'Select only Windows x64 pilot' in job

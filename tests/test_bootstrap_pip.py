@@ -58,7 +58,11 @@ def test_tool_diagnostic_requires_explicit_mode_and_excludes_expensive_profiles(
     root = Path(__file__).resolve().parents[1]
     workflow = (root / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     job = workflow.split('  native-toolchain-delta:', 1)[1].split('\n  capture:', 1)[0]
-    assert "if: ${{ inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || inputs.linux_arm64_pilot == 'tools-qt-data-windows') }}" in job
+    gate = next(line.strip() for line in job.splitlines() if line.strip().startswith('if:'))
+    for mode in ['tools', 'tools-scons', 'tools-ca', 'tools-build', 'tools-lxml',
+                 'tools-qt-data-windows', 'tools-mac-providers', 'tools-codec', 'tools-sql-decimal']:
+        assert "'" + mode + "'" in gate
+    assert not any(token in gate for token in ['runtime_pilot', "'full'", "'off'", 'windows_runtime_pilot'])
     for flag in ['component_audit', 'runtime_pilot', 'windows_runtime_pilot',
                  'windows_arm64_runtime_probe', 'windows_arm64_host_tools',
                  'windows_arm64_full_pilot', 'windows_prerequisites_only', 'trust_diagnostics_only']:
@@ -67,8 +71,14 @@ def test_tool_diagnostic_requires_explicit_mode_and_excludes_expensive_profiles(
         assert '"label":"' + label + '"' in job
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in job
     assert 'verify_toolchain_delta.py' in job
-    assert "Exercise selected native compiler and developer tools\n        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows') }}" in job
-    assert "Qualify verified pip and current tool installs\n        if: ${{ inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows') }}" in job
+    condition = job.split('Exercise selected native compiler and developer tools\n', 1)[1].split('\n', 1)[0]
+    for mode in ['tools-ca', 'tools-build', 'tools-lxml', 'tools-qt-data-windows',
+                 'tools-mac-providers', 'tools-codec', 'tools-sql-decimal']:
+        assert "'" + mode + "'" in condition
+    condition = job.split('Qualify verified pip and current tool installs\n', 1)[1].split('\n', 1)[0]
+    for mode in ['tools-ca', 'tools-build', 'tools-lxml', 'tools-qt-data-windows',
+                 'tools-mac-providers', 'tools-codec', 'tools-sql-decimal']:
+        assert "'" + mode + "'" in condition
     assert "Probe current native Qt CA policy before source rebuilds" in job
     assert not any(token in job for token in ['build_native_runtime_pilot', 'build_windows_runtime_pilot',
                                             'build_macos_', 'assemble-release', 'sign-windows', 'secrets.'])

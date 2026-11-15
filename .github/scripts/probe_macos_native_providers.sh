@@ -59,6 +59,9 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
     list(pool.map(stage, spec['sources']))
 notice = checked_source(spec['sqlite_legal_notice'], root / 'legal/sqlite-autoconf-3540100')
 assert notice.is_file()
+from probe_libffi_arm64 import apply_cffi_patch
+if os.environ['EXPECTED_ARCH'] == 'arm64':
+    apply_cffi_patch(work / 'src/cffi-2.1.1', root, contract['cffi_patch'])
 PY
 prefix="$work/prefix"
 export DYLD_LIBRARY_PATH="$prefix/lib"
@@ -95,8 +98,28 @@ cp .github/scripts/native_provider_consumer.c "$evidence/"
 "$evidence/native-provider-consumer" | tee "$evidence/native-provider-prerequisites.json"
 python -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'pycparser==3.12' 'pytest==9.2.0' --report "$evidence/provider-build-worker-install.json"
 mkdir "$evidence/cffi-wheel"
+test "$(pkg-config --modversion libffi)" = 3.8.0
+test "$(pkg-config --variable=prefix libffi)" = "$prefix"
+if [ "$EXPECTED_ARCH" = arm64 ]; then export CFLAGS="$CFLAGS -DPSAA_LIBFFI_380=1"; fi
 python -m pip wheel --no-build-isolation --no-deps "$work/src/cffi-2.1.1" -w "$evidence/cffi-wheel" > "$evidence/cffi-build.log" 2>&1
 python -m pip install --no-index --no-deps --force-reinstall "$evidence"/cffi-wheel/cffi-*.whl
+# Retain a reusable provider SDK and actual linkage even if a native test crashes.
+tar -cJf "$evidence/macos-provider-sdk.tar.xz" -C "$work" prefix
+python - <<'PY'
+import _cffi_backend, hashlib, json, os, subprocess
+from importlib.metadata import version
+from pathlib import Path
+assert version('cffi') == ('2.1.1+psaa.libffi380' if os.environ['EXPECTED_ARCH'] == 'arm64' else '2.1.1')
+root = Path(os.environ['PILOT_EVIDENCE'])
+backend = Path(_cffi_backend.__file__)
+linkage = subprocess.check_output(['otool','-L',backend],text=True)
+assert str(Path(os.environ['PILOT_WORK']) / 'prefix/lib/libffi') in linkage
+(root / 'cffi-native-linkage.txt').write_text(linkage)
+(root / 'macos-provider-sdk.json').write_text(json.dumps({'source_sha':os.environ['GITHUB_SHA'],
+    'original_prefix':str(Path(os.environ['PILOT_WORK']) / 'prefix'),
+    'sdk_sha256':hashlib.sha256((root / 'macos-provider-sdk.tar.xz').read_bytes()).hexdigest(),
+    'backend_sha256':hashlib.sha256(backend.read_bytes()).hexdigest()},indent=2)+'\n')
+PY
 python -m pytest "$work/src/cffi-2.1.1/src/c/test_c.py" -q --junitxml="$evidence/cffi-tests.xml" > "$evidence/cffi-tests.log" 2>&1
 python - <<'PY'
 import hashlib, json, os, platform, shutil, subprocess, sys, xml.etree.ElementTree as ET
@@ -107,6 +130,7 @@ if os.environ['EXPECTED_ARCH'] == 'arm64':
 else:
     from probe_macos_x64_runtime import macho
 import _cffi_backend, cffi
+from importlib.metadata import version
 root = Path(os.environ['PILOT_EVIDENCE'])
 prefix = Path(os.environ['PILOT_WORK']) / 'prefix'
 spec = json.loads(Path('.github/scripts/linux_x64_native_delta_sources.json').read_text())
@@ -115,6 +139,7 @@ for name in ['sqlite','libmpdec','libffi','liblzma','zlib']:
     assert actual[name] == spec['expected'][name], actual
 assert actual['mixed'] == 27.5 and actual['sqlite_column_metadata'] and actual['calls'] == 'SQL/codec/callback PASS'
 assert cffi.__version__ == _cffi_backend.__version__ == '2.1.1'
+assert version('cffi') == ('2.1.1+psaa.libffi380' if os.environ['EXPECTED_ARCH'] == 'arm64' else '2.1.1')
 cases = list(ET.parse(root / 'cffi-tests.xml').getroot().iter('testcase'))
 assert cases and not any(c.find(t) is not None for c in cases for t in ['error','failure'])
 executed = [c for c in cases if c.find('skipped') is None and c.get('status') != 'notrun']
@@ -135,7 +160,7 @@ imports = subprocess.check_output(['otool','-L',_cffi_backend.__file__],text=Tru
 assert str(prefix / 'lib/libffi') in imports, imports
 result = {'source_sha':os.environ['GITHUB_SHA'],'machine':platform.machine(),'deployment':os.environ['MACOSX_DEPLOYMENT_TARGET'],'sdk':os.environ['SDKROOT'],
           'providers':actual,'images':images,'cffi_suite':'Unmodified complete upstream src/c/test_c.py native backend/FFI cases','cffi_cases':len(cases),'cffi_passed':len(executed),'cffi_skipped':sum(c.find('skipped') is not None for c in cases),
-          'cffi_linkage':imports,'patches':[], 'scope':'Native source providers/cffi only; no Python/Qt/CA/package adoption or older-OS execution claim', 'result':'PASS'}
+          'cffi_linkage':imports,'patches':([json.loads(Path('.github/scripts/macos_native_provider_sources.json').read_text())['cffi_patch']] if os.environ['EXPECTED_ARCH'] == 'arm64' else []), 'scope':'Native source providers/cffi only; no Python/Qt/CA/package adoption or older-OS execution claim', 'result':'PASS'}
 (root / 'macos-native-providers.json').write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result,indent=2))
 PY

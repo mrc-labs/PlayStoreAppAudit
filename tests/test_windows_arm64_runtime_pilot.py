@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -52,6 +53,7 @@ def test_arm64_contract_preserves_qualified_sources_and_distinguishes_host_tools
 def test_arm64_probe_is_single_target_and_cannot_start_a_stack_rebuild() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     job = workflow.split('\n  windows-arm64-runtime-probe:', 1)[1]
+    job = re.split(r"(?m)^  [a-z][a-z0-9-]*:\s*$", job, maxsplit=1)[0]
     assert 'runs-on: windows-11-arm' in job and 'matrix:' not in job
     assert 'Dispatch SHA mismatch' in job and 'Checkout SHA mismatch' in job
     assert 'architecture: arm64' in job and 'Select only Windows ARM64 prerequisites' in job

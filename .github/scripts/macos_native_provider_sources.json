@@ -20,5 +20,22 @@
     }
   },
   "xcode": "26.6",
-  "identity": "Project-built native source providers with original hashes; no unchanged vendor binary claim"
+  "identity": "Project-built native source providers with original hashes; no unchanged vendor binary claim",
+  "cffi_patch": {
+    "path": ".github/patches/cffi-2.1.1-controlled-macos-libffi.patch",
+    "sha256": "a30da5d08c2963d7425cdf2e400a90d95015805d69c4150c8d68241292d26e55",
+    "files": {
+      "pyproject.toml": {
+        "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
+        "patched_sha256": "412e8a9e83a7dc1854aec82fa70c903be7804518fe6bfb8785f6202ae3b152b6"
+      },
+      "src/c/_cffi_backend.c": {
+        "original_sha256": "335899c93f88c53939fa8121502fb7129f34b9b8bdd97563d33346e0e91f9964",
+        "patched_sha256": "c3bbe0525a8dafb26ba608b385524f5f696d132772dede3373f4a59fa1c03ace"
+      }
+    },
+    "reason": "Actual native ARM64 variadic fscanf crash and callback failures: upstream libffi3.8 lacks Apple-system FFI_AVAILABLE_APPLE, so CFFI disables available modern APIs. Explicit controlled-only configuration selects original existing CIF/closure paths. No change to system libffi or unrelated targets.",
+    "failure_run": 43700540081,
+    "failure_job": 132770481930
+  }
 }

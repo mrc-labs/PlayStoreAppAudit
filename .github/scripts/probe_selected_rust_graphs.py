@@ -29,6 +29,21 @@ def qualified_ruff_lock(path: Path) -> bytes:
     return data
 
 
+def ruff_codemod_consumer(binary: Path, output: Path) -> None:
+    fixture = output / 'macro_consumer.py'
+    fixture.write_text('values = list(x + 1 for x in range(3))\nunique = set(x + 1 for x in range(3))\n', encoding='utf-8')
+    # Only this synthetic fixture opts into upstream's unsafe-fix classification.
+    result = subprocess.run([binary, 'check', '--isolated', '--select', 'C400,C401', '--fix', '--unsafe-fixes', fixture], capture_output=True, text=True)
+    (output / 'codemod.log').write_text(result.stdout + result.stderr, encoding='utf-8')
+    if result.returncode:
+        print(result.stdout + result.stderr, flush=True)
+    result.check_returncode()
+    assert fixture.read_text() == 'values = [x + 1 for x in range(3)]\nunique = {x + 1 for x in range(3)}\n'
+    namespace = {}
+    exec(compile(fixture.read_text(), str(fixture), 'exec'), namespace)
+    assert namespace['values'] == [1, 2, 3] and namespace['unique'] == {1, 2, 3}
+
+
 def native_ruff(root: Path, output: Path) -> dict:
     """Exercise the changed macro/parser consumer; never build the application."""
     host = subprocess.check_output(['rustc', '-vV'], text=True)
@@ -63,6 +78,7 @@ def native_ruff(root: Path, output: Path) -> dict:
         assert hashlib.sha256((root / 'Cargo.lock').read_bytes()).hexdigest() == lock_hash
         print(label, 'PASS', flush=True)
     binary = root / 'target/release' / ('ruff.exe' if os.name == 'nt' else 'ruff')
+    shutil.copy2(binary, output / binary.name)
     if os.name == 'nt':
         assert read_pe_machine(binary) == (0xAA64 if arch == 'arm64' else 0x8664)
     elif __import__('sys').platform == 'linux':
@@ -73,15 +89,7 @@ def native_ruff(root: Path, output: Path) -> dict:
         (output / 'ruff-otool.txt').write_text(subprocess.check_output(['otool', '-l', binary], text=True))
     actual = subprocess.check_output([binary, '--version'], text=True).strip()
     assert actual.startswith('ruff 0.17.5'), actual
-    fixture = output / 'macro_consumer.py'
-    fixture.write_text('values = list(x for x in range(3))\nunique = set(x for x in range(3))\n', encoding='utf-8')
-    result = subprocess.run([binary, 'check', '--isolated', '--select', 'C400,C401', '--fix', fixture], capture_output=True, text=True)
-    (output / 'codemod.log').write_text(result.stdout + result.stderr, encoding='utf-8')
-    result.check_returncode()
-    assert fixture.read_text() == 'values = [x for x in range(3)]\nunique = {x for x in range(3)}\n'
-    namespace = {}
-    exec(compile(fixture.read_text(), str(fixture), 'exec'), namespace)
-    assert namespace['values'] == [0, 1, 2] and namespace['unique'] == {0, 1, 2}
+    ruff_codemod_consumer(binary, output)
     result = subprocess.run([binary, 'check', '--no-cache', 'playstore_app_audit', 'tests', 'main.py'], cwd=REPO, capture_output=True, text=True)
     (output / 'repository-lint.log').write_text(result.stdout + result.stderr, encoding='utf-8')
     if result.returncode:

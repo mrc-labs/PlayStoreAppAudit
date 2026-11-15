@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import ssl
 import struct
 import zlib
@@ -165,6 +166,7 @@ def test_malformed_metadata_corpus_has_valid_crc_and_spec_chunk_order() -> None:
 def test_native_pilot_is_single_target_sha_guarded_and_cannot_produce_a_candidate() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text()
     capture, pilot = workflow.split('\n  runtime-pilot:', 1)
+    pilot = re.split(r"(?m)^  [a-z][a-z0-9-]*:\s*$", pilot, maxsplit=1)[0]
     assert "if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}" in capture
     assert 'runs-on: ubuntu-22.04' in pilot
     assert 'matrix:' not in pilot

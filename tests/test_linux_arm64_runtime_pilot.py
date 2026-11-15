@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import probe_linux_arm64_runtime as probe
@@ -98,6 +99,7 @@ def test_security_case_marked_notrun_is_rejected_even_without_skip_element(tmp_p
 def test_arm64_diagnostic_does_not_select_x64_sysroot_or_other_jobs() -> None:
     workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
     prior, job = workflow.split('\n  linux-arm64-runtime-pilot:', 1)
+    job = re.split(r"(?m)^  [a-z][a-z0-9-]*:\s*$", job, maxsplit=1)[0]
     assert 'runs-on: ubuntu-24.04-arm' in job and 'matrix:' not in job
     assert 'test "$EXPECTED_SHA" = "${{ github.sha }}"' in job
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in job
