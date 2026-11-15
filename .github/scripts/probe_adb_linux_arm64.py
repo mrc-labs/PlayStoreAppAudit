@@ -37,10 +37,34 @@ def within_floor(names: list[str]) -> None:
             raise ValueError('ADB dependency exceeds accepted ARM64 ABI floor: ' + value)
 
 
+def system_abi(output: Path) -> dict:
+    cache = subprocess.check_output(['/sbin/ldconfig', '-p'], text=True)
+    stems = ('libc.so.', 'libm.so.', 'libstdc++.so.', 'libgcc_s.so.', 'libudev.so.',
+             'libusb-1.0.so.', 'libprotobuf.so.', 'libbrotli', 'libzstd.so.', 'liblz4.so.', 'libz.so.')
+    rows = []
+    for line in cache.splitlines():
+        match = re.match(r'\s*(\S+)\s+\([^)]*\)\s+=>\s+(/\S+)', line)
+        if not match or not match[1].startswith(stems):
+            continue
+        path = Path(match[2]).resolve()
+        assert re.search(r'Machine:\s+AArch64', readelf(path, '--file-header')), path
+        needs = required_versions(readelf(path, '--version-info'))
+        rows.append({'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                     'glibc': version_floor(needs, 'GLIBC_'),
+                     'glibcxx': version_floor(needs, 'GLIBCXX_'), 'required_versions': needs})
+    assert rows
+    report = {'source_sha': os.environ['GITHUB_SHA'], 'os': platform.freedesktop_os_release(),
+              'images': rows, 'scope': 'Read-only native OS-provider observations; no application binary qualification'}
+    (output / 'system-provider-abi.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps(report, indent=2), flush=True)
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--system-abi-only', action='store_true')
     args = parser.parse_args()
     assert platform.machine() == 'aarch64' and platform.system() == 'Linux'
     assert platform.freedesktop_os_release()['VERSION_ID'] == '24.04'
@@ -51,6 +75,9 @@ def main() -> None:
     spec_path = REPO / '.github/scripts/adb_linux_arm64_sources.json'
     spec = json.loads(spec_path.read_text())
     shutil.copy2(spec_path, out)
+    system_abi(out)
+    if args.system_abi_only:
+        return
     source = args.work / 'android-tools-37.0.0p1'
     for item in spec['sources']:
         dest = out / 'sources' / item['name']
@@ -128,9 +155,17 @@ def main() -> None:
     for path in sorted(paths):
         assert re.search(r'Machine:\s+AArch64', readelf(path, '--file-header')), path
         needs = required_versions(readelf(path, '--version-info'))
-        within_floor(needs)
         images.append({'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                        'required_versions': needs, 'dynamic': readelf(path, '--dynamic')})
+    # Retain all observations and owned bytes even if the gate rejects an image.
+    (out / 'linked-image-abi.json').write_text(json.dumps(images, indent=2) + '\n')
+    shutil.copy2(adb, out / 'adb')
+    shutil.copytree(usb_prefix / 'lib', out / 'private-libusb', symlinks=True)
+    for image in images:
+        try:
+            within_floor(image['required_versions'])
+        except ValueError as error:
+            raise ValueError(str(error) + ' in ' + image['path']) from error
     version = run([str(adb), 'version'], out / 'adb-version.txt', env=env)
     assert '37.0.0' in version and re.search(r'arm64|aarch64', version, re.I)
     run([str(adb), 'help'], out / 'adb-help.txt', env=env)
@@ -147,8 +182,6 @@ def main() -> None:
         run([str(adb), '-P', '15037', 'server-status'], out / 'adb-server-status.txt', env=env)
     finally:
         run([str(adb), '-P', '15037', 'kill-server'], out / 'adb-private-server-stop.txt', env=env)
-    shutil.copy2(adb, out / 'adb')
-    shutil.copytree(usb_prefix / 'lib', out / 'private-libusb', symlinks=True)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': spec['identity'], 'images': images,
               'libusb': {'version': '1.0.30', 'prefix': str(usb_prefix), 'linkage': 'private shared LGPL library'},
               'version': version, 'mdns': 'enabled; native private-server check executed',

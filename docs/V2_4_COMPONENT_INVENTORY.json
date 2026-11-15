@@ -1,4 +1,20 @@
 {
+  "qt_compiled_sdk_reuse_2026_11_15": {
+  "source_sha": "367486bea017f81426e4cc80e2bacfeac0dcf441",
+  "run": 43623545058,
+  "artifact": 14126645491,
+  "zip_bytes": 529280327,
+  "zip_sha256": "1a6b377a3923dfe313a3bfb86c7c9e32d6291f7e34a77b116186c04cea7ee8d3",
+  "sdk_sha256": "4acaf82c9e7dd1f52f5d307c4f2f2e23180ef3aaf3ea9269540e9b5f86158451",
+  "verified_sdk_files": 14229,
+  "runtime_compiled_source_sha": "f2bdb0443a3c659fa464dd253fdd4c1bd829a91f",
+  "scope": "All retained SDK files/new QtBase+QtSvg compiled bytes and source data independently verified. Bindings absent from this SDK; runtime/GUI qualification pending after AnyScript test fix.",
+  "date": "2026-11-15",
+  "native_elf_count": 177,
+  "native_image_records_sha256": "b15d7a11eb9385a5ea8bdba5b5b98a4e2c8d6574634f5f2e3f6b610596ab3be2",
+  "abi": "177 retained SDK tools/libraries are AMD64 and need no more than GLIBC2.35/GLIBCXX3.4.29; not a runtime-loaded-image or final-package claim",
+  "decision": "Reuse exact compiled QtBase/QtSvg SDK after immutable ZIP/receipt/current-source guards; AnyScript sentinel test fix and matched binding/runtime qualification required. Original runtime sourcef2bdb04 preserved."
+},
   "selected_rust_graphs_2026_11_14": {
   "date": "2026-11-14",
   "run": 43622683264,

@@ -159,7 +159,8 @@ PY
 prefix="$work/prefix"
 if [ ${#reuse_flags[@]} != 0 ]; then
   prefix=$(cat "$evidence/reused-prefix.txt")
-  test -d "$prefix/python" && test ! -e "$prefix/qt"
+  test -d "$prefix/python"
+  if [ "${PILOT_REUSE_COMPILED_QT:-0}" = 1 ]; then test -d "$prefix/qt"; else test ! -e "$prefix/qt"; fi
 fi
 export PILOT_PREFIX="$prefix"
 ssl_prefix="$prefix/openssl"
@@ -313,6 +314,7 @@ print('Retained intermediate SDK:', label, archive.stat().st_size, digest, flush
 PYSDK
 }
 # Reused SDK remains identified by its original receipt; do not relabel it.
+if [ "${PILOT_REUSE_COMPILED_QT:-0}" != 1 ]; then
 mkdir "$work/qt-build"
 cd "$work/qt-build"
 "$work/src/qtbase-everywhere-src-6.12.0/configure" -prefix "$prefix/qt" \
@@ -349,6 +351,11 @@ if [ ${#reuse_flags[@]} != 0 ]; then
   export PILOT_SDK_STAGE=qtbase-and-qtsvg-installed
   retain_sdk qt-sdk
 fi
+else
+  cp "$evidence/reused-qt/qtbase-CMakeCache.txt" "$evidence/qtbase-CMakeCache.txt"
+  cp "$evidence/reused-qt/qtbase-config.summary" "$evidence/qtbase-config.summary"
+  bash "$repo/.github/scripts/probe_linux_x64_qt_sqlite.sh"
+fi
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 export LD_LIBRARY_PATH="$prefix/qt/lib:$LLVM_INSTALL_DIR/lib:$LD_LIBRARY_PATH"
@@ -360,6 +367,35 @@ python "$repo/.github/scripts/probe_setuptools_build.py" --consumer pyside --con
 cd "$repo"
 # libclang is a generator prerequisite, never an application runtime search path.
 export LD_LIBRARY_PATH="$prefix/qt/lib:$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
+# Retain actual matched binding bytes before runtime consumers can fail.
+python - <<'PYBINDING'
+import hashlib, json, os, shutil
+from pathlib import Path
+import PySide6, shiboken6
+output = Path(os.environ['PILOT_EVIDENCE']) / 'pyside-binding-sdk'
+output.mkdir()
+site = Path(PySide6.__file__).resolve().parent.parent
+for module in [PySide6, shiboken6]:
+    package = Path(module.__file__).resolve().parent
+    assert package.parent == site and package.name in {'PySide6', 'shiboken6'}
+    shutil.copytree(package, output / package.name, symlinks=True)
+for metadata in site.iterdir():
+    if metadata.is_dir() and metadata.name.lower().startswith(('pyside6', 'shiboken6')) and metadata.name.endswith(('.dist-info', '.egg-info')):
+        shutil.copytree(metadata, output / metadata.name, symlinks=True)
+files = {}
+for path in output.rglob('*'):
+    if path.is_symlink():
+        assert path.resolve().is_relative_to(output), path
+        files[path.relative_to(output).as_posix()] = {'symlink': os.readlink(path)}
+    elif path.is_file():
+        files[path.relative_to(output).as_posix()] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+(output.parent / 'pyside-binding-sdk-provenance.json').write_text(json.dumps({
+    'source_sha': os.environ['GITHUB_SHA'], 'original_site': str(site),
+    'qt_compiled_source_sha': '367486bea017f81426e4cc80e2bacfeac0dcf441' if os.environ.get('PILOT_REUSE_COMPILED_QT') == '1' else os.environ['GITHUB_SHA'],
+    'python_compiled_source_sha': 'f2bdb0443a3c659fa464dd253fdd4c1bd829a91f' if os.environ.get('PILOT_QT_INTEGRATION_ONLY') == '1' else os.environ['GITHUB_SHA'],
+    'identity': 'Matched native project-built binding diagnostic SDK; not an official unchanged wheel or candidate',
+    'files': files}, indent=2) + '\n')
+PYBINDING
 python - <<'PY'
 from pathlib import Path
 lines = Path('requirements.txt').read_text().splitlines()
@@ -384,6 +420,7 @@ from pathlib import Path
 summary = {'source_sha':os.environ['GITHUB_SHA'],'scope':'non-release native runtime/framework pilot',
  'runtime_identity':'project-modified CPython 3.14.10, not unchanged official binary',
  'python_upstream_suite_reuse':os.environ.get('PILOT_QT_INTEGRATION_ONLY') == '1',
+ 'native_sdk_reuse':json.loads(Path('pilot-evidence/reused-pre-qt-sdk.json').read_text()) if Path('pilot-evidence/reused-pre-qt-sdk.json').exists() else None,
  'python':sys.version,'architecture':platform.machine(),'prefix':os.environ['PILOT_PREFIX'],
  'gil_disabled':__import__('sysconfig').get_config_var('Py_GIL_DISABLED'),
  'tools':{name:subprocess.run(command,capture_output=True,text=True,check=True).stdout for name,command in {

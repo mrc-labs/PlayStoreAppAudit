@@ -2,10 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import apply_qt_cldr49 as cldr
 import pytest
+from probe_qt_cldr49_runtime import locale_identifiers
+
+
+def test_cldr_display_names_and_qt_zero_sentinels_are_distinct():
+    root = ET.fromstring('<localeDatabase><languageList><naming id="0" code="  ">AnyLanguage</naming>'
+                         '</languageList><scriptList><naming id="0" code="Zzzz">Unknown Script</naming>'
+                         '</scriptList><territoryList><naming id="0" code="ZZ">Unknown Region</naming>'
+                         '</territoryList></localeDatabase>')
+    ids = locale_identifiers(root)
+    assert ids['script']['AnyScript'] == ids['script']['Unknown Script'] == 0
+    assert ids['territory']['AnyTerritory'] == ids['territory']['Unknown Region'] == 0
+    with pytest.raises(KeyError):
+        _ = ids['script']['unreviewed-script']
 
 
 def test_changed_original_locale_source_stops_before_generator_or_patch(tmp_path, monkeypatch):

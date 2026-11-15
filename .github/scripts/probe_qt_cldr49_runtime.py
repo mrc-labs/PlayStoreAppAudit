@@ -9,12 +9,25 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
+def locale_identifiers(root: ET.Element) -> dict[str, dict[str, int]]:
+    ids = {kind: {item.text: int(item.attrib['id']) for item in root.find(kind + 'List')}
+           for kind in ('language', 'script', 'territory')}
+    # Qt's XML uses CLDR display names in the naming lists, but its enum
+    # sentinel spellings in locale rows. These are explicit zero IDs,
+    # not unknown-locale fallbacks.
+    for kind, code, sentinel in [('script', 'Zzzz', 'AnyScript'),
+                                 ('territory', 'ZZ', 'AnyTerritory')]:
+        zero = root.find(kind + 'List/naming[@id="0"]')
+        assert zero is not None and zero.attrib['code'] == code
+        ids[kind][sentinel] = 0
+    return ids
+
+
 def qualify(xml: Path) -> dict:
     from PySide6.QtCore import QDate, QLocale, QTimeZone
 
     root = ET.parse(xml).getroot()
-    ids = {kind: {item.text: int(item.attrib['id']) for item in root.find(kind + 'List')}
-           for kind in ('language', 'script', 'territory')}
+    ids = locale_identifiers(root)
     selected = {('Kako', 'Chad'), ('Kwasio', 'Equatorial Guinea'), ('Turkmen', 'Iran'),
                 ('English', 'United States'), ('French', 'France'), ('Arabic', 'Egypt')}
     checked = []
