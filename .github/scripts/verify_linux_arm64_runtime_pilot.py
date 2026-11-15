@@ -137,13 +137,16 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
+    from verify_native_runtime_pilot import qt_cbor_regressions, qt_text_regressions
+
+    text, cbor = qt_text_regressions(), qt_cbor_regressions()
     report = {'source_sha':os.environ['GITHUB_SHA'], 'identity':'project-modified CPython ' + arm['python_version'] + '; unchanged reviewed OpenSSL4 patch bytes; matched source Qt/PySide/Shiboken 6.12.0',
         'python':sys.version, 'architecture':platform.machine(), 'gil_disabled':sysconfig.get_config_var('Py_GIL_DISABLED'),
         'python_ssl':ssl.OPENSSL_VERSION, 'cryptography_ssl':backend.openssl_version_text(), 'cryptography_provider':'independent official native wheel; static OpenSSL',
         'qt_ssl_build':QSslSocket.sslLibraryBuildVersionString(), 'qt_ssl_runtime':QSslSocket.sslLibraryVersionString(), 'qt_backend':QSslSocket.activeBackend(),
         'default_trust':default_trust, 'python_tls':python_tls, 'qt_tls':qt_tls, 'hash_vectors':'SHA256/HMAC/PBKDF2 PASS',
-        'compromised_spki':'executed upstream test_distrusted_spki PASS', 'png':png, 'gui':'native AArch64 xcb MainWindow event-loop PASS',
-        'native':images(prefix, output), 'limits':['Diagnostic source prefix only; no final package.', 'No Ubuntu22.04 ARM64 claim; macOS not authorized.', 'Other source profiles require Python3.14.10 qualification before final acceptance.']}
+        'compromised_spki':'executed upstream test_distrusted_spki PASS', 'png':png, 'text':text, 'cbor':cbor, 'gui':'native AArch64 xcb MainWindow event-loop PASS',
+        'native':images(prefix, output), 'limits':['Diagnostic source prefix only; no final package.', 'Native Noble ARM64 only; no Ubuntu22.04 ARM64 claim.', 'Other provider/framework integrations and final-package acceptance remain separate.']}
     (output / 'pilot-results.json').write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2), flush=True)
 
