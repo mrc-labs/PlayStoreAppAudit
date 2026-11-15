@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
-# Only the five controlled Jammy x64 runtime providers, before Python/Qt builds.
+# Five controlled Linux runtime providers; explicit Jammy x64 or Noble ARM64 guards.
 set -euo pipefail
 repo=$(pwd)
 work=${PILOT_WORK:?}
 evidence=${PILOT_EVIDENCE:?}
 prefix="$work/prefix"
-test "$(uname -m)" = x86_64
-test "$(. /etc/os-release; echo "$VERSION_ID")" = 22.04
-test "$(gcc -dumpversion | cut -d. -f1)" = 11
+case "${PILOT_NATIVE_PROVIDER_TARGET:-linux-x64}" in
+  linux-x64)
+    test "$(uname -m)" = x86_64
+    test "$(. /etc/os-release; echo "$VERSION_ID")" = 22.04
+    test "$("${CC:-gcc}" -dumpversion | cut -d. -f1)" = 11 ;;
+  linux-arm64)
+    test "$(uname -m)" = aarch64
+    test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+    test "$CC" = gcc-13 && test "$CXX" = g++-13
+    test -z "${PILOT_CXX_LINK_DIR:-}" && test -z "${PILOT_CXX_SDK_ROOT:-}" ;;
+  *) echo 'Unqualified native provider target' >&2; exit 1 ;;
+esac
 mkdir -p "$prefix"
 logged() {
   local name=$1
@@ -49,7 +58,7 @@ logged libffi-configure ./configure --prefix="$prefix" --libdir="$prefix/lib" --
 logged libffi-build make -j2
 logged libffi-install make install
 cd "$repo"
-gcc -std=c11 -I"$prefix/include" .github/scripts/native_provider_consumer.c \
+"${CC:-gcc}" -std=c11 -I"$prefix/include" .github/scripts/native_provider_consumer.c \
   -L"$prefix/lib" -Wl,-rpath,"$prefix/lib" -lffi -lmpdec -lsqlite3 -llzma -lz \
   -o "$evidence/native-provider-consumer"
 cp .github/scripts/native_provider_consumer.c "$evidence/"

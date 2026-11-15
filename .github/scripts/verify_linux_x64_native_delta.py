@@ -56,21 +56,24 @@ def executed_native_suites(path: Path) -> dict[str, int]:
     return counts
 
 
-def elf_record(path: Path, output: Path) -> dict:
+def elf_record(path: Path, output: Path, target: str = 'linux-x64') -> dict:
     header = path.read_bytes()[:64]
-    assert header[:6] == b'\x7fELF\x02\x01' and struct.unpack_from('<H', header, 18)[0] == 62, path
+    machine, floors = {'linux-x64': (62, [(2, 35), (3, 4, 29)]),
+                       'linux-arm64': (183, [(2, 38), (3, 4, 32)])}[target]
+    assert header[:6] == b'\x7fELF\x02\x01' and struct.unpack_from('<H', header, 18)[0] == machine, path
     needed = required_versions(readelf(path, '--version-info'))
-    for stem, ceiling in [('GLIBC_', (2, 35)), ('GLIBCXX_', (3, 4, 29))]:
+    for stem, ceiling in zip(['GLIBC_', 'GLIBCXX_'], floors, strict=True):
         maximum = version_floor(needed, stem)
         assert maximum is None or tuple(map(int, maximum[len(stem):].split('.'))) <= ceiling, (path, maximum)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    target = output / 'python-native-binaries'
-    target.mkdir(exist_ok=True)
-    shutil.copy2(path, target / path.name)
-    return {'path': str(path), 'sha256': digest, 'machine': 62, 'needed_versions': needed}
+    binaries = output / 'python-native-binaries'
+    binaries.mkdir(exist_ok=True)
+    shutil.copy2(path, binaries / path.name)
+    return {'path': str(path), 'sha256': digest, 'machine': machine, 'needed_versions': needed}
 
 
-def native_measurements(prefix: Path, output: Path, *, cffi: bool, reuse_python_suites: bool = False) -> dict:
+def native_measurements(prefix: Path, output: Path, *, cffi: bool, reuse_python_suites: bool = False,
+                        target: str = 'linux-x64') -> dict:
     import _ctypes
     import _decimal
     import _lzma
@@ -95,10 +98,10 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool, reuse_python_
              if '/' in line and not line.endswith(' (deleted)')}
     providers = provider_paths(paths, prefix)
     modules = [_ctypes, _decimal, _lzma, _sqlite3, zlib]
-    result = {'source_sha': os.environ['GITHUB_SHA'], 'scope': 'Native source runtime/provider delta; not final package',
+    result = {'source_sha': os.environ['GITHUB_SHA'], 'scope': 'Native source runtime/provider delta; not final package', 'target': target,
               'sqlite_compile_options': sqlite_options,
-              'versions': versions, 'providers': {name: elf_record(path, output) for name, path in providers.items()},
-              'modules': {module.__name__: elf_record(Path(module.__file__).resolve(), output) for module in modules},
+              'versions': versions, 'providers': {name: elf_record(path, output, target) for name, path in providers.items()},
+              'modules': {module.__name__: elf_record(Path(module.__file__).resolve(), output, target) for module in modules},
               'executed_upstream': executed_native_suites(output / ('reused-python' if reuse_python_suites else '.') / 'cpython-native-regressions.xml')}
     if reuse_python_suites:
         from reuse_linux_python_evidence import evidence
@@ -122,7 +125,7 @@ def native_measurements(prefix: Path, output: Path, *, cffi: bool, reuse_python_
             name = next(n for n in archive.namelist() if n.startswith('_cffi_backend') and n.endswith('.so'))
             assert archive.read(name) == module.read_bytes(), 'Loaded cffi is not the retained project-built wheel'
         result['cffi'] = {'api': cffi_module.__version__, 'tests': len(cases), 'passed': len(executed),
-                          'skipped': len(cases) - len(executed), 'module': elf_record(module, output),
+                          'skipped': len(cases) - len(executed), 'module': elf_record(module, output, target),
                           'wheel': wheels[0].name, 'wheel_sha256': hashlib.sha256(wheels[0].read_bytes()).hexdigest(),
                           'identity': spec['cffi_identity']}
     return result
@@ -237,12 +240,15 @@ def main() -> None:
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--native-only', action='store_true')
     parser.add_argument('--cffi', action='store_true')
+    parser.add_argument('--target', choices=['linux-x64', 'linux-arm64'], default='linux-x64')
     parser.add_argument('--reuse-python-suites', action='store_true')
     args = parser.parse_args()
-    assert sys.platform == 'linux' and platform.machine() == 'x86_64'
+    machine, os_version = {'linux-x64': ('x86_64', '22.04'), 'linux-arm64': ('aarch64', '24.04')}[args.target]
+    assert sys.platform == 'linux' and platform.machine() == machine
+    assert platform.freedesktop_os_release()['VERSION_ID'] == os_version
     assert platform.python_version() == '3.14.10' and not sysconfig.get_config_var('Py_GIL_DISABLED')
     result = native_measurements(args.prefix.resolve(), args.output_dir, cffi=args.cffi,
-                                 reuse_python_suites=args.reuse_python_suites)
+                                 reuse_python_suites=args.reuse_python_suites, target=args.target)
     if not args.native_only:
         from PySide6.QtWidgets import QApplication
 
@@ -251,7 +257,7 @@ def main() -> None:
         log = (args.output_dir / 'qt-sqlite-consumer.log').read_text()
         assert 'Qt 6.12.0 actual SQLite 3.54.1' in log and str(args.prefix.resolve() / 'qt/lib') in log
         assert 'table metadata fixture PASS' in log
-        result['qt_sqlite'] = {'executed': log.strip(), 'images': [elf_record(path.resolve(), args.output_dir) for path in
+        result['qt_sqlite'] = {'executed': log.strip(), 'images': [elf_record(path.resolve(), args.output_dir, args.target) for path in
             [args.prefix / 'qt/lib/libQt6Sql.so.6', args.prefix / 'qt/plugins/sqldrivers/libqsqlite.so']]}
         result['qt_security'] = qt_ca_security(args.output_dir)
         (args.output_dir / 'qt-ca-security.json').write_text(json.dumps(result['qt_security'], indent=2) + '\n')

@@ -67,9 +67,14 @@ shutil.copy2(patch, evidence / patch.name)
 def fetch(item):
     dest = (work if item['name'].endswith('.7z') else evidence / 'sources') / item['name']
     try:
-        with urllib.request.urlopen(item['url'], timeout=180) as src, dest.open('wb') as out:
-            assert src.geturl().startswith('https:'), 'Source HTTPS downgrade rejected'
-            shutil.copyfileobj(src, out)
+        if retained := item.get('retained_source'):
+            original = (Path.cwd() / retained).resolve()
+            assert original.is_relative_to((Path.cwd() / '.github/sources').resolve())
+            shutil.copy2(original, dest)
+        else:
+            with urllib.request.urlopen(item['url'], timeout=180) as src, dest.open('wb') as out:
+                assert src.geturl().startswith('https:'), 'Source HTTPS downgrade rejected'
+                shutil.copyfileobj(src, out)
     except Exception:
         print('Source fetch failed:', item['name'], item['url'], flush=True)
         raise

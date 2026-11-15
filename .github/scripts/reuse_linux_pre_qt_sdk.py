@@ -24,7 +24,16 @@ SDK_DIGEST = 'b8f55c348888b2f42728a4f4ee953b63fa002035a6209bc54c8171b65463a6f5'
 def unchanged_inputs(archive: zipfile.ZipFile, *, with_qt: bool = False) -> None:
     if with_qt:
         for name in ('qt_data_refresh_sources.json', 'qt_cldr49_sources.json'):
-            if json.loads(archive.read(name)) != json.loads((REPO / '.github/scripts' / name).read_text()):
+            current = json.loads((REPO / '.github/scripts' / name).read_text())
+            if name == 'qt_data_refresh_sources.json':
+                for item in current.get('sources', []):
+                    if retained := item.pop('retained_source', None):
+                        original = (REPO / retained).resolve()
+                        if (item['name'] != 'public_suffix_list.dat' or
+                                not original.is_relative_to((REPO / '.github/sources').resolve()) or
+                                hashlib.sha256(original.read_bytes()).hexdigest() != item['sha256']):
+                            raise ValueError('Changed retained publisher source')
+            if json.loads(archive.read(name)) != current:
                 raise ValueError('Changed compiled Qt source contract: ' + name)
     for name in ('native_runtime_pilot_sources.json', 'linux_x64_native_delta_sources.json',
                  'qt_text_provider_sources.json', 'qt_cbor_provider_sources.json',

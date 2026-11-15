@@ -1,3 +1,6 @@
 # The source-patch digest is platform-independent, including Windows checkouts.
 # Unified diff context includes a marker space on otherwise empty lines.
 .github/patches/*.patch text eol=lf whitespace=-blank-at-eol
+
+# Preserve exact audited publisher snapshot bytes.
+.github/sources/*.dat text eol=lf

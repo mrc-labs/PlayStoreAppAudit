@@ -135,7 +135,8 @@ def main() -> None:
          '-DANDROID_TOOLS_USE_BUNDLED_CORROSION=ON', '-DANDROID_TOOLS_USE_BUNDLED_FMT=ON',
          '-DCMAKE_BUILD_RPATH=' + str(usb_prefix / 'lib'),
          '-DCMAKE_C_FLAGS=-I' + str(usb_prefix / 'include'),
-         '-DCMAKE_CXX_FLAGS=-I' + str(usb_prefix / 'include')],
+         '-DCMAKE_CXX_FLAGS=-I' + str(usb_prefix / 'include'),
+         '-DCMAKE_EXE_LINKER_FLAGS=-Wl,--gc-sections,--print-gc-sections'],
         out / 'configure.log', env=env)
     cache = (build / 'CMakeCache.txt').read_text()
     assert 'ANDROID_TOOLS_ADB_ENABLE_MDNS:BOOL=ON' in cache

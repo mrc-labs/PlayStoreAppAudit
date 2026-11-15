@@ -52,7 +52,7 @@ def reviewed_md4c_flags(qt: Path, md4c: Path, output: Path) -> Path:
     return header
 
 
-def native_md4c_flags(qt: Path, md4c: Path, build: Path, output: Path) -> dict:
+def native_md4c_flags(qt: Path, md4c: Path, build: Path, output: Path, target: str = 'linux-x64') -> dict:
     """Compile only the original parser and the guarded flag-policy consumer."""
     from verify_linux_x64_native_delta import elf_record
 
@@ -69,12 +69,15 @@ def native_md4c_flags(qt: Path, md4c: Path, build: Path, output: Path) -> dict:
     log = subprocess.check_output([str(binary)], text=True)
     assert log.startswith('PASS original collision/Qt-only mask/'), log
     linkage = subprocess.check_output(['ldd', str(binary)], text=True)
-    assert os.environ['PILOT_CXX_LINK_DIR'] not in linkage, 'Link SDK loaded at runtime'
+    if target == 'linux-x64':
+        assert os.environ['PILOT_CXX_LINK_DIR'] not in linkage, 'Link SDK loaded at runtime'
+    else:
+        assert target == 'linux-arm64' and not os.environ.get('PILOT_CXX_LINK_DIR'), 'Foreign target link SDK'
     (output / 'qt-md4c-flags.log').write_text(log, encoding='utf-8')
     (output / 'qt-md4c-flags-linkage.txt').write_text(linkage, encoding='utf-8')
     shutil.copy2(header, output)
     shutil.copy2(build / 'qt_md4c_flags_consumer.cpp', output)
-    result = {'source_sha': os.environ['GITHUB_SHA'], 'image': elf_record(binary, output),
+    result = {'source_sha': os.environ['GITHUB_SHA'], 'image': elf_record(binary, output, target),
               'result': log.strip(), 'scope': 'Actual MD4C0.6 and exact guarded Qt flags; not QtGui/binding/GUI acceptance'}
     (output / 'qt-md4c-flags-native.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     return result
@@ -84,10 +87,16 @@ def checked_source(item: dict, directory: Path) -> Path:
     """Only the closed HTTPS/hash contract may provide build inputs."""
     if not item['url'].startswith('https://'):
         raise ValueError('Source HTTPS required')
-    with urllib.request.urlopen(item['url'], timeout=180) as response:
-        if not response.geturl().startswith('https://'):
-            raise ValueError('Source HTTPS downgrade')
-        data = response.read()
+    if retained := item.get('retained_source'):
+        original = (REPO / retained).resolve()
+        if not original.is_relative_to((REPO / '.github/sources').resolve()):
+            raise ValueError('Retained source escapes repository source directory')
+        data = original.read_bytes()
+    else:
+        with urllib.request.urlopen(item['url'], timeout=180) as response:
+            if not response.geturl().startswith('https://'):
+                raise ValueError('Source HTTPS downgrade')
+            data = response.read()
     if hashlib.sha256(data).hexdigest() != item['sha256']:
         raise ValueError('Changed official source digest: ' + item['name'])
     path = directory / item['name']

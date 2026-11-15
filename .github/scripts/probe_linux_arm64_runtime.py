@@ -47,6 +47,10 @@ def run(command: list, *, cwd: Path = REPO, log: Path | None = None, env: dict |
 
 def fetch(item: dict, destination: Path) -> Path:
     destination.mkdir(parents=True, exist_ok=True)
+    if item.get('retained_source'):
+        from probe_qt_text_providers import checked_source
+
+        return checked_source(item, destination)
     path = destination / item['name']
     if not path.exists():
         with urllib.request.urlopen(item['url'], timeout=180) as response, path.open('wb') as stream:

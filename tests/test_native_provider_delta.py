@@ -1,13 +1,45 @@
 from __future__ import annotations
 
 import json
+import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import apply_qt_ca_guard as qt_guard
 import probe_qt_ca_security as ca_probe
 import pytest
+import verify_linux_x64_native_delta as native_delta
 from verify_linux_x64_native_delta import STEMS, SUITES, executed_native_suites, provider_paths
+
+
+@pytest.mark.parametrize('target,machine,versions', [
+    ('linux-x64', 62, ['GLIBC_2.35', 'GLIBCXX_3.4.29']),
+    ('linux-arm64', 183, ['GLIBC_2.38', 'GLIBCXX_3.4.32']),
+])
+def test_native_provider_elf_contract_is_target_specific(tmp_path, monkeypatch, target, machine, versions):
+    payload = bytearray(64)
+    payload[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<H', payload, 18, machine)
+    path = tmp_path / 'provider.so'
+    path.write_bytes(payload)
+    monkeypatch.setattr(native_delta, 'readelf', lambda *args: 'Version needs section\n' +
+                        '\n'.join('Name: ' + value for value in versions))
+    assert native_delta.elf_record(path, tmp_path, target)['machine'] == machine
+    other = 'linux-arm64' if target == 'linux-x64' else 'linux-x64'
+    with pytest.raises(AssertionError):
+        native_delta.elf_record(path, tmp_path, other)
+
+
+@pytest.mark.parametrize('version', ['GLIBC_2.39', 'GLIBCXX_3.4.33'])
+def test_arm_provider_elf_rejects_implicit_floor_increases(tmp_path, monkeypatch, version):
+    payload = bytearray(64)
+    payload[:6] = b'\x7fELF\x02\x01'
+    struct.pack_into('<H', payload, 18, 183)
+    path = tmp_path / 'provider.so'
+    path.write_bytes(payload)
+    monkeypatch.setattr(native_delta, 'readelf', lambda *args: 'Version needs section\nName: ' + version)
+    with pytest.raises(AssertionError):
+        native_delta.elf_record(path, tmp_path, 'linux-arm64')
 
 
 @pytest.mark.parametrize('labels', [[], ['CertificateBlacklisted'], ['NoSslSupport']])

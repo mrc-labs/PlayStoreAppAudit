@@ -28,7 +28,8 @@
     {
       "name": "public_suffix_list.dat",
       "url": "https://publicsuffix.org/list/public_suffix_list.dat",
-      "sha256": "8576b335b871dea99dc0fccd04138311bd43f7a8da256c31bf964f11e2f7c179"
+      "sha256": "8576b335b871dea99dc0fccd04138311bd43f7a8da256c31bf964f11e2f7c179",
+      "retained_source": ".github/sources/public_suffix_list-2026-11-13.dat"
     }
   ],
   "expected_patch": {

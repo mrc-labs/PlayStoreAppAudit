@@ -26,5 +26,14 @@
   "native_contract": "Ubuntu24.04 AArch64/GNU13; GLIBC<=2.38, GLIBCXX<=3.4.32; native Rust1.99.1; no x64 SDK, emulation or system trust changes",
   "features": "Original stable port with libadbmdns enabled and its bundled Corrosion; offline original Rust vendor source. Only adb target; no fastboot execution or device mutations.",
   "boringssl_revision": "d32c35e573fc9c8dbe0436805cd557065892de4c",
-  "scope": "Isolated source prerequisite/consumer diagnostic; runtime/producer/package adoption and actual device acceptance remain separate"
+  "scope": "Isolated source prerequisite/consumer diagnostic; runtime/producer/package adoption and actual device acceptance remain separate",
+  "linker_compatibility": {
+    "options": [
+      "--gc-sections",
+      "--print-gc-sections"
+    ],
+    "reason": "Source5857b41/artifact14141672980 proves the executable imports pidfd_spawnp/pidfd_getpid at GLIBC2.39 from Rust std process support; symbols are weak but the version-needs node is not. Do not relax ABI checking. Discard unreferenced sections through supported GNU ld flags and verify no above-floor version need remains; retain discard logs and native functional evidence.",
+    "authority": "https://sourceware.org/binutils/docs/ld/Options.html",
+    "rust_source": "https://github.com/rust-lang/rust/blob/1.99.1/library/std/src/sys/process/unix/unix.rs"
+  }
 }
