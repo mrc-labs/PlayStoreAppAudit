@@ -286,7 +286,7 @@ def main() -> None:
     if args.native_ruff:
         from package_controlled_ruff import package, prepare
 
-        packaging_python = prepare(args.output)
+        packaging_python = prepare(root, args.output)
         native_result = native_ruff(root, args.output)
         native_result['wheel'] = package(root, args.output, packaging_python)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results, 'native_ruff': native_result,

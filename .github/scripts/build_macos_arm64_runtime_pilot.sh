@@ -46,7 +46,8 @@ PY
 export CC="$(xcrun --find clang)" CXX="$(xcrun --find clang++)"
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 export PATH="$work/host-tools/bin:$work/host-perl/bin:$PATH"
-test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+xcode_version=$(xcodebuild -version)
+test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 unset DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH PYTHONHOME PYTHONPATH
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"
@@ -88,19 +89,26 @@ export CMAKE_BUILD_PARALLEL_LEVEL=2
 MACOSX_DEPLOYMENT_TARGET=14.4 CFLAGS="-arch arm64 -mmacosx-version-min=14.4 -isysroot $SDKROOT" \
   CXXFLAGS="-arch arm64 -mmacosx-version-min=14.4 -isysroot $SDKROOT" \
   python "$repo/.github/scripts/prepare_macos_qt_maintenance.py" --work "$work" --evidence "$evidence" --arch arm64
-cd "$work/src/openssl-4.0.3"
-"$work/host-perl/bin/perl" Configure darwin64-arm64-cc shared \
-  --prefix="$ssl_prefix" --libdir=lib --openssldir="$prefix/trust"
-make -j2
-make test TESTS='test_evp test_x509 test_verify test_ssl_new' > "$evidence/openssl-regressions.log" 2>&1
-make install_sw
-cp configdata.pm "$evidence/openssl-configdata.pm"
+if [ "${PSAA_REUSED_MACOS_OPENSSL:-0}" = 1 ]; then
+  test -f "$evidence/partial-sdk-intake.json"
+  test -f "$ssl_prefix/lib/libssl.4.dylib"
+  echo 'Reusing exact source-bound OpenSSL4 prefix; original test/source identity preserved.'
+else
+  cd "$work/src/openssl-4.0.3"
+  "$work/host-perl/bin/perl" Configure darwin64-arm64-cc shared \
+    --prefix="$ssl_prefix" --libdir=lib --openssldir="$prefix/trust"
+  make -j2
+  make test TESTS='test_evp test_x509 test_verify test_ssl_new' > "$evidence/openssl-regressions.log" 2>&1
+  make install_sw
+  cp configdata.pm "$evidence/openssl-configdata.pm"
+fi
 # CMake owns install rpaths; inherited linker rpaths otherwise make Apple's
 # install_name_tool reject the install edit and leave build-tree Qt loaded.
 python_link_flags="$LDFLAGS"
 unset LDFLAGS
 
 # Same source selections/configuration already qualified by native provider probes.
+cd "$repo"
 EXPECTED_ARCH=arm64 PSAA_MAC_PROVIDER_LIBRARY_STAGE=1 PSAA_MAC_PROVIDER_EVIDENCE="$evidence" \
   bash "$repo/.github/scripts/probe_macos_native_providers.sh" "$work"
 

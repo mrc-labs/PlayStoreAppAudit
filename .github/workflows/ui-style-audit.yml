@@ -1053,7 +1053,8 @@ jobs:
           test '${{ inputs.windows_prerequisites_only }}' = false
           test '${{ inputs.trust_diagnostics_only }}' = false
           test -d "$DEVELOPER_DIR"
-          test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+          xcode_version=$(xcodebuild -version)
+          test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 
       - name: Set up macOS ARM64 bootstrap Python
         uses: actions/setup-python@v7
@@ -1068,13 +1069,18 @@ jobs:
           set -euo pipefail
           python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'arm64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
+      - name: Select original work root for exact partial prefix reuse
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
+
       - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p macos-arm64-pilot-evidence
           python .github/scripts/probe_macos_arm64_runtime.py \
-            --work-root "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --work-root "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
             2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
 
       - name: Verify retained native parser bytes before source rebuilds
@@ -1084,13 +1090,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python .github/scripts/intake_lxml_native.py --target macos-arm64 --output-dir macos-arm64-pilot-evidence/lxml-qualified
 
+      - name: Restore only the exact source-bound partial prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/reuse_macos_arm64_partial_sdk.py restore --output macos-arm64-pilot-evidence
+
       - name: Build and exercise the gated native ARM64 controlled source prefix
         if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
         shell: bash
         run: |
           set -euo pipefail
           bash .github/scripts/build_macos_arm64_runtime_pilot.sh \
-            "$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
             2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
 
       - name: Upload diagnostic macOS ARM64 evidence only
@@ -1138,7 +1151,8 @@ jobs:
           test '${{ inputs.windows_prerequisites_only }}' = false
           test '${{ inputs.trust_diagnostics_only }}' = false
           test -d "$DEVELOPER_DIR"
-          test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+          xcode_version=$(xcodebuild -version)
+          test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 
       - name: Set up macOS Intel/x64 bootstrap Python
         uses: actions/setup-python@v7

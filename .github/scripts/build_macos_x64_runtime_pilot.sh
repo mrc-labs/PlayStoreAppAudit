@@ -46,7 +46,8 @@ PY
 export CC="$(xcrun --find clang)" CXX="$(xcrun --find clang++)"
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 export PATH="$work/host-tools/bin:$work/host-perl/bin:$PATH"
-test "$(xcodebuild -version | head -n 1)" = 'Xcode 26.6'
+xcode_version=$(xcodebuild -version)
+test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 unset DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH PYTHONHOME PYTHONPATH
 prefix="$work/prefix"
 ssl_prefix="$prefix/openssl"

@@ -18,11 +18,13 @@ from provision_nuitka_scons import apply_source_patch
 REPO = Path(__file__).resolve().parents[2]
 
 
-def prepare(output: Path) -> Path:
+def prepare(root: Path, output: Path) -> Path:
     output = output.resolve()
     spec_path = REPO / '.github/scripts/ruff_packaging_sources.json'
     spec = json.loads(spec_path.read_text())
     shutil.copy2(spec_path, output)
+    apply_source_patch(root, spec['metadata_patch'])
+    shutil.copy2(REPO / spec['metadata_patch']['path'], output)
     arch = 'arm64' if platform.machine().lower() in {'arm64', 'aarch64'} else 'x64'
     target = {'win32': 'windows', 'darwin': 'macos', 'linux': 'linux'}[sys.platform] + '-' + arch
     files = []
@@ -47,8 +49,6 @@ def prepare(output: Path) -> Path:
 def package(root: Path, output: Path, python: Path) -> dict:
     root, output = root.resolve(), output.resolve()
     spec = json.loads((REPO / '.github/scripts/ruff_packaging_sources.json').read_text())
-    apply_source_patch(root, spec['metadata_patch'])
-    shutil.copy2(REPO / spec['metadata_patch']['path'], output)
     wheels = output / 'wheels'
     wheels.mkdir()
     command = [python, '-m', 'maturin', 'build', '--locked', '--release', '--out', wheels]

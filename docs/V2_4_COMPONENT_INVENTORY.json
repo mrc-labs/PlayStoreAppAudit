@@ -1,4 +1,21 @@
 {
+  "macos_arm64_partial_reuse_2026_11_15": {
+  "original_run": 43726926268,
+  "original_source_sha": "7971b550adb827d31c036fdbf89ca71cb1697464",
+  "artifact": 14167755733,
+  "artifact_bytes": 331305309,
+  "artifact_sha256": "cc8eea1fbfff1cb1fe5f76bafaf8d7771ca04b0b6b4a02006047f002d7d90a33",
+  "sdk_sha256": "f0df1dbcb960b7d46b3d691890b29ede8ece880dd130f79a7daa911f7af3183a",
+  "worker_indexed_paths": 267,
+  "worker_thin_arm64_macho": 11,
+  "maximum_measured_minos": "14.4",
+  "openssl_minos": "11.0",
+  "openssl_original_tests": 519,
+  "failure": "Provider helper imported relative repo modules from OpenSSL cwd; before CPython compilation",
+  "minimal_fix": "Return to repo before helper; avoid closed xcodebuild/head pipe",
+  "reuse": "Exact OpenSSL subtree only, original absolute path/source/Xcode/SDK/Clang/digests; fresh codec bytes preserved",
+  "whole_runtime_result": "Not accepted; native continuation pending"
+},
   "rust_parent_delta_2026_11_15": {
   "date": "2026-11-15",
   "rust": {
