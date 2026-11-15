@@ -30,3 +30,13 @@ def test_codemod_harness_exercises_real_fixes_before_native_compilation(tmp_path
     from ruff._find_ruff import find_ruff_bin
 
     ruff_codemod_consumer(Path(find_ruff_bin()), tmp_path)
+
+
+def test_independent_tool_profiles_do_not_cancel_each_other():
+    from pathlib import Path
+
+    workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/ui-style-audit.yml').read_text()
+    concurrency = workflow.split('\nconcurrency:', 1)[1].split('\njobs:', 1)[0]
+    assert "format('toolchain-{0}', inputs.linux_arm64_pilot)" in concurrency
+    assert "format('rust-{0}', inputs.linux_arm64_pilot)" in concurrency
+    assert 'cancel-in-progress: true' in concurrency
