@@ -223,6 +223,7 @@ def qualify(work: Path) -> None:
     prefix = work / 'prefix'
     providers = prefix / 'providers'
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL',
+              '-DCMAKE_C_COMPILER=' + str(compiler), '-DCMAKE_CXX_COMPILER=' + str(compiler),
               '-DCMAKE_INSTALL_PREFIX=' + str(providers), '-DBUILD_TESTING=OFF']
     if not reused:
         for source, label, extra in [

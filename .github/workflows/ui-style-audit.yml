@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-x64-prerequisites, macos-x64-full, tools, tools-actions, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-x64-prerequisites, macos-x64-full, tools, tools-actions, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'rust-') && format('rust-{0}', inputs.linux_arm64_pilot) || startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') && 'adb-linux-arm64' || inputs.linux_arm64_pilot == 'qt-evidence' && 'retained-qt-evidence' || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && format('toolchain-{0}', inputs.linux_arm64_pilot) || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-integration') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'rust-') && format('rust-{0}', inputs.linux_arm64_pilot) || startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') && 'adb-linux-arm64' || startsWith(inputs.linux_arm64_pilot, 'qt-evidence') && 'retained-qt-evidence' || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && format('toolchain-{0}', inputs.linux_arm64_pilot) || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-integration') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
@@ -67,8 +67,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: "3.14"
           check-latest: true
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
       - name: Rebuild exact source Action bundles under native Node24
         uses: ./.github/actions/build-controlled-actions
       - uses: actions/upload-artifact@v7
@@ -313,7 +318,7 @@ jobs:
           retention-days: 0
 
   retained-qt-evidence:
-    if: ${{ inputs.linux_arm64_pilot == 'qt-evidence' }}
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'qt-evidence') }}
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -341,11 +346,11 @@ jobs:
       - name: Verify original ZIP and retain small source/legal/native evidence
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/extract_qt_pilot_evidence.py
+        run: python .github/scripts/${{ inputs.linux_arm64_pilot == 'qt-evidence-macos-arm64' && 'extract_macos_pilot_evidence.py' || 'extract_qt_pilot_evidence.py' }}
       - uses: actions/upload-artifact@v7
         with:
           name: retained-qt-integration-evidence-${{ github.run_id }}
-          path: retained-qt-evidence/qt-integration-evidence.zip
+          path: retained-qt-evidence/*.zip
           compression-level: 0
           retention-days: 0
           if-no-files-found: error

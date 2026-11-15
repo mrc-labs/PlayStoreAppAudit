@@ -5,3 +5,6 @@
 # Preserve exact audited publisher snapshot bytes.
 .github/sources/*.dat text eol=lf
 .github/sources/*.Cargo.lock text eol=lf
+
+# Preserve exact source-build lock bytes across native checkouts.
+.github/sources/*-controlled.package-lock.json text eol=lf

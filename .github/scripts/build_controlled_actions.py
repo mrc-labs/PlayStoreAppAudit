@@ -63,7 +63,8 @@ def main() -> None:
         for number, command in enumerate(commands):
             log = output / f'{item["name"]}-{number}.log'
             with log.open('w', encoding='utf-8') as stream:
-                result = subprocess.run(command, cwd=source, env=environment, stdout=stream, stderr=subprocess.STDOUT)
+                result = subprocess.run(command, cwd=source, env={**environment, 'GITHUB_WORKSPACE': str(source)},
+                                        stdout=stream, stderr=subprocess.STDOUT)
             if result.returncode:
                 print(log.read_text(encoding='utf-8', errors='replace')[-12000:], flush=True)
             result.check_returncode()
