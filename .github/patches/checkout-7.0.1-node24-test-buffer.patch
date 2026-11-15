@@ -1,0 +1,11 @@
+--- a/__test__/git-auth-helper.test.ts
++++ b/__test__/git-auth-helper.test.ts
+@@ -210,7 +210,7 @@
+     const realReadFile = fs.promises.readFile
+     jest
+       .spyOn(fs.promises, 'readFile')
+-      .mockImplementation(async (file: any, options: any): Promise<Buffer> => {
++      .mockImplementation(async (file: fs.PathLike | fs.promises.FileHandle, options: Parameters<typeof fs.promises.readFile>[1]) => {
+         const userKnownHostsPath = path.join(
+           os.homedir(),
+           '.ssh',

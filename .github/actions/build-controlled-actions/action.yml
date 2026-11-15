@@ -1,0 +1,5 @@
+name: Build four controlled Action bundles
+description: Fixed source and lock rebuild only, not producer adoption
+runs:
+  using: node24
+  main: index.cjs

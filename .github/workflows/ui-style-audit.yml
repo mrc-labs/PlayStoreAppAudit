@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-x64-prerequisites, macos-x64-full, tools, tools-actions, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -55,6 +55,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  controlled-actions-rebuild:
+    if: ${{ inputs.linux_arm64_pilot == 'tools-actions' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          check-latest: true
+      - name: Rebuild exact source Action bundles under native Node24
+        uses: ./.github/actions/build-controlled-actions
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-actions-source-node24-${{ github.run_id }}
+          path: controlled-actions-evidence/
+          if-no-files-found: error
+          retention-days: 0
 
   native-toolchain-delta:
     permissions:

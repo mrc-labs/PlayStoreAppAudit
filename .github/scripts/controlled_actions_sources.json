@@ -1,0 +1,134 @@
+{
+  "scope": "Controlled rebuild of four exact latest official stable Actions; unchanged production implementation/current declared-compatible dependency ranges. Not unchanged official dist or adopted producer tooling. Native Node24 behavior remains required.",
+  "actions": [
+    {
+      "name": "upload-artifact",
+      "tag": "v7.0.2",
+      "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "source": {
+        "name": "upload-artifact-cf430e030ddbb5b0abf93d22962f4752f3646cd9.tar.gz",
+        "url": "https://github.com/actions/upload-artifact/archive/cf430e030ddbb5b0abf93d22962f4752f3646cd9.tar.gz",
+        "sha256": "082ff3f390265f902386d7fc59c52d91fdd8e9d36d4bb5fdc94f44a70ec04b75"
+      },
+      "directory": "upload-artifact-cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "lock": {
+        "path": ".github/sources/upload-artifact-controlled.package-lock.json",
+        "sha256": "840d3744cd3376f89be3b87aa6b995b753e368999c9fcc463a6f9d65f345d7f0"
+      },
+      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
+      "package_json_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e"
+    },
+    {
+      "name": "download-artifact",
+      "tag": "v8.0.2",
+      "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "source": {
+        "name": "download-artifact-9000827ccba6bdab643e8b6fd33ac0654aef8333.tar.gz",
+        "url": "https://github.com/actions/download-artifact/archive/9000827ccba6bdab643e8b6fd33ac0654aef8333.tar.gz",
+        "sha256": "0469682bf9b16a2ec8fe730420bef575b829dd5c6ab89e37748a361bcad45358"
+      },
+      "directory": "download-artifact-9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "lock": {
+        "path": ".github/sources/download-artifact-controlled.package-lock.json",
+        "sha256": "005f7851bd49a35b7df9ad86b94879430fa6937b95840df70df6f63dcd121d33"
+      },
+      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
+      "package_json_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e"
+    },
+    {
+      "name": "checkout",
+      "tag": "v7.0.1",
+      "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "source": {
+        "name": "checkout-3d3c42e5aac5ba805825da76410c181273ba90b1.tar.gz",
+        "url": "https://github.com/actions/checkout/archive/3d3c42e5aac5ba805825da76410c181273ba90b1.tar.gz",
+        "sha256": "b59292069298c7be5ffd9c636431a229faff70ece00e0c24fd31baeb7b309fa3"
+      },
+      "directory": "checkout-3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "lock": {
+        "path": ".github/sources/checkout-controlled.package-lock.json",
+        "sha256": "f710d6f0ceb45a7b7fcfd5ce110a8bd82710d161735fb1ec739426ec8afb09f0"
+      },
+      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
+      "package_json_sha256": "8b1127cee8fbd48ed687737f631f6e49a767a8e9484a87a7fb8fe913118d52c4",
+      "test_only_patch": {
+        "path": ".github/patches/checkout-7.0.1-node24-test-buffer.patch",
+        "sha256": "30749f49d543ecdf047cb0d9ec8a439525b036da99a3c9229e93130f0465aeb7",
+        "files": {
+          "__test__/git-auth-helper.test.ts": {
+            "base_sha256": "7f048019ef5f4184399ac07ffe8bf46cb22c7dd68286ae82df72f636de98d976",
+            "patched_sha256": "505eb4499c05180a45fd1cc20da5466b4a6192b4508e41d83e1e7f8210b29121"
+          }
+        },
+        "reason": "Latest supported Node24 types distinguish NonSharedBuffer; type mock parameters from actual fs API, no cast/suppression or production code edit. Original mock broad Buffer annotation fails TS2345."
+      }
+    },
+    {
+      "name": "setup-python",
+      "tag": "v7.1.0",
+      "commit": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "source": {
+        "name": "setup-python-6d4fd22b20465ccc0f7354476588e8df7c9ca0e0.tar.gz",
+        "url": "https://github.com/actions/setup-python/archive/6d4fd22b20465ccc0f7354476588e8df7c9ca0e0.tar.gz",
+        "sha256": "f8957c701bb6648d362eb6bbe03a2a35e6410093ea7098a7c2100cb3412965bd"
+      },
+      "directory": "setup-python-6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "lock": {
+        "path": ".github/sources/setup-python-controlled.package-lock.json",
+        "sha256": "9e38d1eb730130697bd97c99c9036e48dfcd2dd10c4995bfbab76fcb1803e056"
+      },
+      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
+      "package_json_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51"
+    }
+  ],
+  "node_runtime": "24",
+  "commands": {
+    "upload-artifact": [
+      [
+        "build"
+      ],
+      [
+        "bundle",
+        "src/upload/index.ts",
+        "dist/upload"
+      ],
+      [
+        "bundle",
+        "src/merge/index.ts",
+        "dist/merge"
+      ]
+    ],
+    "download-artifact": [
+      [
+        "build"
+      ],
+      [
+        "bundle",
+        "src/download-artifact.ts",
+        "dist"
+      ]
+    ],
+    "checkout": [
+      [
+        "build"
+      ],
+      [
+        "bundle",
+        "src/main.ts",
+        "dist"
+      ]
+    ],
+    "setup-python": [
+      [
+        "bundle",
+        "src/setup-python.ts",
+        "dist/setup"
+      ],
+      [
+        "bundle",
+        "src/cache-save.ts",
+        "dist/cache-save"
+      ]
+    ]
+  }
+}
