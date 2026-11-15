@@ -4,3 +4,4 @@
 
 # Preserve exact audited publisher snapshot bytes.
 .github/sources/*.dat text eol=lf
+.github/sources/*.Cargo.lock text eol=lf
