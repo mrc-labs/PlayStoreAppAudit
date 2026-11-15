@@ -74,6 +74,10 @@ def main() -> None:
                         'set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)\n')
     triplet.write_bytes(original.read_bytes() + ('\nset(VCPKG_BUILD_TYPE release)\n'
                         'set(VCPKG_LOAD_VCVARS_ENV OFF)\n'
+                        # make/autoconf needs flags as well as the CMake
+                        # runtime property; otherwise direct cl defaults to /MT.
+                        'set(VCPKG_C_FLAGS "/MD")\n'
+                        'set(VCPKG_CXX_FLAGS "/MD")\n'
                         f'set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "{chainload.as_posix()}")\n'
                         'set(VCPKG_ENV_PASSTHROUGH PATH INCLUDE LIB LIBPATH WindowsSdkDir WindowsSDKVersion VCToolsInstallDir)\n').encode())
     shutil.copy2(original, output / 'original-triplet.cmake')
