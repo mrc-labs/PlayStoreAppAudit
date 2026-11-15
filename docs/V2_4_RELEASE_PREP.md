@@ -3,6 +3,13 @@
 
 
 
+
+## Bounded remaining Windows source prerequisites (2026-11-15)
+
+R05 now prepares only SQLite3.54.1/mpdecimal4.0.1 prerequisites on native Windows x64/ARM64 with current MSVC14.52 and /MD. It compiles the original same-patch CPython3.14.10 C wrappers against the already hash-qualified official provider sources, preserving the original project C-file list and x64 MASM vs ARM64 ANSI distinction. It runs those private modules only in isolated same-patch child processes, plus the upstream decimal/SQLite suites. It neither replaces the runner's Python/DLLs nor removes/replaces SSL in the controlled runtime. No vendor patch is introduced speculatively. Source/license/public-domain notice, actual PE/CRT/deployment and version/API evidence are retained; a demonstrated source/build incompatibility must be fixed before the costly whole-stack rebuild. The other Windows FFI/XZ/zlib-ng and coherent framework inputs remain open, as do both Mac deltas.
+
+R11 candidate API checks are now split by actual impact: Ruff PASS43673012453 at46a5614; cryptography PASS43673672114 atdb103e1 after supplying its missing CFFI build frontend. Both use current Rust1.99.1 and unchanged upstream manifests with supported compatible lock resolution. This proves native host API compilation only, not six-platform behavior/ABI, controlled OpenSSL4 runtime adoption, a resolved paste deprecation or final-package/security acceptance. Quality43673674164 PASSes atdb103e1; final current-head Quality remains required after the new Windows probe. No unchanged Linux native rerun is required by this isolated diagnostic addition.
+
 ## Both current Linux maintenance integrations PASS (2026-11-15)
 
 **Jammy x64[43672416899](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/43672416899) and Noble ARM64[43672419086](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/43672419086) PASS at exact consumer sourcee9915b072f0d5333bb5f9f562239c9a66735bdf9. Quality[43672421445](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/43672421445) PASSes2139 tests at that exact head.** The later46a5614 adds only candidate Rust API-check code/workflow selection, leaving these compiled and consumer inputs unchanged.
