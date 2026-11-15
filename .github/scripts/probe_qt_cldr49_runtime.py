@@ -37,7 +37,7 @@ def qualify(xml: Path) -> dict:
             continue
         locale = QLocale(QLocale.Language(ids['language'][identity[0]]),
                          QLocale.Script(ids['script'][row.findtext('script')]),
-                         QLocale.Territory(ids['territory'][identity[1]]))
+                         QLocale.Country(ids['territory'][identity[1]]))
         assert locale.language().value == ids['language'][identity[0]], identity
         assert locale.territory().value == ids['territory'][identity[1]], identity
         for field, actual in [('decimal', locale.decimalPoint()), ('group', locale.groupSeparator()),

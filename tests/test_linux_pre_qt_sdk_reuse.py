@@ -31,3 +31,9 @@ def test_changed_pre_qt_build_input_requires_new_qualification(tmp_path, monkeyp
     monkeypatch.setattr(reuse, 'REPO', tmp_path)
     with zipfile.ZipFile(raw) as archive, pytest.raises(ValueError, match='Changed .*contract'):
         reuse.unchanged_inputs(archive, with_qt=changed.startswith(('qt_data_', 'qt_cldr')))
+
+
+def test_changed_matched_binding_zip_is_rejected_before_restore(tmp_path):
+    with pytest.raises(ValueError, match='Changed original matched binding ZIP'):
+        reuse.restore_bindings(b'unreviewed bindings', tmp_path)
+    assert not list(tmp_path.iterdir())

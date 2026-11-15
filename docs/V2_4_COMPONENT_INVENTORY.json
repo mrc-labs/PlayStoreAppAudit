@@ -1,4 +1,577 @@
 {
+  "qt_binding_sdk_reuse_2026_11_15": {
+  "artifact": 14142662897,
+  "zip_sha256": "e5d8ac980b380d2a3d4338af3fb134c3add3950b10db951d8180481dcfddc4aa",
+  "verified_binding_files": 275,
+  "native_images": [
+    {
+      "name": "pyside-binding-sdk/PySide6/QtCore.abi3.so",
+      "sha256": "1b77746ab3bbdbc7ef4bb0dca2ff6a76cd1e79618ff4c0075838892496e757d3",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.14",
+        "GLIBCXX_3.4.20",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.32",
+        "GLIBC_2.34",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtGui.abi3.so",
+      "sha256": "4af7e266cf2ab5007aa75a344b2fd66ad357ad6da41f06de888a494dbc7e5e04",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.35",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Gui.so.6",
+        "libGL.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtNetwork.abi3.so",
+      "sha256": "132d0a0b58b4ab1a2f8137dc130f3daa4e83a2c45daf9eb4d11c640e4e9cc2a7",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libQt6Network.so.6",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtSvg.abi3.so",
+      "sha256": "186a00853001ed3f1161c152d82e26023c6dbc21cfb932eaeaebb13abb1e8100",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libQt6Svg.so.6",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Gui.so.6",
+        "libGL.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtSvgWidgets.abi3.so",
+      "sha256": "d070fafb524a0f0b5e46a141444bff77d4ac16a16f4a24afe37fef6338f163e3",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libQt6SvgWidgets.so.6",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libGL.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtTest.abi3.so",
+      "sha256": "0978212aec2bedad7b84340113d38df8c06c553c6f1cd03a81c24c999f748c33",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4",
+        "Qt_6"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libQt6Test.so.6",
+        "libQt6Widgets.so.6",
+        "libQt6Gui.so.6",
+        "libshiboken6.abi3.so.6.12",
+        "libGL.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/QtWidgets.abi3.so",
+      "sha256": "957e2ee3d872f8cfef5da1d95a8eeaced8906a4751da4dd7197e9705836b760f",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4",
+        "Qt_6"
+      ],
+      "needed": [
+        "libpyside6.abi3.so.6.12",
+        "libQt6Widgets.so.6",
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Gui.so.6",
+        "libGL.so.1",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/PySide6/libpyside6.abi3.so.6.12",
+      "sha256": "0da4d9d54adefa7931baa4d24c2b5770fce7778dfd30704cd06e6042c345660d",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.29",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3",
+        "GLIBC_2.32",
+        "GLIBC_2.4",
+        "Qt_6",
+        "Qt_6_PRIVATE_API"
+      ],
+      "needed": [
+        "libshiboken6.abi3.so.6.12",
+        "libQt6Core.so.6",
+        "libstdc++.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/shiboken6/Shiboken.abi3.so",
+      "sha256": "7bd71cdd31a296a7968aa05dd7f22a6129cacd4ec15d40f20a674423d729d6d3",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.9",
+        "GCC_3.0",
+        "GLIBCXX_3.4",
+        "GLIBC_2.2.5",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libshiboken6.abi3.so.6.12",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ]
+    },
+    {
+      "name": "pyside-binding-sdk/shiboken6/libshiboken6.abi3.so.6.12",
+      "sha256": "bfd1cb4467b0ce39bbf7551a6418d22e929a9d09cb503ede5b25039a24a7bde4",
+      "versions": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.5",
+        "CXXABI_1.3.8",
+        "CXXABI_1.3.9",
+        "GCC_3.0",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.11",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.20",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.29",
+        "GLIBCXX_3.4.9",
+        "GLIBC_2.14",
+        "GLIBC_2.2.5",
+        "GLIBC_2.3",
+        "GLIBC_2.3.4",
+        "GLIBC_2.4"
+      ],
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ]
+    }
+  ],
+  "source_sha": "30a41226534b09ab8a0209fb233c7f1d086e4cce",
+  "qt_compiled_source_sha": "367486bea017f81426e4cc80e2bacfeac0dcf441",
+  "python_compiled_source_sha": "f2bdb0443a3c659fa464dd253fdd4c1bd829a91f",
+  "run": 43666656687,
+  "zip_bytes": 368353444,
+  "decision": "All275 original binding files and10 AMD64 ELF byte records verified; Jammy2.35/3.4.29 bounds preserved. Reuse unchanged packages to finish runtime consumers after Country enum harness fix; no recompile or new vendor patch. Not final package acceptance."
+},
+  "adb_linux_arm64_qualification_2026_11_15": {
+  "run": 43666658887,
+  "source_sha": "30a41226534b09ab8a0209fb233c7f1d086e4cce",
+  "artifact": 14143110207,
+  "zip_bytes": 45716784,
+  "zip_sha256": "e0feb58b2d408f713195d0249299a98173ee8dcb1e7bbafe7ac4bcaec88d9f41",
+  "source_archives": 3,
+  "original_legal_files": 146,
+  "retained_native_images": [
+    {
+      "name": "adb",
+      "sha256": "d272d91990c4024674545cbe26d0974764fec6d765b66ec963c9218c56da30b6",
+      "version_needs": [
+        "CXXABI_1.3",
+        "CXXABI_1.3.2",
+        "CXXABI_1.3.5",
+        "CXXABI_1.3.9",
+        "GCC_3.0",
+        "GCC_3.3",
+        "GCC_4.2.0",
+        "GCC_4.5.0",
+        "GLIBCXX_3.4",
+        "GLIBCXX_3.4.11",
+        "GLIBCXX_3.4.14",
+        "GLIBCXX_3.4.15",
+        "GLIBCXX_3.4.18",
+        "GLIBCXX_3.4.19",
+        "GLIBCXX_3.4.20",
+        "GLIBCXX_3.4.21",
+        "GLIBCXX_3.4.22",
+        "GLIBCXX_3.4.29",
+        "GLIBCXX_3.4.30",
+        "GLIBCXX_3.4.31",
+        "GLIBCXX_3.4.9",
+        "GLIBC_2.17",
+        "GLIBC_2.18",
+        "GLIBC_2.25",
+        "GLIBC_2.28",
+        "GLIBC_2.30",
+        "GLIBC_2.32",
+        "GLIBC_2.33",
+        "GLIBC_2.34",
+        "GLIBC_2.38"
+      ],
+      "needed": [
+        "libprotobuf.so.32",
+        "libz.so.1",
+        "libgcc_s.so.1",
+        "libbrotlidec.so.1",
+        "libbrotlienc.so.1",
+        "liblz4.so.1",
+        "libzstd.so.1",
+        "libusb-1.0.so.0",
+        "libstdc++.so.6",
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ]
+    },
+    {
+      "name": "private-libusb/libusb-1.0.so",
+      "sha256": "55c5b6e9da290a49fdeb95ba6b403d2cdb5413c6e5b003b3ffce7357756797ba",
+      "version_needs": [
+        "GLIBC_2.17",
+        "GLIBC_2.34",
+        "GLIBC_2.38",
+        "LIBUDEV_183"
+      ],
+      "needed": [
+        "libudev.so.1",
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ]
+    },
+    {
+      "name": "private-libusb/libusb-1.0.so.0",
+      "sha256": "55c5b6e9da290a49fdeb95ba6b403d2cdb5413c6e5b003b3ffce7357756797ba",
+      "version_needs": [
+        "GLIBC_2.17",
+        "GLIBC_2.34",
+        "GLIBC_2.38",
+        "LIBUDEV_183"
+      ],
+      "needed": [
+        "libudev.so.1",
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ]
+    },
+    {
+      "name": "private-libusb/libusb-1.0.so.0.6.0",
+      "sha256": "55c5b6e9da290a49fdeb95ba6b403d2cdb5413c6e5b003b3ffce7357756797ba",
+      "version_needs": [
+        "GLIBC_2.17",
+        "GLIBC_2.34",
+        "GLIBC_2.38",
+        "LIBUDEV_183"
+      ],
+      "needed": [
+        "libudev.so.1",
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ]
+    }
+  ],
+  "native_report": {
+    "source_sha": "30a41226534b09ab8a0209fb233c7f1d086e4cce",
+    "identity": "Project-built native Linux AArch64 adb from the stable android-tools port; not an unchanged Google 37.0.1 binary",
+    "images": [
+      {
+        "path": "/home/runner/work/_temp/adb-43666658887-1/build/vendor/adb",
+        "sha256": "d272d91990c4024674545cbe26d0974764fec6d765b66ec963c9218c56da30b6",
+        "required_versions": [
+          "CXXABI_1.3",
+          "CXXABI_1.3.2",
+          "CXXABI_1.3.5",
+          "CXXABI_1.3.9",
+          "GCC_3.0",
+          "GCC_3.3",
+          "GCC_4.2.0",
+          "GCC_4.5.0",
+          "GLIBCXX_3.4",
+          "GLIBCXX_3.4.11",
+          "GLIBCXX_3.4.14",
+          "GLIBCXX_3.4.15",
+          "GLIBCXX_3.4.18",
+          "GLIBCXX_3.4.19",
+          "GLIBCXX_3.4.20",
+          "GLIBCXX_3.4.21",
+          "GLIBCXX_3.4.22",
+          "GLIBCXX_3.4.29",
+          "GLIBCXX_3.4.30",
+          "GLIBCXX_3.4.31",
+          "GLIBCXX_3.4.9",
+          "GLIBC_2.17",
+          "GLIBC_2.18",
+          "GLIBC_2.25",
+          "GLIBC_2.28",
+          "GLIBC_2.30",
+          "GLIBC_2.32",
+          "GLIBC_2.33",
+          "GLIBC_2.34",
+          "GLIBC_2.38"
+        ],
+        "dynamic": "\nDynamic section at offset 0x43e860 contains 38 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libprotobuf.so.32]\n 0x0000000000000001 (NEEDED)             Shared library: [libz.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libbrotlidec.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libbrotlienc.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [liblz4.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libzstd.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libusb-1.0.so.0]\n 0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000001d (RUNPATH)            Library runpath: [/home/runner/work/_temp/adb-43666658887-1/libusb-prefix/lib:]\n 0x000000000000000c (INIT)               0x34d48\n 0x000000000000000d (FINI)               0x31872c\n 0x0000000000000019 (INIT_ARRAY)         0x425ce0\n 0x000000000000001b (INIT_ARRAYSZ)       248 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x425dd8\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x2d0\n 0x0000000000000005 (STRTAB)             0x33c0\n 0x0000000000000006 (SYMTAB)             0x378\n 0x000000000000000a (STRSZ)              14928 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000015 (DEBUG)              0x0\n 0x0000000000000003 (PLTGOT)             0x43eb00\n 0x0000000000000002 (PLTRELSZ)           10608 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x323d8\n 0x0000000000000007 (RELA)               0x7448\n 0x0000000000000008 (RELASZ)             176016 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW PIE\n 0x000000006ffffffe (VERNEED)            0x7218\n 0x000000006fffffff (VERNEEDNUM)         4\n 0x000000006ffffff0 (VERSYM)             0x6e10\n 0x000000006ffffff9 (RELACOUNT)          6968\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/home/runner/work/_temp/adb-43666658887-1/libusb-prefix/lib/libusb-1.0.so.0",
+        "sha256": "55c5b6e9da290a49fdeb95ba6b403d2cdb5413c6e5b003b3ffce7357756797ba",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.34",
+          "GLIBC_2.38",
+          "LIBUDEV_183"
+        ],
+        "dynamic": "\nDynamic section at offset 0x1fd68 contains 29 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libudev.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libusb-1.0.so.0]\n 0x000000000000000c (INIT)               0x4650\n 0x000000000000000d (FINI)               0x14b90\n 0x0000000000000019 (INIT_ARRAY)         0x2f918\n 0x000000000000001b (INIT_ARRAYSZ)       16 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2f928\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x228\n 0x0000000000000005 (STRTAB)             0x1948\n 0x0000000000000006 (SYMTAB)             0x5e0\n 0x000000000000000a (STRSZ)              4480 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2ffe8\n 0x0000000000000002 (PLTRELSZ)           3144 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x3a08\n 0x000000006ffffef6 (TLSDESC_PLT)        0x4eb0\n 0x000000006ffffef7 (TLSDESC_GOT)        0x2ffe0\n 0x0000000000000007 (RELA)               0x2ce8\n 0x0000000000000008 (RELASZ)             3360 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x2c68\n 0x000000006fffffff (VERNEEDNUM)         3\n 0x000000006ffffff0 (VERSYM)             0x2ac8\n 0x000000006ffffff9 (RELACOUNT)          134\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libbrotlicommon.so.1",
+        "sha256": "71fdb0eb9f2c43c777ed0e7ab30f0741f76861739798a618ab030c12c792919c",
+        "required_versions": [
+          "GLIBC_2.17"
+        ],
+        "dynamic": "\nDynamic section at offset 0x2fdd8 contains 25 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x000000000000000e (SONAME)             Library soname: [libbrotlicommon.so.1]\n 0x000000000000000c (INIT)               0x828\n 0x000000000000000d (FINI)               0x1084\n 0x0000000000000019 (INIT_ARRAY)         0x2fcd0\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2fcd8\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x450\n 0x0000000000000006 (SYMTAB)             0x240\n 0x000000000000000a (STRSZ)              448 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2ffe8\n 0x0000000000000002 (PLTRELSZ)           144 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x798\n 0x0000000000000007 (RELA)               0x660\n 0x0000000000000008 (RELASZ)             312 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x640\n 0x000000006fffffff (VERNEEDNUM)         1\n 0x000000006ffffff0 (VERSYM)             0x610\n 0x000000006ffffff9 (RELACOUNT)          9\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libbrotlidec.so.1",
+        "sha256": "18ab766ad16cd9806ff65a9397e6c09c6bea15d7e8ef1b7614bb4b6134a25e58",
+        "required_versions": [
+          "GLIBC_2.17"
+        ],
+        "dynamic": "\nDynamic section at offset 0xfd98 contains 27 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libbrotlicommon.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libbrotlidec.so.1]\n 0x000000000000000c (INIT)               0xc40\n 0x000000000000000d (FINI)               0x77a4\n 0x0000000000000019 (INIT_ARRAY)         0x1fd88\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x1fd90\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x5d0\n 0x0000000000000006 (SYMTAB)             0x258\n 0x000000000000000a (STRSZ)              905 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x1ffe8\n 0x0000000000000002 (PLTRELSZ)           312 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0xb08\n 0x0000000000000007 (RELA)               0x9e8\n 0x0000000000000008 (RELASZ)             288 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x9a8\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x95a\n 0x000000006ffffff9 (RELACOUNT)          3\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libbrotlienc.so.1",
+        "sha256": "bec4a5c72d0f4be1674005d70b9bf2a33ff7b7b50998d944e8fcdf6f4fde7b4b",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.29"
+        ],
+        "dynamic": "\nDynamic section at offset 0x8fd88 contains 28 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libbrotlicommon.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libbrotlienc.so.1]\n 0x000000000000000c (INIT)               0xbc8\n 0x000000000000000d (FINI)               0x3f4e4\n 0x0000000000000019 (INIT_ARRAY)         0x9fd78\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x9fd80\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x598\n 0x0000000000000006 (SYMTAB)             0x250\n 0x000000000000000a (STRSZ)              837 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x9ffe8\n 0x0000000000000002 (PLTRELSZ)           288 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0xaa8\n 0x0000000000000007 (RELA)               0x988\n 0x0000000000000008 (RELASZ)             288 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x928\n 0x000000006fffffff (VERNEEDNUM)         3\n 0x000000006ffffff0 (VERSYM)             0x8de\n 0x000000006ffffff9 (RELACOUNT)          3\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libc.so.6",
+        "sha256": "0f1905dc27dbc6715875c70527bc8da846a10084c9c483e9d8ff76dce8d69d0e",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_PRIVATE"
+        ],
+        "dynamic": "\nDynamic section at offset 0x19faf0 contains 25 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libc.so.6]\n 0x0000000000000019 (INIT_ARRAY)         0x1ad110\n 0x000000000000001b (INIT_ARRAYSZ)       24 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x2b8\n 0x0000000000000005 (STRTAB)             0x16a30\n 0x0000000000000006 (SYMTAB)             0x4a30\n 0x000000000000000a (STRSZ)              34502 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x1afcc0\n 0x0000000000000002 (PLTRELSZ)           504 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x27990\n 0x0000000000000007 (RELA)               0x20c28\n 0x0000000000000008 (RELASZ)             28008 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0x208f8\n 0x000000006ffffffd (VERDEFNUM)          22\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffffe (VERNEED)            0x20bf8\n 0x000000006fffffff (VERNEEDNUM)         1\n 0x000000006ffffff0 (VERSYM)             0x1f0f6\n 0x000000006ffffff9 (RELACOUNT)          1089\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libcap.so.2",
+        "sha256": "1b6d3932cf8b60b2f27f80cdd26d9a296b8a9608fc02b4eccb8fb2fdab73fea2",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.33",
+          "GLIBC_2.38"
+        ],
+        "dynamic": "\nDynamic section at offset 0xfb38 contains 28 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libcap.so.2]\n 0x000000000000000c (INIT)               0x2930\n 0x000000000000000d (FINI)               0x824c\n 0x0000000000000019 (INIT_ARRAY)         0x1f618\n 0x000000000000001b (INIT_ARRAYSZ)       24 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x1f630\n 0x000000000000001c (FINI_ARRAYSZ)       16 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x260\n 0x0000000000000005 (STRTAB)             0x1108\n 0x0000000000000006 (SYMTAB)             0x4d8\n 0x000000000000000a (STRSZ)              1601 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x1fd38\n 0x0000000000000002 (PLTRELSZ)           1896 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x21c8\n 0x0000000000000007 (RELA)               0x18b0\n 0x0000000000000008 (RELASZ)             2328 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffffe (VERNEED)            0x1850\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x174a\n 0x000000006ffffff9 (RELACOUNT)          91\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libgcc_s.so.1",
+        "sha256": "f2d3ad2bf0b61f6bc944cc37d7b6ab7f88d2582b41ff989ca164803f56cc5f20",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.34",
+          "GLIBC_2.35"
+        ],
+        "dynamic": "\nDynamic section at offset 0x1fda8 contains 29 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x000000000000000e (SONAME)             Library soname: [libgcc_s.so.1]\n 0x000000000000000c (INIT)               0x3190\n 0x000000000000000d (FINI)               0x1b5a8\n 0x0000000000000019 (INIT_ARRAY)         0x2fd78\n 0x000000000000001b (INIT_ARRAYSZ)       32 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2fd98\n 0x000000000000001c (FINI_ARRAYSZ)       16 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x2a0\n 0x0000000000000005 (STRTAB)             0x1b80\n 0x0000000000000006 (SYMTAB)             0x800\n 0x000000000000000a (STRSZ)              2801 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2ffe8\n 0x0000000000000002 (PLTRELSZ)           1488 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x2bc0\n 0x000000006ffffef6 (TLSDESC_PLT)        0x35a0\n 0x000000006ffffef7 (TLSDESC_GOT)        0x2ffe0\n 0x0000000000000007 (RELA)               0x2ab8\n 0x0000000000000008 (RELASZ)             264 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0x2818\n 0x000000006ffffffd (VERDEFNUM)          18\n 0x000000006ffffffe (VERNEED)            0x2a78\n 0x000000006fffffff (VERNEEDNUM)         1\n 0x000000006ffffff0 (VERSYM)             0x2672\n 0x000000006ffffff9 (RELACOUNT)          7\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/liblz4.so.1",
+        "sha256": "d1482a2f74152881d8b83708fedae7bca039f5608024f1178dc21a17df9887a7",
+        "required_versions": [
+          "GLIBC_2.17"
+        ],
+        "dynamic": "\nDynamic section at offset 0x1fdd8 contains 26 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [liblz4.so.1]\n 0x000000000000000c (INIT)               0x2150\n 0x000000000000000d (FINI)               0x1afa8\n 0x0000000000000019 (INIT_ARRAY)         0x2fd10\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2fd18\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x1188\n 0x0000000000000006 (SYMTAB)             0x5b8\n 0x000000000000000a (STRSZ)              2685 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2ffe8\n 0x0000000000000002 (PLTRELSZ)           288 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x2030\n 0x0000000000000007 (RELA)               0x1d48\n 0x0000000000000008 (RELASZ)             744 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x1d08\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x1c06\n 0x000000006ffffff9 (RELACOUNT)          26\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libm.so.6",
+        "sha256": "5e0391562de36de323fb9cb0f2c1b6bd6d034c840b1dac018499f5fe4ded1b4a",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_PRIVATE"
+        ],
+        "dynamic": "\nDynamic section at offset 0x8fd10 contains 30 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libm.so.6]\n 0x000000000000000c (INIT)               0xca50\n 0x000000000000000d (FINI)               0x559f4\n 0x0000000000000019 (INIT_ARRAY)         0x9fd00\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x9fd08\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x210\n 0x0000000000000005 (STRTAB)             0x96a8\n 0x0000000000000006 (SYMTAB)             0x27d8\n 0x000000000000000a (STRSZ)              9690 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x9ff30\n 0x0000000000000002 (PLTRELSZ)           264 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0xc948\n 0x0000000000000007 (RELA)               0xc7f8\n 0x0000000000000008 (RELASZ)             336 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0xc5c0\n 0x000000006ffffffd (VERDEFNUM)          14\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffffe (VERNEED)            0xc7a8\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0xbc82\n 0x000000006ffffff9 (RELACOUNT)          4\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libprotobuf.so.32",
+        "sha256": "19a01641efabf17f7c9ea2a2d114949e3514cbcaca0422c03083fef610a188c1",
+        "required_versions": [
+          "CXXABI_1.3",
+          "CXXABI_1.3.5",
+          "CXXABI_1.3.8",
+          "CXXABI_1.3.9",
+          "GCC_3.0",
+          "GCC_3.3.1",
+          "GLIBCXX_3.4",
+          "GLIBCXX_3.4.11",
+          "GLIBCXX_3.4.14",
+          "GLIBCXX_3.4.18",
+          "GLIBCXX_3.4.20",
+          "GLIBCXX_3.4.21",
+          "GLIBCXX_3.4.29",
+          "GLIBCXX_3.4.32",
+          "GLIBCXX_3.4.9",
+          "GLIBC_2.17",
+          "GLIBC_2.33",
+          "GLIBC_2.34",
+          "GLIBC_2.38"
+        ],
+        "dynamic": "\nDynamic section at offset 0x2eeee8 contains 31 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libz.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libprotobuf.so.32]\n 0x000000000000000c (INIT)               0x931d0\n 0x000000000000000d (FINI)               0x2583a0\n 0x0000000000000019 (INIT_ARRAY)         0x2e8cc0\n 0x000000000000001b (INIT_ARRAYSZ)       40 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2e8ce8\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x228\n 0x0000000000000005 (STRTAB)             0x26480\n 0x0000000000000006 (SYMTAB)             0x9bd8\n 0x000000000000000a (STRSZ)              346220 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2effe8\n 0x0000000000000002 (PLTRELSZ)           3168 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x92570\n 0x000000006ffffef6 (TLSDESC_PLT)        0x93a20\n 0x000000006ffffef7 (TLSDESC_GOT)        0x2effd0\n 0x0000000000000007 (RELA)               0x7d480\n 0x0000000000000008 (RELASZ)             86256 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffe (VERNEED)            0x7d300\n 0x000000006fffffff (VERNEEDNUM)         4\n 0x000000006ffffff0 (VERSYM)             0x7acec\n 0x000000006ffffff9 (RELACOUNT)          2227\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libstdc++.so.6",
+        "sha256": "6e3112d35cfc86db7ee85b27e1746f67408e2837ff8628b46386c3eabd5682a4",
+        "required_versions": [
+          "GCC_3.0",
+          "GCC_3.3",
+          "GCC_4.2.0",
+          "GCC_4.5.0",
+          "GLIBC_2.17",
+          "GLIBC_2.18",
+          "GLIBC_2.25",
+          "GLIBC_2.32",
+          "GLIBC_2.33",
+          "GLIBC_2.34",
+          "GLIBC_2.36",
+          "GLIBC_2.38"
+        ],
+        "dynamic": "\nDynamic section at offset 0x27eaa0 contains 32 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libstdc++.so.6]\n 0x000000000000000c (INIT)               0x9c7c0\n 0x000000000000000d (FINI)               0x1e07bc\n 0x0000000000000019 (INIT_ARRAY)         0x2752b8\n 0x000000000000001b (INIT_ARRAYSZ)       144 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x275348\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x2a0\n 0x0000000000000005 (STRTAB)             0x2deb0\n 0x0000000000000006 (SYMTAB)             0x9190\n 0x000000000000000a (STRSZ)              308025 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x27ffe8\n 0x0000000000000002 (PLTRELSZ)           26184 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x96178\n 0x000000006ffffef6 (TLSDESC_PLT)        0xa0c00\n 0x000000006ffffef7 (TLSDESC_GOT)        0x27ffd8\n 0x0000000000000007 (RELA)               0x7cb58\n 0x0000000000000008 (RELASZ)             103968 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0x7c308\n 0x000000006ffffffd (VERDEFNUM)          52\n 0x000000006ffffffe (VERNEED)            0x7ca38\n 0x000000006fffffff (VERNEEDNUM)         4\n 0x000000006ffffff0 (VERSYM)             0x791ea\n 0x000000006ffffff9 (RELACOUNT)          1056\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libudev.so.1",
+        "sha256": "aa6d64bdfafc40a30b3206e7ae31fde008f013b180aa1ab877ec1bde0a240ca6",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.25",
+          "GLIBC_2.26",
+          "GLIBC_2.28",
+          "GLIBC_2.30",
+          "GLIBC_2.32",
+          "GLIBC_2.33",
+          "GLIBC_2.34",
+          "GLIBC_2.38"
+        ],
+        "dynamic": "\nDynamic section at offset 0x3f8f0 contains 31 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libcap.so.2]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libudev.so.1]\n 0x000000000000000c (INIT)               0x4e28\n 0x000000000000000d (FINI)               0x25168\n 0x0000000000000019 (INIT_ARRAY)         0x4f458\n 0x000000000000001b (INIT_ARRAYSZ)       16 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x4f468\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x2c8\n 0x0000000000000005 (STRTAB)             0x1d60\n 0x0000000000000006 (SYMTAB)             0x668\n 0x000000000000000a (STRSZ)              4120 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x4fb20\n 0x0000000000000002 (PLTRELSZ)           3336 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x4120\n 0x0000000000000007 (RELA)               0x3118\n 0x0000000000000008 (RELASZ)             4104 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0x2f68\n 0x000000006ffffffd (VERDEFNUM)          7\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffffe (VERNEED)            0x3058\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x2d78\n 0x000000006ffffff9 (RELACOUNT)          156\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libz.so.1",
+        "sha256": "52a1d5c0cbffb3596c7f0636cb1af8e131e00eb77ff92d1353057d5161d420d3",
+        "required_versions": [
+          "GLIBC_2.17"
+        ],
+        "dynamic": "\nDynamic section at offset 0x1fdb8 contains 28 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libz.so.1]\n 0x000000000000000c (INIT)               0x1f90\n 0x000000000000000d (FINI)               0x12ae0\n 0x0000000000000019 (INIT_ARRAY)         0x2fc58\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x2fc60\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x1188\n 0x0000000000000006 (SYMTAB)             0x5a0\n 0x000000000000000a (STRSZ)              1494 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x2ffe8\n 0x0000000000000002 (PLTRELSZ)           456 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x1dc8\n 0x0000000000000007 (RELA)               0x1ab0\n 0x0000000000000008 (RELASZ)             792 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0x1860\n 0x000000006ffffffd (VERDEFNUM)          15\n 0x000000006ffffffe (VERNEED)            0x1a70\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x175e\n 0x000000006ffffff9 (RELACOUNT)          28\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/aarch64-linux-gnu/libzstd.so.1",
+        "sha256": "fe726238b170b83aa83bf1f8a79109b8b61b9eb45234304511d093bbe5f5fb20",
+        "required_versions": [
+          "GLIBC_2.17",
+          "GLIBC_2.34"
+        ],
+        "dynamic": "\nDynamic section at offset 0x9fc80 contains 28 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-aarch64.so.1]\n 0x000000000000000e (SONAME)             Library soname: [libzstd.so.1]\n 0x000000000000000c (INIT)               0x3cf8\n 0x000000000000000d (FINI)               0x8a53c\n 0x0000000000000019 (INIT_ARRAY)         0xafa80\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0xafa88\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x298\n 0x0000000000000005 (STRTAB)             0x1d48\n 0x0000000000000006 (SYMTAB)             0x818\n 0x000000000000000a (STRSZ)              4934 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0xafe80\n 0x0000000000000002 (PLTRELSZ)           816 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x39c8\n 0x0000000000000007 (RELA)               0x32a8\n 0x0000000000000008 (RELASZ)             1824 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffffe (VERNEED)            0x3258\n 0x000000006fffffff (VERNEEDNUM)         2\n 0x000000006ffffff0 (VERSYM)             0x308e\n 0x000000006ffffff9 (RELACOUNT)          66\n 0x0000000000000000 (NULL)               0x0\n"
+      },
+      {
+        "path": "/lib/ld-linux-aarch64.so.1",
+        "sha256": "390027e5f45f236bd1838bc54bf464c5ff01d260ab9f8b415ea8276641bce505",
+        "required_versions": [],
+        "dynamic": "\nDynamic section at offset 0x2fe08 contains 22 entries:\n  Tag        Type                         Name/Value\n 0x000000000000000e (SONAME)             Library soname: [ld-linux-aarch64.so.1]\n 0x0000000000000019 (INIT_ARRAY)         0x3e988\n 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x1f0\n 0x0000000000000005 (STRTAB)             0x728\n 0x0000000000000006 (SYMTAB)             0x350\n 0x000000000000000a (STRSZ)              707 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000003 (PLTGOT)             0x3ffa8\n 0x0000000000000002 (PLTRELSZ)           24 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0xd58\n 0x0000000000000007 (RELA)               0xae8\n 0x0000000000000008 (RELASZ)             624 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000006ffffffc (VERDEF)             0xa40\n 0x000000006ffffffd (VERDEFNUM)          5\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW\n 0x000000006ffffff0 (VERSYM)             0x9ec\n 0x000000006ffffff9 (RELACOUNT)          23\n 0x0000000000000000 (NULL)               0x0\n"
+      }
+    ],
+    "libusb": {
+      "version": "1.0.30",
+      "prefix": "/home/runner/work/_temp/adb-43666658887-1/libusb-prefix",
+      "linkage": "private shared LGPL library"
+    },
+    "version": "Android Debug Bridge version 1.0.41\nVersion 37.0.0p1-android-tools\nInstalled as /home/runner/work/_temp/adb-43666658887-1/build/vendor/adb\nRunning on Linux 7.0.0-1017-azure (aarch64)\n",
+    "mdns": "enabled; native private-server check executed",
+    "result": "PASS native source/ABI/read-only host diagnostic; physical USB/wireless device not tested",
+    "producer_adoption": false
+  },
+  "scope": "Worker checks retained owned files; external OS provider hashes/native execution are CI evidence. No physical-device/final-package/Google37.0.1 identity claim.",
+  "decision": "Native source/ABI/read-only consumer qualification PASS; controlled port37.0.0p1, private libusb1.0.30, static BoringSSL. Producer/external-ADB integration and relocatable redistribution acceptance remain required; not unchanged Google37.0.1.",
+  "abi_remediation": "Supported GNU ld --gc-sections removes unreferenced Rust std pidfd_spawnp/pidfd_getpid sections. Original all-image GLIBC2.38/GLIBCXX3.4.32 gates unchanged. WEAK symbols with non-weak version needs were not exempted.",
+  "usb_backend": "Actual server-status NATIVE; private libusb compiled/linked, not claimed as selected active USB backend. Physical device untested."
+},
   "qt_compiled_sdk_reuse_2026_11_15": {
   "source_sha": "367486bea017f81426e4cc80e2bacfeac0dcf441",
   "run": 43623545058,

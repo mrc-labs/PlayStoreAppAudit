@@ -336,6 +336,7 @@ from pathlib import Path
 lines = Path('requirements.txt').read_text().splitlines()
 Path('linux-arm64-pilot-evidence/runtime-requirements.txt').write_text('\n'.join(x for x in lines if not x.startswith('PySide6-Essentials=='))+'\n')
 PY
+python "$repo/.github/scripts/intake_lxml_native.py" --target linux-arm64 --output-dir "$evidence/lxml-intake" --qualify
 python -m pip install -r "$evidence/runtime-requirements.txt" 'pytest==9.2.0' --report "$evidence/runtime-install.json"
 python -m pip check
 export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.10"

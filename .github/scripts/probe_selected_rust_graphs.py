@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import json
 import os
@@ -30,6 +31,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--update-compatible', action='store_true', help='Resolve candidate versions within unchanged upstream manifests; never install them')
     args = parser.parse_args()
     assert not args.work.exists()
     args.work.mkdir(parents=True)
@@ -66,6 +68,19 @@ def main() -> None:
                     assert archive.extractfile(root.name + '/' + name).read() == original
                 archive.extractall(args.work, filter='data')
         lock = root / 'Cargo.lock'
+        original_lock = lock.read_bytes()
+        if args.update_compatible:
+            candidate = subprocess.run(['cargo', 'update', '--package', item['package'], '--recursive'],
+                                       cwd=root, capture_output=True, text=True, encoding='utf-8', timeout=600)
+            (args.output / (item['package'] + '-update.log')).write_text(candidate.stdout + candidate.stderr, encoding='utf-8')
+            if candidate.returncode:
+                print(candidate.stderr[-3000:], flush=True)
+                candidate.check_returncode()
+            (args.output / (item['package'] + '-original.Cargo.lock')).write_bytes(original_lock)
+            (args.output / (item['package'] + '-candidate.Cargo.lock')).write_bytes(lock.read_bytes())
+            patch = ''.join(difflib.unified_diff(original_lock.decode().splitlines(True),
+                                                lock.read_text().splitlines(True), 'a/Cargo.lock', 'b/Cargo.lock'))
+            (args.output / (item['package'] + '-lock.patch')).write_text(patch, encoding='utf-8')
         digest = hashlib.sha256(lock.read_bytes()).hexdigest()
         for target in spec['targets']:
             command = ['cargo', 'tree', '--locked', '--package', item['package'], '--target', target,
@@ -85,7 +100,8 @@ def main() -> None:
                             'selected': packages, 'edges': 'normal,build; dev excluded'})
             print(label, len(packages), 'selected normal/build packages', flush=True)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results,
-              'result': 'PASS locked selection only; selected component freshness/advisory decisions remain separate'}
+              'candidate_update_only': args.update_compatible,
+              'result': 'PASS source selection only; candidate updates require native regression/compatibility acceptance before adoption'}
     (args.output / 'selected-rust-graphs.json').write_text(json.dumps(report, indent=2) + '\n')
 
 

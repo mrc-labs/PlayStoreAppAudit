@@ -25,15 +25,16 @@ def unchanged_inputs(archive: zipfile.ZipFile, *, with_qt: bool = False) -> None
     if with_qt:
         for name in ('qt_data_refresh_sources.json', 'qt_cldr49_sources.json'):
             current = json.loads((REPO / '.github/scripts' / name).read_text())
+            original = json.loads(archive.read(name))
             if name == 'qt_data_refresh_sources.json':
-                for item in current.get('sources', []):
+                for item in [*current.get('sources', []), *original.get('sources', [])]:
                     if retained := item.pop('retained_source', None):
-                        original = (REPO / retained).resolve()
+                        retained_path = (REPO / retained).resolve()
                         if (item['name'] != 'public_suffix_list.dat' or
-                                not original.is_relative_to((REPO / '.github/sources').resolve()) or
-                                hashlib.sha256(original.read_bytes()).hexdigest() != item['sha256']):
+                                not retained_path.is_relative_to((REPO / '.github/sources').resolve()) or
+                                hashlib.sha256(retained_path.read_bytes()).hexdigest() != item['sha256']):
                             raise ValueError('Changed retained publisher source')
-            if json.loads(archive.read(name)) != current:
+            if original != current:
                 raise ValueError('Changed compiled Qt source contract: ' + name)
     for name in ('native_runtime_pilot_sources.json', 'linux_x64_native_delta_sources.json',
                  'qt_text_provider_sources.json', 'qt_cbor_provider_sources.json',
@@ -102,8 +103,52 @@ def restore(data: bytes, output: Path, runner_temp: Path, *, with_qt: bool = Fal
     return proof
 
 
+
+BINDING_ARTIFACT = 14142662897
+BINDING_SOURCE = '30a41226534b09ab8a0209fb233c7f1d086e4cce'
+BINDING_DIGEST = 'e5d8ac980b380d2a3d4338af3fb134c3add3950b10db951d8180481dcfddc4aa'
+
+
+def restore_bindings(data: bytes, output: Path) -> dict:
+    if hashlib.sha256(data).hexdigest() != BINDING_DIGEST:
+        raise ValueError('Changed original matched binding ZIP')
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        unchanged_inputs(archive, with_qt=True)
+        raw = archive.read('pyside-binding-sdk-provenance.json')
+        receipt = json.loads(raw)
+        assert receipt['source_sha'] == BINDING_SOURCE
+        assert receipt['qt_compiled_source_sha'] == QT_SOURCE
+        assert receipt['python_compiled_source_sha'] == SOURCE
+        selected = {name.removeprefix('pyside-binding-sdk/'): name for name in archive.namelist()
+                    if name.startswith('pyside-binding-sdk/') and not name.endswith('/')}
+        if selected.keys() != receipt['files'].keys():
+            raise ValueError('Changed matched binding membership')
+        root = output / 'reused-bindings'
+        assert not root.exists()
+        for relative, name in selected.items():
+            path = root / relative
+            if not path.resolve().is_relative_to(root.resolve()):
+                raise ValueError('Unsafe matched binding path')
+            record = receipt['files'][relative]
+            content = archive.read(name)
+            if set(record) != {'sha256'} or hashlib.sha256(content).hexdigest() != record['sha256']:
+                raise ValueError('Changed matched binding bytes')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        (output / 'original-binding-sdk-provenance.json').write_bytes(raw)
+        (output / 'reused-pyside-build-dependencies.json').write_bytes(
+            archive.read('build-dependencies/pyside-build-dependencies.json'))
+    proof = {'compiled_source_sha': BINDING_SOURCE, 'original_artifact': BINDING_ARTIFACT,
+             'original_zip_sha256': BINDING_DIGEST, 'verified_files': len(selected),
+             'qt_compiled_source_sha': QT_SOURCE, 'runtime_compiled_source_sha': SOURCE,
+             'scope': 'Exact matched diagnostic binding bytes; runtime consumers remain required. Not a candidate.'}
+    (output / 'reused-binding-sdk.json').write_text(json.dumps(proof, indent=2) + '\n')
+    return proof
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bindings', action='store_true', help='Also retain already compiled matched binding packages')
     parser.add_argument('--qt', action='store_true', help='Reuse the exact compiled Qt SDK; no runtime acceptance claim')
     args = parser.parse_args()
     artifact, source, digest, run, size = (QT_ARTIFACT, QT_SOURCE, QT_DIGEST, 43623545058, 529280327) if args.qt else (
@@ -113,6 +158,14 @@ def main() -> None:
     assert metadata['workflow_run']['id'] == run and not metadata['expired']
     assert metadata['digest'] == 'sha256:' + digest and metadata['size_in_bytes'] == len(data) == size
     print(json.dumps(restore(data, Path('pilot-evidence'), Path(os.environ['RUNNER_TEMP']), with_qt=args.qt), indent=2))
+    if args.bindings:
+        assert args.qt, 'Matched binding reuse requires the exact compiled Qt SDK'
+        metadata, data = fetch_artifact(BINDING_ARTIFACT)
+        assert metadata['workflow_run']['head_sha'] == BINDING_SOURCE
+        assert metadata['workflow_run']['id'] == 43666656687 and not metadata['expired']
+        assert metadata['digest'] == 'sha256:' + BINDING_DIGEST
+        assert metadata['size_in_bytes'] == len(data) == 368353444
+        print(json.dumps(restore_bindings(data, Path('pilot-evidence')), indent=2))
 
 
 if __name__ == '__main__':

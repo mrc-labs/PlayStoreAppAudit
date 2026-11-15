@@ -364,15 +364,30 @@ fi
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 export LD_LIBRARY_PATH="$prefix/qt/lib:$LLVM_INSTALL_DIR/lib:$LD_LIBRARY_PATH"
+if [ -f "$evidence/reused-binding-sdk.json" ]; then
+  python - <<'PYRESTOREBINDING'
+import json, os, shutil, sysconfig
+from pathlib import Path
+root = Path(os.environ['PILOT_EVIDENCE'])
+site = Path(sysconfig.get_path('purelib'))
+for package in (root / 'reused-bindings').iterdir():
+    assert not (site / package.name).exists(), package
+    shutil.copytree(package, site / package.name)
+shutil.copy2(root / 'reused-pyside-build-dependencies.json', root / 'build-dependencies/pyside-build-dependencies.json')
+print('Reused exact matched bindings:', json.loads((root / 'reused-binding-sdk.json').read_text()), flush=True)
+PYRESTOREBINDING
+else
 cd "$work/src/pyside-setup-everywhere-src-6.12.0"
 PYTHONVERBOSE=1 python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/qtpaths6" \
   --parallel=2 --limited-api=yes --module-subset=Core,Gui,Widgets,Network,Svg,SvgWidgets,Test \
   --no-qt-tools > "$evidence/pyside-build.log" 2>&1
 python "$repo/.github/scripts/probe_setuptools_build.py" --consumer pyside --consumer-log "$evidence/pyside-build.log" --output-dir "$evidence/build-dependencies"
+fi
 cd "$repo"
 # libclang is a generator prerequisite, never an application runtime search path.
 export LD_LIBRARY_PATH="$prefix/qt/lib:$prefix/python/lib:$ssl_prefix/lib:$prefix/lib"
 # Retain actual matched binding bytes before runtime consumers can fail.
+if [ ! -f "$evidence/reused-binding-sdk.json" ]; then
 python - <<'PYBINDING'
 import hashlib, json, os, shutil
 from pathlib import Path
@@ -401,11 +416,13 @@ for path in output.rglob('*'):
     'identity': 'Matched native project-built binding diagnostic SDK; not an official unchanged wheel or candidate',
     'files': files}, indent=2) + '\n')
 PYBINDING
+fi
 python - <<'PY'
 from pathlib import Path
 lines = Path('requirements.txt').read_text().splitlines()
 Path('pilot-evidence/runtime-requirements.txt').write_text('\n'.join(x for x in lines if not x.startswith('PySide6-Essentials=='))+'\n')
 PY
+python "$repo/.github/scripts/intake_lxml_native.py" --target linux-x64 --output-dir "$evidence/lxml-intake" --qualify
 python -m pip install -r "$evidence/runtime-requirements.txt" 'pytest==9.2.0' --report "$evidence/runtime-install.json"
 python -m pip check
 export PILOT_PREFIX="$prefix" PILOT_CPYTHON_SOURCE="$work/src/Python-3.14.10"
@@ -431,6 +448,8 @@ summary = {'source_sha':os.environ['GITHUB_SHA'],'scope':'non-release native run
  'tools':{name:subprocess.run(command,capture_output=True,text=True,check=True).stdout for name,command in {
  'gcc':['gcc','--version'],'cmake':['cmake','--version'],'ninja':['ninja','--version'],
  'meson':[sys.executable,os.path.join(os.environ['PILOT_WORK'],'src/meson-1.12.1/meson.py'),'--version']}.items()}}
+if Path('pilot-evidence/reused-binding-sdk.json').exists():
+    summary['binding_sdk_reuse'] = json.loads(Path('pilot-evidence/reused-binding-sdk.json').read_text())
 Path('pilot-evidence/build-provenance.json').write_text(json.dumps(summary,indent=2))
 PY
 echo 'Native runtime/framework pilot PASS; no application package produced.'

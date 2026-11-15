@@ -53,3 +53,11 @@ def test_closed_cldr_recipe_keeps_complete_registry_out_of_build_inputs():
         assert hashlib.sha256((repo / patch['path']).read_bytes()).hexdigest() == patch['sha256']
     assert spec['baseline_locale_keys'] == 711 and spec['generated_locale_keys'] == 714
     assert spec['retained_code_records'] == 349
+
+
+def test_pyside_territory_argument_uses_exposed_country_enum():
+    from PySide6.QtCore import QLocale
+
+    # PySide6 exposes Qt's territory enum under its compatibility name Country.
+    locale = QLocale(QLocale.English, QLocale.AnyScript, QLocale.Country.UnitedStates)
+    assert locale.territory() == QLocale.Country.UnitedStates
