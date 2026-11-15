@@ -103,16 +103,9 @@ def main() -> None:
                        'versions': versions, 'imports': imports})
     lzma_dlls = [p.name for p in modules.glob('*.dll') if 'lzma' in p.name.lower()]
     assert len(lzma_dlls) == 1
-    code = ('import os,sys,unittest,ctypes;  h=os.add_dll_directory(sys.argv[1]); sys.path.insert(0,sys.argv[1]); '
-            'sys.path.append(sys.argv[2]); import zlib,_lzma,lzma; '
-            'assert zlib.__file__.startswith(sys.argv[1]) and _lzma.__file__.startswith(sys.argv[1]); '
-            'assert zlib.ZLIBNG_VERSION=="2.3.3"; '
-            'provider=ctypes.WinDLL(os.path.join(sys.argv[1],sys.argv[3])); '
-            'provider.lzma_version_string.restype=ctypes.c_char_p; assert provider.lzma_version_string()==b"5.8.4"; '
-            'assert lzma.decompress(lzma.compress(b"native codecs"))==b"native codecs"; '
-            's=unittest.defaultTestLoader.loadTestsFromNames(["test.test_zlib","test.test_lzma"]); '
-            'r=unittest.TextTestRunner(verbosity=1).run(s); assert r.testsRun>0; sys.exit(not r.wasSuccessful())')
-    run([sys.executable, '-I', '-c', code, modules, python_source / 'Lib', lzma_dlls[0]], log=output / 'codec-upstream-tests.log')
+    run([sys.executable, '-I', REPO / '.github/scripts/windows_codec_consumer.py',
+         '--modules', modules, '--stdlib', python_source / 'Lib', '--lzma-dll', lzma_dlls[0],
+         '--output', output / 'windows-codec-consumers.json'], log=output / 'codec-upstream-tests.log')
     (output / 'windows-codec-results.json').write_text(json.dumps({
         'source_sha': os.environ['GITHUB_SHA'], 'sources': spec['sources'], 'architecture': arch,
         'compiler': toolset, 'crt': '/MD', 'images': images, 'patches': [],

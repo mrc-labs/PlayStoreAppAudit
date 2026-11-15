@@ -5,6 +5,13 @@
 
 
 
+
+## Windows codec byte reuse after demonstrated import-precedence error (2026-11-15)
+
+Both native codec jobs43695553011 at732371e compile XZ5.8.4/zlib-ng2.3.3, pass upstream C tests and retain all three private PE outputs after native /MD/import/deployment checks. They then stop in the diagnostic harness because normal import zlib chooses CPython's built-in module before a private zlib.pyd, regardless of sys.path. This is not a codec source/build incompatibility.
+
+The corrected isolated child uses the standard ExtensionFileLoader for the two exact private files, verifies their origins and current versions, then runs the unmodified same-patch upstream Python suites. A regression verifies explicit loading replaces a cached builtin placeholder. No application loader or installed Python/DLL is changed. Consumer-only continuation binds the original source contract and whole artifacts: x64 id14154246998/28,603,875 bytes/SHA256`aa43aeed9ebd1d62a9d286e66c9a92bcbea042134ee8e2a79d71ae3747163438`; ARM64 id14153164731/28,560,316 bytes/SHA256`5d832d9e27256ed051606c25b02ea059041d0e4e740be7e910aad15d91b5d9ae`. It repeats only Python consumer tests; no compiler provisioning or codec rebuild. Original source/legal/CMake/native-test records remain identified at732371e, separately from the new test head.
+
 ## Both Windows SQL/decimal prerequisites PASS; codec source delta (2026-11-15)
 
 Original CPython3.14.10 C wrappers/current SQLite3.54.1/mpdecimal4.0.1 now PASS on native x64 job132690293272/run43674086225 at91fd3f7 and ARM64 run43674727814 at3a3860d. Native MSVC14.52.37025, dynamic CRT and accepted PE/deployment bounds are preserved; no provider/application source patch. x64 executes1253 upstream decimal/SQLite cases,14 skipped, with private-module/version/API assertions. Worker independently verifies the x64 ZIP14145522360/29,043,973 bytes/SHA256`0043379fa3c861adc52c5b3cf943149268b5d9e5f06bd3bdd90be4ae38bd410c`, three original source archives and retained native file hashes. ARM artifact14146395519/28,867,827 bytes/SHA256`a2e15cce4007a020db3b4e2835630eabbe8808f865dee2d5d8a1149ecb0a3b96` remains native job/metadata evidence pending separate byte verification. These are provider/C-wrapper prerequisites, not whole modified-runtime/TLS/framework/package adoption.
