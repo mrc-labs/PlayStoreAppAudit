@@ -17,10 +17,18 @@ translated=$(sysctl -in sysctl.proc_translated 2>/dev/null || true)
 test "$translated" != 1
 export MACOSX_DEPLOYMENT_TARGET="$deployment" ARCHFLAGS="-arch $cpu"
 export CC="$(xcrun --find clang)" CXX="$(xcrun --find clang++)"
-export CFLAGS="-arch $cpu -mmacosx-version-min=$deployment"
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+test -d "$SDKROOT/usr/include"
+export CPPFLAGS="-isysroot $SDKROOT"
+export CFLAGS="-arch $cpu -mmacosx-version-min=$deployment -isysroot $SDKROOT"
 export CXXFLAGS="$CFLAGS"
-export LDFLAGS="-arch $cpu -mmacosx-version-min=$deployment"
+export LDFLAGS="-arch $cpu -mmacosx-version-min=$deployment -isysroot $SDKROOT"
 export PILOT_WORK="$work" PILOT_EVIDENCE="$evidence"
+# SDK header/target preflight precedes every source download.
+printf '#include <sys/types.h>\n#include <stdint.h>\nint main(void) { return sizeof(void *) != 8; }\n' | \
+  "$CC" -x c - -arch "$cpu" -mmacosx-version-min="$deployment" -isysroot "$SDKROOT" -o "$evidence/sdk-header-preflight"
+test "$(lipo -archs "$evidence/sdk-header-preflight")" = "$cpu"
+"$evidence/sdk-header-preflight"
 mkdir -p "$work/src" "$evidence/sources"
 python - <<'PY'
 import concurrent.futures, hashlib, json, os, shutil, sys, tarfile
@@ -80,7 +88,7 @@ logged libffi-configure ./configure --prefix="$prefix" --disable-static --disabl
 logged libffi-build make -j2
 logged libffi-install make install
 cd "$repo"
-"$CC" -std=c11 -arch "$cpu" -mmacosx-version-min="$deployment" -I"$prefix/include" \
+"$CC" -std=c11 -arch "$cpu" -mmacosx-version-min="$deployment" -isysroot "$SDKROOT" -I"$prefix/include" \
   .github/scripts/native_provider_consumer.c -L"$prefix/lib" -Wl,-rpath,"$prefix/lib" \
   -lffi -lmpdec -lsqlite3 -llzma -lz -o "$evidence/native-provider-consumer"
 cp .github/scripts/native_provider_consumer.c "$evidence/"
@@ -113,7 +121,7 @@ executed = [c for c in cases if c.find('skipped') is None and c.get('status') !=
 assert any(c.get('name') == 'test_call_function_9' for c in executed)
 assert any('callback' in c.get('name','') for c in executed)
 paths = [p for p in (prefix / 'lib').glob('*.dylib') if not p.is_symlink()]
-paths += [root / 'native-provider-consumer', Path(_cffi_backend.__file__)]
+paths += [root / 'sdk-header-preflight', root / 'native-provider-consumer', Path(_cffi_backend.__file__)]
 images = []
 retained = root / 'native-provider-binaries'
 retained.mkdir()
@@ -125,7 +133,7 @@ for path in paths:
     images.append(row)
 imports = subprocess.check_output(['otool','-L',_cffi_backend.__file__],text=True)
 assert str(prefix / 'lib/libffi') in imports, imports
-result = {'source_sha':os.environ['GITHUB_SHA'],'machine':platform.machine(),'deployment':os.environ['MACOSX_DEPLOYMENT_TARGET'],
+result = {'source_sha':os.environ['GITHUB_SHA'],'machine':platform.machine(),'deployment':os.environ['MACOSX_DEPLOYMENT_TARGET'],'sdk':os.environ['SDKROOT'],
           'providers':actual,'images':images,'cffi_suite':'Unmodified complete upstream src/c/test_c.py native backend/FFI cases','cffi_cases':len(cases),'cffi_passed':len(executed),'cffi_skipped':sum(c.find('skipped') is not None for c in cases),
           'cffi_linkage':imports,'patches':[], 'scope':'Native source providers/cffi only; no Python/Qt/CA/package adoption or older-OS execution claim', 'result':'PASS'}
 (root / 'macos-native-providers.json').write_text(json.dumps(result,indent=2)+'\n')
