@@ -23,8 +23,6 @@ def main() -> None:
     assert os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA'] == subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     node = Path(os.environ['PSAA_NODE']).resolve()
     assert subprocess.check_output([node, '--version'], text=True).startswith('v24.')
-    npm = Path(shutil.which('npm')).resolve()
-    assert npm.name.endswith('.js'), 'Use official npm CLI through the actual Node24 executable'
     work, output = args.work.resolve(), ROOT / 'controlled-actions-evidence'
     assert not work.exists()
     work.mkdir()
@@ -32,6 +30,16 @@ def main() -> None:
     sources = output / 'sources'
     sources.mkdir()
     spec = json.loads((ROOT / '.github/scripts/controlled_actions_sources.json').read_text())
+    version = subprocess.check_output([node, '--version'], text=True).strip().removeprefix('v')
+    assert tuple(map(int, version.split('.'))) >= (24, 15, 0), 'Current npm12 stable engine prerequisite'
+    npm_archive = fetch(spec['npm']['source'], sources)
+    npm_root = work / 'npm-cli'
+    npm_root.mkdir()
+    with tarfile.open(npm_archive) as bundle:
+        bundle.extractall(npm_root, filter='data')
+    npm = npm_root / 'package/bin/npm-cli.js'
+    assert subprocess.check_output([node, npm, '--version'], text=True).strip() == spec['npm']['version']
+
     environment = {**os.environ, 'PATH': str(node.parent) + os.pathsep + os.environ['PATH']}
     for key in ['GH_TOKEN', 'GITHUB_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN']:
         environment.pop(key, None)
@@ -90,7 +98,7 @@ def main() -> None:
     shutil.copy2(ROOT / '.github/scripts/controlled_actions_sources.json', output)
     (output / 'controlled-actions-results.json').write_text(json.dumps({
         'source_sha': os.environ['GITHUB_SHA'], 'node': subprocess.check_output([node, '--version'], text=True).strip(),
-        'npm': subprocess.check_output([node, npm, '--version'], text=True).strip(), 'actions': results,
+        'npm': subprocess.check_output([node, npm, '--version'], text=True).strip(), 'npm_input': spec['npm'], 'actions': results,
         'scope': 'Project-modified Action bundles; native Node24 behavior and producer adoption still required'}, indent=2) + '\n')
 
 

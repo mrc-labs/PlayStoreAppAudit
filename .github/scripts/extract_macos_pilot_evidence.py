@@ -26,6 +26,42 @@ def verified(spec: dict) -> tuple[dict, bytes]:
     return metadata, data
 
 
+def verify_sdk(sdk: tarfile.TarFile, paths: dict, desired: dict, target: zipfile.ZipFile) -> tuple[set, dict]:
+    seen, verified_files, recovered = set(), {}, {}
+    by_digest = {}
+    for name, row in desired.items():
+        by_digest.setdefault(row['sha256'], []).append(name)
+    for member in sdk:
+        path = PurePosixPath(member.name)
+        assert not path.is_absolute() and '..' not in path.parts and path.parts[0] in {'prefix', 'venv'}
+        if member.isdir():
+            continue
+        assert member.name not in seen and member.name in paths
+        expected = paths[member.name]
+        seen.add(member.name)
+        if member.issym():
+            assert member.linkname == expected['link']
+            continue
+        size_digest = expected['bytes'], expected['sha256']
+        if member.islnk():
+            # Streaming tar cannot extract a prior hardlink body a second time.
+            # Its exact target bytes have already been hashed; verify identity.
+            assert member.linkname in verified_files
+            assert verified_files[member.linkname] == size_digest
+            verified_files[member.name] = size_digest
+            continue
+        assert member.isfile()
+        raw = sdk.extractfile(member).read()
+        assert (len(raw), hashlib.sha256(raw).hexdigest()) == size_digest
+        verified_files[member.name] = size_digest
+        for name in by_digest.get(size_digest[1], []):
+            if name not in recovered:
+                target.writestr('sdk-native-binaries/' + name, raw)
+                recovered[name] = size_digest[1]
+    assert seen == set(paths) and set(recovered) == set(desired)
+    return seen, recovered
+
+
 def main() -> None:
     output = ROOT / 'retained-qt-evidence'
     output.mkdir()
@@ -68,25 +104,8 @@ def main() -> None:
                 desired[name] = row
             archive = original.read('macos-runtime-sdk.tar.zst')
             assert hashlib.sha256(archive).hexdigest() == receipt['archive_sha256']
-            seen = set()
             with tarfile.open(fileobj=io.BytesIO(archive), mode='r|zst') as sdk:
-                for member in sdk:
-                    path = PurePosixPath(member.name)
-                    assert not path.is_absolute() and '..' not in path.parts and path.parts[0] in {'prefix', 'venv'}
-                    if member.isdir():
-                        continue
-                    expected = receipt['paths'][member.name]
-                    seen.add(member.name)
-                    if member.issym():
-                        assert member.linkname == expected['link']
-                        continue
-                    assert member.isfile() or member.islnk()
-                    raw = sdk.extractfile(member).read()
-                    assert len(raw) == expected['bytes'] and hashlib.sha256(raw).hexdigest() == expected['sha256']
-                    if member.name in desired:
-                        target.writestr('sdk-native-binaries/' + member.name, raw)
-                        recovered[member.name] = expected['sha256']
-            assert seen == set(receipt['paths']) and set(recovered) == set(desired)
+                seen, recovered = verify_sdk(sdk, receipt['paths'], desired, target)
             target.writestr('original-bound-sdk-receipt.json', json.dumps(receipt, indent=2) + '\n')
         proof = {'verification_source_sha': os.environ['GITHUB_SHA'], 'pilot': pilot_metadata,
                  'original_sdk': sdk_metadata, 'verified_sdk_paths': len(seen), 'recovered_images': recovered,

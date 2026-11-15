@@ -130,5 +130,19 @@
         "dist/cache-save"
       ]
     ]
+  },
+  "npm": {
+    "version": "12.2.2",
+    "engines": {
+      "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+    },
+    "authority": "https://registry.npmjs.org/npm/12.2.2",
+    "source": {
+      "name": "npm-12.2.2.tgz",
+      "url": "https://registry.npmjs.org/npm/-/npm-12.2.2.tgz",
+      "sha256": "07fecbf753e2c3bc10ebeb3e9ed8738f6a0cc1292998b79e2e9f1dd2a5525e0c",
+      "integrity": "sha512-KglgbZyacf7jH+FHuNRqVuCzQi8VhI2a7J87Ix43FsPTuZoGWmIXXGdZtBUOA79vwL+IJREqURVzupA7PsQTcA=="
+    },
+    "scope": "Isolated official published CLI including original vendored dependency bytes/license; execute through actual stable Node24.22+, never system npm or global installation."
   }
 }
