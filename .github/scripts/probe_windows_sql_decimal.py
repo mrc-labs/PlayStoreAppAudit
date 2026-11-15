@@ -48,7 +48,14 @@ def main() -> None:
     arch = os.environ['EXPECTED_ARCH']
     assert platform.machine().lower() == ('arm64' if arch == 'arm64' else 'amd64')
     assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == arch
-    assert os.environ['VCTOOLSVERSION'].startswith('14.52.')
+    # DevShell can omit VCToolsVersion after a fresh ARM64 installation.
+    # Measure the selected native executable instead of inferring its version.
+    compiler = Path(shutil.which('cl') or '').resolve(strict=True)
+    assert compiler.is_file() and read_pe_machine(compiler) == (0xAA64 if arch == 'arm64' else 0x8664)
+    toolset = compiler.parents[3].name
+    assert toolset.startswith('14.52.'), ('Unexpected actual compiler', compiler)
+    declared = os.environ.get('VCTOOLSVERSION')
+    assert not declared or declared.rstrip('\\/') == toolset, (declared, toolset)
     assert os.environ['GITHUB_SHA'] == os.environ['EXPECTED_SHA'] == subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     work = args.work_root.resolve()
     assert not work.exists()
@@ -78,8 +85,6 @@ def main() -> None:
     fetch(native['sqlite_legal_notice'], output / 'legal' / sqlite.name)
     prefix = work / 'native-consumers'
     prefix.mkdir()
-    compiler = shutil.which('cl')
-    assert compiler
     common = [compiler, '/nologo', '/MD', '/O2', '/LD', '/D_CRT_SECURE_NO_WARNINGS']
     # This prerequisite uses the actual same-patch installed native interpreter;
     # it neither changes that installation nor qualifies its TLS/native providers.
@@ -140,7 +145,7 @@ def main() -> None:
     run([sys.executable, '-I', '-c', suite, prefix, python_source / 'Lib'], log=output / 'native-upstream-tests.log')
     (output / 'windows-sql-decimal-results.json').write_text(json.dumps({
         'source_sha': os.environ['GITHUB_SHA'], 'sources': selected, 'sqlite_public_domain_notice': native['sqlite_legal_notice'], 'architecture': arch,
-        'compiler': os.environ['VCTOOLSVERSION'], 'crt': '/MD', 'images': images, 'patches': [],
+        'compiler': toolset, 'compiler_path': str(compiler), 'compiler_sha256': hashlib.sha256(compiler.read_bytes()).hexdigest(), 'declared_toolset': declared, 'crt': '/MD', 'images': images, 'patches': [],
         'scope': 'Original same-patch CPython C-wrapper/native provider prerequisite only; no controlled runtime/TLS/framework/package adoption',
         'result': 'PASS'}, indent=2) + '\n')
 
