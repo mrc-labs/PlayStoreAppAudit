@@ -1,4 +1,33 @@
 {
+  "windows_pcbuild_provider_route_2026_11_15": {
+  "observed": "Original PCbuild/XZ5.8.4 references four removed source/config inputs; zlib-ng2.3.3 all76 references exist",
+  "configuration_contract": ".github/scripts/windows_cpython_provider_config_sources.json",
+  "patch": {
+    "path": ".github/patches/cpython-3.14.10-controlled-windows-providers.patch",
+    "sha256": "3e223371b7f16e0657a2472c1e6dfd6c90f9997b166a444e4384491b4629d844",
+    "files": {
+      "PCbuild/libffi.props": {
+        "original_sha256": "9f455f82acc22e0026f54d8af20213d880009b3e6206f699753eaa483d398fea",
+        "base_sha256": "0d0857e98b277e82d7184ac04db86f3d6f5a28b99c0223765cc8651fb071b41c",
+        "patched_sha256": "86b3617b702fd4b8038827190f08aa8dec18e683438620eac3c43e7485b09e13"
+      },
+      "PCbuild/pythoncore.vcxproj": {
+        "original_sha256": "396cbed1a6e1d6a91f7ffc79412808554e99ecb33b42cdc916203d658cb29be7",
+        "base_sha256": "d7c7eaab773f853763edcfb4f3ba229fe30f016518d4eba0a15fe02acbbf3d00",
+        "patched_sha256": "494711a929daa87c7bbf61c1bbf55ff12f26f05aa599e281155a53243046e2f2"
+      },
+      "PCbuild/_lzma.vcxproj": {
+        "original_sha256": "64461af3ea0d9005ab580138dd6183b8a78af6b732f5fd5447645f0209ba7649",
+        "base_sha256": "ecd55a553123a8c7754bd8a52c6e12369662afcbdf67d31827cf81b5201b115b",
+        "patched_sha256": "16a329e7965f6f0212cd68404f858c2d62920a448ea684f9bb606647e876d492"
+      }
+    }
+  },
+  "source_version": "3.14.10",
+  "scope": "Three build files only; original CPython C implementations and malloc closure allocation preserved",
+  "local_checks": "Exact raw/normalized/post source hashes, production git apply, XML, source tamper tests and lint PASS",
+  "native_status": "Not activated or accepted; actual whole controlled runtime/provider/SSL/ABI tests still required"
+},
   "macos_arm64_partial_reuse_2026_11_15": {
   "original_run": 43726926268,
   "original_source_sha": "7971b550adb827d31c036fdbf89ca71cb1697464",
