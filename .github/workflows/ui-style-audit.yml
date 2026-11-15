@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -239,6 +239,11 @@ jobs:
           Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
           Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"
           if ($env:VSCMD_ARG_HOST_ARCH -ne $arch -or $env:VSCMD_ARG_TGT_ARCH -ne $arch) { throw 'Native host/target required.' }
+          $nativeCompilers = @(Get-ChildItem -LiteralPath (Join-Path $selected 'VC/Tools/MSVC') -Directory | Where-Object { $_.Name -like '14.52.*' } | ForEach-Object { Join-Path $_.FullName "bin/Host$arch/$arch/cl.exe" })
+          $nativeCompilers | ForEach-Object { @{ path = $_; exists = (Test-Path -LiteralPath $_) } } | ConvertTo-Json | Set-Content toolchain-delta-evidence/native-compiler-after-setup.json
+          $nativeCompiler = @($nativeCompilers | Where-Object { Test-Path -LiteralPath $_ })
+          if ($nativeCompiler.Count -ne 1) { throw 'Native14.52 compiler payload missing after setup; no runtime build started.' }
+          $env:PATH = (Split-Path -Parent $nativeCompiler[0]) + ';' + $env:PATH
           if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_ctypes.py --work-root "$env:RUNNER_TEMP/ctypes-arm64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-*') {
@@ -1024,7 +1029,7 @@ jobs:
           retention-days: 0
 
   macos-arm64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings') }}
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || inputs.linux_arm64_pilot == 'macos-consumers') }}
     name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
     timeout-minutes: 240
@@ -1080,7 +1085,7 @@ jobs:
         run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
 
       - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
-        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' }}
+        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' && inputs.linux_arm64_pilot != 'macos-consumers' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1113,17 +1118,17 @@ jobs:
             2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
 
       - name: Exercise public HTTP against exact compiled SDK only
-        if: ${{ (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings') }}
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || inputs.linux_arm64_pilot == 'macos-consumers') }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/reuse_macos_arm64_compiled_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-bindings' && '--bindings' || '' }}
+        run: python .github/scripts/reuse_macos_arm64_compiled_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-bindings' && '--bindings' || inputs.linux_arm64_pilot == 'macos-consumers' && '--consumers-only' || '' }}
 
       - name: Upload diagnostic macOS ARM64 evidence only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings') && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
+          name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings' || inputs.linux_arm64_pilot == 'macos-consumers') && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: |
             macos-arm64-pilot-evidence/
             !macos-arm64-pilot-evidence/**/*key*.pem

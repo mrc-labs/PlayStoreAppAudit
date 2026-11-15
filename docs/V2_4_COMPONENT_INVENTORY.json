@@ -1,5 +1,21 @@
 {
-  "windows_pcbuild_provider_route_2026_11_15": {
+  "ruff_six_native_wheels_2026_11_15": {
+    "contract": ".github/scripts/ruff_native_wheels.json",
+    "run": 43729883614,
+    "source_sha": "2e6c8e1b40f15a8f57bdf76306137fc338810af6",
+    "worker_verified": "Six whole ZIPs,42 official source/manifest/wheel archive instances,150 original license/wheel-license instances, exact lock/metadata patch/wheel and native binary hashes; PE8664/AA64, ELF62/183, thin Mach-O x64/ARM64;33 upstream cases each. No source fork implementation edits.",
+    "status": "Native controlled tool wheels qualified; producer/tool adoption remains open"
+  },
+  "macos_release_http_2026_11_15": {
+    "run": 43768887787,
+    "source_sha": "9cb5130e9a0bca810211574e25683fb52399ee0c",
+    "artifact": 14183293407,
+    "zip_sha256": "591ea4dab9c5c0e30257e4d8d819bb11cbfdeb0e8a3d4ee668c866f7bdc2f7ca",
+    "result": "Ten public QtNetwork cases PASS (four positive/six early refusals); no timeout/abort/peer EOF counted as refusal",
+    "sdk_source_sha": "0aec8dcceb728a60333f5bab4ca9d109f6732be0",
+    "reuse": "Complete indexed source/SDK byte verification on native worker; Python/OpenSSL/Qt not rebuilt. Current bindings/GUI/CLI/provider acceptance pending"
+  },
+"windows_pcbuild_provider_route_2026_11_15": {
   "observed": "Original PCbuild/XZ5.8.4 references four removed source/config inputs; zlib-ng2.3.3 all76 references exist",
   "configuration_contract": ".github/scripts/windows_cpython_provider_config_sources.json",
   "patch": {

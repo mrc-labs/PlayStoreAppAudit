@@ -66,7 +66,7 @@ def native_text() -> list[dict]:
 def qt_incident_security(output: Path, backend: str) -> dict:
     from cryptography import x509
     from PySide6.QtCore import QCryptographicHash
-    from PySide6.QtNetwork import QSslCertificate, QSslSocket
+    from PySide6.QtNetwork import QSsl, QSslCertificate, QSslSocket
 
     assert QSslSocket.activeBackend() == backend
     directory = output / 'provider-security-inputs'
@@ -80,6 +80,8 @@ def qt_incident_security(output: Path, backend: str) -> dict:
         certificates = QSslCertificate.fromData(row['pem'].encode())
         assert len(certificates) == 1 and certificates[0].isBlacklisted()
         assert bytes(certificates[0].digest(QCryptographicHash.Algorithm.Sha256)).hex() == row['sha256'].lower()
+    manual = QSslSocket.isFeatureSupported(QSsl.SupportedFeature.CertificateVerification)
+    assert manual or backend == 'securetransport', ('Unexpected missing manual verification', backend)
     rows = []
     with zipfile.ZipFile(directory / 'chains.zip') as archive:
         names = sorted(n for n in archive.namelist() if n.endswith('.pem'))
@@ -92,12 +94,22 @@ def qt_incident_security(output: Path, backend: str) -> dict:
             certificates = QSslCertificate.fromData(data)
             hosts = parsed[0].extensions.get_extension_for_class(x509.SubjectAlternativeName).value.get_values_for_type(x509.DNSName)
             assert hosts and not hosts[0].startswith('*')
-            errors = QSslCertificate.verify(certificates, hosts[0])
-            labels = [e.error().name for e in errors]
-            # An explicit blacklist error from the common guard is meaningful
-            # even when a backend cannot perform general manual verification.
-            assert 'CertificateBlacklisted' in labels, (backend, name, labels)
-            row = {'fixture': name, 'provided_chain_errors': labels, 'kind': 'offline supplied-chain guard'}
+            blocked = [c for c in certificates if c.isBlacklisted()]
+            blocked_keys = {hashlib.sha256(bytes(c.publicKey().toDer())).hexdigest() for c in blocked}
+            assert keys.intersection(blocked_keys), (backend, name, 'Missing compromised-key blacklist')
+            if manual:
+                errors = QSslCertificate.verify(certificates, hosts[0])
+                labels = [e.error().name for e in errors]
+                assert 'CertificateBlacklisted' in labels, (backend, name, labels)
+            else:
+                # SecureTransport has no manual certificate verifier. Its empty
+                # verify() result is not evidence of trust or a blacklist guard.
+                # Inspect the actual compiled blacklist, then require native TLS
+                # refusal below; never switch providers to manufacture success.
+                labels = None
+            row = {'fixture': name, 'provided_chain_errors': labels,
+                   'blacklisted_spki': sorted(blocked_keys),
+                   'kind': 'offline supplied-chain guard' if manual else 'offline blacklist inspection; manual verification unsupported'}
             if 'rollover/' not in name:
                 socket = QSslSocket()
                 socket.setPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyPeer)
@@ -113,8 +125,8 @@ def qt_incident_security(output: Path, backend: str) -> dict:
                            compromised_peer_keys=sorted(keys.intersection(actual_keys)))
             rows.append(row)
     assert sum(r['kind'] == 'actual default-trust TLS refusal' for r in rows) == 14
-    result = {'backend': backend, 'cases': rows, 'native_tls_refusals': 14, 'offline_guard_refusals': 2,
-              'scope': 'Qt actual native provider plus compiled common supplied-chain guard; not raw OS root revocation'}
+    result = {'backend': backend, 'cases': rows, 'native_tls_refusals': 14, 'offline_guard_refusals': 2 if manual else 0, 'offline_blacklist_checks': 2, 'manual_verification_supported': manual,
+              'scope': 'Actual provider14 native default-trust TLS refusals plus16 compiled blacklist inspections; manual supplied-chain refusal only when supported; not raw OS root revocation'}
     (output / ('qt-incident-' + backend + '.json')).write_text(json.dumps(result, indent=2) + '\n')
     return result
 

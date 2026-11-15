@@ -2,6 +2,8 @@
 # Same remaining binding/runtime consumers for a fresh or exact retained SDK.
 set -euo pipefail
 : "${repo:?}" "${work:?}" "${prefix:?}" "${evidence:?}"
+export PATH="$prefix/qt/bin:$PATH"
+if [ "${PSAA_MACOS_BINDINGS_READY:-0}" != 1 ]; then
 export LLVM_INSTALL_DIR="$work/src/libclang"
 export PATH="$prefix/qt/bin:$PATH"
 cd "$work/src/pyside-setup-everywhere-src-6.12.0"
@@ -10,6 +12,7 @@ PYTHONVERBOSE=1 python setup.py install --ignore-git --qtpaths="$prefix/qt/bin/q
   --no-qt-tools --macos-arch=arm64 --macos-deployment-target=14.4 --macos-sysroot="$SDKROOT" --rpath="$prefix/qt/lib" > "$evidence/pyside-build.log" 2>&1
 python "$repo/.github/scripts/probe_setuptools_build.py" --consumer pyside --consumer-log "$evidence/pyside-build.log" --output-dir "$evidence/build-dependencies"
 unset LLVM_INSTALL_DIR
+fi
 cd "$repo"
 python - <<'PY'
 from pathlib import Path

@@ -19,26 +19,27 @@ from reuse_macos_arm64_partial_sdk import configuration_sha256
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def finish_bindings(work: Path, output: Path) -> None:
+def finish_bindings(work: Path, output: Path, *, consumers_only: bool = False) -> None:
     from probe_macos_arm64_runtime import clang_extraction, fetch, macho, run, unpack
     from probe_macos_arm64_runtime import contract as runtime_contract
 
     arm, base = runtime_contract()
-    sources = output / 'sources'
-    src = work / 'src'
-    src.mkdir(exist_ok=True)
-    pyside = next(row for row in base['sources'] if row['directory'].startswith('pyside-setup-'))
-    unpack(fetch(pyside, sources), src)
-    extractor = work / 'extractor'
-    extractor.mkdir()
-    unpack(fetch(arm['host_extractor'], sources), extractor)
-    seven = extractor / '7zz'
-    seven.chmod(0o755)
-    macho(seven, target=False, output=output)
-    archive = fetch(arm['host_libclang'], sources)
-    run(clang_extraction(seven, archive, src, arm['host_libclang']), log=output / 'libclang-extract.log')
-    library = src / 'libclang/lib/libclang.dylib'
-    macho(library.resolve(), target=False, output=output)
+    if not consumers_only:
+        sources = output / 'sources'
+        src = work / 'src'
+        src.mkdir(exist_ok=True)
+        pyside = next(row for row in base['sources'] if row['directory'].startswith('pyside-setup-'))
+        unpack(fetch(pyside, sources), src)
+        extractor = work / 'extractor'
+        extractor.mkdir()
+        unpack(fetch(arm['host_extractor'], sources), extractor)
+        seven = extractor / '7zz'
+        seven.chmod(0o755)
+        macho(seven, target=False, output=output)
+        archive = fetch(arm['host_libclang'], sources)
+        run(clang_extraction(seven, archive, src, arm['host_libclang']), log=output / 'libclang-extract.log')
+        library = src / 'libclang/lib/libclang.dylib'
+        macho(library.resolve(), target=False, output=output)
     prefix = work / 'prefix'
     python = work / 'venv/bin/python'
     environment = {**os.environ, 'PATH': str(python.parent) + os.pathsep + os.environ['PATH'],
@@ -50,6 +51,8 @@ def finish_bindings(work: Path, output: Path) -> None:
         'Python_ROOT_DIR': str(prefix / 'python'), 'Python3_ROOT_DIR': str(prefix / 'python'),
         'PKG_CONFIG_LIBDIR': f'{prefix}/python/lib/pkgconfig:{prefix}/lib/pkgconfig:{prefix}/openssl/lib/pkgconfig',
         'CMAKE_PREFIX_PATH': f'{prefix}:{prefix}/openssl'}
+    if consumers_only:
+        environment['PSAA_MACOS_BINDINGS_READY'] = '1'
     environment.pop('GH_TOKEN', None)
     # Preserve the exact source prefix/default trust paths, with no loader fallback.
     for name in ['DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
@@ -62,10 +65,12 @@ def finish_bindings(work: Path, output: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--bindings', action='store_true')
+    phase = parser.add_mutually_exclusive_group()
+    phase.add_argument('--bindings', action='store_true')
+    phase.add_argument('--consumers-only', action='store_true')
     args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'arm64'
-    spec = json.loads((ROOT / '.github/scripts/macos_arm64_compiled_sdk_sources.json').read_text())
+    spec = json.loads((ROOT / '.github/scripts' / ('macos_arm64_bound_sdk_sources.json' if args.consumers_only else 'macos_arm64_compiled_sdk_sources.json')).read_text())
     output = ROOT / 'macos-arm64-pilot-evidence'
     output.mkdir(exist_ok=True)
     context = {'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True),
@@ -87,7 +92,9 @@ def main() -> None:
         assert receipt['source_sha'] == spec['source_sha'] and receipt['machine'] == 'arm64'
         assert Path(receipt['original_work_root']) == work and not receipt['complete_pilot']
         sdk = original.read('macos-runtime-sdk.tar.zst')
-        assert hashlib.sha256(sdk).hexdigest() == receipt['archive_sha256'] == spec['sdk_sha256']
+        assert hashlib.sha256(sdk).hexdigest() == receipt['archive_sha256']
+        if 'sdk_sha256' in spec:
+            assert receipt['archive_sha256'] == spec['sdk_sha256']
         work.mkdir()
         with tarfile.open(fileobj=io.BytesIO(sdk)) as archive:
             members = archive.getmembers()
@@ -120,11 +127,11 @@ def main() -> None:
             raw = original.read(name)
             assert hashlib.sha256(raw).hexdigest() == digest, name
             (output / name).write_bytes(raw)
-        if args.bindings:
+        if args.bindings or args.consumers_only:
             for name in original.namelist():
                 path = PurePosixPath(name)
                 assert not path.is_absolute() and '..' not in path.parts
-                if name.endswith('/') or name.startswith('macos-runtime-sdk.') or any('certificates' in part for part in path.parts):
+                if name.startswith('lxml-qualified/controlled-runtime/') or name.endswith('/') or name.startswith('macos-runtime-sdk.') or any('certificates' in part for part in path.parts):
                     continue
                 if path.name.endswith('key.pem'):
                     continue
@@ -136,7 +143,9 @@ def main() -> None:
         'scope': 'Exact compiled bytes only; original failed whole pilot remains unqualified'}, indent=2) + '\n')
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '14.4'
     public_limits(work / 'prefix/qt', work / 'public-http-tests', output / 'public-http')
-    if args.bindings:
+    if args.consumers_only:
+        finish_bindings(work, output, consumers_only=True)
+    elif args.bindings:
         from retain_macos_runtime_sdk import retain
 
         try:
