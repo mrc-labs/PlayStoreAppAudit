@@ -1,4 +1,359 @@
 {
+  "linux_current_maintenance_consumers_2026_11_15": [
+  {
+    "run": 43672416899,
+    "source_sha": "e9915b072f0d5333bb5f9f562239c9a66735bdf9",
+    "provider_versions": {
+      "sqlite": "3.54.1",
+      "libmpdec": "4.0.1",
+      "zlib": "1.4",
+      "libffi": "3.8.0",
+      "liblzma": "5.8.4"
+    },
+    "ssl": [
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "openssl"
+    ],
+    "default_trust": {
+      "paths": "DefaultVerifyPaths(cafile=None, capath='/usr/lib/ssl/certs', openssl_cafile_env='SSL_CERT_FILE', openssl_cafile='/usr/lib/ssl/cert.pem', openssl_capath_env='SSL_CERT_DIR', openssl_capath='/usr/lib/ssl/certs')",
+      "default_handshake": {
+        "host": "www.python.org",
+        "protocol": "TLSv1.3",
+        "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+        "verify_mode": "CERT_REQUIRED",
+        "check_hostname": true,
+        "store_before": {
+          "x509": 0,
+          "crl": 0,
+          "x509_ca": 0
+        },
+        "store_after": {
+          "x509": 1,
+          "crl": 0,
+          "x509_ca": 1
+        },
+        "result": "default-trust authenticated handshake PASS"
+      }
+    },
+    "tls": [
+      "TLSv1_2: trusted handshake PASS",
+      "TLSv1_3: trusted handshake PASS",
+      "hostname: rejected PASS",
+      "untrusted CA: rejected PASS",
+      "expired: rejected PASS"
+    ],
+    "qt_tls": [
+      {
+        "case": "TLS1.2",
+        "encrypted": true,
+        "negotiated_protocol": "TlsV1_2",
+        "errors": [],
+        "result": "PASS"
+      },
+      {
+        "case": "TLS1.3",
+        "encrypted": true,
+        "negotiated_protocol": "TlsV1_3",
+        "errors": [],
+        "result": "PASS"
+      },
+      {
+        "case": "hostname",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "HostNameMismatch"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "untrusted CA",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "UnableToGetLocalIssuerCertificate",
+          "UnableToVerifyFirstCertificate"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "expired",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "CertificateExpired"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "OS default trust / www.python.org",
+        "encrypted": true,
+        "errors": [],
+        "negotiated_protocol": "TlsV1_3",
+        "peer_serial": "01:fc:68:fd:08:45:37:b3:93:b8:d6:c7:08:97:49:69",
+        "result": "PASS"
+      }
+    ],
+    "images": 79,
+    "cldr": {
+      "source_sha": "e9915b072f0d5333bb5f9f562239c9a66735bdf9",
+      "xml_sha256": "450834975b57572c8e7d4e97339c1e7878ea53aa12158eb8941813bf5473a6a7",
+      "locales": [
+        {
+          "language": "Arabic",
+          "territory": "Egypt",
+          "script": 4,
+          "name": "ar_EG"
+        },
+        {
+          "language": "English",
+          "territory": "United States",
+          "script": 66,
+          "name": "en_US"
+        },
+        {
+          "language": "English",
+          "territory": "United States",
+          "script": 28,
+          "name": "en_US"
+        },
+        {
+          "language": "French",
+          "territory": "France",
+          "script": 66,
+          "name": "fr_FR"
+        },
+        {
+          "language": "Kako",
+          "territory": "Chad",
+          "script": 66,
+          "name": "kkj_TD"
+        },
+        {
+          "language": "Kwasio",
+          "territory": "Equatorial Guinea",
+          "script": 66,
+          "name": "nmg_GQ"
+        },
+        {
+          "language": "Turkmen",
+          "territory": "Iran",
+          "script": 4,
+          "name": "tk_IR"
+        }
+      ],
+      "windows_zones": {
+        "Alberta Standard Time": "America/Edmonton",
+        "British Columbia Standard Time": "America/Vancouver",
+        "Manitoba Standard Time": "America/Winnipeg"
+      },
+      "result": "PASS actual rebuilt Qt locale fields/date roundtrips/new Windows zone mappings"
+    },
+    "parser": {
+      "cases": 8,
+      "libxml": [
+        2,
+        15,
+        4
+      ],
+      "libxslt": [
+        1,
+        1,
+        45
+      ],
+      "compiled_source": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d"
+    },
+    "ca_security": {
+      "chains": 16,
+      "manual": 4
+    },
+    "cffi": {
+      "passed": 488,
+      "skipped": 11
+    },
+    "scope": "Native CI consumer evidence. Original compiled SDK/binding/source bytes independently verified separately; new result ZIP not yet independently downloaded.",
+    "artifact": 14145201985,
+    "zip_bytes": 449931512,
+    "zip_sha256": "0db955d32d35757810691d48e4315741e170a07fa180183047651a282db5f398"
+  },
+  {
+    "run": 43672419086,
+    "source_sha": "e9915b072f0d5333bb5f9f562239c9a66735bdf9",
+    "provider_versions": {
+      "sqlite": "3.54.1",
+      "libmpdec": "4.0.1",
+      "zlib": "1.4",
+      "libffi": "3.8.0",
+      "liblzma": "5.8.4"
+    },
+    "ssl": [
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "OpenSSL 4.0.3 29 Sep 2026",
+      "openssl"
+    ],
+    "default_trust": {
+      "host": "www.python.org",
+      "protocol": "TLSv1.3",
+      "peer_sha256": "a162964cfe4209e308f700e88028757eb83d227b2bb35f67f186a6e70e1e201a",
+      "verify_mode": "CERT_REQUIRED",
+      "check_hostname": true,
+      "store_before": {
+        "x509": 120,
+        "crl": 0,
+        "x509_ca": 120
+      },
+      "store_after": {
+        "x509": 120,
+        "crl": 0,
+        "x509_ca": 120
+      },
+      "result": "default-trust authenticated handshake PASS"
+    },
+    "tls": [
+      "TLSv1_2: trusted handshake PASS",
+      "TLSv1_3: trusted handshake PASS",
+      "hostname: rejected PASS",
+      "untrusted CA: rejected PASS",
+      "expired: rejected PASS"
+    ],
+    "qt_tls": [
+      {
+        "case": "TLS1.2",
+        "encrypted": true,
+        "negotiated_protocol": "TlsV1_2",
+        "errors": [],
+        "result": "PASS"
+      },
+      {
+        "case": "TLS1.3",
+        "encrypted": true,
+        "negotiated_protocol": "TlsV1_3",
+        "errors": [],
+        "result": "PASS"
+      },
+      {
+        "case": "hostname",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "HostNameMismatch"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "untrusted CA",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "UnableToGetLocalIssuerCertificate",
+          "UnableToVerifyFirstCertificate"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "expired",
+        "encrypted": false,
+        "negotiated_protocol": null,
+        "errors": [
+          "CertificateExpired"
+        ],
+        "result": "PASS"
+      },
+      {
+        "case": "OS default trust / www.python.org",
+        "encrypted": true,
+        "errors": [],
+        "negotiated_protocol": "TlsV1_3",
+        "peer_serial": "01:fc:68:fd:08:45:37:b3:93:b8:d6:c7:08:97:49:69",
+        "result": "PASS"
+      }
+    ],
+    "images": 80,
+    "cldr": {
+      "source_sha": "e9915b072f0d5333bb5f9f562239c9a66735bdf9",
+      "xml_sha256": "450834975b57572c8e7d4e97339c1e7878ea53aa12158eb8941813bf5473a6a7",
+      "locales": [
+        {
+          "language": "Arabic",
+          "territory": "Egypt",
+          "script": 4,
+          "name": "ar_EG"
+        },
+        {
+          "language": "English",
+          "territory": "United States",
+          "script": 66,
+          "name": "en_US"
+        },
+        {
+          "language": "English",
+          "territory": "United States",
+          "script": 28,
+          "name": "en_US"
+        },
+        {
+          "language": "French",
+          "territory": "France",
+          "script": 66,
+          "name": "fr_FR"
+        },
+        {
+          "language": "Kako",
+          "territory": "Chad",
+          "script": 66,
+          "name": "kkj_TD"
+        },
+        {
+          "language": "Kwasio",
+          "territory": "Equatorial Guinea",
+          "script": 66,
+          "name": "nmg_GQ"
+        },
+        {
+          "language": "Turkmen",
+          "territory": "Iran",
+          "script": 4,
+          "name": "tk_IR"
+        }
+      ],
+      "windows_zones": {
+        "Alberta Standard Time": "America/Edmonton",
+        "British Columbia Standard Time": "America/Vancouver",
+        "Manitoba Standard Time": "America/Winnipeg"
+      },
+      "result": "PASS actual rebuilt Qt locale fields/date roundtrips/new Windows zone mappings"
+    },
+    "parser": {
+      "cases": 8,
+      "libxml": [
+        2,
+        15,
+        4
+      ],
+      "libxslt": [
+        1,
+        1,
+        45
+      ],
+      "compiled_source": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d"
+    },
+    "ca_security": {
+      "chains": 16,
+      "manual": 4
+    },
+    "cffi": {
+      "passed": 488,
+      "skipped": 11
+    },
+    "scope": "Native CI consumer evidence. Original compiled SDK/binding/source bytes independently verified separately; new result ZIP not yet independently downloaded.",
+    "artifact": 14144543279,
+    "zip_bytes": 391791473,
+    "zip_sha256": "a6313a5d6bf60b2b963cb8ae37da310978ae6d2345f233ef53a3043eeff7de6d"
+  }
+],
   "linux_arm64_sdk_reuse_2026_11_15": {
   "source_sha": "1ba799e7fecafe1a0675495294670c316c8457ba",
   "run": 43667240760,

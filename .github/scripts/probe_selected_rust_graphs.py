@@ -33,7 +33,10 @@ def main() -> None:
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--update-compatible', action='store_true', help='Resolve candidate versions within unchanged upstream manifests; never install them')
     parser.add_argument('--check-candidate', action='store_true', help='Compile-check candidate APIs on this native host only; no binary adoption')
+    parser.add_argument('--check-package', choices=['ruff', 'cryptography-rust'], help='Repeat only this affected native API check')
     args = parser.parse_args()
+    if args.check_package and not args.check_candidate:
+        parser.error('--check-package requires --check-candidate')
     if args.check_candidate and not args.update_compatible:
         parser.error('--check-candidate requires --update-compatible')
     assert not args.work.exists()
@@ -102,7 +105,7 @@ def main() -> None:
                             'source_sha256': item['sha256'], 'lock_sha256': digest,
                             'selected': packages, 'edges': 'normal,build; dev excluded'})
             print(label, len(packages), 'selected normal/build packages', flush=True)
-        if args.check_candidate:
+        if args.check_candidate and (not args.check_package or item['package'] == args.check_package):
             environment = {**os.environ, 'CARGO_BUILD_JOBS': '2', 'PYO3_PYTHON': __import__('sys').executable}
             command = ['cargo', 'check', '--locked', '--package', item['package']]
             checked = subprocess.run(command, cwd=root, env=environment, capture_output=True,
@@ -115,7 +118,7 @@ def main() -> None:
             assert hashlib.sha256(lock.read_bytes()).hexdigest() == digest
             print(item['package'], 'PASS native candidate API compile check; not runtime/ABI/adoption acceptance', flush=True)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results,
-              'candidate_update_only': args.update_compatible, 'native_candidate_api_check': args.check_candidate,
+              'candidate_update_only': args.update_compatible, 'native_candidate_api_check': args.check_candidate, 'native_checked_packages': ([args.check_package] if args.check_package else [item['package'] for item in spec['sources']]) if args.check_candidate else [],
               'check_scope': 'Native Ubuntu24.04 x64 compiler API only; host OpenSSL for crypto check. No target ABI/runtime/provider/package acceptance or changed pins.',
               'result': 'PASS source selection only; candidate updates require native regression/compatibility acceptance before adoption'}
     (args.output / 'selected-rust-graphs.json').write_text(json.dumps(report, indent=2) + '\n')

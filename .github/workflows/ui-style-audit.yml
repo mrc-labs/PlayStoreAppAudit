@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -873,7 +873,7 @@ jobs:
       contents: read
       actions: read
     if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers' }}
-    name: ${{ inputs.linux_arm64_pilot == 'full' && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
+    name: ${{ (inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers') && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
     env:
@@ -982,7 +982,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ inputs.linux_arm64_pilot == 'full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
+          name: ${{ (inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers') && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
           path: linux-arm64-pilot-evidence/
           if-no-files-found: error
           retention-days: 0
@@ -1201,8 +1201,13 @@ jobs:
         run: |
           set -euo pipefail
           python -c "import platform,sys,sysconfig; actual=platform.python_version(); print('Stable Python',actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if [[ '${{ inputs.linux_arm64_pilot }}' == *check ]]; then
+            python .github/scripts/bootstrap_pip.py
+            python -m pip install -c .github/scripts/source_build_constraints.txt -r .github/scripts/source_build_requirements.txt 'cffi==2.1.1' 'pycparser==3.12'
+            python -c "from cffi import FFI; FFI().cdef('int api_check(void);'); print('CFFI source-build frontend ready')"
+          fi
           rustup toolchain install 1.99.1 --profile minimal
-          RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') && '--update-compatible' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-check' && '--check-candidate' || '' }}
+          RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') && '--update-compatible' || '' }} ${{ endsWith(inputs.linux_arm64_pilot, 'check') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:

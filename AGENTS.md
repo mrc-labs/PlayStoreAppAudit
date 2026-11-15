@@ -1,5 +1,7 @@
 # AGENTS.md
 
+November15 current Linux delta: x64 consumer43672416899 and ARM64 consumer43672419086 PASS at e9915b0; direct Quality43672421445 PASS2139. Both qualify current five stdlib providers, coherent Qt/text/data/security, exact controlled parsers and native GUI/CLI/default trust within their accepted ABI floors. No Python/Qt/PySide rebuild in these continuations; original compiled identities remain explicit. Other four target deltas, Action/Rust decisions and producing/package acceptance stay required.
+
 November15 delta: native Noble ARM64 ADB43666658887 PASS with independently verified source/legal/ELF bytes; producer/external-ADB integration remains open. Changed Qt/PySide SDKs are retained and byte-verified on Linux x64/ARM64; consumer-only continuation corrects the QLocale.Country test harness without recompiling those providers. See active audit for actual source identities and pending runtime/package gates.
 
 November14 delta: Ruff0.17.5 lint PASS; R09 expected/PSL and native Windows D3D12MA3.3 prerequisites43613634362/43613634315 PASS with independent archive/native/source/legal byte checks. CLDR49 closed source generation preserves711 locale keys and adds three; complete ISO registry is not a build input or redistributed. Changed coherent Qt integration remains pending; unchanged Python/native SDK reuse is hash/source guarded. See active audit.
