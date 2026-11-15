@@ -9,6 +9,8 @@
 
 ## Native Mac provider/cffi prerequisites prepared (2026-11-15)
 
+First native43697800412 stops before any source download/build on both architectures: a shell export expands CXXFLAGS before CFLAGS is assigned under nounset. Split the assignments; capture complete xcodebuild version output instead of cutting its pipe. Two clean-environment Bash startup regressions now execute both architecture/deployment branches without downloads or file mutation. No provider compatibility conclusion or compile rerun is inferred from this preflight failure.
+
 The next independent prerequisite targets only native macOS ARM64 and Intel on accepted Xcode26.6. It reuses the existing exact five-library/cffi source/hash/legal selections and shared native C consumer, not the Linux GNU11/sysroot/compiler settings. Native Clang/explicit thin architecture and11.0 ARM/10.15 Intel deployment flags remain enforced and measured across every new owned Mach-O; no older-OS execution claim. This supplies current private SQLite3.54.1/libffi3.8.0/libmpdec4.0.1/zlib1.4 alongside XZ5.8.4. Source cffi2.1.1 must link the actual private3.8 dylib and execute the unchanged complete low-level src/c/test_c.py file, including real variadic/callback cases. Upstream zlib/XZ/mpdecimal tests and C SQL/codec/callback/27.5 mixed-variadic/column-metadata assertions are retained. No new vendor patch, trust/Keychain mutation, Python/Qt rebuild, general framework or benchmark. Full controlled runtime/native backend/framework and package adoption remain later gates, combined with the other affected inputs.
 
 ## Windows codec byte reuse after demonstrated import-precedence error (2026-11-15)

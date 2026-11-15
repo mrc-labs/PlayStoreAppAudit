@@ -11,12 +11,14 @@ case "$EXPECTED_ARCH" in
   x64) test "$(uname -m)" = x86_64; deployment=10.15; cpu=x86_64 ;;
   *) exit 1 ;;
 esac
-test "$(xcodebuild -version | head -n1)" = 'Xcode 26.6'
+xcode_version=$(xcodebuild -version)
+test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 translated=$(sysctl -in sysctl.proc_translated 2>/dev/null || true)
 test "$translated" != 1
 export MACOSX_DEPLOYMENT_TARGET="$deployment" ARCHFLAGS="-arch $cpu"
 export CC="$(xcrun --find clang)" CXX="$(xcrun --find clang++)"
-export CFLAGS="-arch $cpu -mmacosx-version-min=$deployment" CXXFLAGS="$CFLAGS"
+export CFLAGS="-arch $cpu -mmacosx-version-min=$deployment"
+export CXXFLAGS="$CFLAGS"
 export LDFLAGS="-arch $cpu -mmacosx-version-min=$deployment"
 export PILOT_WORK="$work" PILOT_EVIDENCE="$evidence"
 mkdir -p "$work/src" "$evidence/sources"
