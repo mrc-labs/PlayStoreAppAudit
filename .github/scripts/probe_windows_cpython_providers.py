@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import struct
 import subprocess
@@ -14,6 +15,7 @@ import sys
 import sysconfig
 import tarfile
 import zipfile
+from compression import zstd
 from pathlib import Path
 
 from apply_windows_cpython_providers import apply
@@ -28,6 +30,15 @@ from verify_native_runtime_pilot import default_trust_handshake
 from verify_windows_runtime_pilot import pe_versions
 
 REPO = Path(__file__).resolve().parents[2]
+
+
+def sqlite_layout(source: Path) -> Path:
+    """PCbuild reads a four-part version from the source-directory suffix."""
+    match = re.search(rb'^#define SQLITE_VERSION\s+"([^"\r\n]+)"', (source / 'sqlite3.h').read_bytes(), re.M)
+    assert match and match[1] == b'3.54.1', 'Unexpected controlled SQLite header version'
+    target = source.with_name('sqlite-3.54.1.0')
+    assert not target.exists(), 'Preserve unexpected existing SQLite source layout'
+    return source.rename(target)
 
 
 def tls_fixtures(destination: Path, openssl: Path) -> dict[str, Path]:
@@ -93,7 +104,10 @@ def qualify(work: Path) -> None:
         tools = Path(os.environ['RUNNER_TEMP']) / ('native-assembler-' + os.environ['GITHUB_RUN_ID'])
         assert not tools.exists()
         tools.mkdir()
-        with tarfile.open(archive) as bundle:
+        # Official frame uses a1GiB window; default zstd rejects it. The
+        # whole archive hash/size is checked before this bounded opt-in.
+        with (zstd.ZstdFile(archive, 'rb', options={zstd.DecompressionParameter.window_log_max: 30}) as decoded,
+              tarfile.open(fileobj=decoded, mode='r|') as bundle):
             bundle.extractall(tools, filter='data')
         matches = list(tools.rglob('clang-cl.exe'))
         assert len(matches) == 1
@@ -132,8 +146,6 @@ def qualify(work: Path) -> None:
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == ffi['source_sha']
     assert metadata['workflow_run']['id'] == ffi['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
     assert metadata['digest'] == 'sha256:' + ffi['zip_sha256']
-    os.environ.pop('GH_TOKEN', None)
-    os.environ.pop('GITHUB_TOKEN', None)
     (output / 'original-ffi-sdk.zip').write_bytes(data)
     ffi_root = work / 'ffi-sdk'
     if arch == 'arm64':
@@ -148,8 +160,23 @@ def qualify(work: Path) -> None:
     selected += [row for row in native['sources'] if row['directory'].startswith(('sqlite-', 'mpdecimal-'))]
     if arch == 'x64':
         selected += [base['nasm'], base['nasm_source']]
+    reused = arch == 'x64'
+    if reused:
+        from reuse_windows_x64_provider_sdk import restore
+
+        restore(work, output, selected, context)
+    os.environ.pop('GH_TOKEN', None)
+    os.environ.pop('GITHUB_TOKEN', None)
+
+    def archive_for(item: dict) -> Path:
+        archive = sources / item['name']
+        if reused:
+            assert hashlib.sha256(archive.read_bytes()).hexdigest() == item['sha256']
+            return archive
+        return fetch(item, sources)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        archives = list(pool.map(lambda item: fetch(item, sources), selected))
+        archives = list(pool.map(archive_for, selected))
     external_root = work / 'externals'
     external_root.mkdir()
     for item, archive in zip(selected, archives, strict=True):
@@ -163,6 +190,10 @@ def qualify(work: Path) -> None:
         with tarfile.open(archive) as bundle:
             bundle.extractall(work, filter='data')
         directory = work / item['directory']
+        if item['directory'] == 'sqlite-autoconf-3540100':
+            # Original PCbuild parses the four-part version from the directory.
+            # Preserve original source bytes, using its supported directory layout.
+            directory = sqlite_layout(directory)
         if item in externals:
             directory = directory.rename(external_root / item['destination'])
         destination = legal / directory.name
@@ -177,30 +208,32 @@ def qualify(work: Path) -> None:
         assert read_pe_machine(nasm) == machine
         os.environ['PATH'] = str(nasm.parent) + os.pathsep + os.environ['PATH']
         run([nasm, '-v'], log=output / 'nasm-version.log')
-    perl_source = work / 'perl-5.44.0'
-    make = ['nmake', '-f', 'Makefile', 'CCTYPE=MSVC143', 'WIN64=define',
-            'CCHOME=' + os.environ['VCTOOLSINSTALLDIR'].rstrip('\\')]
-    run(make, cwd=perl_source / 'win32', log=output / 'perl-build.log')
-    perl = perl_source / 'perl.exe'
-    assert read_pe_machine(perl) == machine
-    os.environ['PERL5LIB'] = str(perl_source / 'lib')
-    os.environ['PATH'] = str(perl.parent) + os.pathsep + os.environ['PATH']
-    run([perl, '-MConfig', '-e', 'die unless $Config{version} eq "5.44.0"; print "$^V $Config{archname}\\n"'], log=output / 'perl-native.log')
-    run([*make, 'test', 'TEST_FILES=op/arith2.t op/pack.t'], cwd=perl_source / 'win32', log=output / 'perl-tests.log')
-    assert 'Result: PASS' in (output / 'perl-tests.log').read_text(encoding='utf-8', errors='replace')
+    if not reused:
+        perl_source = work / 'perl-5.44.0'
+        make = ['nmake', '-f', 'Makefile', 'CCTYPE=MSVC143', 'WIN64=define',
+                'CCHOME=' + os.environ['VCTOOLSINSTALLDIR'].rstrip('\\')]
+        run(make, cwd=perl_source / 'win32', log=output / 'perl-build.log')
+        perl = perl_source / 'perl.exe'
+        assert read_pe_machine(perl) == machine
+        os.environ['PERL5LIB'] = str(perl_source / 'lib')
+        os.environ['PATH'] = str(perl.parent) + os.pathsep + os.environ['PATH']
+        run([perl, '-MConfig', '-e', 'die unless $Config{version} eq "5.44.0"; print "$^V $Config{archname}\\n"'], log=output / 'perl-native.log')
+        run([*make, 'test', 'TEST_FILES=op/arith2.t op/pack.t'], cwd=perl_source / 'win32', log=output / 'perl-tests.log')
+        assert 'Result: PASS' in (output / 'perl-tests.log').read_text(encoding='utf-8', errors='replace')
     prefix = work / 'prefix'
     providers = prefix / 'providers'
     common = ['-GNinja', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL',
               '-DCMAKE_INSTALL_PREFIX=' + str(providers), '-DBUILD_TESTING=OFF']
-    for source, label, extra in [
-        ('xz-5.8.4', 'xz', ['-DBUILD_SHARED_LIBS=ON']),
-        ('zlib-ng-2.3.3', 'zlib-ng', ['-DBUILD_SHARED_LIBS=OFF', '-DZLIB_COMPAT=ON', '-DWITH_GTEST=OFF',
-                                   '-DWITH_BENCHMARKS=OFF', '-DWITH_NATIVE_INSTRUCTIONS=OFF', '-DWITH_RUNTIME_CPU_DETECTION=ON'])]:
-        build = work / (label + '-build')
-        run(['cmake', '-S', work / source, '-B', build, *common, *extra], log=output / (label + '-configure.log'))
-        shutil.copy2(build / 'CMakeCache.txt', output / (label + '-CMakeCache.txt'))
-        run(['cmake', '--build', build, '--parallel', '2'], log=output / (label + '-build.log'))
-        run(['cmake', '--install', build], log=output / (label + '-install.log'))
+    if not reused:
+        for source, label, extra in [
+            ('xz-5.8.4', 'xz', ['-DBUILD_SHARED_LIBS=ON']),
+            ('zlib-ng-2.3.3', 'zlib-ng', ['-DBUILD_SHARED_LIBS=OFF', '-DZLIB_COMPAT=ON', '-DWITH_GTEST=OFF',
+                                       '-DWITH_BENCHMARKS=OFF', '-DWITH_NATIVE_INSTRUCTIONS=OFF', '-DWITH_RUNTIME_CPU_DETECTION=ON'])]:
+            build = work / (label + '-build')
+            run(['cmake', '-S', work / source, '-B', build, *common, *extra], log=output / (label + '-configure.log'))
+            shutil.copy2(build / 'CMakeCache.txt', output / (label + '-CMakeCache.txt'))
+            run(['cmake', '--build', build, '--parallel', '2'], log=output / (label + '-build.log'))
+            run(['cmake', '--install', build], log=output / (label + '-install.log'))
     zlib = list((providers / 'lib').glob('*zlib*.lib'))
     lzma = list((providers / 'lib').glob('*lzma*.lib'))
     lzma_dll = list((providers / 'bin').glob('*lzma*.dll'))
@@ -214,11 +247,17 @@ def qualify(work: Path) -> None:
     apply(python_source, output)
     ssl_source, ssl_prefix = work / 'openssl-4.0.3', prefix / 'openssl'
     target = arm['openssl_target'] if arch == 'arm64' else 'VC-WIN64A'
-    run([perl, 'Configure', target, 'shared', 'no-uplink', 'no-makedepend', 'no-docs',
-         '--prefix=' + str(ssl_prefix), '--libdir=lib', 'CFLAGS=/MD'], cwd=ssl_source, log=output / 'openssl-configure.log')
-    run(['nmake'], cwd=ssl_source, log=output / 'openssl-build.log')
-    run(['nmake', 'test', 'TESTS=test_evp test_x509 test_verify test_ssl_new'], cwd=ssl_source, log=output / 'openssl-tests.log')
-    run(['nmake', 'install_sw'], cwd=ssl_source, log=output / 'openssl-install.log')
+    if reused:
+        for name in ['libcrypto.lib', 'libssl.lib']:
+            shutil.copy2(ssl_prefix / 'lib' / name, ssl_source / name)
+        for name in base['openssl_dlls']:
+            shutil.copy2(ssl_prefix / 'bin' / name, ssl_source / name)
+    else:
+        run([perl, 'Configure', target, 'shared', 'no-uplink', 'no-makedepend', 'no-docs',
+             '--prefix=' + str(ssl_prefix), '--libdir=lib', 'CFLAGS=/MD'], cwd=ssl_source, log=output / 'openssl-configure.log')
+        run(['nmake'], cwd=ssl_source, log=output / 'openssl-build.log')
+        run(['nmake', 'test', 'TESTS=test_evp test_x509 test_verify test_ssl_new'], cwd=ssl_source, log=output / 'openssl-tests.log')
+        run(['nmake', 'install_sw'], cwd=ssl_source, log=output / 'openssl-install.log')
     variant = arm if arch == 'arm64' else base
     for name in variant['openssl_dlls']:
         assert read_pe_machine(ssl_source / name) == machine
@@ -230,7 +269,7 @@ def qualify(work: Path) -> None:
                   'IncludeTkinter': 'false', 'IncludeSSL': 'true', 'IncludeTests': 'true', 'UseJIT': 'false', 'DisableGil': 'false',
                   'IncludeExternals': 'true', 'PSAAControlledProviders': 'true', 'ExternalsDir': str(external_root) + '\\',
                   'opensslOutDir': str(ssl_source) + '\\', 'opensslIncludeDir': str(ssl_prefix / 'include'),
-                  'sqlite3Dir': str(work / 'sqlite-autoconf-3540100') + '\\', 'mpdecimalDir': str(work / 'mpdecimal-4.0.1') + '\\',
+                  'sqlite3Dir': str(work / 'sqlite-3.54.1.0') + '\\', 'mpdecimalDir': str(work / 'mpdecimal-4.0.1') + '\\',
                   'PSAAFFILibrary': str(ffi_library), 'PSAAFFIIncludeDir': str(ffi_include),
                   'PSAACodecIncludeDir': str(providers / 'include'), 'PSAAZlibLibrary': str(zlib[0]),
                   'PSAALzmaImportLibrary': str(lzma[0]), 'PSAALzmaRuntime': str(lzma_dll[0])}
@@ -301,6 +340,12 @@ def main() -> None:
     parser.add_argument('--work-root', type=Path, required=True)
     args = parser.parse_args()
     work = args.work_root.resolve()
+    if os.environ.get('EXPECTED_ARCH') == 'x64':
+        from reuse_windows_x64_provider_sdk import contract as cached_contract
+
+        root = Path(os.environ['RUNNER_TEMP']).resolve()
+        assert work.parent == root
+        work = root / cached_contract()['work_name']
     output = REPO / 'toolchain-delta-evidence'
     existing = work.exists()
     try:

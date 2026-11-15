@@ -13,5 +13,6 @@
     "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/llvm-project-23.1.5.src.tar.xz",
     "sha256": "fb50b1eac93ddeb3aa8dab4cfe324dff74f4a9c2bdee6160c9e36188f8d06a6e",
     "bytes": 179220264
-  }
+  },
+  "decompression": "Official zstd frame declares1GiB window; opt into window_log_max30 only after exact full hash/size, retaining tar data path/link filters. Header range probe reproduces default ZstdError and bounded successful tar decode before CI."
 }

@@ -1131,7 +1131,8 @@ jobs:
           name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings' || inputs.linux_arm64_pilot == 'macos-consumers') && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: |
             macos-arm64-pilot-evidence/
-            !macos-arm64-pilot-evidence/**/*key*.pem
+            !macos-arm64-pilot-evidence/**/server-key.pem
+            !macos-arm64-pilot-evidence/**/ca-key.pem
           if-no-files-found: error
           retention-days: 0
 

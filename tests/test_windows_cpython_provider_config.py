@@ -84,3 +84,28 @@ def test_isolated_tls_fixtures_authenticate_and_reject_all_three_negatives(tmp_p
             with pytest.raises(ssl.SSLCertVerificationError) as error:
                 context.wrap_socket(raw, server_hostname='wrong.invalid' if kind == 'hostname' else 'localhost')
             assert error.value.verify_code == {'hostname': 62, 'untrusted': 20, 'expired': 10}[kind]
+
+
+def test_pcbuild_sqlite_version_layout_preserves_source_bytes(tmp_path: Path) -> None:
+    from probe_windows_cpython_providers import sqlite_layout
+
+    source = tmp_path / 'sqlite-autoconf-3540100'
+    source.mkdir()
+    header = b'#define SQLITE_VERSION        "3.54.1"\n'
+    (source / 'sqlite3.h').write_bytes(header)
+    (source / 'sqlite3.c').write_bytes(b'original amalgamation bytes')
+    result = sqlite_layout(source)
+    assert result.name.endswith('3.54.1.0')
+    assert (result / 'sqlite3.h').read_bytes() == header
+    assert (result / 'sqlite3.c').read_bytes() == b'original amalgamation bytes'
+
+
+def test_sqlite_layout_rejects_unexpected_version_without_moving_source(tmp_path: Path) -> None:
+    from probe_windows_cpython_providers import sqlite_layout
+
+    source = tmp_path / 'sqlite-autoconf-3540100'
+    source.mkdir()
+    (source / 'sqlite3.h').write_bytes(b'#define SQLITE_VERSION "3.54.10"\n')
+    with pytest.raises(AssertionError, match='Unexpected controlled SQLite'):
+        sqlite_layout(source)
+    assert source.is_dir() and not (tmp_path / 'sqlite-3.54.1.0').exists()

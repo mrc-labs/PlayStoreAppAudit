@@ -57,6 +57,14 @@ def finish_bindings(work: Path, output: Path, *, consumers_only: bool = False) -
     # Preserve the exact source prefix/default trust paths, with no loader fallback.
     for name in ['DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
         environment.pop(name, None)
+    # Fresh read-only OS trust evidence, distinct from the compiled private PEM.
+    roots = subprocess.check_output(['/usr/bin/security', 'find-certificate', '-a', '-p',
+        '/System/Library/Keychains/SystemRootCertificates.keychain'])
+    assert b'BEGIN CERTIFICATE' in roots
+    (output / 'keychain-system-roots.pem').write_bytes(roots)
+    (output / 'current-keychain-capture.json').write_text(json.dumps({
+        'source_sha': os.environ['GITHUB_SHA'], 'os': platform.mac_ver(),
+        'sha256': hashlib.sha256(roots).hexdigest(), 'scope': 'Fresh public SystemRoot Keychain snapshot only; no trust store mutation or injection'}, indent=2) + '\n')
     result = subprocess.run(['bash', '-c', 'repo="$PWD"; work="$PILOT_WORK"; prefix="$PILOT_PREFIX"; '
         'evidence="$PILOT_EVIDENCE"; source "$repo/.github/scripts/finish_macos_arm64_runtime_pilot.sh"'],
         cwd=ROOT, env=environment)

@@ -1,0 +1,9 @@
+{
+  "scope": "Only exact Windows x64 OpenSSL/codecs prefix from failed CPython build; no Python/Qt or whole-pilot acceptance. Reuse original absolute prefix; original source/hash/compiler/test identities remain explicit.",
+  "artifact": 14184347649,
+  "run": 43769336231,
+  "source_sha": "42a8e8b3a4bd70ee4ac969d0ac520a5d505dbb5f",
+  "zip_bytes": 132116344,
+  "zip_sha256": "26ef8999f28bc98e7584b8c2d804c1ba50c2c753e41be20c26f587a048c752c6",
+  "work_name": "cpython-current-43769336231-1"
+}
