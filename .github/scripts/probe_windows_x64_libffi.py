@@ -48,6 +48,7 @@ def main() -> None:
     spec_path = REPO / '.github/scripts/windows_x64_libffi_sources.json'
     spec = json.loads(spec_path.read_text())
     shutil.copy2(spec_path, output)
+    (output / 'sources').mkdir()
     archive = fetch(spec['sources'][0], output / 'sources')
     with tarfile.open(archive) as bundle:
         bundle.extractall(work, filter='data')
