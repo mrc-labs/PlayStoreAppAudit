@@ -1,6 +1,7 @@
 """Resume one exact compiled SDK without recompiling its Python/Qt providers."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import json
@@ -18,7 +19,51 @@ from reuse_macos_arm64_partial_sdk import configuration_sha256
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def finish_bindings(work: Path, output: Path) -> None:
+    from probe_macos_arm64_runtime import clang_extraction, fetch, macho, run, unpack
+    from probe_macos_arm64_runtime import contract as runtime_contract
+
+    arm, base = runtime_contract()
+    sources = output / 'sources'
+    src = work / 'src'
+    src.mkdir(exist_ok=True)
+    pyside = next(row for row in base['sources'] if row['directory'].startswith('pyside-setup-'))
+    unpack(fetch(pyside, sources), src)
+    extractor = work / 'extractor'
+    extractor.mkdir()
+    unpack(fetch(arm['host_extractor'], sources), extractor)
+    seven = extractor / '7zz'
+    seven.chmod(0o755)
+    macho(seven, target=False, output=output)
+    archive = fetch(arm['host_libclang'], sources)
+    run(clang_extraction(seven, archive, src, arm['host_libclang']), log=output / 'libclang-extract.log')
+    library = src / 'libclang/lib/libclang.dylib'
+    macho(library.resolve(), target=False, output=output)
+    prefix = work / 'prefix'
+    python = work / 'venv/bin/python'
+    environment = {**os.environ, 'PATH': str(python.parent) + os.pathsep + os.environ['PATH'],
+        'PILOT_WORK': str(work), 'PILOT_PREFIX': str(prefix), 'PILOT_EVIDENCE': str(output),
+        'SDKROOT': subprocess.check_output(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], text=True).strip(),
+        'CC': subprocess.check_output(['xcrun', '--find', 'clang'], text=True).strip(),
+        'CXX': subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip(),
+        'MACOSX_DEPLOYMENT_TARGET': '14.4', 'CFLAGS': '-arch arm64', 'CXXFLAGS': '-arch arm64', 'ARCHFLAGS': '-arch arm64',
+        'Python_ROOT_DIR': str(prefix / 'python'), 'Python3_ROOT_DIR': str(prefix / 'python'),
+        'PKG_CONFIG_LIBDIR': f'{prefix}/python/lib/pkgconfig:{prefix}/lib/pkgconfig:{prefix}/openssl/lib/pkgconfig',
+        'CMAKE_PREFIX_PATH': f'{prefix}:{prefix}/openssl'}
+    environment.pop('GH_TOKEN', None)
+    # Preserve the exact source prefix/default trust paths, with no loader fallback.
+    for name in ['DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
+        environment.pop(name, None)
+    result = subprocess.run(['bash', '-c', 'repo="$PWD"; work="$PILOT_WORK"; prefix="$PILOT_PREFIX"; '
+        'evidence="$PILOT_EVIDENCE"; source "$repo/.github/scripts/finish_macos_arm64_runtime_pilot.sh"'],
+        cwd=ROOT, env=environment)
+    result.check_returncode()
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bindings', action='store_true')
+    args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'arm64'
     spec = json.loads((ROOT / '.github/scripts/macos_arm64_compiled_sdk_sources.json').read_text())
     output = ROOT / 'macos-arm64-pilot-evidence'
@@ -75,12 +120,31 @@ def main() -> None:
             raw = original.read(name)
             assert hashlib.sha256(raw).hexdigest() == digest, name
             (output / name).write_bytes(raw)
+        if args.bindings:
+            for name in original.namelist():
+                path = PurePosixPath(name)
+                assert not path.is_absolute() and '..' not in path.parts
+                if name.endswith('/') or name.startswith('macos-runtime-sdk.') or any('certificates' in part for part in path.parts):
+                    continue
+                if path.name.endswith('key.pem'):
+                    continue
+                target = output / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(original.read(name))
         (output / 'original-compiled-sdk-receipt.json').write_bytes(original.read('macos-runtime-sdk.json'))
     (output / 'compiled-sdk-intake.json').write_text(json.dumps({'original': spec, 'verified_paths': len(receipt['paths']),
         'scope': 'Exact compiled bytes only; original failed whole pilot remains unqualified'}, indent=2) + '\n')
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '14.4'
     public_limits(work / 'prefix/qt', work / 'public-http-tests', output / 'public-http')
-    print('PASS exact compiled SDK/public HTTP consumer; bindings/GUI/TLS acceptance remains pending')
+    if args.bindings:
+        from retain_macos_runtime_sdk import retain
+
+        try:
+            finish_bindings(work, output)
+        finally:
+            retain(work, output, 0 if (output / 'pilot-results.json').is_file() else 1)
+    else:
+        print('PASS exact compiled SDK/public HTTP consumer; bindings/GUI/TLS acceptance remains pending')
 
 
 if __name__ == '__main__':
