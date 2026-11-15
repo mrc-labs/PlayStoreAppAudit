@@ -40,3 +40,20 @@ def test_independent_tool_profiles_do_not_cancel_each_other():
     assert "format('toolchain-{0}', inputs.linux_arm64_pilot)" in concurrency
     assert "format('rust-{0}', inputs.linux_arm64_pilot)" in concurrency
     assert 'cancel-in-progress: true' in concurrency
+
+
+@pytest.mark.parametrize('release,target,llvm,valid', [
+    ('1.100.0', 'aarch64-apple-darwin', '23.1.5', True),
+    ('1.99.1', 'aarch64-apple-darwin', '23.1.5', False),
+    ('1.100.0', 'x86_64-apple-darwin', '23.1.5', False),
+    ('1.100.0', 'aarch64-apple-darwin', '23.1.1', False),
+])
+def test_current_native_compiler_gate_checks_real_release_host_and_backend(release, target, llvm, valid):
+    from probe_selected_rust_graphs import verify_rust_host
+
+    actual = f'release: {release}\nhost: {target}\nLLVM version: {llvm}\n'
+    if valid:
+        verify_rust_host(actual, 'aarch64-apple-darwin')
+    else:
+        with pytest.raises(AssertionError):
+            verify_rust_host(actual, 'aarch64-apple-darwin')

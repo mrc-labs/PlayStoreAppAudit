@@ -44,6 +44,12 @@ def ruff_codemod_consumer(binary: Path, output: Path) -> None:
     assert namespace['values'] == [1, 2, 3] and namespace['unique'] == {1, 2, 3}
 
 
+def verify_rust_host(host: str, target: str) -> None:
+    spec = json.loads((REPO / '.github/scripts/selected_rust_sources.json').read_text())['compiler']
+    assert 'release: ' + spec['version'] + '\n' in host and f'host: {target}\n' in host
+    assert 'LLVM version: ' + spec['llvm_source_version'] + '\n' in host, 'Unexpected actual Rust LLVM backend'
+
+
 def native_ruff(root: Path, output: Path) -> dict:
     """Exercise the changed macro/parser consumer; never build the application."""
     host = subprocess.check_output(['rustc', '-vV'], text=True)
@@ -51,7 +57,15 @@ def native_ruff(root: Path, output: Path) -> dict:
     arch = os.environ['EXPECTED_ARCH']
     target = ('aarch64' if arch == 'arm64' else 'x86_64') + {
         'win32': '-pc-windows-msvc', 'darwin': '-apple-darwin', 'linux': '-unknown-linux-gnu'}[__import__('sys').platform]
-    assert 'release: 1.99.1\n' in host and f'host: {target}\n' in host
+    verify_rust_host(host, target)
+    compiler_spec = json.loads((REPO / '.github/scripts/selected_rust_sources.json').read_text())['compiler']
+    with urllib.request.urlopen(compiler_spec['manifest'], timeout=120) as response:
+        assert response.geturl().startswith('https:')
+        manifest = response.read()
+    assert hashlib.sha256(manifest).hexdigest() == compiler_spec['manifest_sha256']
+    (output / 'sources/channel-rust-1.100.0.toml').write_bytes(manifest)
+    rustc = Path(subprocess.check_output(['rustup', 'which', 'rustc'], text=True).strip())
+    rustc_sha256 = hashlib.sha256(rustc.read_bytes()).hexdigest()
     assert platform.machine().lower() in ({'arm64', 'aarch64'} if arch == 'arm64' else {'amd64', 'x86_64'})
     environment = {**os.environ, 'CARGO_BUILD_JOBS': '2'}
     if os.name == 'nt':
@@ -97,6 +111,7 @@ def native_ruff(root: Path, output: Path) -> dict:
     result.check_returncode()
     shutil.copy2(binary, output / binary.name)
     return {'target': target, 'version': actual, 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+            'compiler': compiler_spec, 'rustc_executable_sha256': rustc_sha256,
             'lock_sha256': lock_hash, 'source_modified': True,
             'checks': ['upstream Ruff flake8_comprehensions tests consuming LibCST', 'actual libcst-backed C400/C401 fixes and executed Python semantics', 'repository lint'],
             'scope': 'Native developer-tool consumer only; not application/package ABI or producing-profile adoption', 'result': 'PASS'}
@@ -267,7 +282,13 @@ def main() -> None:
                 checked.check_returncode()
             assert hashlib.sha256(lock.read_bytes()).hexdigest() == digest
             print(item['package'], 'PASS native candidate API compile check; not runtime/ABI/adoption acceptance', flush=True)
-    native_result = native_ruff(root, args.output) if args.native_ruff else None
+    native_result = None
+    if args.native_ruff:
+        from package_controlled_ruff import package, prepare
+
+        packaging_python = prepare(args.output)
+        native_result = native_ruff(root, args.output)
+        native_result['wheel'] = package(root, args.output, packaging_python)
     report = {'source_sha': os.environ['GITHUB_SHA'], 'scope': spec['scope'], 'graphs': results, 'native_ruff': native_result,
               'candidate_update_only': args.update_compatible, 'maintained_macro_candidate': adaptation, 'native_candidate_api_check': args.check_candidate, 'native_checked_packages': ([args.check_package] if args.check_package else [item['package'] for item in selected_sources]) if args.check_candidate else [],
               'check_scope': native_result['scope'] if native_result else 'Native Ubuntu24.04 x64 compiler API only; OpenSSL host provider is used only for a crypto package check. No target ABI/runtime/provider/package acceptance or changed pins.',

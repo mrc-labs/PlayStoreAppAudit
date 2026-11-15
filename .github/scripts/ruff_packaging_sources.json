@@ -1,0 +1,53 @@
+{
+  "scope": "Upstream Maturin packaging backend for controlled Ruff developer-tool wheels only; no application candidate or producer adoption",
+  "version": "1.16.0",
+  "authority": "https://pypi.org/pypi/maturin/1.16.0/json",
+  "source": {
+    "name": "maturin-1.16.0.tar.gz",
+    "sha256": "13e69ca12542999d8c5467131de72a49bb76e4c284b9a45c5783df7c0fcb3a8a",
+    "url": "https://files.pythonhosted.org/packages/bd/71/eb078174335ff30bde1be2ad54fb6256db4b160eb3efa81163fa30f8c814/maturin-1.16.0.tar.gz"
+  },
+  "wheels": {
+    "windows-x64": {
+      "name": "maturin-1.16.0-py3-none-win_amd64.whl",
+      "sha256": "9d43a2adf51a2794e907a8f7dbad06eb114d5edb0909c73c1fa9040f15e584e9",
+      "url": "https://files.pythonhosted.org/packages/63/b8/c25ce706c4797ee1663bcf1f386ffe91d8a3b3589700a135a204b49bc4b0/maturin-1.16.0-py3-none-win_amd64.whl"
+    },
+    "windows-arm64": {
+      "name": "maturin-1.16.0-py3-none-win_arm64.whl",
+      "sha256": "95f34ce53249fb7095ff4f2aff64d2562c511d6edf3e216c15dbffcd82b72b4f",
+      "url": "https://files.pythonhosted.org/packages/eb/74/f69aba8b22539e5ed58323d4a6ee974afd9edda238489c73926cc0fc9d51/maturin-1.16.0-py3-none-win_arm64.whl"
+    },
+    "linux-x64": {
+      "name": "maturin-1.16.0-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.musllinux_1_1_x86_64.whl",
+      "sha256": "837db2f4d93d4899c3ac393fb3cc9eebf35b6002336e5d574f4a4fb6c49fe283",
+      "url": "https://files.pythonhosted.org/packages/0a/dc/e77f490557cb5e045a75c3d18a7965425ac576235c970dfff4d903eb2c74/maturin-1.16.0-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.musllinux_1_1_x86_64.whl"
+    },
+    "linux-arm64": {
+      "name": "maturin-1.16.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64.whl",
+      "sha256": "e285ec9eb10243d45d10417178cb2eb76e0cbb184d0aa4378b503489fa12ee78",
+      "url": "https://files.pythonhosted.org/packages/45/5b/570e13ce81f103be6609c067a06c5bac08da5af0cf7ea700c9ae43419be9/maturin-1.16.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64.whl"
+    },
+    "macos-x64": {
+      "name": "maturin-1.16.0-py3-none-macosx_10_12_x86_64.whl",
+      "sha256": "2216d731c9324869d3bff72c0c73009bb6e640b3fa7d340174ae70dc874d1d9f",
+      "url": "https://files.pythonhosted.org/packages/d2/8e/d65633d7c25484cb82735a51e15bc969f9874a13557e2b352d27df574c20/maturin-1.16.0-py3-none-macosx_10_12_x86_64.whl"
+    },
+    "macos-arm64": {
+      "name": "maturin-1.16.0-py3-none-macosx_10_12_universal2.macosx_10_12_x86_64.macosx_11_0_arm64.whl",
+      "sha256": "131fcc17ddb3ccc48aa183d2172ebf994c322b858e1b9694fb8744d783df66f6",
+      "url": "https://files.pythonhosted.org/packages/fb/d5/f49a90d8c489dc5f134654ec91d12a78a51599fdc8c2b5a1bc2391bca0ac/maturin-1.16.0-py3-none-macosx_10_12_universal2.macosx_10_12_x86_64.macosx_11_0_arm64.whl"
+    }
+  },
+  "distribution_version": "0.17.5+psaa.pastey",
+  "metadata_patch": {
+    "path": ".github/patches/ruff-0.17.5-controlled-wheel.patch",
+    "sha256": "0015ca5ff9e20b73493f805cc797dfd97efeae9fe39bbdc1883b990c786b8e0a",
+    "files": {
+      "pyproject.toml": {
+        "base_sha256": "60d09f43cec0b1ace13a5ed42841dc11c7aaeeec293e32494205eb6fee83750b",
+        "patched_sha256": "3030e978b86a9eb87cf80e1ffd164f88daadf33f2a03fa7700090711bfc43f97"
+      }
+    }
+  }
+}

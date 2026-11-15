@@ -1241,7 +1241,7 @@ jobs:
       EXPECTED_ARCH: ${{ matrix.arch }}
       DEVELOPER_DIR: ${{ startsWith(matrix.label, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
     if: ${{ startsWith(inputs.linux_arm64_pilot, 'rust-') }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.label == 'linux-x64' && startsWith(inputs.linux_arm64_pilot, 'rust-native-ruff') && 'ubuntu-22.04' || matrix.os }}
     timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
@@ -1271,15 +1271,15 @@ jobs:
             curl --fail --location --retry 3 --output "$RUNNER_TEMP/rustup-init" https://static.rust-lang.org/rustup/archive/1.29.2/x86_64-apple-darwin/rustup-init
             echo "b9610730ddeef52765723847866fd1e3540b2bf7d5ab0c324aa143a5edf25ba0  $RUNNER_TEMP/rustup-init" | shasum -a 256 -c -
             chmod +x "$RUNNER_TEMP/rustup-init"
-            "$RUNNER_TEMP/rustup-init" -y --no-modify-path --profile minimal --default-toolchain 1.99.1
+            "$RUNNER_TEMP/rustup-init" -y --no-modify-path --profile minimal --default-toolchain 1.100.0
             export PATH="$CARGO_HOME/bin:$PATH"
           else
-            rustup toolchain install 1.99.1 --profile minimal
+            rustup toolchain install 1.100.0 --profile minimal
           fi
           if [[ '${{ inputs.linux_arm64_pilot }}' == rust-native-ruff* ]]; then
-            RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence --only-package ruff --maintained-paste --qualified-lock .github/sources/ruff-0.17.5-psaa.Cargo.lock --native-ruff
+            RUSTUP_TOOLCHAIN=1.100.0 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence --only-package ruff --maintained-paste --qualified-lock .github/sources/ruff-0.17.5-psaa.Cargo.lock --native-ruff
           else
-          RUSTUP_TOOLCHAIN=1.99.1 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ (startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--update-compatible' || '' }} ${{ (endsWith(inputs.linux_arm64_pilot, 'check') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-maintained-ruff' && '--only-package ruff --check-package ruff --maintained-paste' || '' }}
+          RUSTUP_TOOLCHAIN=1.100.0 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ (startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--update-compatible' || '' }} ${{ (endsWith(inputs.linux_arm64_pilot, 'check') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-maintained-ruff' && '--only-package ruff --check-package ruff --maintained-paste' || '' }}
           fi
       - uses: actions/upload-artifact@v7
         if: always()

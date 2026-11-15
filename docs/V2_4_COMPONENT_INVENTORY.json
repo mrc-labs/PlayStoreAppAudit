@@ -1,4 +1,32 @@
 {
+  "rust_parent_delta_2026_11_15": {
+  "date": "2026-11-15",
+  "rust": {
+    "version": "1.100.0",
+    "release": "https://github.com/rust-lang/rust/releases/tag/1.100.0",
+    "manifest": "https://static.rust-lang.org/dist/channel-rust-1.100.0.toml",
+    "manifest_sha256": "3051e859570f64a8c5acb9d09e87425db52c7d97287c67e8f6d57d7d34ef9258",
+    "llvm_submodule_sha": "0a5579eb649d3634a9c30ac873300cc2944fa070",
+    "llvm_source_version": "23.1.5",
+    "qualification": "Official rustc artifacts available for all six host triples; actual native compiler/backend guards and affected consumers required"
+  },
+  "latest_llvm": {
+    "version": "23.1.5",
+    "release": "https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.5",
+    "official_commit": "392dfff97d29b59d77e5cac6d4b6ef2585fe7117",
+    "rust_fork": "0a5579eb649d3634a9c30ac873300cc2944fa070",
+    "comparison": "diverged:15 Rust-side and6 upstream-only commits; source label alone does not close optimizer applicability"
+  },
+  "maturin_packaging": {
+    "version": "1.16.0",
+    "authority": "https://pypi.org/pypi/maturin/1.16.0/json",
+    "contract": ".github/scripts/ruff_packaging_sources.json",
+    "controlled_distribution": "0.17.5+psaa.pastey",
+    "result": "Prepared upstream backend packaging in same Cargo build tree; native/wheel acceptance pending"
+  },
+  "unchanged_evidence": "CPython/OpenSSL/Qt/native provider effective inputs of Linux and concurrent Mac7971b55 unchanged; old Rust artifacts remain historical",
+  "action_parents": "Official latest four releases unchanged; R04 internal applicability remains open"
+},
   "native_provider_delta_2026_11_15": {
   "windows_codecs": {
     "consumer_run": 43696733785,
