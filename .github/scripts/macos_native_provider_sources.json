@@ -1,0 +1,24 @@
+{
+  "scope": "Native macOS ARM64/Intel provider/cffi prerequisites only; no runtime/framework/CA or package adoption",
+  "native_source_projection": {
+    "path": "linux_x64_native_delta_sources.json",
+    "keys": [
+      "sources",
+      "expected",
+      "sqlite_legal_notice"
+    ],
+    "canonical_sha256": "0eab2e08965a152b27ebbe0e3fedc515b9845b6d7ed107b06a20de46cc64cf0e"
+  },
+  "targets": {
+    "arm64": {
+      "cpu": "arm64",
+      "deployment": "11.0"
+    },
+    "x64": {
+      "cpu": "x86_64",
+      "deployment": "10.15"
+    }
+  },
+  "xcode": "26.6",
+  "identity": "Project-built native source providers with original hashes; no unchanged vendor binary claim"
+}

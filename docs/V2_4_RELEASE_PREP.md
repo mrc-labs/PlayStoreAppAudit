@@ -6,6 +6,11 @@
 
 
 
+
+## Native Mac provider/cffi prerequisites prepared (2026-11-15)
+
+The next independent prerequisite targets only native macOS ARM64 and Intel on accepted Xcode26.6. It reuses the existing exact five-library/cffi source/hash/legal selections and shared native C consumer, not the Linux GNU11/sysroot/compiler settings. Native Clang/explicit thin architecture and11.0 ARM/10.15 Intel deployment flags remain enforced and measured across every new owned Mach-O; no older-OS execution claim. This supplies current private SQLite3.54.1/libffi3.8.0/libmpdec4.0.1/zlib1.4 alongside XZ5.8.4. Source cffi2.1.1 must link the actual private3.8 dylib and execute the unchanged complete low-level src/c/test_c.py file, including real variadic/callback cases. Upstream zlib/XZ/mpdecimal tests and C SQL/codec/callback/27.5 mixed-variadic/column-metadata assertions are retained. No new vendor patch, trust/Keychain mutation, Python/Qt rebuild, general framework or benchmark. Full controlled runtime/native backend/framework and package adoption remain later gates, combined with the other affected inputs.
+
 ## Windows codec byte reuse after demonstrated import-precedence error (2026-11-15)
 
 Both native codec jobs43695553011 at732371e compile XZ5.8.4/zlib-ng2.3.3, pass upstream C tests and retain all three private PE outputs after native /MD/import/deployment checks. They then stop in the diagnostic harness because normal import zlib chooses CPython's built-in module before a private zlib.pyd, regardless of sys.path. This is not a codec source/build incompatibility.
