@@ -1,6 +1,17 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
 
+
+## Noble ARM64 retained stack and CI contract correction (2026-11-15)
+
+Consumer-only x64 continuation43671517537 successfully restores the exact compiled SDK and275 binding files, installs the controlled parser and passes all eight parser cases, then demonstrates a second harness error: en_US short format M/d/yy parses26 as1926 under Qt's default1900 base. The fixture now passes an explicit2000 base, with an actual Qt regression and detailed formatted/parsed diagnostics. This does not alter Qt data, application behavior or compiled inputs. Both Linux continuations use the corrected harness; no native rebuild is needed.
+
+Maintenance source stack43667240760 at1ba799e reaches the same QLocale.Territory test error after Python/OpenSSL/five-provider/cffi/Qt/PySide builds and upstream suites complete. Worker independently verifies the615,903,336-byte original artifact14143608998/SHA256`d58103215ca9a07fc9e3c4c0e3ed057bf67096f62c67a4ee004afcb316744e5f`, all14,248 SDK files/links,276 binding files,27 original source hashes and186 retained AArch64 ELF images within GLIBC2.38/GLIBCXX3.4.32. The93 retained legal files remain inside the immutable original ZIP. This does not claim runtime/GUI acceptance after the harness failure.
+
+The bounded full-consumers continuation restores only that exact source/build contract and original absolute prefix, then reruns CLDR/TLS/default trust/provider security/hash/PNG/text/CBOR/GUI/CLI/native ABI, executes SPKI/tar security cases, and installs the already-qualified current parser/cffi wheels. It compiles no Python/Qt/bindings and adds no vendor patch. Unchanged broad upstream reports remain explicitly tied to1ba799e, separately from newly executed consumers. Other target evidence is unchanged; final same-SHA packages remain required.
+
+Quality43667244366 reports2129 passing cases and two workflow-contract failures introduced by the two diagnostic jobs: artifact retention bypassed repository defaults and bootstrap guards lacked the canonical step contract. Commit7ba45a2 restores repository retention and fail-closed stable/native GIL guards, and counts both actual new setups. The19 affected local checks pass. No security condition or ABI test is relaxed. Exact-head Quality must still pass after this bounded continuation change.
+
 ## Native ADB acceptance and changed-consumer continuation (2026-11-15)
 
 **R14 native source diagnostic PASS:** [43666658887](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/43666658887), source30a41226534b09ab8a0209fb233c7f1d086e4cce. Worker independently verifies artifact14143110207,45,716,784 bytes, SHA256`e0feb58b2d408f713195d0249299a98173ee8dcb1e7bbafe7ac4bcaec88d9f41`, three original archives,146 original license/copyright files and four retained AArch64 ELF entries. Supported GNU ld section garbage collection removes the unreferenced Rust process sections responsible for GLIBC2.39; the ABI gate is unchanged. All owned and actually loaded providers meet2.38/3.4.32; external OS file execution/hashes remain native CI evidence. Version/help/devices/mDNS/private-server/status pass. Actual USB backend is NATIVE, mDNS LIBADBMDNS; private libusb1.0.30 is linked, not claimed as the active USB backend. Physical devices remain untested. This is controlled android-tools37.0.0p1, not unchanged Google37.0.1. R14 still requires explicit producer/external-ADB integration and relocatable redistribution/source/legal acceptance; no updater or new bundled-ADB contract is silently introduced.

@@ -1,5 +1,7 @@
 # AGENTS.md
 
+November15 delta: native Noble ARM64 ADB43666658887 PASS with independently verified source/legal/ELF bytes; producer/external-ADB integration remains open. Changed Qt/PySide SDKs are retained and byte-verified on Linux x64/ARM64; consumer-only continuation corrects the QLocale.Country test harness without recompiling those providers. See active audit for actual source identities and pending runtime/package gates.
+
 November14 delta: Ruff0.17.5 lint PASS; R09 expected/PSL and native Windows D3D12MA3.3 prerequisites43613634362/43613634315 PASS with independent archive/native/source/legal byte checks. CLDR49 closed source generation preserves711 locale keys and adds three; complete ISO registry is not a build input or redistributed. Changed coherent Qt integration remains pending; unchanged Python/native SDK reuse is hash/source guarded. See active audit.
 
 Current November14 parser route: six-native controlled lxml6.1.3/libxml2.15.4/libxslt1.1.45/iconv1.19/zlib1.4 PASS, Windows43610233189 at89c1ff8 and POSIX43594977950 at00d7f28; worker verifies32 source archive instances/60 license instances/six wheels/42 native module bytes. Windows native14.52.37025/26100/MD; Mac thin11ARM/10.15Intel; Linux floors preserved. Producer/package adoption remains required. Unicode18 has a demonstrated shared Qt supplementary-mirroring incompatibility, so compatible17 remains under watch. R09 expected/PSL/D3D12MA3.3 source consumers are prepared; native qualification pending. See [active audit](docs/V2_4_RELEASE_PREP.md).

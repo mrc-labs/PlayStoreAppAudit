@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
+        options: ['off', rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, macos-prerequisites, macos-full, macos-x64-prerequisites, macos-x64-full, tools, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-unicode-prerequisites, qt-data-prerequisites]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -872,7 +872,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' }}
+    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers' }}
     name: ${{ inputs.linux_arm64_pilot == 'full' && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
@@ -916,7 +916,7 @@ jobs:
           python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'aarch64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
 
       - name: Install ephemeral native source-build prerequisites
-        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        if: ${{ inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -932,6 +932,7 @@ jobs:
             libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
 
       - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
+        if: ${{ inputs.linux_arm64_pilot != 'full-consumers' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -940,8 +941,20 @@ jobs:
             --work-root "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee linux-arm64-pilot-evidence/prerequisite-build.log
 
+      - name: Restore exact compiled Noble SDK and binding bytes without rebuild
+        if: ${{ inputs.linux_arm64_pilot == 'full-consumers' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+          gcc-13 --version
+          python .github/scripts/reuse_linux_arm64_pilot.py --output-dir linux-arm64-pilot-evidence
+
       - name: Retain exact qualified parser input before native ARM64 runtime tests
-        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        if: ${{ inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -957,6 +970,13 @@ jobs:
           bash .github/scripts/build_linux_arm64_runtime_pilot.sh \
             "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             2>&1 | tee linux-arm64-pilot-evidence/pilot-build.log
+
+      - name: Repeat only affected Noble native runtime consumers
+        if: ${{ inputs.linux_arm64_pilot == 'full-consumers' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/resume_linux_arm64_consumers.sh 2>&1 | tee linux-arm64-pilot-evidence/consumer-build.log
 
       - name: Upload diagnostic Linux ARM64 evidence only
         if: always()

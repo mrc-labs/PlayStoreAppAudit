@@ -61,3 +61,13 @@ def test_pyside_territory_argument_uses_exposed_country_enum():
     # PySide6 exposes Qt's territory enum under its compatibility name Country.
     locale = QLocale(QLocale.English, QLocale.AnyScript, QLocale.Country.UnitedStates)
     assert locale.territory() == QLocale.Country.UnitedStates
+
+
+def test_short_locale_date_requires_explicit_fixture_century():
+    from PySide6.QtCore import QDate, QLocale
+
+    locale = QLocale('en_US')
+    date = QDate(2026, 11, 14)
+    rendered = locale.toString(date, QLocale.ShortFormat)
+    assert locale.toDate(rendered, QLocale.ShortFormat).year() == 1926
+    assert locale.toDate(rendered, QLocale.ShortFormat, 2000) == date

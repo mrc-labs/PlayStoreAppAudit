@@ -48,7 +48,11 @@ def qualify(xml: Path) -> dict:
             assert actual == (row.findtext(field) or ''), (identity, field, repr(actual), row.findtext(field))
         date = QDate(2026, 11, 14)
         for style in (QLocale.ShortFormat, QLocale.LongFormat):
-            assert locale.toDate(locale.toString(date, style), style) == date, identity
+            # Short formats may contain yy: Qt defaults to the 1900 century.
+            # The fixture's explicit 2000 base makes its 2026 year unambiguous.
+            rendered = locale.toString(date, style)
+            parsed = locale.toDate(rendered, style, 2000)
+            assert parsed == date, (identity, locale.dateFormat(style), rendered, parsed)
         checked.append({'language': identity[0], 'territory': identity[1],
                         'script': locale.script().value, 'name': locale.name()})
     assert {(item['language'], item['territory']) for item in checked} == selected
