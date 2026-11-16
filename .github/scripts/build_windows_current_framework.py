@@ -288,7 +288,6 @@ def native_security(work: Path, output: Path, compiler: Path) -> None:
 def bindings_and_consumers(arch: str, machine: int, work: Path, output: Path) -> None:
     python = environment(work)
     prefix, src = work / 'prefix', work / 'src'
-    state = json.loads((output / 'windows-framework-inputs.json').read_text())
     assert (output / 'windows-framework-qt.json').is_file()
     os.environ['LLVM_INSTALL_DIR'] = str(src / 'libclang')
     run([python, '-I', '-c', 'import ctypes,sys;ctypes.WinDLL(sys.argv[1]);print("PASS controlled QtCore secure load")',
@@ -307,6 +306,14 @@ def bindings_and_consumers(arch: str, machine: int, work: Path, output: Path) ->
                                      if not line.startswith('PySide6-Essentials==')) + '\n')
     run([python, '-m', 'pip', 'install', '-r', requirements, 'pytest==9.2.0', '--report', output / 'runtime-install.json'])
     run([python, '-m', 'pip', 'check'])
+    consumers_only(arch, work, output)
+
+
+def consumers_only(arch: str, work: Path, output: Path) -> None:
+    python = environment(work)
+    prefix = work / 'prefix'
+    machine = 0xAA64 if arch == 'arm64' else 0x8664
+    state = json.loads((output / 'windows-framework-inputs.json').read_text())
     for name in ['SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'QT_QPA_PLATFORM', 'LLVM_INSTALL_DIR']:
         os.environ.pop(name, None)
     os.environ.update(PILOT_PREFIX=str(prefix), PILOT_WORK=str(work), PILOT_EVIDENCE=str(output),
@@ -315,7 +322,10 @@ def bindings_and_consumers(arch: str, machine: int, work: Path, output: Path) ->
         shutil.copy2(output / 'original-runtime' / name, output / name)
     verifier = 'verify_windows_arm64_runtime_pilot.py' if arch == 'arm64' else 'verify_windows_runtime_pilot.py'
     run([python, ROOT / '.github/scripts' / verifier, '--output-dir', output], log=output / 'framework-consumers.log')
-    native_security(work, output, Path(state['compiler']))
+    run([python, '-c', 'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+         'from build_windows_current_framework import native_security;'
+         'native_security(Path(sys.argv[2]),Path(sys.argv[3]),Path(sys.argv[4]))',
+         ROOT / '.github/scripts', work, output, state['compiler']], log=output / 'native-security-orchestrator.log')
     run([python, '-c', 'import sys,pathlib;sys.path.insert(0,sys.argv[1]);from PySide6.QtWidgets import QApplication;'
          'from PySide6.QtNetwork import QSslSocket;from verify_macos_maintenance import qt_incident_security;'
          'app=QApplication([]);assert app.platformName()=="windows";assert QSslSocket.setActiveBackend("openssl");'

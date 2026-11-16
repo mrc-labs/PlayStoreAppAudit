@@ -207,13 +207,21 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
     try {
         const auto args = app.arguments();
-        require(QString::fromLatin1(qVersion()) == "6.12.0" && QSysInfo::currentCpuArchitecture() == "x86_64", "native Qt identity differs");
+#if defined(Q_PROCESSOR_ARM_64)
+        const auto expectedArchitecture = QStringLiteral("arm64");
+#elif defined(Q_PROCESSOR_X86_64)
+        const auto expectedArchitecture = QStringLiteral("x86_64");
+#else
+#error This diagnostic requires a native Windows x64 or ARM64 target
+#endif
+        require(QString::fromLatin1(qVersion()) == "6.12.0" && QSysInfo::currentCpuArchitecture() == expectedArchitecture, "native Qt identity differs");
         require(QSslSocket::setActiveBackend("schannel") && QSslSocket::supportsSsl()
             && QSslSocket::activeBackend() == "schannel", "native Schannel backend unavailable");
         require(args.size() >= 2, "mode required");
         QJsonObject result = args[1] == "policy" ? policy(args.value(2))
             : args[1] == "incident" ? incident(args.value(2)) : handshake(args);
         result["backend"] = QSslSocket::activeBackend(); result["qt"] = qVersion();
+        result["architecture"] = QSysInfo::currentCpuArchitecture();
         result["runtime_library"] = QSslSocket::sslLibraryVersionString();
         result["loaded_modules"] = loadedModules();
         QTextStream(stdout) << QJsonDocument(result).toJson(QJsonDocument::Compact) << Qt::endl;
