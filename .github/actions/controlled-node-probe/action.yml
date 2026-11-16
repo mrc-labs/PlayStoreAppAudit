@@ -1,0 +1,5 @@
+name: Observe native Action Node24
+description: Diagnostic native runtime evidence only
+runs:
+  using: node24
+  main: index.cjs

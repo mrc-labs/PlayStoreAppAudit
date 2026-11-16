@@ -2,6 +2,10 @@
 
 ## Current bounded continuation (2026-11-16)
 
+R04 source43782227822 at a6c1db9 passes429 original tests (upload31/download21/checkout128/setup249) under actual Node24.22.1/npm12.2.2. Artifact14188723660/13,818,166 bytes/SHA256`19066a6d4c1e6793644e174d1050154492ef2c14802466d36651e6e9eb732fa5` is independently re-downloaded and every31 bundle/license/metadata/lock file verified. Preserve these exact licensed project-modified bundles under .github/actions/controlled-* with source/byte manifest controlled_actions_bundles.json. This permits immutable own-repository Action references before checkout, without a new API bootstrap adapter. Six-native real behavior must pass before maintained producer adoption.
+
+Independent local review of Mac ARM retained evidence now verifies all83 raw Mach-O ARM-selected headers, deployment/SDK load commands, install names/rpaths/dependencies against original report and original SDK byte index;32 original source archives and98 legal texts retained. Maximum deployment14.4, not an older-OS claim; omitted1.28GB official host-parser archive remains distinctly worker-hashed, not claimed downloaded locally.
+
 Current-major Node24 Action rebuild43782227822 PASS at a6c1db9; native six-host behavior still pending. ARM43782231643 restores its complete guarded provider prefix successfully, then fails cheaply before compilation because the new intake copied AMD64 OpenSSL DLL names from the x64 manifest. Select the already-existing ARM-specific manifest names for both intake and PE verification; no source/provider rebuild or arbitrary DLL substitution. Exact-source Quality43782203396 PASS.
 
 After the native Intel health PASS, the next existing full profile uploads a completed prerequisite/source/legal checkpoint **before** runtime compilation, in addition to ordinary EXIT retention. This prevents a later lost worker from erasing already-uploaded prerequisite evidence. The checkpoint retains only its actually indexed prefix/venv; it does not claim that host Perl/parser tools outside those roots are retained or reusable. No runtime source/version/hash changes; no additional target or general build framework.

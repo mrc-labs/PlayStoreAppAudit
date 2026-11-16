@@ -1,0 +1,292 @@
+{
+  "source_build_run": 43782227822,
+  "source_sha": "a6c1db926908d4c77d2d438734544974cacbdd85",
+  "artifact": 14188723660,
+  "artifact_sha256": "19066a6d4c1e6793644e174d1050154492ef2c14802466d36651e6e9eb732fa5",
+  "node": "v24.22.1",
+  "npm": "12.2.2",
+  "actions": [
+    {
+      "action": "upload-artifact",
+      "original": {
+        "name": "upload-artifact",
+        "tag": "v7.0.2",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "source": {
+          "name": "upload-artifact-cf430e030ddbb5b0abf93d22962f4752f3646cd9.tar.gz",
+          "url": "https://github.com/actions/upload-artifact/archive/cf430e030ddbb5b0abf93d22962f4752f3646cd9.tar.gz",
+          "sha256": "082ff3f390265f902386d7fc59c52d91fdd8e9d36d4bb5fdc94f44a70ec04b75"
+        },
+        "directory": "upload-artifact-cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "lock": {
+          "path": ".github/sources/upload-artifact-controlled.package-lock.json",
+          "sha256": "18f917b2c4849130d3c81d20f957dec4a94801caaa765d984e55974f9df6bbc8"
+        },
+        "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+        "package_json_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e",
+        "configuration_patch": {
+          "path": ".github/patches/upload-artifact-current-dependency-profile.patch",
+          "sha256": "74dcd35610ab28a2a3224b916fce40cf7fc959ec612013d348d20d7d8b9be6a5",
+          "files": {
+            "package.json": {
+              "base_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e",
+              "patched_sha256": "55d9c3fb6c8a6567f6097995aa7e8afacaa7e6c9d918eec28f06efb464c8ba66"
+            }
+          },
+          "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+        },
+        "preserved_upstream_overrides": {
+          "uri-js": "npm:uri-js-replace@^1.0.1"
+        }
+      },
+      "files": {
+        "action.yml": {
+          "sha256": "a2fecab2998a9f3df1edabd9063f4f4d49d065d5517d05eb6d82d62b67a54df4",
+          "bytes": 3609
+        },
+        "controlled.package-lock.json": {
+          "sha256": "18f917b2c4849130d3c81d20f957dec4a94801caaa765d984e55974f9df6bbc8",
+          "bytes": 347406
+        },
+        "LICENSE": {
+          "sha256": "3e855ffa704114a51628ef8f0bf3aeb41728adf9d9070e263bf58aa5640b0eb5",
+          "bytes": 1097
+        },
+        "dist/upload/licenses.txt": {
+          "sha256": "6e29788c3953442f3c3258f2ac497d1ee3ad5fec6e6a50153331990d14bbc669",
+          "bytes": 174423
+        },
+        "dist/upload/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/upload/index.js": {
+          "sha256": "f2428bfbe54321fb05c000cc3228d1afaea951b9fae78b06c02bb1755dd33497",
+          "bytes": 4759359
+        },
+        "dist/merge/licenses.txt": {
+          "sha256": "6e29788c3953442f3c3258f2ac497d1ee3ad5fec6e6a50153331990d14bbc669",
+          "bytes": 174423
+        },
+        "dist/merge/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/merge/index.js": {
+          "sha256": "8d0843578c9c7342073b372138db73218970fcd137fd434217d419606be96540",
+          "bytes": 4758430
+        }
+      },
+      "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
+    },
+    {
+      "action": "download-artifact",
+      "original": {
+        "name": "download-artifact",
+        "tag": "v8.0.2",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "source": {
+          "name": "download-artifact-9000827ccba6bdab643e8b6fd33ac0654aef8333.tar.gz",
+          "url": "https://github.com/actions/download-artifact/archive/9000827ccba6bdab643e8b6fd33ac0654aef8333.tar.gz",
+          "sha256": "0469682bf9b16a2ec8fe730420bef575b829dd5c6ab89e37748a361bcad45358"
+        },
+        "directory": "download-artifact-9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "lock": {
+          "path": ".github/sources/download-artifact-controlled.package-lock.json",
+          "sha256": "f5aa4e62fdb86cea9bc6e6330057c61b95ac752a159a270ad63ddc80b1ab7572"
+        },
+        "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+        "package_json_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e",
+        "configuration_patch": {
+          "path": ".github/patches/download-artifact-current-dependency-profile.patch",
+          "sha256": "fd467d17a5e22ecb2ffe33799f3cd46ddf24fed585ca77076c357e649647db06",
+          "files": {
+            "package.json": {
+              "base_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e",
+              "patched_sha256": "ab41bf9551f5121a1fc2a6b1feabbbba41af4e8f72d817a017d89a11f30f42b9"
+            }
+          },
+          "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+        },
+        "preserved_upstream_overrides": {
+          "uri-js": "npm:uri-js-replace@^1.0.1"
+        }
+      },
+      "files": {
+        "action.yml": {
+          "sha256": "e74687f1942d39f429404e12079b91866181ad83eecf8a4aa54a3ca6ee866a68",
+          "bytes": 2641
+        },
+        "controlled.package-lock.json": {
+          "sha256": "f5aa4e62fdb86cea9bc6e6330057c61b95ac752a159a270ad63ddc80b1ab7572",
+          "bytes": 342562
+        },
+        "LICENSE": {
+          "sha256": "3e855ffa704114a51628ef8f0bf3aeb41728adf9d9070e263bf58aa5640b0eb5",
+          "bytes": 1097
+        },
+        "dist/licenses.txt": {
+          "sha256": "e7cba3e6b920c1facfb1947ca2cd05c43e3eceee1acccbad3379a9512c84c18e",
+          "bytes": 172235
+        },
+        "dist/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/index.js": {
+          "sha256": "3686d8a56709804d795809c6fb5b153fd194af7e2f5633ab8a944d1081596977",
+          "bytes": 4708907
+        }
+      },
+      "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
+    },
+    {
+      "action": "checkout",
+      "original": {
+        "name": "checkout",
+        "tag": "v7.0.1",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "source": {
+          "name": "checkout-3d3c42e5aac5ba805825da76410c181273ba90b1.tar.gz",
+          "url": "https://github.com/actions/checkout/archive/3d3c42e5aac5ba805825da76410c181273ba90b1.tar.gz",
+          "sha256": "b59292069298c7be5ffd9c636431a229faff70ece00e0c24fd31baeb7b309fa3"
+        },
+        "directory": "checkout-3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "lock": {
+          "path": ".github/sources/checkout-controlled.package-lock.json",
+          "sha256": "6f8a4297ef9193081937e3d0a5eb28ebfde043153bbb0c0c836037a1035f2be9"
+        },
+        "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+        "package_json_sha256": "8b1127cee8fbd48ed687737f631f6e49a767a8e9484a87a7fb8fe913118d52c4",
+        "test_only_patch": {
+          "path": ".github/patches/checkout-7.0.1-node24-test-buffer.patch",
+          "sha256": "30749f49d543ecdf047cb0d9ec8a439525b036da99a3c9229e93130f0465aeb7",
+          "files": {
+            "__test__/git-auth-helper.test.ts": {
+              "base_sha256": "7f048019ef5f4184399ac07ffe8bf46cb22c7dd68286ae82df72f636de98d976",
+              "patched_sha256": "505eb4499c05180a45fd1cc20da5466b4a6192b4508e41d83e1e7f8210b29121"
+            }
+          },
+          "reason": "Latest supported Node24 types distinguish NonSharedBuffer; type mock parameters from actual fs API, no cast/suppression or production code edit. Original mock broad Buffer annotation fails TS2345."
+        },
+        "configuration_patch": {
+          "path": ".github/patches/checkout-current-dependency-profile.patch",
+          "sha256": "9fb40b2ae2a1145198b061704744caad20cd5cab232609e8a1b0995fb2b5204d",
+          "files": {
+            "package.json": {
+              "base_sha256": "8b1127cee8fbd48ed687737f631f6e49a767a8e9484a87a7fb8fe913118d52c4",
+              "patched_sha256": "88287b247f309c79e07fa912a569f2415379312581c84b45f9e41b5c3c327e71"
+            }
+          },
+          "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+        },
+        "preserved_upstream_overrides": {}
+      },
+      "files": {
+        "action.yml": {
+          "sha256": "a281b0eeb765ebe92ac0ffaf2005fb33375e6515f4f2458bf314b8e45e43f9d6",
+          "bytes": 5040
+        },
+        "controlled.package-lock.json": {
+          "sha256": "6f8a4297ef9193081937e3d0a5eb28ebfde043153bbb0c0c836037a1035f2be9",
+          "bytes": 294211
+        },
+        "LICENSE": {
+          "sha256": "3e855ffa704114a51628ef8f0bf3aeb41728adf9d9070e263bf58aa5640b0eb5",
+          "bytes": 1097
+        },
+        "dist/problem-matcher.json": {
+          "sha256": "31430dcd64d833e6baa706d65803cb80ee2fb6ac20a35267b086218bbc210cb7",
+          "bytes": 253
+        },
+        "dist/licenses.txt": {
+          "sha256": "1181e98b666ffaefb0c674014210aff44dc7bcb2855338c76281bc321ae66b29",
+          "bytes": 32934
+        },
+        "dist/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/index.js": {
+          "sha256": "baa57eff2240fa3d58de2df0b0b36cb3cf4bf4b69292e02498722c183214410d",
+          "bytes": 2120704
+        }
+      },
+      "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
+    },
+    {
+      "action": "setup-python",
+      "original": {
+        "name": "setup-python",
+        "tag": "v7.1.0",
+        "commit": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "source": {
+          "name": "setup-python-6d4fd22b20465ccc0f7354476588e8df7c9ca0e0.tar.gz",
+          "url": "https://github.com/actions/setup-python/archive/6d4fd22b20465ccc0f7354476588e8df7c9ca0e0.tar.gz",
+          "sha256": "f8957c701bb6648d362eb6bbe03a2a35e6410093ea7098a7c2100cb3412965bd"
+        },
+        "directory": "setup-python-6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "lock": {
+          "path": ".github/sources/setup-python-controlled.package-lock.json",
+          "sha256": "120ab60231885e7a537c68c5dc9583abc69e384d794b1fb113ba7c7fa7a9e5ae"
+        },
+        "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+        "package_json_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51",
+        "configuration_patch": {
+          "path": ".github/patches/setup-python-current-dependency-profile.patch",
+          "sha256": "dcde5f07e089c8822ba81d0e02b59b3a29b2b513ce99cf01f829f355b2e5fc95",
+          "files": {
+            "package.json": {
+              "base_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51",
+              "patched_sha256": "986081575cb69eeee666cbe453ca9e228be414ccf14acc257defccc9445f10a3"
+            }
+          },
+          "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+        },
+        "preserved_upstream_overrides": {
+          "brace-expansion": "^5.0.8"
+        }
+      },
+      "files": {
+        "action.yml": {
+          "sha256": "3141bde4dea74fcee72415b2ea89132f9aa15f753449fcd807819c1e6d7b3c75",
+          "bytes": 3172
+        },
+        "controlled.package-lock.json": {
+          "sha256": "120ab60231885e7a537c68c5dc9583abc69e384d794b1fb113ba7c7fa7a9e5ae",
+          "bytes": 231810
+        },
+        "LICENSE": {
+          "sha256": "7d070f6b64d9bcc530fe99cc21eaaa4b3c364e0b2d367d7735671fa202a03b32",
+          "bytes": 1096
+        },
+        "dist/cache-save/licenses.txt": {
+          "sha256": "a4de4a6dd1571a8efc64d5def1e66e046d93c305958ae44191686c2968914153",
+          "bytes": 62297
+        },
+        "dist/cache-save/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/cache-save/index.js": {
+          "sha256": "02f6eb7a6d03a054d2775cab26e9b4274343587b5c9829dc9d3be7e628aba5e5",
+          "bytes": 4236369
+        },
+        "dist/setup/licenses.txt": {
+          "sha256": "d9ba511480313dc34da7ee4964afaea4054de68de0008e1c4116a87e82982c47",
+          "bytes": 63391
+        },
+        "dist/setup/package.json": {
+          "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+          "bytes": 23
+        },
+        "dist/setup/index.js": {
+          "sha256": "b4420a81cb64fddba1e45a2c7924afcff7216c7dedf7a4bfa8461cf6fc804b51",
+          "bytes": 4330581
+        }
+      },
+      "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
+    }
+  ],
+  "scope": "Project-modified source bundles; native six-host behavior and adoption pending"
+}

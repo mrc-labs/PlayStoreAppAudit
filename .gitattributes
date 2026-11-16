@@ -8,3 +8,6 @@
 
 # Preserve exact source-build lock bytes across native checkouts.
 .github/sources/*-controlled.package-lock.json text eol=lf
+
+# Exact native Node24 source-build output, including generated license bytes.
+.github/actions/controlled-*/** -text
