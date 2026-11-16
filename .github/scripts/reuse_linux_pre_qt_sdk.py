@@ -109,7 +109,7 @@ BINDING_SOURCE = '30a41226534b09ab8a0209fb233c7f1d086e4cce'
 BINDING_DIGEST = 'e5d8ac980b380d2a3d4338af3fb134c3add3950b10db951d8180481dcfddc4aa'
 
 
-def restore_bindings(data: bytes, output: Path) -> dict:
+def restore_bindings(data: bytes, output: Path, *, with_cffi: bool = False) -> dict:
     if hashlib.sha256(data).hexdigest() != BINDING_DIGEST:
         raise ValueError('Changed original matched binding ZIP')
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
@@ -138,6 +138,16 @@ def restore_bindings(data: bytes, output: Path) -> dict:
         (output / 'original-binding-sdk-provenance.json').write_bytes(raw)
         (output / 'reused-pyside-build-dependencies.json').write_bytes(
             archive.read('build-dependencies/pyside-build-dependencies.json'))
+        if with_cffi:
+            wheels = [name for name in archive.namelist() if name.startswith('cffi-wheel/') and name.endswith('.whl')]
+            assert len(wheels) == 1, wheels
+            wheel = output / 'reused-cffi-wheel' / Path(wheels[0]).name
+            wheel.parent.mkdir()
+            wheel.write_bytes(archive.read(wheels[0]))
+            (output / 'reused-cffi-wheel.json').write_text(json.dumps({
+                'original_artifact': BINDING_ARTIFACT, 'source_sha': BINDING_SOURCE,
+                'wheel': wheel.name, 'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+                'scope': 'Unchanged wheel inside the hash-qualified original matched binding ZIP; no new cffi compilation.'}, indent=2))
     proof = {'compiled_source_sha': BINDING_SOURCE, 'original_artifact': BINDING_ARTIFACT,
              'original_zip_sha256': BINDING_DIGEST, 'verified_files': len(selected),
              'qt_compiled_source_sha': QT_SOURCE, 'runtime_compiled_source_sha': SOURCE,
@@ -150,7 +160,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bindings', action='store_true', help='Also retain already compiled matched binding packages')
     parser.add_argument('--qt', action='store_true', help='Reuse the exact compiled Qt SDK; no runtime acceptance claim')
+    parser.add_argument('--imageformats', action='store_true', help='Retain original cffi wheel for module-only consumers')
     args = parser.parse_args()
+    assert not args.imageformats or args.bindings
     artifact, source, digest, run, size = (QT_ARTIFACT, QT_SOURCE, QT_DIGEST, 43623545058, 529280327) if args.qt else (
         ARTIFACT, SOURCE, DIGEST, 43587421820, 867663500)
     metadata, data = fetch_artifact(artifact)
@@ -165,7 +177,7 @@ def main() -> None:
         assert metadata['workflow_run']['id'] == 43666656687 and not metadata['expired']
         assert metadata['digest'] == 'sha256:' + BINDING_DIGEST
         assert metadata['size_in_bytes'] == len(data) == 368353444
-        print(json.dumps(restore_bindings(data, Path('pilot-evidence')), indent=2))
+        print(json.dumps(restore_bindings(data, Path('pilot-evidence'), with_cffi=args.imageformats), indent=2))
 
 
 if __name__ == '__main__':
