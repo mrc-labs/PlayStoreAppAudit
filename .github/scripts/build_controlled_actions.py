@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import tarfile
+import zipfile
 from pathlib import Path
 
 from build_windows_runtime_pilot import fetch
@@ -43,6 +44,7 @@ def main() -> None:
     environment = {**os.environ, 'PATH': str(node.parent) + os.pathsep + os.environ['PATH']}
     for key in ['GH_TOKEN', 'GITHUB_TOKEN', 'NPM_TOKEN', 'NODE_AUTH_TOKEN']:
         environment.pop(key, None)
+    fetch(spec['artifact_sdk_patch']['source'], sources)
     results = []
     for item in spec['actions']:
         archive = fetch(item['source'], sources)
@@ -50,6 +52,11 @@ def main() -> None:
             bundle.extractall(work, filter='data')
         source = work / item['directory']
         assert hashlib.sha256((source / 'package.json').read_bytes()).hexdigest() == item['package_json_sha256']
+        protected = json.loads((source / 'package.json').read_text(encoding='utf-8')).get('overrides', {})
+        apply_source_patch(source, item['configuration_patch'])
+        configured = json.loads((source / 'package.json').read_text(encoding='utf-8'))['overrides']
+        assert all(configured.get(key) == value for key, value in protected.items()), 'Preserve upstream security replacements'
+        shutil.copy2(ROOT / item['configuration_patch']['path'], output)
         original_code = {p.relative_to(source).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                          for p in (source / 'src').rglob('*') if p.is_file()}
         original_dist = work / (item['name'] + '-original-official-dist')
@@ -76,6 +83,21 @@ def main() -> None:
             if result.returncode:
                 print(log.read_text(encoding='utf-8', errors='replace')[-12000:], flush=True)
             result.check_returncode()
+            if number == 0 and (source / 'node_modules/@actions/artifact').is_dir():
+                apply_source_patch(source / 'node_modules/@actions/artifact', spec['artifact_sdk_patch'])
+                shutil.copy2(ROOT / spec['artifact_sdk_patch']['path'], output)
+                sdk_test = output / (item['name'] + '-sdk-zip')
+                subprocess.run([node, ROOT / '.github/scripts/check_action_sdk_zip.mjs',
+                                source / 'node_modules/@actions/artifact', sdk_test],
+                               cwd=source, env=environment, check=True)
+                expected = json.loads((sdk_test / 'expected.json').read_text(encoding='utf-8'))
+                with zipfile.ZipFile(sdk_test / 'sdk.zip') as actual:
+                    assert set(actual.namelist()) == {*expected['expected'], expected['empty']}
+                    assert actual.getinfo(expected['empty']).is_dir()
+                    assert actual.testzip() is None
+                    for name, digest in expected['expected'].items():
+                        assert hashlib.sha256(actual.read(name)).hexdigest() == digest
+
         assert original_code == {p.relative_to(source).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                                  for p in (source / 'src').rglob('*') if p.is_file()}
         assert hashlib.sha256((source / 'package-lock.json').read_bytes()).hexdigest() == item['lock']['sha256']

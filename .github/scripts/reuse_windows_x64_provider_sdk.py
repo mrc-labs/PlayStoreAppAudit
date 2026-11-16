@@ -14,12 +14,14 @@ from download_diagnostic_artifact import fetch_artifact
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def contract() -> dict:
-    return json.loads((ROOT / '.github/scripts/windows_x64_provider_sdk_sources.json').read_text())
+def contract(arch: str = 'x64') -> dict:
+    assert arch in {'x64', 'arm64'}
+    return json.loads((ROOT / f'.github/scripts/windows_{arch}_provider_sdk_sources.json').read_text())
 
 
 def restore(work: Path, output: Path, selected: list[dict], context: dict) -> None:
-    spec = contract()
+    arch = 'arm64' if context['machine'] == 0xAA64 else 'x64'
+    spec = contract(arch)
     metadata, raw = fetch_artifact(spec['artifact'])
     assert not metadata['expired'] and metadata['workflow_run']['id'] == spec['run']
     assert metadata['workflow_run']['head_sha'] == spec['source_sha']
@@ -28,11 +30,11 @@ def restore(work: Path, output: Path, selected: list[dict], context: dict) -> No
     assert not (work / 'prefix').exists()
     with zipfile.ZipFile(io.BytesIO(raw)) as original:
         old_context = json.loads(original.read('native-cpython-msbuild-context.json'))
-        assert old_context['machine'] == context['machine'] == 0x8664
+        assert old_context['machine'] == context['machine'] == (0xAA64 if arch == 'arm64' else 0x8664)
         assert old_context['sdk'] == context['sdk']
         assert Path(old_context['compiler']).parents[3].name == Path(context['compiler']).parents[3].name
         receipt = json.loads(original.read('windows-cpython-sdk.json'))
-        assert receipt['source_sha'] == spec['source_sha'] and receipt['machine'].lower() == 'amd64'
+        assert receipt['source_sha'] == spec['source_sha'] and receipt['machine'].lower() == ('arm64' if arch == 'arm64' else 'amd64')
         assert not receipt['complete_pilot'] and Path(receipt['original_work_root']).resolve() == work
         archive = original.read('windows-cpython-sdk.tar.zst')
         assert hashlib.sha256(archive).hexdigest() == receipt['archive_sha256']
@@ -56,7 +58,7 @@ def restore(work: Path, output: Path, selected: list[dict], context: dict) -> No
         for name in original.namelist():
             if name.startswith(('openssl-', 'xz-', 'zlib-ng-')) and name.endswith(('.log', '.txt')):
                 (output / ('original-' + name)).write_bytes(original.read(name))
-        shutil.copy2(ROOT / '.github/scripts/windows_x64_provider_sdk_sources.json', output)
+        shutil.copy2(ROOT / f'.github/scripts/windows_{arch}_provider_sdk_sources.json', output)
     (output / 'partial-provider-intake.json').write_text(json.dumps({
         'original': spec, 'verified_paths': len(receipt['paths']),
         'compiler_sdk': old_context, 'scope': 'Original compiled OpenSSL/codec bytes/tests only; new CPython consumers still required'}, indent=2) + '\n')

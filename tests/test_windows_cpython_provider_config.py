@@ -131,3 +131,28 @@ def test_powershell_probe_flag_remains_one_argument(tmp_path: Path, profile: str
     command = snippet + f"\n& '{executable}' '{path}' @crtProbe"
     actual = subprocess.check_output([shell, '-NoProfile', '-Command', command], text=True)
     assert json.loads(actual) == expected
+
+
+@pytest.mark.parametrize('failure', [None, 'architecture', 'signature', 'loaded', 'version'])
+def test_native_crt_selection_rejects_wrong_payloads(tmp_path: Path, failure: str | None) -> None:
+    from probe_windows_crt import select_native_runtime
+
+    native = tmp_path / '14.52.37025/arm64/Microsoft.VC145.CRT/vcruntime140.dll'
+    row = {'path': str(native), 'machine': '0xaa64',
+           'signature': {'status': 'Valid', 'signer': 'CN=Microsoft Corporation', 'product_version': '14.52.37029.0'},
+           'native_process_load': 'loaded', 'exact_payload_loaded': True}
+    colocated_x64 = {**row, 'path': str(native.with_name('vcruntime140_1.dll')), 'machine': '0x8664'}
+    if failure == 'architecture':
+        row['machine'] = '0x8664'
+    elif failure == 'signature':
+        row['signature']['status'] = 'NotSigned'
+    elif failure == 'loaded':
+        row['exact_payload_loaded'] = False
+    elif failure == 'version':
+        row['signature']['product_version'] = '14.44.35211.0'
+    report = {'files': [colocated_x64, row]}
+    if failure:
+        with pytest.raises(AssertionError):
+            select_native_runtime(report, '14.52.37025')
+    else:
+        assert select_native_runtime(report, '14.52.37025') == native

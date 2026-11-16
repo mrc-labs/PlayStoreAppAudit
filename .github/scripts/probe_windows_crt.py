@@ -11,6 +11,20 @@ from pathlib import Path
 from inspect_pe import read_pe_machine
 
 
+def select_native_runtime(report: dict, tool_version: str) -> Path:
+    """Select the current official native CRT, never the colocated x64 helper."""
+    candidates = [r for r in report['files'] if
+                  Path(r['path']).name.lower() == 'vcruntime140.dll' and
+                  Path(r['path']).parents[2].name == tool_version.rstrip('\\')]
+    assert len(candidates) == 1, 'Exactly one current-toolset native CRT required'
+    row = candidates[0]
+    assert row['machine'] == '0xaa64'
+    assert row['signature']['status'] == 'Valid' and 'Microsoft' in row['signature']['signer']
+    assert row['native_process_load'] == 'loaded' and row['exact_payload_loaded']
+    assert tuple(map(int, row['signature']['product_version'].split('.'))) >= tuple(map(int, tool_version.rstrip('\\').split('.')))
+    return Path(row['path'])
+
+
 def diagnose(output: Path) -> dict:
     assert os.name == 'nt' and os.environ['VSCMD_ARG_HOST_ARCH'] == 'arm64'
     root = Path(os.environ['VSINSTALLDIR']) / 'VC/Redist/MSVC'

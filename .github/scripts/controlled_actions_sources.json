@@ -1,5 +1,5 @@
 {
-  "scope": "Controlled rebuild of four exact latest official stable Actions; unchanged production implementation/current declared-compatible dependency ranges. Not unchanged official dist or adopted producer tooling. Native Node24 behavior remains required.",
+  "scope": "Project-maintained four official stable Action source roots with current stable dependency integrations; unchanged Action production TypeScript, reviewed two-line SDK ZipArchive8 migration and explicit project metadata. Native behavior required before adoption.",
   "actions": [
     {
       "name": "upload-artifact",
@@ -13,10 +13,24 @@
       "directory": "upload-artifact-cf430e030ddbb5b0abf93d22962f4752f3646cd9",
       "lock": {
         "path": ".github/sources/upload-artifact-controlled.package-lock.json",
-        "sha256": "840d3744cd3376f89be3b87aa6b995b753e368999c9fcc463a6f9d65f345d7f0"
+        "sha256": "18f917b2c4849130d3c81d20f957dec4a94801caaa765d984e55974f9df6bbc8"
       },
-      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
-      "package_json_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e"
+      "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+      "package_json_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e",
+      "configuration_patch": {
+        "path": ".github/patches/upload-artifact-current-dependency-profile.patch",
+        "sha256": "74dcd35610ab28a2a3224b916fce40cf7fc959ec612013d348d20d7d8b9be6a5",
+        "files": {
+          "package.json": {
+            "base_sha256": "6006e753abafb2519b884767c8a67abff6c0c6636e6c83eae1081501fbcda56e",
+            "patched_sha256": "55d9c3fb6c8a6567f6097995aa7e8afacaa7e6c9d918eec28f06efb464c8ba66"
+          }
+        },
+        "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+      },
+      "preserved_upstream_overrides": {
+        "uri-js": "npm:uri-js-replace@^1.0.1"
+      }
     },
     {
       "name": "download-artifact",
@@ -30,10 +44,24 @@
       "directory": "download-artifact-9000827ccba6bdab643e8b6fd33ac0654aef8333",
       "lock": {
         "path": ".github/sources/download-artifact-controlled.package-lock.json",
-        "sha256": "005f7851bd49a35b7df9ad86b94879430fa6937b95840df70df6f63dcd121d33"
+        "sha256": "f5aa4e62fdb86cea9bc6e6330057c61b95ac752a159a270ad63ddc80b1ab7572"
       },
-      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
-      "package_json_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e"
+      "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+      "package_json_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e",
+      "configuration_patch": {
+        "path": ".github/patches/download-artifact-current-dependency-profile.patch",
+        "sha256": "fd467d17a5e22ecb2ffe33799f3cd46ddf24fed585ca77076c357e649647db06",
+        "files": {
+          "package.json": {
+            "base_sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e",
+            "patched_sha256": "ab41bf9551f5121a1fc2a6b1feabbbba41af4e8f72d817a017d89a11f30f42b9"
+          }
+        },
+        "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+      },
+      "preserved_upstream_overrides": {
+        "uri-js": "npm:uri-js-replace@^1.0.1"
+      }
     },
     {
       "name": "checkout",
@@ -47,9 +75,9 @@
       "directory": "checkout-3d3c42e5aac5ba805825da76410c181273ba90b1",
       "lock": {
         "path": ".github/sources/checkout-controlled.package-lock.json",
-        "sha256": "f710d6f0ceb45a7b7fcfd5ce110a8bd82710d161735fb1ec739426ec8afb09f0"
+        "sha256": "6f8a4297ef9193081937e3d0a5eb28ebfde043153bbb0c0c836037a1035f2be9"
       },
-      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
+      "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
       "package_json_sha256": "8b1127cee8fbd48ed687737f631f6e49a767a8e9484a87a7fb8fe913118d52c4",
       "test_only_patch": {
         "path": ".github/patches/checkout-7.0.1-node24-test-buffer.patch",
@@ -61,7 +89,19 @@
           }
         },
         "reason": "Latest supported Node24 types distinguish NonSharedBuffer; type mock parameters from actual fs API, no cast/suppression or production code edit. Original mock broad Buffer annotation fails TS2345."
-      }
+      },
+      "configuration_patch": {
+        "path": ".github/patches/checkout-current-dependency-profile.patch",
+        "sha256": "9fb40b2ae2a1145198b061704744caad20cd5cab232609e8a1b0995fb2b5204d",
+        "files": {
+          "package.json": {
+            "base_sha256": "8b1127cee8fbd48ed687737f631f6e49a767a8e9484a87a7fb8fe913118d52c4",
+            "patched_sha256": "88287b247f309c79e07fa912a569f2415379312581c84b45f9e41b5c3c327e71"
+          }
+        },
+        "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+      },
+      "preserved_upstream_overrides": {}
     },
     {
       "name": "setup-python",
@@ -75,10 +115,24 @@
       "directory": "setup-python-6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
       "lock": {
         "path": ".github/sources/setup-python-controlled.package-lock.json",
-        "sha256": "9e38d1eb730130697bd97c99c9036e48dfcd2dd10c4995bfbab76fcb1803e056"
+        "sha256": "120ab60231885e7a537c68c5dc9583abc69e384d794b1fb113ba7c7fa7a9e5ae"
       },
-      "upstream_source_code": "Unchanged production TypeScript; only dependency resolution refreshed within declared ranges",
-      "package_json_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51"
+      "upstream_source_code": "Unchanged production Action TypeScript; explicit dependency configuration and separate minimal SDK archive8 source patch",
+      "package_json_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51",
+      "configuration_patch": {
+        "path": ".github/patches/setup-python-current-dependency-profile.patch",
+        "sha256": "dcde5f07e089c8822ba81d0e02b59b3a29b2b513ce99cf01f829f355b2e5fc95",
+        "files": {
+          "package.json": {
+            "base_sha256": "73d578934f56cf27fdc59ea9c18bcbf9a2e104fc9b8ce1a953b7effd9fcc8d51",
+            "patched_sha256": "986081575cb69eeee666cbe453ca9e228be414ccf14acc257defccc9445f10a3"
+          }
+        },
+        "reason": "Explicit project-maintained integration: current HttpClient4/Undici8/Archiver8 and upload glob0.7 under existing native Node24 baseline; production Action TypeScript unchanged."
+      },
+      "preserved_upstream_overrides": {
+        "brace-expansion": "^5.0.8"
+      }
     }
   ],
   "node_runtime": "24",
@@ -144,5 +198,34 @@
       "integrity": "sha512-KglgbZyacf7jH+FHuNRqVuCzQi8VhI2a7J87Ix43FsPTuZoGWmIXXGdZtBUOA79vwL+IJREqURVzupA7PsQTcA=="
     },
     "scope": "Isolated official published CLI including original vendored dependency bytes/license; execute through actual stable Node24.22+, never system npm or global installation."
+  },
+  "artifact_sdk_patch": {
+    "path": ".github/patches/actions-artifact-6.3.1-archiver8.patch",
+    "sha256": "145284db95258c12878c90d513b9d77a2a492bd7b4eb28d6017f9552565b4118",
+    "files": {
+      "lib/internal/upload/zip.js": {
+        "base_sha256": "8a8708fd49b2d6474a67fea2aa5e0ff56bae90401f5b6c95db0a600eb91e5a23",
+        "patched_sha256": "e50b664dd4120b261abbcff49864a97d6d34acae33ddd2583e41b48eae4dc949"
+      },
+      "package.json": {
+        "base_sha256": "11e27d680ad6960344214666ccf7d98d036ef6d5793fcc9bfafb6b60f9f45a35",
+        "patched_sha256": "4f9a61851b41e46e1b8121c32c62971b5dbbbbd0c4bbc9773178246f462bb8ec"
+      }
+    },
+    "source": {
+      "name": "artifact-sdk-6.3.1.tgz",
+      "url": "https://registry.npmjs.org/@actions/artifact/-/artifact-6.3.1.tgz",
+      "sha256": "3917e287b36403f9fe7cda27a56e84f83be2ad5a8602d8d9e0bdc713645d1a91",
+      "integrity": "sha512-DBXgdB9T4yj2KSe0tFg+MTi9T5se+16bdrFQh+3Y6Nq1lZ3gYQk1BjHoTof+7Zf36bEAlfVMf+8ifRKeyGJugQ=="
+    },
+    "identity": "Project-modified SDK6.3.1+psaa.archive8, not unchanged official integration",
+    "reason": "Stable Archiver8 removes the create factory; use its public ZipArchive constructor. Preserve original stream/file/pipe/finalize/error lifecycle; no general API adapter.",
+    "authority": "https://registry.npmjs.org/archiver/8.0.0"
+  },
+  "migration_evidence": {
+    "http-client4": "Public HttpClient index API declarations unchanged except ESM .js imports vs3; existing Node24 supports this module format.",
+    "undici8": "8.12.4 official node>=22.19.0 fits actual GitHub24.22.1; maintained fetch/ProxyAgent paths require source/tests/native qualification, not vendor range preference.",
+    "glob": "Stable0.7.0 ESM integration on existing Node24; original uploader API/source retained.",
+    "archiver8": "Official8.0.0 named ZipArchive replaces removed create factory; exact SDK original/post source hashes and actual ZIP contents/CRC regression required."
   }
 }

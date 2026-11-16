@@ -1,0 +1,15 @@
+--- a/package.json
++++ b/package.json
+@@ -56,6 +56,11 @@
+     "typescript": "^5.3.3"
+   },
+   "overrides": {
+-    "uri-js": "npm:uri-js-replace@^1.0.1"
++    "uri-js": "npm:uri-js-replace@^1.0.1",
++    "@actions/github": {
++      "@actions/http-client": "4.0.1"
++    },
++    "undici": "8.12.4",
++    "archiver": "8.0.0"
+   }
+ }

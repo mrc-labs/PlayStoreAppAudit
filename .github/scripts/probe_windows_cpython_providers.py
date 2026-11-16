@@ -76,6 +76,7 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
     assert not sysconfig.get_config_var('Py_GIL_DISABLED')
     arch = os.environ['EXPECTED_ARCH']
     machine = 0xAA64 if arch == 'arm64' else 0x8664
+    assert read_pe_machine(Path(sys.executable)) == machine
     assert platform.machine().lower() == ('arm64' if arch == 'arm64' else 'amd64')
     assert os.environ['VSCMD_ARG_HOST_ARCH'] == os.environ['VSCMD_ARG_TGT_ARCH'] == arch
     compiler = Path(shutil.which('cl')).resolve()
@@ -95,7 +96,8 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
 
         diagnose(output)
         return
-    if arch == 'arm64':
+    reused = True  # Two explicitly closed native provider SDKs, never a generic cache.
+    if arch == 'arm64' and not reused:
         observed = Path(shutil.which('clang-cl') or '').resolve()
         if observed.is_file():
             (output / 'hosted-assembler-before.txt').write_text(str(observed) + '\n' +
@@ -165,7 +167,6 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
     selected += [row for row in native['sources'] if row['directory'].startswith(('sqlite-', 'mpdecimal-'))]
     if arch == 'x64':
         selected += [base['nasm'], base['nasm_source']]
-    reused = arch == 'x64'
     if reused:
         from reuse_windows_x64_provider_sdk import restore
 
@@ -279,6 +280,12 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
                   'PSAAFFILibrary': str(ffi_library), 'PSAAFFIIncludeDir': str(ffi_include),
                   'PSAACodecIncludeDir': str(providers / 'include'), 'PSAAZlibLibrary': str(zlib[0]),
                   'PSAALzmaImportLibrary': str(lzma[0]), 'PSAALzmaRuntime': str(lzma_dll[0])}
+    if arch == 'arm64':
+        from probe_windows_crt import diagnose, select_native_runtime
+
+        # Upstream FindVCRuntime explicitly supports this property. Its default
+        # glob also copies the vendor's colocated AMD64 vcruntime140_1.dll.
+        properties['VCRuntimeDLL'] = str(select_native_runtime(diagnose(output), os.environ['VCTOOLSVERSION']))
     run(['msbuild', python_source / 'PCbuild/pcbuild.proj', '/m:2', *['/p:' + k + '=' + v for k, v in properties.items()]], log=output / 'cpython-build.log')
     python = build / 'python.exe'
     assert read_pe_machine(python) == machine
@@ -291,6 +298,11 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
         assert all(v <= (10, 0) for v in versions.values()), (path, versions)
         images.append({'name': path.name, 'machine': machine, 'versions': versions,
                        'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+        if arch == 'arm64':
+            dependencies = subprocess.check_output(['dumpbin', '/dependents', path], text=True)
+            runtimes = set(re.findall(r'(?im)^\s*(vcruntime[^\s]+\.dll)\s*$', dependencies.lower()))
+            assert runtimes <= {'vcruntime140.dll'}, (path, runtimes)
+            (output / (path.name + '-imports.txt')).write_text(dependencies)
     for name in ['python314.dll', '_ctypes.pyd', '_ssl.pyd', '_hashlib.pyd', '_decimal.pyd', '_sqlite3.pyd', '_lzma.pyd']:
         imports = subprocess.check_output(['dumpbin', '/dependents', build / name], text=True)
         assert not any(line.strip().lower().startswith('libffi') for line in imports.splitlines())
@@ -347,12 +359,12 @@ def main() -> None:
     parser.add_argument('--crt-only', action='store_true')
     args = parser.parse_args()
     work = args.work_root.resolve()
-    if os.environ.get('EXPECTED_ARCH') == 'x64':
+    if os.environ.get('EXPECTED_ARCH') in {'x64', 'arm64'}:
         from reuse_windows_x64_provider_sdk import contract as cached_contract
 
         root = Path(os.environ['RUNNER_TEMP']).resolve()
         assert work.parent == root
-        work = root / cached_contract()['work_name']
+        work = root / cached_contract(os.environ['EXPECTED_ARCH'])['work_name']
     output = REPO / 'toolchain-delta-evidence'
     existing = work.exists()
     try:
