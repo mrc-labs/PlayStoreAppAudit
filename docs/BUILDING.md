@@ -65,6 +65,8 @@ Remove-Item Env:QT_QPA_PLATFORM
 
 ## Release toolchain baseline
 
+Prefer current supported official distributions, matched wheels and official Actions. A custom runtime/framework/library/tool rebuild requires the demonstrated-need record defined in [the freshness policy](RELEASE_COMPONENT_FRESHNESS.md#official-distributions-first-source-build-necessity-2026-11-16). Apply this boundary before starting expensive work, including during v2.4.0 preparation. Reuse qualified unchanged components and batch affected native/package validation; do not rebuild vendor internals solely for a version comparison.
+
 Current v2.4.0 preparation baseline (immutable v2.2/v2.3 toolchain evidence remains in their release records):
 
 - Development/diagnostic packaging Python: rolling stable **3.14**; exact audited full patch mandatory at release freeze
@@ -73,7 +75,7 @@ Current v2.4.0 preparation baseline (immutable v2.2/v2.3 toolchain evidence rema
 - `pyaxmlparser==0.3.31` for the v2.0 Local APK binary-manifest/resource boundary
 - `Nuitka==4.3.5`
 - Qt Widgets
-- official JavaScript GitHub Actions at their currently supported majors
+- Prefer official supported JavaScript Actions; current v2.4.0 uses the already-qualified controlled integration recorded in V2_4_RELEASE_PREP.md for its documented security findings. No new Action fork/rebuild solely for internal version gaps.
 
 Keep these current pins aligned with the mandatory release component freshness gate and package evidence.
 

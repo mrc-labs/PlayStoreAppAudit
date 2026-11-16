@@ -1,4 +1,27 @@
 {
+  "official_distribution_necessity_2026_11_16": {
+    "date": "2026-11-16",
+    "authority": "Explicit maintainer instruction: avoid source/runtime/tool/Action rebuilds unless necessary; applies now and future releases",
+    "policy": "RELEASE_COMPONENT_FRESHNESS.md#official-distributions-first-source-build-necessity-2026-11-16",
+    "official_parents_rechecked": {
+      "PySide6-Essentials": "6.12.0",
+      "Nuitka": "4.3.5",
+      "cryptography": "50.0.2"
+    },
+    "removed_mandatory_work": [
+      "Ruff/pastey custom tool adoption for maintenance/version-only finding",
+      "Nuitka/SCons custom producer adoption for inline version gap only",
+      "cryptography Cargo-only candidate updates without demonstrated applicable defect"
+    ],
+    "preserved": [
+      "Necessary Python/OpenSSL support and Qt PNG/TLS fixes",
+      "Actual native crypto builds where official wheels unavailable",
+      "Working byte-qualified Action integration with recorded security applicability",
+      "All unchanged verified SDKs/sources/patches/legal bytes",
+      "Exact-head Quality and affected native/final-package gates"
+    ],
+    "limits": "No universal security clearance from an empty watch list; reopen on applicable evidence.1094 original observations unchanged."
+  },
   "current_ledger_reconciliation_2026_11_16": {
     "date": "2026-11-16",
     "scope": "Reconcile the existing17 decisions only;1094 original observations unchanged",
