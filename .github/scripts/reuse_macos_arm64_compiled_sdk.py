@@ -76,7 +76,9 @@ def main() -> None:
     phase = parser.add_mutually_exclusive_group()
     phase.add_argument('--bindings', action='store_true')
     phase.add_argument('--consumers-only', action='store_true')
+    parser.add_argument('--imageformats', action='store_true')
     args = parser.parse_args()
+    assert not args.imageformats or args.consumers_only
     assert platform.system() == 'Darwin' and platform.machine() == 'arm64'
     spec = json.loads((ROOT / '.github/scripts' / ('macos_arm64_bound_sdk_sources.json' if args.consumers_only else 'macos_arm64_compiled_sdk_sources.json')).read_text())
     output = ROOT / 'macos-arm64-pilot-evidence'
@@ -150,6 +152,13 @@ def main() -> None:
     (output / 'compiled-sdk-intake.json').write_text(json.dumps({'original': spec, 'verified_paths': len(receipt['paths']),
         'scope': 'Exact compiled bytes only; original failed whole pilot remains unqualified'}, indent=2) + '\n')
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '14.4'
+    if args.imageformats:
+        environment = {**os.environ, 'QT_PLUGIN_PATH': str(work / 'prefix/qt/plugins'), 'QT_QPA_PLATFORM': 'cocoa'}
+        for name in ['DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
+            environment.pop(name, None)
+        subprocess.run([str(work / 'venv/bin/python'), str(ROOT / '.github/scripts/verify_macos_arm64_imageformats.py'),
+                        '--work', str(work), '--output', str(output)], cwd=ROOT, env=environment, check=True)
+        return
     public_limits(work / 'prefix/qt', work / 'public-http-tests', output / 'public-http')
     if args.consumers_only:
         finish_bindings(work, output, consumers_only=True)
