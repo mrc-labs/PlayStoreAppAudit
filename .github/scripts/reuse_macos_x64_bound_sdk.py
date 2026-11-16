@@ -1,6 +1,7 @@
 """Replay native Intel consumers from one completed, byte-closed diagnostic SDK."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import json
@@ -89,6 +90,9 @@ def restore(data: bytes, work: Path, output: Path, spec: dict) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--imageformats', action='store_true')
+    args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'x86_64'
     spec = json.loads((ROOT / '.github/scripts/macos_x64_bound_sdk_sources.json').read_text())
     context = {'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True),
@@ -123,6 +127,18 @@ def main() -> None:
                  'from controlled_qt_legal_identity import source_identity;'
                  'print(json.dumps(source_identity(Path(sys.argv[2]),sys.argv[3],"6.12.0"),indent=2))',
                  ROOT / '.github/scripts', output / 'original-native-results/macos-runtime-sdk.json', spec['receipt_sha256']]]
+    if args.imageformats:
+        commands[0].append('--imageformats')
+        native_flags = ['-DCMAKE_OSX_ARCHITECTURES=x86_64', '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4',
+                        '-DCMAKE_OSX_SYSROOT=' + subprocess.check_output(['xcrun', '--sdk', 'macosx', '--show-sdk-path'], text=True).strip(),
+                        '-DCMAKE_C_COMPILER=' + subprocess.check_output(['xcrun', '--find', 'clang'], text=True).strip(),
+                        '-DCMAKE_CXX_COMPILER=' + subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip(),
+                        '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
+                        '-DCMAKE_INSTALL_RPATH=' + ';'.join(str(work / name) for name in ['prefix/qt/lib', 'prefix/lib', 'prefix/openssl/lib'])]
+        commands.insert(0, [python, '-c', 'import sys,json;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+                           'from complete_qt_imageformats import complete;'
+                           'complete(Path(sys.argv[2]),Path(sys.argv[3]),json.loads(sys.argv[4]))',
+                           ROOT / '.github/scripts', work, output, json.dumps(native_flags)])
     profile = work / 'profile'
     profile.mkdir(exist_ok=True)
     (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')

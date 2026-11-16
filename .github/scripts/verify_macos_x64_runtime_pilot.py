@@ -124,6 +124,7 @@ def main() -> None:
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--native-prerequisites', action='store_true')
     parser.add_argument('--qt-native-backend', action='store_true')
+    parser.add_argument('--imageformats', action='store_true')
     args = parser.parse_args()
     output = args.output_dir.resolve()
     os.environ['QT_SSL_USE_TEMPORARY_KEYCHAIN'] = '1'
@@ -212,8 +213,15 @@ def main() -> None:
     QTimer.singleShot(5000, app.quit)
     app.exec()
     assert not window.isVisible()
+    imageformats = None
+    if args.imageformats:
+        from complete_qt_imageformats import image_consumers
+
+        imageformats = image_consumers(output / 'imageformats')
     report = {'source_sha': os.environ['GITHUB_SHA'], 'identity': 'project-modified CPython3.14.10 and matched source Qt/PySide/Shiboken6.12.0; native macOS Intel/x64 diagnostic, not unchanged official binaries', 'python': sys.version, 'machine': platform.machine(), 'gil_disabled': sysconfig.get_config_var('Py_GIL_DISABLED'), 'python_ssl': ssl.OPENSSL_VERSION, 'cryptography_ssl': backend.openssl_version_text(), 'cryptography_provider': 'independent project source-built cryptography50.0.2 wheel/static OpenSSL4; native Intel Rust1.99.1, no dynamic SSL import', 'default_trust': defaults, 'python_tls': python_tls, 'cpython_security': security, 'qt_default_backend': default_qt_backend, 'qt_openssl': qt_tls, 'qt_securetransport': json.loads((output / 'qt-securetransport.json').read_text()), 'hash_vectors': 'SHA256/HMAC/PBKDF2 PASS', 'png': png_rows, 'gui': 'native Cocoa MainWindow event-loop PASS', 'native': images(prefix, output), 'limits': ['Source prefix only; no Nuitka package, portability/signing/final acceptance.', 'Python SPKI does not qualify Qt/native/OS/cryptography CA security.', 'SecureTransport is legacy TLS1.2; qualified OpenSSL backend provides TLS1.3.']}
     report['cryptography_source_provenance'] = source_wheel_provenance(output, Path(_rust.__file__).resolve())
+    if imageformats:
+        report['imageformats'] = imageformats
     report['cpython_codec_suites'] = codec_suites
     report['maintenance'] = maintenance
     all_rows = {row['path']: row for row in [*report['native']['changed'], *report['qt_securetransport']['changed_images']]}
