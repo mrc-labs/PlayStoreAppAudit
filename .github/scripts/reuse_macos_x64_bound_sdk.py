@@ -108,7 +108,7 @@ def main() -> None:
     output.mkdir(exist_ok=True)
     from probe_macos_x64_health import qualify_icon_service
 
-    qualify_icon_service(output)
+    qualify_icon_service(output, allow_runner_mitigation=args.diagnose_gui)
     metadata, data = fetch_artifact(spec['artifact'])
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
     assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620

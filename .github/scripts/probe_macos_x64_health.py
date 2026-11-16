@@ -13,7 +13,7 @@ from pathlib import Path
 from verify_native_runtime_pilot import default_trust_handshake
 
 
-def qualify_icon_service(output: Path) -> None:
+def qualify_icon_service(output: Path, *, allow_runner_mitigation: bool = False) -> None:
     """Fail before SDK downloads if the measured native IconServices path hangs."""
     output.mkdir(exist_ok=True)
     executable = output.resolve() / 'native-cocoa-icon-service'
@@ -35,10 +35,35 @@ def qualify_icon_service(output: Path) -> None:
             finally:
                 process.kill()  # Only this failed prerequisite child, never OS services.
                 process.wait(timeout=20)
+            if allow_runner_mitigation:
+                # Image-specific, independently reproduced without Qt. Never apply
+                # this to a user's Mac or silently substitute an offscreen GUI.
+                mitigate_hosted_icon_service(output)
+                qualify_icon_service(output / 'after-runner-mitigation')
+                return
             raise RuntimeError('Native Cocoa IconServices timed out without Python/Qt; SDK replay not started') from None
     text = (output / 'native-cocoa-icon-service.log').read_text()
     print(text, flush=True)
     assert status == 0 and 'Native Cocoa IconServices PASS' in text, (status, text)
+
+
+def mitigate_hosted_icon_service(output: Path) -> None:
+    assert platform.machine() == 'x86_64'
+    assert os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
+    assert subprocess.check_output(['sw_vers', '-productVersion'], text=True).strip() == '26.6.1'
+    label = f'gui/{os.getuid()}/com.apple.iconservices.iconservicesagent'
+    results = []
+    for command in [['launchctl', 'bootout', label], ['launchctl', 'disable', label]]:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=20, check=False)
+        results.append({'command': command, 'returncode': result.returncode,
+                        'stdout': result.stdout, 'stderr': result.stderr})
+    # bootout may report Bad request for the already-crashed agent.
+    # Disabling must succeed; a fresh native API probe must still pass.
+    assert results[-1]['returncode'] == 0, results
+    (output / 'runner-iconservices-mitigation.json').write_text(json.dumps({
+        'source': 'https://github.com/actions/runner-images/issues/14751',
+        'scope': 'Ephemeral hosted Intel26.6.1 VM only; native generic icons. No application/package patch or security verification change.',
+        'commands': results}, indent=2))
 
 
 def main() -> None:

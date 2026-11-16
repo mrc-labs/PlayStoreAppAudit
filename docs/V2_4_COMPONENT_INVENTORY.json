@@ -1,4 +1,13 @@
 {
+  "hosted_intel_iconservices_2026_11_16": {
+    "run": 43967287230,
+    "source_sha": "d95d8c144d761c2968d39cbed4c911d5a89569ed",
+    "result": "Native Cocoa-only prerequisite reproduces synchronous IconServices hang before SDK download",
+    "artifact": 14275869272,
+    "sha256": "1d01188307452448206bd98d231f87660da0165ca237462a1957a4360c92353a",
+    "upstream": "https://github.com/actions/runner-images/issues/14751",
+    "decision": "Bounded image-specific service mitigation only after reproduction on disposable GitHub-hosted x86_64 macOS26.6.1; fresh native Cocoa and GUI success still required. Generic icon limitation explicit; no source rebuild."
+  },
   "intel_gui_gate_2026_11_16": {
     "run": 43838302644,
     "source_sha": "3979415d3006467a808c1fe292ffbcc24438d0a2",
