@@ -1,4 +1,95 @@
 {
+  "current_ledger_reconciliation_2026_11_16": {
+    "date": "2026-11-16",
+    "scope": "Reconcile the existing17 decisions only;1094 original observations unchanged",
+    "rows": {
+      "R01": {
+        "status": "Current base stack qualified; three refreshed framework profiles remain",
+        "minimum_action": "Historical3.14.10 six-source pilots retain original identities. Current Linux x64/ARM64 and Mac ARM full stacks PASS43672416899/43672419086/43772341683. Windows current CPython providers PASS43772345098/43782608739; Intel full43782611872 runs after qualified prerequisites.",
+        "affected_checks": "Complete the existing Intel run and one coherent current Windows profile per architecture; reuse closed CPython/provider SDKs. These same three integrations cover R02/R05-R10; do not create eight separate rebuild campaigns."
+      },
+      "R02": {
+        "status": "Current security passes on Linux/Mac ARM; Windows and Intel integration open",
+        "minimum_action": "Common Qt supplied-chain/SPKI guard and official HTTP backports are qualified on both Linux targets and Mac ARM. Mac SecureTransport manual API is unsupported and is replaced only in the harness by actual14 native refusals plus explicit compiled blacklist checks. Windows Schannel bounded43531162571 PASSes14 socket plus2 supported chain-path cases; no fabricated16-handshake claim.",
+        "affected_checks": "Integrate these existing guarded sources in the same three R01 profiles; ordinary default trust plus hostname/CA/expiry and per-provider incident tests. Python SPKI does not qualify Qt/cryptography; independent crypto AESGCM/HKDF applicability remains distinct."
+      },
+      "R03": {
+        "status": "RESOLVED current pip bootstrap",
+        "minimum_action": "pip26.3/private urllib3 2.8.0; six-native41553734181 and byte checks PASS. Hash-verified stdlib HTTPS then offline wheel install removes old-pip networking.",
+        "affected_checks": "Reuse unaffected bootstrap evidence; reopen only on changed input or applicable upstream facts."
+      },
+      "R04": {
+        "status": "RESOLVED source/native/workflow adoption",
+        "minimum_action": "Official four Action production roots unchanged; explicit HttpClient4/Undici8/Archiver8/glob0.7 integration, minimal SDK constructor migration and protected upstream overrides.429 original tests43782227822; six-native43783573993; authenticated cross-run43784295839 and adopted-workflow Quality43784277513 PASS.",
+        "affected_checks": "Immutable licensed source10cb799 adopted in maintained workflows; all bundle bytes guarded. Final exact-head Quality remains required after subsequent repository edits."
+      },
+      "R05": {
+        "status": "Current native stdlib providers qualified; remaining whole profiles shared with R01",
+        "minimum_action": "SQLite3.54.1/libffi3.8.0/libmpdec4.0.1/XZ5.8.4 and zlib1.4 POSIX or distinct zlib-ng2.3.3 Windows. Both Linux and Mac ARM full consumers PASS. Both Windows current CPython profiles PASS, including native14.52/MD and strict PE/import gates; ARM2570 executed/92skip.",
+        "affected_checks": "Do not redo provider builds for unrelated Qt changes. Preserve exact original source/compiler/SDK bytes and all-eight upstream suite/SPKI/tar/TLS provenance; complete Windows/Intel consumers through R01."
+      },
+      "R06": {
+        "status": "Six native FFI/cffi source consumers qualified; crypto/intake adoption open",
+        "minimum_action": "Windows x64 original FFI43705994557 and cffi43727469177 PASS; ARM43538466498/43703801781 PASS. Both Mac prerequisite consumers43700540081/43702635525 PASS224/5skip; controlled ARM modern-API patch preserves closures. Both Linux full current shared3.8.0/cffi consumers PASS488/11skip.",
+        "affected_checks": "Retain exact native static-MD Windows versus shared POSIX identities; complete actual remaining runtime/crypto intake without rebuilding already-qualified FFI sources."
+      },
+      "R07": {
+        "status": "Six-native current XML wheels qualified; three runtime intakes remain",
+        "minimum_action": "lxml6.1.3/static libxml2.15.4/libxslt1.1.45/iconv1.19/zlib1.4: six-native source/legal/wheel/native checks PASS. Current Linux x64/ARM64 and Mac ARM actual controlled-runtime intake PASS.",
+        "affected_checks": "Use the same byte-closed wheels in Windows x64/ARM64 and Intel R01 profiles; then final package feature/network/encoding/ABI/source checks."
+      },
+      "R08": {
+        "status": "Current coherent Qt natives pass three targets; three integrations remain",
+        "minimum_action": "HarfBuzz15.1.0/MD4C0.6.0/TinyCBOR7.1 and reviewed flags/CBOR patches now pass both Linux and Mac ARM whole Qt/PySide/GUI/source/ABI consumers. Original Qt public flags/ABI and callback semantics preserved.",
+        "affected_checks": "Same Windows/Intel R01 builds, not a separate Qt campaign. Preserve original/post hashes, private library origins and loaded-module evidence."
+      },
+      "R09": {
+        "status": "Concrete Unicode exception; data and selected-plugin adoption remains",
+        "minimum_action": "Unicode18 mirroring cannot be represented by Qt6.12 char16 storage;43609547679 demonstrates the incompatibility. Keep supported17 until an actual supported engine fix. CLDR49/current retained PSL/expected1.3.1 and private SQLite3.54.1 pass both Linux and Mac ARM profiles. Windows D3D12MA3.3 prerequisites pass; Vulkan remains OFF on all six measured profiles.",
+        "affected_checks": "Complete selected data/plugins in shared Windows/Intel R01 profiles; before freeze refresh the publisher PSL snapshot. Final package membership must retain excluded Vulkan/Android build paths and accurate OS-owned DBus attribution."
+      },
+      "R10": {
+        "status": "Current build frontend qualified; remaining binding consumers shared with R01",
+        "minimum_action": "Same source-build requirements/constraints used by current native source workers. Both Linux and Mac ARM matched PySide/Shiboken6.12 binding/framework consumers PASS; Windows and Intel refreshed bindings remain.",
+        "affected_checks": "Build each of those three matching binding stacks once with supported parser22.1.8 and guarded source/frontend provenance; reuse unchanged CPython tests."
+      },
+      "R11": {
+        "status": "Ruff six-native wheels qualified; crypto Cargo and tool adoption remain",
+        "minimum_action": "Ruff0.17.5+psaa.pastey current Rust1.100/Maturin1.16 wheels43729883614 PASS all six (33 upstream cases each, actual fixes/lint); original lock/source/patch/legal/native bytes independently verified. Compatible cryptography50.0.2 Cargo candidate passes host API check43673672114, not runtime/adoption.",
+        "affected_checks": "Qualify and adopt minimal supported crypto lock/current compiler source build with native crypto/ABI/provider regressions; adopt the qualified controlled developer tool. Do not equate old full workspace/dev/cfg observations with shipped vulnerable calls or force arbitrary unsupported majors."
+      },
+      "R12": {
+        "status": "RESOLVED dependency removal",
+        "minimum_action": "Pillow had only four test consumers; QImage replacements preserve PNG/ICO size/alpha/format checks. No application/generator dependency; explicit PIL-absence Quality guard passes.",
+        "affected_checks": "Reuse unaffected image tests; no Pillow rebuild or optional font/color migration."
+      },
+      "R13": {
+        "status": "Native compiler/parser facts reconciled; remaining invoked utilities/tool adoption",
+        "minimum_action": "Windows current CPython/FFI/codecs prove native MSVC14.52.37025/v145/SDK26100/MD. ARM assembly uses official LLVM23.1.5; Rust1.100 embeds its distinct vendor LLVM23.1.5 and six Ruff consumers PASS. Qt parser22.1.8 is latest stable within declared16-22 support. Current CMake4.4.4/Ninja1.13.2/Perl5.44/NASM3.02 where applicable/7-Zip26.05 and Xcode26.6 retain recorded source/native evidence.",
+        "affected_checks": "Finish affected compiler/package consumers and reconcile actually invoked curl8.23.0/libarchive3.8.10/gh2.103.2 paths, rather than infer selection from image inventory. No arbitrary LLVM DLL swap, Xcode27 preview, Ubuntu26 or implicit ABI-floor change."
+      },
+      "R14": {
+        "status": "Native ARM ADB source qualified; producer/external integration open",
+        "minimum_action": "Official Google37.0.1 remains where supported. Native android-tools37.0.0p1/private libusb1.0.30 source43666658887 PASS with independently verified ELF/source/legal bytes.",
+        "affected_checks": "Adopt explicit supported ARM24.04 external-ADB/redistribution route with relocatable private linkage, then read-only discovery/CLI/package/source checks. Physical-device evidence unavailable outside Windows x64 remains explicitly limited."
+      },
+      "R15": {
+        "status": "Six-native controlled compiler source qualified; producer/package adoption open",
+        "minimum_action": "Controlled Nuitka4.3.5+psaa.scons4111/SCons4.11.1 source42739540359 and source Quality42739545052 PASS; original/wheel/patch/legal/native bytes verified. Stock stable4.3.5 still embeds4.10.1.",
+        "affected_checks": "Select the already-reviewed source integration in producers, preserve current source/exact-patch markers and repeat affected compiler/package/ABI/legal consumers; recheck corrected stable parent at final freshness. No experimental force-system-scons."
+      },
+      "R16": {
+        "status": "Conditional disabled signing; not a runtime gate",
+        "minimum_action": "Legacy signing integration stays disabled. Stable supported SDK/client/CLI/cache migration remains required before any use; no runtime exposure or signing activation is claimed.",
+        "affected_checks": "Keep production signing/credentials/DeveloperID/notarization outside this release; review static migration before any later authorized activation."
+      },
+      "R17": {
+        "status": "REQUIRED final adoption/freshness/packages/release closure",
+        "minimum_action": "Source diagnostics are feasibility, not final candidates. Current maintainer authorizes residual completion and release when ready; no invented independent review. Three current framework integrations plus crypto/tools/ADB adoption above precede final gates.",
+        "affected_checks": "Second full freshness, one exact audited Python patch, normal merge/main Quality/freeze; six same-SHA final packages, all-file architecture/provider/ABI/GUI/CLI/legal/source acceptance, eight immutable verified assets and permanent closure. Reuse unchanged component evidence with provenance; never reuse v2.3.0 application binaries or mix candidate SHAs."
+      }
+    }
+  },
   "current_native_actions_delta_2026_11_16": {
     "date": "2026-11-16",
     "category": "A controlled integration / D native compiler vendor payload",
