@@ -45,8 +45,9 @@ def main() -> None:
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--exit-code', type=int, required=True)
+    parser.add_argument('--sdk-name', default='macos-runtime-sdk')
     args = parser.parse_args()
-    result = retain(args.work, args.output, args.exit_code)
+    result = retain(args.work, args.output, args.exit_code, sdk_name=args.sdk_name)
     if result:
         print('Retained diagnostic SDK', result['archive_sha256'], len(result['paths']), 'paths; complete pilot:', result['complete_pilot'])
 

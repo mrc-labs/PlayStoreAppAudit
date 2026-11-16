@@ -253,11 +253,12 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
         assert hashlib.sha256((python_source / name).read_bytes()).hexdigest() == digest
     apply(python_source, output)
     ssl_source, ssl_prefix = work / 'openssl-4.0.3', prefix / 'openssl'
+    variant = arm if arch == 'arm64' else base
     target = arm['openssl_target'] if arch == 'arm64' else 'VC-WIN64A'
     if reused:
         for name in ['libcrypto.lib', 'libssl.lib']:
             shutil.copy2(ssl_prefix / 'lib' / name, ssl_source / name)
-        for name in base['openssl_dlls']:
+        for name in variant['openssl_dlls']:
             shutil.copy2(ssl_prefix / 'bin' / name, ssl_source / name)
     else:
         run([perl, 'Configure', target, 'shared', 'no-uplink', 'no-makedepend', 'no-docs',
@@ -265,7 +266,6 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
         run(['nmake'], cwd=ssl_source, log=output / 'openssl-build.log')
         run(['nmake', 'test', 'TESTS=test_evp test_x509 test_verify test_ssl_new'], cwd=ssl_source, log=output / 'openssl-tests.log')
         run(['nmake', 'install_sw'], cwd=ssl_source, log=output / 'openssl-install.log')
-    variant = arm if arch == 'arm64' else base
     for name in variant['openssl_dlls']:
         assert read_pe_machine(ssl_source / name) == machine
     build = python_source / 'PCbuild' / ('arm64' if arch == 'arm64' else 'amd64')

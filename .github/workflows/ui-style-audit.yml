@@ -1239,6 +1239,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python .github/scripts/intake_lxml_native.py --target macos-x64 --output-dir macos-x64-pilot-evidence/lxml-qualified
 
+      - name: Retain the completed native Intel prerequisites before expensive compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/retain_macos_runtime_sdk.py \
+            --work "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output macos-x64-pilot-evidence --exit-code 1 --sdk-name macos-intel-prerequisite-sdk
+
+      - name: Upload Intel prerequisite checkpoint before source compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostic-intel-prerequisite-checkpoint-${{ github.run_id }}
+          path: macos-x64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
       - name: Build and exercise the gated native Intel/x64 controlled source prefix
         if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
         shell: bash
