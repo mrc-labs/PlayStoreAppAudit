@@ -29,6 +29,43 @@ def compiled_inputs(raw: str) -> dict:
     return result
 
 
+def restore_bound_archive(sdk: bytes, work: Path, receipt: dict) -> None:
+    assert not work.exists()
+    with tarfile.open(fileobj=io.BytesIO(sdk)) as archive:
+        members = archive.getmembers()
+        files = []
+        for member in members:
+            path = PurePosixPath(member.name)
+            assert not path.is_absolute() and '..' not in path.parts and path.parts[0] in {'prefix', 'venv'}
+            assert member.isdir() or member.isfile() or member.issym() or member.islnk(), ('SDK special file', member.name, member.type)
+            if not member.isdir():
+                files.append(member.name)
+            if member.issym():
+                assert receipt['paths'][member.name].get('link') == member.linkname
+                target = Path(member.linkname)
+                target = target if target.is_absolute() else work / path.parent / target
+                assert Path(os.path.normpath(target)).is_relative_to(work), ('SDK symlink escape', member.name)
+            if member.islnk():
+                target = PurePosixPath(member.linkname)
+                assert not target.is_absolute() and '..' not in target.parts and target.parts[0] in {'prefix', 'venv'}
+                # The retainer indexes hard links as their actual regular-file bytes.
+                assert receipt['paths'][member.name] == receipt['paths'][member.linkname]
+        assert len(files) == len(set(files)) and set(files) == set(receipt['paths'])
+        work.mkdir()
+        archive.extractall(work, members=[member for member in members if not member.issym()], filter='data')
+        for member in members:
+            if member.issym():
+                os.symlink(member.linkname, work / member.name)
+    for name, entry in receipt['paths'].items():
+        path = work / name
+        assert path.resolve().is_relative_to(work)
+        if 'link' in entry:
+            assert path.is_symlink() and os.readlink(path) == entry['link']
+        else:
+            assert not path.is_symlink() and path.is_file()
+            assert path.stat().st_size == entry['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], name
+
+
 def main() -> None:
     arch, machine, work, compiler = settings()
     spec = json.loads((ROOT / '.github/scripts/windows_framework_bound_sdks.json').read_text())[arch]
@@ -58,21 +95,11 @@ def main() -> None:
         sdk = original.read('windows-framework-sdk.tar.zst')
         assert hashlib.sha256(sdk).hexdigest() == receipt['archive_sha256']
         with tarfile.open(fileobj=io.BytesIO(sdk)) as archive:
-            members = archive.getmembers()
-            files = []
-            for member in members:
-                path = PurePosixPath(member.name)
-                assert not path.is_absolute() and '..' not in path.parts and path.parts[0] in {'prefix', 'venv'}
-                assert member.isdir() or member.isfile(), 'Unreviewed Windows SDK link/device'
-                if member.isfile():
-                    files.append(member.name)
-            assert len(files) == len(set(files)) and set(files) == set(receipt['paths'])
-            work.mkdir()
-            archive.extractall(work, filter='data')
-        for name, entry in receipt['paths'].items():
-            path = work / name
-            assert path.resolve().is_relative_to(work) and not path.is_symlink()
-            assert path.stat().st_size == entry['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], name
+            links = [{'name': member.name, 'type': 'symlink' if member.issym() else 'hardlink', 'target': member.linkname}
+                     for member in archive if member.issym() or member.islnk()]
+        (output / 'original-sdk-links.json').write_text(json.dumps(links, indent=2))
+        print('Original SDK indexed links:', json.dumps(links[:12]), 'total:', len(links), flush=True)
+        restore_bound_archive(sdk, work, receipt)
         historical = output / 'original-framework-results'
         historical.mkdir()
         for name in original.namelist():
