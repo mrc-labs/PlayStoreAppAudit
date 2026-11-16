@@ -30,6 +30,14 @@ from reuse_windows_x64_provider_sdk import contract, restore
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def native_extractor(root: Path, arch: str, machine: int) -> Path:
+    # The official x64 Extra archive provides 7za; ARM64 installer provides 7z.
+    name = '7z.exe' if arch == 'arm64' else '7za.exe'
+    matches = [path for path in root.rglob(name) if read_pe_machine(path) == machine]
+    assert len(matches) == 1, ('Exactly one official native extractor required', arch, list(root.rglob('7z*.exe')))
+    return matches[0]
+
+
 def settings() -> tuple[str, int, Path, Path]:
     arch = os.environ['EXPECTED_ARCH']
     assert arch in {'x64', 'arm64'} and sys.platform == 'win32'
@@ -113,10 +121,9 @@ def prepare(arch: str, machine: int, work: Path, compiler: Path, output: Path) -
              '--source', src / 'qtbase-everywhere-src-6.12.0', '--evidence', output], log=output / (script + '.log'))
     tool = fetch(extractor, sources)
     run([shutil.which('7z'), 'x', '-y', '-o' + str(work / '7zip'), tool], log=output / 'extractor-bootstrap.log')
-    matches = [p for p in (work / '7zip').rglob('7z.exe') if read_pe_machine(p) == machine]
-    assert len(matches) == 1
+    seven = native_extractor(work / '7zip', arch, machine)
     parser_archive = fetch(parser, sources)
-    run([matches[0], 'x', '-y', '-o' + str(src), parser_archive], log=output / 'parser-extraction.log')
+    run([seven, 'x', '-y', '-o' + str(src), parser_archive], log=output / 'parser-extraction.log')
     parser_dlls = list((src / 'libclang').rglob('libclang.dll'))
     assert len(parser_dlls) == 1 and read_pe_machine(parser_dlls[0]) == machine
     parser_probe = work / 'native-parser.cpp'

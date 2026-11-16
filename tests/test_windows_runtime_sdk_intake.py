@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import struct
 import sys
 import tarfile
 import zipfile
@@ -50,3 +51,25 @@ def test_qualified_runtime_intake_rejects_tampered_partial_or_escaping_sdk(tmp_p
     else:
         intake.restore(work, output, [], context, runtime=True)
         assert (work / 'prefix/python/fixture.bin').read_bytes() == payload
+
+
+@pytest.mark.parametrize('arch,machine,name', [('x64', 0x8664, '7za.exe'), ('arm64', 0xAA64, '7z.exe')])
+def test_official_extractor_layout_selects_only_the_native_executable(tmp_path, arch, machine, name) -> None:
+    from build_windows_current_framework import native_extractor
+
+    def image(path, kind):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = bytearray(70)
+        data[:2] = b'MZ'
+        struct.pack_into('<I', data, 0x3C, 64)
+        data[64:68] = b'PE\0\0'
+        struct.pack_into('<H', data, 68, kind)
+        path.write_bytes(data)
+
+    image(tmp_path / 'x86' / name, 0x014C)
+    expected = tmp_path / arch / name
+    image(expected, machine)
+    assert native_extractor(tmp_path, arch, machine) == expected
+    image(tmp_path / 'second' / name, machine)
+    with pytest.raises(AssertionError, match='Exactly one'):
+        native_extractor(tmp_path, arch, machine)
