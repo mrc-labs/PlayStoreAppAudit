@@ -112,6 +112,9 @@ def main() -> None:
         shutil.copytree(source / 'dist', target / 'dist')
         if item['name'] == 'checkout':
             shutil.copy2(original_dist / 'problem-matcher.json', target / 'dist/problem-matcher.json')
+        if item['name'] == 'setup-python':
+            (target / '.github').mkdir()
+            shutil.copy2(source / '.github/python.json', target / '.github/python.json')
         shutil.copy2(source / 'LICENSE', target)
         metadata = (source / 'action.yml').read_text()
         metadata = action_metadata(metadata, item['name'])

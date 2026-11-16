@@ -45,7 +45,7 @@ def test_artifact_uploads_use_repository_default_retention() -> None:
 def test_every_upload_artifact_step_has_explicit_retention_policy() -> None:
     for path in sorted(WORKFLOWS.glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
-        uploads = len(re.findall(r"uses: (?:actions/upload-artifact|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-upload-artifact)@", workflow))
+        uploads = len(re.findall(r"uses: (?:(?:actions/upload-artifact|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-upload-artifact)@|\./\.github/actions/controlled-upload-artifact(?=\n|$))", workflow))
 
         if uploads == 0:
             continue

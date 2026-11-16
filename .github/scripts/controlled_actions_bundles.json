@@ -284,11 +284,17 @@
         "dist/setup/index.js": {
           "sha256": "b4420a81cb64fddba1e45a2c7924afcff7216c7dedf7a4bfa8461cf6fc804b51",
           "bytes": 4330581
+        },
+        ".github/python.json": {
+          "sha256": "ea2bcb49874d47a8e951f503e3db6cb483c13e9a27cf35f1ae451a138848a2f8",
+          "bytes": 448,
+          "origin": "Unchanged original official source archive, .github/python.json, required by setup-python runtime addMatcher"
         }
       },
       "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
     }
   ],
   "scope": "Project-modified source bundles; native six-host behavior and adoption pending",
-  "metadata_correction": "Fix duplicate name only in setup metadata: original begins with comment. Generated executable/license/lock bytes unchanged. Builder now replaces exactly one original YAML name."
+  "metadata_correction": "Fix duplicate name only in setup metadata: original begins with comment. Generated executable/license/lock bytes unchanged. Builder now replaces exactly one original YAML name.",
+  "static_asset_correction": "Original setup-python matcher retained unchanged; original executable/license/lock bytes remain Node24 source-build output."
 }

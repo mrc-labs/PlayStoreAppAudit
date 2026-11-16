@@ -62,7 +62,7 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
     setups = 0
     for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
-        setup_pattern = r"uses: (?:actions/setup-python|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-setup-python)@[^\n]+"
+        setup_pattern = r"uses: (?:(?:actions/setup-python|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-setup-python)@[^\n]+|\./\.github/actions/controlled-setup-python(?=\n|$))"
         if not re.search(setup_pattern, workflow):
             continue
         assert "3.14.8" not in workflow, path.name

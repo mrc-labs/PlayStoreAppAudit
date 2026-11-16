@@ -87,6 +87,7 @@ jobs:
         with:
           name: controlled-actions-source-node24-${{ github.run_id }}
           path: controlled-actions-evidence/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 0
 
