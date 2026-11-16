@@ -14,6 +14,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+import controlled_qt_legal_identity as controlled_qt
 import prepare_release_legal_bundle as legal
 
 QT_SOURCE_COMPONENTS = (
@@ -76,12 +77,13 @@ def run_preflight(
     repo_root: Path,
     *,
     expected_nuitka_version: str,
+    qt_identity: dict | None = None,
 ) -> dict[str, Any]:
     repo_root = repo_root.resolve()
     project_version = legal._read_project_version(repo_root)
 
     expected_pyside_version = _read_exact_pyside_pin(repo_root)
-    pyside_version = metadata.version("PySide6-Essentials")
+    pyside_version = qt_identity["version"] if qt_identity else metadata.version("PySide6-Essentials")
     shiboken_version = metadata.version("shiboken6")
 
     if pyside_version != expected_pyside_version:
@@ -159,9 +161,11 @@ def run_preflight(
             )
 
     return {
+        "qt_distribution_identity": qt_identity or {"distribution": "PySide6-Essentials", "version": pyside_version},
         "project_version": project_version,
         "python_version": platform.python_version(),
-        "pyside6_essentials_version": pyside_version,
+        "pyside6_essentials_version": None if qt_identity else pyside_version,
+        "pyside6_version": pyside_version,
         "shiboken6_version": shiboken_version,
         "nuitka_version": expected_nuitka_version,
         "certifi_version": certifi_version,
@@ -192,6 +196,7 @@ def _parse_args() -> argparse.Namespace:
         required=True,
         help="Exact Nuitka version pinned by the release workflow",
     )
+    controlled_qt.add_arguments(parser)
     return parser.parse_args()
 
 
@@ -200,6 +205,7 @@ def main() -> int:
     result = run_preflight(
         args.repo_root,
         expected_nuitka_version=args.expected_nuitka_version,
+        qt_identity=controlled_qt.resolve_arguments(args, _read_exact_pyside_pin(args.repo_root)),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

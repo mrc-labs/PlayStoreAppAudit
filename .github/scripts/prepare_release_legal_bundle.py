@@ -520,8 +520,14 @@ def _normalize_dist_name(name: str) -> str:
 
 def _declared_dependency_candidates(
     repo_root: Path,
+    *,
+    qt_distribution: str | None = None,
 ) -> tuple[dict[str, metadata.Distribution], set[str]]:
     direct_names = _project_dependency_names(repo_root)
+    if qt_distribution is not None:
+        if qt_distribution != "PySide6":
+            raise RuntimeError("Unsupported controlled Qt distribution")
+        direct_names = [qt_distribution if _normalize_dist_name(name) == "pyside6-essentials" else name for name in direct_names]
     direct_keys = {_normalize_dist_name(name) for name in direct_names}
     queue = deque(direct_names)
     seen: set[str] = set()
@@ -575,6 +581,8 @@ def _runtime_dependency_closure(
     package_files: Iterable[str],
     report_modules: Iterable[dict[str, str]],
     report_distributions: dict[str, tuple[str, str]],
+    *,
+    qt_distribution: str | None = None,
 ) -> list[RuntimeDependencyEvidence]:
     """Return only declared runtime dependencies supported by build evidence.
 
@@ -584,7 +592,8 @@ def _runtime_dependency_closure(
     module proves their presence in the built runtime.
     """
 
-    candidates, direct_keys = _declared_dependency_candidates(repo_root)
+    candidates, direct_keys = (_declared_dependency_candidates(repo_root, qt_distribution=qt_distribution)
+                               if qt_distribution else _declared_dependency_candidates(repo_root))
     top_levels = {
         key: tuple(_distribution_top_level_names(dist))
         for key, dist in candidates.items()
@@ -1728,7 +1737,7 @@ def _write_third_party_notices(
         "",
     ]
     for item in dependencies:
-        if _normalize_dist_name(item["name"]) in {"pyside6-essentials", "shiboken6"}:
+        if _normalize_dist_name(item["name"]) in {"pyside6-essentials", "pyside6", "shiboken6"}:
             license_summary = "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
             license_paths = [
                 "licenses/qt/pyside-setup/LGPL-3.0-only.txt",
@@ -1934,6 +1943,9 @@ def _parse_args() -> argparse.Namespace:
             "package mutation such as macOS signing"
         ),
     )
+    from controlled_qt_legal_identity import add_arguments
+
+    add_arguments(parser)
     return parser.parse_args()
 
 
@@ -2018,7 +2030,11 @@ def main() -> int:
     if "qtbase" not in qt_components or "pyside-setup" not in qt_components:
         raise RuntimeError(f"Expected Qt/PySide runtime was not detected: {qt_components}")
 
-    pyside_version = metadata.version("PySide6_Essentials")
+    from controlled_qt_legal_identity import resolve_arguments
+    from preflight_release_legal_material import _read_exact_pyside_pin
+
+    qt_identity = resolve_arguments(args, _read_exact_pyside_pin(repo_root))
+    pyside_version = qt_identity["version"] if qt_identity else metadata.version("PySide6_Essentials")
     shiboken_version = metadata.version("shiboken6")
     if pyside_version != shiboken_version:
         raise RuntimeError(
@@ -2123,6 +2139,7 @@ def main() -> int:
         runtime_paths,
         report_modules,
         report_distributions,
+        **({"qt_distribution": qt_identity["distribution"]} if qt_identity else {}),
     ):
         dist = dependency.distribution
         copied_files, metadata_files = _copy_distribution_legal_files(
@@ -2133,6 +2150,7 @@ def main() -> int:
         normalized_name = _normalize_dist_name(dist.metadata["Name"])
         is_qt_python = normalized_name in {
             "pyside6-essentials",
+            "pyside6",
             "shiboken6",
         }
 
@@ -2315,6 +2333,7 @@ def main() -> int:
             }
         ],
         "qt": {
+            "distribution_identity": qt_identity or {"distribution": "PySide6-Essentials", "version": pyside_version},
             "version": pyside_version,
             "distribution_basis": "LGPL-3.0-only",
             "detected_components": qt_components,

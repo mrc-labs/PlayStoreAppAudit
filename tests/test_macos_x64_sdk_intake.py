@@ -30,7 +30,7 @@ def test_closed_intel_sdk_intake(tmp_path, monkeypatch, fault):
         archive.writestr('macos-runtime-sdk.json', json.dumps(receipt))
         archive.writestr('macos-runtime-sdk.tar.zst', sdk.getvalue())
         for item in ['cpython-codec-regressions.xml', 'cpython-regressions.xml', 'tarfile-security-regression.log',
-                     'cffi-runtime-tests.xml', 'cryptography-source-provenance.json']:
+                     'cffi-runtime-tests.xml', 'cryptography-source-provenance.json', 'qt-cldr49-runtime-input.xml']:
             archive.writestr(item, 'original evidence')
     data = outer.getvalue()
     spec = {'zip_bytes': len(data), 'zip_sha256': hashlib.sha256(data).hexdigest(), 'sdk_sha256': digest,
@@ -46,3 +46,4 @@ def test_closed_intel_sdk_intake(tmp_path, monkeypatch, fault):
         assert report['verified_paths'] == 1 and report['consumer_source_sha'] == 'c' * 40
         assert (work / 'prefix/native').read_bytes() == b'native'
         assert (output / 'original-native-results/cpython-regressions.xml').is_file()
+        assert (output / 'qt-cldr49-runtime-input.xml').read_text() == 'original evidence'

@@ -72,7 +72,7 @@ def restore(data: bytes, work: Path, output: Path, spec: dict) -> dict:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(original.read(name))
         for name in ['cpython-codec-regressions.xml', 'cpython-regressions.xml', 'tarfile-security-regression.log',
-                     'cffi-runtime-tests.xml', 'cryptography-source-provenance.json']:
+                     'cffi-runtime-tests.xml', 'cryptography-source-provenance.json', 'qt-cldr49-runtime-input.xml']:
             (output / name).write_bytes(original.read(name))
         (output / 'wheels').mkdir()
         for name in original.namelist():
@@ -114,7 +114,11 @@ def main() -> None:
     python = work / 'venv/bin/python'
     commands = [[python, ROOT / '.github/scripts/verify_macos_x64_runtime_pilot.py', '--output-dir', output],
                 [python, ROOT / 'main.py', 'cli', 'audit', '--help'],
-                [python, '-m', 'pytest', ROOT / 'tests/test_cli_headless.py', '-q']]
+                [python, '-m', 'pytest', ROOT / 'tests/test_cli_headless.py', '-q'],
+                [python, '-c', 'import sys,json;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+                 'from controlled_qt_legal_identity import source_identity;'
+                 'print(json.dumps(source_identity(Path(sys.argv[2]),sys.argv[3],"6.12.0"),indent=2))',
+                 ROOT / '.github/scripts', output / 'original-native-results/macos-runtime-sdk.json', spec['receipt_sha256']]]
     profile = work / 'profile'
     profile.mkdir(exist_ok=True)
     (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')
