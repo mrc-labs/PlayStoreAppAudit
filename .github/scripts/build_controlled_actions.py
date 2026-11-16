@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -15,6 +16,11 @@ from build_windows_runtime_pilot import fetch
 from provision_nuitka_scons import apply_source_patch
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def action_metadata(metadata: str, name: str) -> str:
+    assert len(re.findall(r'^name:.*$', metadata, re.M)) == 1, 'Exactly one original Action name required'
+    return re.sub(r'^name:.*$', 'name: PSAA controlled ' + name, metadata, count=1, flags=re.M)
 
 
 def main() -> None:
@@ -108,7 +114,7 @@ def main() -> None:
             shutil.copy2(original_dist / 'problem-matcher.json', target / 'dist/problem-matcher.json')
         shutil.copy2(source / 'LICENSE', target)
         metadata = (source / 'action.yml').read_text()
-        metadata = 'name: PSAA controlled ' + item['name'] + '\n' + '\n'.join(metadata.splitlines()[1:]) + '\n'
+        metadata = action_metadata(metadata, item['name'])
         assert 'node24' in metadata
         (target / 'action.yml').write_text(metadata)
         shutil.copy2(lock, target / 'controlled.package-lock.json')

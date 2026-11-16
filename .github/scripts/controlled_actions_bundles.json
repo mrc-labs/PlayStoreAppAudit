@@ -249,8 +249,9 @@
       },
       "files": {
         "action.yml": {
-          "sha256": "3141bde4dea74fcee72415b2ea89132f9aa15f753449fcd807819c1e6d7b3c75",
-          "bytes": 3172
+          "sha256": "29f26953f650f51b81d88fc3c74a757ca91bfebba451e9e7d00114e134e0aeac",
+          "bytes": 3151,
+          "source_build_metadata_sha256": "3141bde4dea74fcee72415b2ea89132f9aa15f753449fcd807819c1e6d7b3c75"
         },
         "controlled.package-lock.json": {
           "sha256": "120ab60231885e7a537c68c5dc9583abc69e384d794b1fb113ba7c7fa7a9e5ae",
@@ -288,5 +289,6 @@
       "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
     }
   ],
-  "scope": "Project-modified source bundles; native six-host behavior and adoption pending"
+  "scope": "Project-modified source bundles; native six-host behavior and adoption pending",
+  "metadata_correction": "Fix duplicate name only in setup metadata: original begins with comment. Generated executable/license/lock bytes unchanged. Builder now replaces exactly one original YAML name."
 }

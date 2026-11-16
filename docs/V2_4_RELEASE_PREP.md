@@ -2,6 +2,8 @@
 
 ## Current bounded continuation (2026-11-16)
 
+Native Action43783086361 stops in job setup before any Action execution: setup-python's original metadata begins with a comment; the builder replaced the first line and duplicated the YAML name. Fix only that generated metadata and its closed hash; all executable/license/lock bytes remain the independently verified Node24 outputs. Builder now replaces exactly one actual root name while preserving comments, with four regression cases. Retry native consumers only, not429 unchanged source tests or any runtime/framework build.
+
 R04 source43782227822 at a6c1db9 passes429 original tests (upload31/download21/checkout128/setup249) under actual Node24.22.1/npm12.2.2. Artifact14188723660/13,818,166 bytes/SHA256`19066a6d4c1e6793644e174d1050154492ef2c14802466d36651e6e9eb732fa5` is independently re-downloaded and every31 bundle/license/metadata/lock file verified. Preserve these exact licensed project-modified bundles under .github/actions/controlled-* with source/byte manifest controlled_actions_bundles.json. This permits immutable own-repository Action references before checkout, without a new API bootstrap adapter. Six-native real behavior must pass before maintained producer adoption.
 
 Independent local review of Mac ARM retained evidence now verifies all83 raw Mach-O ARM-selected headers, deployment/SDK load commands, install names/rpaths/dependencies against original report and original SDK byte index;32 original source archives and98 legal texts retained. Maximum deployment14.4, not an older-OS claim; omitted1.28GB official host-parser archive remains distinctly worker-hashed, not claimed downloaded locally.
