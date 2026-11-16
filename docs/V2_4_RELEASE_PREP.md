@@ -2,6 +2,8 @@
 
 ## Controlled Windows CPython/profile and current native outcomes (2026-11-15)
 
+CRT-only43778913741 stops before observing DLLs: PowerShell collapsed the one-item conditional array into a scalar, so splatting passed --crt-only as individual characters. Use an explicitly typed string array; two actual PowerShell/Python argv regressions now prove empty and one-flag cases. No vendor/runtime build was launched by that diagnostic.
+
 Windows ARM43774526949 now builds current codecs, native LLVM assembly/OpenSSL and CPython under14.52/MD, then stops at the strict PE check on vcruntime140_1.dll. Its actual unexpected machine was not recorded, so do not infer ARM64X, permit ARM64EC or substitute DLLs. A new tools-cpython-crt-arm64-windows mode runs only signed vendor-redist header/hash/version/native-loader observations after native compiler qualification, before any source download/rebuild. The failed-run prefix remains retained as artifact14186567609/387,874,160 bytes/SHA256`bc343ceece5e1eca1e6a0af5e8a8daf3415d2e377b690a5ceb7d07246d3aee46` at1dff28d; whole CPython is not accepted. No architecture exception adopted.
 
 Current source Action rebuild43776509966 PASSes all four original production roots/upstream tests under Node24.22.1 and isolated current-compatible npm12.2.2. Read-only Mac byte worker43776513836 PASSes both original ZIP hashes/all SDK byte/link checks and retains loaded native images/source/legal (artifact14186985324/372,990,677 bytes/SHA256`e5f36d077a8acaba3d65deefc7976f73e5a47100ff04b80c05db59af6c67a90d`). The small native Intel health43776517718 PASSes; this proves only that fresh worker context, not the missing source prerequisites/current integration.

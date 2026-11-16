@@ -109,3 +109,25 @@ def test_sqlite_layout_rejects_unexpected_version_without_moving_source(tmp_path
     with pytest.raises(AssertionError, match='Unexpected controlled SQLite'):
         sqlite_layout(source)
     assert source.is_dir() and not (tmp_path / 'sqlite-3.54.1.0').exists()
+
+
+@pytest.mark.parametrize('profile, expected', [('tools-cpython-crt-arm64-windows', ['--crt-only']),
+                                               ('tools-cpython-providers-windows', [])])
+def test_powershell_probe_flag_remains_one_argument(tmp_path: Path, profile: str, expected: list[str]) -> None:
+    import shutil
+    import subprocess
+    import sys
+
+    shell = shutil.which('powershell') or shutil.which('pwsh')
+    if shell is None:
+        pytest.skip('Actual PowerShell argument-vector regression runs on Windows Quality')
+    workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
+    snippet = workflow.split('[string[]]$crtProbe =', 1)[1].split('& $env:LXML_PROBE_PYTHON', 1)[0]
+    snippet = '[string[]]$crtProbe =' + snippet.replace('${{ inputs.linux_arm64_pilot }}', profile)
+    probe = tmp_path / 'argv.py'
+    probe.write_text('import json,sys;print(json.dumps(sys.argv[1:]))', encoding='utf-8')
+    executable = str(sys.executable).replace("'", "''")
+    path = str(probe).replace("'", "''")
+    command = snippet + f"\n& '{executable}' '{path}' @crtProbe"
+    actual = subprocess.check_output([shell, '-NoProfile', '-Command', command], text=True)
+    assert json.loads(actual) == expected

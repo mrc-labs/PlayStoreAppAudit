@@ -275,7 +275,8 @@ jobs:
           if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_ctypes.py --work-root "$env:RUNNER_TEMP/ctypes-arm64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-*') {
-            $crtProbe = if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-crt-arm64-windows') { @('--crt-only') } else { @() }
+            [string[]]$crtProbe = @()
+            if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-crt-arm64-windows') { $crtProbe += '--crt-only' }
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_cpython_providers.py --work-root "$env:RUNNER_TEMP/cpython-current-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" @crtProbe
           } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ffi-x64-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_x64_libffi.py --consumers-only --work-root "$env:RUNNER_TEMP/ffi-x64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
