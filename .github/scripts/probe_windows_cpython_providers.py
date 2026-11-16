@@ -71,7 +71,7 @@ def tls_fixtures(destination: Path, openssl: Path) -> dict[str, Path]:
             {'ca': 'ca.pem', 'key': 'server-key.pem', 'valid': 'valid.pem', 'expired': 'expired.pem'}.items()}
 
 
-def qualify(work: Path) -> None:
+def qualify(work: Path, *, crt_only: bool = False) -> None:
     assert sys.platform == 'win32' and platform.python_version() == '3.14.10'
     assert not sysconfig.get_config_var('Py_GIL_DISABLED')
     arch = os.environ['EXPECTED_ARCH']
@@ -90,6 +90,11 @@ def qualify(work: Path) -> None:
     (output / 'native-cpython-msbuild-context.json').write_text(json.dumps(context, indent=2) + '\n')
     print(json.dumps(context), flush=True)
     assert len(toolsets) == 1, 'Qualify current stable MSBuild v145 before OpenSSL/Python compilation'
+    if crt_only:
+        from probe_windows_crt import diagnose
+
+        diagnose(output)
+        return
     if arch == 'arm64':
         observed = Path(shutil.which('clang-cl') or '').resolve()
         if observed.is_file():
@@ -339,6 +344,7 @@ def qualify(work: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
+    parser.add_argument('--crt-only', action='store_true')
     args = parser.parse_args()
     work = args.work_root.resolve()
     if os.environ.get('EXPECTED_ARCH') == 'x64':
@@ -350,7 +356,7 @@ def main() -> None:
     output = REPO / 'toolchain-delta-evidence'
     existing = work.exists()
     try:
-        qualify(work)
+        qualify(work, crt_only=args.crt_only)
     finally:
         if not existing and output.is_dir() and work.is_dir():
             retain(work, output, 0 if (output / 'windows-cpython-providers.json').exists() else 1,
