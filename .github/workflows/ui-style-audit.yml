@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -1372,6 +1372,9 @@ jobs:
           retention-days: 0
 
   native-adb:
+    permissions:
+      contents: read
+      actions: read
     if: ${{ startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 40
@@ -1395,17 +1398,41 @@ jobs:
           set -euo pipefail
           python -c "import platform,sys,sysconfig; actual=platform.python_version(); print('Stable Python',actual); assert sys.version_info[:2] == (3, 14) and platform.machine() == 'aarch64' and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
           sudo apt-get update
-          sudo apt-get install -y gcc-13 g++-13 pkg-config libudev-dev libgtest-dev libusb-1.0-0-dev libpcre2-dev libprotobuf-dev protobuf-compiler libbrotli-dev libzstd-dev liblz4-dev zlib1g-dev
-          if [ '${{ inputs.linux_arm64_pilot }}' != adb-linux-arm64-abi ]; then
+          if [ '${{ inputs.linux_arm64_pilot }}' = adb-linux-arm64-consumers ]; then
+            sudo apt-get install -y libudev1 libprotobuf32t64 libbrotli1 libzstd1 liblz4-1 zlib1g
+          else
+            sudo apt-get install -y gcc-13 g++-13 pkg-config libudev-dev libgtest-dev libusb-1.0-0-dev libpcre2-dev libprotobuf-dev protobuf-compiler libbrotli-dev libzstd-dev liblz4-dev zlib1g-dev
+          fi
+          if [ '${{ inputs.linux_arm64_pilot }}' != adb-linux-arm64-abi ] && [ '${{ inputs.linux_arm64_pilot }}' != adb-linux-arm64-consumers ]; then
             python .github/scripts/bootstrap_pip.py
             python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
             rustup toolchain install 1.99.1 --profile minimal
           fi
-      - name: Build only native adb and exercise isolated read-only consumers
+      - name: Prepare existing CLI dependencies for external ADB consumers only
+        if: ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-consumers' }}
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          python .github/scripts/probe_adb_linux_arm64.py --work "$RUNNER_TEMP/adb-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --output adb-diagnostic-evidence ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-abi' && '--system-abi-only' || '' }}
+          python .github/scripts/bootstrap_pip.py
+          python .github/scripts/intake_lxml_native.py --target linux-arm64 --output-dir adb-lxml-intake
+          python .github/scripts/intake_lxml_native.py --target linux-arm64 --output-dir adb-lxml-intake --qualify
+          python -c "from pathlib import Path; lines=Path('requirements.txt').read_text().splitlines(); Path('adb-external-runtime.txt').write_text('\n'.join(x for x in lines if not x.startswith('PySide6-Essentials=='))+'\n')"
+          python -m pip install --only-binary=:all: -r adb-external-runtime.txt
+          python -m pip check
+
+      - name: Build only native adb and exercise isolated read-only consumers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.linux_arm64_pilot }}' = adb-linux-arm64-consumers ]; then
+            python .github/scripts/verify_external_adb_linux_arm64.py
+          else
+            python .github/scripts/probe_adb_linux_arm64.py --work "$RUNNER_TEMP/adb-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --output adb-diagnostic-evidence ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-abi' && '--system-abi-only' || '' }}
+          fi
       - name: Retain diagnostic sources legal native bytes and results
         if: always()
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022

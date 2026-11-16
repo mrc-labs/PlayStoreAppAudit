@@ -1,4 +1,25 @@
 {
+  "six_native_image_module_completion_2026_11_17": {
+    "qt_imageformats": "6.12.0",
+    "official_sha256": "0943132b5db8de6b6a7f1d162682173e8763c7ed94e80fd39113292845f67762",
+    "runs": {
+      "macos_x64": 43968346929,
+      "windows_both": 43971073046,
+      "linux_x64": 43972684722,
+      "linux_arm64": 43972690160,
+      "macos_arm64": 43973736878
+    },
+    "new_raw_images_verified": {
+      "windows_x64": 5,
+      "windows_arm64": 5,
+      "linux_x64": 5,
+      "linux_arm64": 5,
+      "macos_x64": 7,
+      "macos_arm64": 7
+    },
+    "scope": "Matching module only; original runtime/framework/binding SDK sources and unchanged provider security suites retained with actual identities. No final packages.",
+    "remaining": "Finite R13/R14/R17 producer/source/legal/freshness/package/release gates; no six-source-stack rebuild campaign."
+  },
   "intel_native_completion_2026_11_16": {
     "run": 43968346929,
     "source_sha": "1179e937e52d16e5537df06ded702b81bf590ace",
