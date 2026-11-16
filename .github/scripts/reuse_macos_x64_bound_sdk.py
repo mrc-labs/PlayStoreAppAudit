@@ -106,6 +106,9 @@ def main() -> None:
     assert str(work) == spec['original_work_root'] and work.parent == Path(os.environ['RUNNER_TEMP']).resolve()
     output = ROOT / 'macos-x64-pilot-evidence'
     output.mkdir(exist_ok=True)
+    from probe_macos_x64_health import qualify_icon_service
+
+    qualify_icon_service(output)
     metadata, data = fetch_artifact(spec['artifact'])
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
     assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
@@ -159,7 +162,7 @@ def main() -> None:
         native = commands.pop(0)
         identity = commands.pop()
         commands = [identity,
-            [python, '-c', 'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+            [python, '-X', 'faulthandler', '-c', 'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
              'from PySide6.QtWidgets import QApplication;from complete_qt_imageformats import image_consumers;'
              'app=QApplication([]);assert app.platformName()=="cocoa";image_consumers(Path(sys.argv[2]))',
              ROOT / '.github/scripts', output / 'imageformats'],

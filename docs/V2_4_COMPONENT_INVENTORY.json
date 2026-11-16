@@ -1,4 +1,15 @@
 {
+  "intel_gui_gate_2026_11_16": {
+    "run": 43838302644,
+    "source_sha": "3979415d3006467a808c1fe292ffbcc24438d0a2",
+    "quality": 43838307391,
+    "tests": 2271,
+    "native_stack": "Both GUI children wait synchronously in macOS IconServices through Qt Cocoa default application-icon queries. OS versus framework cause not yet established.",
+    "artifact": 14212356878,
+    "sha256": "ad4b0b3d5e5da294673797e03471b30fa13aac42540599855a15deff7a22d18f",
+    "action": "Native Cocoa-only prerequisite before SDK download; owned-buffer codec probe; no Python/Qt/provider rebuild or vendor patch.",
+    "pending": "Intel clean native GUI/decoder exit and final package acceptance"
+  },
   "application_tls_delta_2026_11_16": {
     "component": "google-play-scraper transport and packaged macOS Python defaults",
     "selected": "official unmodified1.2.7; no newer stable fixed parent",

@@ -1,5 +1,7 @@
 # AGENTS.md
 
+November16 current Intel gate: Quality43838307391 PASS2271 at3979415; diagnostic43838302644 fails in native IconServices synchronous default-icon queries on both GUI paths, plus a separate codec SIGSEGV. Cocoa-only prerequisite now precedes SDK downloads; owned-buffer codec regression passes locally. No runtime/framework rebuild or vendor patch; native confirmation and producer/package gates remain open.
+
 November16 continuation: Windows whole current native consumers43824733974 PASS both hosts atd9e36ad with closed bound SDKs,58/57 loaded owned PEs and independently verified ZIP/eight retained raw native security images. No provider/Qt/binding rebuild. Intel complete SDK recovered from timed-out43782611872 and byte-verified (25141 paths/84 raw x64 Mach-O/max14.4); affected imageformats/consumer43825905439 pending, using guarded reuse of unchanged original CA incident evidence. Explicit source PySide legal identity and matching imageformats module route are prepared; producer/package/final acceptance remains open. Official-first necessity decision below remains in force.
 
 November16 maintainer decision supersedes mandatory custom-tool adoption for version-only findings: keep official Ruff0.17.5/Nuitka4.3.5 and the official crypto source lock unless a demonstrated applicable defect requires otherwise. Prefer official distributions; reuse qualified necessary runtime/Qt and working Actions evidence. See the active audit necessity review and permanent freshness policy.

@@ -13,12 +13,41 @@ from pathlib import Path
 from verify_native_runtime_pilot import default_trust_handshake
 
 
+def qualify_icon_service(output: Path) -> None:
+    """Fail before SDK downloads if the measured native IconServices path hangs."""
+    output.mkdir(exist_ok=True)
+    executable = output.resolve() / 'native-cocoa-icon-service'
+    source = Path(__file__).with_name('macos_icon_service_probe.mm').resolve()
+    subprocess.run(['xcrun', 'clang++', '-arch', 'x86_64', '-mmacosx-version-min=14.4',
+                    '-framework', 'AppKit', '-framework', 'UniformTypeIdentifiers',
+                    str(source), '-o', str(executable)], check=True, timeout=60)
+    with (
+        (output / 'native-cocoa-icon-service.log').open('w') as log,
+        subprocess.Popen([str(executable)], stdout=log, stderr=subprocess.STDOUT) as process,
+    ):
+        try:
+            status = process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            try:
+                subprocess.run(['sample', str(process.pid), '3', '-file',
+                                str(output.resolve() / 'native-cocoa-icon-service-stack.txt')],
+                               stdout=log, stderr=subprocess.STDOUT, timeout=20, check=False)
+            finally:
+                process.kill()  # Only this failed prerequisite child, never OS services.
+                process.wait(timeout=20)
+            raise RuntimeError('Native Cocoa IconServices timed out without Python/Qt; SDK replay not started') from None
+    text = (output / 'native-cocoa-icon-service.log').read_text()
+    print(text, flush=True)
+    assert status == 0 and 'Native Cocoa IconServices PASS' in text, (status, text)
+
+
 def main() -> None:
     assert sys.platform == 'darwin' and platform.machine() == 'x86_64'
     assert not sysconfig.get_config_var('Py_GIL_DISABLED')
     assert os.environ['EXPECTED_SHA'] == os.environ['GITHUB_SHA'] == subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     output = Path('macos-x64-pilot-evidence')
     output.mkdir(exist_ok=True)
+    qualify_icon_service(output)
     commands = {
         'xcode': ['xcodebuild', '-version'], 'sdk': ['xcrun', '--sdk', 'macosx', '--show-sdk-version'],
         'clang': ['xcrun', 'clang', '--version'], 'memory': ['sysctl', '-n', 'hw.memsize'],

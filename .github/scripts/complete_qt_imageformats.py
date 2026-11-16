@@ -35,30 +35,38 @@ def image_consumers(output: Path) -> dict:
         assert kind in writers
         image = QImage(16, 16, QImage.Format.Format_ARGB32)
         image.fill(QColor('#ba2519'))
-        data = QByteArray()
-        buffer = QBuffer(data)
+        # QBuffer owns its storage; a borrowed QByteArray can be destroyed before
+        # the previous codec/device when the loop replaces Python references.
+        buffer = QBuffer()
         assert buffer.open(QIODevice.OpenModeFlag.WriteOnly)
         writer = QImageWriter(buffer, kind.encode())
         writer.setQuality(75 if kind == 'webp' else 100)
         assert writer.write(image), (kind, writer.errorString())
+        del writer
+        data = bytes(buffer.data())
         buffer.close()
-        encoded = QBuffer(data)
+        encoded = QBuffer()
+        encoded.setData(QByteArray(data))
         assert encoded.open(QIODevice.OpenModeFlag.ReadOnly)
         reader = QImageReader(encoded, QByteArray(kind.encode()))
         reader.setAutoDetectImageFormat(False)
         decoded = reader.read()
+        del reader
+        encoded.close()
         assert not decoded.isNull() and decoded.size() == image.size(), kind
         assert decoded.pixelColor(8, 8).alpha() == 255, kind
         if kind != 'webp':
             assert decoded.pixelColor(8, 8) == image.pixelColor(8, 8), kind
-        invalid_data = QByteArray(b'not an encoded image')
-        invalid = QBuffer(invalid_data)
+        invalid = QBuffer()
+        invalid.setData(QByteArray(b'not an encoded image'))
         assert invalid.open(QIODevice.OpenModeFlag.ReadOnly)
         rejection = QImageReader(invalid, QByteArray(kind.encode()))
         rejection.setAutoDetectImageFormat(False)
         assert rejection.read().isNull(), kind
-        (output / ('roundtrip.' + kind)).write_bytes(bytes(data))
-        rows.append({'format': kind, 'encoded_bytes': data.size(), 'size': [decoded.width(), decoded.height()],
+        del rejection
+        invalid.close()
+        (output / ('roundtrip.' + kind)).write_bytes(data)
+        rows.append({'format': kind, 'encoded_bytes': len(data), 'size': [decoded.width(), decoded.height()],
                      'result': 'native encode/decode and invalid input rejection PASS'})
     report = {'source_sha': os.environ.get('GITHUB_SHA'), 'readers': sorted(readers), 'writers': sorted(writers), 'cases': rows,
               'scope': 'Existing image format preservation; not an exploit corpus or final package acceptance'}
