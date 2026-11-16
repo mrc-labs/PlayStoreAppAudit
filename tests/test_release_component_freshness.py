@@ -62,12 +62,13 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
     setups = 0
     for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
-        if "actions/setup-python@" not in workflow:
+        setup_pattern = r"uses: (?:actions/setup-python|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-setup-python)@[^\n]+"
+        if not re.search(setup_pattern, workflow):
             continue
         assert "3.14.8" not in workflow, path.name
         if path.name == "quality.yml":
             assert '- "3.14"' in workflow
-        for setup in re.finditer(r"uses: actions/setup-python@[^\n]+", workflow):
+        for setup in re.finditer(setup_pattern, workflow):
             setups += 1
             following = workflow[setup.end():]
             guard = following.index("- name: Verify stable Python 3.14")
@@ -86,7 +87,7 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
                 assert "if ($LASTEXITCODE -ne 0) { throw" in step
             else:
                 assert "set -euo pipefail" in step
-    assert setups == 22
+    assert setups == 23
 
 
 @pytest.mark.parametrize(

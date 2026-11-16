@@ -25,6 +25,7 @@ def _retention_days(workflow: str) -> list[int]:
 def test_artifact_uploads_use_repository_default_retention() -> None:
     expected = {
         "ui-style-audit.yml": [0] * 14,
+        "controlled-actions-native.yml": [0, 0],
         "build-windows-exe.yml": [0, 0],
         "assemble-windows-engineering-release.yml": [0],
         "build-linux.yml": [0, 0],
@@ -44,7 +45,7 @@ def test_artifact_uploads_use_repository_default_retention() -> None:
 def test_every_upload_artifact_step_has_explicit_retention_policy() -> None:
     for path in sorted(WORKFLOWS.glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
-        uploads = workflow.count("uses: actions/upload-artifact@")
+        uploads = len(re.findall(r"uses: (?:actions/upload-artifact|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-upload-artifact)@", workflow))
 
         if uploads == 0:
             continue

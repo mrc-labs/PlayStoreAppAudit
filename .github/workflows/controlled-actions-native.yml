@@ -1,0 +1,71 @@
+name: Controlled Actions native consumers
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact diagnostic source, never a release candidate
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-22.04, label: linux-x64, arch: x64}
+          - {os: ubuntu-24.04-arm, label: linux-arm64, arch: arm64}
+          - {os: windows-2025, label: windows-x64, arch: x64}
+          - {os: windows-11-arm, label: windows-arm64, arch: arm64}
+          - {os: macos-26-intel, label: macos-x64, arch: x64}
+          - {os: macos-26, label: macos-arm64, arch: arm64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+        with:
+          persist-credentials: false
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-node-probe@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+      - name: Verify stable Python 3.14 and prepare native Action consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          python .github/scripts/check_controlled_action_roundtrip.py prepare
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+        with:
+          name: controlled-fixture-${{ matrix.label }}-${{ github.run_id }}
+          path: |
+            controlled-action-fixture/
+            !controlled-action-fixture/excluded.txt
+          if-no-files-found: error
+          retention-days: 0
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+        with:
+          name: controlled-fixture-${{ matrix.label }}-${{ github.run_id }}
+          path: controlled-action-received
+      - name: Verify exact uploaded and downloaded bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/check_controlled_action_roundtrip.py verify
+      - name: Retain native Action evidence
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@68b7d9df8273bec5dcb3bdc3af9624d96ac471bf
+        with:
+          name: controlled-action-native-${{ matrix.label }}-${{ github.run_id }}
+          path: controlled-action-native-evidence/
+          if-no-files-found: warn
+          retention-days: 0
