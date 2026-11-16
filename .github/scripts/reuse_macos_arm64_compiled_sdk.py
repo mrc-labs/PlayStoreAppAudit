@@ -19,6 +19,15 @@ from reuse_macos_arm64_partial_sdk import configuration_sha256
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def imageformats_environment(work: Path, output: Path) -> dict[str, str]:
+    environment = {**os.environ, 'QT_PLUGIN_PATH': str(work / 'prefix/qt/plugins'), 'QT_QPA_PLATFORM': 'cocoa',
+                   'PILOT_WORK': str(work), 'PILOT_PREFIX': str(work / 'prefix'), 'PILOT_EVIDENCE': str(output)}
+    for name in ['GH_TOKEN', 'GITHUB_TOKEN', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH',
+                 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
+        environment.pop(name, None)
+    return environment
+
+
 def finish_bindings(work: Path, output: Path, *, consumers_only: bool = False) -> None:
     from probe_macos_arm64_runtime import clang_extraction, fetch, macho, run, unpack
     from probe_macos_arm64_runtime import contract as runtime_contract
@@ -93,7 +102,6 @@ def main() -> None:
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
     assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
     assert len(data) == spec['zip_bytes'] and hashlib.sha256(data).hexdigest() == spec['zip_sha256']
-    os.environ.pop('GH_TOKEN', None)
     with zipfile.ZipFile(io.BytesIO(data)) as original:
         for name, digest in spec['component_inputs'].items():
             assert configuration_sha256(original.read(name)) == digest
@@ -139,6 +147,10 @@ def main() -> None:
             (output / name).write_bytes(raw)
         if args.bindings or args.consumers_only:
             for name in original.namelist():
+                if args.imageformats:
+                    # Original source/legal/runtime proofs stay at the exact bound
+                    # artifact; do not duplicate its large archives for one module.
+                    continue
                 path = PurePosixPath(name)
                 assert not path.is_absolute() and '..' not in path.parts
                 if name.startswith('lxml-qualified/controlled-runtime/') or name.endswith('/') or name.startswith('macos-runtime-sdk.') or any('certificates' in part for part in path.parts):
@@ -149,15 +161,19 @@ def main() -> None:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(original.read(name))
         (output / 'original-compiled-sdk-receipt.json').write_bytes(original.read('macos-runtime-sdk.json'))
+    del data, sdk
+    if args.imageformats:
+        from complete_qt_imageformats import restore_arm64_overlay
+
+        restore_arm64_overlay(work, output)
+    os.environ.pop('GH_TOKEN', None)
     (output / 'compiled-sdk-intake.json').write_text(json.dumps({'original': spec, 'verified_paths': len(receipt['paths']),
         'scope': 'Exact compiled bytes only; original failed whole pilot remains unqualified'}, indent=2) + '\n')
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '14.4'
     if args.imageformats:
-        environment = {**os.environ, 'QT_PLUGIN_PATH': str(work / 'prefix/qt/plugins'), 'QT_QPA_PLATFORM': 'cocoa'}
-        for name in ['DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'PYTHONHOME', 'PYTHONPATH']:
-            environment.pop(name, None)
+        environment = imageformats_environment(work, output)
         subprocess.run([str(work / 'venv/bin/python'), str(ROOT / '.github/scripts/verify_macos_arm64_imageformats.py'),
-                        '--work', str(work), '--output', str(output)], cwd=ROOT, env=environment, check=True)
+                        '--work', str(work), '--output', str(output), '--reuse-overlay'], cwd=ROOT, env=environment, check=True)
         return
     public_limits(work / 'prefix/qt', work / 'public-http-tests', output / 'public-http')
     if args.consumers_only:

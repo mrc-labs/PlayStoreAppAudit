@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--reuse-overlay', action='store_true')
     args = parser.parse_args()
     assert sys.platform == 'darwin' and platform.machine() == 'arm64'
     assert not sysconfig.get_config_var('Py_GIL_DISABLED')
@@ -32,7 +33,10 @@ def main() -> None:
                  '-DCMAKE_CXX_COMPILER=' + subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip(),
                  '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
                  '-DCMAKE_INSTALL_RPATH=' + ';'.join(str(prefix / name) for name in ['qt/lib', 'lib', 'openssl/lib'])]
-    complete(args.work, args.output, arguments)
+    if args.reuse_overlay:
+        assert (args.output / 'imageformats/overlay-intake.json').is_file()
+    else:
+        complete(args.work, args.output, arguments)
     from PySide6.QtCore import QTimer
     from PySide6.QtNetwork import QSslSocket
     from PySide6.QtWidgets import QApplication

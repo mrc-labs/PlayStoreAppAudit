@@ -1,0 +1,10 @@
+{
+  "artifact": 14280026057,
+  "run": 43971858527,
+  "source_sha": "92fa11d511dae9f51b2d633377a240d866054739",
+  "zip_bytes": 1619279366,
+  "zip_sha256": "13019dae6c9e1e6df7f7814136b716df8489078f3fb0c9a58c62edf3f5384788",
+  "provenance_sha256": "908cf86a020a5e6e1859295fd419f98e6b4e797088fff7ce8f4c7a023fda2a22",
+  "overlay_sha256": "259512193995d49484ed4f870ba4e880e487cfe6a3f26f2a7fd769d0ded3e7b7",
+  "scope": "Unchanged matching ARM64 module. Original diagnostic completed codec/GUI then failed report due missing PILOT_EVIDENCE. No original SDK overwrite; repeat consumer/report gate without recompilation."
+}
