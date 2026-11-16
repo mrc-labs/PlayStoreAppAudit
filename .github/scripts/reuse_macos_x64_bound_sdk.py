@@ -93,6 +93,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--imageformats', action='store_true')
     parser.add_argument('--reuse-unchanged-incidents', action='store_true')
+    parser.add_argument('--reuse-imageformats-overlay', action='store_true')
+    parser.add_argument('--diagnose-gui', action='store_true')
     args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'x86_64'
     spec = json.loads((ROOT / '.github/scripts/macos_x64_bound_sdk_sources.json').read_text())
@@ -107,9 +109,14 @@ def main() -> None:
     metadata, data = fetch_artifact(spec['artifact'])
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
     assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
-    os.environ.pop('GH_TOKEN', None)
     restore(data, work, output, spec)
     del data
+    if args.reuse_imageformats_overlay:
+        assert args.imageformats
+        from complete_qt_imageformats import restore_intel_overlay
+
+        restore_intel_overlay(work, output)
+    os.environ.pop('GH_TOKEN', None)
     roots = subprocess.check_output(['/usr/bin/security', 'find-certificate', '-a', '-p', '/System/Library/Keychains/SystemRootCertificates.keychain'])
     assert b'BEGIN CERTIFICATE' in roots
     (output / 'keychain-system-roots.pem').write_bytes(roots)
@@ -138,24 +145,67 @@ def main() -> None:
                         '-DCMAKE_CXX_COMPILER=' + subprocess.check_output(['xcrun', '--find', 'clang++'], text=True).strip(),
                         '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
                         '-DCMAKE_INSTALL_RPATH=' + ';'.join(str(work / name) for name in ['prefix/qt/lib', 'prefix/lib', 'prefix/openssl/lib'])]
-        commands.insert(0, [python, '-c', 'import sys,json;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
-                           'from complete_qt_imageformats import complete;'
-                           'complete(Path(sys.argv[2]),Path(sys.argv[3]),json.loads(sys.argv[4]))',
-                           ROOT / '.github/scripts', work, output, json.dumps(native_flags)])
+        if not args.reuse_imageformats_overlay:
+            commands.insert(0, [python, '-c', 'import sys,json;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+                               'from complete_qt_imageformats import complete;'
+                               'complete(Path(sys.argv[2]),Path(sys.argv[3]),json.loads(sys.argv[4]))',
+                               ROOT / '.github/scripts', work, output, json.dumps(native_flags)])
     profile = work / 'profile'
     profile.mkdir(exist_ok=True)
     (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')
+    if args.diagnose_gui:
+        assert args.reuse_imageformats_overlay, 'Diagnose from the closed module; never rebuild to inspect a hang'
+        commands[0].append('--diagnose-gui')
+        native = commands.pop(0)
+        identity = commands.pop()
+        commands = [identity,
+            [python, '-c', 'import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+             'from PySide6.QtWidgets import QApplication;from complete_qt_imageformats import image_consumers;'
+             'app=QApplication([]);assert app.platformName()=="cocoa";image_consumers(Path(sys.argv[2]))',
+             ROOT / '.github/scripts', output / 'imageformats'],
+            [python, '-m', 'pytest', ROOT / 'tests/test_scraper_transport_tls.py', ROOT / 'tests/test_packaged_python_trust.py', '-q', '-p', 'no:cacheprovider'],
+            [python, ROOT / '.github/scripts/probe_macos_packaged_trust.py', '--output', output],
+            [python, '-c', 'import os,sys,runpy,faulthandler;faulthandler.enable();'
+             'faulthandler.dump_traceback_later(30,repeat=True);os.environ["PLAYSTORE_APP_AUDIT_SMOKE_TEST"]="1";'
+             'runpy.run_path(sys.argv[1],run_name="__main__")', ROOT / 'main.py'],
+            native, *commands]
+    failures = []
     for number, command in enumerate(commands):
         # A regular file avoids inherited pipe handles keeping tee alive after PASS.
         print('Starting native consumer', number, list(map(str, command[:2])), flush=True)
         try:
             with (output / f'consumer-{number}.log').open('w') as log:
-                result = subprocess.run(list(map(str, command)), cwd=ROOT if number == 0 else profile,
-                                        env={**environment, 'PYTHONPATH': str(ROOT)} if number else environment,
-                                        stdout=log, stderr=subprocess.STDOUT, timeout=1200)
+                if args.diagnose_gui:
+                    with subprocess.Popen(list(map(str, command)), cwd=profile,
+                                          env={**environment, 'PYTHONPATH': str(ROOT)}, stdout=log, stderr=subprocess.STDOUT) as process:
+                        try:
+                            status = process.wait(timeout=180)
+                        except subprocess.TimeoutExpired:
+                            try:
+                                with (output / f'consumer-{number}-sample-command.log').open('w') as sample_log:
+                                    subprocess.run(['sample', str(process.pid), '3', '-file', str(output / f'consumer-{number}-native-stack.txt')],
+                                                   stdout=sample_log, stderr=subprocess.STDOUT, timeout=20, check=False)
+                            except (subprocess.TimeoutExpired, FileNotFoundError) as error:
+                                (output / f'consumer-{number}-sample-unavailable.txt').write_text(type(error).__name__)
+                            finally:
+                                process.kill()  # Only this failed diagnostic child; never a successful GUI qualification.
+                                process.wait(timeout=20)
+                            failures.append({'consumer': number, 'result': 'TIMEOUT; own child sampled then killed, not clean exit'})
+                            continue
+                        result = subprocess.CompletedProcess(command, status)
+                else:
+                    result = subprocess.run(list(map(str, command)), cwd=ROOT if number == 0 else profile,
+                                            env={**environment, 'PYTHONPATH': str(ROOT)} if number else environment,
+                                            stdout=log, stderr=subprocess.STDOUT, timeout=1200)
         finally:
             print((output / f'consumer-{number}.log').read_text(errors='replace')[-6000:], flush=True)
-        result.check_returncode()
+        if args.diagnose_gui and result.returncode:
+            failures.append({'consumer': number, 'exit_code': result.returncode})
+        else:
+            result.check_returncode()
+    if failures:
+        (output / 'consumer-failures.json').write_text(json.dumps(failures, indent=2))
+        raise RuntimeError('Native diagnostic failures: ' + json.dumps(failures))
     print('PASS native Intel consumer-only replay; no Python/Qt/binding rebuild or final candidate', flush=True)
 
 

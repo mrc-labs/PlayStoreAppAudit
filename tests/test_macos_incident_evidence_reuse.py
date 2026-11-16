@@ -5,7 +5,7 @@ import pytest
 import reuse_macos_x64_incident_evidence as evidence
 
 
-@pytest.mark.parametrize('fault', [None, 'bytes', 'foreign', 'missing', 'report', 'receipt'])
+@pytest.mark.parametrize('fault', [None, 'bytes', 'foreign', 'missing', 'report', 'receipt', 'roots', 'os'])
 def test_incident_reuse_is_closed_to_original_reports_and_actual_loaded_bytes(tmp_path, monkeypatch, fault):
     root = tmp_path / 'sdk'
     output = tmp_path / 'output'
@@ -23,6 +23,11 @@ def test_incident_reuse_is_closed_to_original_reports_and_actual_loaded_bytes(tm
     report = json.dumps({'backend': 'openssl', 'native_tls_refusals': 14, 'cases': [{}] * 16, 'offline_blacklist_checks': 2}).encode()
     spec = {'source_sha': 'a' * 40, 'run': 1, 'artifact': 2, 'receipt_sha256': hashlib.sha256(receipt).hexdigest(),
             'incident_reports': {'qt-incident-openssl.json': hashlib.sha256(report).hexdigest()}}
+    roots = b'-----BEGIN CERTIFICATE-----\nY2E=\n-----END CERTIFICATE-----'
+    spec.update(os_version='26.6.1', keychain_pem_sha256=hashlib.sha256(roots).hexdigest())
+    monkeypatch.setattr(evidence.platform, 'mac_ver', lambda: ('26.6.2' if fault == 'os' else '26.6.1', (), 'x86_64'))
+    (original / 'keychain-system-roots.pem').write_bytes(roots)
+    (output / 'keychain-system-roots.pem').write_bytes(roots.replace(b'Y2E=', b'YmFk') if fault == 'roots' else roots)
     monkeypatch.setattr(evidence, 'SCRIPTS', tmp_path)
     (tmp_path / 'macos_x64_bound_sdk_sources.json').write_text(json.dumps(spec))
     (output / 'compiled-sdk-intake.json').write_text(json.dumps({'original': spec, 'verified_paths': 3}))

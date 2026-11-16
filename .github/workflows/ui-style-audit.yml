@@ -1342,7 +1342,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/reuse_macos_x64_bound_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-x64-imageformats' && '--imageformats --reuse-unchanged-incidents' || '' }}
+        run: python .github/scripts/reuse_macos_x64_bound_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-x64-imageformats' && '--imageformats --reuse-unchanged-incidents --reuse-imageformats-overlay --diagnose-gui' || '' }}
 
       - name: Upload diagnostic macOS Intel/x64 evidence only
         if: always()

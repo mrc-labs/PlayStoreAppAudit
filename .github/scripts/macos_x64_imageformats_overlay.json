@@ -1,0 +1,10 @@
+{
+  "artifact": 14207578804,
+  "run": 43825905439,
+  "source_sha": "edd36a9ad3303398bb3e8e3aeb87120e24f135bf",
+  "zip_bytes": 360408476,
+  "zip_sha256": "62084254f010db425fea8cf7edf8de28ce5175060c59b9a6521b8884bcd1184b",
+  "provenance_sha256": "b44d0cca17bd4e4c0c18155864fde0786ceba9f0992e2d305e6b64910a324e70",
+  "overlay_sha256": "4a8bfbde02f111c4b82fdcc3881d95e72889d972af545525db420efbde96d380",
+  "scope": "59 new matching-module files; no original Qt/Python/binding overwrite or recompile. Original full pilot failed before GUI completion."
+}

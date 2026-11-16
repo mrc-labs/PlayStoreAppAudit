@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
+import re
+import ssl
 from pathlib import Path
 
 SCRIPTS = Path(__file__).parent
@@ -17,6 +20,16 @@ def reuse(output: Path, backend: str, loaded_paths: list[Path]) -> dict:
     assert hashlib.sha256(raw_receipt).hexdigest() == spec['receipt_sha256']
     receipt = json.loads(raw_receipt)
     assert receipt['complete_pilot'] and receipt['source_sha'] == spec['source_sha']
+    assert platform.mac_ver()[0] == spec['os_version'], 'Changed native OS: repeat incident qualification'
+    original_roots = (original / 'keychain-system-roots.pem').read_bytes()
+    assert hashlib.sha256(original_roots).hexdigest() == spec['keychain_pem_sha256']
+
+    def anchors(raw: bytes) -> set[str]:
+        certificates = re.findall(r'-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----', raw.decode(), re.S)
+        assert certificates
+        return {hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert)).hexdigest() for cert in certificates}
+
+    assert anchors((output / 'keychain-system-roots.pem').read_bytes()) == anchors(original_roots), 'Changed Keychain roots: repeat incident qualification'
     root = Path(receipt['original_work_root'])
     providers = [path.resolve() for path in loaded_paths if path.name in {'QtCore', 'QtNetwork', 'libssl.4.dylib', 'libcrypto.4.dylib'} or 'tls' in path.parts]
     names = {path.name for path in providers}

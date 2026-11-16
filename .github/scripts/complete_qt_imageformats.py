@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import platform
@@ -9,6 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 SOURCE = {
@@ -49,7 +51,8 @@ def image_consumers(output: Path) -> dict:
         assert decoded.pixelColor(8, 8).alpha() == 255, kind
         if kind != 'webp':
             assert decoded.pixelColor(8, 8) == image.pixelColor(8, 8), kind
-        invalid = QBuffer(QByteArray(b'not an encoded image'))
+        invalid_data = QByteArray(b'not an encoded image')
+        invalid = QBuffer(invalid_data)
         assert invalid.open(QIODevice.OpenModeFlag.ReadOnly)
         rejection = QImageReader(invalid, QByteArray(kind.encode()))
         rejection.setAutoDetectImageFormat(False)
@@ -61,6 +64,47 @@ def image_consumers(output: Path) -> dict:
               'scope': 'Existing image format preservation; not an exploit corpus or final package acceptance'}
     (output / 'image-format-consumers.json').write_text(json.dumps(report, indent=2) + '\n')
     return report
+
+
+def restore_intel_overlay(work: Path, output: Path) -> dict:
+    from download_diagnostic_artifact import fetch_artifact
+
+    spec = json.loads((Path(__file__).parent / 'macos_x64_imageformats_overlay.json').read_text())
+    metadata, data = fetch_artifact(spec['artifact'])
+    assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
+    assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
+    assert len(data) == spec['zip_bytes'] and hashlib.sha256(data).hexdigest() == spec['zip_sha256']
+    with zipfile.ZipFile(io.BytesIO(data)) as original:
+        raw = original.read('imageformats/module-provenance.json')
+        assert hashlib.sha256(raw).hexdigest() == spec['provenance_sha256']
+        provenance = json.loads(raw)
+        assert provenance['source_sha'] == spec['source_sha'] and provenance['source'] == SOURCE
+        overlay = provenance['installed_module']
+        assert overlay['original_work_root'] == str(work)
+        payload = original.read('imageformats/installed-module.tar.zst')
+        assert hashlib.sha256(payload).hexdigest() == overlay['sha256'] == spec['overlay_sha256']
+        with tarfile.open(fileobj=io.BytesIO(payload)) as bundle:
+            members = bundle.getmembers()
+            assert len(members) == len(overlay['paths']) and {m.name for m in members} == set(overlay['paths'])
+            for member in members:
+                assert member.isfile() and member.name.startswith('prefix/qt/') and '..' not in Path(member.name).parts
+                assert not (work / member.name).exists(), ('Do not overwrite original Qt SDK bytes', member.name)
+            bundle.extractall(work, filter='data')
+        for name, entry in overlay['paths'].items():
+            path = work / name
+            assert path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(work)
+            assert path.stat().st_size == entry['bytes'] and hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256']
+        evidence = output / 'imageformats'
+        evidence.mkdir()
+        (evidence / 'module-provenance.json').write_bytes(raw)
+        (evidence / 'installed-module.tar.zst').write_bytes(payload)
+        (output / 'sources').mkdir(exist_ok=True)
+        source = original.read('sources/' + SOURCE['name'])
+        assert hashlib.sha256(source).hexdigest() == SOURCE['sha256']
+        (output / 'sources' / SOURCE['name']).write_bytes(source)
+    (evidence / 'overlay-intake.json').write_text(json.dumps({'original': spec,
+        'verified_paths': len(overlay['paths']), 'scope': 'Unchanged matching module build only; original whole pilot failed in GUI. Native decoder/GUI/ABI acceptance remains required.'}, indent=2))
+    return provenance
 
 
 def complete(work: Path, output: Path, cmake_arguments: list[str]) -> dict:

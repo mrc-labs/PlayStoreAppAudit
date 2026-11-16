@@ -36,5 +36,7 @@
   "incident_reports": {
     "qt-incident-openssl.json": "b08c1719e5d691102dbdc7c6f297f0e18f0bce7f0c6f350ba4dea2333dc16e77",
     "qt-incident-securetransport.json": "f427367aeac047ca9de79b593fb15f641287837e1f769e4936497e3afdb137f3"
-  }
+  },
+  "os_version": "26.6.1",
+  "keychain_pem_sha256": "b56413319de32344b67ffc389a8a1eef39b6f338618ff983d8bd086adac52584"
 }

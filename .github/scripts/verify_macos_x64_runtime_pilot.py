@@ -126,7 +126,13 @@ def main() -> None:
     parser.add_argument('--qt-native-backend', action='store_true')
     parser.add_argument('--imageformats', action='store_true')
     parser.add_argument('--reuse-unchanged-incidents', action='store_true')
+    parser.add_argument('--diagnose-gui', action='store_true')
     args = parser.parse_args()
+    if args.diagnose_gui:
+        import faulthandler
+
+        faulthandler.enable()
+        faulthandler.dump_traceback_later(30, repeat=True)
     output = args.output_dir.resolve()
     os.environ['QT_SSL_USE_TEMPORARY_KEYCHAIN'] = '1'
     assert sys.platform == 'darwin' and platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')
@@ -207,13 +213,18 @@ def main() -> None:
     profile.mkdir(exist_ok=True)
     (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')
     os.chdir(profile)
+    print('Native GUI phase: importing MainWindow', flush=True)
     from playstore_app_audit.ui.main_window import MainWindow
 
+    print('Native GUI phase: constructing MainWindow', flush=True)
     window = MainWindow()
+    print('Native GUI phase: showing MainWindow', flush=True)
     window.show()
     QTimer.singleShot(250, window.close)
     QTimer.singleShot(5000, app.quit)
+    print('Native GUI phase: entering event loop', flush=True)
     app.exec()
+    print('Native GUI phase: event loop returned', flush=True)
     assert not window.isVisible()
     imageformats = None
     if args.imageformats:

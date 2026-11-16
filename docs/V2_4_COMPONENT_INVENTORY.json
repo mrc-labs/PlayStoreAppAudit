@@ -1,4 +1,27 @@
 {
+  "application_tls_delta_2026_11_16": {
+    "component": "google-play-scraper transport and packaged macOS Python defaults",
+    "selected": "official unmodified1.2.7; no newer stable fixed parent",
+    "source": "https://pypi.org/pypi/google-play-scraper/1.2.7/json",
+    "official_wheel_sha256": "a485510b09265f0096fc3813cfc26eef27e9a5c0035f99ee23f80e00de724530",
+    "official_request_module_sha256": "2a4d19ae7577c86d4177127a97601a9cc4095de6acb6c463f049582052da5f1e",
+    "demonstrated_finding": "Upstream import replaces global urllib HTTPS factory with an unverified context; previous adapter supplied timeout only. No CVE or exploit claim.",
+    "decision": "Existing service gate restores verified factory and requires CERT_REQUIRED/hostname verification per actual request; no vendor build or dependency change.",
+    "packaged_mac": "Explicit shipped certifi PEM through standard SSL_CERT_FILE only in packaged Mac, preserving operator overrides and separate Qt Keychain integration; final packaged acceptance pending.",
+    "validation": "Local real TLS positive/hostname64/untrusted20/expired10, timeout/retry/CLI and configuration tests PASS; full Quality/native diagnostics pending.",
+    "native_imageformats": {
+      "run": 43825905439,
+      "source_sha": "edd36a9ad3303398bb3e8e3aeb87120e24f135bf",
+      "artifact": 14207578804,
+      "zip_sha256": "62084254f010db425fea8cf7edf8de28ce5175060c59b9a6521b8884bcd1184b",
+      "overlay_sha256": "4a8bfbde02f111c4b82fdcc3881d95e72889d972af545525db420efbde96d380",
+      "new_paths": 59,
+      "raw_thin_x64_plugins": 7,
+      "original_sdk_overlap": 0,
+      "status": "Module build/bytes verified; whole pilot fails after PNG phase before GUI completion. Sample exact gate before any native compatibility fix; reuse compiled overlay."
+    },
+    "observations_unchanged": 1094
+  },
   "intel_complete_sdk_recovery_2026_11_16": {
     "source_sha": "8a06bbc7ebb87378540a871d06761807a2d0e98c",
     "run": 43782611872,
