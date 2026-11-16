@@ -7,6 +7,10 @@ on:
         description: Exact diagnostic source, never a release candidate
         type: string
         required: true
+      cross_run_only:
+        description: Repeat only the changed authenticated cross-run consumer on Linux x64
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,13 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {os: ubuntu-22.04, label: linux-x64, arch: x64}
-          - {os: ubuntu-24.04-arm, label: linux-arm64, arch: arm64}
-          - {os: windows-2025, label: windows-x64, arch: x64}
-          - {os: windows-11-arm, label: windows-arm64, arch: arm64}
-          - {os: macos-26-intel, label: macos-x64, arch: x64}
-          - {os: macos-26, label: macos-arm64, arch: arm64}
+        include: ${{ fromJSON(inputs.cross_run_only && '[{"os":"ubuntu-22.04","label":"linux-x64","arch":"x64"}]' || '[{"os":"ubuntu-22.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
