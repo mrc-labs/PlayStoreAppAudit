@@ -71,6 +71,51 @@ def tls_fixtures(destination: Path, openssl: Path) -> dict[str, Path]:
             {'ca': 'ca.pem', 'key': 'server-key.pem', 'valid': 'valid.pem', 'expired': 'expired.pem'}.items()}
 
 
+def native_arm64_assembler(output: Path) -> Path:
+    machine = 0xAA64
+    observed = Path(shutil.which('clang-cl') or '').resolve()
+    if observed.is_file():
+        (output / 'hosted-assembler-before.txt').write_text(str(observed) + '\n' +
+            subprocess.check_output([observed, '--version'], text=True))
+    spec_path = REPO / '.github/scripts/windows_arm64_assembler_sources.json'
+    spec = json.loads(spec_path.read_text())
+    stage = output / 'native-assembler'
+    stage.mkdir()
+    archive = fetch(spec['binary'], stage)
+    assert archive.stat().st_size == spec['binary']['bytes']
+    tools = Path(os.environ['RUNNER_TEMP']) / ('native-assembler-' + os.environ['GITHUB_RUN_ID'])
+    assert not tools.exists()
+    tools.mkdir()
+    # Official frame uses a1GiB window; default zstd rejects it. The
+    # whole archive hash/size is checked before this bounded opt-in.
+    with (zstd.ZstdFile(archive, 'rb', options={zstd.DecompressionParameter.window_log_max: 30}) as decoded,
+          tarfile.open(fileobj=decoded, mode='r|') as bundle):
+        bundle.extractall(tools, filter='data')
+    matches = list(tools.rglob('clang-cl.exe'))
+    assert len(matches) == 1
+    assembler = matches[0]
+    assert read_pe_machine(assembler) == machine
+    version = subprocess.check_output([assembler, '--version'], text=True)
+    assert 'clang version ' + spec['version'] in version and 'aarch64-pc-windows-msvc' in version
+    os.environ['PATH'] = str(assembler.parent) + os.pathsep + os.environ['PATH']
+    source, obj = tools / 'native-probe.S', tools / 'native-probe.obj'
+    source.write_text('.text\n.globl psaa_assembler_probe\npsaa_assembler_probe:\n ret\n')
+    run([assembler, '-c', '-o', obj, source], log=stage / 'native-assembly.log')
+    assert struct.unpack_from('<H', obj.read_bytes())[0] == machine
+    report = {'input': spec, 'selected': str(assembler), 'version': version,
+        'pe_machine': machine, 'coff_machine': machine, 'object_sha256': hashlib.sha256(obj.read_bytes()).hexdigest()}
+    (stage / 'native-assembler.json').write_text(json.dumps(report, indent=2) + '\n')
+    shutil.copy2(spec_path, stage)
+    shutil.copy2(source, stage)
+    shutil.copy2(obj, stage)
+    for license_file in tools.rglob('LICENSE*'):
+        if license_file.is_file():
+            target = stage / 'legal' / license_file.relative_to(tools)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(license_file, target)
+    return assembler
+
+
 def qualify(work: Path, *, crt_only: bool = False) -> None:
     assert sys.platform == 'win32' and platform.python_version() == '3.14.10'
     assert not sysconfig.get_config_var('Py_GIL_DISABLED')
@@ -98,46 +143,7 @@ def qualify(work: Path, *, crt_only: bool = False) -> None:
         return
     reused = True  # Two explicitly closed native provider SDKs, never a generic cache.
     if arch == 'arm64' and not reused:
-        observed = Path(shutil.which('clang-cl') or '').resolve()
-        if observed.is_file():
-            (output / 'hosted-assembler-before.txt').write_text(str(observed) + '\n' +
-                subprocess.check_output([observed, '--version'], text=True))
-        spec_path = REPO / '.github/scripts/windows_arm64_assembler_sources.json'
-        spec = json.loads(spec_path.read_text())
-        stage = output / 'native-assembler'
-        stage.mkdir()
-        archive = fetch(spec['binary'], stage)
-        assert archive.stat().st_size == spec['binary']['bytes']
-        tools = Path(os.environ['RUNNER_TEMP']) / ('native-assembler-' + os.environ['GITHUB_RUN_ID'])
-        assert not tools.exists()
-        tools.mkdir()
-        # Official frame uses a1GiB window; default zstd rejects it. The
-        # whole archive hash/size is checked before this bounded opt-in.
-        with (zstd.ZstdFile(archive, 'rb', options={zstd.DecompressionParameter.window_log_max: 30}) as decoded,
-              tarfile.open(fileobj=decoded, mode='r|') as bundle):
-            bundle.extractall(tools, filter='data')
-        matches = list(tools.rglob('clang-cl.exe'))
-        assert len(matches) == 1
-        assembler = matches[0]
-        assert read_pe_machine(assembler) == machine
-        version = subprocess.check_output([assembler, '--version'], text=True)
-        assert 'clang version ' + spec['version'] in version and 'aarch64-pc-windows-msvc' in version
-        os.environ['PATH'] = str(assembler.parent) + os.pathsep + os.environ['PATH']
-        source, obj = tools / 'native-probe.S', tools / 'native-probe.obj'
-        source.write_text('.text\n.globl psaa_assembler_probe\npsaa_assembler_probe:\n ret\n')
-        run([assembler, '-c', '-o', obj, source], log=stage / 'native-assembly.log')
-        assert struct.unpack_from('<H', obj.read_bytes())[0] == machine
-        report = {'input': spec, 'selected': str(assembler), 'version': version,
-            'pe_machine': machine, 'coff_machine': machine, 'object_sha256': hashlib.sha256(obj.read_bytes()).hexdigest()}
-        (stage / 'native-assembler.json').write_text(json.dumps(report, indent=2) + '\n')
-        shutil.copy2(spec_path, stage)
-        shutil.copy2(source, stage)
-        shutil.copy2(obj, stage)
-        for license_file in tools.rglob('LICENSE*'):
-            if license_file.is_file():
-                target = stage / 'legal' / license_file.relative_to(tools)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(license_file, target)
+        native_arm64_assembler(output)
     work.mkdir()
     sources, legal = output / 'sources', output / 'legal'
     sources.mkdir()

@@ -149,9 +149,10 @@ def test_rejected_tls_can_release_schannel_library_but_requires_system_sspi(tmp_
     result['loaded_modules'] = [str(tmp_path / 'foreign/secur32.dll') if p.name == 'secur32.dll' else str(p) for p in modules]
     with pytest.raises(AssertionError, match='Foreign native'):
         probe.validate_loaded_origins(result, prefix, executable)
+@pytest.mark.parametrize('native_arch', ['X64', 'Arm64'])
 @pytest.mark.parametrize('failure', [None, 'native_root_rejection', 'identity', 'architecture', 'positive', 'hostname', 'validity',
                                    'accepted', 'custom_trust', 'revocation', 'ancestor', 'reason', 'qt_key', 'qt_blacklist', 'case', 'leaf'])
-def test_native_rollover_requires_system_policy_positive_and_exact_distrusted_ancestor(failure) -> None:
+def test_native_rollover_requires_system_policy_positive_and_exact_distrusted_ancestor(failure, native_arch) -> None:
     settings = {'trust_mode': 'System', 'verification_flags': 'NoFlag', 'revocation': 'Online'}
     first = {**settings, 'hostname': 'first', 'accepted': False, 'hostname_matches': True,
              'validity_checked': True, 'custom_trust_count': 0, 'leaf_sha256': 'leaf',
@@ -161,7 +162,7 @@ def test_native_rollover_requires_system_policy_positive_and_exact_distrusted_an
              'result': 'PASS native trust rejection/path; Qt guard mapping required'}
     second = copy.deepcopy(first)
     second['hostname'] = 'second'
-    report = {**settings, 'execution_sha': 'head', 'architecture': 'X64', 'rollover': [first, second],
+    report = {**settings, 'execution_sha': 'head', 'architecture': native_arch, 'rollover': [first, second],
               'positive': {**settings, 'authenticated': True, 'encrypted': True, 'chain_accepted': True,
                            'host': 'www.python.org', 'protocol': 'Tls13', 'peer_sha256': 'peer'}}
     policy = {'chains': [{'hostname': 'first', 'fixture': 'rollover/first.pem'},
@@ -199,7 +200,34 @@ def test_native_rollover_requires_system_policy_positive_and_exact_distrusted_an
         first['leaf_sha256'] = 'different'
     if failure not in {None, 'native_root_rejection'}:
         with pytest.raises(ValueError):
-            probe.validate_native_rollover(report, policy, 'head')
+            probe.validate_native_rollover(report, policy, 'head', architecture=native_arch)
     else:
-        assert probe.validate_native_rollover(report, policy, 'head') == {'first', 'second'}
+        assert probe.validate_native_rollover(report, policy, 'head', architecture=native_arch) == {'first', 'second'}
         assert all(r['measured_qt_guard'][0]['qt_is_blacklisted'] for r in report['rollover'])
+
+
+@pytest.mark.parametrize('failure', [None, 'foreign', 'old_family', 'wrong_arch'])
+def test_native_tls_keeps_schannel_identity_with_private_openssl_hash_dependency(tmp_path, monkeypatch, failure) -> None:
+    prefix, ssl_prefix = tmp_path / 'qt', tmp_path / 'openssl'
+    executable, system = tmp_path / 'consumer.exe', tmp_path / 'Windows/System32'
+    monkeypatch.setenv('SYSTEMROOT', str(system.parent))
+    monkeypatch.setenv('EXPECTED_ARCH', 'arm64')
+    modules = [executable, prefix / 'bin/Qt6Core.dll', prefix / 'bin/Qt6Network.dll', prefix / 'plugins/tls/qschannelbackend.dll']
+    modules += [system / n for n in ['crypt32.dll', 'secur32.dll', 'sspicli.dll', 'vcruntime140.dll', 'msvcp140.dll']]
+    crypto = ssl_prefix / 'bin/libcrypto-4-arm64.dll'
+    if failure == 'foreign':
+        crypto = tmp_path / 'foreign/libcrypto-4-arm64.dll'
+    elif failure == 'old_family':
+        crypto = ssl_prefix / 'bin/libcrypto-3-arm64.dll'
+    elif failure == 'wrong_arch':
+        crypto = ssl_prefix / 'bin/libcrypto-4-x64.dll'
+    modules.append(crypto)
+    result = {'loaded_modules': list(map(str, modules)), 'backend': 'schannel', 'runtime_library': 'Secure Channel, Windows 10.0.26100'}
+    if failure:
+        with pytest.raises(AssertionError):
+            probe.validate_loaded_origins(result, prefix, executable, openssl_prefix=ssl_prefix)
+    else:
+        probe.validate_loaded_origins(result, prefix, executable, openssl_prefix=ssl_prefix)
+        result['backend'] = 'openssl'
+        with pytest.raises(AssertionError, match='Unexpected active TLS'):
+            probe.validate_loaded_origins(result, prefix, executable, openssl_prefix=ssl_prefix)

@@ -127,7 +127,7 @@ def qt_checks(paths: dict[str, Path], backend: str) -> dict[str, Any]:
         socket.setPeerVerifyName(hostname)
         errors: list[str] = []
         socket.sslErrors.connect(lambda values, target=errors: target.extend(e.error().name for e in values))
-        with tls_server(paths, leaf) as port:
+        with tls_server(paths, leaf, expected_rejection=expected_error is not None) as port:
             socket.connectToHostEncrypted('127.0.0.1', port)
             encrypted = socket.waitForEncrypted(10000)
             negotiated = socket.sessionProtocol().name if encrypted else None

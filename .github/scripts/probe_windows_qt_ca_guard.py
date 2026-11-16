@@ -155,25 +155,26 @@ def extract_chains(inputs: Path) -> None:
         archive.extractall(target)
 
 
-def checked_image(path: Path, output: Path) -> dict:
-    assert read_pe_machine(path) == 0x8664, path
+def checked_image(path: Path, output: Path, *, machine: int = 0x8664, openssl_prefix: Path | None = None) -> dict:
+    assert machine in {0x8664, 0xAA64} and read_pe_machine(path) == machine, path
     versions = pe_versions(path)
     assert versions['os'] <= (10, 0) and versions['subsystem'] <= (10, 0), (path, versions)
     imports = subprocess.check_output(['dumpbin', '/nologo', '/dependents', str(path)], text=True)
     validate_imports(imports)
     if path.name == 'Qt6Core.dll':
         validate_qtcore_imports(imports)
-    if re.search(r'lib(?:ssl|crypto)', imports, re.I):
+    if openssl_prefix is None and re.search(r'lib(?:ssl|crypto)', imports, re.I):
         raise ValueError('Schannel-only diagnostic imported OpenSSL')
     destination = output / 'native-binaries'
     destination.mkdir(exist_ok=True)
     shutil.copy2(path, destination / path.name)
     (output / (path.name + '-imports.txt')).write_text(imports, encoding='utf-8')
     return {'name': path.name, 'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
-            'machine': 'AMD64', 'versions': versions, 'imports': imports}
+            'machine': 'ARM64' if machine == 0xAA64 else 'AMD64', 'versions': versions, 'imports': imports}
 
 
-def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls: bool = True) -> None:
+def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls: bool = True,
+                            openssl_prefix: Path | None = None) -> None:
     modules = [Path(name).resolve() for name in result['loaded_modules']]
     names = {p.name.lower() for p in modules}
     assert {'qt6core.dll', 'qt6network.dll', 'qschannelbackend.dll', 'crypt32.dll',
@@ -189,16 +190,22 @@ def validate_loaded_origins(result: dict, prefix: Path, executable: Path, *, tls
         # schannel.dll need not remain resident; its SSPI imports, explicit Qt
         # backend and actual TLS outcomes are the provider contract.
     validate_imports('\n'.join(names))
-    assert not any(re.search(r'lib(?:ssl|crypto)|libclang', name) for name in names)
+    assert not any('libclang' in name for name in names)
+    for path in modules:
+        if re.search(r'lib(?:ssl|crypto)', path.name, re.I):
+            assert openssl_prefix is not None, ('OpenSSL in native-only profile', path)
+            arch = 'arm64' if os.environ.get('EXPECTED_ARCH') == 'arm64' else 'x64'
+            assert re.fullmatch(r'lib(?:ssl|crypto)-4-' + arch + r'\.dll', path.name, re.I), path
+            assert path.parent == (openssl_prefix / 'bin').resolve(), ('Foreign OpenSSL hash provider', path)
     for path in modules:
         if path.name.lower().startswith('qt6') or (path.parent.name.lower() == 'tls' and path.suffix.lower() == '.dll'):
             assert path.is_relative_to(prefix.resolve()), ('Foreign Qt library', path)
     assert executable.resolve() in modules
 
 
-def validate_native_rollover(report: dict, policy: dict, head: str) -> set[str]:
+def validate_native_rollover(report: dict, policy: dict, head: str, *, architecture: str = 'X64') -> set[str]:
     """Join native paths/default-trust rejection to the actual compiled Qt blacklist."""
-    if report['execution_sha'] != head or report['architecture'] != 'X64':
+    if architecture not in {'X64', 'Arm64'} or report['execution_sha'] != head or report['architecture'] != architecture:
         raise ValueError('Native chain execution identity mismatch')
     positive = report['positive']
     if (not all(positive[k] for k in ('authenticated', 'encrypted', 'chain_accepted'))
@@ -231,7 +238,8 @@ def validate_native_rollover(report: dict, policy: dict, head: str) -> set[str]:
 
 
 def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inputs: Path, head: str,
-                              images: list[dict], *, compiled_source: str, native_rollover: bool = False) -> None:
+                              images: list[dict], *, compiled_source: str, native_rollover: bool = False,
+                              openssl_prefix: Path | None = None) -> None:
     os.environ['PATH'] = str(prefix / 'bin') + os.pathsep + os.environ['PATH']
     os.environ['QT_PLUGIN_PATH'] = str(prefix / 'plugins')
     for variable in ('SSL_CERT_FILE', 'SSL_CERT_DIR', 'QT_SSL_BACKEND'):
@@ -242,7 +250,7 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
         if process.returncode:
             raise RuntimeError(f'Native consumer {label} failed: {process.stdout}\n{process.stderr}')
         result = json.loads(process.stdout)
-        validate_loaded_origins(result, prefix, executable, tls=arguments[0] != 'policy')
+        validate_loaded_origins(result, prefix, executable, tls=arguments[0] != 'policy', openssl_prefix=openssl_prefix)
         (output / (label + '.json')).write_text(json.dumps(result, indent=2), encoding='utf-8')
         return result
     policy = exercise('qt-ca-policy', 'policy', str(inputs))
@@ -258,7 +266,7 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
         ('untrusted', 'negative', 'localhost', False, 'valid', 'untrusted'),
         ('expired', 'negative', 'localhost', True, 'expired', 'expired'),
     ]:
-        with tls_server(paths, leaf) as port:
+        with tls_server(paths, leaf, expected_rejection=error != 'positive') as port:
             rows.append(exercise('qt-' + label, 'fixture', str(paths['ca']) if trusted else 'untrusted',
                                  str(port), hostname, protocol, str(error)))
     incidents = []
@@ -272,13 +280,14 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
         run(['pwsh', '-NoProfile', '-File', REPO / '.github/scripts/verify_windows_native_chain.ps1',
              '-InputsPath', inputs, '-OutputPath', native_path], log=output / 'native-rollover-chain.log')
         native = json.loads(native_path.read_text(encoding='utf-8-sig'))
-        offline_hosts = validate_native_rollover(native, policy, head)
+        offline_hosts = validate_native_rollover(native, policy, head,
+            architecture='Arm64' if os.environ.get('EXPECTED_ARCH') == 'arm64' else 'X64')
     result = {'source_sha': head, 'compiled_source_sha': compiled_source, 'identity': 'Project-modified Qt6.12.0 / native Schannel, not OpenSSL',
         'input_policy': policy, 'incident_tls': incidents, 'ordinary_default_trust': default, 'tls_fixture_cases': rows,
         'images': images, 'native_rollover_chain': native,
         'qualification_route': '14 native Qt sockets plus two native paths/default-trust rejections joined to actual Qt ancestor blacklist; no rollover TLS-handshake claim'
                                if native_rollover else '16 native Qt socket checks required',
-        'scope': 'QtCore/Network native x64 diagnostic only; no controlled CPython/PySide/GUI/full package acceptance',
+        'scope': 'QtCore/Network native ' + os.environ.get('EXPECTED_ARCH', 'x64') + ' security consumer; full-stack acceptance recorded separately',
         'remaining': 'Full source-stack dual-provider qualification and finite R01-R17 obligations remain required'}
     (output / 'qt-ca-results.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     for row in incidents:
@@ -290,7 +299,7 @@ def exercise_schannel_consumer(executable: Path, prefix: Path, output: Path, inp
         assert (row['hostname'] in offline_hosts and not row['encrypted'] and not row['peer_chain']
                 and not row['errors'] and row['socket_error'] == 'Host not found'), (
                     'Native incident TLS gate failed/inconclusive', row['hostname'], row['result'])
-    print('PASS native Schannel guard/default trust/TLS positive-negative/AMD64/MD diagnostic.', flush=True)
+    print('PASS native Schannel guard/default trust/TLS positive-negative/native architecture/MD diagnostic.', flush=True)
 
 
 def main() -> None:

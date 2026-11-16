@@ -7,8 +7,10 @@ Set-StrictMode -Version Latest
 
 # Supported Windows X509Chain/CryptoAPI; ExtraStore supplies untrusted chain
 # material in memory. No CustomRootTrust, store writes or verification bypass.
-if (-not $IsWindows -or [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -ne 'X64') {
-    throw 'Native Windows x64 required.'
+$expectedArchitecture = if ($env:EXPECTED_ARCH -eq 'arm64') { 'Arm64' } else { 'X64' }
+$actualArchitecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString()
+if (-not $IsWindows -or $actualArchitecture -ne $expectedArchitecture) {
+    throw 'Expected native Windows architecture required.'
 }
 if ($PSVersionTable.PSVersion.PreReleaseLabel -or [Runtime.InteropServices.RuntimeInformation]::FrameworkDescription -match 'preview|rc\.') {
     throw 'Stable host PowerShell/.NET required.'
@@ -93,7 +95,7 @@ foreach ($file in $files) {
 }
 $report = @{execution_sha=$headSha; provider='Windows native X509Chain/CryptoAPI via existing PowerShell host'
     powershell=$PSVersionTable.PSVersion.ToString(); runtime=[Runtime.InteropServices.RuntimeInformation]::FrameworkDescription
-    os=[Environment]::OSVersion.VersionString; architecture='X64'; trust_mode='System'; revocation='Online'; verification_flags='NoFlag'
+    os=[Environment]::OSVersion.VersionString; architecture=$actualArchitecture; trust_mode='System'; revocation='Online'; verification_flags='NoFlag'
     positive=$positive; rollover=$cases; scope='Native chain-engine verification of offline PEMs; distinct from Qt manual API and a rollover TLS handshake'
     result=$(if (@($cases | Where-Object { $_.result -ne 'PASS native trust rejection/path; Qt guard mapping required' }).Count -eq 0) { 'PASS native paths; separate Qt ancestor policy check required' } else { 'BLOCKED native rollover chain engine' })}
 $report | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $OutputPath -Encoding utf8

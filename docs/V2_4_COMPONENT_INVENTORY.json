@@ -1,4 +1,34 @@
 {
+  "windows_necessary_framework_2026_11_16": {
+    "date": "2026-11-16",
+    "profile": "tools-cpython-framework-windows",
+    "status": "Local affected checks pass; native preparation/build/consumers pending",
+    "targets": [
+      "Windows x64",
+      "Windows ARM64"
+    ],
+    "original_runtime_contract": ".github/scripts/windows_cpython_qualified_sdks.json",
+    "reused_components": [
+      "Qualified same-patch CPython/OpenSSL/provider SDKs",
+      "Qualified native cffi wheels",
+      "Qualified lxml wheels"
+    ],
+    "necessary_builds": [
+      "Matched source Qt/PySide/Shiboken6.12 with OpenSSL4/libpng1.6.59/PCRE2 10.49/zlib1.4 and reviewed HTTP/CA fixes",
+      "Native ARM cryptography only because no official compatible wheel exists"
+    ],
+    "unchanged_vendor_observations": [
+      "Qt HarfBuzz14.5/MD4C0.5.3/TinyCBOR7.0/Qt SQLite3.53.4 and existing data remain vendor-owned absent a demonstrated applicable issue; not a universal security clearance"
+    ],
+    "checkpoints": [
+      "Prerequisite SDK before Qt compilation",
+      "Installed native Qt before binding compilation"
+    ],
+    "security_contract": "Windows default trust, positive/negative TLS and actual native Schannel14 socket +2 native path checks; private OpenSSL4 hash dependency does not relabel native TLS",
+    "previous_evidence_impact": "Windows harness/host/profile changes only. Prior Linux/Mac compiled runtime/framework/source inputs unchanged; Intel8a06bbc run continues independently. Original component tests retain their actual source identities.",
+    "packaging_followup": "Explicit source PySide distribution identity/provenance support in strict legal/producer path remains required; do not spoof official Essentials metadata.",
+    "no_release_candidate": true
+  },
   "official_distribution_necessity_2026_11_16": {
     "date": "2026-11-16",
     "authority": "Explicit maintainer instruction: avoid source/runtime/tool/Action rebuilds unless necessary; applies now and future releases",

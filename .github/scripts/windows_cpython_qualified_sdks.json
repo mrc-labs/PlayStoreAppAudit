@@ -1,0 +1,37 @@
+{
+  "scope": "Two already-qualified current native CPython/OpenSSL/provider SDKs; original sources, tests and identities remain unchanged. Framework consumers run separately; never final application candidates.",
+  "x64": {
+    "artifact": 14185117360,
+    "run": 43772345098,
+    "source_sha": "e4c810f352dccbf1f0db86fd61bd88b83847cb85",
+    "zip_bytes": 152579898,
+    "zip_sha256": "b7af9f197b82374d762b62c77d1e80dd06c8e60cf5f76a667e5529b1b3dd7618",
+    "work_name": "cpython-current-43769336231-1",
+    "cffi": {
+      "artifact": 14167216791,
+      "run": 43727469177,
+      "source_sha": "d2112a744d3fc5a24b53cdbb0fd0cd77c594bec1",
+      "zip_bytes": 39119271,
+      "zip_sha256": "0d4c924e5d9e76eb1bac9fb5f176baaa67a240cdf96bd9ae80e8cc5c9fc9d91a",
+      "wheel": "cffi-wheel/cffi-2.1.1+psaa.libffi380-cp314-cp314-win_amd64.whl",
+      "wheel_sha256": "57211c1d0a85b1e722cb5e247bbe608574d7a6c779f732a8536b337a4809a431"
+    }
+  },
+  "arm64": {
+    "artifact": 14189305836,
+    "run": 43782608739,
+    "source_sha": "8a06bbc7ebb87378540a871d06761807a2d0e98c",
+    "zip_bytes": 151148229,
+    "zip_sha256": "7d7c4f0cfd4b37f6f4e2a1b5b57da54ca973753010bf63ff0195d1866bf41889",
+    "work_name": "cpython-current-43774526949-1",
+    "cffi": {
+      "artifact": 14090737696,
+      "run": 43538466498,
+      "source_sha": "11cedced38c89fe350a0918f138664b94b4a4c34",
+      "zip_bytes": 8836195,
+      "zip_sha256": "e210e199c4a6f0b2f2412d5b8e4d3477423103fd8500c1fddac410b3f53e9dec",
+      "wheel": "libffi-prerequisites/cffi-wheel/cffi-2.1.1+psaa.libffi380-cp314-cp314-win_arm64.whl",
+      "wheel_sha256": "e844b5aa1c9c0654521f5aa0baa45c73eaabbb9bacb4767d3252e4c2715744b3"
+    }
+  }
+}
