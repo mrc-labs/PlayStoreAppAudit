@@ -1,4 +1,21 @@
 {
+  "intel_native_completion_2026_11_16": {
+    "run": 43968346929,
+    "source_sha": "1179e937e52d16e5537df06ded702b81bf590ace",
+    "artifact": 14278400478,
+    "zip_sha256": "7266f5ee78c4993a947215e4a16908da9de8513ad23ec1e3543e0a8ea57944d1",
+    "result": "Native Cocoa GUI/codec/default Python and Qt trust/TLS/security/hash/PNG/current binding/CLI PASS; host-only generic icon limitation explicit",
+    "owned_images": 91,
+    "unchanged_prior_raw_verified_images": 84,
+    "additional_raw_verified_x64_plugins": 7,
+    "maximum_deployment": "14.4",
+    "original_sources": 33,
+    "original_legal_files": 102,
+    "unchanged_original_patches": 11,
+    "new_source": "official QtImageFormats6.12.0; original compiled module sourceedd36a9 retained",
+    "remaining": "Other-five matching modules and SDK/source/legal producer/package gates; Windows two-target module-only profile prepared.",
+    "quality": "PR43968329252 PASS2277 on synthetic merge; direct exact-head dispatch separately required"
+  },
   "hosted_intel_iconservices_2026_11_16": {
     "run": 43967287230,
     "source_sha": "d95d8c144d761c2968d39cbed4c911d5a89569ed",

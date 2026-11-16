@@ -1,6 +1,7 @@
 """Recover bound Windows SDKs; rebuild only tiny diagnostic consumers."""
 from __future__ import annotations
 
+import argparse
 import ast
 import hashlib
 import io
@@ -10,7 +11,7 @@ import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from build_windows_current_framework import ROOT, consumers_only, settings
+from build_windows_current_framework import ROOT, consumers_only, environment, settings
 from download_diagnostic_artifact import fetch_artifact
 
 
@@ -67,6 +68,9 @@ def restore_bound_archive(sdk: bytes, work: Path, receipt: dict) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--imageformats', action='store_true')
+    args = parser.parse_args()
     arch, machine, work, compiler = settings()
     spec = json.loads((ROOT / '.github/scripts/windows_framework_bound_sdks.json').read_text())[arch]
     assert compiled_inputs((ROOT / '.github/scripts/build_windows_current_framework.py').read_text()) == spec['compiled_inputs']
@@ -127,7 +131,14 @@ def main() -> None:
     # native_security stages fresh public inputs; original copies stay historical.
     if (output / 'provider-security-inputs').exists():
         (output / 'provider-security-inputs').rename(output / 'original-provider-security-inputs')
-    consumers_only(arch, work, output)
+    if args.imageformats:
+        import subprocess
+
+        python = environment(work)
+        subprocess.run([str(python), str(ROOT / '.github/scripts/verify_windows_imageformats.py'),
+                        '--work', str(work), '--output', str(output)], check=True)
+    else:
+        consumers_only(arch, work, output)
     print('PASS restored native Windows consumers; no runtime/framework/binding rebuild', hex(machine), flush=True)
 
 
