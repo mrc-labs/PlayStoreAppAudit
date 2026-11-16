@@ -29,6 +29,7 @@ def test_closed_intel_sdk_intake(tmp_path, monkeypatch, fault):
     with zipfile.ZipFile(outer, 'w') as archive:
         archive.writestr('macos-runtime-sdk.json', json.dumps(receipt))
         archive.writestr('macos-runtime-sdk.tar.zst', sdk.getvalue())
+        archive.writestr('provider-security-inputs/chains.zip', 'closed public chains')
         for item in ['cpython-codec-regressions.xml', 'cpython-regressions.xml', 'tarfile-security-regression.log',
                      'cffi-runtime-tests.xml', 'cryptography-source-provenance.json', 'qt-cldr49-runtime-input.xml']:
             archive.writestr(item, 'original evidence')
@@ -47,3 +48,4 @@ def test_closed_intel_sdk_intake(tmp_path, monkeypatch, fault):
         assert (work / 'prefix/native').read_bytes() == b'native'
         assert (output / 'original-native-results/cpython-regressions.xml').is_file()
         assert (output / 'qt-cldr49-runtime-input.xml').read_text() == 'original evidence'
+        assert (output / 'provider-security-inputs/chains.zip').read_text() == 'closed public chains'

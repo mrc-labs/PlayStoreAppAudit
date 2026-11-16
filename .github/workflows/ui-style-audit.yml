@@ -1319,7 +1319,10 @@ jobs:
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-intel-prerequisite-checkpoint-${{ github.run_id }}
-          path: macos-x64-pilot-evidence/
+          path: |
+            macos-x64-pilot-evidence/
+            !macos-x64-pilot-evidence/**/server-key.pem
+            !macos-x64-pilot-evidence/**/ca-key.pem
           if-no-files-found: error
           retention-days: 0
 
@@ -1344,7 +1347,10 @@ jobs:
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-x64-${{ github.run_id }}
-          path: macos-x64-pilot-evidence/
+          path: |
+            macos-x64-pilot-evidence/
+            !macos-x64-pilot-evidence/**/server-key.pem
+            !macos-x64-pilot-evidence/**/ca-key.pem
           if-no-files-found: error
           retention-days: 0
 

@@ -71,6 +71,10 @@ def restore(data: bytes, work: Path, output: Path, spec: dict) -> dict:
             target = original_output / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(original.read(name))
+            if name.startswith('provider-security-inputs/'):
+                fixture = output / name
+                fixture.parent.mkdir(parents=True, exist_ok=True)
+                fixture.write_bytes(original.read(name))
         for name in ['cpython-codec-regressions.xml', 'cpython-regressions.xml', 'tarfile-security-regression.log',
                      'cffi-runtime-tests.xml', 'cryptography-source-provenance.json', 'qt-cldr49-runtime-input.xml']:
             (output / name).write_bytes(original.read(name))
