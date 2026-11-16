@@ -63,7 +63,12 @@ def native_text() -> list[dict]:
     return rows
 
 
-def qt_incident_security(output: Path, backend: str) -> dict:
+def qt_incident_security(output: Path, backend: str, *, reuse_original: bool = False) -> dict:
+    if reuse_original:
+        from reuse_macos_x64_incident_evidence import reuse
+        from verify_macos_arm64_runtime_pilot import loaded_images
+
+        return reuse(output, backend, loaded_images())
     from cryptography import x509
     from PySide6.QtCore import QCryptographicHash
     from PySide6.QtNetwork import QSsl, QSslCertificate, QSslSocket
@@ -131,7 +136,7 @@ def qt_incident_security(output: Path, backend: str) -> dict:
     return result
 
 
-def verify_maintenance(output: Path, prefix: Path, arch: str) -> dict:
+def verify_maintenance(output: Path, prefix: Path, arch: str, *, reuse_incidents: bool = False) -> dict:
     import _ctypes
     import _decimal
     import _sqlite3
@@ -165,6 +170,6 @@ def verify_maintenance(output: Path, prefix: Path, arch: str) -> dict:
               'cffi_distribution': version('cffi'), 'cffi_executed': sum(c.find('skipped') is None for c in cffi_cases),
               'cbor': qt_cbor_regressions(), 'native_font_shaping': native_text(),
               'markdown': qt_markdown_flag_regressions(), 'cldr49': qualify(output / 'qt-cldr49-runtime-input.xml'),
-              'qt_openssl_incident_security': qt_incident_security(output, 'openssl')}
+              'qt_openssl_incident_security': qt_incident_security(output, 'openssl', reuse_original=reuse_incidents)}
     (output / 'macos-maintenance-consumers.json').write_text(json.dumps(result, indent=2) + '\n')
     return result

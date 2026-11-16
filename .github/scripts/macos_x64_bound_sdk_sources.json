@@ -32,5 +32,9 @@
     "provision_macos_intel_crypto.sh": "36353613f0b0c52c4d305762a5f644c30caadc1b65419f4d7adfaab03b9f43a1",
     "apply_qt_http_limits.py": "c588c26a7634695a4a15a591b04b1387b11fa0f80cfaee261a9028e2963a399f"
   },
-  "receipt_sha256": "9c19c174fbb8a9c7bb9e6d592bf171327f02a6712bb3b99b051e322323764794"
+  "receipt_sha256": "9c19c174fbb8a9c7bb9e6d592bf171327f02a6712bb3b99b051e322323764794",
+  "incident_reports": {
+    "qt-incident-openssl.json": "b08c1719e5d691102dbdc7c6f297f0e18f0bce7f0c6f350ba4dea2333dc16e77",
+    "qt-incident-securetransport.json": "f427367aeac047ca9de79b593fb15f641287837e1f769e4936497e3afdb137f3"
+  }
 }

@@ -92,6 +92,7 @@ def restore(data: bytes, work: Path, output: Path, spec: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--imageformats', action='store_true')
+    parser.add_argument('--reuse-unchanged-incidents', action='store_true')
     args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'x86_64'
     spec = json.loads((ROOT / '.github/scripts/macos_x64_bound_sdk_sources.json').read_text())
@@ -127,6 +128,8 @@ def main() -> None:
                  'from controlled_qt_legal_identity import source_identity;'
                  'print(json.dumps(source_identity(Path(sys.argv[2]),sys.argv[3],"6.12.0"),indent=2))',
                  ROOT / '.github/scripts', output / 'original-native-results/macos-runtime-sdk.json', spec['receipt_sha256']]]
+    if args.reuse_unchanged_incidents:
+        commands[0].append('--reuse-unchanged-incidents')
     if args.imageformats:
         commands[0].append('--imageformats')
         native_flags = ['-DCMAKE_OSX_ARCHITECTURES=x86_64', '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4',
@@ -144,11 +147,14 @@ def main() -> None:
     (profile / 'PlayStoreAppAudit.portable').write_text('isolated diagnostic profile\n')
     for number, command in enumerate(commands):
         # A regular file avoids inherited pipe handles keeping tee alive after PASS.
-        with (output / f'consumer-{number}.log').open('w') as log:
-            result = subprocess.run(list(map(str, command)), cwd=ROOT if number == 0 else profile,
-                                    env={**environment, 'PYTHONPATH': str(ROOT)} if number else environment,
-                                    stdout=log, stderr=subprocess.STDOUT, timeout=1200)
-        print((output / f'consumer-{number}.log').read_text(errors='replace')[-6000:], flush=True)
+        print('Starting native consumer', number, list(map(str, command[:2])), flush=True)
+        try:
+            with (output / f'consumer-{number}.log').open('w') as log:
+                result = subprocess.run(list(map(str, command)), cwd=ROOT if number == 0 else profile,
+                                        env={**environment, 'PYTHONPATH': str(ROOT)} if number else environment,
+                                        stdout=log, stderr=subprocess.STDOUT, timeout=1200)
+        finally:
+            print((output / f'consumer-{number}.log').read_text(errors='replace')[-6000:], flush=True)
         result.check_returncode()
     print('PASS native Intel consumer-only replay; no Python/Qt/binding rebuild or final candidate', flush=True)
 

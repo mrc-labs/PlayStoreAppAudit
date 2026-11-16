@@ -125,6 +125,7 @@ def main() -> None:
     parser.add_argument('--native-prerequisites', action='store_true')
     parser.add_argument('--qt-native-backend', action='store_true')
     parser.add_argument('--imageformats', action='store_true')
+    parser.add_argument('--reuse-unchanged-incidents', action='store_true')
     args = parser.parse_args()
     output = args.output_dir.resolve()
     os.environ['QT_SSL_USE_TEMPORARY_KEYCHAIN'] = '1'
@@ -145,7 +146,7 @@ def main() -> None:
             assert Path(sys.base_prefix).resolve() == Path(os.environ['PILOT_PREFIX']) / 'python'
         report = qt_checks(paths, 'securetransport')
         if args.qt_native_backend:
-            report['incident_security'] = qt_incident_security(output, 'securetransport')
+            report['incident_security'] = qt_incident_security(output, 'securetransport', reuse_original=args.reuse_unchanged_incidents)
         if args.qt_native_backend:
             report['changed_images'] = changed_images(Path(os.environ['PILOT_PREFIX']), loaded_images())
         report.update(source_sha=os.environ['GITHUB_SHA'], scope='stock native backend prerequisite only' if args.native_prerequisites else 'controlled Qt native backend; separate from OpenSSL')
@@ -188,8 +189,9 @@ def main() -> None:
     default_qt_backend = QSslSocket.activeBackend()
     assert default_qt_backend in ('openssl', 'securetransport'), default_qt_backend
     qt_tls = qt_checks(paths, 'openssl')
-    maintenance = verify_maintenance(output, prefix, 'x64')
-    subprocess.run([sys.executable, __file__, '--output-dir', str(output), '--qt-native-backend'], check=True)
+    maintenance = verify_maintenance(output, prefix, 'x64', reuse_incidents=args.reuse_unchanged_incidents)
+    subprocess.run([sys.executable, __file__, '--output-dir', str(output), '--qt-native-backend',
+                    *(['--reuse-unchanged-incidents'] if args.reuse_unchanged_incidents else [])], check=True)
     pixmap = QPixmap()
     assert QImage.fromData(png_fixture()).width() == 1 and pixmap.loadFromData(png_fixture())
     png_rows = []
