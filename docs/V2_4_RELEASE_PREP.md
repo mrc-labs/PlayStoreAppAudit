@@ -1,5 +1,15 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+
+## November16 Intel completed-SDK recovery and consumer-only continuation
+
+The cancelled workflow43782611872 at8a06bbc7ebb87378540a871d06761807a2d0e98c exceeded its four-hour job limit, but its retained native log ends in full pilot PASS and SDK completion. This does **not** turn the cancelled workflow into a successful run. Artifact14198023991 is526472190bytes, ZIP SHA256 `36387d0b509f95ecc70f1704bb0dc4971040fc507979ae3cc45fdf4c6abf2e32`; inner SDK SHA256 `2abccd90413a65377a5dcfe02766c420a2b16574e1c5cbf8d3ba406c23b49fbd`, complete=true, original exit0.
+
+Independent local byte verification covers all25141 indexed paths (including symlinks/hard links),84 actual loaded x64-selected Mach-O headers/load commands, matching hashes/install names/rpaths/dependencies and maximum measured14.4. The ZIP retains33 source archives and102 legal files, individually hashed. Native Python private PEM/default trust, distinct Qt OpenSSL/Keychain SecureTransport consumers, security/hash/PNG/Cocoa GUI/CLI results are present in the original report; no older-OS/final-package claim. These counts describe this SDK, not the unchanged historical pilot.
+
+`macos-x64-consumers` restores only that exact SDK to its original absolute prefix, rejects changed input manifests/compiled scripts/Xcode/SDK or unsafe archive paths, and repeats the existing native consumer verifier and CLI tests. Original upstream suite/XML/wheel provenance remains8a06bbc; new live results identify the replay head. No Python/OpenSSL/Qt/binding compilation, pip replacement or certificate-store mutation. Each command writes to a regular log file with a bounded timeout rather than an inherited stdout/tee pipeline; the original post-PASS timeout mechanism is not claimed as proven. Windows x64/ARM64 framework runs43818005888/43816542716 continue independently. Necessary source-distribution legal identity and preservation of final image-format plugin membership remain explicit producer-intake gates.
+
+
 ## Necessary Windows framework continuation (2026-11-16)
 
 Initial native43816542716 at473db00 passes x64 runtime intake/source patch/packager checks, then stops before Qt on the official Extra extractor layout: x64 provides7za.exe, ARM installer7z.exe. Select the already-proven per-architecture filename and reject duplicate/wrong-machine executables; two actual PE-header layout regressions pass. Add the two fixed single-target profile variants so retrying x64 cannot cancel the ongoing ARM job; no new gate or framework. Intel43782611872 reaches its exact four-hour job timeout; it retains full partial artifact14198023991/526,472,190 bytes/SHA256`36387d0b509f95ecc70f1704bb0dc4971040fc507979ae3cc45fdf4c6abf2e32`, to be inspected before any further Intel build.

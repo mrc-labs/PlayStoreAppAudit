@@ -1,0 +1,35 @@
+{
+  "scope": "Completed native Intel SDK recovered from timed-out workflow; original native results PASS, workflow remains cancelled. Consumer-only replay, never a final package.",
+  "artifact": 14198023991,
+  "run": 43782611872,
+  "source_sha": "8a06bbc7ebb87378540a871d06761807a2d0e98c",
+  "zip_bytes": 526472190,
+  "zip_sha256": "36387d0b509f95ecc70f1704bb0dc4971040fc507979ae3cc45fdf4c6abf2e32",
+  "sdk_sha256": "2abccd90413a65377a5dcfe02766c420a2b16574e1c5cbf8d3ba406c23b49fbd",
+  "work_name": "macos-x64-pilot-43782611872-1",
+  "original_work_root": "/Users/runner/work/_temp/macos-x64-pilot-43782611872-1",
+  "compiler_sdk": {
+    "xcode": "Xcode 26.6\nBuild version 17F113\n",
+    "sdk_version": "26.5",
+    "clang_first_line": "Apple clang version 21.0.0 (clang-2100.1.1.101)"
+  },
+  "component_inputs": {
+    "macos_x64_runtime_pilot_sources.json": "815e28a7109303130213ac99ce3a6d9909ef2b2c48d5a4462b9bc6ab93fd14c0",
+    "native_runtime_pilot_sources.json": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
+    "macos_native_provider_sources.json": "72c5af7651e45a67106494eabd4c792dcf151e48009a3c88145f9e90ab209ef6",
+    "qt_text_provider_sources.json": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94",
+    "qt_cbor_provider_sources.json": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6",
+    "qt_data_refresh_sources.json": "3cabb3678b38fda57e9bfa0d8db14862e73f140b8af05fda018023099c047b4d",
+    "qt_cldr49_sources.json": "801db189ddd3f4741fee036151d57a22c20f456c9e673144916d2796a1c9aa6f",
+    "provider_ca_security_sources.json": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f",
+    "qt_cldr49_generated_cache.json": "3101e37151225b29c0ddc790ca4adb7fbdddc33c68b3a10ea02962c6a10ec8fc",
+    "qt_http_security_sources.json": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
+  },
+  "compiled_scripts": {
+    "build_macos_x64_runtime_pilot.sh": "c0c259e5e814b623cca4675019a141401a33d18797d55dfbea71fbda0e7dce3a",
+    "probe_macos_x64_runtime.py": "a1f0ebd6847694dcfa79117436ed2ecb6026d535b2eee15c020693cf05310817",
+    "probe_macos_arm64_runtime.py": "be1d4726673787c9fce46e722769b1c2232023ca1378cacbbbc0655265d432e3",
+    "provision_macos_intel_crypto.sh": "36353613f0b0c52c4d305762a5f644c30caadc1b65419f4d7adfaab03b9f43a1",
+    "apply_qt_http_limits.py": "c588c26a7634695a4a15a591b04b1387b11fa0f80cfaee261a9028e2963a399f"
+  }
+}

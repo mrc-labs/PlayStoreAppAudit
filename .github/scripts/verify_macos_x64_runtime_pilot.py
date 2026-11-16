@@ -98,7 +98,15 @@ def images(prefix: Path, output: Path) -> dict:
 def source_wheel_provenance(output: Path, rust_path: Path) -> dict:
     """Prove the modified-runtime module is the retained native source wheel."""
     report = json.loads((output / 'cryptography-source-provenance.json').read_text())
-    assert report['source_sha'] == os.environ['GITHUB_SHA'], 'Foreign wheel source head'
+    original_source = os.environ['GITHUB_SHA']
+    intake_path = output / 'compiled-sdk-intake.json'
+    if intake_path.is_file():
+        intake = json.loads(intake_path.read_text())
+        spec = json.loads((Path(__file__).parent / 'macos_x64_bound_sdk_sources.json').read_text())
+        assert intake['original'] == spec and intake['verified_paths'] > 0
+        assert intake['consumer_source_sha'] == os.environ['GITHUB_SHA']
+        original_source = spec['source_sha']
+    assert report['source_sha'] == original_source, 'Foreign wheel source head'
     assert Path(report['wheel']).name == report['wheel'], 'Wheel must be inside evidence'
     wheel = output / 'wheels' / report['wheel']
     assert hashlib.sha256(wheel.read_bytes()).hexdigest() == report['wheel_sha256'], 'Changed retained wheel'
