@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -61,7 +61,7 @@ jobs:
 
           echo "Release-candidate source SHA verified: $actual"
 
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -423,14 +423,14 @@ jobs:
 
       - name: Upload Linux compatibility evidence
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: linux-compatibility-${{ matrix.arch }}-${{ github.sha }}
           path: linux-diagnostics/
           if-no-files-found: warn
           retention-days: 0
 
-      - uses: actions/upload-artifact@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
           path: artifact/

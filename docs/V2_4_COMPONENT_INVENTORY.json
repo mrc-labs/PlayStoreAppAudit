@@ -1,4 +1,42 @@
 {
+  "current_native_actions_delta_2026_11_16": {
+    "date": "2026-11-16",
+    "category": "A controlled integration / D native compiler vendor payload",
+    "macos_arm64": {
+      "consumer_run": 43772341683,
+      "source_sha": "e4c810f352dccbf1f0db86fd61bd88b83847cb85",
+      "byte_worker": 43776513836,
+      "local_raw_macho_images": 83,
+      "original_archives": 32,
+      "legal_files": 98,
+      "maximum_deployment": "14.4",
+      "trust": "Python private PEM118 distinct from Qt OpenSSL/native Keychain; default TLS and negative cases PASS",
+      "scope": "Current provider/frame diagnostic; no older-OS/final-package acceptance"
+    },
+    "windows_cpython": {
+      "x64_run": 43772345098,
+      "arm64_run": 43782608739,
+      "arm64_source_sha": "8a06bbc7ebb87378540a871d06761807a2d0e98c",
+      "versions": "Modified CPython3.14.10/OpenSSL4.0.3/libffi3.8/XZ5.8.4/zlib-ng2.3.3/SQLite3.54.1/mpdecimal4.0.1",
+      "crt_cause_run": 43780328529,
+      "crt_cause": "Official ARM64 redist directory also contains AMD64 vcruntime140_1.dll; native process rejects193",
+      "crt_decision": "Upstream VCRuntimeDLL selects exact signed/current/native vcruntime140.dll; all-image strict PE/import checks retained",
+      "scope": "CPython/std-provider only; Windows whole Qt/binding/crypto consumers remain open"
+    },
+    "actions": {
+      "source_run": 43782227822,
+      "source_sha": "a6c1db926908d4c77d2d438734544974cacbdd85",
+      "node": "24.22.1",
+      "npm": "12.2.2",
+      "upstream_tests": 429,
+      "selected": "HttpClient4.0.1/Undici8.12.4/Archiver8.0.0/upload glob0.7.0",
+      "adaptation": "Two-line SDK ZipArchive public-constructor migration plus version/dependency declaration; all parent security overrides preserved",
+      "metadata_corrections": "Unique setup YAML name and unchanged original .github/python.json; executable/license/lock bytes unchanged",
+      "native_run": 43783573993,
+      "status": "Six native consumers PASS; exact bundle source10cb7992bd060977c9028956d64f8e28127f8022 selected in maintained workflows"
+    },
+    "unchanged": "1094 historical observations and previous accepted Linux compiled inputs; no exhaustive scan"
+  },
   "ruff_six_native_wheels_2026_11_15": {
     "contract": ".github/scripts/ruff_native_wheels.json",
     "run": 43729883614,

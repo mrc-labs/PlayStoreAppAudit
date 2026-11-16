@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -78,7 +78,7 @@ jobs:
           Write-Host "Requested source SHA verified: $actual"
 
       - name: Set up native Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -369,7 +369,7 @@ jobs:
 
       - name: Upload Windows standalone release candidate
         if: ${{ !inputs.diagnostic_only }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-${{ matrix.arch }}
           path: |
@@ -380,7 +380,7 @@ jobs:
 
       - name: Upload non-release ARM64 prerequisite diagnostic evidence
         if: ${{ always() && inputs.diagnostic_only }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-openssl-cryptography-windows-arm64-${{ github.run_id }}
           path: ${{ runner.temp }}/openssl-arm64-${{ github.run_id }}/evidence/

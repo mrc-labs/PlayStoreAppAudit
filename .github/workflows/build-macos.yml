@@ -42,7 +42,7 @@ jobs:
       EXPECTED_MACHO_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -110,7 +110,7 @@ jobs:
           done
           test "$missing" = "0"
 
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -609,7 +609,7 @@ jobs:
 
       - name: Upload production macOS release candidate
         if: ${{ inputs.signing_mode == 'production' }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
@@ -618,7 +618,7 @@ jobs:
 
       - name: Upload engineering macOS artifact
         if: ${{ inputs.signing_mode == 'engineering' }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-engineering-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/

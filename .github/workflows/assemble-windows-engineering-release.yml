@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout exact release source
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -60,7 +60,7 @@ jobs:
 
           echo "Final-main Windows x64 engineering release SHA verified: $actual"
 
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -196,7 +196,7 @@ jobs:
             .github/scripts/release_asset_layout.py
 
       - name: Download unsigned Windows x64 engineering candidate
-        uses: actions/download-artifact@v8
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           pattern: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64
           path: rc-input/windows
@@ -259,7 +259,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload validated Windows engineering release assets
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64-engineering-release-assets
           path: final-release/

@@ -294,7 +294,152 @@
       "result": "Original production source unchanged; closed dependencies/build/upstream tests PASS"
     }
   ],
-  "scope": "Project-modified source bundles; native six-host behavior and adoption pending",
+  "scope": "Project-modified official Action source bundles; source/Jest429/ZIP/native-six behavior and original byte/license guards PASS. Adopt exact source10cb799 in maintained workflows.",
   "metadata_correction": "Fix duplicate name only in setup metadata: original begins with comment. Generated executable/license/lock bytes unchanged. Builder now replaces exactly one original YAML name.",
-  "static_asset_correction": "Original setup-python matcher retained unchanged; original executable/license/lock bytes remain Node24 source-build output."
+  "static_asset_correction": "Original setup-python matcher retained unchanged; original executable/license/lock bytes remain Node24 source-build output.",
+  "native_qualification": {
+    "run": 43783573993,
+    "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+    "targets": [
+      {
+        "artifact": 14189930051,
+        "digest": "sha256:d038422a1f8fd13ec8bdd6ae511dc3fb8b6cf0b7d871ae79c1cecba3b0a2de08",
+        "bytes": 622,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "aarch64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "arm64",
+            "platform": "linux",
+            "version": "v24.22.1",
+            "executable": "/home/runner/extracted/externals/node24/bin/node"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      },
+      {
+        "artifact": 14189800470,
+        "digest": "sha256:3dba28fd8dac79b2a42d30456839a36d6812421f22c69083d15dc41372e7d3b7",
+        "bytes": 621,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "x86_64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "x64",
+            "platform": "linux",
+            "version": "v24.22.1",
+            "executable": "/opt/runner-cache/externals/node24/bin/node"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      },
+      {
+        "artifact": 14189501927,
+        "digest": "sha256:1d5689b003b5f39f71f6ee21507dae5cfe127dece179e0141a97858bf2bcd20e",
+        "bytes": 636,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "x86_64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "x64",
+            "platform": "darwin",
+            "version": "v24.22.1",
+            "executable": "/Users/runner/actions-runner/cached/2.338.2/externals/node24/bin/node"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      },
+      {
+        "artifact": 14189332234,
+        "digest": "sha256:a633364242c14facf96ff2e6de24681b4c5d8df89f23917bd87bb54924ae25bb",
+        "bytes": 648,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "ARM64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "arm64",
+            "platform": "win32",
+            "version": "v24.22.1",
+            "executable": "C:\\actions-runner\\cached\\2.338.2\\externals\\node24\\bin\\node.exe"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      },
+      {
+        "artifact": 14189332190,
+        "digest": "sha256:9a0cb51ee3129e3bcff714667f12189a461a4973efbafe8ff4f579e8b6ef9b0e",
+        "bytes": 627,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "arm64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "arm64",
+            "platform": "darwin",
+            "version": "v24.22.1",
+            "executable": "/Users/runner/actions-runner/cached/externals/node24/bin/node"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      },
+      {
+        "artifact": 14188404771,
+        "digest": "sha256:888b0b9a9e913b33db1c83644fec377259d241f324baed842a45e27669db0f0c",
+        "bytes": 646,
+        "proof": {
+          "source_sha": "10cb7992bd060977c9028956d64f8e28127f8022",
+          "machine": "AMD64",
+          "python": "3.14.10",
+          "gil_disabled": false,
+          "node": {
+            "arch": "x64",
+            "platform": "win32",
+            "version": "v24.22.1",
+            "executable": "C:\\actions-runner\\cached\\2.338.2\\externals\\node24\\bin\\node.exe"
+          },
+          "payload_sha256": {
+            "alpha.txt": "3d2e8e649f477800a7bec1b777a22bfead07d1fe625c4641e2c7107088522b39",
+            "nested/\u00e1rchive.bin": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          },
+          "result": "PASS native controlled checkout/setup/upload/download; exclusion and UTF8/binary byte identity",
+          "scope": "Action consumers only; no runtime/framework rebuild or release candidate"
+        }
+      }
+    ],
+    "scope": "Six actual native Node24 checkout/setup/upload/download consumers PASS; maintained workflow adoption now selected. Final release/package acceptance remains separate."
+  }
 }

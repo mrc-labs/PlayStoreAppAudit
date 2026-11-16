@@ -58,6 +58,9 @@ jobs:
 
   controlled-actions-native:
     if: ${{ inputs.linux_arm64_pilot == 'tools-actions-native' }}
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/controlled-actions-native.yml
     with:
       expected_sha: ${{ inputs.expected_sha }}
@@ -70,8 +73,8 @@ jobs:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       PYTHONUNBUFFERED: '1'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -82,7 +85,7 @@ jobs:
           python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
       - name: Rebuild exact source Action bundles under native Node24
         uses: ./.github/actions/build-controlled-actions
-      - uses: actions/upload-artifact@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         if: always()
         with:
           name: controlled-actions-source-node24-${{ github.run_id }}
@@ -111,7 +114,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Guard exact source and isolated diagnostic
         shell: bash
@@ -130,7 +133,7 @@ jobs:
           test '${{ inputs.trust_diagnostics_only }}' = false
 
       - name: Set up native Python bootstrap
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -319,7 +322,7 @@ jobs:
 
       - name: Upload host tool diagnostic evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-') && 'diagnostic-cpython-providers' || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' && 'diagnostic-libffi' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'diagnostic-macos-providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'diagnostic-native-codecs' || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' || inputs.linux_arm64_pilot == 'tools-ctypes-arm64-windows') && 'diagnostic-sql-decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || inputs.linux_arm64_pilot == 'tools-ffi-x64-windows' || inputs.linux_arm64_pilot == 'tools-ctypes-arm64-windows')) && 'diagnostic-qt-data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'diagnostic-lxml-native' || inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
           path: toolchain-delta-evidence/
@@ -333,7 +336,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
       - name: Verify source and isolated read-only scope
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -344,7 +347,7 @@ jobs:
           test '${{ inputs.component_audit }}' = false
           test '${{ inputs.windows_runtime_pilot }}' = false
           test '${{ inputs.windows_arm64_full_pilot }}' = false
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -356,7 +359,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python .github/scripts/${{ inputs.linux_arm64_pilot == 'qt-evidence-macos-arm64' && 'extract_macos_pilot_evidence.py' || 'extract_qt_pilot_evidence.py' }}
-      - uses: actions/upload-artifact@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: retained-qt-integration-evidence-${{ github.run_id }}
           path: retained-qt-evidence/*.zip
@@ -380,7 +383,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify component diagnostic source SHA
         if: ${{ inputs.component_audit }}
@@ -393,7 +396,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -578,7 +581,7 @@ jobs:
 
       - name: Upload UI audit screenshots and metadata
         if: ${{ !inputs.component_audit }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ui-style-audit-${{ matrix.platform_key }}
           path: ui-style-audit/
@@ -605,7 +608,7 @@ jobs:
 
       - name: Upload non-release component diagnostic evidence
         if: ${{ always() && inputs.component_audit }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-components-${{ matrix.platform_key }}-${{ matrix.arch }}-${{ github.run_id }}
           path: |
@@ -628,7 +631,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated pilot source and native target
         shell: bash
@@ -662,7 +665,7 @@ jobs:
 
       - name: Set up bootstrap Python
         if: ${{ !inputs.trust_diagnostics_only }}
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -804,7 +807,7 @@ jobs:
 
       - name: Upload diagnostic runtime-framework evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
           # Original unchanged-suite ZIP is already retained at14098850639;
@@ -828,7 +831,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated Windows pilot SHA and target
         shell: pwsh
@@ -841,7 +844,7 @@ jobs:
           if ('${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-') -and ('${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false')) { throw 'Select only the bounded Schannel diagnostic mode.' }
 
       - name: Set up Windows pilot bootstrap Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -887,7 +890,7 @@ jobs:
 
       - name: Upload diagnostic Windows runtime evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-runtime-framework-windows-x64-${{ github.run_id }}
           path: windows-pilot-evidence/
@@ -904,7 +907,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated ARM64 probe SHA and target
         shell: pwsh
@@ -917,7 +920,7 @@ jobs:
           if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows ARM64 prerequisites.' }
 
       - name: Set up ARM64 probe bootstrap Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -940,7 +943,7 @@ jobs:
 
       - name: Upload native ARM64 prerequisite evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ inputs.windows_arm64_full_pilot && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-windows-arm64-${{ github.run_id }}
           path: windows-arm64-pilot-evidence/
@@ -959,7 +962,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated Linux ARM64 source and accepted OS
         shell: bash
@@ -981,7 +984,7 @@ jobs:
           test '${{ inputs.trust_diagnostics_only }}' = false
 
       - name: Set up native ARM64 bootstrap Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -1058,7 +1061,7 @@ jobs:
 
       - name: Upload diagnostic Linux ARM64 evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ (inputs.linux_arm64_pilot == 'full' || inputs.linux_arm64_pilot == 'full-consumers') && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
           path: linux-arm64-pilot-evidence/
@@ -1080,7 +1083,7 @@ jobs:
       QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated macOS ARM64 SHA and target
         shell: bash
@@ -1104,7 +1107,7 @@ jobs:
           test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 
       - name: Set up macOS ARM64 bootstrap Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -1163,7 +1166,7 @@ jobs:
 
       - name: Upload diagnostic macOS ARM64 evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings' || inputs.linux_arm64_pilot == 'macos-consumers') && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: |
@@ -1189,7 +1192,7 @@ jobs:
       QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Verify isolated macOS Intel/x64 SHA and target
         shell: bash
@@ -1213,7 +1216,7 @@ jobs:
           test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
 
       - name: Set up macOS Intel/x64 bootstrap Python
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -1257,7 +1260,7 @@ jobs:
 
       - name: Upload Intel prerequisite checkpoint before source compilation
         if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-intel-prerequisite-checkpoint-${{ github.run_id }}
           path: macos-x64-pilot-evidence/
@@ -1275,7 +1278,7 @@ jobs:
 
       - name: Upload diagnostic macOS Intel/x64 evidence only
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-x64-${{ github.run_id }}
           path: macos-x64-pilot-evidence/
@@ -1287,7 +1290,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
       - name: Guard native diagnostic source
         shell: bash
         run: |
@@ -1296,7 +1299,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(uname -m)" = aarch64
           test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -1319,7 +1322,7 @@ jobs:
           python .github/scripts/probe_adb_linux_arm64.py --work "$RUNNER_TEMP/adb-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --output adb-diagnostic-evidence ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-abi' && '--system-abi-only' || '' }}
       - name: Retain diagnostic sources legal native bytes and results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: diagnostic-adb-linux-arm64-${{ github.run_id }}
           path: adb-diagnostic-evidence
@@ -1339,14 +1342,14 @@ jobs:
     runs-on: ${{ matrix.label == 'linux-x64' && startsWith(inputs.linux_arm64_pilot, 'rust-native-ruff') && 'ubuntu-22.04' || matrix.os }}
     timeout-minutes: 70
     steps:
-      - uses: actions/checkout@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
       - name: Verify exact diagnostic source
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_SHA" = '${{ inputs.expected_sha }}'
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -1376,7 +1379,7 @@ jobs:
           else
           RUSTUP_TOOLCHAIN=1.100.0 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ (startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--update-compatible' || '' }} ${{ (endsWith(inputs.linux_arm64_pilot, 'check') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-maintained-ruff' && '--only-package ruff --check-package ruff --maintained-paste' || '' }}
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         if: always()
         with:
           name: selected-rust-graphs-${{ matrix.label }}-${{ github.run_id }}

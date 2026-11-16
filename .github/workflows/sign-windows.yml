@@ -24,7 +24,7 @@ jobs:
       version: ${{ steps.project_version.outputs.version }}
     steps:
       - name: Checkout exact release source
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -169,7 +169,7 @@ jobs:
           echo 'Windows production signing configuration is present.'
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -219,7 +219,7 @@ jobs:
 
     steps:
       - name: Checkout exact release source
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -237,7 +237,7 @@ jobs:
           }
 
       - name: Set up Python 3.14 signing environment
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -262,7 +262,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not install legal-validation dependencies.' }
 
       - name: Download unsigned Windows build artifact
-        uses: actions/download-artifact@v8
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
           path: unsigned-input/${{ matrix.arch }}
@@ -478,7 +478,7 @@ jobs:
           "@ >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload signed Windows release candidate
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
           path: |
@@ -518,7 +518,7 @@ jobs:
 
     steps:
       - name: Checkout exact release source
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -536,7 +536,7 @@ jobs:
           }
 
       - name: Set up native Python 3.14
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
@@ -549,7 +549,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Stable Python 3.14 verification failed.' }
 
       - name: Download signed Windows release candidate
-        uses: actions/download-artifact@v8
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ needs.preflight.outputs.version }}-windows-${{ matrix.arch }}
           path: signed-input

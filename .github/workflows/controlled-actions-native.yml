@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   native:
@@ -61,6 +62,28 @@ jobs:
         run: |
           set -euo pipefail
           python .github/scripts/check_controlled_action_roundtrip.py verify
+      - name: Exercise authenticated cross-run pattern downloads used by assemblers
+        if: ${{ matrix.label == 'linux-x64' }}
+        uses: ./.github/actions/controlled-download-artifact
+        with:
+          run-id: 43783573993
+          github-token: ${{ github.token }}
+          pattern: controlled-action-native-*
+          path: prior-action-consumers
+      - name: Verify all six original cross-run reports
+        if: ${{ matrix.label == 'linux-x64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = json.loads(Path('.github/scripts/controlled_actions_bundles.json').read_text())['native_qualification']['targets']
+          actual = [json.loads(p.read_text()) for p in Path('prior-action-consumers').rglob('native-action-roundtrip.json')]
+          assert len(actual) == 6
+          assert sorted(json.dumps(p, sort_keys=True) for p in actual) == sorted(json.dumps(p['proof'], sort_keys=True) for p in expected)
+          print('PASS six byte-equivalent original reports through authenticated cross-run pattern download')
+          PY
       - name: Retain native Action evidence
         if: always()
         uses: ./.github/actions/controlled-upload-artifact
