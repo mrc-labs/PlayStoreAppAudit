@@ -311,6 +311,9 @@ Its only release input is the required exact `expected_sha`.
 
 Linux packaging uses Nuitka standalone mode, not onefile. The ZIP contains the complete standalone tree so Qt/PySide/Shiboken shared libraries remain individually replaceable. Linux x64 can use the managed Google Platform-Tools archive; Linux ARM64 requires a native compatible ADB.
 
+For Linux ARM64, keep ADB external and use a maintained native provider on Ubuntu24.04; Google's Linux archive is x86-64 and must not be presented as a native ARM download. Ensure the native client is on PATH. The qualified source alternative is android-tools37.0.0p1 with private libusb1.0.30, whose exact originals/build recipe/legal provenance are recorded in `.github/scripts/adb_linux_arm64_sources.json` and the active audit. It is a separately built native integration, not Google's unchanged37.0.1 binary archive. When a private libusb is needed, keep it beside that external client and scope its loader path to the ADB launch wrapper; do not alter the system loader or application process globally. Native CI43976580827 verifies actual application discovery, relocated linkage, a private15037 server and the real CLI no-device path without rebuilding ADB. This does not establish physical USB/wireless acceptance. Final application packages must still exclude ADB and repeat their external-discovery checks; no extra public release asset or automatic ARM updater is introduced.
+
+
 Linux is not built for Windows x64 ETB releases such as v1.4, v1.5 or v1.6.0. It is part of the v2.0-and-later six-platform profile.
 
 ### macOS

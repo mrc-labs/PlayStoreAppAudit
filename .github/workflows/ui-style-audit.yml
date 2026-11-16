@@ -1141,6 +1141,14 @@ jobs:
             bash .github/scripts/resume_linux_arm64_consumers.sh 2>&1 | tee linux-arm64-pilot-evidence/consumer-build.log
           fi
 
+      - name: Install existing Qt GUI loader dependencies for Noble intake
+        if: ${{ inputs.linux_arm64_pilot == 'full-intake' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libopengl0
+
       - name: Prepare qualified dependency SDK only; no application compilation
         if: ${{ inputs.linux_arm64_pilot == 'full-intake' }}
         shell: bash
