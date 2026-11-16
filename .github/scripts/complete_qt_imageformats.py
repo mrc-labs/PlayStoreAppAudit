@@ -83,10 +83,14 @@ def restore_arm64_overlay(work: Path, output: Path) -> dict:
 
 
 def _restore_macos_overlay(work: Path, output: Path, specification: str, machine: str) -> dict:
-    from download_diagnostic_artifact import fetch_artifact
-
     assert platform.system() == 'Darwin' and platform.machine() == machine
     spec = json.loads((Path(__file__).parent / specification).read_text())
+    return restore_qualified_overlay(work, output, spec, macos_machine=machine)
+
+
+def restore_qualified_overlay(work: Path, output: Path, spec: dict, *, macos_machine: str | None = None) -> dict:
+    from download_diagnostic_artifact import fetch_artifact
+
     metadata, data = fetch_artifact(spec['artifact'])
     assert not metadata['expired'] and metadata['workflow_run']['head_sha'] == spec['source_sha']
     assert metadata['workflow_run']['id'] == spec['run'] and metadata['workflow_run']['head_repository_id'] == 1334403620
@@ -95,8 +99,9 @@ def _restore_macos_overlay(work: Path, output: Path, specification: str, machine
         raw = original.read('imageformats/module-provenance.json')
         assert hashlib.sha256(raw).hexdigest() == spec['provenance_sha256']
         provenance = json.loads(raw)
-        assert provenance['source_sha'] == spec['source_sha'] and provenance['source'] == SOURCE
-        assert '-DCMAKE_OSX_ARCHITECTURES=' + machine in provenance['native_arguments']
+        assert provenance['source_sha'] == spec.get('compiled_source_sha', spec['source_sha']) and provenance['source'] == SOURCE
+        if macos_machine:
+            assert '-DCMAKE_OSX_ARCHITECTURES=' + macos_machine in provenance['native_arguments']
         overlay = provenance['installed_module']
         assert overlay['original_work_root'] == str(work)
         payload = original.read('imageformats/installed-module.tar.zst')

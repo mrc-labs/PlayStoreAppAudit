@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats]
+        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ctypes-arm64-windows, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -51,7 +51,7 @@ permissions:
 
 concurrency:
   # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'rust-') && format('rust-{0}', inputs.linux_arm64_pilot) || startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') && 'adb-linux-arm64' || startsWith(inputs.linux_arm64_pilot, 'qt-evidence') && 'retained-qt-evidence' || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && format('toolchain-{0}', inputs.linux_arm64_pilot) || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats')) && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || inputs.linux_arm64_pilot == 'macos-x64-imageformats' && 'macos-x64-imageformats' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'rust-') && format('rust-{0}', inputs.linux_arm64_pilot) || startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') && 'adb-linux-arm64' || startsWith(inputs.linux_arm64_pilot, 'qt-evidence') && 'retained-qt-evidence' || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && format('toolchain-{0}', inputs.linux_arm64_pilot) || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') || inputs.linux_arm64_pilot == 'qt-intake') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || inputs.linux_arm64_pilot == 'macos-x64-imageformats' && 'macos-x64-imageformats' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
@@ -285,6 +285,8 @@ jobs:
           $env:PATH = (Split-Path -Parent $nativeCompiler[0]) + ';' + $env:PATH
           if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows') {
             & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_ctypes.py --work-root "$env:RUNNER_TEMP/ctypes-arm64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-intake-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/prepare_controlled_runtime.py --target "windows-$arch"
           } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-replay*') {
             $moduleArguments = @()
             if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-replay-imageformats-windows') { $moduleArguments += '--imageformats' }
@@ -682,7 +684,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ (inputs.runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-http-limits' || inputs.linux_arm64_pilot == 'qt-md4c-flags' || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats')) && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    if: ${{ (inputs.runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-http-limits' || inputs.linux_arm64_pilot == 'qt-md4c-flags' || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') || inputs.linux_arm64_pilot == 'qt-intake') && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
     name: ${{ inputs.linux_arm64_pilot == 'qt-data-prerequisites' && 'Qt expected and PSL prerequisites / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' && 'Unicode 18 generator prerequisite / Linux x64 Jammy' || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') && 'Changed Qt-PySide integration / Linux x64 Jammy' || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'Retained QtCore CBOR consumer / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'Qt MD4C flags only / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'Qt HTTP security / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-text-prerequisites' && 'Qt text provider prerequisite / Linux x64 Jammy' || 'Native runtime-framework pilot / Linux x64 Jammy' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 180
@@ -703,7 +705,7 @@ jobs:
           test '${{ inputs.component_audit }}' = false
           test "$RUNNER_ARCH" = X64
           test "$(uname -m)" = x86_64
-          if [[ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-http-limits || '${{ inputs.linux_arm64_pilot }}' = qt-md4c-flags || '${{ inputs.linux_arm64_pilot }}' = qt-cbor-sdk || '${{ inputs.linux_arm64_pilot }}' = qt-unicode-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-data-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-integration || '${{ inputs.linux_arm64_pilot }}' = qt-imageformats ]]; then
+          if [[ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-http-limits || '${{ inputs.linux_arm64_pilot }}' = qt-md4c-flags || '${{ inputs.linux_arm64_pilot }}' = qt-cbor-sdk || '${{ inputs.linux_arm64_pilot }}' = qt-unicode-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-data-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-integration || '${{ inputs.linux_arm64_pilot }}' = qt-imageformats || '${{ inputs.linux_arm64_pilot }}' = qt-intake ]]; then
             test '${{ inputs.runtime_pilot }}' = false
             test '${{ inputs.trust_diagnostics_only }}' = false
           fi
@@ -779,7 +781,7 @@ jobs:
           python .github/scripts/intake_lxml_native.py --target linux-x64 --output-dir pilot-evidence/lxml-intake
 
       - name: Build and exercise one controlled native stack
-        if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-imageformats' && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' && inputs.linux_arm64_pilot != 'qt-unicode-prerequisites' && inputs.linux_arm64_pilot != 'qt-data-prerequisites' }}
+        if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-imageformats' && inputs.linux_arm64_pilot != 'qt-intake' && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' && inputs.linux_arm64_pilot != 'qt-unicode-prerequisites' && inputs.linux_arm64_pilot != 'qt-data-prerequisites' }}
         shell: bash
         env:
           PILOT_QT_INTEGRATION_ONLY: ${{ (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') && '1' || '0' }}
@@ -874,6 +876,13 @@ jobs:
             --work-root "$RUNNER_TEMP/qt-data-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             --output-dir pilot-evidence
 
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'qt-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-x64
+
       - name: Upload diagnostic runtime-framework evidence only
         if: always()
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
@@ -882,7 +891,7 @@ jobs:
           # Original unchanged-suite ZIP is already retained at14098850639;
           # keep its hash/provenance and exact XML here, avoiding duplicate278MB.
           path: |
-            pilot-evidence/
+            ${{ inputs.linux_arm64_pilot == 'qt-intake' && 'controlled-runtime-evidence/' || 'pilot-evidence/' }}
             !pilot-evidence/original-python-14098850639.zip
           if-no-files-found: error
           retention-days: 0
@@ -1022,7 +1031,7 @@ jobs:
     permissions:
       contents: read
       actions: read
-    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') }}
+    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') || inputs.linux_arm64_pilot == 'full-intake' }}
     name: ${{ (inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats')) && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
@@ -1082,7 +1091,7 @@ jobs:
             libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
 
       - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
-        if: ${{ inputs.linux_arm64_pilot != 'full-consumers' && inputs.linux_arm64_pilot != 'full-imageformats' }}
+        if: ${{ inputs.linux_arm64_pilot != 'full-consumers' && inputs.linux_arm64_pilot != 'full-imageformats' && inputs.linux_arm64_pilot != 'full-intake' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1132,17 +1141,24 @@ jobs:
             bash .github/scripts/resume_linux_arm64_consumers.sh 2>&1 | tee linux-arm64-pilot-evidence/consumer-build.log
           fi
 
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'full-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-arm64
+
       - name: Upload diagnostic Linux ARM64 evidence only
         if: always()
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ${{ (inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats')) && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
-          path: linux-arm64-pilot-evidence/
+          path: ${{ inputs.linux_arm64_pilot == 'full-intake' && 'controlled-runtime-evidence/' || 'linux-arm64-pilot-evidence/' }}
           if-no-files-found: error
           retention-days: 0
 
   macos-arm64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) }}
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) || inputs.linux_arm64_pilot == 'macos-intake' }}
     name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
     timeout-minutes: 240
@@ -1198,7 +1214,7 @@ jobs:
         run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
 
       - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
-        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' && inputs.linux_arm64_pilot != 'macos-consumers' && inputs.linux_arm64_pilot != 'macos-imageformats' }}
+        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' && inputs.linux_arm64_pilot != 'macos-consumers' && inputs.linux_arm64_pilot != 'macos-imageformats' && inputs.linux_arm64_pilot != 'macos-intake' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1237,6 +1253,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python .github/scripts/reuse_macos_arm64_compiled_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-bindings' && '--bindings' || inputs.linux_arm64_pilot == 'macos-imageformats' && '--consumers-only --imageformats' || inputs.linux_arm64_pilot == 'macos-consumers' && '--consumers-only' || '' }}
 
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-arm64
+
       - name: Upload diagnostic macOS ARM64 evidence only
         if: always()
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
@@ -1251,7 +1274,7 @@ jobs:
 
 
   macos-x64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-x64-health' || inputs.linux_arm64_pilot == 'macos-x64-prerequisites' || inputs.linux_arm64_pilot == 'macos-x64-full' || (inputs.linux_arm64_pilot == 'macos-x64-consumers' || inputs.linux_arm64_pilot == 'macos-x64-imageformats') }}
+    if: ${{ inputs.linux_arm64_pilot == 'macos-x64-health' || inputs.linux_arm64_pilot == 'macos-x64-prerequisites' || inputs.linux_arm64_pilot == 'macos-x64-full' || (inputs.linux_arm64_pilot == 'macos-x64-consumers' || inputs.linux_arm64_pilot == 'macos-x64-imageformats') || inputs.linux_arm64_pilot == 'macos-x64-intake' }}
     name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'Native runtime-framework pilot / macOS Intel/x64' || 'Native runtime prerequisites / macOS Intel/x64' }}
     runs-on: macos-26-intel
     timeout-minutes: 240
@@ -1358,6 +1381,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python .github/scripts/reuse_macos_x64_bound_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-x64-imageformats' && '--imageformats --reuse-unchanged-incidents --reuse-imageformats-overlay --diagnose-gui' || '' }}
+
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-x64
 
       - name: Upload diagnostic macOS Intel/x64 evidence only
         if: always()

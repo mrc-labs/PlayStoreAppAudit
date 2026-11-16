@@ -70,6 +70,7 @@ def restore_bound_archive(sdk: bytes, work: Path, receipt: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--imageformats', action='store_true')
+    parser.add_argument('--intake-only', action='store_true')
     args = parser.parse_args()
     arch, machine, work, compiler = settings()
     spec = json.loads((ROOT / '.github/scripts/windows_framework_bound_sdks.json').read_text())[arch]
@@ -128,6 +129,11 @@ def main() -> None:
               'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
               'scope': 'Original bound SDK bytes; previous whole run failed in diagnostic orchestration. Recompile only the tiny C++ consumers, not Qt/Python/bindings.'}
     (output / 'framework-sdk-intake.json').write_text(json.dumps(intake, indent=2) + '\n')
+    if args.intake_only:
+        from controlled_runtime_selection import record_selection
+
+        record_selection('windows-' + arch, work, output, output / 'original-framework-sdk.json')
+        return
     # native_security stages fresh public inputs; original copies stay historical.
     if (output / 'provider-security-inputs').exists():
         (output / 'provider-security-inputs').rename(output / 'original-provider-security-inputs')

@@ -95,6 +95,7 @@ def main() -> None:
     parser.add_argument('--reuse-unchanged-incidents', action='store_true')
     parser.add_argument('--reuse-imageformats-overlay', action='store_true')
     parser.add_argument('--diagnose-gui', action='store_true')
+    parser.add_argument('--intake-only', action='store_true')
     args = parser.parse_args()
     assert platform.system() == 'Darwin' and platform.machine() == 'x86_64'
     spec = json.loads((ROOT / '.github/scripts/macos_x64_bound_sdk_sources.json').read_text())
@@ -131,6 +132,12 @@ def main() -> None:
     for name in ['SSL_CERT_FILE', 'SSL_CERT_DIR', 'DYLD_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'PYTHONHOME', 'PYTHONPATH']:
         environment.pop(name, None)
     python = work / 'venv/bin/python'
+    if args.intake_only:
+        from controlled_runtime_selection import record_selection
+
+        assert args.reuse_imageformats_overlay, 'Preserve qualified image plugin membership'
+        record_selection('macos-x64', work, output, output / 'original-native-results/macos-runtime-sdk.json')
+        return
     commands = [[python, ROOT / '.github/scripts/verify_macos_x64_runtime_pilot.py', '--output-dir', output],
                 [python, ROOT / 'main.py', 'cli', 'audit', '--help'],
                 [python, '-m', 'pytest', ROOT / 'tests/test_cli_headless.py', '-q'],

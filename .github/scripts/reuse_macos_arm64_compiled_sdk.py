@@ -86,6 +86,7 @@ def main() -> None:
     phase.add_argument('--bindings', action='store_true')
     phase.add_argument('--consumers-only', action='store_true')
     parser.add_argument('--imageformats', action='store_true')
+    parser.add_argument('--intake-only', action='store_true')
     args = parser.parse_args()
     assert not args.imageformats or args.consumers_only
     assert platform.system() == 'Darwin' and platform.machine() == 'arm64'
@@ -170,6 +171,12 @@ def main() -> None:
     (output / 'compiled-sdk-intake.json').write_text(json.dumps({'original': spec, 'verified_paths': len(receipt['paths']),
         'scope': 'Exact compiled bytes only; original failed whole pilot remains unqualified'}, indent=2) + '\n')
     os.environ['MACOSX_DEPLOYMENT_TARGET'] = '14.4'
+    if args.intake_only:
+        from controlled_runtime_selection import record_selection
+
+        assert args.imageformats, 'Preserve qualified image plugin membership'
+        record_selection('macos-arm64', work, output, output / 'original-compiled-sdk-receipt.json')
+        return
     if args.imageformats:
         environment = imageformats_environment(work, output)
         subprocess.run([str(work / 'venv/bin/python'), str(ROOT / '.github/scripts/verify_macos_arm64_imageformats.py'),
