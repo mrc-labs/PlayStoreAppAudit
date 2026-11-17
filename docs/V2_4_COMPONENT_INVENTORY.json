@@ -1,4 +1,31 @@
 {
+  "pre_freeze_upstream_delta_2026_11_17": {
+    "audit_date": "2026-11-17 Europe/Rome",
+    "libffi": {
+      "qualified": "3.8.0",
+      "latest_stable": "3.8.1",
+      "published": "2026-11-14",
+      "source_sha256": "81e879c094cc5ec3186c48510c6385ac6b3e866192e8bc71a35245703757ee40",
+      "authority": "https://github.com/libffi/libffi/releases/tag/v3.8.1",
+      "decision": "Required security update; native prerequisite prepared, not adopted or qualified",
+      "supported_route": "Official vcpkg stable3.8.1 port c73f6e0a95da13e19de787522f2c64c2b1f97941 with previously qualified stable tool; preserve static Windows FFI and dynamic CRT. Official Windows ZIPs contain DLL/import libraries, not static archives.",
+      "affected": "AArch64 by-value composites/HFA, Darwin ARM64 closure tables, applicable static-trampoline paths and other ABI fixes; exact build/runtime applicability retained per target"
+    },
+    "patchelf": {
+      "previous": "0.19.1.0",
+      "selected": "0.19.3.0",
+      "authority": "https://pypi.org/pypi/patchelf/0.19.3.0/json",
+      "compatibility": "Official x86_64 manylinux2.5 and AArch64 manylinux2.17 wheels; host build tool only, no app OS floor increase"
+    },
+    "psl": {
+      "url": "https://publicsuffix.org/list/public_suffix_list.dat",
+      "bytes": 341839,
+      "sha256": "76918ba7c5f7501785558708be861152377f962643844828a7a3cb7f3ae864c5",
+      "qualified_sha256": "8576b335b871dea99dc0fccd04138311bd43f7a8da256c31bf964f11e2f7c179"
+    },
+    "scope": "Changed upstream facts only; original1094 observations preserved. Final freshness/freeze not accepted."
+  }
+,
   "six_native_image_module_completion_2026_11_17": {
     "qt_imageformats": "6.12.0",
     "official_sha256": "0943132b5db8de6b6a7f1d162682173e8763c7ed94e80fd39113292845f67762",

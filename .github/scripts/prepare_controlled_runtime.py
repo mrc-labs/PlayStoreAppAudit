@@ -146,7 +146,7 @@ def main() -> None:
     lines += [line for line in (ROOT / 'requirements-dev.txt').read_text().splitlines() if not line.startswith('-r ')]
     lines += ['PySide6==6.12.0', 'Nuitka==4.3.5']
     if system == 'linux':
-        lines += ['patchelf==0.19.1.0']
+        lines += ['patchelf==0.19.3.0']
     requirements.write_text('\n'.join(lines) + '\n')
     subprocess.run([python, str(ROOT / '.github/scripts/bootstrap_pip.py')], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'install', '-r', str(ROOT / '.github/scripts/source_build_requirements.txt'),

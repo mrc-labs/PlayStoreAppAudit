@@ -453,7 +453,7 @@ def test_all_standalone_builds_expose_the_dispatcher() -> None:
     assert '-ArgumentList @("cli", "audit", "--help")' in windows
     assert '$CliProcess.ExitCode -ne 0' in windows
     assert 'root / "PlayStoreAppAudit.exe"' in windows_validator
-    assert 'pyside6-deploy main.py' in linux
+    assert "deploy()' main.py" in linux
     assert '"$ROUNDTRIP_BIN" cli audit --help' in linux
-    assert 'pyside6-deploy main.py' in macos
+    assert "deploy()' main.py" in macos
     assert '"$REXEC" cli audit --help' in macos

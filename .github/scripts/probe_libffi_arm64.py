@@ -69,7 +69,8 @@ def apply_libffi_patch(source: Path, evidence: Path, spec: dict) -> None:
     shutil.copy2(REPO / '.github/scripts/libffi_arm64_probe_sources.json', evidence)
 
 
-def configure_headers(source: Path, work: Path, evidence: Path, compiler: Path) -> dict:
+def configure_headers(source: Path, work: Path, evidence: Path, compiler: Path,
+                      *, expected_version: str = '3.8.0') -> dict:
     """Generate matching upstream headers instead of editing stale declarations."""
     bash = Path(os.environ['PROGRAMFILES']) / 'Git/bin/bash.exe'
     assert bash.is_file(), f'Git Bash missing: {bash}'
@@ -93,7 +94,7 @@ cd "$build"
         if (configured / 'config.log').is_file():
             shutil.copy2(configured / 'config.log', evidence)
     generated = {'ffi.h': configured / 'include/ffi.h', 'fficonfig.h': configured / 'fficonfig.h'}
-    assert re.search(r'FFI_VERSION_STRING\s+"3\.8\.0"', generated['ffi.h'].read_text()), 'Wrong/unconfigured libffi header version'
+    assert re.search(r'FFI_VERSION_STRING\s+"' + re.escape(expected_version) + '"', generated['ffi.h'].read_text()), 'Wrong/unconfigured libffi header version'
     hashes = {}
     for name, path in generated.items():
         destination = source / 'msvc_build/aarch64/aarch64_include' / name
@@ -107,7 +108,8 @@ cd "$build"
 
 
 def exercise_library(source: Path, work: Path, library: Path, compiler: Path, evidence: Path,
-                     *, machine: int = 0xAA64, include: Path | None = None) -> dict:
+                     *, machine: int = 0xAA64, include: Path | None = None,
+                     expected_version: str = '3.8.0') -> dict:
     client = work / 'ffi_consumer.c'
     client.write_text(r'''#include <ffi.h>
 #include <stdint.h>
@@ -190,7 +192,8 @@ int main(void) {
     printf("libffi %s native version/call/closure/aligned-stack-structs PASS\n", ffi_get_version());
     return 0;
 }
-''', encoding='utf-8')
+'''.replace('3.8.0', expected_version).replace('30800', str(sum(int(n) * scale for n, scale in
+            zip(expected_version.split('.'), [10000, 100, 1], strict=True)))), encoding='utf-8')
     shutil.copy2(client, evidence)
     executable = work / 'ffi_consumer.exe'
     run([str(compiler), '/nologo', '/MD', '/Zi', '/std:c17', '/DFFI_BUILDING_DLL',
@@ -218,7 +221,7 @@ int main(void) {
             except subprocess.TimeoutExpired:
                 (evidence / 'consumer-native-debug.log').write_text('Native debugger deadline reached', encoding='utf-8')
         raise
-    assert 'libffi 3.8.0 native version/call/closure/aligned-stack-structs PASS' in output
+    assert 'libffi ' + expected_version + ' native version/call/closure/aligned-stack-structs PASS' in output
     return {'machine': machine, 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(), 'executed': output.strip()}
 
 

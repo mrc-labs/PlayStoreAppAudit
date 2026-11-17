@@ -1,6 +1,6 @@
 # AGENTS.md
 
-November17 current checkpoint: all six controlled SDK/source-identity intakes PASS at d72c803 (Windows43986492340 both; Linux43986497091/43986501216; Mac43986506849/43986511484), without dependency/application compilation. Producing SDK/source/legal integration is prepared; final package acceptance remains open. Forty-four affected unit/static checks pass; original compiled identities and six-module proofs remain unchanged. See active audit for exact scope and remaining gates.
+November17 final delta: required libffi3.8.1 security update discovered (official November14 release, ABI/SONAME8 preserved); bounded official-port native prerequisite prepared, no runtime adoption. Patchelf0.19.3.0 selected through official compatible host wheels. Six SDK intakes pass; producer integration is prepared, but FFI/PSL reconciliation and final package/freshness/Quality remain open. See active audit; no publication readiness claim.
 
 November16 native Intel43968346929 PASS at1179e93 after bounded mitigation of independently reproduced hosted IconServices defect; actual Cocoa GUI/decoder clean exit,91 x64-selected Mach-O images/max14.4, sources/legal/11 unchanged patches worker verified. No runtime/framework/binding rebuild. Current Windows matching-imageformat-module-only adoption is prepared; final SDK/source/legal producer/package gates remain open. PR Quality43968329252 passes2277 on its synthetic merge; direct exact-head Quality is recorded separately, not inferred from head_sha metadata.
 

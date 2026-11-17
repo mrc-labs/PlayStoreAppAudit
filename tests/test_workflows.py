@@ -176,7 +176,7 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
 
     # The deployment parent checks distribution metadata, even when apt has
     # already provisioned the native executable.
-    assert "'patchelf==0.19.1.0'" in intake
+    assert "'patchelf==0.19.3.0'" in intake
 
 
 def test_linux_release_runs_legal_gate_before_zip() -> None:

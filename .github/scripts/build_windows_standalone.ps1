@@ -301,9 +301,24 @@ try {
         Fail "Packaged application smoke test failed with exit code $($Process.ExitCode)."
     }
     Write-Host "Packaged smoke test: PASS"
+}
+finally {
+    $env:QT_QPA_PLATFORM = $OldQtPlatform
+    $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = $OldSmoke
+    $env:PATH = $OldPath
+    $env:PYTHONHOME = $OldPythonHome
+    $env:PYTHONPATH = $OldPythonPath
+}
 
     Write-Host ""
     Write-Host "=== PACKAGED CLI SMOKE TEST ==="
+$OldCliPath = $env:PATH
+$OldCliPythonHome = $env:PYTHONHOME
+$OldCliPythonPath = $env:PYTHONPATH
+try {
+    $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+    $env:PYTHONHOME = $null
+    $env:PYTHONPATH = $null
     # This is a GUI-subsystem executable. Explicitly wait and retain redirected
     # handles until exit; direct PowerShell invocation can return before it writes.
     $CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
@@ -321,12 +336,11 @@ try {
     Write-Host "Packaged CLI smoke test: PASS"
 }
 finally {
-    $env:QT_QPA_PLATFORM = $OldQtPlatform
-    $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = $OldSmoke
-    $env:PATH = $OldPath
-    $env:PYTHONHOME = $OldPythonHome
-    $env:PYTHONPATH = $OldPythonPath
+    $env:PATH = $OldCliPath
+    $env:PYTHONHOME = $OldCliPythonHome
+    $env:PYTHONPATH = $OldCliPythonPath
 }
+
 
 
 Write-Host ""

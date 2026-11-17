@@ -36,6 +36,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-root', type=Path, required=True)
     parser.add_argument('--consumers-only', action='store_true', help='Reuse exact qualified SDK; no libffi rebuild')
+    parser.add_argument('--source-contract', type=Path)
     args = parser.parse_args()
     if args.consumers_only:
         from probe_windows_x64_ffi_consumers import qualify
@@ -52,7 +53,7 @@ def main() -> None:
     assert not work.exists()
     work.mkdir()
     output = REPO / 'toolchain-delta-evidence'
-    spec_path = REPO / '.github/scripts/windows_x64_libffi_sources.json'
+    spec_path = args.source_contract or REPO / '.github/scripts/windows_x64_libffi_sources.json'
     spec = json.loads(spec_path.read_text())
     shutil.copy2(spec_path, output)
     (output / 'sources').mkdir()
@@ -62,7 +63,14 @@ def main() -> None:
     source = work / spec['sources'][0]['directory']
     for name, digest in spec['guarded_files'].items():
         assert hashlib.sha256((source / name).read_bytes()).hexdigest() == digest
-    assert json.loads((source / 'ports/libffi/vcpkg.json').read_text())['version'] == '3.8.0'
+    if overlay := spec.get('overlay_port'):
+        port_root = REPO / '.github/sources/vcpkg-libffi-3.8.1'
+        for item in overlay['files']:
+            data = (port_root / item['name']).read_bytes()
+            assert hashlib.sha256(data).hexdigest() == item['sha256']
+            (source / 'ports/libffi' / item['name']).write_bytes(data)
+    version = spec.get('version', '3.8.0')
+    assert json.loads((source / 'ports/libffi/vcpkg.json').read_text())['version'] == version
     # Automake's generic `compile cl` driver loses the CRT selection here.
     # Use libffi's own supported MSVC driver for C as already used for ASM.
     port = source / 'ports/libffi/portfile.cmake'
@@ -144,13 +152,13 @@ def main() -> None:
     assert machines == {'8664'}, machines
     directives = run(['dumpbin', '/directives', library], log=output / 'ffi-library-crt.txt').upper().replace('"', '')
     assert '/DEFAULTLIB:MSVCRT' in directives and '/DEFAULTLIB:LIBCMT' not in directives
-    original_source = source / 'downloads/libffi-3.8.0.tar.gz'
+    original_source = source / ('downloads/libffi-' + version + '.tar.gz')
     assert hashlib.sha256(original_source.read_bytes()).hexdigest() == spec['libffi_source_sha256']
     shutil.copy2(original_source, output / 'sources')
     shutil.copytree(source / 'ports/libffi', output / 'official-libffi-port')
     shutil.copytree(prefix, output / 'libffi-sdk')
     shutil.copy2(source / 'LICENSE.txt', output / 'vcpkg-LICENSE.txt')
-    consumer = exercise_library(source, work, library, compiler, output, machine=0x8664, include=prefix / 'include')
+    consumer = exercise_library(source, work, library, compiler, output, machine=0x8664, include=prefix / 'include', expected_version=version)
     versions = pe_versions(work / 'ffi_consumer.exe')
     assert max(versions.values()) <= (10, 0), versions
     report = {'source_sha': os.environ['GITHUB_SHA'], 'sources': spec, 'compiler': str(compiler),
