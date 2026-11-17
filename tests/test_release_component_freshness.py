@@ -87,7 +87,7 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
                 assert "if ($LASTEXITCODE -ne 0) { throw" in step
             else:
                 assert "set -euo pipefail" in step
-    assert setups == 23
+    assert setups == 24
 
 
 @pytest.mark.parametrize(

@@ -81,6 +81,12 @@ def main() -> None:
         result.check_returncode()
         return text
 
+    environment['QT_PLUGIN_PATH'] = str(prefix / 'qt/plugins')
+    if system == 'linux':
+        linkage = run(['ldd', prefix / 'qt/plugins/platforms/libqxcb.so'], 'qt-xcb-prerequisite')
+        if 'not found' in linkage:
+            print(linkage, flush=True)
+            raise RuntimeError('Original qualified XCB plugin has missing runner dependencies; FFI build not started')
     before = ffi_files(prefix)
     assert before, 'Missing original private libffi SDK'
     archive = checked_source(SOURCE, sources)
@@ -109,6 +115,16 @@ def main() -> None:
         run(['codesign', '--force', '--sign', '-', library.resolve()], 'engineering-sign')
         after = ffi_files(prefix)
         changed = {name: value for name, value in after.items() if before.get(name) != value}
+    # Preserve completed build bytes before later consumers, even if a GUI gate fails.
+    overlay = output / 'libffi381-sdk-overlay.tar.xz'
+    with tarfile.open(overlay, 'w:xz') as bundle:
+        for name in changed:
+            bundle.add(prefix / name, arcname='prefix/' + name, recursive=False)
+    built = {'source_sha': head, 'target': args.target, 'original_sdk': selection, 'source': SOURCE,
+             'before': before, 'after': changed, 'original_prefix': str(prefix),
+             'overlay_sha256': hashlib.sha256(overlay.read_bytes()).hexdigest(),
+             'compiler': environment['CC'], 'scope': 'Completed FFI build checkpoint; consumer acceptance separate'}
+    (output / 'libffi381-build.json').write_text(json.dumps(built, indent=2))
     # A fresh child guarantees that no old FFI mapping survives library installation.
     check = r'''import ctypes,hashlib,json,sys
 from pathlib import Path
@@ -160,16 +176,10 @@ print(json.dumps(dict(libffi='3.8.1',callbacks_ctypes=1200,callbacks_cffi=1200,i
     run([sys.executable, '-m', 'pytest', '-q', 'tests/test_imageformats_consumers.py'], 'codecs', cwd=ROOT)
     environment['PLAYSTORE_APP_AUDIT_SMOKE_TEST'] = '1'
     environment['QT_QPA_PLATFORM'] = 'cocoa' if system == 'macos' else 'xcb'
+    environment['QT_DEBUG_PLUGINS'] = '1'
     run([sys.executable, 'main.py'], 'gui', cwd=ROOT)
     run([sys.executable, 'main.py', 'cli', 'audit', '--help'], 'cli', cwd=ROOT)
-    overlay = output / 'libffi381-sdk-overlay.tar.xz'
-    with tarfile.open(overlay, 'w:xz') as bundle:
-        for name in changed:
-            bundle.add(prefix / name, arcname='prefix/' + name, recursive=False)
-    (output / 'libffi381-result.json').write_text(json.dumps({'source_sha': head, 'target': args.target,
-        'original_sdk': selection, 'source': SOURCE, 'before': before, 'after': changed, 'native': measured,
-        'original_prefix': str(prefix), 'overlay_sha256': hashlib.sha256(overlay.read_bytes()).hexdigest(),
-        'compiler': environment['CC'], 'result': 'PASS',
+    (output / 'libffi381-result.json').write_text(json.dumps({**built, 'native': measured, 'result': 'PASS',
         'scope': 'ABI-compatible source-built FFI update and affected native consumers only; no Python/Qt/binding/crypto rebuild or final package'}, indent=2))
 
 

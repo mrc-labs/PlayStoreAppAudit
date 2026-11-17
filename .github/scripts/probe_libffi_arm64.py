@@ -243,7 +243,8 @@ def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
 
 
 def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict,
-                  *, arch: str = 'ARM64', include: Path | None = None) -> dict:
+                  *, arch: str = 'ARM64', include: Path | None = None,
+                  expected_ffi: str = '3.8.0', runtime_python: Path | None = None) -> dict:
     """Build one isolated cffi consumer; never replace a runtime's installed DLL."""
     archive = evidence / 'cffi-2.1.1.tar.gz'
     with urllib.request.urlopen(spec['source_url'], timeout=90) as response:
@@ -272,8 +273,9 @@ def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec:
     shutil.copy2(library, prefix / 'lib' / library.name)
     assert hashlib.sha256((prefix / 'lib' / library.name).read_bytes()).hexdigest() == hashlib.sha256(library.read_bytes()).hexdigest()
     venv_path = work / 'cffi-environment'
-    venv.EnvBuilder(with_pip=True).create(venv_path)
-    python = venv_path / 'Scripts/python.exe'
+    if runtime_python is None:
+        venv.EnvBuilder(with_pip=True).create(venv_path)
+    python = runtime_python or venv_path / 'Scripts/python.exe'
     run([str(python), str(REPO / '.github/scripts/bootstrap_pip.py')], evidence / 'cffi-pip-bootstrap.log', work)
     wheels = evidence / 'cffi-build-wheels'
     wheels.mkdir()
@@ -310,6 +312,8 @@ print(json.dumps(dict(module=_cffi_backend.__file__,sha256=hashlib.sha256(open(_
  distribution=importlib.metadata.version('cffi'),api=cffi.__version__,libffi='3.8.0',libffi_number=30800)))
 '''
     inspect = inspect.replace("=='ARM64'", "==" + repr(arch))
+    inspect = inspect.replace('2.1.1+psaa.libffi380', spec['distribution_version']).replace('3.8.0', expected_ffi)
+    inspect = inspect.replace('30800', str(sum(int(n) * scale for n, scale in zip(expected_ffi.split('.'), [10000, 100, 1], strict=True))))
     measured = json.loads(run([str(python), '-c', inspect], evidence / 'cffi-backend.json', work))
     backend = Path(measured['module'])
     assert read_pe_machine(backend) == machine
