@@ -279,7 +279,9 @@ $OldSmoke = $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST
 $OldPath = $env:PATH
 $OldPythonHome = $env:PYTHONHOME
 $OldPythonPath = $env:PYTHONPATH
+$OldQtPluginPath = $env:QT_PLUGIN_PATH
 try {
+    $env:QT_PLUGIN_PATH = $null
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     $env:PYTHONHOME = $null
     $env:PYTHONPATH = $null
@@ -308,6 +310,7 @@ finally {
     $env:PATH = $OldPath
     $env:PYTHONHOME = $OldPythonHome
     $env:PYTHONPATH = $OldPythonPath
+    $env:QT_PLUGIN_PATH = $OldQtPluginPath
 }
 
     Write-Host ""
@@ -315,7 +318,9 @@ finally {
 $OldCliPath = $env:PATH
 $OldCliPythonHome = $env:PYTHONHOME
 $OldCliPythonPath = $env:PYTHONPATH
+$OldCliQtPluginPath = $env:QT_PLUGIN_PATH
 try {
+    $env:QT_PLUGIN_PATH = $null
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     $env:PYTHONHOME = $null
     $env:PYTHONPATH = $null
@@ -339,6 +344,7 @@ finally {
     $env:PATH = $OldCliPath
     $env:PYTHONHOME = $OldCliPythonHome
     $env:PYTHONPATH = $OldCliPythonPath
+    $env:QT_PLUGIN_PATH = $OldCliQtPluginPath
 }
 
 

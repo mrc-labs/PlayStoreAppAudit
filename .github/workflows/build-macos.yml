@@ -494,8 +494,8 @@ jobs:
               --identity -
           fi
 
-          "$EXEC"
-          "$EXEC" cli audit --help >/dev/null
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$EXEC"
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$EXEC" cli audit --help >/dev/null
 
           python .github/scripts/prepare_release_legal_bundle.py \
             --package-dir "$APP" \
@@ -577,8 +577,8 @@ jobs:
             spctl --assess --type execute --verbose=4 "$RAPP"
           fi
 
-          "$REXEC"
-          "$REXEC" cli audit --help >/dev/null
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$REXEC"
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$REXEC" cli audit --help >/dev/null
           shasum -a 256 "$ZIP"
           ls -lh artifact/*
 

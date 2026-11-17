@@ -35,6 +35,46 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def reuse_x64_staged(output: Path, selection: dict) -> None:
+    """Reuse completed native extension/upstream gates; repeat affected GUI intake."""
+    from download_diagnostic_artifact import fetch_artifact
+
+    artifact, size = 14297703555, 433266879
+    source = 'c7f3a6bee7896d472bb19e6141527b0ae4ac23a0'
+    expected = '737e571bc32528d94addeb3a6627ddce95306a70467580a4fb512d3f5b21ed3f'
+    metadata, data = fetch_artifact(artifact)
+    assert not metadata['expired'] and metadata['workflow_run']['head_repository_id'] == 1334403620
+    assert metadata['workflow_run']['id'] == 44013782284 and metadata['workflow_run']['head_sha'] == source
+    assert metadata['size_in_bytes'] == size == len(data)
+    assert metadata['digest'] == 'sha256:' + expected == 'sha256:' + hashlib.sha256(data).hexdigest()
+    with zipfile.ZipFile(io.BytesIO(data)) as bundle:
+        prefix = 'ffi381-consumers/'
+        state = json.loads(bundle.read(prefix + 'ffi381-staged.json'))
+        assert state['source_sha'] == source
+        for key in ['target', 'work', 'prefix', 'python', 'qt_receipt_sha256', 'compiled_source_sha', 'overlay']:
+            assert state['runtime_selection'][key] == selection[key], 'Changed original SDK input: ' + key
+        assert state['cffi_source'] == json.loads((ROOT / '.github/scripts/windows_ffi381_cffi_sources.json').read_text())['x64']
+        assert state['qualified_ffi_sdk'] == {**SDKS['x64'], 'compiled_source_sha': SDK_SOURCE}
+        output.mkdir()
+        for name in bundle.namelist():
+            if not name.startswith(prefix) or name.endswith('/'):
+                continue
+            path = output / name.removeprefix(prefix)
+            assert path.resolve().is_relative_to(output.resolve())
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(bundle.read(name))
+    assert digest(output / 'native-ctypes/_ctypes.pyd') == state['ctypes']['module_sha256']
+    wheels = list((output / 'cffi-wheel').glob('*.whl'))
+    assert len(wheels) == 1 and digest(wheels[0]) == state['cffi']['wheel_sha256']
+    subprocess.run([selection['python'], '-m', 'pip', '--isolated', 'install', '--no-index', '--no-deps',
+                    '--force-reinstall', str(wheels[0])], check=True)
+    state.update(source_sha=os.environ['GITHUB_SHA'], compiled_source_sha=source,
+                 runtime_selection=selection, reused_upstream_tests_source_sha=source,
+                 cached_stage={'artifact': artifact, 'run': 44013782284, 'zip_sha256': expected,
+                    'scope': 'Original ctypes/cffi/upstream gates passed; original whole run failed only later codec plugin discovery. Current installed/native/GUI/TLS/codec consumers re-executed.'})
+    (output / 'ffi381-staged.json').write_text(json.dumps(state, indent=2))
+
+
 def install_and_exercise(output: Path) -> None:
     """Called by bootstrap after the SDK build process has released its DLLs."""
     state = json.loads((output / 'ffi381-staged.json').read_text())
@@ -46,6 +86,7 @@ def install_and_exercise(output: Path) -> None:
     assert digest(source) == state['ctypes']['module_sha256']
     shutil.copy2(source, destination)
     environment = dict(os.environ)
+    environment['QT_PLUGIN_PATH'] = str(Path(selection['prefix']) / 'qt/plugins')
     for key in ['GH_TOKEN', 'GITHUB_TOKEN', 'PYTHONHOME', 'PYTHONPATH', 'SSL_CERT_FILE', 'SSL_CERT_DIR']:
         environment.pop(key, None)
     python = selection['python']
@@ -82,6 +123,7 @@ print(json.dumps(dict(ctypes=_ctypes.__file__,cffi=_cffi_backend.__file__,libffi
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--install', action='store_true')
+    parser.add_argument('--reuse-x64-staged', action='store_true')
     args = parser.parse_args()
     output = ROOT / 'toolchain-delta-evidence/ffi381-consumers'
     if args.install:
@@ -96,6 +138,10 @@ def main() -> None:
     selection = json.loads((output.parent / 'producer-runtime-selection.json').read_text())
     assert selection['target'] == 'windows-' + arch
     assert Path(sys.executable).resolve().is_relative_to(Path(selection['work']).resolve())
+    if args.reuse_x64_staged:
+        assert arch == 'x64'
+        reuse_x64_staged(output, selection)
+        return
     assert '_cffi_backend' not in sys.modules, 'Release the old backend before installing the isolated new wheel'
     ctypes_destination = Path(importlib.util.find_spec('_ctypes').origin).resolve()
     assert ctypes_destination.is_relative_to(Path(selection['work']).resolve())
@@ -121,7 +167,7 @@ def main() -> None:
             (sdk / 'include' / name).write_bytes(bundle.read(spec['root'] + '/include/' + name))
         if arch == 'arm64':
             (sdk / 'include/fficonfig.h').write_bytes(bundle.read(spec['root'] + '/include/fficonfig.h'))
-        library = sdk / 'lib' / Path(spec['library']).name
+        library = sdk / 'lib' / ('Ffi_staticLib_arm64.lib' if arch == 'arm64' else Path(spec['library']).name)
         library.write_bytes(bundle.read(spec['root'] + '/' + spec['library']))
         assert digest(library) == spec['library_sha256']
         (sdk / 'LICENSE').write_bytes(bundle.read(spec['root'] + '/' + spec['license']))

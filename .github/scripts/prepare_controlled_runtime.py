@@ -113,6 +113,7 @@ def main() -> None:
         selection = json.loads((output / 'producer-runtime-selection.json').read_text())
         environment = dict(os.environ)
     work, prefix = Path(selection['work']), Path(selection['prefix'])
+    environment['QT_PLUGIN_PATH'] = str(prefix / 'qt/plugins')
     if system != 'macos':
         spec = json.loads((ROOT / '.github/scripts/qualified_imageformat_overlays.json').read_text())[target]
         restore_qualified_overlay(work, output, spec)
@@ -185,6 +186,7 @@ def main() -> None:
         'scope': 'Retained original source and license bytes; package acceptance not claimed'}, indent=2) + '\n')
     if args.export_github_environment:
         values = {'PSAA_RUNTIME_PYTHON': python, 'PSAA_RUNTIME_EVIDENCE': str(output),
+                  'QT_PLUGIN_PATH': str(prefix / 'qt/plugins'),
                   'PSAA_CONTROLLED_RUNTIME_SELECTION': str(output / 'producer-runtime-selection.json'),
                   'PSAA_CONTROLLED_QT_RECEIPT': selection['qt_receipt'],
                   'PSAA_CONTROLLED_QT_RECEIPT_SHA256': selection['qt_receipt_sha256'],

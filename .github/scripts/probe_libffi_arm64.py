@@ -245,7 +245,7 @@ def apply_cffi_patch(source: Path, evidence: Path, spec: dict) -> None:
 def exercise_cffi(source: Path, work: Path, library: Path, evidence: Path, spec: dict,
                   *, arch: str = 'ARM64', include: Path | None = None,
                   expected_ffi: str = '3.8.0', runtime_python: Path | None = None) -> dict:
-    """Build one isolated cffi consumer; never replace a runtime's installed DLL."""
+    """Build an isolated cffi consumer; a supplied runtime must be a disposable SDK."""
     archive = evidence / 'cffi-2.1.1.tar.gz'
     with urllib.request.urlopen(spec['source_url'], timeout=90) as response:
         if not response.geturl().startswith('https://'):
@@ -397,7 +397,8 @@ def pytest_configure(config):
             'positive_variadic': variadic, 'variadic_fixture_sha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
             'libffi_static_sha256': hashlib.sha256(library.read_bytes()).hexdigest(),
             'tests': len(cases), 'executed': len(executed), 'skipped': len(cases) - len(executed),
-            'scope': 'Isolated source consumer only; no controlled CPython/cryptography or producing adoption'}
+            'scope': ('Supplied controlled SDK consumer only; no final package' if runtime_python else
+                      'Isolated source consumer only; no controlled CPython/cryptography or producing adoption')}
 
 
 def main() -> None:

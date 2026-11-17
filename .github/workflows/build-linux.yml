@@ -237,8 +237,8 @@ jobs:
           test "$ELF_MACHINE" = "${{ matrix.expected_elf_machine }}"
           export PACKAGE_ELF_MACHINE="$ELF_MACHINE"
 
-          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH "$BIN"
-          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH "$BIN" cli audit --help >/dev/null
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$BIN"
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$BIN" cli audit --help >/dev/null
 
           PACKAGE_NAME="PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}"
           PACKAGE_DIR="package/$PACKAGE_NAME"
@@ -372,8 +372,8 @@ jobs:
 
           test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
 
-          timeout 30s xvfb-run -a             env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
-          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH "$ROUNDTRIP_BIN" cli audit --help >/dev/null
+          timeout 30s xvfb-run -a             env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$ROUNDTRIP_BIN" cli audit --help >/dev/null
 
           sha256sum "$ARCHIVE"
           ls -lh artifact/*
