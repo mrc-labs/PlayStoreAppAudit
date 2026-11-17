@@ -52,6 +52,16 @@ def test_unsafe_source_member_is_rejected(tmp_path: Path) -> None:
     assert not (tmp_path.parent / 'outside.tar.gz').exists()
 
 
+def test_linux_parser_consumer_retains_its_original_compilation_sources(tmp_path: Path) -> None:
+    original = _archive({'sources/libxml2.tar.xz': b'compiled parser source', 'legal/COPYING': b'parser license'})
+    consumer = _archive({'original-lxml-123.zip': original.fp.getvalue()})
+    with _archive({'parser/original-qualified-lxml.zip': consumer.fp.getvalue()}) as archive:
+        retain_zip_material(archive, tmp_path, 'verified parser consumer')
+    records = json.loads((tmp_path / 'INPUT-MATERIAL.json').read_text())
+    assert (tmp_path / 'sources/libxml2.tar.xz').read_bytes() == b'compiled parser source'
+    assert all('original-lxml-123.zip' in record['origin'] for record in records)
+
+
 def test_release_material_contains_original_bytes_recipes_and_validated_licenses(tmp_path: Path) -> None:
     material, assets, package, repo = [tmp_path / name for name in ['material', 'assets', 'package', 'repo']]
     assets.mkdir()
@@ -60,16 +70,22 @@ def test_release_material_contains_original_bytes_recipes_and_validated_licenses
     (repo / 'LICENSE').write_bytes(b'project license fixture')
     with _archive({'sources/provider.tar.gz': b'original source fixture', 'legal/COPYING': b'original license fixture'}) as archive:
         retain_zip_material(archive, material, 'hash-verified SDK fixture')
-    selection = {'identity': 'Project-modified fixture', 'target': 'linux-x64', 'preparation_source_sha': 'a' * 40}
+    selection = {'identity': 'Project-modified fixture', 'target': 'linux-x64', 'preparation_source_sha': 'a' * 40,
+                 'work': '/home/runner/private-work', 'python': 'C:\\private\\python.exe'}
     sources, controlled = prepare_legal_sources(material, selection, repo, assets, package / 'licenses')
     assert (assets / 'provider.tar.gz').read_bytes() == b'original source fixture'
     with tarfile.open(assets / 'PSAA-v2.4.0-controlled-recipes-linux-x64.tar.xz') as archive:
         assert archive.extractfile('.github/patches/provider.patch').read() == b'reviewable patch fixture'
-        assert json.load(archive.extractfile('DEPENDENCY-SDK-SELECTION.json')) == selection
+        archived = json.load(archive.extractfile('DEPENDENCY-SDK-SELECTION.json'))
+        assert archived['preparation_source_sha'] == selection['preparation_source_sha']
+        assert 'work' not in archived and 'python' not in archived
     sidecar = package / 'licenses/controlled-runtime/INPUTS.json'
-    sidecar.parent.mkdir()
+    sidecar.parent.mkdir(exist_ok=True)
     sidecar.write_text(json.dumps(controlled))
     manifest = {'source_assets': sources, 'controlled_dependency_inputs': controlled}
+    from validate_release_legal_bundle import _validate_portable_manifest
+
+    _validate_portable_manifest(manifest)
     _validate_controlled_sources(package, manifest)
     record = controlled['license_records'][0]
     (package / record['file']).write_bytes(b'tampered')

@@ -2267,7 +2267,7 @@ def main() -> int:
             if not existing:
                 source_assets.append(item)
         controlled_dir = licenses_root / "controlled-runtime"
-        controlled_dir.mkdir()
+        controlled_dir.mkdir(exist_ok=True)
         (controlled_dir / "INPUTS.json").write_text(
             json.dumps(controlled_inputs, indent=2) + "\n", encoding="utf-8")
 
@@ -2308,6 +2308,15 @@ def main() -> int:
         openssl=openssl,
         goopdl_license=goopdl_license,
     )
+    if controlled_inputs:
+        with (package_legal_dir / "THIRD_PARTY_NOTICES.md").open("a", encoding="utf-8") as stream:
+            stream.write("\n## Project-controlled dependency builds\n\n"
+                "This package uses project-modified CPython and Qt/PySide/Shiboken builds. "
+                "They are not unchanged official binary distributions. Original sources, "
+                "project patches and build recipes are included in the corresponding-source bundle. "
+                "See licenses/controlled-runtime/INPUTS.json for original source identities and license payloads. "
+                "Upstream Qt attribution records describe the original Qt archives; the controlled-input "
+                "record separately identifies the selected replacements and project modifications.\n")
 
     build_info = next(
         (item for item in runtime_inventory if PurePosixPath(item["path"]).name.casefold() == "build-info.txt"),

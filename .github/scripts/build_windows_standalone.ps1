@@ -144,7 +144,7 @@ $IconPath = Join-Path $BuildRoot "app_icon.ico"
 $LegalReleaseDir = Join-Path $BuildRoot "legal-release-v$AppVersion"
 
 if (Test-Path -LiteralPath $BuildRoot) {
-    Remove-Item -LiteralPath $BuildRoot -Recurse -Force
+    Fail "Output already exists; preserve it and select a new OutputRoot: $BuildRoot"
 }
 New-Item -ItemType Directory -Force -Path $BuildRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $NuitkaOutput | Out-Null
@@ -256,6 +256,10 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Primary executable PE architecture validation failed."
 }
 Write-Host "PE architecture: $PeArchitecture"
+foreach ($NativeImage in (Get-ChildItem -LiteralPath $DistDir.FullName -Recurse -File | Where-Object { $_.Extension -in @('.exe', '.dll', '.pyd') })) {
+    & $Python $InspectPe --expect $ExpectedPeMachine $NativeImage.FullName
+    if ($LASTEXITCODE -ne 0) { Fail "Wrong packaged native image: $($NativeImage.FullName)" }
+}
 
 $ExpectedWindowsVersion = "$AppVersion.0"
 $VersionInfo = (Get-Item -LiteralPath $Exe.FullName).VersionInfo
@@ -272,7 +276,13 @@ Write-Host ""
 Write-Host "=== PACKAGED SMOKE TEST ==="
 $OldQtPlatform = $env:QT_QPA_PLATFORM
 $OldSmoke = $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST
+$OldPath = $env:PATH
+$OldPythonHome = $env:PYTHONHOME
+$OldPythonPath = $env:PYTHONPATH
 try {
+    $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+    $env:PYTHONHOME = $null
+    $env:PYTHONPATH = $null
     $env:QT_QPA_PLATFORM = "offscreen"
     $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = "1"
 
@@ -290,30 +300,34 @@ try {
     if ($Process.ExitCode -ne 0) {
         Fail "Packaged application smoke test failed with exit code $($Process.ExitCode)."
     }
+    Write-Host "Packaged smoke test: PASS"
+
+    Write-Host ""
+    Write-Host "=== PACKAGED CLI SMOKE TEST ==="
+    # This is a GUI-subsystem executable. Explicitly wait and retain redirected
+    # handles until exit; direct PowerShell invocation can return before it writes.
+    $CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
+    $CliStderr = Join-Path $BuildRoot "packaged-cli-stderr.txt"
+    $CliProcess = Start-Process -FilePath $Exe.FullName `
+        -ArgumentList @("cli", "audit", "--help") `
+        -WindowStyle Hidden -Wait -PassThru `
+        -RedirectStandardOutput $CliStdout -RedirectStandardError $CliStderr
+    $CliHelp = Get-Content -LiteralPath $CliStdout -Raw
+    if ($CliProcess.ExitCode -ne 0 -or $CliHelp -notmatch "app-list") {
+        Get-Content -LiteralPath $CliStdout
+        Get-Content -LiteralPath $CliStderr
+        Fail "Packaged CLI smoke test failed (exit $($CliProcess.ExitCode))."
+    }
+    Write-Host "Packaged CLI smoke test: PASS"
 }
 finally {
     $env:QT_QPA_PLATFORM = $OldQtPlatform
     $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = $OldSmoke
+    $env:PATH = $OldPath
+    $env:PYTHONHOME = $OldPythonHome
+    $env:PYTHONPATH = $OldPythonPath
 }
-Write-Host "Packaged smoke test: PASS"
 
-Write-Host ""
-Write-Host "=== PACKAGED CLI SMOKE TEST ==="
-# This is a GUI-subsystem executable. Explicitly wait and retain redirected
-# handles until exit; direct PowerShell invocation can return before it writes.
-$CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
-$CliStderr = Join-Path $BuildRoot "packaged-cli-stderr.txt"
-$CliProcess = Start-Process -FilePath $Exe.FullName `
-    -ArgumentList @("cli", "audit", "--help") `
-    -WindowStyle Hidden -Wait -PassThru `
-    -RedirectStandardOutput $CliStdout -RedirectStandardError $CliStderr
-$CliHelp = Get-Content -LiteralPath $CliStdout -Raw
-if ($CliProcess.ExitCode -ne 0 -or $CliHelp -notmatch "app-list") {
-    Get-Content -LiteralPath $CliStdout
-    Get-Content -LiteralPath $CliStderr
-    Fail "Packaged CLI smoke test failed (exit $($CliProcess.ExitCode))."
-}
-Write-Host "Packaged CLI smoke test: PASS"
 
 Write-Host ""
 Write-Host "=== CREATE VERSIONED PACKAGE ==="
@@ -431,7 +445,13 @@ $BuildInfoLines |
 if (-not $PrivateBuild) {
     Write-Host ""
     Write-Host "=== PREPARE PUBLIC LEGAL RELEASE MATERIAL ==="
-    & $Python $PrepareReleaseLegal `
+    $ControlledLegalArgs = @()
+    if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
+        $ControlledLegalArgs = @('--controlled-runtime-selection', $env:PSAA_CONTROLLED_RUNTIME_SELECTION,
+            '--controlled-qt-sdk-receipt', $env:PSAA_CONTROLLED_QT_RECEIPT,
+            '--controlled-qt-sdk-receipt-sha256', $env:PSAA_CONTROLLED_QT_RECEIPT_SHA256)
+    }
+    & $Python $PrepareReleaseLegal @ControlledLegalArgs `
         --package-dir $PackageDir `
         --release-dir $LegalReleaseDir `
         --repo-root $RepoRoot `

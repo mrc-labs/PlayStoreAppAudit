@@ -373,11 +373,13 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
 
     dependencies = manifest.get("runtime_dependencies")
     _require(isinstance(dependencies, list), "Manifest runtime_dependencies is missing")
+    qt_python_expected = ({"pyside6", "shiboken6"} if manifest["qt"].get("distribution_identity", {}).get("distribution") == "PySide6"
+                          else QT_PYTHON_DISTS)
     qt_python_seen: set[str] = set()
     for item in dependencies:
         _require(isinstance(item, dict), "runtime_dependencies contains a non-object entry")
         normalized = _normalize_dist_name(str(item.get("name", "")))
-        if normalized not in QT_PYTHON_DISTS:
+        if normalized not in qt_python_expected:
             continue
         qt_python_seen.add(normalized)
         _require(
@@ -393,7 +395,7 @@ def _validate_qt_license_mapping(package_dir: Path, manifest: dict[str, Any]) ->
             all("LicenseRef-Qt-Commercial" not in path for path in license_files),
             f"{item.get('name')} presents the commercial reference as a distribution license",
         )
-    _require(qt_python_seen == QT_PYTHON_DISTS, "PySide6_Essentials and shiboken6 must both be inventoried")
+    _require(qt_python_seen == qt_python_expected, "Selected PySide distribution and shiboken6 must both be inventoried")
 
     notices = _runtime_legal_path(
         package_dir,
@@ -1208,7 +1210,7 @@ def _validate_controlled_sources(package_dir: Path, manifest: dict[str, Any]) ->
     for record in records:
         relative = PurePosixPath(record["file"])
         _require(not relative.is_absolute() and ".." not in relative.parts
-                 and relative.parts[:2] == ("licenses", "qt-third-party"),
+                 and relative.parts[:3] == ("licenses", "controlled-runtime", "payloads"),
                  "Unsafe controlled license path")
         path = root / relative
         _require(path.is_file() and _sha256(path) == record["sha256"],

@@ -145,12 +145,16 @@ def main() -> None:
     lines = [line for line in lines if not line.startswith('PySide6-Essentials==')]
     lines += [line for line in (ROOT / 'requirements-dev.txt').read_text().splitlines() if not line.startswith('-r ')]
     lines += ['PySide6==6.12.0', 'Nuitka==4.3.5']
+    if system == 'linux':
+        lines += ['patchelf==0.19.1.0']
     requirements.write_text('\n'.join(lines) + '\n')
     subprocess.run([python, str(ROOT / '.github/scripts/bootstrap_pip.py')], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'install', '-r', str(ROOT / '.github/scripts/source_build_requirements.txt'),
                     '-c', str(ROOT / '.github/scripts/source_build_constraints.txt')], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'install', '--no-build-isolation', '-r', str(requirements)], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'check'], env=environment, check=True)
+    subprocess.run([python, '-c', 'from PySide6.scripts.pyside_tool import deploy; deploy()', '--help'],
+                   env=environment, check=True)
     subprocess.run([python, '-c', 'import platform,ssl,sysconfig;from PySide6.QtCore import qVersion;'
         'from cryptography.hazmat.backends.openssl.backend import backend;'
         'assert platform.python_version()=="3.14.10" and not sysconfig.get_config_var("Py_GIL_DISABLED");'
@@ -165,9 +169,10 @@ def main() -> None:
                      preparation_source_sha=os.environ['GITHUB_SHA'], identity='Project-modified v2.4 dependency inputs; no application compiled',
                      loader_path=environment.get('LD_LIBRARY_PATH', ''))
     (output / 'producer-runtime-selection.json').write_text(json.dumps(selection, indent=2) + '\n')
-    from controlled_source_material import retain_directory_material
+    from controlled_source_material import retain_directory_material, retain_required_sources
 
     retain_directory_material(output, output / 'controlled-material', target + ' verified SDK intake')
+    retain_required_sources(output / 'controlled-material', ROOT)
     selection['material_directory'] = str(output / 'controlled-material')
     (output / 'producer-runtime-selection.json').write_text(json.dumps(selection, indent=2) + '\n')
     material_records = json.loads((output / 'controlled-material/INPUT-MATERIAL.json').read_text())
@@ -180,6 +185,7 @@ def main() -> None:
         'scope': 'Retained original source and license bytes; package acceptance not claimed'}, indent=2) + '\n')
     if args.export_github_environment:
         values = {'PSAA_RUNTIME_PYTHON': python, 'PSAA_RUNTIME_EVIDENCE': str(output),
+                  'PSAA_CONTROLLED_RUNTIME_SELECTION': str(output / 'producer-runtime-selection.json'),
                   'PSAA_CONTROLLED_QT_RECEIPT': selection['qt_receipt'],
                   'PSAA_CONTROLLED_QT_RECEIPT_SHA256': selection['qt_receipt_sha256'],
                   'PYTHONHOME': '', 'PYTHONPATH': '', 'DYLD_LIBRARY_PATH': '', 'DYLD_FRAMEWORK_PATH': ''}

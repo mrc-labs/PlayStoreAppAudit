@@ -99,7 +99,7 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
 def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:
     for name, install_step in (
         ("build-linux.yml", "Install Linux runtime and dependencies"),
-        ("build-macos.yml", "Install dependencies"),
+        ("build-macos.yml", "Restore qualified controlled runtime and framework"),
     ):
         workflow = _workflow(name)
         python_check = workflow.index("- name: Verify Python 3.14 baseline")
@@ -114,11 +114,11 @@ def test_linux_and_macos_verify_qt_only_after_dependency_installation() -> None:
 def test_windows_arm64_cryptography_prerequisite_precedes_pip() -> None:
     workflow = _workflow("build-windows-exe.yml")
     provision = workflow.index("- name: Provision native ARM64 OpenSSL for cryptography")
-    install = workflow.index("- name: Install runtime, test and build dependencies")
+    install = workflow.index("- name: Install diagnostic cryptography from source")
     verify = workflow.index("- name: Verify native ARM64 cryptography runtime")
 
     assert provision < install < verify
-    assert workflow.count("if: ${{ matrix.arch == 'arm64' }}") == 2
+    assert workflow.count("if: ${{ inputs.diagnostic_only && matrix.arch == 'arm64' }}") == 2
     assert "provision_windows_arm64_openssl.ps1" in workflow[provision:install]
     assert "verify_windows_arm64_crypto.py" in workflow[verify:]
 
@@ -129,7 +129,7 @@ def test_windows_crypto_diagnostic_cannot_emit_a_release_candidate() -> None:
     assert "$env:DIAGNOSTIC_ONLY -eq 'true' -and $env:REQUESTED_TARGET -ne 'arm64'" in workflow
     steps = workflow.split("      - name: ")[1:]
     for name in (
-        "Install runtime, test and build dependencies",
+        "Restore qualified controlled runtime and framework",
         "Verify native PySide6 runtime", "Preflight release legal material",
         "Static checks and regression tests", "Qt source smoke tests",
         "Validate the managed ADB path", "Build and validate Windows standalone package",
@@ -167,17 +167,16 @@ def test_platform_release_workflows_pin_nuitka_and_emit_reports() -> None:
     for name in ("build-linux.yml", "build-macos.yml"):
         workflow = _workflow(name)
 
-        assert (
-            'pip install -r requirements-dev.txt "Nuitka==4.3.5"'
-            in workflow
-        )
+        assert 'prepare_controlled_runtime.py --target' in workflow
+        intake = (ROOT / '.github/scripts/prepare_controlled_runtime.py').read_text(encoding='utf-8')
+        assert "'Nuitka==4.3.5'" in intake
         assert "--report=compilation-report.xml" in workflow
         assert "test -s compilation-report.xml" in workflow
-        assert "pyside6-deploy -c pysidedeploy.spec -f --no-install" in workflow
+        assert "deploy()' -c pysidedeploy.spec -f --no-install" in workflow
 
     # The deployment parent checks distribution metadata, even when apt has
     # already provisioned the native executable.
-    assert '"patchelf==0.19.1.0"' in _workflow("build-linux.yml")
+    assert "'patchelf==0.19.1.0'" in intake
 
 
 def test_linux_release_runs_legal_gate_before_zip() -> None:
@@ -260,7 +259,7 @@ def test_macos_production_credentials_fail_before_expensive_build() -> None:
     macos = _workflow("build-macos.yml")
 
     verify = macos.index("Verify production signing configuration")
-    install = macos.index("Install dependencies")
+    install = macos.index("Restore qualified controlled runtime and framework")
     build = macos.index(
         "Build, sign, notarize and validate packaged macOS app"
     )

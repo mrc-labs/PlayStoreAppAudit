@@ -124,3 +124,13 @@ def test_qt_canonical_license_tampering_is_rejected(
             package,
             manifest,
         )
+
+
+def test_source_pyside_has_its_own_legal_identity(tmp_path: Path) -> None:
+    package, manifest, _ = _fixture(tmp_path)
+    manifest['qt']['distribution_identity'] = {'distribution': 'PySide6'}
+    manifest['runtime_dependencies'][0]['name'] = 'PySide6'
+    validator._validate_qt_license_mapping(package, manifest)
+    manifest['runtime_dependencies'][0]['name'] = 'PySide6_Essentials'
+    with pytest.raises(validator.ValidationError, match='both be inventoried'):
+        validator._validate_qt_license_mapping(package, manifest)

@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-macos:
@@ -134,14 +135,10 @@ jobs:
           VERSION="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
           test -n "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Provision Intel cryptography source prerequisites
-        if: ${{ matrix.arch == 'x64' }}
-        run: bash .github/scripts/provision_macos_intel_crypto.sh
-
-      - name: Install dependencies
-        run: |
-          python .github/scripts/bootstrap_pip.py
-          pip install -r requirements-dev.txt "Nuitka==4.3.5"
+      - name: Restore qualified controlled runtime and framework
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-${{ matrix.arch }} --export-github-environment
       - name: Verify Intel cryptography source runtime
         if: ${{ matrix.arch == 'x64' }}
         run: |
@@ -156,7 +153,9 @@ jobs:
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.3.5"
+            --expected-nuitka-version "4.3.5" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
@@ -193,7 +192,7 @@ jobs:
         env:
           APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
-          pyside6-deploy main.py --name PlayStoreAppAudit --init --no-install
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install
           python - <<'PY'
           from configparser import ConfigParser
           import os
@@ -288,7 +287,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist artifact roundtrip
-          pyside6-deploy -c pysidedeploy.spec -f --no-install
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' -c pysidedeploy.spec -f --no-install
           test -s compilation-report.xml
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
@@ -374,6 +373,7 @@ jobs:
             MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
           fi
           test -n "$MINOS"
+          python .github/scripts/inspect_macos_package.py "$APP" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-package-images-${{ matrix.arch }}.json"
           python -c "import sys; normal=lambda s: tuple(map(int, s.split('.'))) + (0,) * (3-len(s.split('.'))); assert normal(sys.argv[1]) == normal(sys.argv[2]), sys.argv" "$MINOS" "$MACOSX_DEPLOYMENT_TARGET"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
 
@@ -422,6 +422,9 @@ jobs:
             --repo-root "$PWD" \
             --release-tag "v${APP_VERSION}" \
             --nuitka-report "$PWD/compilation-report.xml" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256" \
+            --controlled-runtime-selection "$PSAA_CONTROLLED_RUNTIME_SELECTION" \
             --inject
 
           test -f "$APP/Contents/Resources/LICENSE"

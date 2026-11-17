@@ -4,12 +4,13 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
 
-def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str, *, nested: bool = False) -> None:
+def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str, *, depth: int = 0) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     index_path = destination / 'INPUT-MATERIAL.json'
     records = json.loads(index_path.read_text()) if index_path.exists() else []
@@ -19,12 +20,14 @@ def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str
             continue
         if path.name.endswith(('key.pem', '.pfx', '.p12')):
             continue
-        if path.name == 'original-qualified-lxml.zip' and not nested:
+        if path.name == 'original-qualified-lxml.zip' or re.fullmatch(r'original-lxml-\d+\.zip', path.name):
+            if depth >= 3:
+                raise ValueError('Excessive parser source archive nesting')
             payload = archive.read(name)
             assert len(payload) < 100 * 1024**2
             index_path.write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8')
             with zipfile.ZipFile(io.BytesIO(payload)) as parser_archive:
-                retain_zip_material(parser_archive, destination, origin + ':' + name, nested=True)
+                retain_zip_material(parser_archive, destination, origin + ':' + name, depth=depth + 1)
             records = json.loads(index_path.read_text()) if index_path.exists() else records
             continue
         source = 'sources' in path.parts
@@ -33,7 +36,8 @@ def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str
             continue
         if path.is_absolute() or '..' in path.parts or any(':' in part or '\\' in part for part in path.parts):
             raise ValueError('Unsafe controlled material member')
-        if source and (path.name.startswith(('libclang-', 'rustup-', 'rust-')) or not
+        if source and (path.name.startswith(('libclang-', 'rustup-', 'rust-'))
+                or re.fullmatch(r'7z\d+-mac\.tar\.xz|nasm-.*-win64\.zip', path.name) or not
                 (path.name.endswith(('.tar.gz', '.tar.xz', '.tgz', '.crate', '.zip', '.dat', '.xml'))
                  or path.name.startswith('certifi-') and path.name.endswith('.whl'))):
             continue
@@ -64,11 +68,33 @@ def retain_directory_material(root: Path, destination: Path, origin: str) -> Non
                 source = 'sources' in relative.parts and not path.name.startswith(('libclang-', 'rustup-', 'rust-')) and (
                     path.name.endswith(('.tar.gz', '.tar.xz', '.tgz', '.crate', '.zip', '.dat', '.xml'))
                     or path.name.startswith('certifi-') and path.name.endswith('.whl'))
-                if source or 'legal' in relative.parts or 'licenses' in relative.parts or path.name == 'original-qualified-lxml.zip':
+                if source or 'legal' in relative.parts or 'licenses' in relative.parts or path.name == 'original-qualified-lxml.zip' or re.fullmatch(r'original-lxml-\d+\.zip', path.name):
                     archive.write(path, relative.as_posix())
     stream.seek(0)
     with zipfile.ZipFile(stream) as archive:
         retain_zip_material(archive, destination, origin)
+
+
+def retain_required_sources(material: Path, repo: Path) -> None:
+    """Complete originals selected by the existing, qualified source contracts."""
+    from probe_qt_text_providers import checked_source
+
+    scripts = repo / '.github/scripts'
+    sources = [json.loads((scripts / 'macos_arm64_runtime_pilot_sources.json').read_text())['cryptography_source']]
+    for name in ['qt_text_provider_sources.json', 'qt_data_refresh_sources.json',
+                 'qt_cldr49_sources.json', 'linux_x64_native_delta_sources.json', 'lxml_native_sources.json']:
+        sources.extend(json.loads((scripts / name).read_text())['sources'])
+    sources.append(json.loads((scripts / 'qt_cbor_provider_sources.json').read_text())['source'])
+    directory = material.parent / 'controlled-required-originals/sources'
+    directory.mkdir(parents=True)
+    for spec in sources:
+        existing = material / 'sources' / spec['name']
+        if existing.exists():
+            if hashlib.sha256(existing.read_bytes()).hexdigest() != spec['sha256']:
+                raise ValueError('Retained source disagrees with qualified source contract: ' + spec['name'])
+        else:
+            checked_source(spec, directory)
+    retain_directory_material(directory.parent, material, 'Official originals from unchanged qualified source contracts')
 
 
 def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: Path,
@@ -94,16 +120,22 @@ def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: P
                 'provenance_url': 'https://github.com/mrc-labs/PlayStoreAppAudit/pull/239',
                 'controlled_sdk_origin': record['origin'], 'original_member': record['original_member']}
         else:
-            from legal_payload_store import store_canonical_legal_payload
-
-            relative_license, digest = store_canonical_legal_payload(licenses, raw)
+            digest = record['sha256']
+            destination = licenses / 'controlled-runtime/payloads' / (digest + '.txt')
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(raw)
+            relative_license = destination.relative_to(licenses.parent).as_posix()
             license_records.append({'file': relative_license, 'sha256': digest,
                                     'origin': record['origin'], 'original_member': record['original_member']})
     # Original Qt archives alone cannot describe project modifications. Carry the
     # exact repository recipe/patch/data inputs alongside their original SDK IDs.
     recipe_name = 'PSAA-v2.4.0-controlled-recipes-' + selection['target'] + '.tar.xz'
     recipe = assets / recipe_name
-    provenance = json.dumps(selection, indent=2).encode()
+    # Host paths are local intake implementation details, not portable provenance.
+    portable_selection = {key: selection[key] for key in (
+        'target', 'identity', 'preparation_source_sha', 'compiled_source_sha',
+        'compiled_component_sources', 'qt_receipt_sha256', 'overlay') if key in selection}
+    provenance = json.dumps(portable_selection, indent=2).encode()
     with tarfile.open(recipe, 'w:xz') as archive:
         info = tarfile.TarInfo('DEPENDENCY-SDK-SELECTION.json')
         info.size = len(provenance)
@@ -129,5 +161,5 @@ def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: P
     if not sources or not license_records:
         raise ValueError('Controlled source and license material must both be present')
     return list(sources.values()), {'identity': selection['identity'], 'target': selection['target'],
-        'sdk_selection': selection, 'sources': sorted(sources), 'license_records': license_records,
+        'sdk_selection': portable_selection, 'sources': sorted(sources), 'license_records': license_records,
         'scope': 'Qualified SDK source/license inputs and exact project recipes. Original upstream Qt attribution records describe upstream archives; actual project modifications retain explicit input/patch provenance.'}

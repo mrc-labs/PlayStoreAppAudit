@@ -1,6 +1,6 @@
 # AGENTS.md
 
-November17 current checkpoint: all six matching image modules pass native codec/GUI/architecture/ABI consumers (Intel43968346929, Windows43971073046 both, Linux43972684722/43972690160, Mac ARM43973736878). Closed SDKs were reused; no runtime/QtBase/binding rebuild. Current finite ledger now schedules only producer/source/legal, external-ADB/tool applicability and final delivery gates. R14 external PATH/CLI consumer is prepared without ADB rebuild/bundling; no final package or publication claim.
+November17 current checkpoint: all six controlled SDK/source-identity intakes PASS at d72c803 (Windows43986492340 both; Linux43986497091/43986501216; Mac43986506849/43986511484), without dependency/application compilation. Producing SDK/source/legal integration is prepared; final package acceptance remains open. Forty-four affected unit/static checks pass; original compiled identities and six-module proofs remain unchanged. See active audit for exact scope and remaining gates.
 
 November16 native Intel43968346929 PASS at1179e93 after bounded mitigation of independently reproduced hosted IconServices defect; actual Cocoa GUI/decoder clean exit,91 x64-selected Mach-O images/max14.4, sources/legal/11 unchanged patches worker verified. No runtime/framework/binding rebuild. Current Windows matching-imageformat-module-only adoption is prepared; final SDK/source/legal producer/package gates remain open. PR Quality43968329252 passes2277 on its synthetic merge; direct exact-head Quality is recorded separately, not inferred from head_sha metadata.
 

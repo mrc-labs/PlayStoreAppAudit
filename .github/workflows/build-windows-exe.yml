@@ -24,6 +24,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-windows:
@@ -135,24 +136,25 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Provision native ARM64 OpenSSL for cryptography
-        if: ${{ matrix.arch == 'arm64' }}
+        if: ${{ inputs.diagnostic_only && matrix.arch == 'arm64' }}
         shell: pwsh
         run: |
           & ./.github/scripts/provision_windows_arm64_openssl.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "openssl-arm64-$env:GITHUB_RUN_ID")
           if ($LASTEXITCODE -ne 0) { throw 'OpenSSL ARM64 prerequisite failed.' }
 
-      - name: Install runtime, test and build dependencies
+      - name: Select qualified native MSVC and CRT
         if: ${{ !inputs.diagnostic_only }}
         shell: pwsh
+        run: . ./.github/scripts/enter_windows_release_toolchain.ps1
+
+      - name: Restore qualified controlled runtime and framework
+        if: ${{ !inputs.diagnostic_only }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python .github/scripts/bootstrap_pip.py
-          if ($LASTEXITCODE -ne 0) { throw 'Could not upgrade pip.' }
-          $reportArgs = @()
-          if ($env:PACKAGE_ARCH -eq 'arm64') {
-            $reportArgs = @('--force-reinstall', '--report', "$env:CRYPTOGRAPHY_OPENSSL_EVIDENCE/cryptography-install.json")
-          }
-          python -m pip install -r requirements-dev.txt "Nuitka==4.3.5" @reportArgs
-          if ($LASTEXITCODE -ne 0) { throw 'Could not install project/build dependencies.' }
+          python .github/scripts/prepare_controlled_runtime.py --target "windows-$env:PACKAGE_ARCH" --export-github-environment
+          if ($LASTEXITCODE -ne 0) { throw 'Qualified SDK intake failed; no application build started.' }
 
       - name: Install diagnostic cryptography from source
         if: ${{ inputs.diagnostic_only }}
@@ -166,7 +168,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native cryptography source build failed.' }
 
       - name: Verify native ARM64 cryptography runtime
-        if: ${{ matrix.arch == 'arm64' }}
+        if: ${{ inputs.diagnostic_only && matrix.arch == 'arm64' }}
         shell: pwsh
         run: |
           python .github/scripts/verify_windows_arm64_crypto.py --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE
@@ -179,17 +181,17 @@ jobs:
           python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
           if ($LASTEXITCODE -ne 0) { throw 'PySide6 import or version verification failed.' }
 
-          $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6-Essentials').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
-          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the PySide6-Essentials wheel metadata.' }
+          $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the Controlled PySide6 build metadata.' }
           $nativeWheelTag = $wheelTags | Where-Object { $_ -match "-$([regex]::Escape($env:PYSIDE_WHEEL_PLATFORM))$" } | Select-Object -First 1
           if (-not $nativeWheelTag) {
-            throw "PySide6-Essentials is not installed from a $env:PYSIDE_WHEEL_PLATFORM wheel. Found: $($wheelTags -join ', ')"
+            throw "Controlled PySide6 metadata does not match a $env:PYSIDE_WHEEL_PLATFORM wheel. Found: $($wheelTags -join ', ')"
           }
 
           $qtCoreBinary = python -c "from PySide6 import QtCore; print(QtCore.__file__)"
           $qtCorePeArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $qtCoreBinary
           if ($LASTEXITCODE -ne 0) { throw 'QtCore native extension PE architecture verification failed.' }
-          Write-Host "PySide6-Essentials wheel tag: $nativeWheelTag"
+          Write-Host "Controlled PySide6 build tag: $nativeWheelTag"
           Write-Host "QtCore PE architecture: $qtCorePeArchitecture"
           "PYSIDE6_WHEEL_TAG=$nativeWheelTag" >> $env:GITHUB_ENV
           "PYSIDE6_QTCORE_PE_ARCHITECTURE=$qtCorePeArchitecture" >> $env:GITHUB_ENV
@@ -198,7 +200,7 @@ jobs:
         if: ${{ !inputs.diagnostic_only }}
         shell: pwsh
         run: |
-          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.3.5"
+          python .github/scripts/preflight_release_legal_material.py --repo-root . --expected-nuitka-version "4.3.5" --controlled-qt-sdk-receipt "$env:PSAA_CONTROLLED_QT_RECEIPT" --controlled-qt-sdk-receipt-sha256 "$env:PSAA_CONTROLLED_QT_RECEIPT_SHA256"
           if ($LASTEXITCODE -ne 0) { throw 'Release legal-material preflight failed.' }
 
       - name: Static checks and regression tests
