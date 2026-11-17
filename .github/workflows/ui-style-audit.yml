@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ffi-x64-windows381, tools-ctypes-arm64-windows, tools-ctypes-arm64-windows381, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
+        options: ['off', ffi-posix-security, rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ffi-x64-windows381, tools-ctypes-arm64-windows, tools-ctypes-arm64-windows381, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -1541,5 +1541,69 @@ jobs:
         with:
           name: selected-rust-graphs-${{ matrix.label }}-${{ github.run_id }}
           path: selected-rust-evidence
+          if-no-files-found: warn
+          retention-days: 0
+
+
+  ffi-posix-security:
+    if: ${{ inputs.linux_arm64_pilot == 'ffi-posix-security' }}
+    permissions:
+      contents: read
+      actions: read
+    name: libffi3.8.1 affected consumers / ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-22.04, target: linux-x64, arch: x64}
+          - {os: ubuntu-24.04-arm, target: linux-arm64, arch: arm64}
+          - {os: macos-26-intel, target: macos-x64, arch: x64}
+          - {os: macos-26, target: macos-arm64, arch: arm64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.target, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Verify isolated exact source before downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = '${{ github.sha }}'
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: '3.14.10'
+          check-latest: false
+          architecture: ${{ matrix.arch }}
+      - name: Install existing native GUI and compiler prerequisites
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libopengl0 libfontconfig1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxkbcommon-x11-0 xvfb xauth
+          if [ '${{ matrix.arch }}' = arm64 ]; then sudo apt-get install -y gcc-13 g++-13; else sudo apt-get install -y gcc-11 g++-11; fi
+      - name: Restore original qualified SDK without dependency rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target ${{ matrix.target }} --export-github-environment
+      - name: Build only ABI-compatible FFI and exercise affected consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ runner.os }}' = Linux ]; then
+            xvfb-run -a "$PSAA_RUNTIME_PYTHON" .github/scripts/qualify_posix_libffi381.py --target '${{ matrix.target }}'
+          else
+            "$PSAA_RUNTIME_PYTHON" .github/scripts/qualify_posix_libffi381.py --target '${{ matrix.target }}'
+          fi
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        if: always()
+        with:
+          name: diagnostic-libffi381-${{ matrix.target }}-${{ github.run_id }}
+          path: ffi381-evidence/
           if-no-files-found: warn
           retention-days: 0
