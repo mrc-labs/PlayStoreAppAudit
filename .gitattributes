@@ -9,5 +9,8 @@
 # Preserve exact source-build lock bytes across native checkouts.
 .github/sources/*-controlled.package-lock.json text eol=lf
 
+# Retained official port bytes are hash-verified before native compilation.
+.github/sources/vcpkg-libffi-3.8.1/** -text whitespace=-blank-at-eol
+
 # Exact native Node24 source-build output, including generated license bytes.
 .github/actions/controlled-*/** -text
