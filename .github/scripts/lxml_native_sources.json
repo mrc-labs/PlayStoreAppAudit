@@ -1,0 +1,127 @@
+{
+  "scope": "Controlled source lxml6.1.3 with current static libxml2/libxslt; six native diagnostic wheels only, no producer adoption or unchanged-official-binary claim",
+  "versions": {
+    "lxml": "6.1.3",
+    "libxml2": [
+      2,
+      15,
+      4
+    ],
+    "libxslt": [
+      1,
+      1,
+      45
+    ]
+  },
+  "sources": [
+    {
+      "name": "lxml-6.1.3.tar.gz",
+      "directory": "lxml-6.1.3",
+      "url": "https://files.pythonhosted.org/packages/23/ad/28ecd7cb894d172f3c9c80a075eeeb2017ac62e3632cee05a5f9493547eb/lxml-6.1.3.tar.gz",
+      "sha256": "45222d94ddd511536f3b2f7d9deae3b2339b4ce0f075f1ca25703b07cad9dd21",
+      "authority": "https://pypi.org/pypi/lxml/6.1.3/json"
+    },
+    {
+      "name": "libxml2-2.15.4.tar.xz",
+      "directory": "libxml2-2.15.4",
+      "url": "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",
+      "sha256": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+      "authority": "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.sha256sum"
+    },
+    {
+      "name": "libxslt-1.1.45.tar.xz",
+      "directory": "libxslt-1.1.45",
+      "url": "https://download.gnome.org/sources/libxslt/1.1/libxslt-1.1.45.tar.xz",
+      "sha256": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e",
+      "authority": "https://download.gnome.org/sources/libxslt/1.1/libxslt-1.1.45.sha256sum"
+    },
+    {
+      "name": "libiconv-1.19.tar.gz",
+      "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.19.tar.gz",
+      "sha256": "88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
+      "directory": "libiconv-1.19"
+    },
+    {
+      "name": "zlib-1.4.tar.gz",
+      "url": "https://zlib.net/zlib-1.4.tar.gz",
+      "sha256": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584",
+      "directory": "zlib-1.4"
+    }
+  ],
+  "windows_parent": "https://github.com/lxml/libxml2-win-binaries/releases/tag/2026.11.07",
+  "windows_assets": [
+    {
+      "name": "iconv-1.19.win-arm64.zip",
+      "url": "https://github.com/lxml/libxml2-win-binaries/releases/download/2026.11.07/iconv-1.19.win-arm64.zip",
+      "sha256": "5c5ed8a176f161b3a1b30e605a8e651b39d85ab77e557fd22042ca3c5b3ba7d4",
+      "authority": "https://github.com/lxml/libxml2-win-binaries/releases/tag/2026.11.07",
+      "arch": "arm64"
+    },
+    {
+      "name": "iconv-1.19.win64.zip",
+      "url": "https://github.com/lxml/libxml2-win-binaries/releases/download/2026.11.07/iconv-1.19.win64.zip",
+      "sha256": "bdc6c06451d6916c5a6d42e1edbfd307ca1f27b0d770d876bb5d55c8acbf5735",
+      "authority": "https://github.com/lxml/libxml2-win-binaries/releases/tag/2026.11.07",
+      "arch": "x64"
+    },
+    {
+      "name": "zlib-1.4.win-arm64.zip",
+      "url": "https://github.com/lxml/libxml2-win-binaries/releases/download/2026.11.07/zlib-1.4.win-arm64.zip",
+      "sha256": "72d986e80f33094fba5dcaf9115a5fb28fb4482771ff93f86463854ad882af6a",
+      "authority": "https://github.com/lxml/libxml2-win-binaries/releases/tag/2026.11.07",
+      "arch": "arm64"
+    },
+    {
+      "name": "zlib-1.4.win64.zip",
+      "url": "https://github.com/lxml/libxml2-win-binaries/releases/download/2026.11.07/zlib-1.4.win64.zip",
+      "sha256": "bfcc073a2a6588fed49ab2e629b97c0af213ff251ee1970446e18417bd2d0273",
+      "authority": "https://github.com/lxml/libxml2-win-binaries/releases/tag/2026.11.07",
+      "arch": "x64"
+    }
+  ],
+  "vendor_patches": [],
+  "supported_build_options": "https://lxml.de/build.html; original setup.py/ setupinfo.py STATIC=true plus LXML_STATIC_* interfaces; pre-generated release C, no Cython regeneration",
+  "compiled_posix_wheels": [
+    {
+      "label": "macos-x64",
+      "id": 14113076783,
+      "size": 21922799,
+      "sha256": "b142b5a29b967060fbce625be16268aa9f54c963fa9620344bb38f1791429417",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "linux-x64",
+      "id": 14112568650,
+      "size": 29066561,
+      "sha256": "942a4fdfd5feeda10d47f9756e3dc7906cb5b01750598289e39f57399c7861eb",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "linux-arm64",
+      "id": 14112472701,
+      "size": 29058695,
+      "sha256": "2a0067270c3bac12b3fea35e11abd29d49bac51a9bb4bf93144cc5b07e709e10",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    },
+    {
+      "label": "macos-arm64",
+      "id": 14112223888,
+      "size": 21849301,
+      "sha256": "3991e89c6a4e7f219530eedfe916c334b16a78392d129b51a997bc42ed62475d",
+      "source_sha": "bc7473e2e6c3a5b43d380c4b54ceefefcd380e7d",
+      "run": 43591550005
+    }
+  ],
+  "windows_iconv_source": {
+    "name": "winlibs-libiconv-accac417.tar.gz",
+    "url": "https://github.com/winlibs/libiconv/archive/accac417318a3eef7402685a268cab8037e62ba1.tar.gz",
+    "directory": "libiconv-accac417318a3eef7402685a268cab8037e62ba1",
+    "sha256": "431cc47e65488b929bdeb3688b773209eeb9dfd39584b4eb21fb39172398b839",
+    "authority": "https://github.com/lxml/libxml2-win-binaries/tree/2026.11.07/libiconv",
+    "version": "1.19",
+    "reason": "Stable parent-selected source/MSVC18 project; vendor LTCG archive fails C1047 under current MSVC14.52. Build exact source natively with same toolset and dynamic CRT; no library/API version change."
+  }
+}

@@ -1,0 +1,39 @@
+--- a/lib/internal/upload/zip.js
++++ b/lib/internal/upload/zip.js
+@@ -8,7 +8,7 @@
+     });
+ };
+ import { realpath } from 'fs/promises';
+-import archiver from 'archiver';
++import { ZipArchive } from 'archiver';
+ import * as core from '@actions/core';
+ import { getUploadChunkSize } from '../shared/config.js';
+ import { WaterMarkedUploadStream } from './stream.js';
+@@ -16,7 +16,7 @@
+ export function createZipUploadStream(uploadSpecification_1) {
+     return __awaiter(this, arguments, void 0, function* (uploadSpecification, compressionLevel = DEFAULT_COMPRESSION_LEVEL) {
+         core.debug(`Creating Artifact archive with compressionLevel: ${compressionLevel}`);
+-        const zip = archiver.create('zip', {
++        const zip = new ZipArchive({
+             highWaterMark: getUploadChunkSize(),
+             zlib: { level: compressionLevel }
+         });
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "@actions/artifact",
+-  "version": "6.3.1",
++  "version": "6.3.1+psaa.archive8",
+   "preview": true,
+   "description": "Actions artifact lib",
+   "keywords": [
+@@ -58,7 +58,7 @@
+     "@octokit/request-error": "^7.1.0",
+     "@protobuf-ts/runtime": "^2.11.1",
+     "@protobuf-ts/runtime-rpc": "^2.11.1",
+-    "archiver": "^7.0.1",
++    "archiver": "^8.0.0",
+     "jwt-decode": "^4.0.0",
+     "unzip-stream": "^0.3.1"
+   },

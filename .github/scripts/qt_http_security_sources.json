@@ -1,0 +1,72 @@
+{
+  "scope": "Controlled Qt6.12.0 official HTTP resource-limit security backports; not unchanged official Qt",
+  "advisory": "https://www.qt.io/blog/security-issue-cve-2026-116337?hsLang=en",
+  "cve": "CVE-2026-116337",
+  "upstream_cvss_4_0": "0.6 Low",
+  "source_archive_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+  "patch_order": "0002 header block precedes0001 status line: original upstream source/test hunks depend on this order",
+  "patches": [
+    {
+      "path": ".github/patches/CVE-2026-116337-qtbase-6.12-0002.patch",
+      "sha256": "83abc89d507dbd9a94dc5718b0125492c1c37b0609a8f404a1f164925940faec",
+      "official_url": "https://download.qt.io/archive/qt/6.12/CVE-2026-116337-qtbase-6.12-0002.diff",
+      "official_commit": "aac1d303c0329241ac59c0c23cb5e4b82251fcfa",
+      "files": {
+        "src/network/access/qhttpnetworkreply.cpp": {
+          "base_sha256": "3119e4bb303f913599c0a781b4d0624843ca6e4a96e3e070687f9ecfc1a622f3",
+          "patched_sha256": "d0d973e0c2f7200a1eec29a19f1708158b620db94f368bc6b0524cec5d23ffcf"
+        },
+        "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": {
+          "base_sha256": "687673f36e3de633a64785f71333c7270055b6ef40a3abde2475784db9c65292",
+          "patched_sha256": "170239262a5325e803eead68b864782009106cdc96cf1b642dbb5d9f9154f5f5"
+        },
+        "src/network/access/qhttpheaderparser_p.h": {
+          "base_sha256": "b4b5b9ab97115b1ca7ad1e5ed8837924b68962638a8cf9e6ab6e9e4e67fb45b0",
+          "patched_sha256": "33f43b11477fd8c8626a0df9b4ee79afd4ccf8a691bdbdf32f8a1ba822f7cb6d"
+        }
+      }
+    },
+    {
+      "path": ".github/patches/CVE-2026-116337-qtbase-6.12-0001.patch",
+      "sha256": "74c5028985dcc0455255909de4dc80f50cf5472dbf465ce46ebc791a7b080f12",
+      "official_url": "https://download.qt.io/archive/qt/6.12/CVE-2026-116337-qtbase-6.12-0001.diff",
+      "official_commit": "f78a3740281d26af7116517a2b20df36f8deffd7",
+      "files": {
+        "src/network/access/qhttpnetworkreply.cpp": {
+          "base_sha256": "d0d973e0c2f7200a1eec29a19f1708158b620db94f368bc6b0524cec5d23ffcf",
+          "patched_sha256": "393b4c235e6f4323fe643524a384236c3deb66b7c343bf5e6acc20a0bc4013e0"
+        },
+        "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": {
+          "base_sha256": "170239262a5325e803eead68b864782009106cdc96cf1b642dbb5d9f9154f5f5",
+          "patched_sha256": "4b78e997f8392af98c0e817f58534a5c1d2e634a0559165fd42c6ed388e243d3"
+        }
+      }
+    }
+  ],
+  "original_files": {
+    "src/network/access/qhttpnetworkreply.cpp": "3119e4bb303f913599c0a781b4d0624843ca6e4a96e3e070687f9ecfc1a622f3",
+    "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": "687673f36e3de633a64785f71333c7270055b6ef40a3abde2475784db9c65292",
+    "src/network/access/qhttpheaderparser_p.h": "b4b5b9ab97115b1ca7ad1e5ed8837924b68962638a8cf9e6ab6e9e4e67fb45b0"
+  },
+  "final_files": {
+    "src/network/access/qhttpnetworkreply.cpp": "393b4c235e6f4323fe643524a384236c3deb66b7c343bf5e6acc20a0bc4013e0",
+    "tests/auto/network/access/qhttpnetworkreply/tst_qhttpnetworkreply.cpp": "4b78e997f8392af98c0e817f58534a5c1d2e634a0559165fd42c6ed388e243d3",
+    "src/network/access/qhttpheaderparser_p.h": "33f43b11477fd8c8626a0df9b4ee79afd4ccf8a691bdbdf32f8a1ba822f7cb6d"
+  },
+  "required_tests": [
+    "headerSizeLimit",
+    "statusLineSizeLimit"
+  ],
+  "application_applicability": "QtNetwork QNetworkAccessManager is used by app_icon_loader. Existing transfer timeout and body download-progress cap do not enforce early response status/header accumulation limits. No confirmed application denial-of-service or higher upstream severity is claimed.",
+  "validation": "Execute exact patched original Qt test against rebuilt private QtNetwork; preserve upstream accepted boundary/CRLF/LF cases, early truncated-header rejection/cleared fragment and status line limits. Source replay alone is not native acceptance.",
+  "private_test_configuration": "Official QHttpNetworkReplyPrivate methods use Q_AUTOTEST_EXPORT. The bounded Core/Network diagnostic therefore uses documented developer-build/release with tests not built automatically. This export setting is not adopted by producer/full runtime profiles; same official parser source patches and separate public QNetworkAccessManager/default-TLS smoke are exercised. Disable unrelated documentation snippets explicitly via QT_BUILD_DOC_SNIPPETS=OFF (documented QtBuildOptionsHelpers option); the Qt parser regression suite stays enabled.",
+  "private_test_configuration_authority": "https://doc.qt.io/qt-6/configure-options.html#developer-builds",
+  "private_test_components": [
+    "Core",
+    "CorePrivate",
+    "Network",
+    "NetworkPrivate",
+    "Test"
+  ],
+  "private_component_authority": "https://doc.qt.io/qt-6/qtcoreprivate-module.html"
+}

@@ -1,0 +1,28 @@
+{
+  "arm64": {
+    "run": 43816542716,
+    "source_sha": "473db008680ecdf6706ce7317849c362750b632f",
+    "artifact": 14205520183,
+    "zip_bytes": 1508639431,
+    "zip_sha256": "d88f4f9b5312679f401d0e469f1ab82c2dfc5c9fa7ca15d400a25a50c538c8fc",
+    "compiled_inputs": {
+      "prepare": "b7497d0c89840f4125bbfdbc236a44df5269a5a5215c1f25c8a85262716e6e00",
+      "build_qt": "b25883052311a7e7d3f1a5653463bf123ecb4e52d745f15ce15d7832fa7a2eb8",
+      "binding_build_prefix": "df72e0e6a511c460f0a67ce765b081b404b05f457c6638856aaca7f68bb6bae9"
+    },
+    "scope": "Bound native SDK and original full GUI/TLS/PNG pilot report; failed only in later diagnostic orchestration. Consumer-only continuation."
+  },
+  "x64": {
+    "run": 43818005888,
+    "source_sha": "b3969fdf157ed47671812ab3de070f610d0fa2d1",
+    "artifact": 14205043752,
+    "zip_bytes": 1300387008,
+    "zip_sha256": "4040c2f7080679839bc7432e13c9efe49b063c4d797001f81cd963d3d7310bb8",
+    "compiled_inputs": {
+      "prepare": "b7497d0c89840f4125bbfdbc236a44df5269a5a5215c1f25c8a85262716e6e00",
+      "build_qt": "b25883052311a7e7d3f1a5653463bf123ecb4e52d745f15ce15d7832fa7a2eb8",
+      "binding_build_prefix": "df72e0e6a511c460f0a67ce765b081b404b05f457c6638856aaca7f68bb6bae9"
+    },
+    "scope": "Bound native SDK and original full GUI/TLS/PNG pilot report; failed only in later diagnostic orchestration. Consumer-only continuation."
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "scope": "Official stable libffi3.8.1 port snapshot with qualified stable vcpkg tool; static /MD security prerequisite only",
+  "authority": "https://github.com/microsoft/vcpkg/releases/tag/2026.10.16",
+  "sources": [
+    {
+      "name": "vcpkg-2026.10.16.tar.gz",
+      "url": "https://github.com/microsoft/vcpkg/archive/9eec002df1cd109f8f104cd966a763daf9751489.tar.gz",
+      "sha256": "0e41e3fc97abf18bd84f52e711eff88ba88726aa316c4f0f41d5bbd7d7b4690e",
+      "directory": "vcpkg-9eec002df1cd109f8f104cd966a763daf9751489"
+    }
+  ],
+  "commit": "9eec002df1cd109f8f104cd966a763daf9751489",
+  "guarded_files": {
+    "ports/libffi/vcpkg.json": "84527704156a9a450efa86cb84e0d3ce75b9743dc74d93ea025fdca46a149e85",
+    "ports/libffi/portfile.cmake": "7915550ae2ec74e86fc35cbbabcb4e064c93ef5af471445c08c69fefdd0363d1",
+    "ports/libffi/dll-bindir.diff": "97e9f11ca9f344820dc3b9cba548f4a8818231b1751c518d04ed3c733b8fa8b6",
+    "scripts/vcpkg-tool-metadata.txt": "44e7a8763d73c9aada61519845235baf55a97d2f931d5ae3a01ae338a591f397"
+  },
+  "libffi_source_sha256": "81e879c094cc5ec3186c48510c6385ac6b3e866192e8bc71a35245703757ee40",
+  "target": "x64-windows-static-md",
+  "crt": "dynamic",
+  "library_linkage": "static",
+  "upstream_port_patch": "ports/libffi/dll-bindir.diff",
+  "project_source_patches": [],
+  "version": "3.8.1",
+  "overlay_port": {
+    "commit": "c73f6e0a95da13e19de787522f2c64c2b1f97941",
+    "authority": "https://github.com/microsoft/vcpkg/commit/c73f6e0a95da13e19de787522f2c64c2b1f97941",
+    "files": [
+      {
+        "name": "dll-bindir.diff",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/dll-bindir.diff",
+        "sha256": "97e9f11ca9f344820dc3b9cba548f4a8818231b1751c518d04ed3c733b8fa8b6"
+      },
+      {
+        "name": "libffiConfig.cmake",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/libffiConfig.cmake",
+        "sha256": "6c7e382749df1b27db5995a21bdc6a6d71241d2fc1cea5cc138119bdd2534318"
+      },
+      {
+        "name": "portfile.cmake",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/portfile.cmake",
+        "sha256": "6853e83249a230c9f7b52a31531b0539b97d9f76d81068aacd38928aefa8e94a"
+      },
+      {
+        "name": "unofficial-libffi-config.cmake",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/unofficial-libffi-config.cmake",
+        "sha256": "c34a1f46f0cb6294e63f390dd0bd5bf68a76ede0f3ebaa2c1306c8aed78668bd"
+      },
+      {
+        "name": "usage",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/usage",
+        "sha256": "081ee4a5b819d9aa96d6f5b0681b38edc4dc36747e9a545d4ed27afc2c56d712"
+      },
+      {
+        "name": "vcpkg.json",
+        "url": "https://raw.githubusercontent.com/microsoft/vcpkg/c73f6e0a95da13e19de787522f2c64c2b1f97941/ports/libffi/vcpkg.json",
+        "sha256": "7eb9427da0fadd5f73bea2b242bf532360c5a39714a5eb67ca4751d199fa9a87"
+      }
+    ]
+  }
+}

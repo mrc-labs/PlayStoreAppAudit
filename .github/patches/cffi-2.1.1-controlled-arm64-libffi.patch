@@ -1,0 +1,76 @@
+--- a/setup.py
++++ b/setup.py
+@@ -128,12 +128,35 @@
+     pkgconfig = os.path.join(prefix, 'lib', 'pkgconfig')
+     os.environ['PKG_CONFIG_PATH'] = (
+         os.environ.get('PKG_CONFIG_PATH', '') + ':' + pkgconfig)
+ 
++# This explicitly labelled project variant must never silently use vendor ffi.lib.
++if sys.platform != "win32" or platform.machine() != "ARM64":
++    raise RuntimeError("Controlled libffi variant requires native Windows ARM64")
++if not os.environ.get("PSAA_LIBFFI_ARM64_ROOT"):
++    raise RuntimeError("Controlled libffi variant requires its source-built prefix")
++
+ if sys.platform == "win32" and uses_msvc():
+     if platform.machine() == "ARM64":
+-        include_dirs.append(os.path.join("src/c/libffi_arm64/include"))
+-        library_dirs.append(os.path.join("src/c/libffi_arm64"))
++        project_libffi = os.environ.get("PSAA_LIBFFI_ARM64_ROOT")
++        if project_libffi:
++            # Project-controlled native source build; never use bundled ffi.lib.
++            project_libffi = os.path.abspath(project_libffi)
++            project_library = os.path.join(project_libffi, "lib", "Ffi_staticLib_arm64.lib")
++            project_include = os.path.join(project_libffi, "include")
++            if not all(os.path.isfile(path) for path in [project_library,
++                    os.path.join(project_include, "ffi.h"),
++                    os.path.join(project_include, "ffitarget.h")]):
++                raise RuntimeError("Incomplete controlled ARM64 libffi prefix")
++            include_dirs[:] = [project_include]
++            define_macros.append(("FFI_STATIC_BUILD", "1"))
++            define_macros.append(("PSAA_LIBFFI_380", "1"))
++            library_dirs[:] = []
++            libraries[:] = []
++            extra_link_args.append(project_library)
++        else:
++            include_dirs.append(os.path.join("src/c/libffi_arm64/include"))
++            library_dirs.append(os.path.join("src/c/libffi_arm64"))
+     else:
+         COMPILE_LIBFFI = 'src/c/libffi_x86_x64'    # from the CPython distribution
+         assert os.path.isdir(COMPILE_LIBFFI), "directory not found!"
+         include_dirs[:] = [COMPILE_LIBFFI]
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -6,9 +6,9 @@
+ build-backend = "setuptools.build_meta"
+ 
+ [project]
+ name = "cffi"
+-version = "2.1.1"
++version = "2.1.1+psaa.libffi380"
+ dependencies = [
+     "pycparser; implementation_name != 'PyPy'",
+ ]
+ requires-python = ">=3.10"
+--- a/src/c/_cffi_backend.c
++++ b/src/c/_cffi_backend.c
+@@ -122,8 +122,20 @@
+ # define CFFI_CHECK_FFI_CLOSURE_ALLOC 1
+ # define CFFI_CHECK_FFI_CLOSURE_ALLOC_MAYBE 1
+ # define CFFI_CHECK_FFI_PREP_CLOSURE_LOC 1
+ # define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 1
++
++#elif defined(_WIN32) && defined(_M_ARM64) && defined(PSAA_LIBFFI_380)
++/* Windows ARM64 varargs use general registers, including floating values.
++ * The controlled static libffi supplies the existing variadic preparation API.
++ * Preserve Windows closure allocation; only select the correct call ABI.
++ */
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC 0
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC_MAYBE 0
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC 0
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 0
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR 1
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 1
+ 
+ #else

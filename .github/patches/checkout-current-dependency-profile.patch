@@ -1,0 +1,15 @@
+--- a/package.json
++++ b/package.json
+@@ -53,5 +53,12 @@
+     "ts-jest": "^29.4.11",
+     "ts-node": "^10.9.2",
+     "typescript": "^5.5.4"
++  },
++  "overrides": {
++    "@actions/github": {
++      "@actions/http-client": "4.0.1"
++    },
++    "undici": "8.12.4",
++    "archiver": "8.0.0"
+   }
+ }

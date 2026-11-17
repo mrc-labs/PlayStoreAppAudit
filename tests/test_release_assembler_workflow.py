@@ -26,7 +26,7 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert "contents: read" in text
     assert "actions: read" in text
 
-    assert "actions/checkout@v7" in text
+    assert "mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022" in text
     assert "ref: ${{ github.sha }}" in text
     assert 'DISPATCH_REF: ${{ github.ref }}' in text
     assert '"refs/heads/main"' in text
@@ -51,7 +51,7 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert 'if [[ "$actual" != "$expected" ]]; then' in text
     assert "Windows, Linux and macOS run IDs must be different" in text
 
-    assert text.count("actions/download-artifact@v8") == 3
+    assert text.count("mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@10cb7992bd060977c9028956d64f8e28127f8022") == 3
     assert text.count("github-token: ${{ github.token }}") == 3
     assert text.count("repository: ${{ github.repository }}") == 3
 
@@ -77,7 +77,7 @@ def test_release_assembler_workflow_is_manual_and_fail_closed() -> None:
     assert "--require-all-platforms" in text
     assert 'test "$asset_count" = "8"' in text
 
-    assert text.count("actions/upload-artifact@v7") == 1
+    assert text.count("mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022") == 1
     assert "final-release/" in text
 
     forbidden = (

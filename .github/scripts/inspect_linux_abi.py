@@ -88,6 +88,17 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     report = inspect_package(args.package, args.arch)
+    ceilings = ('2.35', '3.4.29') if args.arch == 'x64' else ('2.38', '3.4.32')
+    for key, ceiling in zip(('glibc', 'glibcxx'), ceilings, strict=True):
+        actual = report[key]
+        if actual and tuple(map(int, actual.partition('_')[2].split('.'))) > tuple(map(int, ceiling.split('.'))):
+            raise RuntimeError(f"Raised {args.arch} package ABI floor: {actual} > {ceiling}")
+    for image in report['elf_files']:
+        if any(name in {'libssl.so.3', 'libcrypto.so.3'} for name in image['needed']):
+            raise RuntimeError('Unexpected OpenSSL3 package dependency: ' + image['path'])
+        for search in image['search_paths']:
+            if any(part.startswith('/') and not part.startswith(('/lib', '/usr/lib')) for part in search.split(':')):
+                raise RuntimeError('Build-prefix package search path: ' + image['path'])
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"{args.arch}: {len(report['elf_files'])} ELF files; {report['glibc']}; {report['glibcxx']}")
     return 0

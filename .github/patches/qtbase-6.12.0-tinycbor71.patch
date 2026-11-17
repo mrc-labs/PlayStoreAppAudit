@@ -1,0 +1,77 @@
+--- a/src/3rdparty/tinycbor/src/cborparser.c
++++ b/src/3rdparty/tinycbor/src/cborparser.c
+@@ -1387,8 +1387,8 @@
+  * behaviour is undefined, so checking with \ref cbor_value_get_type or \ref
+  * cbor_value_is_map is recommended.
+  *
+- * If the item is found, it is stored in \a result. If no item is found
+- * matching the key, then \a result will contain an element of type \ref
++ * If the item is found, it is stored in \a element. If no item is found
++ * matching the key, then \a element will contain an element of type \ref
+  * CborInvalidType. Matching is performed using
+  * cbor_value_text_string_equals(), so tagged strings will also match.
+  *
+--- a/src/3rdparty/tinycbor/src/compilersupport_p.h
++++ b/src/3rdparty/tinycbor/src/compilersupport_p.h
+@@ -52,8 +52,12 @@
+ #  define cbor_static_assert(x)         ((void)sizeof(char[2*!!(x) - 1]))
+ #endif
+ 
+-#if defined(__has_cpp_attribute)    // C23 and C++17
++#if defined(__has_cpp_attribute) && defined(__cplusplus)    // C++17
+ #  if __has_cpp_attribute(fallthrough)
++#    define CBOR_FALLTHROUGH            [[fallthrough]]
++#  endif
++#elif defined(__has_c_attribute) && !defined(__cplusplus)   // C23
++#  if __has_c_attribute(fallthrough)
+ #    define CBOR_FALLTHROUGH            [[fallthrough]]
+ #  endif
+ #endif
+--- a/src/3rdparty/tinycbor/qt_attribution.json
++++ b/src/3rdparty/tinycbor/qt_attribution.json
+@@ -4,15 +4,14 @@
+     "QDocModule": "qtcore",
+     "QtUsage": "Used for QCborStreamReader and QCborStreamWriter.",
+     "SecurityCritical": true,
+-
+     "Description": "Concise Binary Object Representation (CBOR) Library",
+     "Homepage": "https://github.com/intel/tinycbor",
+     "License": "MIT License",
+     "LicenseId": "MIT",
+     "LicenseFile": "LICENSE",
+-    "DownloadLocation": "https://github.com/intel/tinycbor/archive/v7.0/tinycbor-7.0.tar.gz",
++    "DownloadLocation": "https://github.com/intel/tinycbor/archive/refs/tags/v7.1.tar.gz",
+     "PURL": "pkg:github/intel/tinycbor@v$<VERSION>",
+     "CPE": "cpe:2.3:a:tinycbor:tinycbor:$<VERSION>:*:*:*:*:*:*:*",
+-    "Version": "7.0",
++    "Version": "7.1",
+     "Copyright": "Copyright (C) 2015-2025 Intel Corporation"
+ }
+--- a/src/3rdparty/tinycbor/README
++++ b/src/3rdparty/tinycbor/README
+@@ -1,13 +1,15 @@
+-Concise Binary Object Representation (CBOR) Library
+----------------------------------------------------
++TinyCBOR 7.1 - selected QtCore source integration
++------------------------------------------------
+ 
+-To build TinyCBOR:
++Original source: https://github.com/intel/tinycbor/tree/v7.1
++License: MIT; see LICENSE and the retained original source archive.
+ 
+-  make
++QtCore builds the selected encoder/parser/error sources as C++, with its
++custom reader/writer callbacks. The standalone upstream project uses CMake;
++this selected copy is built through Qt's existing Core build configuration.
+ 
+-If you want to change the compiler or pass extra compiler flags:
+-
+-  make CC=clang CFLAGS="-m32 -Oz" LDFLAGS="-m32"
+-
+-Documentation: https://intel.github.io/tinycbor/current/
+-
++Qt-owned tinycbor-export.h and tinycbor-version.h are retained unchanged.
++Their export/inlining definitions and zero-valued internal version sentinel
++are Qt integration details, not the upstream TinyCBOR release identity.
++The original Qt pre-C23 unreachable() adaptation is included upstream in7.1;
++the original patch descriptor is historical and must not be reapplied.

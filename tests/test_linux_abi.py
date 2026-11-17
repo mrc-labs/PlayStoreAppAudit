@@ -42,9 +42,9 @@ def test_empty_package_fails(tmp_path: Path) -> None:
 def test_linux_migration_requires_real_old_runtime_smoke() -> None:
     root = Path(__file__).resolve().parents[1]
     workflow = (root / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")
-    assert "os: ubuntu-24.04\n" in workflow
+    assert "os: ubuntu-22.04\n" in workflow
     assert "os: ubuntu-24.04-arm\n" in workflow
-    assert "os: ubuntu-22.04" not in workflow
+    assert "prepare_linux_x64_sysroot.sh" not in workflow
     assert "inspect_linux_abi.py" in workflow
     assert "ubuntu:22.04 bash /smoke.sh" in workflow
     assert "set -euo pipefail" in workflow

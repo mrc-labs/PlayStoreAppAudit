@@ -1,0 +1,28 @@
+{
+  "scope": "Native Windows x64/ARM64 codec C-wrapper prerequisites only; no controlled-runtime or Qt adoption",
+  "sources": [
+    {
+      "name": "Python-3.14.10.tar.xz",
+      "directory": "Python-3.14.10",
+      "url": "https://www.python.org/ftp/python/3.14.10/Python-3.14.10.tar.xz",
+      "sha256": "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032",
+      "authority": "https://www.python.org/downloads/release/python-31410/"
+    },
+    {
+      "name": "xz-5.8.4.tar.xz",
+      "directory": "xz-5.8.4",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.xz",
+      "sha256": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b",
+      "authority": "https://api.github.com/repos/tukaani-project/xz/releases/tags/v5.8.4"
+    },
+    {
+      "name": "zlib-ng-2.3.3.tar.gz",
+      "directory": "zlib-ng-2.3.3",
+      "url": "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+      "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "authority": "https://github.com/zlib-ng/zlib-ng/releases/tag/2.3.3",
+      "commit": "12731092979c6d07f42da27da673a9f6c7b13586"
+    }
+  ],
+  "linkage": "Static zlib-ng with dynamic CRT, preserving CPython separation from Qt shared zlib1.4. XZ shared/current; no arbitrary DLL replacement."
+}

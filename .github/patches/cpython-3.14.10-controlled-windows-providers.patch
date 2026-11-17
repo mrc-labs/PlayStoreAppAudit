@@ -1,0 +1,120 @@
+--- a/PCbuild/libffi.props
++++ b/PCbuild/libffi.props
+@@ -2,20 +2,28 @@
+ <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+   <ItemDefinitionGroup>
+     <ClCompile>
+-      <AdditionalIncludeDirectories>$(libffiIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories Condition="'$(PSAAControlledProviders)'!='true'">$(libffiIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories Condition="'$(PSAAControlledProviders)'=='true'">$(PSAAFFIIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions Condition="'$(PSAAControlledProviders)'=='true'">FFI_STATIC_BUILD=1;HAVE_FFI_PREP_CIF_VAR=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+     </ClCompile>
+     <Link>
+       <AdditionalLibraryDirectories>$(libffiOutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+-      <AdditionalDependencies>libffi-8.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="'$(PSAAControlledProviders)'!='true'">libffi-8.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="'$(PSAAControlledProviders)'=='true'">$(PSAAFFILibrary);%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalOptions Condition="'$(PSAAControlledProviders)'=='true'">/EXPORT:ffi_get_version /EXPORT:ffi_get_version_number %(AdditionalOptions)</AdditionalOptions>
+     </Link>
+   </ItemDefinitionGroup>
+   <ItemGroup>
+-    <_LIBFFIDLL Include="$(libffiOutDir)\libffi-8.dll" />
++    <_LIBFFIDLL Condition="'$(PSAAControlledProviders)'!='true'" Include="$(libffiOutDir)\libffi-8.dll" />
+   </ItemGroup>
+-  <Target Name="_CopyLIBFFIDLL" Inputs="@(_LIBFFIDLL)" Outputs="@(_LIBFFIDLL->'$(OutDir)%(Filename)%(Extension)')" AfterTargets="Build">
++  <Target Condition="'$(PSAAControlledProviders)'!='true'" Name="_CopyLIBFFIDLL" Inputs="@(_LIBFFIDLL)" Outputs="@(_LIBFFIDLL->'$(OutDir)%(Filename)%(Extension)')" AfterTargets="Build">
+     <Copy SourceFiles="@(_LIBFFIDLL)" DestinationFolder="$(OutDir)" />
+   </Target>
+-  <Target Name="_CleanLIBFFIDLL" BeforeTargets="Clean">
++  <Target Condition="'$(PSAAControlledProviders)'!='true'" Name="_CleanLIBFFIDLL" BeforeTargets="Clean">
+     <Delete Files="@(_LIBFFIDLL->'$(OutDir)%(Filename)%(Extension)')" TreatErrorsAsWarnings="true" />
+   </Target>
++  <Target Name="PSAARequireStaticFFI" BeforeTargets="PrepareForBuild" Condition="'$(PSAAControlledProviders)'=='true'">
++    <Error Condition="!Exists('$(PSAAFFILibrary)')" Text="Missing controlled provider input: $(PSAAFFILibrary)" />
++    <Error Condition="!Exists('$(PSAAFFIIncludeDir)\ffi.h')" Text="Missing controlled provider input: $(PSAAFFIIncludeDir)\ffi.h" />
++  </Target>
+ </Project>
+\ No newline at end of file
+--- a/PCbuild/pythoncore.vcxproj
++++ b/PCbuild/pythoncore.vcxproj
+@@ -101,7 +101,8 @@
+     <ClCompile>
+       <AdditionalOptions>/Zm200  %(AdditionalOptions)</AdditionalOptions>
+       <AdditionalIncludeDirectories>$(PySourcePath)Modules\_hacl;$(PySourcePath)Modules\_hacl\include;$(PySourcePath)Python;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <AdditionalIncludeDirectories Condition="$(IncludeExternals)">$(zlibNgDir);$(GeneratedZlibNgDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories Condition="$(IncludeExternals) and '$(PSAAControlledProviders)'!='true'">$(zlibNgDir);$(GeneratedZlibNgDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories Condition="'$(PSAAControlledProviders)'=='true'">$(PSAACodecIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalIncludeDirectories Condition="'$(UseJIT)' == 'true'">$(GeneratedJitStencilsDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <PreprocessorDefinitions>_USRDLL;Py_BUILD_CORE;Py_BUILD_CORE_BUILTIN;Py_ENABLE_SHARED;MS_DLL_ID="$(SysWinVer)";ZLIB_COMPAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+       <PreprocessorDefinitions Condition="$(IncludeExternals)">_Py_HAVE_ZLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+@@ -113,7 +114,8 @@
+     </ClCompile>
+     <Link>
+       <AdditionalDependencies>version.lib;ws2_32.lib;pathcch.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+-      <AdditionalDependencies Condition="$(IncludeExternals)">zlib-ng$(PyDebugExt).lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="$(IncludeExternals) and '$(PSAAControlledProviders)'!='true'">zlib-ng$(PyDebugExt).lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="'$(PSAAControlledProviders)'=='true'">$(PSAAZlibLibrary);%(AdditionalDependencies)</AdditionalDependencies>
+     </Link>
+   </ItemDefinitionGroup>
+   <ItemGroup>
+@@ -686,7 +688,7 @@
+     <ResourceCompile Include="..\PC\python_nt.rc" />
+   </ItemGroup>
+   <ItemGroup>
+-    <ProjectReference Include="zlib-ng.vcxproj" Condition="$(IncludeExternals)">
++    <ProjectReference Include="zlib-ng.vcxproj" Condition="$(IncludeExternals) and '$(PSAAControlledProviders)'!='true'">
+       <Project>{fb91c8b2-6fbc-3a01-b644-1637111f902d}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+@@ -739,4 +741,9 @@
+   <Target Name="_DeletePyBuildDirTxt" BeforeTargets="PrepareForBuild">
+     <Delete Files="$(OutDir)pybuilddir.txt" />
+   </Target>
++  <Target Name="PSAARequireStaticCodec" BeforeTargets="PrepareForBuild" Condition="'$(PSAAControlledProviders)'=='true'">
++    <Error Condition="'$(IncludeExternals)'!='true'" Text="Controlled zlib must remain built into Python." />
++    <Error Condition="!Exists('$(PSAAZlibLibrary)')" Text="Missing controlled provider input: $(PSAAZlibLibrary)" />
++    <Error Condition="!Exists('$(PSAACodecIncludeDir)\zlib.h')" Text="Missing controlled provider input: $(PSAACodecIncludeDir)\zlib.h" />
++  </Target>
+ </Project>
+--- a/PCbuild/_lzma.vcxproj
++++ b/PCbuild/_lzma.vcxproj
+@@ -93,11 +93,14 @@
+   </PropertyGroup>
+   <ItemDefinitionGroup>
+     <ClCompile>
+-      <AdditionalIncludeDirectories>$(lzmaDir)src/liblzma/api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+-      <PreprocessorDefinitions>WIN32;_FILE_OFFSET_BITS=64;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;LZMA_API_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <AdditionalIncludeDirectories Condition="'$(PSAAControlledProviders)'!='true'">$(lzmaDir)src/liblzma/api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <AdditionalIncludeDirectories Condition="'$(PSAAControlledProviders)'=='true'">$(PSAACodecIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
++      <PreprocessorDefinitions Condition="'$(PSAAControlledProviders)'!='true'">WIN32;_FILE_OFFSET_BITS=64;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;LZMA_API_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
++      <PreprocessorDefinitions Condition="'$(PSAAControlledProviders)'=='true'">WIN32;_FILE_OFFSET_BITS=64;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(OutDir)liblzma$(PyDebugExt).lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="'$(PSAAControlledProviders)'!='true'">$(OutDir)liblzma$(PyDebugExt).lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies Condition="'$(PSAAControlledProviders)'=='true'">$(PSAALzmaImportLibrary);%(AdditionalDependencies)</AdditionalDependencies>
+     </Link>
+   </ItemDefinitionGroup>
+   <ItemGroup>
+@@ -111,7 +114,7 @@
+       <Project>{cf7ac3d1-e2df-41d2-bea6-1e2556cdea26}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+-    <ProjectReference Include="liblzma.vcxproj">
++    <ProjectReference Include="liblzma.vcxproj" Condition="'$(PSAAControlledProviders)'!='true'">
+       <Project>{12728250-16eC-4dc6-94d7-e21dd88947f8}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+@@ -119,4 +122,12 @@
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ImportGroup Label="ExtensionTargets">
+   </ImportGroup>
++  <Target Name="PSAARequireSharedLzma" BeforeTargets="PrepareForBuild" Condition="'$(PSAAControlledProviders)'=='true'">
++    <Error Condition="!Exists('$(PSAALzmaImportLibrary)')" Text="Missing controlled provider input: $(PSAALzmaImportLibrary)" />
++    <Error Condition="!Exists('$(PSAALzmaRuntime)')" Text="Missing controlled provider input: $(PSAALzmaRuntime)" />
++    <Error Condition="!Exists('$(PSAACodecIncludeDir)\lzma.h')" Text="Missing controlled provider input: $(PSAACodecIncludeDir)\lzma.h" />
++  </Target>
++  <Target Name="PSAACopySharedLzma" AfterTargets="Build" Condition="'$(PSAAControlledProviders)'=='true'">
++    <Copy SourceFiles="$(PSAALzmaRuntime)" DestinationFolder="$(OutDir)" />
++  </Target>
+ </Project>

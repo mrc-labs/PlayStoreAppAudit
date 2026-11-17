@@ -1,0 +1,77 @@
+{
+  "scope": "Qualified controlled native developer-tool wheels; no producer adoption or portable application acceptance. Reconstruct using locked original source and packaging contracts; diagnostic artifacts are retained evidence, not a public package index.",
+  "run": 43729883614,
+  "source_sha": "2e6c8e1b40f15a8f57bdf76306137fc338810af6",
+  "distribution": "ruff==0.17.5+psaa.pastey",
+  "compiler": "Rust1.100.0 / vendor LLVM23.1.5",
+  "backend": "Maturin1.16.0",
+  "lock_sha256": "e498c76fa07b364f1c91e3af940827b23097635b63f7ef5fd1784cf6c3f71cc9",
+  "targets": {
+    "macos-x64": {
+      "artifact": 14169486592,
+      "zip_sha256": "eeaa52cdd6fec2c3ff67cdd797120af0fa8fa4601ed3166ad84f71ff06002a88",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-macosx_10_15_x86_64.whl",
+      "wheel_sha256": "95bd86fe11d88588218ac587f7654f2cb2a7bedd993435ecb1b476e5a507a00c",
+      "native_sha256": "1d3104f3e29305fb28d1647bd949d31e125a94add8719ade56a2e73c760f5d97",
+      "native_machine": "0x1000007",
+      "upstream_cases": 33
+    },
+    "windows-x64": {
+      "artifact": 14169141442,
+      "zip_sha256": "3ac406766d79353d7472ff83d514d4e1536c5ee7673ba59238bbcb626f71231d",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-win_amd64.whl",
+      "wheel_sha256": "3175a4fb7ad3992838932f50666652af6198f6ec5fcc7fdb9b70fd2028d2e667",
+      "native_sha256": "ecc5df7f1efb32c99c51cf9369cf8e10c3b623c641c66d8be6b8d3edcc4db1e4",
+      "native_machine": "0x8664",
+      "upstream_cases": 33
+    },
+    "macos-arm64": {
+      "artifact": 14168942015,
+      "zip_sha256": "7362343caabef7102f4262214a0c6877eb0e82ba8f632053d30aef73e8212221",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-macosx_11_0_arm64.whl",
+      "wheel_sha256": "2867848b7ede2a7e77e00c9083ac5f4f8044119d9a95c78b4b0c5ee3710f2a5f",
+      "native_sha256": "521acfd034ccdc1b7f0d259d1fb51826652e443e80b924c338508d2a061ac35c",
+      "native_machine": "0x100000c",
+      "upstream_cases": 33
+    },
+    "windows-arm64": {
+      "artifact": 14168616837,
+      "zip_sha256": "c8d27a3322086f98698f01b853f3daa8844cdaf755faf04b4009ea33a64840e0",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-win_arm64.whl",
+      "wheel_sha256": "6f8eacee73cf9f391a66c0853daaced520a639a389011a3b1f729e80c26c442a",
+      "native_sha256": "8e29db321a4facb6fe78171a356291e6e84447b46659d5609d9199fececc9c29",
+      "native_machine": "0xaa64",
+      "upstream_cases": 33
+    },
+    "linux-arm64": {
+      "artifact": 14168436418,
+      "zip_sha256": "4d7f72a318f7de3138733719de429aa84faa934055a02951498b31e418690440",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-linux_aarch64.whl",
+      "wheel_sha256": "c14e521b484316f323b2e3eaf901903dc8e890894953fa4f6c1e5141af17a21a",
+      "native_sha256": "cac58d75aaf623b05db32cf0cf26ced5524456ff33757355657af5b1813d3bc0",
+      "native_machine": "183",
+      "upstream_cases": 33
+    },
+    "linux-x64": {
+      "artifact": 14168266934,
+      "zip_sha256": "b5889d405daf318335d806504630591bb24abe534b6a6e533f804d2023e329ad",
+      "source_instances": 7,
+      "legal_instances": 25,
+      "wheel": "ruff-0.17.5+psaa.pastey-py3-none-linux_x86_64.whl",
+      "wheel_sha256": "73bbcf6eb93f5fa800d46de61a991adb4ff7dd19ef3b7c1da67675eed2566a50",
+      "native_sha256": "6a11e8c295273e293561f9b5ada47dd22cc59b0af21d448c43f284c3ddf720e2",
+      "native_machine": "62",
+      "upstream_cases": 33
+    }
+  }
+}

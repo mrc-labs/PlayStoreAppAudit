@@ -1,0 +1,92 @@
+name: Controlled Actions native consumers
+
+on:
+  workflow_call:
+    inputs:
+      expected_sha:
+        description: Exact diagnostic source, never a release candidate
+        type: string
+        required: true
+      cross_run_only:
+        description: Repeat only the changed authenticated cross-run consumer on Linux x64
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.cross_run_only && '[{"os":"ubuntu-22.04","label":"linux-x64","arch":"x64"}]' || '[{"os":"ubuntu-22.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@d2a6950f2bdc50af540e085d5ed1106efd70223c
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/controlled-node-probe
+      - uses: ./.github/actions/controlled-setup-python
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+      - name: Verify stable Python 3.14 and prepare native Action consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          python .github/scripts/check_controlled_action_roundtrip.py prepare
+      - uses: ./.github/actions/controlled-upload-artifact
+        with:
+          name: controlled-fixture-${{ matrix.label }}-${{ github.run_id }}
+          path: |
+            controlled-action-fixture/
+            !controlled-action-fixture/excluded.txt
+          if-no-files-found: error
+          retention-days: 0
+      - uses: ./.github/actions/controlled-download-artifact
+        with:
+          name: controlled-fixture-${{ matrix.label }}-${{ github.run_id }}
+          path: controlled-action-received
+      - name: Verify exact uploaded and downloaded bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/check_controlled_action_roundtrip.py verify
+      - name: Exercise authenticated cross-run pattern downloads used by assemblers
+        if: ${{ matrix.label == 'linux-x64' }}
+        uses: ./.github/actions/controlled-download-artifact
+        with:
+          run-id: 43783573993
+          github-token: ${{ github.token }}
+          pattern: controlled-action-native-*
+          path: prior-action-consumers
+      - name: Verify all six original cross-run reports
+        if: ${{ matrix.label == 'linux-x64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          expected = json.loads(Path('.github/scripts/controlled_actions_bundles.json').read_text())['native_qualification']['targets']
+          actual = [json.loads(p.read_text()) for p in Path('prior-action-consumers').rglob('native-action-roundtrip.json')]
+          assert len(actual) == 6
+          assert sorted(json.dumps(p, sort_keys=True) for p in actual) == sorted(json.dumps(p['proof'], sort_keys=True) for p in expected)
+          print('PASS six byte-equivalent original reports through authenticated cross-run pattern download')
+          PY
+      - name: Retain native Action evidence
+        if: always()
+        uses: ./.github/actions/controlled-upload-artifact
+        with:
+          name: controlled-action-native-${{ matrix.label }}-${{ github.run_id }}
+          path: controlled-action-native-evidence/
+          if-no-files-found: warn
+          retention-days: 0

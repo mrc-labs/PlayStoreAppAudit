@@ -1,0 +1,26 @@
+{
+  "scope": "Opt-in build configuration only; unchanged C implementations, Windows closure allocation, builtin zlib and GIL. No producer adoption or native qualification yet.",
+  "source_version": "3.14.10",
+  "reason": "Original liblzma project references four removed XZ5.8.4 inputs; route current codecs through their supported upstream CMake builds, static zlib-ng/dynamic CRT and shared XZ. Link exact native static ffi/MD without a legacy DLL fallback.",
+  "patch": {
+    "path": ".github/patches/cpython-3.14.10-controlled-windows-providers.patch",
+    "sha256": "3e223371b7f16e0657a2472c1e6dfd6c90f9997b166a444e4384491b4629d844",
+    "files": {
+      "PCbuild/libffi.props": {
+        "original_sha256": "9f455f82acc22e0026f54d8af20213d880009b3e6206f699753eaa483d398fea",
+        "base_sha256": "0d0857e98b277e82d7184ac04db86f3d6f5a28b99c0223765cc8651fb071b41c",
+        "patched_sha256": "86b3617b702fd4b8038827190f08aa8dec18e683438620eac3c43e7485b09e13"
+      },
+      "PCbuild/pythoncore.vcxproj": {
+        "original_sha256": "396cbed1a6e1d6a91f7ffc79412808554e99ecb33b42cdc916203d658cb29be7",
+        "base_sha256": "d7c7eaab773f853763edcfb4f3ba229fe30f016518d4eba0a15fe02acbbf3d00",
+        "patched_sha256": "494711a929daa87c7bbf61c1bbf55ff12f26f05aa599e281155a53243046e2f2"
+      },
+      "PCbuild/_lzma.vcxproj": {
+        "original_sha256": "64461af3ea0d9005ab580138dd6183b8a78af6b732f5fd5447645f0209ba7649",
+        "base_sha256": "ecd55a553123a8c7754bd8a52c6e12369662afcbdf67d31827cf81b5201b115b",
+        "patched_sha256": "16a329e7965f6f0212cd68404f858c2d62920a448ea684f9bb606647e876d492"
+      }
+    }
+  }
+}

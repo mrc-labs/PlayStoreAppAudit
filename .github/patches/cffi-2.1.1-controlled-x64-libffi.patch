@@ -1,0 +1,61 @@
+--- a/setup.py
++++ b/setup.py
+@@ -129,30 +129,23 @@
+     os.environ['PKG_CONFIG_PATH'] = (
+         os.environ.get('PKG_CONFIG_PATH', '') + ':' + pkgconfig)
+ 
+-if sys.platform == "win32" and uses_msvc():
+-    if platform.machine() == "ARM64":
+-        include_dirs.append(os.path.join("src/c/libffi_arm64/include"))
+-        library_dirs.append(os.path.join("src/c/libffi_arm64"))
+-    else:
+-        COMPILE_LIBFFI = 'src/c/libffi_x86_x64'    # from the CPython distribution
+-        assert os.path.isdir(COMPILE_LIBFFI), "directory not found!"
+-        include_dirs[:] = [COMPILE_LIBFFI]
+-        libraries[:] = []
+-        _filenames = [filename.lower() for filename in os.listdir(COMPILE_LIBFFI)]
+-        _filenames = [filename for filename in _filenames
+-                            if filename.endswith('.c')]
+-        if sys.maxsize > 2**32:
+-            # 64-bit: unlist win32.c, and add instead win64.obj.  If the obj
+-            # happens to get outdated at some point in the future, you need to
+-            # rebuild it manually from win64.asm.
+-            _filenames.remove('win32.c')
+-            extra_link_args.append(os.path.join(COMPILE_LIBFFI, 'win64.obj'))
+-        sources.extend(os.path.join(COMPILE_LIBFFI, filename)
+-                    for filename in _filenames)
+-else:
+-    use_pkg_config()
+-    ask_supports_thread()
+-    ask_supports_sync_synchronize()
++# Project-controlled native AMD64 consumer; never compile the bundled old libffi.
++if sys.platform != "win32" or platform.machine().lower() != "amd64" or not uses_msvc():
++    raise RuntimeError("Controlled libffi variant requires native Windows AMD64/MSVC")
++project_libffi = os.environ.get("PSAA_LIBFFI_X64_ROOT")
++if not project_libffi:
++    raise RuntimeError("Controlled libffi variant requires its source-built prefix")
++project_libffi = os.path.abspath(project_libffi)
++project_library = os.path.join(project_libffi, "lib", "libffi.lib")
++project_include = os.path.join(project_libffi, "include")
++if not all(os.path.isfile(path) for path in [project_library,
++        os.path.join(project_include, "ffi.h"), os.path.join(project_include, "ffitarget.h")]):
++    raise RuntimeError("Incomplete controlled AMD64 libffi prefix")
++include_dirs[:] = [project_include]
++library_dirs[:] = []
++libraries[:] = []
++define_macros.append(("FFI_STATIC_BUILD", "1"))
++extra_link_args.extend([project_library, "/EXPORT:ffi_get_version", "/EXPORT:ffi_get_version_number"])
+ 
+ if sysconfig.get_platform().startswith('macosx'):
+     # priority is given to `pkg_config`, but always fall back on SDK's libffi.
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7,7 +7,7 @@
+ 
+ [project]
+ name = "cffi"
+-version = "2.1.1"
++version = "2.1.1+psaa.libffi380"
+ dependencies = [
+     "pycparser; implementation_name != 'PyPy'",
+ ]

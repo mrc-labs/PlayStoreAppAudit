@@ -1,0 +1,39 @@
+{
+  "scope": "Windows x64 ctypes/cffi consumers of exact already-qualified native static ffi SDK; no ffi rebuild",
+  "ffi": {
+    "artifact": 14158148246,
+    "run": 43705994557,
+    "source_sha": "522202f8c683cb1c8e4fcd61318277a7899a0e4f",
+    "zip_bytes": 7346750,
+    "zip_sha256": "3c102bf3476c326849fdc77a6b2efab87a9e415bd2d2ee7473435389fe4c5b3d",
+    "library_sha256": "a5ccc3bc7d0e11da96c40f102760e8e2580127c4cfb41ceccb18a56330c256b8"
+  },
+  "cffi_consumer": {
+    "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+    "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+    "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "distribution_version": "2.1.1+psaa.libffi380",
+    "api_version": "2.1.1",
+    "scope": "Native AMD64-only source selection/local identity; existing C implementation unchanged. Diagnostic version exports identify actual static provider. No bundled legacy ffi, runtime/crypto/producer adoption or unchanged official distribution claim.",
+    "patch": {
+      "path": ".github/patches/cffi-2.1.1-controlled-x64-libffi.patch",
+      "sha256": "4aad5d077bddf8a33aada20efa5e99bd84ba55b5dc45dd727c8449e6d6976948",
+      "files": {
+        "setup.py": {
+          "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
+          "patched_sha256": "5b2b05ac4b91c9d3ccb8bbafd17cc5d2edae8b6db579d30f5a88bfa2b2897339"
+        },
+        "pyproject.toml": {
+          "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
+          "patched_sha256": "412e8a9e83a7dc1854aec82fa70c903be7804518fe6bfb8785f6202ae3b152b6"
+        }
+      }
+    },
+    "bootstrap_pins": [
+      "setuptools==84.2.1",
+      "wheel==0.48.0",
+      "pycparser==3.12",
+      "pytest==9.2.0"
+    ]
+  }
+}

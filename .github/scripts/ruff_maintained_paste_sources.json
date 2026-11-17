@@ -1,0 +1,21 @@
+{
+  "scope": "Minimal source dependency configuration only: maintained pastey under the existing paste crate alias; no libcst/Ruff Rust implementation changes or upstream approval claimed",
+  "authority": "https://rustsec.org/advisories/RUSTSEC-2024-0436.html",
+  "libcst": {
+    "name": "libcst-1.9.0.crate",
+    "url": "https://static.crates.io/crates/libcst/libcst-1.9.0.crate",
+    "sha256": "21b68d9c60cba9c333f89596ef5c4d3b6c9bd0b7d2e48a9810df6fa7976102a3",
+    "directory": "libcst-1.9.0",
+    "manifest_original_sha256": "f28e21f1600ea526f291fbce0cc22e05e365a3a104fa2ac0aec5941326e71d76",
+    "manifest_patched_sha256": "6c237f224df27a9ac7dd1560a8bca0048039aa62984958fa289ecef2f143bd2f"
+  },
+  "pastey": {
+    "name": "pastey-0.2.3.crate",
+    "url": "https://static.crates.io/crates/pastey/pastey-0.2.3.crate",
+    "sha256": "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4",
+    "directory": "pastey-0.2.3",
+    "authority": "https://crates.io/crates/pastey/0.2.3",
+    "rust_version": "1.54",
+    "yanked": false
+  }
+}

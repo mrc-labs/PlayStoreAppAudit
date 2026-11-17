@@ -1,0 +1,51 @@
+From 17395cd71bd7b44784add9c0d2a71c03fc3c1b1f Mon Sep 17 00:00:00 2001
+From: Edward Welbourne <edward.welbourne@qt.io>
+Date: Mon, 2 Nov 2026 18:10:06 +0100
+Subject: [PATCH] Kludge transition-parsing to cope with Africa/Monrovia before
+ 1972
+
+The internal data tables represent transition times in minutes, so as
+to not need too many bits to represent the values. However, it turns
+out CLDR was gently misreporting the time of Liberia's transition to
+GMT back in 1972, from a prior 44m 30s offset, the last zone not on a
+tidy multiple of 1/4 or 1/3 hours as offset. (The Netherlands was on
+19m 32.13s until 1937, but CLDR only tracks things back to 1970.)
+CLDR v49 finally fixed this and now tells the truth. I chose to
+continue reporting that transition as at 00:45 on the relevant
+morning, rather than reworking the internal representation to need one
+more bit to represent it.
+
+Pick-to: 6.12 6.8
+Task-number: QTBUG-151179
+Change-Id: I1601ab79d5860b7e32fb10e0a0cd6f257b7a4cb9
+Reviewed-by: Thiago Macieira <thiago.macieira@intel.com>
+---
+ util/locale_database/cldr.py | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/util/locale_database/cldr.py b/util/locale_database/cldr.py
+index b65bc8ba5559..c2ae0b3f802f 100644
+--- a/util/locale_database/cldr.py
++++ b/util/locale_database/cldr.py
+@@ -728,7 +728,7 @@ def timeRep(text: str, notime: bool, epoch=datetime(1970, 1, 1, 0, 0)) -> int:
+                         raise ValueError
+                     # else: fromisoformat reads it as start of day
+                 else:
+-                    assert len(text) == 16, text
++                    assert len(text) in (16, 19), text
+ 
+                 # If it's given with HH:mm as 24:00, this throws:
+                 diff: timedelta = datetime.fromisoformat(text) - epoch
+@@ -738,7 +738,11 @@ def timeRep(text: str, notime: bool, epoch=datetime(1970, 1, 1, 0, 0)) -> int:
+ 
+             assert diff.days >= 0 and diff.seconds >= 0, (diff, text)
+             mins, secs = divmod(diff.seconds, 60)
+-            assert secs == 0, (diff, text)
++            if secs == 30:
++                # Africa/Monrovia, 1919 to 1972, "1972-01-07 00:44:30"
++                mins += 1 # to 45; close enough, and tidy.
++            else:
++                assert secs == 0, (diff, text)
+             return diff.days * 1440 + mins
+ 
+         def mapTimes(triple: tuple[str|None, str|None, str],

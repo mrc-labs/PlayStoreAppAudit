@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-15",
+  "target": "Native Ubuntu24.04 AArch64/GCC13/GIL3.14.10; GLIBC2.38/GLIBCXX3.4.32. No Jammy sysroot or GNU11 link SDK.",
+  "native_source_projection": {
+    "path": "linux_x64_native_delta_sources.json",
+    "keys": [
+      "sources",
+      "expected",
+      "sqlite_legal_notice"
+    ],
+    "canonical_sha256": "0eab2e08965a152b27ebbe0e3fedc515b9845b6d7ed107b06a20de46cc64cf0e"
+  },
+  "qt_manifests": [
+    {
+      "path": "qt_text_provider_sources.json",
+      "canonical_sha256": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94"
+    },
+    {
+      "path": "qt_cbor_provider_sources.json",
+      "canonical_sha256": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6"
+    },
+    {
+      "path": "qt_http_security_sources.json",
+      "canonical_sha256": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
+    },
+    {
+      "path": "qt_data_refresh_sources.json",
+      "canonical_sha256": "3cabb3678b38fda57e9bfa0d8db14862e73f140b8af05fda018023099c047b4d"
+    },
+    {
+      "path": "qt_cldr49_sources.json",
+      "canonical_sha256": "801db189ddd3f4741fee036151d57a22c20f456c9e673144916d2796a1c9aa6f"
+    },
+    {
+      "path": "provider_ca_security_sources.json",
+      "canonical_sha256": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f"
+    }
+  ],
+  "scope": "Diagnostic-only R05/R06/R08/R09 source integration. Portable source/version/hash selections shared; compiler/OS/ABI flags are explicitly native ARM64. Existing artifacts keep original identities; no producer adoption."
+}

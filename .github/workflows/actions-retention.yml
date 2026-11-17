@@ -29,12 +29,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout canonical maintenance logic
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: main
 
       - name: Set up Python 3.14
-        uses: actions/setup-python@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true

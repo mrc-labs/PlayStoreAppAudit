@@ -1,0 +1,142 @@
+--- a/Modules/_ssl.c
++++ b/Modules/_ssl.c
+@@ -133,6 +133,16 @@
+ #include "_ssl_data_111.h"
+ #else
+ #error Unsupported OpenSSL version
++#endif
++
++/* OpenSSL 4 removed SSLv3 entirely (CPython gh-146217). */
++#if OPENSSL_VERSION_NUMBER >= 0x40000000L
++#  ifndef OPENSSL_NO_SSL3
++#    define OPENSSL_NO_SSL3
++#  endif
++#  ifndef OPENSSL_NO_SSL3_METHOD
++#    define OPENSSL_NO_SSL3_METHOD
++#  endif
+ #endif
+ 
+ /* OpenSSL API 1.1.0+ does not include version methods */
+@@ -1134,7 +1144,7 @@
+ 
+ static PyObject *
+ _create_tuple_for_attribute(_sslmodulestate *state,
+-                            ASN1_OBJECT *name, ASN1_STRING *value)
++                            const ASN1_OBJECT *name, const ASN1_STRING *value)
+ {
+     Py_ssize_t buflen;
+     PyObject *pyattr;
+@@ -1163,16 +1173,16 @@
+ }
+ 
+ static PyObject *
+-_create_tuple_for_X509_NAME (_sslmodulestate *state, X509_NAME *xname)
++_create_tuple_for_X509_NAME (_sslmodulestate *state, const X509_NAME *xname)
+ {
+     PyObject *dn = NULL;    /* tuple which represents the "distinguished name" */
+     PyObject *rdn = NULL;   /* tuple to hold a "relative distinguished name" */
+     PyObject *rdnt;
+     PyObject *attr = NULL;   /* tuple to hold an attribute */
+     int entry_count = X509_NAME_entry_count(xname);
+-    X509_NAME_ENTRY *entry;
+-    ASN1_OBJECT *name;
+-    ASN1_STRING *value;
++    const X509_NAME_ENTRY *entry;
++    const ASN1_OBJECT *name;
++    const ASN1_STRING *value;
+     int index_counter;
+     int rdn_level = -1;
+     int retcode;
+@@ -3114,6 +3124,7 @@
+     PySSLContext *self;
+     uint64_t options;
+     const SSL_METHOD *method = NULL;
++    int fixed_proto_version = 0;
+     SSL_CTX *ctx = NULL;
+     X509_VERIFY_PARAM *ssl_verification_params;
+     int result;
+@@ -3139,7 +3150,13 @@
+         !defined(OPENSSL_NO_TLS1_METHOD))
+     case PY_SSL_VERSION_TLS1:
+         PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1 is deprecated", 2, NULL);
++#if OPENSSL_VERSION_NUMBER >= 0x40000000L
++        /* OpenSSL 4 removes fixed-version methods, not TLS negotiation. */
++        method = TLS_method();
++        fixed_proto_version = TLS1_VERSION;
++#else
+         method = TLSv1_method();
++#endif
+         break;
+ #endif
+ #if (defined(TLS1_1_VERSION) && \
+@@ -3147,7 +3164,13 @@
+         !defined(OPENSSL_NO_TLS1_1_METHOD))
+     case PY_SSL_VERSION_TLS1_1:
+         PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1_1 is deprecated", 2, NULL);
++#if OPENSSL_VERSION_NUMBER >= 0x40000000L
++        /* OpenSSL 4 removes fixed-version methods, not TLS negotiation. */
++        method = TLS_method();
++        fixed_proto_version = TLS1_1_VERSION;
++#else
+         method = TLSv1_1_method();
++#endif
+         break;
+ #endif
+ #if (defined(TLS1_2_VERSION) && \
+@@ -3155,7 +3178,13 @@
+         !defined(OPENSSL_NO_TLS1_2_METHOD))
+     case PY_SSL_VERSION_TLS1_2:
+         PY_SSL_DEPRECATED("ssl.PROTOCOL_TLSv1_2 is deprecated", 2, NULL);
++#if OPENSSL_VERSION_NUMBER >= 0x40000000L
++        /* OpenSSL 4 removes fixed-version methods, not TLS negotiation. */
++        method = TLS_method();
++        fixed_proto_version = TLS1_2_VERSION;
++#else
+         method = TLSv1_2_method();
++#endif
+         break;
+ #endif
+     case PY_SSL_VERSION_TLS:
+@@ -3212,6 +3241,14 @@
+     self->psk_server_callback = NULL;
+ #endif
+     self->tstate_mutex = (PyMutex){0};
++
++    /* Preserve the 3.14 fixed-protocol API with OpenSSL's supported bounds. */
++    if (fixed_proto_version != 0 &&
++        (SSL_CTX_set_min_proto_version(ctx, fixed_proto_version) != 1 ||
++         SSL_CTX_set_max_proto_version(ctx, fixed_proto_version) != 1)) {
++        _setSSLError(self->state, NULL, 0, __FILE__, __LINE__);
++        goto error;
++    }
+ 
+     /* Don't check host name by default */
+     if (proto_version == PY_SSL_VERSION_TLS_CLIENT) {
+--- a/Modules/_ssl/cert.c
++++ b/Modules/_ssl/cert.c
+@@ -128,7 +128,7 @@
+ }
+ 
+ static PyObject*
+-_x509name_print(_sslmodulestate *state, X509_NAME *name, int indent, unsigned long flags)
++_x509name_print(_sslmodulestate *state, const X509_NAME *name, int indent, unsigned long flags)
+ {
+     PyObject *res;
+     BIO *biobuf;
+--- a/Lib/test/test_ssl.py
++++ b/Lib/test/test_ssl.py
+@@ -615,11 +615,11 @@
+         # Some sanity checks follow
+         # >= 1.1.1
+         self.assertGreaterEqual(n, 0x10101000)
+-        # < 4.0
+-        self.assertLess(n, 0x40000000)
++        # < 5.0 (OpenSSL 4 compatibility, CPython gh-146217)
++        self.assertLess(n, 0x50000000)
+         major, minor, fix, patch, status = t
+         self.assertGreaterEqual(major, 1)
+-        self.assertLess(major, 4)
++        self.assertLess(major, 5)
+         self.assertGreaterEqual(minor, 0)
+         self.assertLess(minor, 256)
+         self.assertGreaterEqual(fix, 0)

@@ -1,0 +1,6 @@
+setuptools==84.2.1
+wheel==0.48.0
+packaging==26.3
+more-itertools==11.2.1
+jaraco.text==4.3.0
+jaraco.functools==4.6.0
