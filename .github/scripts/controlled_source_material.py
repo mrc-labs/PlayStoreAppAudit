@@ -45,7 +45,10 @@ def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str
         if legal and b'\0' in payload[:4096]:
             continue
         digest = hashlib.sha256(payload).hexdigest()
-        relative = ('sources/' + path.name) if source else ('licenses/' + digest + '.txt')
+        source_name = path.name
+        if source_name == 'qt-cldr49-generated.tar.xz':
+            source_name = 'qt-cldr49-generated-' + digest[:16] + '.tar.xz'
+        relative = ('sources/' + source_name) if source else ('licenses/' + digest + '.txt')
         target = destination / relative
         target.parent.mkdir(exist_ok=True)
         if target.exists() and target.read_bytes() != payload:
@@ -134,7 +137,7 @@ def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: P
     # Host paths are local intake implementation details, not portable provenance.
     portable_selection = {key: selection[key] for key in (
         'target', 'identity', 'preparation_source_sha', 'compiled_source_sha',
-        'compiled_component_sources', 'qt_receipt_sha256', 'overlay') if key in selection}
+        'compiled_component_sources', 'qt_receipt_sha256', 'overlay', 'ffi_security_overlay') if key in selection}
     provenance = json.dumps(portable_selection, indent=2).encode()
     with tarfile.open(recipe, 'w:xz') as archive:
         info = tarfile.TarInfo('DEPENDENCY-SDK-SELECTION.json')

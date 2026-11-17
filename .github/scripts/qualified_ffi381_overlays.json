@@ -1,0 +1,8 @@
+{
+  "macos-arm64": {"kind":"posix", "artifact":14297471382, "run":44012330704, "source_sha":"156477a2e9a64112acded61ddccf912490115eaa", "zip_bytes":1675335, "zip_sha256":"91409da65c7c57a3ec1909979c686b6536b2460ec7a0054d713885fd45fe1c88"},
+  "macos-x64": {"kind":"posix", "artifact":14297391764, "run":44012330704, "source_sha":"156477a2e9a64112acded61ddccf912490115eaa", "zip_bytes":1684955, "zip_sha256":"9939225f029784fcbdc1e4ec045b96d602aaf876d7c5832660a5b9efafa0ebb5"},
+  "linux-x64": {"kind":"posix", "artifact":14298951024, "run":44015553408, "source_sha":"c7ccf770907285e52e546143e35c9ca18709ed82", "zip_bytes":1695756, "zip_sha256":"74f67575cb5934a1e1a207b76a5b187ec40ec676c3979d11ca7bbade7a148c5f"},
+  "linux-arm64": {"kind":"posix", "artifact":14298906278, "run":44015553408, "source_sha":"c7ccf770907285e52e546143e35c9ca18709ed82", "zip_bytes":1690579, "zip_sha256":"4d04aa8f48c6471ff8e5178bdcd290c6a095d299f4ff9e95cac0b2e3502838ac"},
+  "windows-x64": {"kind":"windows", "artifact":14299565176, "run":44015556829, "source_sha":"c7ccf770907285e52e546143e35c9ca18709ed82", "zip_bytes":433269670, "zip_sha256":"8605be22b13cdd07c1d69df3b4f22fa26e1eefc756fa300e97f367191df5f9a6"},
+  "windows-arm64": {"kind":"windows", "artifact":14299385573, "run":44015556829, "source_sha":"c7ccf770907285e52e546143e35c9ca18709ed82", "zip_bytes":430677130, "zip_sha256":"0d7474d6dad53325172b7aa155da9ad227d6a930e1183265d510907bbe13039f"}
+}

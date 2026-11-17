@@ -98,3 +98,12 @@ def test_build_only_dll_loader_is_forbidden_in_packages(tmp_path: Path) -> None:
 
     (tmp_path / '_psaa_sdk_dll_paths.py').write_text('build-only')
     assert _forbidden_matches(tmp_path)[0]['reason'] == 'Build-only controlled SDK loader must not ship'
+
+
+def test_generated_archive_names_preserve_distinct_native_source_bytes(tmp_path: Path) -> None:
+    for payload in [b'generated input A fixture', b'generated input B fixture']:
+        with _archive({'sources/qt-cldr49-generated.tar.xz': payload}) as archive:
+            retain_zip_material(archive, tmp_path, 'native generated source fixture')
+    sources = list((tmp_path / 'sources').iterdir())
+    assert len(sources) == 2
+    assert {path.read_bytes() for path in sources} == {b'generated input A fixture', b'generated input B fixture'}

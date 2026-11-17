@@ -2039,6 +2039,10 @@ def main() -> int:
     qt_identity = resolve_arguments(args, _read_exact_pyside_pin(repo_root))
     if bool(qt_identity) != bool(args.controlled_runtime_selection):
         raise RuntimeError("Controlled Qt identity and runtime source selection must be supplied together")
+    if args.controlled_runtime_selection:
+        selected_runtime = json.loads(args.controlled_runtime_selection.read_text(encoding="utf-8"))
+        if selected_runtime.get("ffi_security_overlay", {}).get("version") != "3.8.1":
+            raise RuntimeError("Controlled release must adopt the qualified FFI3.8.1 security input")
     pyside_version = qt_identity["version"] if qt_identity else metadata.version("PySide6_Essentials")
     shiboken_version = metadata.version("shiboken6")
     if pyside_version != shiboken_version:

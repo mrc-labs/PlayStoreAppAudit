@@ -172,6 +172,7 @@ $NuitkaArgs = @(
     "--include-data-dir=docs/images=help-images",
     "--windows-console-mode=attach",
     "--nofollow-import-to=PIL",
+    "--nofollow-import-to=_psaa_sdk_dll_paths",
     "--assume-yes-for-downloads",
     "--windows-icon-from-ico=$IconPath",
     "--file-version=$AppVersion",

@@ -92,6 +92,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', choices=TARGETS, required=True)
     parser.add_argument('--export-github-environment', action='store_true')
+    parser.add_argument('--apply-qualified-ffi', action='store_true', help='Required security input for release producers; diagnostics may restore original SDKs')
     args = parser.parse_args()
     target = args.target
     system, arch = target.split('-')
@@ -136,6 +137,10 @@ def main() -> None:
             '    assert _directory.is_relative_to(_root) and _directory.is_dir()\n'
             '    _handles.append(os.add_dll_directory(str(_directory)))\n', encoding='utf-8')
         pth.write_text('import _psaa_sdk_dll_paths\n', encoding='utf-8')
+    if args.apply_qualified_ffi:
+        from apply_qualified_ffi381 import apply
+
+        apply(selection, output, environment)
     # Install the already-qualified lxml wheel into fresh Linux venvs only.
     if system == 'linux':
         staged = output / 'producer-lxml-intake'

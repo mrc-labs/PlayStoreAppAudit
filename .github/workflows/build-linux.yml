@@ -136,7 +136,7 @@ jobs:
       - name: Restore qualified controlled runtime and framework
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/prepare_controlled_runtime.py --target linux-${{ matrix.arch }} --export-github-environment
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-${{ matrix.arch }} --export-github-environment --apply-qualified-ffi
       - name: Verify Python and Qt baseline
         run: |
           python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"

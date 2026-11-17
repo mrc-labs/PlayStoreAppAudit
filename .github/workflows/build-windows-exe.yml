@@ -153,7 +153,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python .github/scripts/prepare_controlled_runtime.py --target "windows-$env:PACKAGE_ARCH" --export-github-environment
+          python .github/scripts/prepare_controlled_runtime.py --target "windows-$env:PACKAGE_ARCH" --export-github-environment --apply-qualified-ffi
           if ($LASTEXITCODE -ne 0) { throw 'Qualified SDK intake failed; no application build started.' }
 
       - name: Install diagnostic cryptography from source
