@@ -34,7 +34,7 @@ def linux_selection(target: str) -> tuple[dict, dict[str, str]]:
         import reuse_linux_pre_qt_sdk as sdk
 
         data = qualified_download(sdk.QT_ARTIFACT, sdk.QT_SOURCE, 43623545058)
-        sdk.restore(data, output, Path(os.environ['RUNNER_TEMP']), with_qt=True)
+        sdk.restore(data, output, Path(os.environ['RUNNER_TEMP']), with_qt=True, material=output / 'controlled-material')
         del data
         data = qualified_download(sdk.BINDING_ARTIFACT, sdk.BINDING_SOURCE, 43666656687)
         sdk.restore_bindings(data, output, with_cffi=True)
@@ -165,6 +165,19 @@ def main() -> None:
                      preparation_source_sha=os.environ['GITHUB_SHA'], identity='Project-modified v2.4 dependency inputs; no application compiled',
                      loader_path=environment.get('LD_LIBRARY_PATH', ''))
     (output / 'producer-runtime-selection.json').write_text(json.dumps(selection, indent=2) + '\n')
+    from controlled_source_material import retain_directory_material
+
+    retain_directory_material(output, output / 'controlled-material', target + ' verified SDK intake')
+    selection['material_directory'] = str(output / 'controlled-material')
+    (output / 'producer-runtime-selection.json').write_text(json.dumps(selection, indent=2) + '\n')
+    material_records = json.loads((output / 'controlled-material/INPUT-MATERIAL.json').read_text())
+    assert any(record['file'].startswith('sources/') for record in material_records)
+    assert any(record['file'].startswith('licenses/') for record in material_records)
+    (output / 'controlled-material-summary.json').write_text(json.dumps({
+        'target': target, 'preparation_source_sha': os.environ['GITHUB_SHA'],
+        'source_inputs': sorted({record['file'] for record in material_records if record['file'].startswith('sources/')}),
+        'license_payloads': len({record['sha256'] for record in material_records if record['file'].startswith('licenses/')}),
+        'scope': 'Retained original source and license bytes; package acceptance not claimed'}, indent=2) + '\n')
     if args.export_github_environment:
         values = {'PSAA_RUNTIME_PYTHON': python, 'PSAA_RUNTIME_EVIDENCE': str(output),
                   'PSAA_CONTROLLED_QT_RECEIPT': selection['qt_receipt'],

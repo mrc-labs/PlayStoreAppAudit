@@ -871,7 +871,9 @@ def _forbidden_matches(package_dir: Path) -> list[dict[str, str]]:
         name_cf = path.name.casefold()
         reason: str | None = None
 
-        if (
+        if name_cf.startswith('_psaa_sdk_dll_paths') or name_cf == '_psaa_controlled_sdk.pth':
+            reason = "Build-only controlled SDK loader must not ship"
+        elif (
             name_cf == "qpdf.dll"
             or name_cf == "libqpdf.dylib"
             or name_cf == "libqpdf.so"
@@ -1946,6 +1948,7 @@ def _parse_args() -> argparse.Namespace:
     from controlled_qt_legal_identity import add_arguments
 
     add_arguments(parser)
+    parser.add_argument("--controlled-runtime-selection", type=Path)
     return parser.parse_args()
 
 
@@ -2034,6 +2037,8 @@ def main() -> int:
     from preflight_release_legal_material import _read_exact_pyside_pin
 
     qt_identity = resolve_arguments(args, _read_exact_pyside_pin(repo_root))
+    if bool(qt_identity) != bool(args.controlled_runtime_selection):
+        raise RuntimeError("Controlled Qt identity and runtime source selection must be supplied together")
     pyside_version = qt_identity["version"] if qt_identity else metadata.version("PySide6_Essentials")
     shiboken_version = metadata.version("shiboken6")
     if pyside_version != shiboken_version:
@@ -2245,6 +2250,27 @@ def main() -> int:
             "license_source": openssl_source,
         }
 
+    controlled_inputs = None
+    if args.controlled_runtime_selection:
+        from controlled_source_material import prepare_legal_sources
+
+        selection = json.loads(args.controlled_runtime_selection.read_text(encoding="utf-8"))
+        if selection["qt_receipt_sha256"] != qt_identity["sdk_receipt_sha256"]:
+            raise RuntimeError("Controlled source selection does not match verified Qt receipt")
+        extra_assets, controlled_inputs = prepare_legal_sources(
+            Path(selection["material_directory"]), selection, repo_root, source_assets_dir, licenses_root)
+        indexed = {item["filename"]: item for item in source_assets}
+        for item in extra_assets:
+            existing = indexed.get(item["filename"])
+            if existing and existing["sha256"] != item["sha256"]:
+                raise RuntimeError("Controlled and official source bytes disagree: " + item["filename"])
+            if not existing:
+                source_assets.append(item)
+        controlled_dir = licenses_root / "controlled-runtime"
+        controlled_dir.mkdir()
+        (controlled_dir / "INPUTS.json").write_text(
+            json.dumps(controlled_inputs, indent=2) + "\n", encoding="utf-8")
+
     _write_sha256s(source_assets_dir, source_assets)
 
     source_bundle_started = time.perf_counter()
@@ -2383,6 +2409,8 @@ def main() -> int:
             "project_source_tag_must_exist_before_publication": True,
         },
     }
+    if controlled_inputs:
+        manifest["controlled_dependency_inputs"] = controlled_inputs
     (package_legal_dir / "LEGAL-MANIFEST.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )

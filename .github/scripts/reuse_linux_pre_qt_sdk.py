@@ -47,7 +47,7 @@ def unchanged_inputs(archive: zipfile.ZipFile, *, with_qt: bool = False) -> None
             raise ValueError('Changed source-build contract: ' + name)
 
 
-def restore(data: bytes, output: Path, runner_temp: Path, *, with_qt: bool = False) -> dict:
+def restore(data: bytes, output: Path, runner_temp: Path, *, with_qt: bool = False, material: Path | None = None) -> dict:
     digest, sdk_digest, source_sha = (QT_DIGEST, QT_SDK_DIGEST, QT_SOURCE) if with_qt else (DIGEST, SDK_DIGEST, SOURCE)
     label = 'qt-sdk' if with_qt else 'pre-qt-sdk'
     if hashlib.sha256(data).hexdigest() != digest:
@@ -93,6 +93,10 @@ def restore(data: bytes, output: Path, runner_temp: Path, *, with_qt: bool = Fal
             (output / name).write_bytes(archive.read(name))
         (output / ('original-qt-sdk-provenance.json' if with_qt else 'original-pre-qt-sdk-provenance.json')).write_bytes(
             archive.read(label + '-provenance.json'))
+        if material is not None:
+            from controlled_source_material import retain_zip_material
+
+            retain_zip_material(archive, material, 'Linux x64 SDK artifact ' + str(QT_ARTIFACT if with_qt else ARTIFACT))
     proof = {'compiled_source_sha': source_sha, 'original_artifact': QT_ARTIFACT if with_qt else ARTIFACT,
              'original_zip_sha256': digest, 'sdk_sha256': sdk_digest, 'compiled_qt_reused': with_qt,
              'prefix': str(prefix), 'verified_files': len(actual),

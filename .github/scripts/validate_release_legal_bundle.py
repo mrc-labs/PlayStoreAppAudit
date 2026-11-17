@@ -1190,6 +1190,31 @@ def _validate_legal_scope(package_dir: Path) -> None:
     _require(not review_artifacts, "LEGAL-BUNDLE-REVIEW.txt is an engineering review artifact and must not ship")
 
 
+def _validate_controlled_sources(package_dir: Path, manifest: dict[str, Any]) -> None:
+    controlled = manifest.get("controlled_dependency_inputs")
+    if not controlled:
+        return
+    root = _runtime_legal_root(package_dir)
+    sidecar = root / "licenses/controlled-runtime/INPUTS.json"
+    _require(sidecar.is_file() and json.loads(sidecar.read_text(encoding="utf-8")) == controlled,
+             "Controlled source provenance sidecar missing or inconsistent")
+    _require(str(controlled.get("identity", "")).startswith("Project-modified"),
+             "Controlled runtime must identify project modifications")
+    declared = {item["filename"] for item in manifest["source_assets"]}
+    _require(bool(controlled.get("sources")) and set(controlled["sources"]) <= declared,
+             "Controlled source inputs missing from corresponding-source bundle")
+    records = controlled.get("license_records")
+    _require(isinstance(records, list) and bool(records), "Controlled runtime license evidence missing")
+    for record in records:
+        relative = PurePosixPath(record["file"])
+        _require(not relative.is_absolute() and ".." not in relative.parts
+                 and relative.parts[:2] == ("licenses", "qt-third-party"),
+                 "Unsafe controlled license path")
+        path = root / relative
+        _require(path.is_file() and _sha256(path) == record["sha256"],
+                 "Controlled runtime license bytes changed: " + str(relative))
+
+
 def main() -> int:
     args = _parse_args()
     package_dir = args.package_dir.resolve()
@@ -1224,6 +1249,7 @@ def main() -> int:
     )
     _validate_openssl(package_dir, manifest)
     _validate_source_assets(release_dir, package_dir, manifest, args.public)
+    _validate_controlled_sources(package_dir, manifest)
     _validate_legal_scope(package_dir)
 
     if args.public:

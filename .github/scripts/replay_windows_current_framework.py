@@ -124,6 +124,10 @@ def main() -> None:
         for name in ['cpython-regressions.xml', 'tarfile-security-regression.log']:
             (output / 'original-runtime' / name).write_bytes(original.read('original-runtime/' + name))
         (output / 'original-framework-sdk.json').write_bytes(receipt_raw)
+        if args.intake_only:
+            from controlled_source_material import retain_zip_material
+
+            retain_zip_material(original, output / 'controlled-material', 'Windows SDK artifact ' + str(spec['artifact']))
     del data, sdk
     intake = {'original': spec, 'verified_paths': len(receipt['paths']), 'consumer_source_sha': os.environ['GITHUB_SHA'],
               'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),

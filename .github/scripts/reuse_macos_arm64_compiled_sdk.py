@@ -162,6 +162,10 @@ def main() -> None:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(original.read(name))
         (output / 'original-compiled-sdk-receipt.json').write_bytes(original.read('macos-runtime-sdk.json'))
+        if args.intake_only:
+            from controlled_source_material import retain_zip_material
+
+            retain_zip_material(original, output / 'controlled-material', 'Mac ARM SDK artifact ' + str(spec['artifact']))
     del data, sdk
     if args.imageformats:
         from complete_qt_imageformats import restore_arm64_overlay
