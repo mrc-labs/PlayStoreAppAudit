@@ -388,6 +388,7 @@ jobs:
           python .github/scripts/inspect_linux_abi.py \
             "roundtrip/PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}" \
             --arch "$PACKAGE_ARCH" \
+            --expected-openssl-major 4 \
             --output "linux-diagnostics/linux-abi-${PACKAGE_ARCH}.json"
 
       - name: Test x64 package on Ubuntu 22.04 runtime

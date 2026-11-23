@@ -99,7 +99,8 @@ print('PASS relocated controlled Qt/SSL/PNG/GUI package')
         run = subprocess.run([str(executable)], env=env, capture_output=True, text=True, timeout=60)
         report.update(package_exit=run.returncode, stdout=run.stdout, stderr=run.stderr)
         abi = subprocess.run([sys.executable, '.github/scripts/inspect_linux_abi.py', str(dist),
-                              '--arch', 'arm64', '--output', str(output / 'abi.json')], check=False)
+                              '--arch', 'arm64', '--expected-openssl-major', '4',
+                              '--output', str(output / 'abi.json')], check=False)
         report['abi_exit'] = abi.returncode
     (output / 'result.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps({k: v for k, v in report.items() if k not in {'files', 'selection', 'ldd'}}, indent=2))

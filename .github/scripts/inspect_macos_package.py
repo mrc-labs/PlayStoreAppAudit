@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -13,18 +14,20 @@ MAGIC = {b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf', b'\xca\xfe\xba\xbe', b'\xbe\x
          b'\xca\xfe\xba\xbf', b'\xbf\xba\xfe\xca'}
 
 
-def validate_commands(commands: dict, ceiling: str) -> None:
+def validate_commands(commands: dict, ceiling: str, *, expected_openssl_major: int | None = None) -> None:
     if any(version(value) > version(ceiling) for value in commands['minimum_os']):
         raise RuntimeError('Packaged image exceeds accepted deployment ceiling')
     for name in ['rpaths', 'install_names', 'dependencies']:
         for value in commands[name]:
             if value.startswith('/') and not value.startswith(('/System/Library/', '/usr/lib/')):
                 raise RuntimeError('Non-system absolute library origin: ' + value)
-            if 'libssl.3.dylib' in value or 'libcrypto.3.dylib' in value:
-                raise RuntimeError('Unexpected OpenSSL3 package dependency: ' + value)
+            match = re.search(r'(?:^|/)lib(?:ssl|crypto)\.(\d+)\.dylib$', value)
+            if (match and expected_openssl_major is not None
+                    and int(match[1]) != expected_openssl_major):
+                raise RuntimeError('OpenSSL provider contract mismatch: ' + value)
 
 
-def inspect(package: Path, arch: str) -> dict:
+def inspect(package: Path, arch: str, *, expected_openssl_major: int | None = None) -> dict:
     selected = 'arm64' if arch == 'arm64' else 'x86_64'
     ceiling = '15.0' if arch == 'arm64' else '26.0'
     rows = []
@@ -39,7 +42,7 @@ def inspect(package: Path, arch: str) -> dict:
             raise RuntimeError('Wrong native package architecture: ' + str(path))
         commands = load_commands(subprocess.check_output(['otool', '-arch', selected, '-l', str(path)], text=True))
         try:
-            validate_commands(commands, ceiling)
+            validate_commands(commands, ceiling, expected_openssl_major=expected_openssl_major)
         except RuntimeError as error:
             raise RuntimeError(str(path.relative_to(package)) + ': ' + str(error)) from error
         with path.open('rb') as stream:
@@ -50,6 +53,7 @@ def inspect(package: Path, arch: str) -> dict:
         raise RuntimeError('No packaged Mach-O images')
     maximum = max((value for row in rows for value in row['minimum_os']), key=version)
     return {'architecture': arch, 'accepted_ceiling': ceiling, 'measured_maximum_deployment': maximum,
+            'expected_openssl_major': expected_openssl_major,
             'images': rows, 'scope': 'All packaged Mach-O metadata; not older-OS execution evidence'}
 
 
@@ -58,5 +62,8 @@ if __name__ == '__main__':
     parser.add_argument('package', type=Path)
     parser.add_argument('--arch', choices=['x64', 'arm64'], required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--expected-openssl-major', type=int, choices=(3, 4),
+                        help='Enforce the selected provider contract; omitted for provider-neutral inspection.')
     args = parser.parse_args()
-    args.output.write_text(json.dumps(inspect(args.package, args.arch), indent=2) + '\n')
+    args.output.write_text(json.dumps(inspect(args.package, args.arch,
+        expected_openssl_major=args.expected_openssl_major), indent=2) + '\n')

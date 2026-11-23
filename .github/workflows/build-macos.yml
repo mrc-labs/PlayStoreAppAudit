@@ -375,7 +375,7 @@ jobs:
           fi
           test -n "$MINOS"
           python .github/scripts/relocate_macos_sdk_rpaths.py "$APP" --selection "$PSAA_CONTROLLED_RUNTIME_SELECTION" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-sdk-rpath-relocation-${{ matrix.arch }}.json"
-          python .github/scripts/inspect_macos_package.py "$APP" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-package-images-${{ matrix.arch }}.json"
+          python .github/scripts/inspect_macos_package.py "$APP" --arch "${{ matrix.arch }}" --expected-openssl-major 4 --output "$PWD/artifact/macos-package-images-${{ matrix.arch }}.json"
           python -c "import sys; normal=lambda s: tuple(map(int, s.split('.'))) + (0,) * (3-len(s.split('.'))); assert normal(sys.argv[1]) == normal(sys.argv[2]), sys.argv" "$MINOS" "$MACOSX_DEPLOYMENT_TARGET"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
 
