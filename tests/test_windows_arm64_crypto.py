@@ -90,3 +90,32 @@ def test_install_report_requires_official_source_rebuild(tmp_path: Path, suffix:
             crypto.validate_install_report(tmp_path, "50.0.2")
     else:
         assert crypto.validate_install_report(tmp_path, "50.0.2")["url"].endswith(suffix)
+
+
+@pytest.mark.parametrize('fault', ['receipt-hash', 'compiled-source', 'extension-bytes'])
+def test_controlled_provider_rejects_unclosed_sdk_identity(tmp_path, monkeypatch, fault):
+    from cryptography.hazmat.bindings import _rust
+
+    monkeypatch.setattr(crypto.platform, 'machine', lambda: 'ARM64')
+    monkeypatch.setattr(crypto.platform, 'python_version', lambda: '3.14.10')
+    monkeypatch.setattr(crypto.sysconfig, 'get_config_var', lambda name: 0)
+    extension = Path(_rust.__file__).resolve()
+    receipt = {'source_sha': '1' * 40, 'original_work_root': str(extension.parent),
+               'paths': {extension.name: {'bytes': extension.stat().st_size, 'sha256': '0' * 64}}}
+    raw = json.dumps(receipt).encode()
+    receipt_path = tmp_path / 'sdk.json'
+    receipt_path.write_bytes(raw)
+    selection = {'target': 'windows-arm64', 'qt_receipt': str(receipt_path),
+                 'qt_receipt_sha256': hashlib.sha256(raw).hexdigest(),
+                 'compiled_source_sha': '1' * 40}
+    if fault == 'receipt-hash':
+        selection['qt_receipt_sha256'] = '0' * 64
+    elif fault == 'compiled-source':
+        selection['compiled_source_sha'] = '2' * 40
+    selected = tmp_path / 'selection.json'
+    selected.write_text(json.dumps(selection))
+    with pytest.raises(RuntimeError, match={'receipt-hash': 'Changed original SDK receipt',
+                                         'compiled-source': 'Changed compiled SDK identity',
+                                         'extension-bytes': 'differs from original SDK'}[fault]):
+        crypto.verify_controlled_sdk(selected, tmp_path / 'evidence', None, None)
+    assert not (tmp_path / 'evidence').exists()

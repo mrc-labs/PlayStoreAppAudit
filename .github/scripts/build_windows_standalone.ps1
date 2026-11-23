@@ -184,6 +184,10 @@ $NuitkaArgs = @(
     "--report=$NuitkaReport"
 )
 
+if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
+    $NuitkaArgs += '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml'
+}
+
 if ($UseMSVC) {
     $NuitkaArgs += "--msvc=latest"
 }
@@ -442,14 +446,21 @@ if ($env:GITHUB_ACTIONS -eq "true") {
 }
 
 if ($PackageArch -eq 'arm64') {
-    if (-not $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE) {
-        Fail 'ARM64 packaging requires verified OpenSSL/cryptography source evidence.'
+    $ControlledCryptoArgs = @()
+    if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
+        $CryptoEvidenceDir = Join-Path $BuildRoot 'controlled-arm64-crypto'
+        $ControlledCryptoArgs = @('--controlled-runtime-selection', $env:PSAA_CONTROLLED_RUNTIME_SELECTION)
+    } else {
+        if (-not $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE) {
+            Fail 'ARM64 packaging requires verified OpenSSL/cryptography source evidence.'
+        }
+        $CryptoEvidenceDir = $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE
     }
-    & $Python .github/scripts/verify_windows_arm64_crypto.py `
-        --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE `
+    & $Python .github/scripts/verify_windows_arm64_crypto.py @ControlledCryptoArgs `
+        --evidence-dir $CryptoEvidenceDir `
         --package-dir $PackageDir --release-dir $LegalReleaseDir
     if ($LASTEXITCODE -ne 0) { Fail 'ARM64 crypto legal/source staging failed.' }
-    $CryptoEvidence = Get-Content -LiteralPath (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-verification.json') -Raw | ConvertFrom-Json
+    $CryptoEvidence = Get-Content -LiteralPath (Join-Path $CryptoEvidenceDir 'cryptography-verification.json') -Raw | ConvertFrom-Json
     $BuildInfoLines += @(
         "cryptography: $($CryptoEvidence.cryptography)"
         "cryptography OpenSSL backend: $($CryptoEvidence.cryptography_backend)"

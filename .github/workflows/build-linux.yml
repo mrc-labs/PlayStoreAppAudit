@@ -185,7 +185,7 @@ jobs:
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.png').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --nofollow-import-to=PIL --assume-yes-for-downloads --noinclude-dlls=libcrypto.so.3 --noinclude-dlls=libssl.so.3 --report=compilation-report.xml'
+          p['nuitka']['extra_args']='--quiet --user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --nofollow-import-to=PIL --assume-yes-for-downloads --noinclude-dlls=libcrypto.so.3 --noinclude-dlls=libssl.so.3 --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
       - name: Build, inspect and smoke packaged Linux standalone tree

@@ -14,6 +14,7 @@ import ssl
 import subprocess
 import sys
 import sysconfig
+import tarfile
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -80,15 +81,97 @@ def validate_install_report(evidence: Path, version: str) -> dict[str, Any]:
     return download
 
 
+def verify_controlled_sdk(selection_path: Path, evidence: Path,
+                          package_dir: Path | None, release_dir: Path | None) -> None:
+    """Verify the retained native provider, without inventing a new source build."""
+    from cryptography.hazmat.backends.openssl.backend import backend
+    from cryptography.hazmat.bindings import _rust
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    selection = json.loads(selection_path.read_text(encoding="utf-8"))
+    if selection['target'] != 'windows-arm64' or platform.machine().upper() != 'ARM64' or platform.python_version() != '3.14.10' or sysconfig.get_config_var('Py_GIL_DISABLED'):
+        raise RuntimeError('Controlled native ARM64/GIL provider required')
+    raw = Path(selection['qt_receipt']).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != selection['qt_receipt_sha256']:
+        raise RuntimeError('Changed original SDK receipt')
+    receipt = json.loads(raw)
+    if receipt['source_sha'] != selection['compiled_source_sha']:
+        raise RuntimeError('Changed compiled SDK identity')
+    extension = Path(_rust.__file__).resolve()
+    relative = extension.relative_to(Path(receipt['original_work_root']).resolve()).as_posix()
+    entry = receipt['paths'][relative]
+    if extension.stat().st_size != entry['bytes'] or file_sha256(extension) != entry['sha256']:
+        raise RuntimeError('Active cryptography extension differs from original SDK')
+    for binary in [Path(sys.executable), extension]:
+        if read_pe_machine(binary) != 0xAA64:
+            raise RuntimeError('Non-native controlled crypto PE: ' + str(binary))
+    project = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
+    version = next(r.split('==')[1] for r in project['project']['dependencies'] if r.startswith('cryptography=='))
+    actual = backend.openssl_version_text()
+    if metadata.version('cryptography') != version or not actual.startswith(f'OpenSSL {EXPECTED_OPENSSL} '):
+        raise RuntimeError('Changed effective cryptography provider/version')
+    imports = subprocess.check_output(['dumpbin', '/imports', str(extension)], text=True)
+    validate_imports(imports)
+    evidence.mkdir(parents=True, exist_ok=False)
+    (evidence / 'cryptography-imports.txt').write_text(imports, encoding='utf-8')
+    root = Path(__file__).resolve().parent
+    source = {'version': EXPECTED_OPENSSL, 'source_sha256': EXPECTED_SOURCE_SHA256,
+              'source_url': f'https://github.com/openssl/openssl/releases/download/openssl-{EXPECTED_OPENSSL}/openssl-{EXPECTED_OPENSSL}.tar.gz',
+              'linkage': 'static', 'crt': 'dynamic'}
+    crypto_source = json.loads((root / 'windows_arm64_runtime_pilot_sources.json').read_text())['cryptography_source']
+    sources = [('openssl-' + EXPECTED_OPENSSL + '.tar.gz', EXPECTED_SOURCE_SHA256),
+               (crypto_source['name'], crypto_source['sha256'])]
+    for name, digest in sources:
+        original = Path(selection['material_directory']) / 'sources' / name
+        if file_sha256(original) != digest:
+            raise RuntimeError('Changed controlled provider source: ' + name)
+        shutil.copyfile(original, evidence / name)
+    with tarfile.open(evidence / sources[0][0], 'r:gz') as archive:
+        license_bytes = archive.extractfile(f'openssl-{EXPECTED_OPENSSL}/LICENSE.txt').read()
+    (evidence / 'LICENSE.txt').write_bytes(license_bytes)
+    (evidence / 'source-provenance.json').write_text(json.dumps(source, indent=2), encoding='utf-8')
+    validate_source(evidence)
+    licenses = evidence / 'cryptography-licenses'
+    licenses.mkdir()
+    dist = metadata.distribution('cryptography')
+    for path in dist.files or ():
+        if path.name.startswith(('LICENSE', 'NOTICE')):
+            shutil.copyfile(dist.locate_file(path), licenses / path.name)
+    if not any(licenses.iterdir()):
+        raise RuntimeError('Missing retained cryptography licenses')
+    cipher = AESGCM(AESGCM.generate_key(bit_length=256))
+    nonce = os.urandom(12)
+    assert cipher.decrypt(nonce, cipher.encrypt(nonce, b'controlled ARM64 provider', None), None) == b'controlled ARM64 provider'
+    report = {'scope': 'qualified SDK consumer, not a new cryptography compilation',
+              'source_sha': os.environ.get('GITHUB_SHA'), 'compiled_source_sha': receipt['source_sha'],
+              'sdk_receipt_sha256': selection['qt_receipt_sha256'], 'extension_sha256': entry['sha256'],
+              'cryptography': version, 'cryptography_backend': actual, 'source': source,
+              'cryptography_source': crypto_source, 'pe_machine': '0xAA64',
+              'openssl_linkage': 'static', 'msvc_crt': 'dynamic', 'aes_gcm': 'PASS'}
+    if package_dir:
+        matches = [p for p in package_dir.rglob('*rust*.pyd') if file_sha256(p) == entry['sha256']]
+        if len(matches) != 1 or read_pe_machine(matches[0]) != 0xAA64:
+            raise RuntimeError('Packaged cryptography must match the qualified native extension bytes')
+        report['packaged_extension'] = matches[0].relative_to(package_dir).as_posix()
+    (evidence / 'cryptography-verification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+    if package_dir:
+        stage_material(evidence, package_dir, release_dir)
+    print(json.dumps(report, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--package-dir", type=Path)
     parser.add_argument("--release-dir", type=Path)
+    parser.add_argument("--controlled-runtime-selection", type=Path)
     args = parser.parse_args()
     if bool(args.package_dir) != bool(args.release_dir):
         parser.error("--package-dir and --release-dir must be supplied together")
     evidence = args.evidence_dir
+    if args.controlled_runtime_selection:
+        verify_controlled_sdk(args.controlled_runtime_selection, evidence, args.package_dir, args.release_dir)
+        return
     source = validate_source(evidence)
     if platform.machine().upper() != "ARM64" or sysconfig.get_config_var("Py_GIL_DISABLED"):
         raise RuntimeError("A native GIL-enabled ARM64 runtime is required")
