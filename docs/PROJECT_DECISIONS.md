@@ -307,6 +307,14 @@ The first native 24.04 x64 diagnostic exposed GLIBC 2.38 requirements and failed
 
 ## Runtime policy
 
+### 2026-11-23: retire unnecessary v2.4 custom builds in future releases
+
+At the next release and each subsequent release, evaluate supported official prebuilt runtimes, wheels, libraries, tools and Actions before carrying forward v2.4 source-build exceptions. Return to the ordinary upstream distribution route when it satisfies demonstrated security/support, all six targets and accepted compatibility floors and reduces build/maintenance work. Already having a controlled SDK does not justify keeping an unnecessary custom integration. Retain only evidenced exceptions and validate the changed inputs/dependants; preserve published releases and unchanged useful evidence. This is a selection policy, not automatic replacement of the current runtime or removal of security/compatibility gates.
+
+### README homepage convention
+
+Keep the repository homepage in the essential [Standard Readme](https://github.com/RichardLitt/standard-readme/blob/main/spec.md) layout: a short description, installation, usage, focused optional sections, contribution guidance and license. Put detailed user instructions in docs/USAGE.md, historical changes in CHANGELOG.md and release/CI/audit records in the existing operational documents. Keep the homepage, package description and live repository About description aligned.
+
 ### 2026-11-16: official distributions first; custom builds only for demonstrated need
 
 Prefer supported official Python/Qt wheels, runtimes, libraries, tools and Actions. Rebuilding or forking these inputs is an exception for a demonstrated applicable security/support, functional or target/ABI requirement that an upstream release or supported configuration cannot solve. An internal version gap or the mere feasibility of an override is insufficient. Record the smallest affected scope, alternatives checked, evidence, maintenance/retirement route and required validation in the active audit.
