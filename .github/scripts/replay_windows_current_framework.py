@@ -9,10 +9,19 @@ import json
 import os
 import tarfile
 import zipfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from build_windows_current_framework import ROOT, consumers_only, environment, settings
 from download_diagnostic_artifact import fetch_artifact
+
+
+def same_native_toolset(original: str, current: str, arch: str) -> bool:
+    """Installation roots can differ; exact toolset and native host/target cannot."""
+    suffix = tuple(part.casefold() for part in PureWindowsPath(original).parts[-8:])
+    actual = tuple(part.casefold() for part in PureWindowsPath(current).parts[-8:])
+    return (suffix == actual and len(suffix) == 8 and suffix[:3] == ('vc', 'tools', 'msvc')
+            and suffix[3].startswith('14.52.')
+            and suffix[4:] == ('bin', 'host' + arch, arch, 'cl.exe'))
 
 
 def compiled_inputs(raw: str) -> dict:
@@ -85,7 +94,8 @@ def main() -> None:
     os.environ.pop('GH_TOKEN', None)
     with zipfile.ZipFile(io.BytesIO(data)) as original:
         state = json.loads(original.read('windows-framework-inputs.json'))
-        assert state['source_sha'] == spec['source_sha'] and state['arch'] == arch and state['compiler'] == str(compiler)
+        assert state['source_sha'] == spec['source_sha'] and state['arch'] == arch
+        assert same_native_toolset(state['compiler'], str(compiler), arch), (state['compiler'], str(compiler))
         base = json.loads((ROOT / '.github/scripts/windows_runtime_pilot_sources.json').read_text())
         native = json.loads((ROOT / '.github/scripts/linux_x64_native_delta_sources.json').read_text())
         selected = [row for row in base['sources'] if row['directory'].startswith(('libpng-', 'pcre2-', 'qtbase-', 'qtsvg-', 'pyside-'))]
@@ -130,6 +140,7 @@ def main() -> None:
             retain_zip_material(original, output / 'controlled-material', 'Windows SDK artifact ' + str(spec['artifact']))
     del data, sdk
     intake = {'original': spec, 'verified_paths': len(receipt['paths']), 'consumer_source_sha': os.environ['GITHUB_SHA'],
+              'original_compiler': state['compiler'], 'consumer_compiler': str(compiler),
               'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
               'scope': 'Original bound SDK bytes; previous whole run failed in diagnostic orchestration. Recompile only the tiny C++ consumers, not Qt/Python/bindings.'}
     (output / 'framework-sdk-intake.json').write_text(json.dumps(intake, indent=2) + '\n')
@@ -148,6 +159,10 @@ def main() -> None:
         subprocess.run([str(python), str(ROOT / '.github/scripts/verify_windows_imageformats.py'),
                         '--work', str(work), '--output', str(output)], check=True)
     else:
+        # Keep the original state in original-framework-results. Only the live
+        # consumer command uses the equivalent compiler's current install root.
+        state['compiler'] = str(compiler)
+        (output / 'windows-framework-inputs.json').write_text(json.dumps(state, indent=2))
         consumers_only(arch, work, output)
     print('PASS restored native Windows consumers; no runtime/framework/binding rebuild', hex(machine), flush=True)
 

@@ -5,7 +5,7 @@ import tarfile
 from pathlib import Path
 
 import pytest
-from replay_windows_current_framework import compiled_inputs, restore_bound_archive
+from replay_windows_current_framework import compiled_inputs, restore_bound_archive, same_native_toolset
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,3 +48,23 @@ def test_sdk_hard_links_keep_indexed_bytes_and_reject_escapes(tmp_path, fault):
     else:
         restore_bound_archive(data.getvalue(), work, receipt)
         assert (work / 'prefix/alias').read_bytes() == b'native'
+
+
+@pytest.mark.parametrize('change,accepted', [
+    ('root', True), ('case', True), ('patch', False),
+    ('host', False), ('target', False), ('layout', False),
+])
+def test_native_toolset_identity_preserves_version_and_host_target(change, accepted):
+    original = r'D:\a\_temp\psaa-native-msvc\VC\Tools\MSVC\14.52.37025\bin\Hostx64\x64\cl.exe'
+    current = original.replace(r'D:\a\_temp\psaa-native-msvc', r'C:\Program Files\Microsoft Visual Studio\18\Enterprise')
+    if change == 'case':
+        current = current.upper()
+    elif change == 'patch':
+        current = current.replace('14.52.37025', '14.52.99999')
+    elif change == 'host':
+        current = current.replace('Hostx64', 'Hostarm64')
+    elif change == 'target':
+        current = current.replace('x64\\cl.exe', 'arm64\\cl.exe')
+    elif change == 'layout':
+        current = current.replace('MSVC', 'unreviewed')
+    assert same_native_toolset(original, current, 'x64') is accepted

@@ -429,7 +429,7 @@ if ($env:GITHUB_ACTIONS -eq "true") {
         "Runner image version: $env:ImageVersion"
         "Python platform tag: $env:PYTHON_PLATFORM_TAG"
         "Python PE architecture: $env:PYTHON_PE_ARCHITECTURE"
-        "PySide6-Essentials wheel tag: $env:PYSIDE6_WHEEL_TAG"
+        "Controlled PySide6 build identity: $env:PYSIDE6_BUILD_IDENTITY"
         "PySide6 QtCore PE architecture: $env:PYSIDE6_QTCORE_PE_ARCHITECTURE"
         "Managed ADB path: $env:MANAGED_ADB_PATH"
         "Managed ADB version: $env:MANAGED_ADB_VERSION"
