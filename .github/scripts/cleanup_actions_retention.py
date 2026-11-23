@@ -7,11 +7,39 @@ import re
 import urllib.request
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 API_VERSION = "2026-03-10"
 VERSION_RE = re.compile(r"v\d+\.\d+\.\d+")
 BAD_CONCLUSIONS = {"failure", "cancelled"}
+
+
+def active_dependency_runs(scripts: Path) -> set[int]:
+    """Protect selected SDK inputs even when a later diagnostic stage failed."""
+    record = json.loads((scripts / "active_dependency_sdk_runs.json").read_text(encoding="utf-8"))
+    selected = set(record["linux_sdk_runs"])
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            if "artifact" in value and "run" in value:
+                run = value["run"]
+                if type(run) is not int or run <= 0:
+                    raise ValueError("Invalid active dependency run")
+                selected.add(run)
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    for name in record["selected_contracts"]:
+        if Path(name).name != name:
+            raise ValueError("Invalid selected dependency contract path")
+        visit(json.loads((scripts / name).read_text(encoding="utf-8")))
+    if not selected or any(type(run) is not int or run <= 0 for run in selected):
+        raise ValueError("Invalid active dependency runs")
+    return selected
 
 
 def parse_github_time(value: str) -> datetime:
@@ -161,6 +189,7 @@ def main() -> int:
     client = GitHubClient(repository, token)
     now = datetime.now(UTC)
     grace = timedelta(days=args.grace_days)
+    protected_runs = active_dependency_runs(Path(__file__).resolve().parent)
 
     artifacts = [item for item in client.artifacts() if not item.get("expired")]
     run_ids = {
@@ -184,6 +213,11 @@ def main() -> int:
         now=now,
         grace=grace,
     )
+    bad_run_ids -= protected_runs
+    success_artifact_ids -= {
+        int(artifact["id"]) for artifact in artifacts
+        if int((artifact.get("workflow_run") or {}).get("id", 0)) in protected_runs
+    }
 
     artifacts_by_run: dict[int, set[int]] = defaultdict(set)
     for artifact in artifacts:
@@ -208,6 +242,7 @@ def main() -> int:
                 "apply": args.apply,
                 "grace_days": args.grace_days,
                 "active_artifacts": len(artifacts),
+                "protected_dependency_runs": sorted(protected_runs),
                 "successful_runs_to_delete": sorted(success_runs_to_delete),
                 "individual_artifacts_to_delete": sorted(individual_artifacts_to_delete),
                 "failed_cancelled_runs_to_delete": sorted(bad_run_ids),

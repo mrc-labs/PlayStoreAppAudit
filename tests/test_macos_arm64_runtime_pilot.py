@@ -218,3 +218,16 @@ def test_changed_mac_profiles_intake_qualified_parsers_before_dependency_resolut
         job = workflow.split(f'\n  macos-{arch}-runtime-pilot:', 1)[1]
         assert job.index('actions: read') < job.index('steps:')
         assert f"inputs.linux_arm64_pilot == '{mode}'" in job
+
+
+def test_missing_arm_sdk_recovery_reuses_full_recipe_and_preserves_security_gates() -> None:
+    workflow = (ROOT / '.github/workflows/ui-style-audit.yml').read_text(encoding='utf-8')
+    job = workflow.split('  macos-arm64-runtime-pilot:', 1)[1].split('\n  macos-x64-', 1)[0]
+    assert "inputs.linux_arm64_pilot == 'macos-recovery'" in job
+    restore = job.split('      - name: Restore only the exact source-bound partial prefix', 1)[1].split('\n      - ', 1)[0]
+    assert "if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}" in restore
+    build = job.split('      - name: Build and exercise the gated native ARM64 controlled source prefix', 1)[1].split('\n      - ', 1)[0]
+    assert "inputs.linux_arm64_pilot == 'macos-recovery'" in build
+    assert 'build_macos_arm64_runtime_pilot.sh' in build
+    assert job.index('Verify retained native parser bytes') < job.index('Qualify native SDK, sources, trust and parser') < job.index('Build and exercise the gated')
+    assert 'verify_macos_arm64_imageformats.py' in job and 'retain(work, output, 0)' in job
