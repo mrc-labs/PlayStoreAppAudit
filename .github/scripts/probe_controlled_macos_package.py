@@ -6,9 +6,11 @@ import os
 import plistlib
 import subprocess
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 
 from inspect_macos_package import inspect
+from normalize_macos_bundle import DEVICE_PROFILE_FILENAMES, DEVICE_PROFILE_RESOURCE_PARENT, normalize_bundle
 from relocate_macos_sdk_rpaths import relocate
 
 
@@ -18,7 +20,7 @@ def main() -> None:
     arch = selection['target'].removeprefix('macos-')
     assert sys.platform == 'darwin' and arch in {'arm64', 'x64'}
     output = Path('controlled-runtime-evidence/macos-package-probe').resolve()
-    output.mkdir()
+    output.mkdir(parents=True)
     work = Path(os.environ['RUNNER_TEMP']) / ('macos-package-probe-' + os.environ['GITHUB_RUN_ID'])
     work.mkdir()
     source = work / 'PlayStoreAppAuditClosureProbe.py'
@@ -63,16 +65,26 @@ print('PASS relocated native macOS package: Python PEM and distinct Qt/Keychain 
 ''', encoding='utf-8')
     env = {**os.environ, 'PYTHONPATH': str(Path.cwd()),
            'MACOSX_DEPLOYMENT_TARGET': '11.0' if arch == 'arm64' else '10.15'}
-    subprocess.run([sys.executable, '-m', 'nuitka', '--mode=standalone', '--enable-plugin=pyside6',
-                    '--macos-create-app-bundle', '--noinclude-qt-translations',
-                    '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
-                    '--include-qt-plugins=platforms,imageformats,tls', '--assume-yes-for-downloads',
-                    '--noinclude-dlls=libssl.3.dylib', '--noinclude-dlls=libcrypto.3.dylib',
-                    '--output-dir=' + str(work), '--report=' + str(output / 'compilation-report.xml'), str(source)],
-                   env=env, check=True)
+    command = [sys.executable, '-m', 'nuitka', '--mode=standalone', '--enable-plugin=pyside6',
+               '--macos-create-app-bundle', '--noinclude-qt-translations',
+               '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
+               '--include-qt-plugins=platforms,imageformats,tls', '--assume-yes-for-downloads',
+               '--noinclude-dlls=libssl.3.dylib', '--noinclude-dlls=libcrypto.3.dylib',
+               '--include-data-dir=docs/images=help-images', '--output-dir=' + str(work),
+               '--report=' + str(output / 'compilation-report.xml')]
+    # Use the producer's actual canonical data layout/signing path, even though
+    # this probe deliberately compiles only the affected runtime consumers.
+    xml = Path(find_spec('pyaxmlparser').origin).parent / 'resources/public.xml'
+    assert xml.is_file()
+    command.append('--include-data-files=' + str(xml) + '=pyaxmlparser/resources/public.xml')
+    for filename in DEVICE_PROFILE_FILENAMES:
+        relative = (Path(DEVICE_PROFILE_RESOURCE_PARENT) / filename).as_posix()
+        command.append('--include-data-files=' + relative + '=' + relative)
+    subprocess.run([*command, str(source)], env=env, check=True)
     apps = list(work.glob('*.app'))
     assert len(apps) == 1
     app = apps[0]
+    normalize_bundle(app)
     relocation = relocate(app, selection_path, arch)
     (output / 'relocation.json').write_text(json.dumps(relocation, indent=2))
     images = inspect(app, arch)

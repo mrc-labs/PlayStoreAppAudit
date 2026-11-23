@@ -1017,6 +1017,31 @@ def _read_tar_member_bytes(
         return source.read()
 
 
+def _qt_legal_member_cache(archive: Path) -> tuple[list[tarfile.TarInfo], dict[str, bytes]]:
+    """Read common legal payloads in one XZ pass; uncommon references stay strict."""
+    members: list[tarfile.TarInfo] = []
+    payloads: dict[str, bytes] = {}
+    cached_bytes = 0
+    with tarfile.open(archive, mode='r|xz') as handle:
+        for member in handle:
+            previous = payloads.pop(member.name, None)
+            if previous is not None:
+                cached_bytes -= len(previous)
+            if not member.isfile():
+                continue
+            members.append(member)
+            path = PurePosixPath(member.name)
+            common = ('LICENSES' in path.parts or path.name == 'qt_attribution.json'
+                      or path.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'COPYRIGHT', 'NOTICE', 'README')))
+            if common and member.size <= 1024**2 and cached_bytes + member.size <= 16 * 1024**2:
+                source = handle.extractfile(member)
+                if source is None:
+                    raise RuntimeError('Cannot read Qt legal member: ' + member.name)
+                payloads[member.name] = source.read()
+                cached_bytes += len(payloads[member.name])
+    return members, payloads
+
+
 def _normalize_qt_archive_candidate(
     candidate: PurePosixPath,
 ) -> PurePosixPath | None:
@@ -1129,7 +1154,10 @@ def _extract_qt_legal_material(
     attribution_sources: list[str] = []
     attribution_records: list[dict[str, Any]] = []
     attribution_license_mappings: list[dict[str, Any]] = []
-    members = _tar_members(archive)
+    members, payloads = _qt_legal_member_cache(archive)
+
+    def read_payload(name: str) -> bytes:
+        return payloads[name] if name in payloads else _read_tar_member_bytes(archive, name)
     members_by_rel = {
         _strip_archive_root(member.name).as_posix(): member.name
         for member in members
@@ -1160,21 +1188,15 @@ def _extract_qt_legal_material(
 
         if preserve_stable_path:
             destination = licenses_root / "qt" / component / tail
-            _extract_tar_member(
-                archive,
-                member.name,
-                destination,
-            )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(read_payload(member.name))
             bundled_rel = _safe_relpath(
                 destination,
                 licenses_root.parent,
             )
             digest = _sha256(destination)
         else:
-            payload = _read_tar_member_bytes(
-                archive,
-                member.name,
-            )
+            payload = read_payload(member.name)
             bundled_rel, digest = store_canonical_legal_payload(
                 licenses_root,
                 payload,
@@ -1204,10 +1226,7 @@ def _extract_qt_legal_material(
             # Qt upstream attribution metadata can contain literal
             # control characters inside strings.
             data = json.loads(
-                _read_tar_member_bytes(
-                    archive,
-                    member.name,
-                ).decode("utf-8"),
+                read_payload(member.name).decode("utf-8"),
                 strict=False,
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -1234,10 +1253,7 @@ def _extract_qt_legal_material(
                 source_key = source_rel.as_posix()
                 bundled_rel = bundled_by_archive_rel.get(source_key)
                 if bundled_rel is None:
-                    payload = _read_tar_member_bytes(
-                        archive,
-                        member_name,
-                    )
+                    payload = read_payload(member_name)
                     bundled_rel, _ = store_canonical_legal_payload(
                         licenses_root,
                         payload,
@@ -2063,6 +2079,11 @@ def main() -> int:
             f"PySide6_Essentials/shiboken6 version mismatch: {pyside_version} vs {shiboken_version}"
         )
 
+    runtime_dependencies = _runtime_dependency_closure(
+        repo_root, runtime_paths, report_modules, report_distributions,
+        **({"qt_distribution": qt_identity["distribution"], "qt_identity": qt_identity} if qt_identity else {}),
+    )
+
     if package_legal_dir.exists():
         shutil.rmtree(package_legal_dir)
     package_legal_dir.mkdir(parents=True, exist_ok=True)
@@ -2156,13 +2177,7 @@ def main() -> int:
     )
 
     dependencies: list[dict[str, Any]] = []
-    for dependency in _runtime_dependency_closure(
-        repo_root,
-        runtime_paths,
-        report_modules,
-        report_distributions,
-        **({"qt_distribution": qt_identity["distribution"], "qt_identity": qt_identity} if qt_identity else {}),
-    ):
+    for dependency in runtime_dependencies:
         dist = dependency.distribution
         copied_files, metadata_files = _copy_distribution_legal_files(
             dist,
