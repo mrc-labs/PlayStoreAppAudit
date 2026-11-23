@@ -43,6 +43,7 @@ jobs:
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
 
       - name: Set up Python
+        id: setup_python
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: ${{ matrix.python-version }}
@@ -69,7 +70,7 @@ jobs:
       - name: Verify runtime
         shell: pwsh
         env:
-          EXPECTED_PYTHON: ${{ matrix.python-version }}
+          EXPECTED_PYTHON: ${{ steps.setup_python.outputs.python-version }}
         run: |
           python -c "import importlib.util; assert importlib.util.find_spec('PIL') is None, 'Unexpected Pillow dependency'; print('Pillow absent; PNG/ICO validation uses Qt')"
           python -c "import os, platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert platform.python_version() == os.environ['EXPECTED_PYTHON'] and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"

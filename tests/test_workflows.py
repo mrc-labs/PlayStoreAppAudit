@@ -55,7 +55,8 @@ def test_quality_runs_on_pull_requests_and_relevant_main_pushes() -> None:
     assert "sys.version_info.releaselevel == 'final'" in workflow
     assert '- "3.13"' not in workflow
     assert "python-version: ${{ matrix.python-version }}" in workflow
-    assert "EXPECTED_PYTHON: ${{ matrix.python-version }}" in workflow
+    assert "id: setup_python" in workflow
+    assert "EXPECTED_PYTHON: ${{ steps.setup_python.outputs.python-version }}" in workflow
 
 
 def test_ui_style_audit_is_a_deliberate_manual_milestone() -> None:
