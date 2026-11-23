@@ -79,6 +79,9 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
+- Future releases must reevaluate v2.4 custom-build exceptions and return to supported official prebuilt packages/wheels/Actions when they meet security, all six targets and compatibility floors with less work. A retained custom SDK is not a mandate to rebuild or preserve an unnecessary fork. See the permanent freshness policy and November23 project decision.
+- Keep README.md in the essential Standard Readme layout; detailed usage belongs in docs/USAGE.md and release/audit history in the existing dedicated documents.
+
 - Permanent November16 decision: prefer current supported official distributions/wheels and Actions. Rebuild or patch vendor/runtime/tooling only for a demonstrated applicable security/support, functional or target/ABI requirement not resolved by official updates/configuration. Internal version gaps alone do not require forks. Apply this now and to future releases; preserve verified work, batch necessary changes and repeat affected checks only. See docs/RELEASE_COMPONENT_FRESHNESS.md, "Official distributions first; source-build necessity".
 
 - Current post-v2.3 development Python/Quality baseline: rolling stable Python `3.14` / `check-latest: true` with fail-closed stable/final major-minor guards in 11 maintained setup environments plus seven isolated diagnostic-pilot/tool bootstraps across nine workflows. Published v2.3.0 used exact 3.14.8. Before every future release freeze, repeat full freshness and pin/assert one audited exact full patch in producing workflows and final Quality. Preserve native GIL/architecture/security and same-patch compatibility checks. See `docs/V2_3_POST_RELEASE_CLOSURE.md` and `docs/RELEASE_COMPONENT_FRESHNESS.md`.

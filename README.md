@@ -1,292 +1,100 @@
-# Store App Audit
-
-*Android App Inventory, Store Analysis & Maintenance Toolkit*
+# Store App Audit _(PlayStoreAppAudit)_
 
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsors-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/mrc-labs)
 
-Store App Audit is a cross-platform desktop utility for checking Android package IDs against public Google Play listings. It helps you review Store availability, listing freshness and maintenance signals for imported app lists, local Android package files and packages installed on an Android phone.
+Desktop utility for auditing Android package IDs against public Google Play listings.
 
-The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
+Review Store availability, update dates and maintenance signals for app lists, local APK files and connected Android phones. Built with Python and Qt/PySide6; not affiliated with Google. The visible name is Store App Audit; the repository/executable slug remains `PlayStoreAppAudit` and the Python project is `playstore-app-audit` for compatibility.
 
-**Latest published release:** [v2.4.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.4.0), published 2026-11-23 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+**Latest published release:** [v2.4.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.4.0). Maintenance, security and native compatibility updates; see the [changelog](CHANGELOG.md).
 
-**Current source:** 2.4.0. Maintenance, security and native compatibility updates are published; see the [release audit](docs/V2_4_RELEASE_PREP.md). Published release source, tags and assets remain immutable.
+## Table of Contents
 
-The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
+- [Install](#install)
+- [Usage](#usage)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Development](#development)
+- [Maintainers](#maintainers)
+- [Contributing](#contributing)
+- [License](#license)
 
-## What's new in v2.4
+## Install
 
-- Refreshed runtime, dependencies and native security/compatibility support across six platforms.
-- Preserved strict certificate/hostname validation and portable packaged macOS Python trust.
-- No new product features, updater or production signing.
+Download the ZIP matching your system from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases/latest), extract it and launch the application. Packaged builds do not require Python.
 
-## What's new in v2.3
+| System | Native architectures | Distribution |
+| --- | --- | --- |
+| Windows | x64, ARM64 | Unsigned |
+| Linux | x64, ARM64 | Unsigned |
+| macOS | Intel/x64, Apple Silicon/ARM64 | Engineering ad-hoc signed; not notarized |
 
-- **Play Store Category:** real Store categories in views, Details, Smart Queries and exports; Local APK Mass Rename `{category}` uses this Store evidence.
-- **Named Custom Views:** up to three saved views per source family, independently for Phone / App List and Local APK, with safe migration of v2.2 layouts.
-- **Review Duplicates…:** explicit keeper-safe cleanup of byte-identical SHA-256 copies at distinct physical paths. Same Version Variant and Multiple Versions stay informational.
+Windows x64 extraction example:
 
-These three features shipped in v2.3.0.
+```powershell
+Expand-Archive .\PlayStoreAppAudit-v2.4.0-windows-x64.zip -DestinationPath .
+```
 
-## What's new in v2.2
+Verify downloads against the release's `SHA256SUMS.txt`. Unsigned or non-notarized applications may require explicit OS approval. See [Project Status](docs/PROJECT_STATUS.md) for compatibility requirements and tested systems.
 
-- **Independent Custom layouts:** Phone / App List and Local APK each remember their own columns, order and widths across source changes and restart.
-- **Personal Device library:** Explicitly save multiple privacy-safe profiles, select them offline, and refresh, rename or delete them while keeping built-in profiles separate.
-- **CLI/headless audits:** Audit App Lists, Local APK files/folders and connected phones through canonical services with JSON/CSV output.
-- Discreet GitHub Sponsors support is available in About and repository surfaces.
+## Usage
 
-See the [v2.2.0 GitHub Release](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.2.0) for the complete notes and verified downloads.
+1. Open the extracted `PlayStoreAppAudit.exe`, `PlayStoreAppAudit` or `PlayStoreAppAudit.app`.
+2. Import an app list, select local APK files/folders, or use **Scan Phone** with an authorized Android device.
+3. Choose the Store country, run the audit and review or export the results.
 
-## What can you use Store App Audit for?
+### CLI
 
-Store App Audit helps answer practical questions about the Android apps you use, archive or track:
+Run the packaged executable from its extracted directory; for example on Windows:
 
-- **Are the apps on my phone still maintained?** Scan a connected Android phone through read-only ADB and spot apps whose Store listings have not been updated for a long time, as well as installed versions that appear behind available Store evidence.
-- **Are any of my apps no longer available in the Play Store country I use?** Identify packages that are not found in the Store countries successfully checked, while keeping the result deliberately conservative rather than claiming that an app disappeared globally.
-- **Which apps on my phone deserve attention first?** Use freshness, Store availability, installed-vs-Store relationships, Maintenance Score, filters and Smart Queries to triage a large app inventory instead of reviewing every package manually.
-- **Is my local APK collection up to date?** Audit individual package files or an entire folder and compare local versions with Store evidence to identify Outdated, Newer, Different, Device Specific or Unknown results.
-- **Do I have archived or sideloaded builds that differ from what Google Play currently exposes?** Keep physical package files independent and compare each local artifact with the Store evidence available for its package.
-- **Can I audit a list of apps without connecting a phone or keeping APK files?** Import package IDs from CSV, TSV or TXT and review Store availability, freshness, versions and maintenance signals in bulk.
-- **What changed since my previous audit or device snapshot?** Use Changes & History to review app inventory changes, Store availability changes, reappeared listings and Store version or update changes.
-- **Can I capture an inventory before cleaning up, replacing or troubleshooting a phone?** Scan through read-only ADB and export the resulting inventory and evidence as CSV, HTML or versioned JSON without modifying installed apps.
+```powershell
+.\PlayStoreAppAudit.exe cli audit app-list sample_packages.csv --country it --output results.json
+```
 
-`Not Found` is intentionally conservative: it means no listing was found in the configured Store countries that were successfully checked; it does not prove that an app has disappeared from Google Play globally.
+Linux uses `./PlayStoreAppAudit`; macOS uses `./PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit`. See the [usage guide](docs/USAGE.md) for CLI options, local APK workflows, ADB setup, privacy and troubleshooting.
+
+## Features
+
+- Audit CSV/TSV/TXT app lists, local APK/APKS/APKM/XAPK files and Android phone inventories.
+- Review Store categories, update dates and conservative availability/version comparisons.
+- Filter results, save source-specific layouts and compare audit history.
+- Preview local APK renaming and review byte-identical duplicates before explicit cleanup.
+- Export CSV, HTML or JSON; use the GUI or headless CLI.
+
+Phone access through ADB is read-only for installed apps. Audits contact public Google Play endpoints; settings and history are stored locally. `Not Found` does not prove global removal, and Maintenance Score is not a malware/security rating.
 
 ## Screenshots
 
-These screenshots show the published **v2.1 UI** using fully synthetic fictional apps and package IDs. They are generated reproducibly from the real Qt interface by `tools/generate_canonical_screenshots.py`; no live Store request, connected phone, personal app inventory or third-party app artwork is used.
-
-| Phone maintenance and triage | Local APK / package comparison |
+| Phone maintenance and triage | Local APK comparison |
 | --- | --- |
-| [![Store App Audit phone maintenance view](docs/images/store-app-audit-phone-maintenance.png)](docs/images/store-app-audit-phone-maintenance.png) | [![Store App Audit Local APK comparison view](docs/images/store-app-audit-local-apk.png)](docs/images/store-app-audit-local-apk.png) |
-| **Changes & History** | **Mass Rename preview** |
-| [![Store App Audit Changes and History](docs/images/store-app-audit-changes-history.png)](docs/images/store-app-audit-changes-history.png) | [![Store App Audit Mass Rename preview](docs/images/store-app-audit-mass-rename.png)](docs/images/store-app-audit-mass-rename.png) |
+| ![Phone maintenance](docs/images/store-app-audit-phone-maintenance.png) | ![Local APK comparison](docs/images/store-app-audit-local-apk.png) |
+| ![Changes and History](docs/images/store-app-audit-changes-history.png) | ![Mass Rename preview](docs/images/store-app-audit-mass-rename.png) |
 
-These screenshots are included in the immutable v2.1.0 source and packages.
-
-## Key features
-
-- Import package lists from CSV, TSV or TXT files.
-- Scan a connected Android phone through read-only ADB and export its current package inventory.
-- Select local `.apk`, `.apks`, `.apkm` and `.xapk` package files directly or discover them recursively in a folder.
-- Check Google Play availability and update information in a selected Store country.
-- Use source-aware Store language and country handling, including Android-device language and configurable fallback countries.
-- Classify Store listings as Recent, Aging, Stale, Not Found or Anomaly with configurable freshness thresholds.
-- Compare installed or local-package versions with Store evidence using conservative Match / Outdated / Newer / Different / Device Specific / Unknown semantics.
-- Inspect results in a source-aware Details Panel with Store, device and local-package evidence.
-- Review grouped changes such as app inventory changes, Store availability changes, reappeared listings and Store version/update changes.
-- Optionally show Play Store icons and calculate a transparent Maintenance Score heuristic.
-- Filter results with search, status chips, Quick Filters and saved one-level All/Any Smart Queries.
-- Switch between source-aware Basic, Source Details and Technical presets plus up to **3 named Custom Views per source family**; Phone / App List and Local APK remain independent, and inapplicable fields stay hidden without rewriting saved layouts.
-- Use conservative cache/recheck behavior, targeted rechecks or an explicit full refresh.
-- Compare previous audits and device snapshots under **Tools > Changes & History**.
-- Export all or visible results as CSV, HTML or versioned JSON.
-- Follow operational state in the native status bar and progress in the results header.
-
-## Current project status
-
-### Published v2.4.0
-
-v2.4.0 is the current public release, frozen at `7de545fb1b2e820f41a76127e8333730e4d815d0`. Exactly eight independently verified assets provide six native packages, consolidated third-party sources and `SHA256SUMS.txt`. Windows/Linux are unsigned; macOS is engineering ad-hoc only, without Developer ID signing or notarization.
-
-Linux x64 uses the Ubuntu 22.04 compatibility floor and passes packaged offscreen/xcb GUI and CLI there; ARM64 uses Ubuntu 24.04. macOS packages pass on native macOS 26 runners; all bundled images have measured deployment requirements at or below 14.4, without claiming older-OS execution tests. See [Project Status](docs/PROJECT_STATUS.md) for scoped compatibility evidence.
-
-### Post-release continuation
-
-v2.2 closure [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is historical and complete. v2.3 Category (#188), Named Custom Views (#147) and Duplicate APK review (#224) are published. Initial Phase E PR #234, post-merge Quality/public README checks, local synchronization to its merged main and Docker inventory passed. [The live closure ledger](https://github.com/mrc-labs/PlayStoreAppAudit/issues/232) records subsequent documentation acceptance, final local synchronization and signoff. Production signing/notarization [#154](https://github.com/mrc-labs/PlayStoreAppAudit/issues/154) and updater/self-update [#209](https://github.com/mrc-labs/PlayStoreAppAudit/issues/209) remain deferred.
-
-## Download and installation
-
-Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
-
-For v2.4.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
-
-On Windows, the packaged executable intentionally keeps the compatibility filename `PlayStoreAppAudit.exe`.
-
-Because the Windows v2.4.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.4.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
-
-Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity matters.
-
-## Quick start
-
-1. Start the application.
-2. Choose a CSV/TSV/TXT package list, select Local APK/package file(s) or a folder, or connect an Android phone and select **Scan Phone**.
-3. Confirm the Store country. Availability can differ by country.
-4. Select the header **Run** button or **Audit > Run Audit**.
-5. Use status chips, search, **View > Quick Filters** or **View > Smart Queries** to inspect results.
-6. Select a row to inspect Store/device/local-package evidence in the Details Panel.
-7. Export complete or currently visible results from **Audit > Export Results**.
-
-A file may contain a `package_name` column, optionally with an `app_name` column, or one Android package ID per row. `sample_packages.csv` shows the simplest supported CSV format.
-
-### Headless CLI (v2.2 onward)
-
-A Python installation provides `playstore-app-audit-cli`; `playstore-app-audit` remains the Qt GUI command. The CLI does not import the Qt UI or create a `QApplication`. This command replaces the older positional `python -m playstore_app_audit.cli <file>` interface, whose timestamped CSV and separate problems file were based on the retired simple audit path.
-
-In the standalone packages, run the existing executable with `cli` before `audit` from a terminal. No separate Python installation is needed. The normal executable launch still opens the GUI:
-
-```text
-Windows (inside the extracted package): .\PlayStoreAppAudit.exe cli audit app-list sample_packages.csv --output results.json
-Linux (inside the extracted package):   ./PlayStoreAppAudit cli audit app-list sample_packages.csv --output results.json
-macOS (beside the extracted app):        ./PlayStoreAppAudit.app/Contents/MacOS/PlayStoreAppAudit cli audit app-list sample_packages.csv --output results.json
-```
-
-```text
-playstore-app-audit-cli audit app-list sample_packages.csv --country it --output results.json
-playstore-app-audit-cli audit apk-files archive/a.apk archive/b.xapk --format csv --output apks.csv
-playstore-app-audit-cli audit apk-folder archive/ --fresh --output folder.json
-playstore-app-audit-cli audit phone --country it --output phone.json
-```
-
-The source commands are `app-list`, `apk-files`, `apk-folder` and `phone`. All accept `--country`, `--language`, `--workers`, `--fresh`, `--format json|csv`, `--output` and `--force`. Phone additionally accepts `--include-system`; by default its read-only ScanSession excludes system packages. JSON is the default format. Without `--output`, the payload goes to stdout and progress goes to stderr. JSON reuses the versioned GUI result schema; CSV uses the GUI field order and date formatting. Files are written through a temporary sibling and replaced only after a successful audit. An existing output requires `--force`, and an input file cannot be its own output.
-
-The CLI reads relevant saved defaults without saving command-line overrides. `--fresh` bypasses reusable healthy Store results and refreshes the existing alternative-provider path without deleting caches. `--device-provider`, `--device-profile` and `--device-endpoint` select the existing Device Specific provider, built-in or saved Personal Device profile, and validated Custom Dispenser endpoint. Personal Google Session uses an already signed-in session; credentials are never CLI flags. Saved Personal Device profiles work without a connected phone. CLI audits do not write audit history or change Personal Device library records. File locations, raw ADB serials, ScanSession identifiers, secret/auth material and local Personal Device UUIDs are omitted or masked in output. Ctrl+C signals cooperative cancellation and produces no final output.
-
-Explicit Device Specific CLI overrides are validated before the audit. If saved Device Specific defaults have become unavailable, the CLI still completes the public Store audit and leaves those defaults unchanged; Device Specific evidence remains optional.
-
-Exit status is `0` for a completed audit (including ordinary Not Found results), `2` for invalid input/configuration, `3` for runtime failure and `130` for Ctrl+C. Runtime diagnostics are intentionally generic to avoid exposing credentials or device identifiers; progress and completion counts are on stderr.
-
-## Local APK / package workflows
-
-The published v2.3.0 release can audit explicit local `.apk`, `.apks`, `.apkm` and `.xapk` files or recursively discover supported package files in a selected folder. Physical artifact identity remains separate from Android package identity, so multiple files for the same package can remain distinct results.
-
-The local-package path reuses the same Store/provider evidence and result presentation used elsewhere while keeping local metadata such as filename, path, label, local version, SHA-256 and SDK information available in the table and Details Panel.
-
-v2.1 extends this workflow with safe physical-file management. It includes single-file **Rename File…** / **Remove File…**, Mass Rename with metadata templates and a complete validation preview, plus **Remove All Outdated…** / **Remove All Unknown…** with permanent-deletion safeguards. Operations remain physical-path based, preserve unrelated Store/audit evidence, keep duplicate package/SHA files independent, and do not rerun the Store audit after filesystem mutation.
-
-The Local APK direction is inspired by the long-retired [LocalAPK](https://github.com/brz/LocalAPK) utility. Store App Audit is an independent implementation; this acknowledgement refers to product inspiration, not shared code or project affiliation.
-
-## Understanding the results
-
-- **Recent:** listing age is at most the configured Recent maximum, 365 days by default.
-- **Aging:** listing age falls between the configured thresholds, 366-730 days by default.
-- **Stale:** listing age is above the configured Stale threshold, 730 days by default.
-- **Not Found:** no listing was found in the configured countries that were successfully checked; this does not prove global removal.
-- **Anomaly:** Store responses were unusual, incomplete or could not be classified confidently.
-
-The optional Maintenance Score summarizes maintenance signals from 0 to 100. It is not a malware, security or trust rating. Its methodology is available from **Help > Maintenance Score Methodology**.
-
-Installed and Local APK versions use a conservative relationship model. `Outdated` is reported only when version evidence establishes ordering; staged and device-specific rollouts can still differ from a simple public Store comparison.
-
-## Android phone and ADB support
-
-ADB access is read-only with respect to installed Android apps. Store App Audit can list packages, inspect device/package metadata and open Android's app-details settings screen. It does not install, uninstall, enable, disable or otherwise modify Android apps.
-
-The application can use an existing ADB executable from `PATH`, common Android SDK locations, `ANDROID_SDK_ROOT` or `ANDROID_HOME`. When no compatible ADB is found, supported hosts can offer a managed download of Google's official Android Platform-Tools archive into the application's local data directory.
-
-Managed Platform-Tools support:
-
-- Windows x64 and ARM64 hosts: Windows archive.
-- macOS Intel and Apple Silicon hosts: macOS archive.
-- Linux x64: Linux archive.
-- Linux ARM64: supply a native ARM64-compatible ADB from the operating system/distribution or Android SDK.
-
-USB debugging and device authorization are required. The in-app **ADB Setup Guide** contains troubleshooting instructions.
-
-Standard Scan Phone captures compact package state. Optional Advanced Settings can collect richer device metadata. A successful scan session can be reused by Run, and Store auditing can continue with captured compact data if the phone is later disconnected. Device Inventory history advances only after a successful audit, not merely after scanning.
-
-## Privacy and network behaviour
-
-Imported files, connected-device metadata, settings, cache entries, audit history, inventory history, snapshots and activity logs are processed and stored locally. Store App Audit has no first-party telemetry or analytics service.
-
-Audits are not completely offline: package IDs, Store country and Store language are used in requests to public Google Play endpoints through the application's Store lookup stack. Optional Store icons are downloaded from HTTPS URLs returned by Store metadata and cached locally. Software update checks contact the public GitHub Releases API. A managed ADB installation, when explicitly approved, downloads Google's official Platform-Tools archive.
-
-Diagnostic bundles are created only when explicitly requested and are not uploaded automatically. Logs, reports and diagnostic bundles can contain local or device-related information, so review them before sharing.
-
-## Platform support
-
-| Platform | Published v2.3.0 | Distribution state |
-| --- | --- | --- |
-| Windows x64 | ZIP published | Unsigned |
-| Windows ARM64 | ZIP published | Unsigned |
-| Linux x64 | ZIP published | Unsigned |
-| Linux ARM64 | ZIP published | Unsigned |
-| macOS Intel / x64 | ZIP published | Ad-hoc engineering signed; not notarized |
-| macOS Apple Silicon / ARM64 | ZIP published | Ad-hoc engineering signed; not notarized |
-
-All six final artifacts for a release must derive from the same frozen source SHA. Platform-specific fixes found during the final phase are merged first, then affected targets are revalidated before the final six-platform gate.
-
-## Debug / troubleshooting
-
-Start an explicit source-development debug session with:
-
-```bash
-python main.py --debug
-```
-
-The session log is written under the active application-data directory in `logs/debug-<timestamp>.log`. The packaged Windows equivalent is:
-
-```text
-PlayStoreAppAudit.exe --debug
-```
-
-Debug logs are never uploaded automatically and may contain local filesystem paths or filenames.
-
-For cold Local APK performance analysis on a representative folder:
-
-```bash
-python tools/profile_local_apk_cold_load.py PATH_TO_APK_FOLDER
-```
-
-The profiler uses a temporary empty metadata cache and does not clear the application's normal cache.
-
-## 🍺 Support the project
-
-Store App Audit is free and open source.
-
-If it saved you some time, helped you clean up your Android apps, or simply spared you a few ADB commands, you can [sponsor the project on GitHub](https://github.com/sponsors/mrc-labs).
-
-Think of it as offering me a virtual beer 🍺 or helping cover some of the costs around development, CI/testing and developer tools.
-
-No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
+These show the v2.1 interface with fully synthetic fictional apps, generated by [the canonical screenshot tool](tools/generate_canonical_screenshots.py).
 
 ## Development
 
-Current source and latest published release are `2.4.0`, immutable release SHA `7de545fb1b2e820f41a76127e8333730e4d815d0`. All six native packages and independent public-byte verification passed. The [release audit](docs/V2_4_RELEASE_PREP.md) records source/patch/legal provenance, exact CI and scoped compatibility evidence.
-
-Post-release development follows rolling stable Python 3.14 with `check-latest: true`, `PySide6-Essentials==6.12.0` and Nuitka4.3.5. Published v2.4.0 uses exact Python3.14.10 and explicitly project-modified runtime/framework builds. Future freezes repeat full freshness and exact-patch guards; official distributions are preferred unless a demonstrated need requires source builds. Docker is not required for normal source development.
-
-Install the development dependencies, run the application and execute the main source checks with:
+Use supported stable Python 3.14. From the repository root:
 
 ```bash
 python -m pip install -r requirements-dev.txt
 python main.py
-python -m compileall playstore_app_audit
 python -m pytest
 ruff check playstore_app_audit tests main.py
 ```
 
-Useful references:
+Prefer supported official packages, wheels and Actions; custom builds require a demonstrated need. See [Building](docs/BUILDING.md), [Architecture](docs/ARCHITECTURE.md), [component policy](docs/RELEASE_COMPONENT_FRESHNESS.md) and [Roadmap](docs/ROADMAP.md). Release provenance and verification are in the [v2.4.0 audit](docs/V2_4_RELEASE_PREP.md).
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Building and release workflow](docs/BUILDING.md)
-- [Mandatory release component freshness gate](docs/RELEASE_COMPONENT_FRESHNESS.md)
-- [CI and release maintenance](docs/CI_MAINTENANCE.md)
-- [Durable project decisions](docs/PROJECT_DECISIONS.md)
-- [Current project status](docs/PROJECT_STATUS.md)
-- [Product roadmap](docs/ROADMAP.md)
-- [Local APK parser foundation](docs/LOCAL_APK_PARSER.md)
-- [Persistent Local APK Library core](docs/LOCAL_APK_LIBRARY.md)
-- [Project guidance for coding agents](AGENTS.md)
+## Maintainers
 
-## Building from source
-
-Published v2.3.0 used exact Python 3.14.8 and Nuitka standalone packaging. Development restores rolling stable Python 3.14. Release artifacts follow an exact-SHA model: final freshness freezes an exact audited patch, all platform artifacts validate at one SHA, and tagging/publication uploads accepted existing assets without rebuilding.
-
-Normal feature work does **not** continuously build every platform. Source tests and Quality run throughout development; packaged Windows x64 evidence is added at deliberate milestones. The final release gate validates all six targets from one exact frozen SHA.
-
-Production signing/notarization is deferred to later 2.x work unless explicitly promoted and proven end-to-end. Do not assume signed/notarized packages simply because a platform build exists.
-
-Platform-specific prerequisites, architecture validation, legal/source handling and release procedures are documented in [Building Store App Audit](docs/BUILDING.md).
-
-## License
-
-The application's own code is licensed under the [GNU General Public License version 3 only](LICENSE) (`GPL-3.0-only`).
-
-GPLv3 permits commercial use provided its terms are followed. An alternative commercial license may be available for organisations or products that need rights beyond GPLv3, such as proprietary redistribution or closed-source integration. See [Commercial licensing](COMMERCIAL-LICENSING.md) and [Licensing model](docs/LICENSING.md).
-
-Third-party components remain under their own licenses. Published releases include the applicable third-party notices/source-availability material; v2.3.0 publishes a consolidated third-party source archive alongside the six binary ZIPs and `SHA256SUMS.txt`.
+MRC — [mrc-labs](https://github.com/mrc-labs).
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Material contributions require acceptance of the project's [Contributor License Agreement](CLA.md).
+Questions, bug reports and ideas are welcome in [Issues](https://github.com/mrc-labs/PlayStoreAppAudit/issues). Focused pull requests are welcome; follow [CONTRIBUTING.md](CONTRIBUTING.md), including the [CLA](CLA.md) requirement for material contributions. Do not publish credentials or private diagnostic data.
+
+You can also [sponsor the project on GitHub](https://github.com/sponsors/mrc-labs). No pressure.
+
+## License
+
+[GPL-3.0-only](LICENSE), owned by MRC and contributing copyright holders. Third-party components retain their respective licenses; see the notices included with each package.
