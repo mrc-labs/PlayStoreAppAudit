@@ -72,7 +72,13 @@
       "asset": 781150509,
       "name": "parser-14113708955.zip"
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14784566833,
+      "run": 45098724298,
+      "source_sha": "e3458cd776f409de958e5aad757b4f30a5986a37",
+      "bytes": 24435627,
+      "sha256": "2bd1d94a7de7996a984ec30e6e2bd0b6717d5d718232bc6fe4e344438f68e8d8"
+    }
   },
   "14114038492": {
     "original": {
