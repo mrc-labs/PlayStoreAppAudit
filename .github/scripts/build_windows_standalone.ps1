@@ -184,6 +184,10 @@ $NuitkaArgs = @(
     "--report=$NuitkaReport"
 )
 
+if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
+    $NuitkaArgs += '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml'
+}
+
 if ($UseMSVC) {
     $NuitkaArgs += "--msvc=latest"
 }

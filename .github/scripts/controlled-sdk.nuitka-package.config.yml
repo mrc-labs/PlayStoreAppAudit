@@ -1,0 +1,6 @@
+# Source-installed bindings use the separately qualified native Qt prefix.
+# Nuitka's default wheel boundary otherwise discards those actual dependencies.
+# Used only after the closed project SDK intake, never as a DLL substitution.
+- module-name: 'PySide6'
+  import-hacks:
+    - package-system-dlls: 'yes'

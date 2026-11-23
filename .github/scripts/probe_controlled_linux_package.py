@@ -15,11 +15,26 @@ def main() -> None:
     work.mkdir()
     source = work / 'qt_probe.py'
     source.write_text('''import ssl
+import ctypes
+import sqlite3
+import lzma
+import decimal
+import zlib
+import cffi
+from cryptography.hazmat.backends.openssl.backend import backend
 from PySide6 import QtCore, QtGui, QtNetwork, QtWidgets
 app = QtWidgets.QApplication([])
 assert QtCore.qVersion() == '6.12.0'
 assert ssl.OPENSSL_VERSION.startswith('OpenSSL 4.0.3 ')
+assert backend.openssl_version_text().startswith('OpenSSL 4.0.3 ')
+assert sqlite3.connect(':memory:').execute('select 1').fetchone() == (1,)
+assert lzma.decompress(lzma.compress(b'closure')) == b'closure'
+assert zlib.decompress(zlib.compress(b'closure')) == b'closure'
+assert decimal.Decimal('1.25') * 2 == decimal.Decimal('2.50')
+callback = cffi.FFI().callback('int(int)', lambda value: value + 1)
+assert callback(41) == 42 and ctypes.c_int(42).value == 42
 assert QtNetwork.QSslSocket.supportsSsl()
+assert QtNetwork.QSslSocket.sslLibraryVersionString().startswith('OpenSSL 4.0.3 ')
 image = QtGui.QImage(2, 2, QtGui.QImage.Format.Format_ARGB32)
 image.fill(QtCore.Qt.GlobalColor.red)
 buffer = QtCore.QBuffer()
@@ -42,6 +57,7 @@ print('PASS relocated controlled Qt/SSL/PNG/GUI package')
               'qt_libraries': QtCore.QLibraryInfo.path(QtCore.QLibraryInfo.LibraryPath.LibrariesPath),
               'scope': 'Tiny standalone closure probe, not an application candidate'}
     command = [sys.executable, '-m', 'nuitka', '--mode=standalone', '--enable-plugin=pyside6',
+               '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
                '--include-qt-plugins=platforms,imageformats,tls', '--noinclude-qt-translations',
                '--assume-yes-for-downloads', '--output-dir=' + str(work),
                '--report=' + str(output / 'compilation-report.xml'), str(source)]
