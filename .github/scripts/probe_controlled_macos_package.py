@@ -84,6 +84,9 @@ print('PASS relocated native macOS package: Python PEM and distinct Qt/Keychain 
     apps = list(work.glob('*.app'))
     assert len(apps) == 1
     app = apps[0]
+    # The producer creates Resources with its icon; this icon-free probe needs
+    # the same directory before the unchanged strict resource normalization.
+    (app / 'Contents/Resources').mkdir(exist_ok=True)
     normalize_bundle(app)
     relocation = relocate(app, selection_path, arch)
     (output / 'relocation.json').write_text(json.dumps(relocation, indent=2))
