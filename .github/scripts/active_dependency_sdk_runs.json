@@ -1,12 +1,17 @@
 {
   "scope": "Active v2.4 producer inputs, including qualified SDK stages in failed/cancelled diagnostics. Retire protection only when the consuming selection is removed or replaced and verified. No published release changes.",
-  "linux_sdk_runs": [43623545058, 43666656687, 43667240760],
+  "linux_sdk_runs": [
+    43623545058,
+    43666656687,
+    43667240760
+  ],
   "selected_contracts": [
     "windows_framework_bound_sdks.json",
     "macos_arm64_bound_sdk_sources.json",
     "macos_x64_bound_sdk_sources.json",
     "qualified_imageformat_overlays.json",
     "qualified_ffi381_overlays.json",
-    "lxml_qualified_wheel_sources.json"
+    "lxml_qualified_wheel_sources.json",
+    "retained_original_archives.json"
   ]
 }

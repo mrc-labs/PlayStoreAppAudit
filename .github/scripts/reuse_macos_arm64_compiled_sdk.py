@@ -109,7 +109,8 @@ def main() -> None:
             assert configuration_sha256((ROOT / '.github/scripts' / name).read_bytes()) == digest
         receipt = json.loads(original.read('macos-runtime-sdk.json'))
         assert receipt['source_sha'] == spec['source_sha'] and receipt['machine'] == 'arm64'
-        assert Path(receipt['original_work_root']) == work and not receipt['complete_pilot']
+        assert Path(receipt['original_work_root']) == work
+        assert receipt['complete_pilot'] is spec.get('complete_pilot', False)
         sdk = original.read('macos-runtime-sdk.tar.zst')
         assert hashlib.sha256(sdk).hexdigest() == receipt['archive_sha256']
         if 'sdk_sha256' in spec:

@@ -1,11 +1,12 @@
 {
-  "artifact": 14279218096,
-  "run": 43973736878,
-  "source_sha": "8da3be7f5527217e675d18cd9b6b18057cb2e0bb",
-  "zip_bytes": 3797374,
-  "zip_sha256": "ae5b711d7cd67072aa213e1f298f5c172aabf9373bb104a29741f952c075c348",
-  "provenance_sha256": "908cf86a020a5e6e1859295fd419f98e6b4e797088fff7ce8f4c7a023fda2a22",
-  "overlay_sha256": "259512193995d49484ed4f870ba4e880e487cfe6a3f26f2a7fd769d0ded3e7b7",
-  "scope": "Exact unchanged module bytes carried by successful native consumer artifact; compiled source identity remains explicit. No dependency recompile.",
-  "compiled_source_sha": "92fa11d511dae9f51b2d633377a240d866054739"
+  "artifact": 14786459834,
+  "run": 45100211225,
+  "source_sha": "24d0f3e040fea3f8c9ce2a6d8c8a6de83eab70fd",
+  "compiled_source_sha": "24d0f3e040fea3f8c9ce2a6d8c8a6de83eab70fd",
+  "zip_bytes": 508374182,
+  "zip_sha256": "bc919977c2ed73384968246a7afdc92a0fdb5410c2e5a3613fc90b133cebb347",
+  "provenance_sha256": "5a9b6f1e90527bda27cc445a9358dc739b6b1751dd6b936ba5fa1b42eeb80b36",
+  "overlay_sha256": "0fb3b508e119446aba52f20732068768e38a5c5ed892298e867bbee6f33745b2",
+  "already_in_sdk": true,
+  "scope": "Matching module already included in the recovered closed SDK; verify identical bytes without overwrite."
 }

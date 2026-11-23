@@ -1,4 +1,33 @@
 {
+  "recovery_2026_11_23": {
+  "date": "2026-11-23 Europe/Rome",
+  "recovered_originals": {
+    "run": 45123034560,
+    "source": "11a70a995ff0147a192d968163e2143aef66faed",
+    "count": 7,
+    "inner_bytes": "unchanged; actual storage provenance pinned separately",
+    "temporary_draft": "removed; no tag created"
+  },
+  "macos_arm64_sdk": {
+    "run": 45100211225,
+    "source": "24d0f3e040fea3f8c9ce2a6d8c8a6de83eab70fd",
+    "artifact": 14786459834,
+    "result": "PASS",
+    "loaded_changed_images": 76,
+    "maximum_minos": "14.4",
+    "certifi": "2026.11.20",
+    "patches": "existing unchanged vendor implementations"
+  },
+  "macos_arm64_ffi381": {
+    "run": 45123243436,
+    "source": "c3ed7b3f9610795659cd9918cfcee61993def7c7",
+    "artifact": 14793943953,
+    "result": "PASS",
+    "callbacks_each": 1200
+  },
+  "affected_deployment_scan": "Exclude SDK evidence using supported extra-ignore-dirs; native three-target confirmation45125770153 PASS at2ad7a2561fe2ad5309e82ef3b205335be0fa04ad",
+  "scope": "Other five compiled SDK/FFI inputs unchanged; original1094 observations preserved. Final application packages and publication remain open."
+},
   "current_2026_11_23": {
   "audit_date": "2026-11-23 Europe/Rome",
   "ffi_security": {

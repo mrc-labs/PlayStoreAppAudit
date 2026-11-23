@@ -111,8 +111,14 @@ def restore_qualified_overlay(work: Path, output: Path, spec: dict, *, macos_mac
             assert len(members) == len(overlay['paths']) and {m.name for m in members} == set(overlay['paths'])
             for member in members:
                 assert member.isfile() and member.name.startswith('prefix/qt/') and '..' not in Path(member.name).parts
-                assert not (work / member.name).exists(), ('Do not overwrite original Qt SDK bytes', member.name)
-            bundle.extractall(work, filter='data')
+                target = work / member.name
+                if spec.get('already_in_sdk', False):
+                    assert target.is_file() and not target.is_symlink()
+                    assert target.read_bytes() == bundle.extractfile(member).read(), ('Changed included module', member.name)
+                else:
+                    assert not target.exists(), ('Do not overwrite original Qt SDK bytes', member.name)
+            if not spec.get('already_in_sdk', False):
+                bundle.extractall(work, filter='data')
         for name, entry in overlay['paths'].items():
             path = work / name
             assert path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(work)

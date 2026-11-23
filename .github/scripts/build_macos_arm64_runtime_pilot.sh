@@ -67,7 +67,8 @@ def stage(item):
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
     list(pool.map(stage, items))
 shutil.copy2(work / arm['certifi_wheel']['name'], evidence / 'sources' / arm['certifi_wheel']['name'])
-assert (work / 'src/certifi-2026.10.23/certifi/cacert.pem').read_bytes() == (work / 'certifi-cacert.pem').read_bytes()
+certifi_source_dir = arm['certifi_source']['name'].removesuffix('.tar.gz')
+assert (work / 'src' / certifi_source_dir / 'certifi/cacert.pem').read_bytes() == (work / 'certifi-cacert.pem').read_bytes()
 for directory in [*(work / 'src').iterdir(), work / 'perl-5.44.0', work / 'extractor']:
     if not directory.is_dir(): continue
     target = evidence / 'legal' / directory.name

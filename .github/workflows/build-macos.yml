@@ -193,7 +193,7 @@ jobs:
         env:
           APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
-          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install --extra-ignore-dirs=controlled-runtime-evidence,toolchain-delta-evidence,artifact
           python - <<'PY'
           from configparser import ConfigParser
           import os
@@ -288,7 +288,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist artifact roundtrip
-          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' -c pysidedeploy.spec -f --no-install
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' -c pysidedeploy.spec -f --no-install --extra-ignore-dirs=controlled-runtime-evidence,toolchain-delta-evidence,artifact
           test -s compilation-report.xml
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"

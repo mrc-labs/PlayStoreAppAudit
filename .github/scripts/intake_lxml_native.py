@@ -13,8 +13,8 @@ import sysconfig
 import zipfile
 from pathlib import Path
 
-from download_diagnostic_artifact import fetch_artifact
 from probe_lxml_native import installed_results
+from qualified_original_archive import read_original
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -56,17 +56,14 @@ def main() -> None:
     output = args.output_dir.resolve()
     source = output / 'original-qualified-lxml.zip'
     if not args.qualify:
-        metadata, data = fetch_artifact(expected['artifact'])
-        assert metadata['id'] == expected['artifact'] and not metadata['expired']
-        assert metadata['workflow_run']['id'] == expected['run']
-        assert metadata['workflow_run']['head_sha'] == expected['source_sha']
-        assert metadata['workflow_run']['head_repository_id'] == 1334403620
-        assert metadata['size_in_bytes'] == expected['zip_bytes'] and metadata['digest'] == 'sha256:' + expected['zip_sha256']
+        data, storage = read_original(expected['artifact'], expected['run'], expected['source_sha'],
+                                      expected['zip_sha256'], expected['zip_bytes'])
         verify_zip(data, expected)
         output.mkdir(parents=True)
         source.write_bytes(data)
         (output / 'intake-provenance.json').write_text(json.dumps({
             'intake_source_sha': os.environ['GITHUB_SHA'], 'qualified_native': expected,
+            'archive_storage': storage,
             'identity': index['identity'], 'scope': 'Original source/legal/wheel/native bytes retained in exact original ZIP; no rebuild or relabeling'}, indent=2) + '\n')
         return
     os.environ.pop('GH_TOKEN', None)
