@@ -1,4 +1,32 @@
 {
+  "package_integration_2026_11_23": {
+  "scope": "Changed final-package integration facts only; original1094 observations and all compiled SDK/library versions retained",
+  "failure_evidence": {
+    "linux_final_attempt": 45128306605,
+    "tiny_reproduction": 45130579428,
+    "cause": "Stock Nuitka wheel boundary excludes separately qualified Qt prefix"
+  },
+  "supported_correction": "Stock Nuitka user package configuration: PySide6 import-hacks/package-system-dlls yes; all source and package guards remain",
+  "linux_closure": {
+    "run": 45131404934,
+    "source": "8bbec866b1ffd7555b2b41bbccd9b626316308d9",
+    "result": "PASS relocated current Qt/providers/PNG/GUI",
+    "matching_ssl_filters_run": 45132322421,
+    "matching_ssl_filters_result": "Runtime/default Python and Qt TLS1.2/1.3 trust/hash PASS; zero SSL3 copies; ABI check stopped on diagnostic name",
+    "final_abi_probe": 45132941188,
+    "final_abi_status": "PASS127 AArch64 ELFs; GLIBC2.38/GLIBCXX3.4.32; zero SSL3 copies/dependencies; no build-prefix paths; independent original ZIP and reports verified"
+  },
+  "windows_arm64_crypto_prerequisite": {
+    "run": 45131514868,
+    "source": "8bbec866b1ffd7555b2b41bbccd9b626316308d9",
+    "result": "PASS",
+    "compiled_sdk_source": "473db008680ecdf6706ce7317849c362750b632f",
+    "provider": "cryptography50.0.2 / static OpenSSL4.0.3 / dynamic CRT / AA64",
+    "artifact": 14798047835,
+    "independent_zip_sha256": "95595aa08f06168061ba62547ed350d74ba7d6fd9d7b4b15f3fa3574d6321ee8"
+  },
+  "application_candidates": "None accepted; f3c1d5b freeze superseded by necessary producer corrections. New main Quality/freeze/six same-SHA packages required."
+},
   "recovery_2026_11_23": {
   "date": "2026-11-23 Europe/Rome",
   "recovered_originals": {
