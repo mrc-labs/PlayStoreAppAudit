@@ -47,15 +47,16 @@ def test_quality_runs_on_pull_requests_and_relevant_main_pushes() -> None:
     assert "github.event.pull_request.number || github.ref" in workflow
     assert "cancel-in-progress: true" in workflow
 
-    assert '- "3.14.10"' in workflow
+    assert '- "3.14"' in workflow
     assert '- "3.14.8"' not in workflow
-    assert "check-latest: false" in workflow
-    assert "assert actual == '3.14.10'" in workflow
+    assert "check-latest: true" in workflow
+    assert "assert actual == '3.14.10'" not in workflow
     assert "assert sys.version_info[:2] == (3, 14)" in workflow
     assert "sys.version_info.releaselevel == 'final'" in workflow
     assert '- "3.13"' not in workflow
     assert "python-version: ${{ matrix.python-version }}" in workflow
-    assert "EXPECTED_PYTHON: ${{ matrix.python-version }}" in workflow
+    assert "id: setup_python" in workflow
+    assert "EXPECTED_PYTHON: ${{ steps.setup_python.outputs.python-version }}" in workflow
 
 
 def test_ui_style_audit_is_a_deliberate_manual_milestone() -> None:

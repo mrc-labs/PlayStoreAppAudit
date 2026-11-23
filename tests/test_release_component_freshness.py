@@ -60,8 +60,8 @@ def test_v2_release_entry_freshness_audit_is_recorded_but_not_final() -> None:
 
 def test_setup_environments_guard_development_or_exact_release_python() -> None:
     setups = 0
-    frozen = {"quality.yml", "build-windows-exe.yml", "build-linux.yml", "build-macos.yml",
-              "assemble-release.yml", "assemble-windows-engineering-release.yml", "sign-windows.yml"}
+    frozen: set[str] = set()  # Published exact pins remain immutable in v2.4.0.
+
     for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
         setup_pattern = r"uses: (?:(?:actions/setup-python|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-setup-python)@[^\n]+|\./\.github/actions/controlled-setup-python(?=\n|$))"
@@ -69,7 +69,7 @@ def test_setup_environments_guard_development_or_exact_release_python() -> None:
             continue
         assert "3.14.8" not in workflow, path.name
         if path.name == "quality.yml":
-            assert '- "3.14.10"' in workflow
+            assert '- "3.14"' in workflow
         for setup in re.finditer(setup_pattern, workflow):
             setups += 1
             following = workflow[setup.end():]
@@ -98,12 +98,12 @@ def test_setup_environments_guard_development_or_exact_release_python() -> None:
 
 @pytest.mark.parametrize(
     ("version", "releaselevel", "expected_exit"),
-    [("3.14.7", "final", 1), ("3.14.8", "final", 1),
-     ("3.14.9", "final", 1), ("3.14.10", "final", 0), ("3.15.0", "final", 1),
+    [("3.14.7", "final", 0), ("3.14.8", "final", 0),
+     ("3.14.9", "final", 0), ("3.14.10", "final", 0), ("3.15.0", "final", 1),
      ("3.14.10", "candidate", 1),
      ("3.13.9", "final", 1), ("3.14.9", "candidate", 1), ("3.14.8", "candidate", 1)],
 )
-def test_release_runtime_guard_accepts_only_exact_final_python_31410(
+def test_development_bootstrap_guard_accepts_only_stable_python_314(
     version: str, releaselevel: str, expected_exit: int,
 ) -> None:
     workflow = (ROOT / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")
@@ -170,7 +170,7 @@ def test_v22_published_context_separates_release_identity_from_development() -> 
         for run_id in ("36987000922", "36988301118", "36988304138", "36988307201", "36993205418"):
             assert run_id in context
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "**Latest published release:** [v2.3.0]" in readme
+    assert "**Latest published release:** [v2.4.0]" in readme
     draft = (ROOT / "docs/V2_2_RELEASE_BODY_DRAFT.md").read_text(encoding="utf-8")
     assert "historical draft (superseded)" in draft
     assert "PENDING" not in draft

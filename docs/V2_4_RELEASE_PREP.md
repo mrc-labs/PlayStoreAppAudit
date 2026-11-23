@@ -1,5 +1,26 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## Publication and release closure — 2026-11-23
+
+**Current release: [v2.4.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.4.0), published 2026-11-23.** Immutable source `7de545fb1b2e820f41a76127e8333730e4d815d0`, annotated tag object `bc394f7242534ce536009913c887b259017ed5f0`, Release ID455457702. Maintenance/security/native compatibility only; six native Windows/Linux/macOS x64/ARM64 packages. Windows/Linux unsigned; macOS engineering ad-hoc, without Developer ID/notarization. Features/signing/updater #209/#154 remain deferred.
+
+Exact-source Quality45173191702 PASS2335; Windows45173603994, Linux45173605108, Mac45173605118 and assembly45179612268 PASS. Independent verification closes all eight asset names/sizes/SHA256/full public byte identity,730 packaged runtime files/660 native headers and49 original corresponding-source archives. Linux x64 passes packaged Ubuntu22.04 offscreen/xcb GUI/CLI, all158 ELFs within GLIBC2.35/GLIBCXX3.4.29; ARM155 ELFs within2.38/3.4.32 on Ubuntu24.04. Both Macs contain103 images/max14.4; native macOS26 execution does not establish older-OS runtime acceptance. Original controlled Python/OpenSSL/Qt/binding source identities and legal/patch provenance remain explicit; no official-binary impersonation.
+
+Post-release development returns to rolling stable Python3.14/check-latest with final/stable guards; controlled SDKs retain exact3.14.10/GIL/native contracts. Future releases repeat freshness and exact-patch freeze. Prefer supported official distributions and reuse qualified necessary source SDKs; rebuild only for demonstrated applicable needs. The immutable release is distinct from newer closure/development main. Dated preparation checkpoints below are historical and retain their original evidence/review scope; their scheduling does not reopen this completed release.
+
+| Verified public asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| PlayStoreAppAudit-v2.4.0-linux-arm64.zip | 98489894 | `482d92d7b3d3ff898f44773c8c6ff95bb614f90cfd2726ce21db92627d4bd325` |
+| PlayStoreAppAudit-v2.4.0-linux-x64.zip | 99432444 | `01fe473a4dd75982d791fb563c70dddb9bbb31530441263e2bf67e12378725ef` |
+| PlayStoreAppAudit-v2.4.0-macos-arm64.zip | 47851110 | `a148f9a90658a01ae26e8d79d64d9183c8f9d3675cb87ca40e19e1c5a5cfc29e` |
+| PlayStoreAppAudit-v2.4.0-macos-x64.zip | 51488655 | `19ce99a1f01d5b085c858129f1c3cbe3bcdedf7f4cc87c67550e0dc486abd61e` |
+| PlayStoreAppAudit-v2.4.0-third-party-sources.tar.xz | 327397432 | `9740a96e41d3c6d25117474e71b79c89316cace20fb0e9349a4fac41f73fdbe6` |
+| PlayStoreAppAudit-v2.4.0-windows-arm64.zip | 43911574 | `4a0b8b030155bd2d341fcefb3d1c892ef216c763630dfec25bd067b14d341706` |
+| PlayStoreAppAudit-v2.4.0-windows-x64.zip | 46912679 | `38d4e64252e4018e00f8a43caf4327bacee5d42c9cffc2f7002a7dfb8ecdbca2` |
+| SHA256SUMS.txt | 758 | `9f7addc3704c7e7ac703ccfb6bdae8286cb56f347a111c9551f1af3dca3a8754` |
+
+Original final assembly artifact14821336470:713108112 bytes/SHA256b4f50012ae1023bb8463a37ca5baf871d89f0b68200547bb42435d42fae20f46. Final SDKs are reused with original provenance; the source-input freshness decision below remains the final gate. No new exhaustive inventory or benchmark. Reviewed permanent freshness, project decisions and closure procedures remain unchanged. Retention45181061583 succeeds with no failed/cancelled runs, successful runs or individual artifacts selected for deletion; active dependency inputs stay protected. Read-only Docker context desktop-linux is unavailable (daemon pipe absent); no daemon is started, resource inventory claimed or Docker/DDEV/site resource changed. Final local synchronization is verified after the ordinary closure merge.
+
 ## November23 complete producer cohort: bounded final corrections
 
 Main203ef3a2430ca513ad4c21be9ea1626408271ae6 has exact Quality45133907125 PASS. Complete application cohort Windows45134268433/Linux45134272443/Mac45134277756 compiles all six native applications. Windows x64/ARM64 and Linux x64/ARM64 pass packaged GUI/CLI startup before legal preparation. Windows ARM64 additionally proves the actual packaged cryptography extension matches original3b5e83c7cadab9ef6a9cb0e0c214bf50c057d49941ac5386882d3c4d8a1948e1, AA64/static OpenSSL4.0.3/dynamic CRT. These are bounded stage results, not successful final runs or accepted candidates. All six runs fail: four at source PySide legal ownership, both Macs at closed-SDK absolute RPATH inspection. This freeze is superseded by the necessary producer corrections; no candidate/tag/publication was accepted.

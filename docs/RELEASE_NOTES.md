@@ -66,6 +66,41 @@ GitHub Release descriptive prose is editorially maintainable. It may be correcte
 
 The body published on GitHub remains the primary historical source. Repository changelogs, tags, checksums, and preserved CI evidence may supplement only clearly supported missing detail. Obvious encoding and formatting corruption may be fixed without changing meaning.
 
+## Published v2.4.0 release body
+
+Published 2026-11-23, immutable source `7de545fb1b2e820f41a76127e8333730e4d815d0`.
+
+## What's New / Highlights
+
+### Changed
+- Updated the application runtime, Qt interface framework and maintained dependencies across all six platforms.
+- Refreshed native libraries and compatibility support without adding product features.
+
+### Fixed
+- Preserved certificate and hostname verification for Google Play HTTPS requests.
+- Added portable certificate-bundle selection for packaged macOS Python and incorporated qualified native-library security fixes.
+
+## Compatibility and distribution
+- Native Windows x64/ARM64, Linux x64/ARM64 and macOS x64/ARM64 packages.
+- Windows and Linux are unsigned. macOS uses engineering ad-hoc signatures only; no Developer ID signing or notarization.
+- Linux x64: packaged offscreen/xcb GUI and CLI checks passed on Ubuntu 22.04 (GLIBC 2.35 / GLIBCXX 3.4.29). ARM64: Ubuntu 24.04, GLIBC 2.38 / GLIBCXX 3.4.32.
+- macOS packages were tested on native macOS 26 runners. All bundled Mach-O images have measured deployment requirements at or below 14.4; this does not claim execution testing on older macOS.
+- No production signing, updater or new application features are enabled.
+
+## Release assets
+- Six platform ZIPs, one consolidated third-party source archive and `SHA256SUMS.txt`.
+- Project-modified runtime/framework components are identified in the included third-party notices and source/patch provenance.
+
+## Verification
+- Source: `7de545fb1b2e820f41a76127e8333730e4d815d0`.
+- [Quality](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/45173191702): 2,335 tests, lint, compilation and Qt smoke passed.
+- All six native packages passed: [Windows](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/45173603994), [Linux](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/45173605108), [macOS](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/45173605118).
+- [Assembly](https://github.com/mrc-labs/PlayStoreAppAudit/actions/runs/45179612268) validated the exact eight-asset set and corresponding-source material. Use the attached `SHA256SUMS.txt` to verify downloads.
+
+- All eight public assets were independently re-downloaded and verified by name, size, SHA-256 and full byte identity against the validated assembly.
+
+Enjoying Store App Audit? [Sponsor its development on GitHub](https://github.com/sponsors/mrc-labs) and help support testing and development tools.
+
 ## Published v2.3.0 release body
 
 Title: `Store App Audit v2.3.0` · [Published 2026-10-05](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0)
