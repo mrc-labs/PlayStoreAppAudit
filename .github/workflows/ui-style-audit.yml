@@ -8,7 +8,7 @@ on:
         description: One isolated diagnostic profile; never a final candidate
         type: choice
         default: 'off'
-        options: ['off', ffi-qualified-intake, ffi-posix-security, ffi-linux-security, rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ffi-x64-windows381, tools-ctypes-arm64-windows, tools-ctypes-arm64-windows381, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-ffi381-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
+        options: ['off', ffi-qualified-intake, ffi-posix-security, ffi-linux-security, rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-recovery, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ffi-x64-windows381, tools-ctypes-arm64-windows, tools-ctypes-arm64-windows381, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-ffi381-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
       windows_arm64_runtime_probe:
         description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
         type: boolean
@@ -1181,8 +1181,8 @@ jobs:
           retention-days: 0
 
   macos-arm64-runtime-pilot:
-    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) || inputs.linux_arm64_pilot == 'macos-intake' }}
-    name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) || inputs.linux_arm64_pilot == 'macos-intake' }}
+    name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
     runs-on: macos-26
     timeout-minutes: 240
     permissions:
@@ -1247,7 +1247,7 @@ jobs:
             2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
 
       - name: Verify retained native parser bytes before source rebuilds
-        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1261,13 +1261,32 @@ jobs:
         run: python .github/scripts/reuse_macos_arm64_partial_sdk.py restore --output macos-arm64-pilot-evidence
 
       - name: Build and exercise the gated native ARM64 controlled source prefix
-        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') }}
         shell: bash
         run: |
           set -euo pipefail
           bash .github/scripts/build_macos_arm64_runtime_pilot.sh \
             "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
             2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
+
+      - name: Complete matching image module and retain recovered ARM64 SDK
+        if: ${{ inputs.linux_arm64_pilot == 'macos-recovery' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, '.github/scripts')
+          from reuse_macos_arm64_compiled_sdk import imageformats_environment
+          from retain_macos_runtime_sdk import retain
+          work = Path(os.environ['RUNNER_TEMP']) / ('macos-arm64-pilot-' + os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+          output = Path('macos-arm64-pilot-evidence').resolve()
+          subprocess.run([str(work / 'venv/bin/python'), '.github/scripts/verify_macos_arm64_imageformats.py',
+                          '--work', str(work), '--output', str(output)],
+                         env=imageformats_environment(work, output), check=True)
+          retain(work, output, 0)
+          PY
 
       - name: Exercise public HTTP against exact compiled SDK only
         if: ${{ (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) }}
@@ -1287,7 +1306,7 @@ jobs:
         if: always()
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
-          name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
+          name: ${{ ((inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
           path: |
             macos-arm64-pilot-evidence/
             !macos-arm64-pilot-evidence/**/server-key.pem

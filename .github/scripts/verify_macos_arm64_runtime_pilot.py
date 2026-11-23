@@ -241,9 +241,9 @@ def main() -> None:
     trust_file = prefix / 'trust/cert.pem'
     assert Path(ssl.get_default_verify_paths().cafile).resolve() == trust_file
     assert trust_file.read_bytes() == Path(certifi.where()).read_bytes()
-    assert certifi.__version__ == '2026.10.23'
+    assert certifi.__version__ == '2026.11.20'
     defaults = default_trust_handshake()
-    defaults.update(integration='private default OpenSSL PEM/certifi2026.10.23, not Keychain', cafile=str(trust_file), pem_sha256=hashlib.sha256(trust_file.read_bytes()).hexdigest())
+    defaults.update(integration='private default OpenSSL PEM/certifi2026.11.20, not Keychain', cafile=str(trust_file), pem_sha256=hashlib.sha256(trust_file.read_bytes()).hexdigest())
     python_tls = python_tls_checks(paths)
     security = executed_cpython_security(output / 'cpython-regressions.xml', output / 'tarfile-security-regression.log')
     assert _hashlib.openssl_sha256(b'abc').hexdigest() == 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
