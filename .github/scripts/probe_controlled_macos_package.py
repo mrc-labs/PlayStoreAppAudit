@@ -69,6 +69,7 @@ print('PASS relocated native macOS package: Python PEM and distinct Qt/Keychain 
                '--noinclude-qt-translations',
                '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
                '--include-qt-plugins=platforms,imageformats,tls', '--assume-yes-for-downloads',
+               '--noinclude-dlls=libssl.dylib', '--noinclude-dlls=libcrypto.dylib',
                '--noinclude-dlls=libssl.3.dylib', '--noinclude-dlls=libcrypto.3.dylib',
                '--include-data-dir=docs/images=help-images', '--output-dir=' + str(work),
                '--report=' + str(output / 'compilation-report.xml')]

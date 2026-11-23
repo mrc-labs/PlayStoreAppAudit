@@ -203,7 +203,7 @@ jobs:
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
           version = os.environ['APP_VERSION']
-          p['nuitka']['extra_args']=f'--quiet --user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml --noinclude-dlls=libssl.3.dylib --noinclude-dlls=libcrypto.3.dylib --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']=f'--quiet --user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml --noinclude-dlls=libssl.dylib --noinclude-dlls=libcrypto.dylib --noinclude-dlls=libssl.3.dylib --noinclude-dlls=libcrypto.3.dylib --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
 
