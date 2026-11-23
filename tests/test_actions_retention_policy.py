@@ -14,7 +14,7 @@ def test_selected_sdk_contracts_protect_original_failed_stage_runs() -> None:
     from cleanup_actions_retention import active_dependency_runs
 
     selected = active_dependency_runs(Path(__file__).resolve().parents[1] / '.github/scripts')
-    assert {43623545058, 43666656687, 43667240760, 43769564895, 43782611872,
+    assert {43623545058, 43666656687, 43667240760, 45100211225, 43782611872,
             43816542716, 43818005888, 44012330704} <= selected
 
 

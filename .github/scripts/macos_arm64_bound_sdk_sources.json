@@ -1,18 +1,18 @@
 {
-  "scope": "Exact compiled SDK including completed PySide bindings and installed requirements; failed native SecureTransport manual-API test, not accepted whole pilot. Outer ZIP hash closes original inner receipt and every retained byte.",
-  "artifact": 14184067304,
-  "run": 43769564895,
-  "source_sha": "2f7f04188c30ff8608ed6c7d766b5d166e19f274",
-  "zip_bytes": 1789177283,
-  "zip_sha256": "e5ca466bdab50fc7f0b2b973d4e65aba19a69dd0b19b3cc0e16c6e4dbefd5cef",
-  "work_name": "macos-arm64-pilot-43726926268-1",
+  "scope": "Completed recovered native ARM64 SDK and matched image modules; native TLS/security/GUI/CLI PASS. Not an application candidate; FFI3.8.1 consumer delta remains required.",
+  "artifact": 14786459834,
+  "run": 45100211225,
+  "source_sha": "24d0f3e040fea3f8c9ce2a6d8c8a6de83eab70fd",
+  "zip_bytes": 508374182,
+  "zip_sha256": "bc919977c2ed73384968246a7afdc92a0fdb5410c2e5a3613fc90b133cebb347",
+  "work_name": "macos-arm64-pilot-45100211225-1",
   "compiler_sdk": {
     "xcode": "Xcode 26.6\nBuild version 17F113\n",
     "sdk_version": "26.5",
     "clang_first_line": "Apple clang version 21.0.0 (clang-2100.1.1.101)"
   },
   "component_inputs": {
-    "macos_arm64_runtime_pilot_sources.json": "66ce07ae1b9ac18eee5724126d08b2b80017304159e17abf384d0833a8bdce8d",
+    "macos_arm64_runtime_pilot_sources.json": "28d07e8aaed57cd5a06694e5d2a06b7e12f8568c6ec85aa11e2c352b63ed916f",
     "native_runtime_pilot_sources.json": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
     "macos_native_provider_sources.json": "72c5af7651e45a67106494eabd4c792dcf151e48009a3c88145f9e90ab209ef6",
     "qt_text_provider_sources.json": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94",
@@ -22,5 +22,7 @@
     "provider_ca_security_sources.json": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f",
     "qt_cldr49_generated_cache.json": "3101e37151225b29c0ddc790ca4adb7fbdddc33c68b3a10ea02962c6a10ec8fc",
     "qt_http_security_sources.json": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
-  }
+  },
+  "sdk_sha256": "8c9a3363fb6955dfba58bd98dab98b0191ce9a37be445a52c055c51075830008",
+  "complete_pilot": true
 }
