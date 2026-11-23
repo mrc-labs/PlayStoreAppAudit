@@ -83,17 +83,20 @@ print('PASS relocated controlled Qt/SSL/PNG/GUI package')
     build = subprocess.run(command, check=False)
     report['build_exit'] = build.returncode
     dist = work / 'qt_probe.dist'
+    executable = dist / 'PlayStoreAppAudit-closure-probe'
+    if build.returncode == 0:
+        (dist / 'qt_probe.bin').rename(executable)
     report['files'] = sorted(p.relative_to(dist).as_posix() for p in dist.rglob('*') if p.is_file())
     report['openssl3_members'] = [p for p in report['files'] if Path(p).name in {'libssl.so.3', 'libcrypto.so.3'}]
     report['ldd'] = {}
     for binary in dist.rglob('*'):
-        if binary.is_file() and (binary.name.startswith(('QtCore.', 'libQt6Core.so')) or binary.name == 'qt_probe.bin'):
+        if binary.is_file() and (binary.name.startswith(('QtCore.', 'libQt6Core.so')) or binary == executable):
             result = subprocess.run(['ldd', str(binary)], capture_output=True, text=True)
             report['ldd'][binary.relative_to(dist).as_posix()] = result.stdout + result.stderr
     if build.returncode == 0:
         env = {k: v for k, v in os.environ.items() if k not in {'LD_LIBRARY_PATH', 'PYTHONHOME', 'PYTHONPATH', 'QT_PLUGIN_PATH'}}
         env['QT_QPA_PLATFORM'] = 'offscreen'
-        run = subprocess.run([str(dist / 'qt_probe.bin')], env=env, capture_output=True, text=True, timeout=60)
+        run = subprocess.run([str(executable)], env=env, capture_output=True, text=True, timeout=60)
         report.update(package_exit=run.returncode, stdout=run.stdout, stderr=run.stderr)
         abi = subprocess.run([sys.executable, '.github/scripts/inspect_linux_abi.py', str(dist),
                               '--arch', 'arm64', '--output', str(output / 'abi.json')], check=False)
