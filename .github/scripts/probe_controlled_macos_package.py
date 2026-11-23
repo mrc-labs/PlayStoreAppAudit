@@ -65,8 +65,8 @@ print('PASS relocated native macOS package: Python PEM and distinct Qt/Keychain 
 ''', encoding='utf-8')
     env = {**os.environ, 'PYTHONPATH': str(Path.cwd()),
            'MACOSX_DEPLOYMENT_TARGET': '11.0' if arch == 'arm64' else '10.15'}
-    command = [sys.executable, '-m', 'nuitka', '--mode=standalone', '--enable-plugin=pyside6',
-               '--macos-create-app-bundle', '--noinclude-qt-translations',
+    command = [sys.executable, '-m', 'nuitka', '--mode=app-dist', '--enable-plugin=pyside6',
+               '--noinclude-qt-translations',
                '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
                '--include-qt-plugins=platforms,imageformats,tls', '--assume-yes-for-downloads',
                '--noinclude-dlls=libssl.3.dylib', '--noinclude-dlls=libcrypto.3.dylib',
