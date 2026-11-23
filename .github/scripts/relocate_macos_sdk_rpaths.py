@@ -1,4 +1,4 @@
-"""Remove only closed-SDK build RPATHs before the existing package/signing gates."""
+"""Relocate only closed-SDK load metadata before the strict package/signing gates."""
 from __future__ import annotations
 
 import argparse
@@ -17,6 +17,18 @@ def sdk_rpaths(values: list[str], prefix: str) -> list[str]:
     allowed = {str(root / part) for part in ('lib', 'qt/lib', 'openssl/lib', 'python/lib')}
     return list(dict.fromkeys(value for value in values
                              if value.startswith('/') and posixpath.normpath(value) in allowed))
+
+
+def sdk_install_name(values: list[str], prefix: str, basename: str) -> str | None:
+    if not values:
+        return None
+    assert len(values) == 1, values
+    value = values[0]
+    if not sdk_rpaths([str(PurePosixPath(value).parent)], prefix):
+        return None
+    if PurePosixPath(value).name != basename:
+        raise RuntimeError('Owned SDK install name differs from packaged library: ' + value)
+    return '@rpath/' + basename
 
 
 def relocate(package: Path, selection_path: Path, arch: str) -> dict:
@@ -43,22 +55,27 @@ def relocate(package: Path, selection_path: Path, arch: str) -> dict:
         command = ['otool', '-arch', selected, '-l', str(path)]
         before = load_commands(subprocess.check_output(command, text=True))
         removed = sdk_rpaths(before['rpaths'], str(prefix))
-        if not removed:
+        identity = sdk_install_name(before['install_names'], str(prefix), path.name)
+        if not removed and identity is None:
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         for value in removed:
             subprocess.run(['install_name_tool', '-delete_rpath', value, str(path)], check=True)
+        if identity is not None:
+            subprocess.run(['install_name_tool', '-id', identity, str(path)], check=True)
         after = load_commands(subprocess.check_output(command, text=True))
         assert after['rpaths'] == [value for value in before['rpaths'] if value not in removed]
-        for key in ('minimum_os', 'sdk', 'install_names', 'dependencies'):
+        assert after['install_names'] == ([identity] if identity is not None else before['install_names'])
+        for key in ('minimum_os', 'sdk', 'dependencies'):
             assert after[key] == before[key], (str(path), key)
         rows.append({'path': path.relative_to(package).as_posix(), 'removed_sdk_rpaths': removed,
+                     'relocated_install_name': identity,
                      'before_sha256': digest, 'after_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                      'before': before, 'after': after})
     return {'source_sha': selection['preparation_source_sha'], 'target': selection['target'],
             'compiled_source_sha': selection['compiled_source_sha'],
             'sdk_receipt_sha256': selection['qt_receipt_sha256'], 'images': rows,
-            'scope': 'Owned SDK RPATH metadata relocation only; strict inspection and engineering signing follow'}
+            'scope': 'Owned SDK RPATH/install-ID relocation only; dependency references/ABI unchanged; strict inspection and engineering signing follow'}
 
 
 if __name__ == '__main__':
