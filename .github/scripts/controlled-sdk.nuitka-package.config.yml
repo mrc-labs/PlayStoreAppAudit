@@ -4,3 +4,34 @@
 - module-name: 'PySide6'
   import-hacks:
     - package-system-dlls: 'yes'
+
+# Controlled CPython/cffi providers are likewise outside Python's install root.
+# This finite list matches the audited provider inventory; all copied image
+# origins, versions, architectures and ABI floors remain package gates.
+- module-name: '_decimal'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_hashlib'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_ssl'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_lzma'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_sqlite3'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_ctypes'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: 'binascii'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: 'zlib'
+  import-hacks:
+    - package-system-dlls: 'yes'
+- module-name: '_cffi_backend'
+  import-hacks:
+    - package-system-dlls: 'yes'

@@ -66,3 +66,30 @@ def test_controlled_source_graph_retains_actual_distribution_names(tmp_path, mon
     assert set(graph) == {'pyside6', 'shiboken6'} and direct == {'pyside6'}
     with pytest.raises(RuntimeError, match='Unsupported'):
         legal._declared_dependency_candidates(tmp_path, qt_distribution='invented-official-alias')
+
+
+@pytest.mark.parametrize('fault', [None, 'no-proof', 'version', 'foreign-module'])
+def test_source_egg_module_ownership_requires_verified_binding_identity(tmp_path, monkeypatch, fault):
+    monkeypatch.setattr(legal, '_project_dependency_names', lambda root: ['PySide6-Essentials'])
+    distributions = {
+        'PySide6': SimpleNamespace(metadata={'Name': 'PySide6'}, version='6.12.0', files=None, requires=['shiboken6==6.12.0']),
+        'shiboken6': SimpleNamespace(metadata={'Name': 'shiboken6'}, version='6.12.0', files=None, requires=[]),
+    }
+    monkeypatch.setattr(legal.metadata, 'distribution', lambda name: distributions[name])
+    proof = {'distribution': 'PySide6', 'version': '6.12.0', 'shiboken6_version': '6.12.0',
+             'sdk_receipt_sha256': 'a' * 64, 'verified_qt_binding_paths': 42}
+    if fault == 'version':
+        proof['shiboken6_version'] = '6.11.0'
+    modules = [{'name': 'PySide6Wrong' if fault == 'foreign-module' else 'PySide6.QtCore', 'distribution': 'PySide6'},
+               {'name': 'shiboken6.Shiboken', 'distribution': 'shiboken6'}]
+    def resolve():
+        return legal._runtime_dependency_closure(tmp_path, [], modules,
+            {'pyside6': ('PySide6', '6.12.0'), 'shiboken6': ('shiboken6', '6.12.0')},
+            qt_distribution='PySide6', qt_identity=None if fault == 'no-proof' else proof)
+    if fault:
+        with pytest.raises(RuntimeError):
+            resolve()
+    else:
+        result = resolve()
+        assert {row.distribution.metadata['Name']: row.top_level_names for row in result} == {
+            'PySide6': ('PySide6',), 'shiboken6': ('shiboken6',)}

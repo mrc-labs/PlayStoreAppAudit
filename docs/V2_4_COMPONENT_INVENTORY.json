@@ -1,4 +1,53 @@
 {
+  "final_producer_corrections_2026_11_23": {
+    "scope": "Producer-only corrections; original1094 observations and compiled component inputs unchanged",
+    "superseded_application_source": "203ef3a2430ca513ad4c21be9ea1626408271ae6",
+    "complete_cohort": [
+      45134268433,
+      45134272443,
+      45134277756
+    ],
+    "results": "Six compilers succeed; Windows/Linux packaged GUI/CLI pass, source-binding legal ownership fails; both Macs fail owned SDK RPATH inspection. No accepted candidate.",
+    "source_binding_ownership": "Only byte-verified SDK PySide6/shiboken6 namespaces and matching versions; official wheel/default module/source/license guards retained",
+    "legal_streaming": {
+      "archive_sha256": "a951bd163c7b80fc6b8c88d7668fb56abf91c152373e13c10666763238131307",
+      "canonical_licenses": 37,
+      "license_mappings": 38,
+      "attribution_records": 90,
+      "referenced_license_mappings": 78,
+      "independently_compared_original_members": 89,
+      "result": "PASS original legal bytes/full archive unchanged; bounded one-pass common-member cache with strict fallback"
+    },
+    "native_macos_relocation": {
+      "run": 45169512714,
+      "source": "45289770273cc14fb0da55a276057e64d47ea63f",
+      "status": "Intel PASS; ARM current inspection/signing PASS, runtime DNS failure before TLS; unchanged prior ARM trust evidence explicitly reused",
+      "scope": "Exact owned SDK RPATH removal and same-basename portable dylib IDs; finite audited provider collection through supported Nuitka configuration. Strict origins/architecture/deployment/signature/default trust remain",
+      "arm64": {
+        "status": "PASS",
+        "artifact_id": 14816148408,
+        "archive_sha256": "9aace065b3e0f25683a88c21db8e789222ea1145b9ed2cddb86826ddac390ab3",
+        "native_images": 79,
+        "maximum_minos": "14.4",
+        "trust": "Python packaged default PEM; Qt OpenSSL and native Keychain in distinct processes; TLS/hash/PNG/offscreen GUI PASS"
+      },
+      "followup_run": 45171325477,
+      "followup_source": "0b7d32b61938ed25cb2414463f43b5ea445d0eff",
+      "intel": {
+        "artifact_id": 14817761371,
+        "archive_sha256": "7035824d4981e9756c3e5c31387f801cc64274fbf3cd419adf81a94b3e632622",
+        "native_images": 79,
+        "maximum_minos": "14.4",
+        "backends": "Python PEM and Qt OpenSSL/native Keychain TLS/hash/PNG/offscreen GUI PASS"
+      },
+      "arm_current": {
+        "artifact_id": 14816902838,
+        "archive_sha256": "1dc2ed8fc4053e015f95870890a3bc710af12b4b3bc6fe9fc57e2e469a7b48a5",
+        "result": "Inspection/signing PASS79/max14.4; www.python.org DNS fails before TLS",
+        "reuse_proof": "All included DLL source paths and all79 architecture/dependency/install-ID/RPATH/minimum-OS/SDK records equal original45169512714 ARM PASS; unchanged provider inputs, no relabelled execution"
+      }
+    }
+  },
   "package_integration_2026_11_23": {
   "scope": "Changed final-package integration facts only; original1094 observations and all compiled SDK/library versions retained",
   "failure_evidence": {

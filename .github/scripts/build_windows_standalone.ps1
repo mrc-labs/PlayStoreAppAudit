@@ -185,7 +185,8 @@ $NuitkaArgs = @(
 )
 
 if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
-    $NuitkaArgs += '--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml'
+    $NuitkaArgs += @('--user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml',
+        '--noinclude-dlls=libssl-3*.dll', '--noinclude-dlls=libcrypto-3*.dll')
 }
 
 if ($UseMSVC) {
