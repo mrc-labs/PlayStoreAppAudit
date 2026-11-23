@@ -15,6 +15,13 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+# Runtime capabilities of the supported OS, not maxima observed in old builds.
+# Ubuntu's gcc-12/gcc-14 libstdc++ packages provide GLIBCXX 3.4.30/3.4.33.
+OS_BASELINES = {
+    'x64': ('Ubuntu 22.04', '2.35', '3.4.30'),
+    'arm64': ('Ubuntu 24.04', '2.39', '3.4.33'),
+}
+
 
 def required_versions(version_info: str) -> list[str]:
     """Read only ELF version needs, never version definitions or symbol indexes."""
@@ -86,16 +93,23 @@ def main() -> int:
     parser.add_argument("package", type=Path)
     parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--expected-openssl-major", type=int, choices=(3, 4),
+                        help="Enforce the selected provider contract; omitted for provider-neutral inspection.")
     args = parser.parse_args()
     report = inspect_package(args.package, args.arch)
-    ceilings = ('2.35', '3.4.29') if args.arch == 'x64' else ('2.38', '3.4.32')
+    baseline, *ceilings = OS_BASELINES[args.arch]
+    report['compatibility_baseline'] = baseline
+    report['expected_openssl_major'] = args.expected_openssl_major
     for key, ceiling in zip(('glibc', 'glibcxx'), ceilings, strict=True):
         actual = report[key]
         if actual and tuple(map(int, actual.partition('_')[2].split('.'))) > tuple(map(int, ceiling.split('.'))):
-            raise RuntimeError(f"Raised {args.arch} package ABI floor: {actual} > {ceiling}")
+            raise RuntimeError(f"Package exceeds supported {baseline} ABI: {actual} > {ceiling}")
     for image in report['elf_files']:
-        if any(name in {'libssl.so.3', 'libcrypto.so.3'} for name in image['needed']):
-            raise RuntimeError('Unexpected OpenSSL3 package dependency: ' + image['path'])
+        for name in image['needed']:
+            match = re.fullmatch(r'lib(?:ssl|crypto)\.so\.(\d+)', name)
+            if (match and args.expected_openssl_major is not None
+                    and int(match[1]) != args.expected_openssl_major):
+                raise RuntimeError('OpenSSL provider contract mismatch: ' + image['path'] + ': ' + name)
         for search in image['search_paths']:
             if any(part.startswith('/') and not part.startswith(('/lib', '/usr/lib')) for part in search.split(':')):
                 raise RuntimeError('Build-prefix package search path: ' + image['path'])

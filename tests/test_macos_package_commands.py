@@ -10,5 +10,11 @@ def test_package_deployment_measures_dependencies_and_rejects_build_origin():
         validate_commands({**commands, 'minimum_os': ['16.0']}, '15.0')
     with pytest.raises(RuntimeError, match='absolute library origin'):
         validate_commands({**commands, 'rpaths': ['/Users/runner/private-sdk/lib']}, '15.0')
-    with pytest.raises(RuntimeError, match='OpenSSL3'):
-        validate_commands({**commands, 'dependencies': ['@rpath/libssl.3.dylib']}, '15.0')
+    vendor = {**commands, 'dependencies': ['@rpath/libssl.3.dylib']}
+    validate_commands(vendor, '15.0')
+    validate_commands(vendor, '15.0', expected_openssl_major=3)
+    with pytest.raises(RuntimeError, match='provider contract mismatch'):
+        validate_commands(vendor, '15.0', expected_openssl_major=4)
+    with pytest.raises(RuntimeError, match='provider contract mismatch'):
+        validate_commands({**commands, 'dependencies': ['@rpath/libcrypto.4.dylib']},
+                          '15.0', expected_openssl_major=3)

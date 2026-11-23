@@ -79,6 +79,7 @@ UI code must not implement Google Play parsing, cache persistence, ADB discovery
 
 ## Runtime and dependencies
 
+- Start future releases from qualified packages and original source/hash/legal evidence; qualify newer stable supported packages incrementally. Cryptography's missing upstream Windows ARM64/macOS Intel wheels are a scoped coverage exception, not a reason to rebuild other components. Derive compatibility checks from supported OS capabilities, not historical measured maxima: Linux x64 Ubuntu22.04 GLIBC2.35/GLIBCXX3.4.30; ARM64 Ubuntu24.04 GLIBC2.39/GLIBCXX3.4.33. Controlled SDK/provider identity and security checks remain strict; generic inspectors must not impose an unconditional OpenSSL3 ban. See the November23 package-guard decision.
 - Future releases must reevaluate v2.4 custom-build exceptions and return to supported official prebuilt packages/wheels/Actions when they meet security, all six targets and compatibility floors with less work. A retained custom SDK is not a mandate to rebuild or preserve an unnecessary fork. See the permanent freshness policy and November23 project decision.
 - Keep README.md in the essential Standard Readme layout; detailed usage belongs in docs/USAGE.md and release/audit history in the existing dedicated documents.
 

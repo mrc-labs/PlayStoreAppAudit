@@ -91,7 +91,7 @@ print('PASS relocated native macOS package: Python PEM and distinct Qt/Keychain 
     normalize_bundle(app)
     relocation = relocate(app, selection_path, arch)
     (output / 'relocation.json').write_text(json.dumps(relocation, indent=2))
-    images = inspect(app, arch)
+    images = inspect(app, arch, expected_openssl_major=4)
     (output / 'images.json').write_text(json.dumps(images, indent=2))
     subprocess.run([sys.executable, '.github/scripts/sign_macos_app.py', '--app', str(app), '--identity', '-'], check=True)
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
