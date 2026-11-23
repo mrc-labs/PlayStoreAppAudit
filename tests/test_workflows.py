@@ -331,3 +331,12 @@ def test_retained_archive_transfer_and_arm_ffi_have_independent_concurrency() ->
     group = next(line for line in _workflow('ui-style-audit.yml').splitlines() if line.strip().startswith('group:'))
     assert "inputs.linux_arm64_pilot == 'ffi-mac-arm-security' && 'ffi-mac-arm-security'" in group
     assert "startsWith(inputs.linux_arm64_pilot, 'retained-') && 'retained-archives'" in group
+
+
+def test_posix_deployment_excludes_sdk_evidence_from_application_scan() -> None:
+    for name in ['build-linux.yml', 'build-macos.yml', 'ui-style-audit.yml']:
+        calls = [line for line in _workflow(name).splitlines()
+                 if "from PySide6.scripts.pyside_tool import deploy; deploy()'" in line]
+        assert calls, name
+        for call in calls:
+            assert '--extra-ignore-dirs=controlled-runtime-evidence,toolchain-delta-evidence,artifact' in call

@@ -1695,7 +1695,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install --extra-ignore-dirs=controlled-runtime-evidence,toolchain-delta-evidence,artifact
           test -s pysidedeploy.spec
       - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         if: always()
