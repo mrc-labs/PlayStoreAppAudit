@@ -203,7 +203,7 @@ jobs:
           p['app']['icon']=str(Path('app_icon.icns').resolve())
           p['nuitka']['mode']='standalone'
           version = os.environ['APP_VERSION']
-          p['nuitka']['extra_args']=f'--quiet --user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']=f'--quiet --user-package-configuration-file=.github/scripts/controlled-sdk.nuitka-package.config.yml --noinclude-dlls=libssl.3.dylib --noinclude-dlls=libcrypto.3.dylib --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --macos-app-name=PlayStoreAppAudit --macos-app-version={version} --macos-signed-app-name=com.mrclabs.PlayStoreAppAudit --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
 
@@ -374,6 +374,7 @@ jobs:
             MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
           fi
           test -n "$MINOS"
+          python .github/scripts/relocate_macos_sdk_rpaths.py "$APP" --selection "$PSAA_CONTROLLED_RUNTIME_SELECTION" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-sdk-rpath-relocation-${{ matrix.arch }}.json"
           python .github/scripts/inspect_macos_package.py "$APP" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-package-images-${{ matrix.arch }}.json"
           python -c "import sys; normal=lambda s: tuple(map(int, s.split('.'))) + (0,) * (3-len(s.split('.'))); assert normal(sys.argv[1]) == normal(sys.argv[2]), sys.argv" "$MINOS" "$MACOSX_DEPLOYMENT_TARGET"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi

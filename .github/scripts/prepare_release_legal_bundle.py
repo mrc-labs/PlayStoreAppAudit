@@ -583,6 +583,7 @@ def _runtime_dependency_closure(
     report_distributions: dict[str, tuple[str, str]],
     *,
     qt_distribution: str | None = None,
+    qt_identity: dict | None = None,
 ) -> list[RuntimeDependencyEvidence]:
     """Return only declared runtime dependencies supported by build evidence.
 
@@ -598,6 +599,18 @@ def _runtime_dependency_closure(
         key: tuple(_distribution_top_level_names(dist))
         for key, dist in candidates.items()
     }
+    if qt_distribution:
+        # main() obtains this identity only after byte-closing the actual imported
+        # bindings against the original SDK. Source egg-info need not have RECORD.
+        if (not qt_identity or qt_identity.get('distribution') != qt_distribution
+                or not re.fullmatch(r'[0-9a-f]{64}', qt_identity.get('sdk_receipt_sha256', ''))
+                or qt_identity.get('verified_qt_binding_paths', 0) <= 0):
+            raise RuntimeError('Controlled module ownership requires byte-verified source Qt identity')
+        for name, version_key in [('PySide6', 'version'), ('shiboken6', 'shiboken6_version')]:
+            key = _normalize_dist_name(name)
+            if key not in candidates or candidates[key].version != qt_identity[version_key]:
+                raise RuntimeError('Controlled source module ownership/version mismatch: ' + name)
+            top_levels[key] = (name,)
     file_evidence: dict[str, set[str]] = {
         key: set() for key in candidates
     }
@@ -2148,7 +2161,7 @@ def main() -> int:
         runtime_paths,
         report_modules,
         report_distributions,
-        **({"qt_distribution": qt_identity["distribution"]} if qt_identity else {}),
+        **({"qt_distribution": qt_identity["distribution"], "qt_identity": qt_identity} if qt_identity else {}),
     ):
         dist = dependency.distribution
         copied_files, metadata_files = _copy_distribution_legal_files(

@@ -38,7 +38,10 @@ def inspect(package: Path, arch: str) -> dict:
         if selected not in architectures or not set(architectures) <= {'arm64', 'x86_64'}:
             raise RuntimeError('Wrong native package architecture: ' + str(path))
         commands = load_commands(subprocess.check_output(['otool', '-arch', selected, '-l', str(path)], text=True))
-        validate_commands(commands, ceiling)
+        try:
+            validate_commands(commands, ceiling)
+        except RuntimeError as error:
+            raise RuntimeError(str(path.relative_to(package)) + ': ' + str(error)) from error
         with path.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         rows.append({'path': path.relative_to(package).as_posix(), 'sha256': digest,
