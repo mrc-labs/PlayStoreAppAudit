@@ -396,7 +396,13 @@
         }
       ]
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794960687,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 529281987,
+      "sha256": "3120580b959f1cfdedc1f8b1e519dfb76ed6ed8dc1f5b591bdb1d3ec57ed0669"
+    }
   },
   "14142662897": {
     "original": {
@@ -675,7 +681,13 @@
         }
       ]
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794955689,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 368354804,
+      "sha256": "36dc1a1d04cf87ec7a393bf4f699689e4f3b13a7f01a622bee8c5f81bf85c016"
+    }
   },
   "14143608998": {
     "original": {
@@ -1134,7 +1146,13 @@
         }
       ]
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794532284,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 615905146,
+      "sha256": "3bd1c37441cd4b8f05247a86d30e1d3f90c0737a38860a8b771b6fbc91cdac2d"
+    }
   },
   "14113559200": {
     "original": {
@@ -1191,7 +1209,13 @@
         }
       ]
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794910702,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 55216528,
+      "sha256": "7edfb66d301f69d3230b0f59611217affdf6395ce8b211cab0e11af8d69faa7a"
+    }
   },
   "14113708955": {
     "original": {
@@ -1207,11 +1231,11 @@
       "name": "parser-14113708955.zip"
     },
     "recovered": {
-      "artifact": 14784566833,
-      "run": 45098724298,
-      "source_sha": "e3458cd776f409de958e5aad757b4f30a5986a37",
-      "bytes": 24435627,
-      "sha256": "2bd1d94a7de7996a984ec30e6e2bd0b6717d5d718232bc6fe4e344438f68e8d8"
+      "artifact": 14795060236,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 24435638,
+      "sha256": "8c5982df68c71dd9615499fb82109564382907fdcc8a1cda6e4dab6ac59e5531"
     }
   },
   "14114038492": {
@@ -1227,7 +1251,13 @@
       "asset": 781173686,
       "name": "parser-14114038492.zip"
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794402665,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 24675479,
+      "sha256": "cb06449db095e32e9ac392e88a49289a02e18e2335ecf7ca400341687d846c50"
+    }
   },
   "14114052290": {
     "original": {
@@ -1284,6 +1314,12 @@
         }
       ]
     },
-    "recovered": null
+    "recovered": {
+      "artifact": 14794193364,
+      "run": 45123034560,
+      "source_sha": "11a70a995ff0147a192d968163e2143aef66faed",
+      "bytes": 55206746,
+      "sha256": "63e771e8223112bacee049fec8ce1a553441c535530e800c0275c9e4eb42657f"
+    }
   }
 }
