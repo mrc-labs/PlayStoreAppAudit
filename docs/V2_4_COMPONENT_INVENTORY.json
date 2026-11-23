@@ -1,4 +1,70 @@
 {
+  "publication_2026_11_23": {
+    "version": "2.4.0",
+    "source_sha": "7de545fb1b2e820f41a76127e8333730e4d815d0",
+    "tag_object": "bc394f7242534ce536009913c887b259017ed5f0",
+    "release_id": 455457702,
+    "quality_run": 45173191702,
+    "tests": 2335,
+    "windows_run": 45173603994,
+    "linux_run": 45173605108,
+    "macos_run": 45173605118,
+    "assembly_run": 45179612268,
+    "runtime_files_verified": 730,
+    "native_headers_verified": 660,
+    "original_source_archives_verified": 49,
+    "public_assets": [
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-linux-arm64.zip",
+        "size": 98489894,
+        "sha256": "482d92d7b3d3ff898f44773c8c6ff95bb614f90cfd2726ce21db92627d4bd325",
+        "id": 783036150
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-linux-x64.zip",
+        "size": 99432444,
+        "sha256": "01fe473a4dd75982d791fb563c70dddb9bbb31530441263e2bf67e12378725ef",
+        "id": 783036151
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-macos-arm64.zip",
+        "size": 47851110,
+        "sha256": "a148f9a90658a01ae26e8d79d64d9183c8f9d3675cb87ca40e19e1c5a5cfc29e",
+        "id": 783036155
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-macos-x64.zip",
+        "size": 51488655,
+        "sha256": "19ce99a1f01d5b085c858129f1c3cbe3bcdedf7f4cc87c67550e0dc486abd61e",
+        "id": 783036142
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-third-party-sources.tar.xz",
+        "size": 327397432,
+        "sha256": "9740a96e41d3c6d25117474e71b79c89316cace20fb0e9349a4fac41f73fdbe6",
+        "id": 783036149
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-windows-arm64.zip",
+        "size": 43911574,
+        "sha256": "4a0b8b030155bd2d341fcefb3d1c892ef216c763630dfec25bd067b14d341706",
+        "id": 783071438
+      },
+      {
+        "name": "PlayStoreAppAudit-v2.4.0-windows-x64.zip",
+        "size": 46912679,
+        "sha256": "38d4e64252e4018e00f8a43caf4327bacee5d42c9cffc2f7002a7dfb8ecdbca2",
+        "id": 783076125
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 758,
+        "sha256": "9f7addc3704c7e7ac703ccfb6bdae8286cb56f347a111c9551f1af3dca3a8754",
+        "id": 783086724
+      }
+    ],
+    "status": "Published; complete independent public byte verification PASS; original inventory/source provenance preserved"
+  },
   "final_producer_corrections_2026_11_23": {
     "scope": "Producer-only corrections; original1094 observations and compiled component inputs unchanged",
     "superseded_application_source": "203ef3a2430ca513ad4c21be9ea1626408271ae6",

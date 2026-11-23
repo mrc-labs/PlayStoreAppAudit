@@ -1,5 +1,7 @@
 # CI and release maintenance
 
+November23 release closure: v2.4.0 assets are the durable public record; selected original SDK/source/parser/FFI inputs remain protected by active_dependency_sdk_runs.json and retained_original_archives.json. Actions-retention is enabled after its read-only protection check and original-input recovery. No blanket cleanup, local Docker/DDEV cleanup or deletion of active dependency evidence is part of closure.
+
 This document defines the operational maintenance policy for GitHub Actions artifacts, workflow-run history and post-release cleanup. Release engineering invariants remain in `PROJECT_DECISIONS.md` and exact build procedures remain in `BUILDING.md`.
 
 ## Storage model

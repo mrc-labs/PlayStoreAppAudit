@@ -2,9 +2,20 @@
 
 Notable user-facing and compatibility changes to Play Store App Audit are recorded here. Internal CI/release-process decisions belong in `AGENTS.md`, `docs/PROJECT_DECISIONS.md` and `docs/BUILDING.md`.
 
-## [2.4.0] - Unreleased
+## [2.4.0] - 2026-11-23
 
-Maintenance release preparation focused on keeping Store App Audit current, secure and reliable. Maintenance, security and native runtime/framework compatibility only; no product features. See the [component audit and release gates](docs/V2_4_RELEASE_PREP.md); publication remains pending.
+Maintenance, security and native compatibility release across all six platforms; no new product features.
+
+### Changed
+
+- Updated runtime/framework dependencies and qualified native libraries while preserving architecture and compatibility contracts.
+- Preserved unsigned Windows/Linux and engineering ad-hoc macOS distribution.
+
+### Fixed
+
+- Addressed applicable native-library security issues with auditable source/patch provenance.
+- Preserved strict certificate/hostname verification and portable packaged macOS Python trust.
+
 
 ## [2.3.0] - 2026-10-05
 

@@ -8,11 +8,17 @@ Store App Audit is a cross-platform desktop utility for checking Android package
 
 The application uses Qt 6 / PySide6 and is not affiliated with or endorsed by Google. The visible product name is **Store App Audit**. For compatibility, the repository, release/update identifiers, executable filename and technical paths continue to use the established `PlayStoreAppAudit` slug.
 
-**Latest published release:** [v2.3.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.3.0), published 2026-10-05 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
+**Latest published release:** [v2.4.0](https://github.com/mrc-labs/PlayStoreAppAudit/releases/tag/v2.4.0), published 2026-11-23 for Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon.
 
-**Current source:** 2.4.0 maintenance/security/compatibility preparation, tracked in [#238](https://github.com/mrc-labs/PlayStoreAppAudit/issues/238). Control Tower approved MINOR reclassification on 2026-10-25; this release is not yet published. Development follows supported stable Python 3.14; see the [entry audit and release checklist](docs/V2_4_RELEASE_PREP.md). Published v2.3.0 source, tag and assets remain immutable; its [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md) preserves the release evidence.
+**Current source:** 2.4.0. Maintenance, security and native compatibility updates are published; see the [release audit](docs/V2_4_RELEASE_PREP.md). Published release source, tags and assets remain immutable.
 
 The committed vector artwork at `assets/store_app_audit_icon.svg` is the canonical app icon.
+
+## What's new in v2.4
+
+- Refreshed runtime, dependencies and native security/compatibility support across six platforms.
+- Preserved strict certificate/hostname validation and portable packaged macOS Python trust.
+- No new product features, updater or production signing.
 
 ## What's new in v2.3
 
@@ -79,11 +85,11 @@ These screenshots are included in the immutable v2.1.0 source and packages.
 
 ## Current project status
 
-### Published v2.3.0
+### Published v2.4.0
 
-v2.3.0 is the current public release, frozen at `8d476dc5507d8249d8cd62c861095ed3e443f0af`. Exactly eight assets provide six Windows/Linux/macOS x64/ARM64 packages, consolidated third-party sources and `SHA256SUMS.txt`. Windows/Linux are unsigned; macOS is engineering ad-hoc only, without Developer ID signing or notarization. Independent public re-download verified names, sizes, SHA-256 and byte identity.
+v2.4.0 is the current public release, frozen at `7de545fb1b2e820f41a76127e8333730e4d815d0`. Exactly eight independently verified assets provide six native packages, consolidated third-party sources and `SHA256SUMS.txt`. Windows/Linux are unsigned; macOS is engineering ad-hoc only, without Developer ID signing or notarization.
 
-Linux builds use Ubuntu 24.04 for both architectures; the x64 package passed Ubuntu 22.04 GUI/CLI backward smoke. Build hosts alone do not establish every runtime compatibility path. See [Project Status](docs/PROJECT_STATUS.md) for the exact release evidence and hashes.
+Linux x64 uses the Ubuntu 22.04 compatibility floor and passes packaged offscreen/xcb GUI and CLI there; ARM64 uses Ubuntu 24.04. macOS packages pass on native macOS 26 runners; all bundled images have measured deployment requirements at or below 14.4, without claiming older-OS execution tests. See [Project Status](docs/PROJECT_STATUS.md) for scoped compatibility evidence.
 
 ### Post-release continuation
 
@@ -93,11 +99,11 @@ v2.2 closure [#212](https://github.com/mrc-labs/PlayStoreAppAudit/issues/212) is
 
 Published builds are available from [GitHub Releases](https://github.com/mrc-labs/PlayStoreAppAudit/releases).
 
-For v2.3.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
+For v2.4.0, choose the ZIP matching your operating system and architecture, extract it to a normal folder and start the application from the extracted package.
 
 On Windows, the packaged executable intentionally keeps the compatibility filename `PlayStoreAppAudit.exe`.
 
-Because the Windows v2.3.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.3.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
+Because the Windows v2.4.0 packages are unsigned, Microsoft Defender SmartScreen or another reputation-based check may ask you to confirm that you want to run the application. This reflects signing/reputation status, not an application error. macOS v2.4.0 builds are ad-hoc engineering signed but not notarized, so macOS may also require explicit user approval before first launch.
 
 Verify downloaded files with the release-wide `SHA256SUMS.txt` when integrity matters.
 
@@ -236,9 +242,9 @@ No pressure. A ⭐, bug report, feature suggestion or contribution helps too.
 
 ## Development
 
-Current source and latest published release are `2.3.0`, immutable release SHA `8d476dc5507d8249d8cd62c861095ed3e443f0af`. All six packages and independent public-byte verification passed. Linux builds use Ubuntu 24.04 on both architectures; x64 passed packaged Ubuntu 22.04 offscreen/xcb GUI and CLI backward smoke. Compatibility facts and hashes are recorded in [Project Status](docs/PROJECT_STATUS.md) and [closure audit](docs/V2_3_POST_RELEASE_CLOSURE.md).
+Current source and latest published release are `2.4.0`, immutable release SHA `7de545fb1b2e820f41a76127e8333730e4d815d0`. All six native packages and independent public-byte verification passed. The [release audit](docs/V2_4_RELEASE_PREP.md) records source/patch/legal provenance, exact CI and scoped compatibility evidence.
 
-Post-release development follows rolling stable Python 3.14 with `check-latest: true`, `PySide6-Essentials==6.11.2` and Nuitka 4.2.2. Published v2.3.0 used exact audited Python 3.14.8; every future freeze repeats full freshness and exact-patch guards. Python 3.15 migration is outside the baseline. Docker is not required for normal source development.
+Post-release development follows rolling stable Python 3.14 with `check-latest: true`, `PySide6-Essentials==6.12.0` and Nuitka4.3.5. Published v2.4.0 uses exact Python3.14.10 and explicitly project-modified runtime/framework builds. Future freezes repeat full freshness and exact-patch guards; official distributions are preferred unless a demonstrated need requires source builds. Docker is not required for normal source development.
 
 Install the development dependencies, run the application and execute the main source checks with:
 
