@@ -10,6 +10,13 @@ def _workflow(name: str) -> str:
     return (WORKFLOWS / name).read_text(encoding="utf-8")
 
 
+def test_producer_sdk_intakes_receive_the_verified_dispatch_sha() -> None:
+    for name in ['build-windows-exe.yml', 'build-linux.yml', 'build-macos.yml']:
+        step = _workflow(name).split('      - name: Restore qualified controlled runtime and framework', 1)[1]
+        step = step.split('\n      - ', 1)[0]
+        assert 'EXPECTED_SHA: ${{ inputs.expected_sha }}' in step, name
+
+
 def test_windows_release_build_is_manual_and_sha_guarded() -> None:
     workflow = _workflow("build-windows-exe.yml")
 
@@ -78,7 +85,7 @@ def test_linux_and_macos_release_builds_are_manual_and_sha_guarded() -> None:
         assert "required: true" in workflow
         assert workflow.count(
             "EXPECTED_SHA: ${{ inputs.expected_sha }}"
-        ) == 1
+        ) == 2
         assert workflow.count(
             "DISPATCH_SHA: ${{ github.sha }}"
         ) == 1

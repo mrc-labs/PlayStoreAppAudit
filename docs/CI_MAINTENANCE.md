@@ -135,3 +135,10 @@ The post-v1.4 review specifically includes:
 - avoiding repeated network or hashing work only when provenance and SHA-256 verification remain intact.
 
 Do not weaken legal validation, source provenance checks or exact-SHA release guarantees merely to reduce runtime.
+
+
+### Active dependency SDK protection (November23 2026)
+
+A failed/cancelled whole diagnostic may contain a completed, independently qualified SDK stage consumed by current producers. Such an input is not redundant. The November22 pass deleted Linux SDK runs43623545058/43666656687/43667240760 and Mac ARM43769564895 despite active contracts. Current release candidates stopped before application compilation; the04266b5 candidate freeze is superseded by this producer correction. Local original Linux archives are hash-identical and available for recovery; Mac ARM complete archive recovery is still being investigated.
+
+With explicit maintainer approval, Actions-retention is temporarily disabled remotely during recovery. Re-enable only after the corrected protection reaches main and its read-only deletion plan proves active inputs excluded. active_dependency_sdk_runs.json names the current Linux SDK runs and exact selected SDK/module/parser/FFI contract files. Their run IDs are removed from both failed/cancelled-run and successful-artifact deletion sets. Missing/invalid contracts fail closed. Other generations retain the existing seven-day policy; this is not permanent protection for every diagnostic or a change to published releases. Retire entries only when the corresponding consumer selection is removed or replaced and verified.

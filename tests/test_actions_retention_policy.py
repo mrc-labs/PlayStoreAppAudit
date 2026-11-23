@@ -1,12 +1,56 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from cleanup_actions_retention import (
     artifact_profile,
     select_expired_bad_runs,
     select_successful_artifact_deletions,
 )
+
+
+def test_selected_sdk_contracts_protect_original_failed_stage_runs() -> None:
+    from cleanup_actions_retention import active_dependency_runs
+
+    selected = active_dependency_runs(Path(__file__).resolve().parents[1] / '.github/scripts')
+    assert {43623545058, 43666656687, 43667240760, 43769564895, 43782611872,
+            43816542716, 43818005888, 44012330704} <= selected
+
+
+def test_apply_preserves_active_failed_and_superseded_sdk_inputs(monkeypatch) -> None:
+    import cleanup_actions_retention as policy
+
+    deleted = []
+    runs = {number: _run(number, f'2026-01-0{number}T00:00:00Z',
+                        'failure' if number <= 2 else 'success') for number in range(1, 6)}
+
+    class Client:
+        def __init__(self, *args):
+            pass
+
+        def artifacts(self):
+            return [_artifact(number * 10, number, 'same-profile') for number in runs]
+
+        def run(self, number):
+            return runs[number]
+
+        def runs_with_status(self, status):
+            return [run for run in runs.values() if run['conclusion'] == status]
+
+        def delete_run(self, number):
+            deleted.append(('run', number))
+
+        def delete_artifact(self, number):
+            deleted.append(('artifact', number))
+
+    monkeypatch.setattr(policy, 'GitHubClient', Client)
+    monkeypatch.setattr(policy, 'active_dependency_runs', lambda _: {1, 3})
+    monkeypatch.setenv('GITHUB_REPOSITORY', 'fixture/repository')
+    monkeypatch.setenv('GITHUB_TOKEN', 'fixture-token')
+    monkeypatch.setattr('sys.argv', ['cleanup', '--apply'])
+    assert policy.main() == 0
+    assert deleted == [('run', 2), ('run', 4)]
 
 
 def _run(run_id: int, updated: str, conclusion: str = "success") -> dict:

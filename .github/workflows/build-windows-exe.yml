@@ -152,6 +152,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: |
           python .github/scripts/prepare_controlled_runtime.py --target "windows-$env:PACKAGE_ARCH" --export-github-environment --apply-qualified-ffi
           if ($LASTEXITCODE -ne 0) { throw 'Qualified SDK intake failed; no application build started.' }

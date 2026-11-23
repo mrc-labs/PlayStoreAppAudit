@@ -1,5 +1,13 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## November23 first producer attempt: closed gates and recovery
+
+PR239 merged normally to **04266b5a4b78b7960e12e3af0e540dcad9cfc5dc**; exact-main Quality45088563560 PASSes **2294 tests** plus lint/compilation/helper syntax/Qt smoke. Windows45088969244 and Linux45088974484 stop during SDK intake, before application compilation. Mac45088978101 is cancelled to avoid work on the superseded producer inputs. No final candidate was accepted, no tag or publication occurred.
+
+Two demonstrated configuration/storage defects: the producer intake step omitted EXPECTED_SHA required by reused native source guards (Windows explicit KeyError); existing retention deleted active completed SDK stages solely because later diagnostic stages failed. The November22 log44980857101 explicitly deletes Linux43623545058 and43667240760; original Linux bindings and Mac ARM SDK also return404. Previously successful native intakes remain historical evidence, not a claim that the deleted containers are still available. Linux local original Qt/binding/ARM archives match their original full SHA256 contracts; recovery can preserve those exact bytes. Mac ARM whole-SDK recovery remains open; source/native image reports are not substitutes for the missing complete SDK.
+
+The correction forwards the verified dispatch SHA to each producer SDK intake and protects only current selected dependency input runs in retention. The maintainer explicitly authorizes temporary remote retention disablement pending the fix and read-only proof. Recovery staging authorization is pending separately; no draft/tag/SDK upload was created by a rejected attempt. The source component contract and qualified library evidence are unchanged by these fixes. This invalidates the04266b5 producer freeze and requires a new normal merge/exact-main Quality/freeze before all six application candidates. No source-stack rebuild is scheduled until recovery possibilities are exhausted.
+
 ## November23 final source-input freshness decision
 
 **PASS for the final source-input gate**, after reconciliation of the retained complete inventory, changed official-parent/transitive facts, necessity decisions and affected source checks. This does not accept final packages or publish the release. Entry observations remain original; no new1094-item scan or relabelled historical evidence is claimed.

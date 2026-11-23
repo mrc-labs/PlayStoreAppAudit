@@ -138,6 +138,7 @@ jobs:
       - name: Restore qualified controlled runtime and framework
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
         run: python .github/scripts/prepare_controlled_runtime.py --target macos-${{ matrix.arch }} --export-github-environment --apply-qualified-ffi
       - name: Verify Intel cryptography source runtime
         if: ${{ matrix.arch == 'x64' }}
