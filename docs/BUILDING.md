@@ -1,5 +1,7 @@
 # Building Store App Audit
 
+November23 current: six-native FFI3.8.1 producer intake44017987500 PASS atf368c2f; exact Quality44017990819 PASS2291. Final inputs select Python3.14.10 exact, certifi2026.11.20/SoupSieve4.1.3/Ruff0.17.6. Original runtime/Qt SDKs are reused; current finite ledger reconciles R05/R06/R09/R13. Remaining main/Quality/freeze and six final application packages/legal/assets/closure are not yet accepted. Dated entries below retain historical scope. See [active audit](V2_4_RELEASE_PREP.md).
+
 Current November10 Windows ARM64 source/static libffi3.8.0 and project cffi2.1.1+psaa.libffi380 consumer pass42799359470 at8793e22: correct mixed-varargs/callbacks/large structures, 461 upstream PASS/38skip, native AA64/dynamic CRT and independently verified sources/patches/wheel/licenses. Source Quality42799367210 passes1958. Controlled Python/crypto, other targets and final-package adoption remain required; no producer adoption. See [active audit](V2_4_RELEASE_PREP.md#controlled-compiler-qualification-2026-11-10).
 
 Current November10 compiler delta: stock Nuitka4.3.5/Ruff0.17.4; controlled Nuitka4.3.5+psaa.scons4111/SCons4.11.1 passes six-native/source/legal42739540359 at a55768b, Quality42739545052/1952 tests. Source/wheel/patch/license/binary bytes are worker verified; producer/package adoption remains pending. See [active audit](V2_4_RELEASE_PREP.md#controlled-compiler-qualification-2026-11-10).

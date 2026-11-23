@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from controlled_source_material import prepare_legal_sources, retain_zip_material
+from controlled_source_material import prepare_legal_sources, retain_zip_material, source_locations
 from validate_release_legal_bundle import ValidationError, _validate_controlled_sources
 
 
@@ -19,6 +19,23 @@ def _archive(files: dict[str, bytes]) -> zipfile.ZipFile:
             archive.writestr(name, payload)
     stream.seek(0)
     return zipfile.ZipFile(stream)
+
+
+def test_source_locations_preserve_official_and_immutable_snapshot_provenance(tmp_path: Path) -> None:
+    scripts = tmp_path / '.github/scripts'
+    scripts.mkdir(parents=True)
+    original, snapshot = 'a' * 64, 'b' * 64
+    (scripts / 'sources.json').write_text(json.dumps({'sources': [
+        {'url': 'https://example.org/source.tar.xz', 'sha256': original},
+        {'url': 'https://example.org/daily.dat', 'sha256': snapshot,
+         'retained_source': '.github/sources/snapshot.dat', 'authority': 'https://example.org/policy'},
+    ]}))
+    locations = source_locations(tmp_path, 'c' * 40)
+    assert locations[original]['download_url'] == 'https://example.org/source.tar.xz'
+    assert locations[snapshot]['download_url'] == (
+        'https://raw.githubusercontent.com/mrc-labs/PlayStoreAppAudit/' + 'c' * 40
+        + '/.github/sources/snapshot.dat')
+    assert locations[snapshot]['provenance_url'] == 'https://example.org/policy'
 
 
 def test_qualified_sources_and_licenses_preserve_bytes_and_nested_provenance(tmp_path: Path) -> None:

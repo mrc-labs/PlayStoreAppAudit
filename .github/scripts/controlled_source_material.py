@@ -10,6 +10,30 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 
+def source_locations(repo: Path, source_sha: str) -> dict[str, dict]:
+    """Resolve retained bytes to the already-audited official input contracts."""
+    locations = {}
+
+    def visit(value) -> None:
+        if isinstance(value, dict):
+            url = value.get('url') or value.get('source_url')
+            digest = value.get('sha256') or value.get('source_sha256')
+            if isinstance(url, str) and url.startswith('https://') and isinstance(digest, str) and re.fullmatch('[0-9a-f]{64}', digest):
+                download = url
+                if retained := value.get('retained_source'):
+                    download = 'https://raw.githubusercontent.com/mrc-labs/PlayStoreAppAudit/' + source_sha + '/' + retained
+                locations[digest] = {'download_url': download, 'provenance_url': value.get('authority', url)}
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    for path in sorted((repo / '.github/scripts').glob('*.json')):
+        visit(json.loads(path.read_text(encoding='utf-8')))
+    return locations
+
+
 def retain_zip_material(archive: zipfile.ZipFile, destination: Path, origin: str, *, depth: int = 0) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     index_path = destination / 'INPUT-MATERIAL.json'
@@ -105,6 +129,7 @@ def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: P
     """Add audited SDK originals and the project build/patch recipes to legal assets."""
     records = json.loads((material / 'INPUT-MATERIAL.json').read_text())
     assert records and selection['identity'].startswith('Project-modified')
+    locations = source_locations(repo, selection['preparation_source_sha'])
     sources, license_records = {}, []
     for record in records:
         relative = PurePosixPath(record['file'])
@@ -119,8 +144,9 @@ def prepare_legal_sources(material: Path, selection: dict, repo: Path, assets: P
             target.write_bytes(raw)
             sources[path.name] = {'component': 'controlled SDK source input', 'filename': path.name,
                 'sha256': record['sha256'], 'size': len(raw),
-                'download_url': 'https://github.com/mrc-labs/PlayStoreAppAudit/actions',
-                'provenance_url': 'https://github.com/mrc-labs/PlayStoreAppAudit/pull/239',
+                **locations.get(record['sha256'], {
+                    'download_url': 'https://github.com/mrc-labs/PlayStoreAppAudit/releases/download/v2.4.0/PlayStoreAppAudit-v2.4.0-third-party-sources.tar.xz',
+                    'provenance_url': 'https://github.com/mrc-labs/PlayStoreAppAudit/tree/' + selection['preparation_source_sha']}),
                 'controlled_sdk_origin': record['origin'], 'original_member': record['original_member']}
         else:
             digest = record['sha256']

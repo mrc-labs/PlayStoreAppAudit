@@ -1,5 +1,7 @@
 # AGENTS.md
 
+November23 current: six-native FFI3.8.1 producer intake44017987500 PASS atf368c2f; exact Quality44017990819 PASS2291. Final inputs select Python3.14.10 exact, certifi2026.11.20/SoupSieve4.1.3/Ruff0.17.6. Original runtime/Qt SDKs are reused; current finite ledger reconciles R05/R06/R09/R13. Remaining main/Quality/freeze and six final application packages/legal/assets/closure are not yet accepted. Dated entries below retain historical scope. See [active audit](docs/V2_4_RELEASE_PREP.md).
+
 November17 final delta: required libffi3.8.1 security update discovered (official November14 release, ABI/SONAME8 preserved); bounded official-port native prerequisite prepared, no runtime adoption. Patchelf0.19.3.0 selected through official compatible host wheels. Six SDK intakes pass; producer integration is prepared, but FFI/PSL reconciliation and final package/freshness/Quality remain open. See active audit; no publication readiness claim.
 
 November16 native Intel43968346929 PASS at1179e93 after bounded mitigation of independently reproduced hosted IconServices defect; actual Cocoa GUI/decoder clean exit,91 x64-selected Mach-O images/max14.4, sources/legal/11 unchanged patches worker verified. No runtime/framework/binding rebuild. Current Windows matching-imageformat-module-only adoption is prepared; final SDK/source/legal producer/package gates remain open. PR Quality43968329252 passes2277 on its synthetic merge; direct exact-head Quality is recorded separately, not inferred from head_sha metadata.

@@ -41,7 +41,7 @@ def main() -> None:
     controlled = os.environ.get('EXPECTED_SCONS') == '4.11.1'
     expected_nuitka = '4.3.5+psaa.scons4111' if controlled else '4.3.5'
     selected = {name: version(name) for name in ['pip', 'Nuitka', 'pytest', 'ruff', 'mypy']}
-    assert selected == {'pip': '26.3', 'Nuitka': expected_nuitka, 'pytest': '9.2.0', 'ruff': '0.17.5', 'mypy': '2.4.1'}
+    assert selected == {'pip': '26.3', 'Nuitka': expected_nuitka, 'pytest': '9.2.0', 'ruff': '0.17.6', 'mypy': '2.4.1'}
     import pip._vendor.urllib3
     from nuitka.build.SconsInterface import getInlineSconsVersion
 

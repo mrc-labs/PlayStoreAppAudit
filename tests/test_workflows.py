@@ -40,9 +40,10 @@ def test_quality_runs_on_pull_requests_and_relevant_main_pushes() -> None:
     assert "github.event.pull_request.number || github.ref" in workflow
     assert "cancel-in-progress: true" in workflow
 
-    assert '- "3.14"' in workflow
+    assert '- "3.14.10"' in workflow
     assert '- "3.14.8"' not in workflow
-    assert "check-latest: true" in workflow
+    assert "check-latest: false" in workflow
+    assert "assert actual == '3.14.10'" in workflow
     assert "assert sys.version_info[:2] == (3, 14)" in workflow
     assert "sys.version_info.releaselevel == 'final'" in workflow
     assert '- "3.13"' not in workflow

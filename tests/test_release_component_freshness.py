@@ -58,8 +58,10 @@ def test_v2_release_entry_freshness_audit_is_recorded_but_not_final() -> None:
     assert "repeat the full audit" in evidence
 
 
-def test_development_setup_environments_track_and_guard_stable_python_314() -> None:
+def test_setup_environments_guard_development_or_exact_release_python() -> None:
     setups = 0
+    frozen = {"quality.yml", "build-windows-exe.yml", "build-linux.yml", "build-macos.yml",
+              "assemble-release.yml", "assemble-windows-engineering-release.yml", "sign-windows.yml"}
     for path in sorted((ROOT / ".github/workflows").glob("*.yml")):
         workflow = path.read_text(encoding="utf-8")
         setup_pattern = r"uses: (?:(?:actions/setup-python|mrc-labs/PlayStoreAppAudit/\.github/actions/controlled-setup-python)@[^\n]+|\./\.github/actions/controlled-setup-python(?=\n|$))"
@@ -67,15 +69,17 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
             continue
         assert "3.14.8" not in workflow, path.name
         if path.name == "quality.yml":
-            assert '- "3.14"' in workflow
+            assert '- "3.14.10"' in workflow
         for setup in re.finditer(setup_pattern, workflow):
             setups += 1
             following = workflow[setup.end():]
             guard = following.index("- name: Verify stable Python 3.14")
             assert "uses:" not in following[:guard], path.name
             assert "run:" not in following[:guard], path.name
-            assert "check-latest: true" in following[:guard], path.name
-            assert 'python-version: "3.14"' in following[:guard] or (
+            selected = "3.14.10" if path.name in frozen else "3.14"
+            latest = "false" if path.name in frozen else "true"
+            assert f"check-latest: {latest}" in following[:guard], path.name
+            assert f'python-version: "{selected}"' in following[:guard] or (
                 path.name == "quality.yml"
                 and "python-version: ${{ matrix.python-version }}" in following[:guard]
             )
@@ -83,6 +87,8 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
             assert "platform.python_version()" in step
             assert "assert sys.version_info[:2] == (3, 14)" in step
             assert "sys.version_info.releaselevel == 'final'" in step
+            if path.name in frozen:
+                assert "assert actual == '3.14.10'" in step
             if "shell: pwsh" in step:
                 assert "if ($LASTEXITCODE -ne 0) { throw" in step
             else:
@@ -92,11 +98,12 @@ def test_development_setup_environments_track_and_guard_stable_python_314() -> N
 
 @pytest.mark.parametrize(
     ("version", "releaselevel", "expected_exit"),
-    [("3.14.7", "final", 0), ("3.14.8", "final", 0),
-     ("3.14.9", "final", 0), ("3.15.0", "final", 1),
+    [("3.14.7", "final", 1), ("3.14.8", "final", 1),
+     ("3.14.9", "final", 1), ("3.14.10", "final", 0), ("3.15.0", "final", 1),
+     ("3.14.10", "candidate", 1),
      ("3.13.9", "final", 1), ("3.14.9", "candidate", 1), ("3.14.8", "candidate", 1)],
 )
-def test_development_runtime_guard_accepts_only_final_python_314(
+def test_release_runtime_guard_accepts_only_exact_final_python_31410(
     version: str, releaselevel: str, expected_exit: int,
 ) -> None:
     workflow = (ROOT / ".github/workflows/build-linux.yml").read_text(encoding="utf-8")

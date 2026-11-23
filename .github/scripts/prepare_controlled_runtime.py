@@ -151,6 +151,8 @@ def main() -> None:
     lines = [line for line in lines if not line.startswith('PySide6-Essentials==')]
     lines += [line for line in (ROOT / 'requirements-dev.txt').read_text().splitlines() if not line.startswith('-r ')]
     lines += ['PySide6==6.12.0', 'Nuitka==4.3.5']
+    # Explicit current transitive selections also update older cached SDK venvs.
+    lines += ['click==8.5.1', 'mypy-extensions==1.2.0', 'soupsieve==4.1.3', 'librt==0.17.0']
     if system == 'linux':
         lines += ['patchelf==0.19.3.0']
     requirements.write_text('\n'.join(lines) + '\n')
@@ -159,6 +161,10 @@ def main() -> None:
                     '-c', str(ROOT / '.github/scripts/source_build_constraints.txt')], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'install', '--no-build-isolation', '-r', str(requirements)], env=environment, check=True)
     subprocess.run([python, '-m', 'pip', 'check'], env=environment, check=True)
+    for filename, options in [('installed-dependencies.json', []), ('outdated-dependencies.json', ['--outdated'])]:
+        result = subprocess.run([python, '-m', 'pip', 'list', *options, '--format=json'],
+                                env=environment, check=True, capture_output=True, text=True)
+        (output / filename).write_text(result.stdout, encoding='utf-8')
     subprocess.run([python, '-c', 'from PySide6.scripts.pyside_tool import deploy; deploy()', '--help'],
                    env=environment, check=True)
     subprocess.run([python, '-c', 'import platform,ssl,sysconfig;from PySide6.QtCore import qVersion;'

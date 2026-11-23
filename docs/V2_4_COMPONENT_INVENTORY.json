@@ -1,4 +1,29 @@
 {
+  "current_2026_11_23": {
+  "audit_date": "2026-11-23 Europe/Rome",
+  "ffi_security": {
+    "version": "3.8.1",
+    "consumers": [
+      44012330704,
+      44015553408,
+      44015556829
+    ],
+    "producer_intake": 44017987500,
+    "source_sha": "f368c2f6444fd751a5d789ed5deecc16de50ca93",
+    "quality": 44017990819,
+    "tests": 2291
+  },
+  "direct_updates": {
+    "certifi": "2026.11.20",
+    "soupsieve": "4.1.3",
+    "ruff": "0.17.6",
+    "click": "8.5.1",
+    "mypy-extensions": "1.2.0"
+  },
+  "python_exact": "3.14.10",
+  "psl_decision": "Retain explicitly dated November13 qualified snapshot; changed daily feed is an upstream observation under November16 necessity policy absent demonstrated applicable defect. Current Qt/libpsl stable parents unchanged. Not publisher-equality or complete non-applicability claim.",
+  "scope": "Changed facts only; original1094 observations retained; final main freeze/package/public-byte acceptance remains open."
+},
   "pre_freeze_upstream_delta_2026_11_17": {
     "audit_date": "2026-11-17 Europe/Rome",
     "libffi": {

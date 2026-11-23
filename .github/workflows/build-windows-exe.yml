@@ -81,8 +81,8 @@ jobs:
       - name: Set up native Python
         uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.10"
+          check-latest: false
           architecture: ${{ matrix.arch }}
           cache: "pip"
           cache-dependency-path: |
@@ -92,7 +92,7 @@ jobs:
       - name: Verify stable Python 3.14
         shell: pwsh
         run: |
-          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert actual == '3.14.10'; assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
           if ($LASTEXITCODE -ne 0) { throw 'Stable Python 3.14 verification failed.' }
 
       - name: Verify native Python architecture
