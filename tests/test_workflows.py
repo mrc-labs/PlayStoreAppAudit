@@ -325,3 +325,9 @@ def test_platform_release_prunes_forbidden_qt_plugins_before_legal_gate() -> Non
         macos.index(macos_qpdf)
         < macos.index("prepare_release_legal_bundle.py")
     )
+
+
+def test_retained_archive_transfer_and_arm_ffi_have_independent_concurrency() -> None:
+    group = next(line for line in _workflow('ui-style-audit.yml').splitlines() if line.strip().startswith('group:'))
+    assert "inputs.linux_arm64_pilot == 'ffi-mac-arm-security' && 'ffi-mac-arm-security'" in group
+    assert "startsWith(inputs.linux_arm64_pilot, 'retained-') && 'retained-archives'" in group
