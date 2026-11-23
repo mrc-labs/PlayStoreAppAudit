@@ -1236,6 +1236,14 @@ jobs:
         shell: bash
         run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
 
+      - name: Verify retained native parser bytes before source rebuilds
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/intake_lxml_native.py --target macos-arm64 --output-dir macos-arm64-pilot-evidence/lxml-qualified
+
+
       - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
         if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' && inputs.linux_arm64_pilot != 'macos-consumers' && inputs.linux_arm64_pilot != 'macos-imageformats' && inputs.linux_arm64_pilot != 'macos-intake' }}
         shell: bash
@@ -1246,12 +1254,6 @@ jobs:
             --work-root "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
             2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
 
-      - name: Verify retained native parser bytes before source rebuilds
-        if: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-recovery') }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/intake_lxml_native.py --target macos-arm64 --output-dir macos-arm64-pilot-evidence/lxml-qualified
 
       - name: Restore only the exact source-bound partial prefix
         if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}

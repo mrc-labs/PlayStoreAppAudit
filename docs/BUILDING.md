@@ -510,3 +510,8 @@ Do not treat the implementation as credential-validated until a deliberate `sign
 The Artifact Signing action runs on a supported x64 Windows hosted runner. ARM64 remains a native package target: after its ARM64 PE is signed, the final ZIP is reverified and smoke-tested on `windows-11-arm` before the signing workflow can succeed.
 
 Do not treat the implementation as production-validated until the Azure Artifact Signing account, identity validation, certificate profile, federated GitHub identity and repository configuration are provisioned and one deliberate signing workflow run succeeds for both architectures. The current `assemble-release.yml` engineering contract consumes unsigned Windows build runs and engineering macOS artifacts. A future production-trust assembler contract must explicitly require the successful signing workflow as its Windows source before that profile can be used.
+
+
+### Reusable SDK availability before candidate freeze
+
+After an interruption or retention pass, recheck metadata availability, expiry and pinned digest for every selected source SDK, matching module, FFI overlay and parser input before a new freeze or expensive producer work. A historical successful intake does not establish that its containers remain available. Preserve active failed/cancelled SDK stages through the explicit dependency-run protection in CI_MAINTENANCE.md. Restore only byte-identical retained archives with explicit original versus recovery provenance; native evidence reports alone cannot substitute for a missing complete SDK.

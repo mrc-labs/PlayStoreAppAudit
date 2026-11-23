@@ -229,5 +229,5 @@ def test_missing_arm_sdk_recovery_reuses_full_recipe_and_preserves_security_gate
     build = job.split('      - name: Build and exercise the gated native ARM64 controlled source prefix', 1)[1].split('\n      - ', 1)[0]
     assert "inputs.linux_arm64_pilot == 'macos-recovery'" in build
     assert 'build_macos_arm64_runtime_pilot.sh' in build
-    assert job.index('Qualify native SDK, sources, trust and parser') < job.index('Build and exercise the gated')
+    assert job.index('Verify retained native parser bytes') < job.index('Qualify native SDK, sources, trust and parser') < job.index('Build and exercise the gated')
     assert 'verify_macos_arm64_imageformats.py' in job and 'retain(work, output, 0)' in job
