@@ -50,11 +50,17 @@ def test_intel_contract_preserves_the_qualified_sources_and_separates_deployment
     intel, base = probe.contract()
     arm = json.loads((ROOT / '.github/scripts/macos_arm64_runtime_pilot_sources.json').read_text())
     assert intel['base_manifest_canonical_sha256'] == arm['base_manifest_canonical_sha256']
-    for key in ('zlib_source', 'xz_source', 'zstd_source', 'certifi_source', 'certifi_wheel', 'cryptography_source', 'host_libclang', 'host_perl_source'):
+    for key in ('zlib_source', 'xz_source', 'zstd_source', 'cryptography_source', 'host_libclang', 'host_perl_source'):
         if key == 'host_libclang':
             assert intel[key]['sha256'] == arm[key]['sha256']
         else:
             assert {k: v for k, v in intel[key].items() if k != 'scope'} == {k: v for k, v in arm[key].items() if k != 'scope'}
+    # Preserve the old compiled Intel SDK's actual private PEM provenance.
+    # The necessary ARM recovery builds with the current, separately pinned PEM.
+    assert intel['certifi_wheel']['name'] == 'certifi-2026.10.23-py3-none-any.whl'
+    assert intel['certifi_wheel']['sha256'] == 'e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1'
+    assert arm['certifi_wheel']['name'] == 'certifi-2026.11.20-py3-none-any.whl'
+    assert arm['certifi_wheel']['sha256'] == '7422df25243767b9877031a2248cb14d09ddac9beee846f4cef3d5c9191d488f'
     assert base['sources'][0]['directory'] == 'Python-3.14.10'
     assert (intel['python_deployment'], intel['framework_deployment'], intel['accepted_package_maximum']) == ('10.15', '14.4', '26.0')
     assert intel['openssl_target'] == 'darwin64-x86_64-cc'
