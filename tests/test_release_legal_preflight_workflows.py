@@ -16,11 +16,11 @@ def test_linux_legal_preflight_runs_before_nuitka_packaging() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) == 1
-    assert '--expected-nuitka-version "4.2.2"' in workflow
+    assert '--expected-nuitka-version "4.3.5"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     configure = workflow.index("Configure Qt deployment")
-    compile_package = workflow.index("pyside6-deploy -c pysidedeploy.spec -f")
+    compile_package = workflow.index("deploy()' -c pysidedeploy.spec -f")
     strict_gate = workflow.index("prepare_release_legal_bundle.py")
 
     assert preflight < configure < compile_package < strict_gate
@@ -31,11 +31,11 @@ def test_macos_legal_preflight_runs_before_nuitka_packaging() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) == 1
-    assert '--expected-nuitka-version "4.2.2"' in workflow
+    assert '--expected-nuitka-version "4.3.5"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     configure = workflow.index("Configure Qt deployment")
-    compile_package = workflow.index("pyside6-deploy -c pysidedeploy.spec -f")
+    compile_package = workflow.index("deploy()' -c pysidedeploy.spec -f")
     strict_gate = workflow.index("prepare_release_legal_bundle.py")
 
     assert preflight < configure < compile_package < strict_gate
@@ -46,7 +46,7 @@ def test_windows_legal_preflight_runs_before_heavy_build() -> None:
 
     assert workflow.count("Preflight release legal material") == 1
     assert workflow.count(PREFLIGHT) >= 3
-    assert '--expected-nuitka-version "4.2.2"' in workflow
+    assert '--expected-nuitka-version "4.3.5"' in workflow
 
     preflight = workflow.index("Preflight release legal material")
     tests = workflow.index("Static checks and regression tests")

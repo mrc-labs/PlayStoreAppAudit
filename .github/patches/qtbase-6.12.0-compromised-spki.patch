@@ -1,0 +1,59 @@
+--- a/src/network/ssl/qsslcertificate.cpp
++++ b/src/network/ssl/qsslcertificate.cpp
+@@ -103,6 +103,7 @@
+ #include "qsslcertificateextension_p.h"
+ #include "qsslcertificate_p.h"
+ #include "qsslcertificate.h"
++#include "qsslerror.h"
+ #include "qssl_p.h"
+ 
+ #ifndef QT_NO_SSL
+@@ -804,7 +805,17 @@
+         qCWarning(lcSsl, "Available TLS backend does not support manual certificate verification");
+         return {};
+     }
+-    return verifyPtr(certificateChain, hostName);
++    auto errors = verifyPtr(certificateChain, hostName);
++    // Match socket verification: distrust applies to intermediate keys too,
++    // including the compromised ancestor in rollover/cross-signed chains.
++    for (const auto &certificate : certificateChain) {
++        if (certificate.isBlacklisted()) {
++            const QSslError error(QSslError::CertificateBlacklisted, certificate);
++            if (!errors.contains(error))
++                errors.append(error);
++        }
++    }
++    return errors;
+ }
+ 
+ /*!
+@@ -914,6 +925,29 @@
+ 
+ bool QSslCertificatePrivate::isBlacklisted(const QSslCertificate &certificate)
+ {
++#ifndef QT_NO_SSL
++    // Project guard for the disclosed 2026 eMudhra compromised intermediate keys.
++    // SPKI, rather than certificate serial/CN, also covers cross-signs and rollover chains.
++    // Public evidence: https://groups.google.com/a/mozilla.org/g/dev-security-policy/c/0R3XLJL6FuE
++    static const char *const compromisedSpkiSha256[] = {
++        "43bffa19d6ef651451f6841e019931e96f6f2eaeff28ab4b6f1ce4576de2717b",
++        "49dd353dc2b919a3770645117d0e60c16115e7d1bc259eefe734b00ea434fe5f",
++        "5c0660a2b164910d8ff589c18e14552e9e0ec237dcefe2cb736d41a4811f81a0",
++        "63ecefee431d49523bc1136c4e72d0206a477086caf606cd5cf025686c109cf8",
++        "92c063d67e8f14db71d288e11266ffdaf69cbf115f7bab14f3bc2f68d25e0e30",
++        "e0254c7fcdc265e2f0f8a428dabb75ab4ae039b4872d62f5ee57f0877d5a8a41",
++        "ebed6475c2c2d80fcb199f3fe8dd6e6b3ce60b77eb15d4e42c3dec0c6f5b5105",
++        "ec4ffa1ad0ac88081314b7aaffef6a91f97cd57291bb5ba686c5415f5eb4f6b6",
++    };
++    const QByteArray spki = certificate.publicKey().toDer();
++    if (!spki.isEmpty()) {
++        const QByteArray digest = QCryptographicHash::hash(spki, QCryptographicHash::Sha256).toHex();
++        for (const auto *blocked : compromisedSpkiSha256) {
++            if (digest == blocked)
++                return true;
++        }
++    }
++#endif
+     for (int a = 0; certificate_blacklist[a] != nullptr; a++) {
+         auto blacklistedCommonName = QAnyStringView(QUtf8StringView(certificate_blacklist[(a+1)]));
+         if (certificate.serialNumber() == certificate_blacklist[a++] &&

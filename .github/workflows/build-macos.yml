@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-macos:
@@ -42,7 +43,7 @@ jobs:
       EXPECTED_MACHO_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -110,10 +111,10 @@ jobs:
           done
           test "$missing" = "0"
 
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.10"
+          check-latest: false
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -123,7 +124,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert actual == '3.14.10'; assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
 
       - name: Verify Python 3.14 baseline
         run: |
@@ -134,56 +135,10 @@ jobs:
           VERSION="$(python -c 'from playstore_app_audit import __version__; print(__version__)')"
           test -n "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Provision Intel cryptography source prerequisites
-        if: ${{ matrix.arch == 'x64' }}
-        run: |
-          set -euo pipefail
-          # Homebrew's current rustup has no Intel macOS bottle. Use the
-          # official native installer in an isolated runner tool directory.
-          export CARGO_HOME="$RUNNER_TEMP/cryptography-cargo"
-          export RUSTUP_HOME="$RUNNER_TEMP/cryptography-rustup"
-          rust_installer="$RUNNER_TEMP/rustup-init"
-          curl --fail --location --retry 3 --output "$rust_installer" \
-            https://static.rust-lang.org/rustup/archive/1.29.1/x86_64-apple-darwin/rustup-init
-          echo "259e2b84274434085163fe8d556510571772cda2aa6d87ca6aa664f57bc644e3  $rust_installer" | shasum -a 256 -c -
-          chmod +x "$rust_installer"
-          "$rust_installer" -y --no-modify-path --profile minimal --default-toolchain 1.99.0
-          export PATH="$CARGO_HOME/bin:$PATH"
-          echo "CARGO_HOME=$CARGO_HOME" >> "$GITHUB_ENV"
-          echo "RUSTUP_HOME=$RUSTUP_HOME" >> "$GITHUB_ENV"
-          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
-          rustup --version
-          rustc --version
-          cargo --version
-          [[ "$(rustup --version)" == "rustup 1.29.1 "* ]]
-          [[ "$(rustc --version)" == "rustc 1.99.0 "* ]]
-          # Build static OpenSSL with the existing deployment target rather
-          # than import a host-OS-specific Homebrew binary into the package.
-          work="$RUNNER_TEMP/openssl-4.0.3-source"
-          prefix="$RUNNER_TEMP/openssl-4.0.3-static"
-          mkdir -p "$work"
-          cd "$work"
-          curl --fail --location --retry 3 --output openssl-4.0.3.tar.gz \
-            https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz
-          echo '325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9  openssl-4.0.3.tar.gz' | shasum -a 256 -c -
-          tar -xzf openssl-4.0.3.tar.gz
-          cd openssl-4.0.3
-          ./Configure darwin64-x86_64-cc no-shared --prefix="$prefix" \
-            "-mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
-          make -j "$(sysctl -n hw.ncpu)"
-          make install_sw
-          "$prefix/bin/openssl" version
-          test "$(lipo -archs "$prefix/bin/openssl")" = x86_64
-          echo "OPENSSL_DIR=$prefix" >> "$GITHUB_ENV"
-          echo 'OPENSSL_STATIC=1' >> "$GITHUB_ENV"
-          echo 'OPENSSL_NO_VENDOR=1' >> "$GITHUB_ENV"
-          echo 'PIP_NO_BINARY=cryptography' >> "$GITHUB_ENV"
-          echo 'PIP_NO_CACHE_DIR=1' >> "$GITHUB_ENV"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt "Nuitka==4.2.2"
+      - name: Restore qualified controlled runtime and framework
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-${{ matrix.arch }} --export-github-environment --apply-qualified-ffi
       - name: Verify Intel cryptography source runtime
         if: ${{ matrix.arch == 'x64' }}
         run: |
@@ -193,12 +148,14 @@ jobs:
           test "$(lipo -archs "$rust_binary")" = x86_64
       - name: Verify Python and Qt baseline
         run: |
-          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.11.2'"
+          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
       - name: Preflight release legal material
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.2.2"
+            --expected-nuitka-version "4.3.5" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
@@ -235,7 +192,7 @@ jobs:
         env:
           APP_VERSION: ${{ steps.project_version.outputs.version }}
         run: |
-          pyside6-deploy main.py --name PlayStoreAppAudit --init
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install
           python - <<'PY'
           from configparser import ConfigParser
           import os
@@ -330,7 +287,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist artifact roundtrip
-          pyside6-deploy -c pysidedeploy.spec -f
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' -c pysidedeploy.spec -f --no-install
           test -s compilation-report.xml
           APP=$(find dist -maxdepth 2 -type d -name '*.app' | head -n 1)
           test -n "$APP"
@@ -416,6 +373,7 @@ jobs:
             MINOS_METADATA="LC_VERSION_MIN_MACOSX/version"
           fi
           test -n "$MINOS"
+          python .github/scripts/inspect_macos_package.py "$APP" --arch "${{ matrix.arch }}" --output "$PWD/artifact/macos-package-images-${{ matrix.arch }}.json"
           python -c "import sys; normal=lambda s: tuple(map(int, s.split('.'))) + (0,) * (3-len(s.split('.'))); assert normal(sys.argv[1]) == normal(sys.argv[2]), sys.argv" "$MINOS" "$MACOSX_DEPLOYMENT_TARGET"
           if find "$APP" -path '*platforminputcontexts*' -print | grep -q .; then exit 1; fi
 
@@ -464,6 +422,9 @@ jobs:
             --repo-root "$PWD" \
             --release-tag "v${APP_VERSION}" \
             --nuitka-report "$PWD/compilation-report.xml" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256" \
+            --controlled-runtime-selection "$PSAA_CONTROLLED_RUNTIME_SELECTION" \
             --inject
 
           test -f "$APP/Contents/Resources/LICENSE"
@@ -533,8 +494,8 @@ jobs:
               --identity -
           fi
 
-          "$EXEC"
-          "$EXEC" cli audit --help >/dev/null
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$EXEC"
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$EXEC" cli audit --help >/dev/null
 
           python .github/scripts/prepare_release_legal_bundle.py \
             --package-dir "$APP" \
@@ -616,8 +577,8 @@ jobs:
             spctl --assess --type execute --verbose=4 "$RAPP"
           fi
 
-          "$REXEC"
-          "$REXEC" cli audit --help >/dev/null
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$REXEC"
+          env -u QT_PLUGIN_PATH -u PYTHONHOME -u PYTHONPATH "$REXEC" cli audit --help >/dev/null
           shasum -a 256 "$ZIP"
           ls -lh artifact/*
 
@@ -651,7 +612,7 @@ jobs:
 
       - name: Upload production macOS release candidate
         if: ${{ inputs.signing_mode == 'production' }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/
@@ -660,7 +621,7 @@ jobs:
 
       - name: Upload engineering macOS artifact
         if: ${{ inputs.signing_mode == 'engineering' }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-engineering-v${{ steps.project_version.outputs.version }}-macos-${{ matrix.arch }}
           path: artifact/

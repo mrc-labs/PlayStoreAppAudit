@@ -1,0 +1,22 @@
+Project-modified Qt 6.12.0: CLDR 49 source provenance
+
+CLDR common and exemplars data come from Unicode's official versioned
+distribution. Their original Unicode License v3 texts are retained separately.
+Exact source, generator, patch and generated-file hashes are recorded in
+qt_cldr49_sources.json.
+
+The 349 existing Qt language-code records are reused without modification.
+They were compared with SIL Global's official 2026-10-15 ISO 639-3 registry
+on 2026-11-14 and are byte-identical for this selected Qt language set.
+Attribution: SIL Global, https://iso639-3.sil.org/ .
+No complete ISO code table or its download archive is redistributed.
+
+Regeneration uses the original Qt source records, the two redistributable
+CLDR archives, two reviewed upstream compatibility patches, and one small
+project generator option. It requires no full ISO registry input. The new
+option preserves the original generator's default behavior and makes its
+generated-source comment date reproducible.
+
+The upstream Monrovia adaptation retains the existing minute-based metadata
+representation of the historical 1972 transition at 00:45. It does not replace
+OS time-zone offset data or claim second-precision metadata.

@@ -112,9 +112,9 @@ if (-not $MachineMatches) {
 
 Write-Host "Reported machine: $ReportedMachine"
 
-& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.11.2'"
+& $Python -c "import PySide6; print('PySide6', PySide6.__version__); assert PySide6.__version__ == '6.12.0'"
 if ($LASTEXITCODE -ne 0) {
-    Fail "PySide6 6.11.2 verification failed."
+    Fail "PySide6 6.12.0 verification failed."
 }
 
 & $Python -m nuitka --version
@@ -144,7 +144,7 @@ $IconPath = Join-Path $BuildRoot "app_icon.ico"
 $LegalReleaseDir = Join-Path $BuildRoot "legal-release-v$AppVersion"
 
 if (Test-Path -LiteralPath $BuildRoot) {
-    Remove-Item -LiteralPath $BuildRoot -Recurse -Force
+    Fail "Output already exists; preserve it and select a new OutputRoot: $BuildRoot"
 }
 New-Item -ItemType Directory -Force -Path $BuildRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $NuitkaOutput | Out-Null
@@ -172,6 +172,7 @@ $NuitkaArgs = @(
     "--include-data-dir=docs/images=help-images",
     "--windows-console-mode=attach",
     "--nofollow-import-to=PIL",
+    "--nofollow-import-to=_psaa_sdk_dll_paths",
     "--assume-yes-for-downloads",
     "--windows-icon-from-ico=$IconPath",
     "--file-version=$AppVersion",
@@ -256,6 +257,10 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Primary executable PE architecture validation failed."
 }
 Write-Host "PE architecture: $PeArchitecture"
+foreach ($NativeImage in (Get-ChildItem -LiteralPath $DistDir.FullName -Recurse -File | Where-Object { $_.Extension -in @('.exe', '.dll', '.pyd') })) {
+    & $Python $InspectPe --expect $ExpectedPeMachine $NativeImage.FullName
+    if ($LASTEXITCODE -ne 0) { Fail "Wrong packaged native image: $($NativeImage.FullName)" }
+}
 
 $ExpectedWindowsVersion = "$AppVersion.0"
 $VersionInfo = (Get-Item -LiteralPath $Exe.FullName).VersionInfo
@@ -272,7 +277,15 @@ Write-Host ""
 Write-Host "=== PACKAGED SMOKE TEST ==="
 $OldQtPlatform = $env:QT_QPA_PLATFORM
 $OldSmoke = $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST
+$OldPath = $env:PATH
+$OldPythonHome = $env:PYTHONHOME
+$OldPythonPath = $env:PYTHONPATH
+$OldQtPluginPath = $env:QT_PLUGIN_PATH
 try {
+    $env:QT_PLUGIN_PATH = $null
+    $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+    $env:PYTHONHOME = $null
+    $env:PYTHONPATH = $null
     $env:QT_QPA_PLATFORM = "offscreen"
     $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = "1"
 
@@ -290,30 +303,52 @@ try {
     if ($Process.ExitCode -ne 0) {
         Fail "Packaged application smoke test failed with exit code $($Process.ExitCode)."
     }
+    Write-Host "Packaged smoke test: PASS"
 }
 finally {
     $env:QT_QPA_PLATFORM = $OldQtPlatform
     $env:PLAYSTORE_APP_AUDIT_SMOKE_TEST = $OldSmoke
+    $env:PATH = $OldPath
+    $env:PYTHONHOME = $OldPythonHome
+    $env:PYTHONPATH = $OldPythonPath
+    $env:QT_PLUGIN_PATH = $OldQtPluginPath
 }
-Write-Host "Packaged smoke test: PASS"
 
-Write-Host ""
-Write-Host "=== PACKAGED CLI SMOKE TEST ==="
-# This is a GUI-subsystem executable. Explicitly wait and retain redirected
-# handles until exit; direct PowerShell invocation can return before it writes.
-$CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
-$CliStderr = Join-Path $BuildRoot "packaged-cli-stderr.txt"
-$CliProcess = Start-Process -FilePath $Exe.FullName `
-    -ArgumentList @("cli", "audit", "--help") `
-    -WindowStyle Hidden -Wait -PassThru `
-    -RedirectStandardOutput $CliStdout -RedirectStandardError $CliStderr
-$CliHelp = Get-Content -LiteralPath $CliStdout -Raw
-if ($CliProcess.ExitCode -ne 0 -or $CliHelp -notmatch "app-list") {
-    Get-Content -LiteralPath $CliStdout
-    Get-Content -LiteralPath $CliStderr
-    Fail "Packaged CLI smoke test failed (exit $($CliProcess.ExitCode))."
+    Write-Host ""
+    Write-Host "=== PACKAGED CLI SMOKE TEST ==="
+$OldCliPath = $env:PATH
+$OldCliPythonHome = $env:PYTHONHOME
+$OldCliPythonPath = $env:PYTHONPATH
+$OldCliQtPluginPath = $env:QT_PLUGIN_PATH
+try {
+    $env:QT_PLUGIN_PATH = $null
+    $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+    $env:PYTHONHOME = $null
+    $env:PYTHONPATH = $null
+    # This is a GUI-subsystem executable. Explicitly wait and retain redirected
+    # handles until exit; direct PowerShell invocation can return before it writes.
+    $CliStdout = Join-Path $BuildRoot "packaged-cli-stdout.txt"
+    $CliStderr = Join-Path $BuildRoot "packaged-cli-stderr.txt"
+    $CliProcess = Start-Process -FilePath $Exe.FullName `
+        -ArgumentList @("cli", "audit", "--help") `
+        -WindowStyle Hidden -Wait -PassThru `
+        -RedirectStandardOutput $CliStdout -RedirectStandardError $CliStderr
+    $CliHelp = Get-Content -LiteralPath $CliStdout -Raw
+    if ($CliProcess.ExitCode -ne 0 -or $CliHelp -notmatch "app-list") {
+        Get-Content -LiteralPath $CliStdout
+        Get-Content -LiteralPath $CliStderr
+        Fail "Packaged CLI smoke test failed (exit $($CliProcess.ExitCode))."
+    }
+    Write-Host "Packaged CLI smoke test: PASS"
 }
-Write-Host "Packaged CLI smoke test: PASS"
+finally {
+    $env:PATH = $OldCliPath
+    $env:PYTHONHOME = $OldCliPythonHome
+    $env:PYTHONPATH = $OldCliPythonPath
+    $env:QT_PLUGIN_PATH = $OldCliQtPluginPath
+}
+
+
 
 Write-Host ""
 Write-Host "=== CREATE VERSIONED PACKAGE ==="
@@ -406,13 +441,38 @@ if ($env:GITHUB_ACTIONS -eq "true") {
     $BuildInfoLines += "Signing: unsigned local artifact"
 }
 
+if ($PackageArch -eq 'arm64') {
+    if (-not $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE) {
+        Fail 'ARM64 packaging requires verified OpenSSL/cryptography source evidence.'
+    }
+    & $Python .github/scripts/verify_windows_arm64_crypto.py `
+        --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE `
+        --package-dir $PackageDir --release-dir $LegalReleaseDir
+    if ($LASTEXITCODE -ne 0) { Fail 'ARM64 crypto legal/source staging failed.' }
+    $CryptoEvidence = Get-Content -LiteralPath (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-verification.json') -Raw | ConvertFrom-Json
+    $BuildInfoLines += @(
+        "cryptography: $($CryptoEvidence.cryptography)"
+        "cryptography OpenSSL backend: $($CryptoEvidence.cryptography_backend)"
+        "cryptography linkage: static OpenSSL / dynamic MSVC CRT"
+        "cryptography OpenSSL source: $($CryptoEvidence.source.source_url)"
+        "cryptography OpenSSL source SHA-256: $($CryptoEvidence.source.source_sha256)"
+        "cryptography legal/source evidence: third-party-build/openssl-cryptography; CI legal prerequisites"
+    )
+}
+
 $BuildInfoLines |
     Set-Content -LiteralPath (Join-Path $PackageDir "BUILD-INFO.txt") -Encoding utf8
 
 if (-not $PrivateBuild) {
     Write-Host ""
     Write-Host "=== PREPARE PUBLIC LEGAL RELEASE MATERIAL ==="
-    & $Python $PrepareReleaseLegal `
+    $ControlledLegalArgs = @()
+    if ($env:PSAA_CONTROLLED_RUNTIME_SELECTION) {
+        $ControlledLegalArgs = @('--controlled-runtime-selection', $env:PSAA_CONTROLLED_RUNTIME_SELECTION,
+            '--controlled-qt-sdk-receipt', $env:PSAA_CONTROLLED_QT_RECEIPT,
+            '--controlled-qt-sdk-receipt-sha256', $env:PSAA_CONTROLLED_QT_RECEIPT_SHA256)
+    }
+    & $Python $PrepareReleaseLegal @ControlledLegalArgs `
         --package-dir $PackageDir `
         --release-dir $LegalReleaseDir `
         --repo-root $RepoRoot `

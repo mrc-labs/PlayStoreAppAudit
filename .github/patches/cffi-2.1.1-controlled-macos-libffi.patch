@@ -1,0 +1,31 @@
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -7,7 +7,7 @@
+ 
+ [project]
+ name = "cffi"
+-version = "2.1.1"
++version = "2.1.1+psaa.libffi380"
+ dependencies = [
+     "pycparser; implementation_name != 'PyPy'",
+ ]
+--- a/src/c/_cffi_backend.c
++++ b/src/c/_cffi_backend.c
+@@ -107,6 +107,17 @@
+ # define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 1
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR 0
+ # define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 0
++
++#elif defined(__APPLE__) && defined(__aarch64__) && defined(PSAA_LIBFFI_380)
++
++/* Project-controlled upstream libffi 3.8.0 provides these APIs directly.
++   FFI_AVAILABLE_APPLE identifies Apple's system integration, not this build. */
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC 1
++# define CFFI_CHECK_FFI_CLOSURE_ALLOC_MAYBE 1
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC 1
++# define CFFI_CHECK_FFI_PREP_CLOSURE_LOC_MAYBE 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR 1
++# define CFFI_CHECK_FFI_PREP_CIF_VAR_MAYBE 1
+ 
+ #elif defined(__APPLE__) && defined(FFI_AVAILABLE_APPLE)
+ 

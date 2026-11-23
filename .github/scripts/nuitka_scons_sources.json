@@ -1,0 +1,67 @@
+{
+  "scope": "Project-modified stable-source Nuitka4.3.5/SCons4.11.1 diagnostic; not unchanged official Nuitka or a final application candidate",
+  "distribution_version": "4.3.5+psaa.scons4111",
+  "nuitka_base": "4.3.5",
+  "scons": "4.11.1",
+  "sources": [
+    {
+      "component": "Nuitka",
+      "version": "4.3.5",
+      "name": "nuitka-4.3.5.tar.gz",
+      "directory": "nuitka-4.3.5",
+      "url": "https://files.pythonhosted.org/packages/5f/ec/a9a448d2c429865483fdecf3e4d60e4dcdb8738085337cbd2482ec6468ef/nuitka-4.3.5.tar.gz",
+      "sha256": "ca1dabc274b95efa7a46597f464ec27484b30f32cb89872d14d66541284d4f01",
+      "authority": "https://pypi.org/pypi/Nuitka/4.3.5/json"
+    },
+    {
+      "component": "SCons",
+      "version": "4.11.1",
+      "name": "scons-4.11.1.tar.gz",
+      "directory": "scons-4.11.1",
+      "url": "https://files.pythonhosted.org/packages/42/b9/b7a5c88f348a0c34594d88100872c55fa1cae863ccb222c1c438341b5503/scons-4.11.1.tar.gz",
+      "sha256": "4210d1a80a62e986029208117991b6347ccaaaab37b67463a3ff31ee065dc487",
+      "authority": "https://pypi.org/pypi/SCons/4.11.1/json"
+    }
+  ],
+  "nuitka_patch": {
+    "path": ".github/patches/nuitka-4.3.5-scons4111.patch",
+    "sha256": "f29723b2f8e67723b2555f4bdbf7fe7088c8af62f0d831855c8699990ff24af6",
+    "files": {
+      "nuitka/Version.py": {
+        "base_sha256": "99ae28945ce62335c357c309d43d29d0ad4145468d2bcc1718dd73886f22f109",
+        "patched_sha256": "3265106dfa513e7763b70949a72c91f94e485e289b21b5930593e1e2ffab571b"
+      },
+      "nuitka/build/SconsInterface.py": {
+        "base_sha256": "baa6ebea81e5deaea9a0fb8fa67fd16dba66639df684ff95822afefaff84f0db",
+        "patched_sha256": "0cfb09fdb89fa07534b4ce61ebb94325070f10d59a1f408a51c124edb42abefe"
+      },
+      "nuitka/build/inline_copy/bin/scons.py": {
+        "base_sha256": "cf437d985a1a2f6103c2b6e90429e3840a54f5999c0a358fdc12ec343f61c68f",
+        "patched_sha256": "a1fe9cdfc96770f9b051888e46fabb4beb525d0c659c7b6160fa5d897d553094"
+      },
+      "setup.py": {
+        "base_sha256": "c0e6a33a870b0e6a327b55b60fa4b184c767cb4b3a31acff9f0952c7a0620d83",
+        "patched_sha256": "2fa6156017ff306c3482eea592e8e6ebca5ff53855a80320b9bf5f5311151913"
+      }
+    }
+  },
+  "scons_patch": {
+    "path": ".github/patches/scons-4.11.1-nuitka-integration.patch",
+    "sha256": "2258dae2f7fa53a72bc570db43c2950280fee6d3c17586e4c40361510022a5ff",
+    "files": {
+      "SCons/Taskmaster/__init__.py": {
+        "base_sha256": "725f9865b8550f52ee960c6cde8e61a89e8ffa08ae74581d943e65d5508c1ac7",
+        "patched_sha256": "20110a6170051d4401373a5b753d0bcfd6c7856faa39a0f7c839ad337bad1d34"
+      },
+      "SCons/Tool/MSCommon/common.py": {
+        "base_sha256": "f0055d44e477b9f422be99a76550514cca1d54f6f4dd3ee890d57d0accdc3e8a",
+        "patched_sha256": "db0ee365fad82c49f08ae53707a58adc559b61ad0918ecb82e23d45d9b55dd35"
+      },
+      "SCons/Tool/MSCommon/vc.py": {
+        "base_sha256": "c95c0b4bf43e21d034ecf3168bbe36548a8ed1dae4a0501d4826f965d24efaf6",
+        "patched_sha256": "e6bf87cefc17756a406e1d89f0ae4c60ef3b829cdf75a8676586de0fcdb28258"
+      }
+    }
+  },
+  "derivation": "MSVC cache functions copied from official Nuitka4.3.5 inline4.10.1; those original upstream4.10/4.11 bodies are semantically unchanged. Preserve SDK keys/cache invalidation and Nuitka unexpected-error propagation; retain other stable4.11 source features. No experimental force-system-scons or installed-file mutation."
+}

@@ -1,0 +1,301 @@
+--- a/SCons/Taskmaster/__init__.py
++++ b/SCons/Taskmaster/__init__.py
+@@ -257,6 +257,8 @@
+         except SCons.Errors.BuildError:
+             raise
+         except Exception as e:
++            # Preserve Nuitka unexpected-error propagation.
++            raise
+             buildError = SCons.Errors.convert_to_BuildError(e)
+             buildError.node = self.targets[0]
+             buildError.exc_info = sys.exc_info()
+--- a/SCons/Tool/MSCommon/common.py
++++ b/SCons/Tool/MSCommon/common.py
+@@ -224,13 +224,24 @@
+     if os.environ.get('SCONS_CACHE_MSVC_FORCE_DEFAULTS') in ('1', 'true', 'True'):
+         CONFIG_CACHE_FORCE_DEFAULT_ARGUMENTS = True
+ 
+-def read_script_env_cache() -> dict:
++def read_script_env_cache(version):
+     """ fetch cached msvc env vars if requested, else return empty dict """
+     envcache = {}
++    if not CONFIG_CACHE:
++        return envcache
++
+     p = Path(CONFIG_CACHE)
+-    if not CONFIG_CACHE or not p.is_file():
++    if p.is_dir():
++        p = p.joinpath("content-%s.json" % version)
++    else:
+         return envcache
+-    with SCons.Util.FileLock(CONFIG_CACHE, timeout=5, writer=False), p.open('r') as f:
++
++    if not p.is_file():
++        return envcache
++
++    config_cache_filename = str(p)
++
++    with SCons.Util.FileLock(config_cache_filename, timeout=5, writer=False), p.open('r') as f:
+         # Convert the list of cache entry dictionaries read from
+         # json to the cache dictionary. Reconstruct the cache key
+         # tuple from the key list written to json.
+@@ -243,28 +254,35 @@
+             with suppress(FileNotFoundError):
+                 p.unlink()
+             warn_msg = "Could not decode msvc cache file %s: dropping."
+-            SCons.Warnings.warn(MSVCCacheInvalidWarning, warn_msg % CONFIG_CACHE)
+-            debug(warn_msg, CONFIG_CACHE)
++            SCons.Warnings.warn(MSVCCacheInvalidWarning, warn_msg % config_cache_filename)
++            debug(warn_msg, config_cache_filename)
+         else:
+             if isinstance(envcache_list, list):
+                 envcache = {tuple(d['key']): d['data'] for d in envcache_list}
+             else:
+                 # don't fail if incompatible format, just proceed without it
+                 warn_msg = "Incompatible format for msvc cache file %s: file may be overwritten."
+-                SCons.Warnings.warn(MSVCCacheInvalidWarning, warn_msg % CONFIG_CACHE)
+-                debug(warn_msg, CONFIG_CACHE)
++                SCons.Warnings.warn(MSVCCacheInvalidWarning, warn_msg % config_cache_filename)
++                debug(warn_msg, config_cache_filename)
+ 
+     return envcache
+ 
+ 
+-def write_script_env_cache(cache) -> None:
++def write_script_env_cache(cache, version):
+     """ write out cache of msvc env vars if requested """
+     if not CONFIG_CACHE:
+         return
+ 
+     p = Path(CONFIG_CACHE)
++    if p.is_dir():
++        p = p.joinpath("content-%s.json" % version)
++    else:
++        return
++
++    config_cache_filename = str(p)
++
+     try:
+-        with SCons.Util.FileLock(CONFIG_CACHE, timeout=5, writer=True), p.open('w') as f:
++        with SCons.Util.FileLock(config_cache_filename, timeout=5, writer=True), p.open('w') as f:
+             # Convert the cache dictionary to a list of cache entry
+             # dictionaries. The cache key is converted from a tuple to
+             # a list for compatibility with json.
+@@ -573,6 +591,7 @@
+     "VCINSTALLDIR",  # needed by clang -VS 2017 and newer
+     "VCToolsInstallDir",  # needed by clang - VS 2015 and older
+ )
++KEEPLIST += ('WindowsSDKVersion', 'WindowsSdkDir')
+ 
+ 
+ def parse_output(output, keep=KEEPLIST):
+--- a/SCons/Tool/MSCommon/vc.py
++++ b/SCons/Tool/MSCommon/vc.py
+@@ -2163,15 +2163,21 @@
+ # not the entire output of running the batch file - saves a bit
+ # of time not parsing every time.
+ 
+-script_env_cache = None
+-
+-def script_env(env, script, args=None):
++script_env_cache = {}
++
++def script_env(env, script, version, args=None):
+     global script_env_cache
+ 
+-    if script_env_cache is None:
+-        script_env_cache = common.read_script_env_cache()
++    if version not in script_env_cache:
++        script_env_cache[version] = common.read_script_env_cache(version=version)
++    current_env_cache = script_env_cache[version]
++
+     cache_key = (script, args if args else None)
+-    cache_data = script_env_cache.get(cache_key, None)
++    cache_data = current_env_cache.get(cache_key, None)
++    if cache_data is None:
++        miss_reason = "No cache entry for this script/args"
++    else:
++        miss_reason = None
+ 
+     # Brief sanity check: if we got a value for the key,
+     # see if it has a VCToolsInstallDir entry that is not empty.
+@@ -2188,11 +2194,110 @@
+                 toolpath = Path(toolsdir[0])
+                 if not toolpath.exists():
+                     cache_data = None
++                    miss_reason = "VCToolsInstallDir %s does not exist" % toolpath
++
++    # Nuitka: We use a very much enhanced algorithm here for checking that the
++    # cache is still valid.
++    if cache_data is not None:
++        if "script_mtime" not in cache_data:
++             cache_data = None
++             miss_reason = "script_mtime missing in cache"
++        else:
++            try:
++                if int(os.path.getmtime(script)) != int(cache_data["script_mtime"]):
++                     cache_data = None
++                     miss_reason = "Script modified (mtime mismatch)"
++                elif isinstance(cache_data["script_mtime"], float):
++                     cache_data = None
++                     miss_reason = "Script mtime is float (legacy checking)"
++            except (OSError, ValueError):
++                 cache_data = None
++                 miss_reason = "Error checking script mtime"
++
++    if cache_data is not None:
++        # Check that all the INCLUDE and LIB paths still exist.
++        for env_var in ("INCLUDE", "LIB"):
++            if env_var not in cache_data:
++                continue
++
++            for path in cache_data[env_var]:
++                if not os.path.exists(path):
++                    cache_data = None
++                    miss_reason = "Path %s in %s does not exist" % (path, env_var)
++                    break
++
++            if cache_data is None:
++                break
++
++    if cache_data is not None:
++         # Check if there is a newer SDK version
++        if "WindowsSdkDir" in cache_data and "WindowsSDKVersion" in cache_data:
++            windows_sdk_dir = None
++            for candidate in cache_data["WindowsSdkDir"]:
++                 if os.path.isdir(os.path.join(candidate, "Include")):
++                      windows_sdk_dir = candidate
++                      break
++
++            windows_sdk_version = None
++            for candidate in cache_data["WindowsSDKVersion"]:
++                 if candidate.startswith("10.0."):
++                      windows_sdk_version = candidate
++                      break
++
++            if windows_sdk_dir and windows_sdk_version:
++                windows_sdk_dir = windows_sdk_dir.rstrip("\\/")
++                windows_sdk_version = windows_sdk_version.rstrip("\\/")
++                windows_sdk_include_dir = os.path.join(windows_sdk_dir, "Include")
++
++                if os.path.isdir(windows_sdk_include_dir):
++                     found_newer_version = False
++
++                     try:
++                         cached_tuple = tuple(int(d) for d in windows_sdk_version.split("."))
++                     except ValueError:
++                         # If cached version is invalid (e.g. contains chars), we can't reliably compare.
++                         # Fallback or assume valid? Assuming valid or skip logic.
++                         # However, we filtered earlier for "10.0.", so likely valid.
++                         cached_tuple = None
++
++                     if cached_tuple:
++                         for entry in os.listdir(windows_sdk_include_dir):
++                              if entry == windows_sdk_version:
++                                  continue
++
++                              if not entry.startswith("10.0."):
++                                  continue
++
++                              # Compare versions as tuples of integers to handle "10.0.10.0" > "10.0.9.0" correctly.
++                              try:
++                                   entry_tuple = tuple(int(d) for d in entry.split("."))
++                              except ValueError:
++                                   continue
++
++                              if entry_tuple > cached_tuple:
++                                   found_newer_version = True
++                                   break
++
++                     if found_newer_version:
++                          cache_data = None
++                          miss_reason = "Newer SDK version found"
++
++    if cache_data is not None:
++         if os.environ.get("NUITKA_SCONS_CHECK_MSVC_CACHE"):
++              print("Nuitka-Scons: MSVC Environment Cache Hit (version %s)" % version)
+ 
+     if cache_data is None:
++        if os.environ.get("NUITKA_SCONS_CHECK_MSVC_CACHE"):
++             print("Nuitka-Scons: MSVC Environment Cache Miss (version %s): %s" % (version, miss_reason))
++
+         skip_sendtelemetry = _skip_sendtelemetry(env)
+         stdout = common.get_output(script, args, skip_sendtelemetry=skip_sendtelemetry)
+         cache_data = common.parse_output(stdout)
++
++        try:
++             cache_data["script_mtime"] = int(os.path.getmtime(script))
++        except OSError:
++             pass
+ 
+         # debug(stdout)
+         olines = stdout.splitlines()
+@@ -2221,8 +2326,9 @@
+                 raise BatchFileExecutionError(script_errmsg)
+ 
+         # once we updated cache, give a chance to write out if user wanted
+-        script_env_cache[cache_key] = cache_data
+-        common.write_script_env_cache(script_env_cache)
++        # once we updated cache, give a chance to write out if user wanted
++        current_env_cache[cache_key] = cache_data
++        common.write_script_env_cache(current_env_cache, version=version)
+ 
+     return cache_data
+ 
+@@ -2348,7 +2454,7 @@
+             arg = MSVC.ScriptArguments.msvc_script_arguments(env, version, vc_dir, arg)
+             debug('trying vc_script:%s, vc_script_args:%s', repr(vc_script), arg)
+             try:
+-                d = script_env(env, vc_script, args=arg)
++                d = script_env(env, vc_script, args=arg, version=version)
+             except BatchFileExecutionError as e:
+                 debug('failed vc_script:%s, vc_script_args:%s, error:%s', repr(vc_script), arg, e)
+                 vc_script = None
+@@ -2374,7 +2480,7 @@
+                 # Try to use the sdk batch file for this (host, target, sdk_pdir) combo
+                 debug('trying sdk_script:%s', repr(sdk_script))
+                 try:
+-                    d = script_env(env, sdk_script)
++                    d = script_env(env, sdk_script, version=version)
+                     version_installed = True
+                 except BatchFileExecutionError as e:
+                     debug('failed sdk_script:%s, error=%s', repr(sdk_script), e)
+@@ -2479,7 +2585,8 @@
+         debug('MSVC_USE_SCRIPT set to False')
+         warn_msg = "MSVC_USE_SCRIPT set to False, assuming environment " \
+                    "set correctly."
+-        SCons.Warnings.warn(SCons.Warnings.VisualCMissingWarning, warn_msg)
++        # Nuitka: We use this on purpose.
++        # SCons.Warnings.warn(SCons.Warnings.VisualCMissingWarning, warn_msg)
+         return None
+ 
+     found_cl_path = None
+@@ -2487,6 +2594,18 @@
+ 
+     seen_path = False
+     for k, v in d.items():
++        # Nuitka: Make the Windows SDK version visible in environment.
++        if k == "WindowsSDKVersion":
++            # Always just a single version if any.
++            if len(v) == 1:
++                env["WindowsSDKVersion"] = v[0].rstrip('\\')
++            elif len(v) == 0:
++                env["WindowsSDKVersion"] = None
++            else:
++                assert False, v
++
++            continue
++
+         if not seen_path and k == 'PATH':
+             seen_path = True
+             found_cl_path = SCons.Util.WhereIs('cl', v)
+@@ -2507,6 +2626,9 @@
+             warn_msg += " A 'cl' was found on the scons ENV path which may be erroneous."
+         debug(warn_msg)
+         SCons.Warnings.warn(SCons.Warnings.VisualCMissingWarning, warn_msg)
++
++    import json
++    print("PSAA_MSVC_TOOLCHAIN=" + json.dumps({"compiler": found_cl_path, "host": env.get("HOST_ARCH", ""), "target": env.get("TARGET_ARCH", ""), "sdk": env.get("WindowsSDKVersion", ""), "sdk_dir": env["ENV"].get("WindowsSdkDir", "")}))
+ 
+ def msvc_exists(env=None, version=None):
+     vcs = get_installed_vcs(env)

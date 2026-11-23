@@ -307,6 +307,12 @@ The first native 24.04 x64 diagnostic exposed GLIBC 2.38 requirements and failed
 
 ## Runtime policy
 
+### 2026-11-16: official distributions first; custom builds only for demonstrated need
+
+Prefer supported official Python/Qt wheels, runtimes, libraries, tools and Actions. Rebuilding or forking these inputs is an exception for a demonstrated applicable security/support, functional or target/ABI requirement that an upstream release or supported configuration cannot solve. An internal version gap or the mere feasibility of an override is insufficient. Record the smallest affected scope, alternatives checked, evidence, maintenance/retirement route and required validation in the active audit.
+
+This decision applies now and to future releases and narrows the October24 interpretation of nested-component freshness; it does not waive current direct pins, applicable advisories/EOLs or final six-target package acceptance. Preserve verified work; choose an official replacement when it solves the requirement and reduces remaining work, rather than restart successful builds automatically. Batch changes and repeat affected validation only, retaining exact-head Quality/freshness/final-package invariants. Details are canonical in [the freshness policy](RELEASE_COMPONENT_FRESHNESS.md#official-distributions-first-source-build-necessity-2026-11-16).
+
 ### 2026-10-02: v2.2 final-gate Python selection and development restoration
 
 The immutable v2.2 release used exact stable **Python 3.14.8** in all 11 setup environments across nine maintained workflows and both native helpers, with fail-closed full runtime equality. The final gate and affected native validation are historical release evidence in [V2_2_FINAL_PRE_RELEASE_FRESHNESS.md](V2_2_FINAL_PRE_RELEASE_FRESHNESS.md); PR #220 is merged.

@@ -1,0 +1,106 @@
+--- a/src/corelib/global/qexpected_p.h
++++ b/src/corelib/global/qexpected_p.h
+@@ -33,6 +33,6 @@
+ 
+ #define Q23_TL_EXPECTED_VERSION_MAJOR 1
+-#define Q23_TL_EXPECTED_VERSION_MINOR 1
+-#define Q23_TL_EXPECTED_VERSION_PATCH 0
++#define Q23_TL_EXPECTED_VERSION_MINOR 3
++#define Q23_TL_EXPECTED_VERSION_PATCH 1
+ 
+ #include <QtCore/private/qglobal_p.h>
+@@ -76,4 +76,10 @@
+      !defined(__clang__))
+ #define Q23_TL_EXPECTED_GCC55
++#endif
++
++#ifdef _MSVC_LANG
++#define Q23_TL_CPLUSPLUS _MSVC_LANG
++#else
++#define Q23_TL_CPLUSPLUS __cplusplus
+ #endif
+ 
+@@ -138,9 +144,4 @@
+ #endif
+ 
+-#ifdef _MSVC_LANG
+-#define Q23_TL_CPLUSPLUS _MSVC_LANG
+-#else
+-#define Q23_TL_CPLUSPLUS __cplusplus
+-#endif
+ 
+ #if Q23_TL_CPLUSPLUS > 201103L
+@@ -163,5 +164,11 @@
+ QT_BEGIN_NAMESPACE
+ namespace q23 {
+-template <class T, class E> class expected;
++#if Q23_TL_CPLUSPLUS >= 201703L
++#define Q23_TL_EXPECTED_NODISCARD [[nodiscard]]
++#else
++#define Q23_TL_EXPECTED_NODISCARD
++#endif
++
++template <class T, class E> class Q23_TL_EXPECTED_NODISCARD expected;
+ 
+ #ifndef Q23_TL_MONOSTATE_INPLACE_MUTEX
+@@ -245,19 +252,11 @@
+ static constexpr unexpect_t unexpect{};
+ 
++#ifdef Q23_TL_EXPECTED_EXCEPTIONS_ENABLED
++#define Q23_TL_EXPECTED_THROW_EXCEPTION(e) throw((e));
++#else
++#define Q23_TL_EXPECTED_THROW_EXCEPTION(e) std::terminate();
++#endif
++
+ namespace detail {
+-template <typename E>
+-[[noreturn]] Q23_TL_EXPECTED_11_CONSTEXPR void throw_exception(E &&e) {
+-#ifdef Q23_TL_EXPECTED_EXCEPTIONS_ENABLED
+-  throw std::forward<E>(e);
+-#else
+-  (void)e;
+-#ifdef _MSC_VER
+-  __assume(0);
+-#else
+-  Q_UNREACHABLE();
+-#endif
+-#endif
+-}
+-
+ #ifndef Q23_TL_TRAITS_MUTEX
+ #define Q23_TL_TRAITS_MUTEX
+@@ -1309,5 +1308,5 @@
+ /// tracked by the expected object.
+ template <class T, class E>
+-class expected : private detail::expected_move_assign_base<T, E>,
++class Q23_TL_EXPECTED_NODISCARD expected : private detail::expected_move_assign_base<T, E>,
+                  private detail::expected_delete_ctor_base<T, E>,
+                  private detail::expected_delete_assign_base<T, E>,
+@@ -2050,5 +2049,5 @@
+   Q23_TL_EXPECTED_11_CONSTEXPR const U &value() const & {
+     if (!has_value())
+-      detail::throw_exception(bad_expected_access<E>(err().error()));
++      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(err().error()));
+     return val();
+   }
+@@ -2057,5 +2056,5 @@
+   Q23_TL_EXPECTED_11_CONSTEXPR U &value() & {
+     if (!has_value())
+-      detail::throw_exception(bad_expected_access<E>(err().error()));
++      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(err().error()));
+     return val();
+   }
+@@ -2064,5 +2063,5 @@
+   Q23_TL_EXPECTED_11_CONSTEXPR const U &&value() const && {
+     if (!has_value())
+-      detail::throw_exception(bad_expected_access<E>(std::move(err()).error()));
++      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(std::move(err()).error()));
+     return std::move(val());
+   }
+@@ -2071,5 +2070,5 @@
+   Q23_TL_EXPECTED_11_CONSTEXPR U &&value() && {
+     if (!has_value())
+-      detail::throw_exception(bad_expected_access<E>(std::move(err()).error()));
++      Q23_TL_EXPECTED_THROW_EXCEPTION(bad_expected_access<E>(std::move(err()).error()));
+     return std::move(val());
+   }

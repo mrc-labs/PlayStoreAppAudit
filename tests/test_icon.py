@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import struct
-from io import BytesIO
 from xml.etree import ElementTree
 
-from PIL import Image
+from PySide6.QtGui import QImage
 
 from app_icon import (
     _ICON_BYTES,
@@ -47,12 +46,12 @@ def test_canonical_icon_source_hash_is_eol_stable(tmp_path) -> None:
 
 def test_runtime_png_is_embedded_transparent_and_full_size(tmp_path) -> None:
     generated = generate_app_icon(tmp_path / "rendered.png", RUNTIME_ICON_SIZE)
-    with Image.open(generated) as image:
-        assert image.size == (RUNTIME_ICON_SIZE, RUNTIME_ICON_SIZE)
-        assert image.getextrema()[3] == (0, 255)
-    with Image.open(BytesIO(_ICON_BYTES)) as image:
-        assert image.size == (RUNTIME_ICON_SIZE, RUNTIME_ICON_SIZE)
-        assert image.getextrema()[3] == (0, 255)
+    for image in (QImage(str(generated)), QImage.fromData(_ICON_BYTES, "PNG")):
+        assert not image.isNull()
+        assert (image.width(), image.height()) == (RUNTIME_ICON_SIZE, RUNTIME_ICON_SIZE)
+        rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
+        alpha = bytes(rgba.constBits())[3::4]
+        assert (min(alpha), max(alpha)) == (0, 255)
 
     runtime_icon = ensure_runtime_icon()
     assert runtime_icon.parent.name == "PlayStoreAppAudit"
@@ -77,8 +76,10 @@ def test_windows_ico_renders_every_size_directly_from_svg(tmp_path) -> None:
         size = width or 256
         assert size == (height or 256)
         assert (planes, depth) == (1, 32)
-        with Image.open(BytesIO(data[offset : offset + length])) as image:
-            assert image.size == (size, size)
-            assert image.format == "PNG"
+        payload = data[offset : offset + length]
+        assert payload.startswith(b"\x89PNG\r\n\x1a\n")
+        image = QImage.fromData(payload, "PNG")
+        assert not image.isNull()
+        assert (image.width(), image.height()) == (size, size)
         sizes.append(size)
     assert tuple(sizes) == WINDOWS_ICON_SIZES

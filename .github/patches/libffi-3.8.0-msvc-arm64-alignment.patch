@@ -1,0 +1,12 @@
+--- a/src/aarch64/ffi.c
++++ b/src/aarch64/ffi.c
+@@ -417,7 +417,8 @@
+   size_t dest = state->next_struct_area - size;
+ 
+   /* Round down to the natural alignment of the value.  */
+-  dest = FFI_ALIGN_DOWN (dest, alignment);
++  /* Same unsigned mask, without unary minus rejected by MSVC SDL.  */
++  dest &= ~(alignment - 1);
+   state->next_struct_area = dest;
+ 
+   return memcpy ((char *) stack + dest, value, size);

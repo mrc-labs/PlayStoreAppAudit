@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 from typing import Any
 
 import google_play_scraper
@@ -20,7 +21,9 @@ def test_default_timeout_is_added() -> None:
     wrapped = scraper_transport._with_default_timeout(fake_urlopen, 25.0)
 
     assert wrapped("https://example.invalid") == "ok"
-    assert seen == [{"timeout": 25.0}]
+    assert seen[0]["timeout"] == 25.0
+    assert seen[0]["context"].verify_mode == ssl.CERT_REQUIRED
+    assert seen[0]["context"].check_hostname
 
 
 def test_explicit_timeout_is_preserved() -> None:
@@ -33,7 +36,9 @@ def test_explicit_timeout_is_preserved() -> None:
     wrapped = scraper_transport._with_default_timeout(fake_urlopen, 25.0)
 
     assert wrapped("https://example.invalid", timeout=3.0) == "ok"
-    assert seen == [{"timeout": 3.0}]
+    assert seen[0]["timeout"] == 3.0
+    assert seen[0]["context"].verify_mode == ssl.CERT_REQUIRED
+    assert seen[0]["context"].check_hostname
 
 
 def test_install_patches_google_play_scraper_transport_once(monkeypatch) -> None:
@@ -59,7 +64,9 @@ def test_install_patches_google_play_scraper_transport_once(monkeypatch) -> None
         assert scraper_transport.install_scraper_transport_timeout() is True
         assert request_utils.urlopen is first_wrapper
         assert request_utils._urlopen("https://example.invalid") == "ok"
-        assert calls == [{"timeout": float(scraper_transport.SCRAPER_TIMEOUT_SECONDS)}]
+        assert calls[0]["timeout"] == float(scraper_transport.SCRAPER_TIMEOUT_SECONDS)
+        assert calls[0]["context"].verify_mode == ssl.CERT_REQUIRED
+        assert calls[0]["context"].check_hostname
     finally:
         if hasattr(request_utils, marker):
             delattr(request_utils, marker)

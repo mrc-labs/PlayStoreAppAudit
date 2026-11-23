@@ -1,0 +1,20 @@
+{
+  "scope": "Nine architecture-independent qualified generated Qt/CLDR49 source files only; original CLDR archives, generator patches, retained349 code records and all native consumer gates remain required. No ISO registry input or redistribution.",
+  "archive": ".github/sources/qt-cldr49-generated.tar.xz",
+  "bytes": 1185216,
+  "sha256": "12d6b1851b17ce96f9de2b5ea4fb82b4d49c0124d55cf55f782ea4f93f67792b",
+  "source_contract_canonical_sha256": "801db189ddd3f4741fee036151d57a22c20f456c9e673144916d2796a1c9aa6f",
+  "origin": {
+    "source_sha": "1ba799e7fecafe1a0675495294670c316c8457ba",
+    "artifact_id": 14143608998,
+    "artifact_sha256": "d58103215ca9a07fc9e3c4c0e3ed057bf67096f62c67a4ee004afcb316744e5f"
+  },
+  "result": "All9 original retained generated source hashes independently verified before caching",
+  "runtime_fixture": {
+    "path": ".github/sources/qt-cldr49-runtime-input.xml.xz",
+    "bytes": 826808,
+    "sha256": "3d66db65e3d53dfb7b2901fd35873cb472c32dcae7bf575304f57dc0858554a8",
+    "xml_sha256": "450834975b57572c8e7d4e97339c1e7878ea53aa12158eb8941813bf5473a6a7",
+    "scope": "Exact original qualified XML test expectation; no full ISO registry"
+  }
+}

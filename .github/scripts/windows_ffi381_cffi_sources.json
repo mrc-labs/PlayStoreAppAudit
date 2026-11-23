@@ -1,0 +1,71 @@
+{
+  "arm64": {
+    "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+    "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+    "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "distribution_version": "2.1.1+psaa.libffi381",
+    "api_version": "2.1.1",
+    "scope": "Project-authored native ARM64-only static source selection and local identity, plus minimal guarded selection of existing ffi_prep_cif_var for the Microsoft variadic ABI. Windows closure allocation is unchanged. No upstream approval, preview parent, controlled runtime/crypto/producer adoption or unchanged official distribution claim.",
+    "patch": {
+      "path": ".github/patches/cffi-2.1.1-controlled-arm64-libffi381.patch",
+      "sha256": "186ba890c061f5c075128a393d1a81965e42f008230b43112c628dd16aa91c43",
+      "files": {
+        "setup.py": {
+          "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
+          "patched_sha256": "718f068c6a96253e461491ff19337bd73e55d0313f1b1f2ee599893d30653593"
+        },
+        "pyproject.toml": {
+          "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
+          "patched_sha256": "3f012b8ee4e6b91626878149a7a62f890b75a117873d67dd618fab5e6f74e82c"
+        },
+        "src/c/_cffi_backend.c": {
+          "original_sha256": "335899c93f88c53939fa8121502fb7129f34b9b8bdd97563d33346e0e91f9964",
+          "patched_sha256": "4641444bb1c0b3298329e7317adcb21bf8fca5bb370c599f2bed191cc33776dd"
+        }
+      }
+    },
+    "bootstrap_pins": [
+      "setuptools==84.2.1",
+      "wheel==0.48.0",
+      "pycparser==3.12",
+      "pytest==9.2.0"
+    ],
+    "static_linkage": "libffi3.8 ffi.h.in uses FFI_STATIC_BUILD; cffi old FFI_BUILDING alone produces16 __imp_ffi link errors in run42764087999. Enable the upstream static declaration macro in the opt-in ARM64 configuration; no C implementation change.",
+    "variadic_compatibility": {
+      "demonstrated_run": 42796859017,
+      "actual": 23.0,
+      "expected": 27.5,
+      "authority": "https://learn.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions",
+      "source_api": "libffi3.8.0 src/prep_cif.c, src/aarch64/ffi.c and cffi2.1.1 existing fb_prepare_cif variadic branch",
+      "minimum_change": "Enable the existing ffi_prep_cif_var path only for the controlled Windows ARM64 build; preserve closure flags and actual mixed floating/integer/string regression."
+    }
+  },
+  "x64": {
+    "source_url": "https://files.pythonhosted.org/packages/9e/ef/008a1939e372c06329a3fce4279c02f328488f3526744906eeec3da7ad5f/cffi-2.1.1.tar.gz",
+    "source_sha256": "dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be",
+    "authority": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "distribution_version": "2.1.1+psaa.libffi381",
+    "api_version": "2.1.1",
+    "scope": "Native AMD64-only source selection/local identity; existing C implementation unchanged. Diagnostic version exports identify actual static provider. No bundled legacy ffi, runtime/crypto/producer adoption or unchanged official distribution claim.",
+    "patch": {
+      "path": ".github/patches/cffi-2.1.1-controlled-x64-libffi381.patch",
+      "sha256": "3278cb178fad2d3593d91f23ad9e7d9641277b87fbf4567a54de18097e258fe8",
+      "files": {
+        "setup.py": {
+          "original_sha256": "f4205f108b2fc7798e854724918a2790951137200980b65b6a5e652d612b07f7",
+          "patched_sha256": "5b2b05ac4b91c9d3ccb8bbafd17cc5d2edae8b6db579d30f5a88bfa2b2897339"
+        },
+        "pyproject.toml": {
+          "original_sha256": "5319b77e4b41ab9bab0f352a3e2ef6277b0626c4c239a0736f9e15dbc417d693",
+          "patched_sha256": "3f012b8ee4e6b91626878149a7a62f890b75a117873d67dd618fab5e6f74e82c"
+        }
+      }
+    },
+    "bootstrap_pins": [
+      "setuptools==84.2.1",
+      "wheel==0.48.0",
+      "pycparser==3.12",
+      "pytest==9.2.0"
+    ]
+  }
+}

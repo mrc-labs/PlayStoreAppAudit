@@ -2,41 +2,482 @@ name: UI style audit
 
 on:
   workflow_dispatch:
+    inputs:
+      linux_arm64_pilot:
+        # Legacy key preserves existing dispatches within GitHub's ten-input limit.
+        description: One isolated diagnostic profile; never a final candidate
+        type: choice
+        default: 'off'
+        options: ['off', ffi-qualified-intake, ffi-posix-security, ffi-linux-security, rust-native-ruff-intel, rust-native-ruff, rust-maintained-ruff, rust-candidate-crypto-check, rust-candidate-check, rust-candidate-graphs, adb-linux-arm64-abi, adb-linux-arm64-consumers, rust-selected-graphs, adb-linux-arm64, prerequisites, full, full-consumers, full-imageformats, full-intake, macos-prerequisites, macos-full, macos-public-http, macos-bindings, macos-consumers, macos-imageformats, macos-intake, macos-x64-health, macos-x64-prerequisites, macos-x64-full, macos-x64-consumers, macos-x64-imageformats, macos-x64-intake, tools, tools-actions, tools-actions-native, tools-actions-cross-run, tools-scons, tools-ca, tools-build, tools-lxml, tools-lxml-windows, tools-qt-data-windows, tools-mac-providers, tools-mac-providers-arm64, tools-ffi-x64-windows, tools-ffi-x64-windows381, tools-ctypes-arm64-windows, tools-ctypes-arm64-windows381, tools-codecs-windows, tools-codec-consumers-windows, tools-sql-decimal-windows, tools-sql-decimal-arm64-windows, tools-cpython-providers-windows, tools-cpython-replay-windows, tools-cpython-replay-imageformats-windows, tools-cpython-intake-windows, tools-cpython-ffi381-windows, tools-cpython-framework-windows, tools-cpython-framework-x64-windows, tools-cpython-framework-arm64-windows, tools-cpython-arm64-windows, tools-cpython-crt-arm64-windows, ffi-arm64-prerequisites, windows-ca-prerequisites, windows-ca-guard, windows-ca-replay, windows-ca-native, windows-ca-intake, qt-text-prerequisites, qt-http-limits, qt-md4c-flags, qt-cbor-sdk, qt-integration, qt-evidence, qt-evidence-macos-arm64, qt-unicode-prerequisites, qt-data-prerequisites, qt-imageformats, qt-intake]
+      windows_arm64_runtime_probe:
+        description: Native Windows ARM64 prerequisites and generators only; no source-stack rebuild
+        type: boolean
+        default: false
+      windows_arm64_host_tools:
+        description: Also build/probe native Perl and Qt bootstrap generators only; requires ARM64 probe
+        type: boolean
+        default: false
+      windows_arm64_full_pilot:
+        description: One controlled native ARM64 source-stack pilot, gated by all cheap/host prerequisites
+        type: boolean
+        default: false
+      windows_runtime_pilot:
+        description: One native Windows x64 controlled source-stack diagnostic; never a final candidate
+        type: boolean
+        default: false
+      windows_prerequisites_only:
+        description: Windows pilot compiler, secure DLL loader and stock Schannel only; no source-stack rebuild
+        type: boolean
+        default: false
+      trust_diagnostics_only:
+        description: CA and selected target C++ SDK qualification only; no Python/Qt component rebuild
+        type: boolean
+        default: false
+      runtime_pilot:
+        description: One native Jammy x64 controlled Python-Qt-OpenSSL pilot; never a final candidate
+        type: boolean
+        default: false
+      component_audit:
+        description: Non-release six-target component/provider inventory; no UI capture or packaging
+        type: boolean
+        default: false
+      expected_sha:
+        description: Exact source SHA required for component diagnostics
+        type: string
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Independent native diagnostics may run together; a newer run of the same profile supersedes it.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ startsWith(inputs.linux_arm64_pilot, 'rust-') && format('rust-{0}', inputs.linux_arm64_pilot) || startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') && 'adb-linux-arm64' || startsWith(inputs.linux_arm64_pilot, 'qt-evidence') && 'retained-qt-evidence' || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' && 'libffi-windows-arm64' || startsWith(inputs.linux_arm64_pilot, 'tools') && format('toolchain-{0}', inputs.linux_arm64_pilot) || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'linux-x64-cbor' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'linux-x64-md4c' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'linux-x64-http' || (inputs.runtime_pilot || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') || inputs.linux_arm64_pilot == 'qt-intake') && 'linux-x64' || (inputs.windows_runtime_pilot || startsWith(inputs.linux_arm64_pilot, 'windows-ca-')) && 'windows-x64' || (inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && 'windows-arm64' || inputs.linux_arm64_pilot == 'macos-x64-imageformats' && 'macos-x64-imageformats' || startsWith(inputs.linux_arm64_pilot, 'macos-x64-') && 'macos-x64' || startsWith(inputs.linux_arm64_pilot, 'macos-') && 'macos-arm64' || (inputs.linux_arm64_pilot && inputs.linux_arm64_pilot != 'off') && 'linux-arm64' || 'capture' }}
   cancel-in-progress: true
 
 jobs:
-  capture:
-    name: ${{ matrix.label }} native vs Fusion
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-2025
-            label: Windows
-            platform_key: windows
-          - os: macos-15
-            label: macOS
-            platform_key: macos
-          - os: ubuntu-24.04
-            label: Linux
-            platform_key: linux
-    runs-on: ${{ matrix.os }}
 
+  controlled-actions-native:
+    if: ${{ inputs.linux_arm64_pilot == 'tools-actions-native' || inputs.linux_arm64_pilot == 'tools-actions-cross-run' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/controlled-actions-native.yml
+    with:
+      expected_sha: ${{ inputs.expected_sha }}
+      cross_run_only: ${{ inputs.linux_arm64_pilot == 'tools-actions-cross-run' }}
+
+  controlled-actions-rebuild:
+    if: ${{ inputs.linux_arm64_pilot == 'tools-actions' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           python-version: "3.14"
           check-latest: true
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
+      - name: Rebuild exact source Action bundles under native Node24
+        uses: ./.github/actions/build-controlled-actions
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        if: always()
+        with:
+          name: controlled-actions-source-node24-${{ github.run_id }}
+          path: controlled-actions-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 0
+
+  native-toolchain-delta:
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') || inputs.linux_arm64_pilot == 'tools' || inputs.linux_arm64_pilot == 'tools-scons' || inputs.linux_arm64_pilot == 'tools-ca' || inputs.linux_arm64_pilot == 'tools-build' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')))) }}
+    name: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') && 'Current native framework' || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-') && 'Controlled CPython providers' || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows') && 'Native ctypes consumer' || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') && 'Controlled native FFI' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'Controlled native Mac providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'Controlled native codecs' || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')) && 'Controlled native SQL/decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows'))) && 'Controlled native D3D12 data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'Controlled native lxml parsers' || inputs.linux_arm64_pilot == 'tools-build' && 'Isolated build dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'Native CA bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'Controlled SCons' || 'Toolchain delta' }} / ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON((inputs.linux_arm64_pilot == 'tools-cpython-arm64-windows' || inputs.linux_arm64_pilot == 'tools-cpython-crt-arm64-windows' || inputs.linux_arm64_pilot == 'tools-cpython-framework-arm64-windows') && '[{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows') && '[{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || (startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || inputs.linux_arm64_pilot == 'tools-cpython-framework-x64-windows') && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"}]' || inputs.linux_arm64_pilot == 'tools-mac-providers-arm64' && '[{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && '[{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || inputs.linux_arm64_pilot == 'tools-sql-decimal-arm64-windows' && '[{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || endsWith(inputs.linux_arm64_pilot, '-windows') && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"}]' || '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]') }}
+    runs-on: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')))) && matrix.label == 'linux-x64' && 'ubuntu-22.04' || (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')))) && matrix.label == 'windows-x64' && 'windows-2025-vs2026' || matrix.os }}
+    timeout-minutes: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') && 360 || 35 }}
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_SCONS: ${{ inputs.linux_arm64_pilot == 'tools-scons' && '4.11.1' || '4.10.1' }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.label, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Guard exact source and isolated diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+
+      - name: Set up native Python bootstrap
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final';assert platform.python_version()=='3.14.10';assert not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Qualify verified pip and current tool installs
+        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows'))) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python .github/scripts/bootstrap_pip.py | tee toolchain-delta-evidence/pip-bootstrap.log
+          python -m pip install 'pytest==9.2.0' 'ruff==0.17.6' 'mypy==2.4.1' -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'certifi==2026.11.20' --report toolchain-delta-evidence/install.json
+          if [ '${{ inputs.linux_arm64_pilot }}' = tools ]; then
+            python -m pip install 'Nuitka==4.3.5'
+          fi
+
+      - name: Build isolated labelled stable-source compiler integration
+        if: ${{ inputs.linux_arm64_pilot == 'tools-scons' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/provision_nuitka_scons.py \
+            --work-root "$RUNNER_TEMP/controlled-scons-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --evidence-dir toolchain-delta-evidence
+
+      - name: Exercise selected native compiler and developer tools
+        if: ${{ !startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && inputs.linux_arm64_pilot != 'tools-ca' && inputs.linux_arm64_pilot != 'tools-build' && (!startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && inputs.linux_arm64_pilot != 'tools-qt-data-windows' && !startsWith(inputs.linux_arm64_pilot, 'tools-codec') && !((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows'))) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/verify_toolchain_delta.py
+
+      - name: Probe current native Qt CA policy before source rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'tools-ca' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          python -m pip install --only-binary=:all: 'PySide6-Essentials==6.12.0' --report toolchain-delta-evidence/qt-bootstrap-install.json
+          python .github/scripts/probe_qt_ca_security.py --output-dir toolchain-delta-evidence
+
+      - name: Qualify actual isolated setuptools dependency candidate
+        if: ${{ inputs.linux_arm64_pilot == 'tools-build' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          python .github/scripts/probe_setuptools_build.py \
+            --work-root "$RUNNER_TEMP/setuptools-build-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir toolchain-delta-evidence
+
+      - name: Qualify only native macOS source providers and cffi
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python -m venv "$RUNNER_TEMP/macos-provider-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          export PATH="$RUNNER_TEMP/macos-provider-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin:$PATH"
+          python .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          bash .github/scripts/probe_macos_native_providers.sh "$RUNNER_TEMP/macos-provider-sources-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" 2>&1 | tee toolchain-delta-evidence/macos-provider-build.log
+
+      - name: Prepare isolated native parser/data tools
+        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')))) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir toolchain-delta-evidence
+          python -m venv "$RUNNER_TEMP/lxml-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          probe_python=$(python -c 'import os; from pathlib import Path; p=Path(os.environ["RUNNER_TEMP"])/("lxml-tools-"+os.environ["GITHUB_RUN_ID"]+"-"+os.environ["GITHUB_RUN_ATTEMPT"]); print(p/("Scripts/python.exe" if os.name=="nt" else "bin/python"))')
+          "$probe_python" .github/scripts/bootstrap_pip.py > toolchain-delta-evidence/pip-bootstrap.log
+          if [ '${{ runner.os }}' != Linux ] && [ '${{ inputs.linux_arm64_pilot }}' != tools-qt-data-windows ] && [[ '${{ inputs.linux_arm64_pilot }}' != tools-sql-decimal* ]] && [ '${{ inputs.linux_arm64_pilot }}' != tools-ctypes-arm64-windows ] && [ '${{ inputs.linux_arm64_pilot }}' != tools-codec-consumers-windows ]; then
+            "$probe_python" -m pip install -r .github/scripts/source_build_requirements.txt -c .github/scripts/source_build_constraints.txt 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
+          fi
+          if [[ '${{ inputs.linux_arm64_pilot }}' = tools-cpython-* ]]; then
+            "$probe_python" -m pip install 'cmake==4.4.4' 'ninja==1.13.2' --report toolchain-delta-evidence/install.json
+          fi
+          echo "LXML_PROBE_PYTHON=$probe_python" >> "$GITHUB_ENV"
+          "$probe_python" -c 'from pathlib import Path; import sys; print(Path(sys.executable).parent.as_posix())' >> "$GITHUB_PATH"
+
+      - name: Qualify native Windows compiler then selected consumers
+        if: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-lxml') || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')))) && runner.os == 'Windows' && inputs.linux_arm64_pilot != 'tools-codec-consumers-windows' }}
+        env:
+          GH_TOKEN: ${{ (startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) && github.token || '' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $inventory = & $vswhere -all -products '*' -format json | ConvertFrom-Json
+          $inventory | ConvertTo-Json -Depth 8 | Set-Content toolchain-delta-evidence/visual-studio-inventory.json
+          $arch = if ($env:EXPECTED_ARCH -eq 'arm64') { 'arm64' } else { 'x64' }
+          $selected = $null
+          $available = @()
+          foreach ($installation in $inventory) {
+            if ($installation.isPrerelease -or $installation.channelId -notin @('VisualStudio.18.Stable', 'VisualStudio.18.Release')) { continue }
+            $tools = Join-Path $installation.installationPath 'VC/Tools/MSVC'
+            if (-not (Test-Path -LiteralPath $tools)) { continue }
+            foreach ($version in (Get-ChildItem -LiteralPath $tools -Directory | Sort-Object { [version]$_.Name } -Descending)) {
+              $compiler = Join-Path $version.FullName "bin/Host$arch/$arch/cl.exe"
+              $available += @{ toolset = $version.Name; compiler = $compiler; exists = (Test-Path -LiteralPath $compiler) }
+              if (-not $selected -and $version.Name -like '14.52.*' -and (Test-Path -LiteralPath $compiler)) { $selected = $installation.installationPath }
+            }
+          }
+          $available | ConvertTo-Json -Depth 4 | Set-Content toolchain-delta-evidence/native-toolsets.json
+          if (-not $selected) {
+            # Both native hosted pools may still supply18.11/14.51. Provision only
+            # current stable native Build Tools in this ephemeral diagnostic runner.
+            $channelPath = Join-Path $env:RUNNER_TEMP 'psaa-vs18-release-channel.json'
+            Invoke-WebRequest 'https://aka.ms/vs/stable/channel' -OutFile $channelPath
+            $channel = Get-Content -Raw -LiteralPath $channelPath | ConvertFrom-Json
+            $product = @($channel.channelItems | Where-Object { $_.id -eq 'Microsoft.VisualStudio.Product.BuildTools' })
+            if ($product.Count -ne 1 -or $product[0].version -notlike '18.12.*') { throw 'Unreviewed stable VS release channel.' }
+            $setup = @($channel.channelItems | Where-Object { $_.id -eq 'VisualStudio.18.Release.Bootstrappers.Setup' })
+            $payload = @($setup.payloads | Where-Object { $_.fileName -eq 'vs_Setup.exe' })
+            if ($payload.Count -ne 1 -or $payload[0].url -notlike 'https://download.visualstudio.microsoft.com/*') { throw 'Unqualified official installer provenance.' }
+            $bootstrapper = Join-Path $env:RUNNER_TEMP 'psaa-vs-buildtools.exe'
+            Invoke-WebRequest $payload[0].url -OutFile $bootstrapper
+            $digest = (Get-FileHash -LiteralPath $bootstrapper -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($digest -ne $payload[0].sha256.ToLowerInvariant()) { throw 'Official installer hash mismatch.' }
+            $signature = Get-AuthenticodeSignature -LiteralPath $bootstrapper
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'Official installer signature invalid.' }
+            Copy-Item -LiteralPath $channelPath -Destination toolchain-delta-evidence/vs-release-channel.json
+            @{ url = $payload[0].url; sha256 = $digest; product_version = $product[0].version; signer = $signature.SignerCertificate.Subject; scope = 'Ephemeral host Build Tools only; no production signing' } | ConvertTo-Json | Set-Content toolchain-delta-evidence/vs-bootstrapper-provenance.json
+            $install = Join-Path $env:RUNNER_TEMP 'psaa-native-msvc'
+            $component = if ($arch -eq 'arm64') { 'Microsoft.VisualStudio.Component.VC.Tools.ARM64' } else { 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64' }
+            $arguments = @('--quiet', '--wait', '--norestart', '--nocache', '--productId', 'Microsoft.VisualStudio.Product.BuildTools', '--channelId', 'VisualStudio.18.Release', '--channelUri', 'https://aka.ms/vs/stable/channel', '--installPath', $install, '--add', $component, '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.26100')
+            $process = Start-Process -FilePath $bootstrapper -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+            if ($process.ExitCode -notin @(0, 3010)) { throw "Stable Build Tools installation failed: $($process.ExitCode)" }
+            $selected = $install
+          }
+          if (-not $selected) { throw 'BLOCKER: native stable MSVC14.52 unavailable; no parser rebuild started.' }
+          Import-Module (Join-Path $selected 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstallPath $selected -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=$arch -vcvars_ver=14.52"
+          if ($env:VSCMD_ARG_HOST_ARCH -ne $arch -or $env:VSCMD_ARG_TGT_ARCH -ne $arch) { throw 'Native host/target required.' }
+          $nativeCompilers = @(Get-ChildItem -LiteralPath (Join-Path $selected 'VC/Tools/MSVC') -Directory | Where-Object { $_.Name -like '14.52.*' } | ForEach-Object { Join-Path $_.FullName "bin/Host$arch/$arch/cl.exe" })
+          $nativeCompilers | ForEach-Object { @{ path = $_; exists = (Test-Path -LiteralPath $_) } } | ConvertTo-Json | Set-Content toolchain-delta-evidence/native-compiler-after-setup.json
+          $nativeCompiler = @($nativeCompilers | Where-Object { Test-Path -LiteralPath $_ })
+          if ($nativeCompiler.Count -ne 1) { throw 'Native14.52 compiler payload missing after setup; no runtime build started.' }
+          $env:PATH = (Split-Path -Parent $nativeCompiler[0]) + ';' + $env:PATH
+          if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows381') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_libffi381.py
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ctypes-arm64-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_arm64_ctypes.py --work-root "$env:RUNNER_TEMP/ctypes-arm64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-ffi381-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/prepare_controlled_runtime.py --target "windows-$arch"
+            if ($LASTEXITCODE -ne 0) { throw 'Controlled SDK intake failed before FFI consumers.' }
+            $runtime = Get-Content -Raw toolchain-delta-evidence/producer-runtime-selection.json | ConvertFrom-Json
+            $consumerArguments = @()
+            if ($arch -eq 'x64') { $consumerArguments = @('--reuse-x64-staged') }
+            & $runtime.python .github/scripts/qualify_windows_ffi381.py @consumerArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Static FFI extension consumers failed.' }
+            & $env:LXML_PROBE_PYTHON .github/scripts/qualify_windows_ffi381.py --install
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-intake-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/prepare_controlled_runtime.py --target "windows-$arch"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-replay*') {
+            $moduleArguments = @()
+            if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-replay-imageformats-windows') { $moduleArguments += '--imageformats' }
+            & $env:LXML_PROBE_PYTHON .github/scripts/replay_windows_current_framework.py @moduleArguments
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-framework*') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/build_windows_current_framework.py --stage prepare
+            if ($LASTEXITCODE -ne 0) { throw 'Native framework prerequisites failed; Qt build not started.' }
+            # Carry only the qualified native build context across the two upload checkpoints.
+            foreach ($taskKey in @('VSINSTALLDIR','VCINSTALLDIR','VCToolsInstallDir','VCToolsVersion','WindowsSdkDir','WindowsSDKVersion','WindowsSDKLibVersion','UniversalCRTSdkDir','UCRTVersion','VSCMD_ARG_HOST_ARCH','VSCMD_ARG_TGT_ARCH','VSCMD_VER','INCLUDE','LIB','LIBPATH','PATH')) {
+              $taskValue = [Environment]::GetEnvironmentVariable($taskKey)
+              if ($taskValue) { "$taskKey=$taskValue" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
+            }
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-cpython-*') {
+            [string[]]$crtProbe = @()
+            if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-cpython-crt-arm64-windows') { $crtProbe += '--crt-only' }
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_cpython_providers.py --work-root "$env:RUNNER_TEMP/cpython-current-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" @crtProbe
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-ffi-x64-windows*') {
+            $ffiArguments = @('--consumers-only')
+            if ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-ffi-x64-windows381') {
+              $ffiArguments = @('--source-contract', '.github/scripts/windows_x64_libffi381_sources.json')
+            }
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_x64_libffi.py --work-root "$env:RUNNER_TEMP/ffi-x64-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" @ffiArguments
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-codecs-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_codec_providers.py --work-root "$env:RUNNER_TEMP/codecs-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -like 'tools-sql-decimal*') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_windows_sql_decimal.py --work-root "$env:RUNNER_TEMP/sql-decimal-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } elseif ('${{ inputs.linux_arm64_pilot }}' -eq 'tools-qt-data-windows') {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_qt_d3d12_data.py --work-root "$env:RUNNER_TEMP/qt-d3d12-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          } else {
+            & $env:LXML_PROBE_PYTHON .github/scripts/probe_lxml_native.py --work-root "$env:RUNNER_TEMP/lxml-native-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Controlled native consumer qualification failed.' }
+
+      - name: Retain qualified runtime and prerequisite SDK before Qt compilation
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: windows-framework-prerequisites-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            toolchain-delta-evidence/*.json
+            toolchain-delta-evidence/windows-framework-sdk.tar.zst
+            toolchain-delta-evidence/original-runtime/
+            toolchain-delta-evidence/legal/
+            toolchain-delta-evidence/sources/*.tar.*
+            toolchain-delta-evidence/*.patch
+          if-no-files-found: error
+          retention-days: 0
+
+      - name: Build necessary native Qt security and image providers
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') }}
+        shell: pwsh
+        run: |
+          & $env:LXML_PROBE_PYTHON .github/scripts/build_windows_current_framework.py --stage qt
+          if ($LASTEXITCODE -ne 0) { throw 'Native Qt build failed; preserve original runtime and prerequisite SDK.' }
+
+      - name: Retain installed native Qt before binding compilation
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: windows-framework-qt-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            toolchain-delta-evidence/*.json
+            toolchain-delta-evidence/windows-framework-sdk.tar.zst
+            toolchain-delta-evidence/original-runtime/
+            toolchain-delta-evidence/legal/
+            toolchain-delta-evidence/sources/*.tar.*
+            toolchain-delta-evidence/*.patch
+          if-no-files-found: error
+          retention-days: 0
+
+      - name: Match native bindings and exercise the full Windows consumers
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') }}
+        shell: pwsh
+        run: |
+          & $env:LXML_PROBE_PYTHON .github/scripts/build_windows_current_framework.py --stage bindings
+          if ($LASTEXITCODE -ne 0) { throw 'Native binding/security/GUI/CLI validation failed; installed Qt checkpoint retained.' }
+
+      - name: Repeat only native Windows codec consumers from exact retained bytes
+        if: ${{ inputs.linux_arm64_pilot == 'tools-codec-consumers-windows' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & $env:LXML_PROBE_PYTHON .github/scripts/reuse_windows_codec_prerequisites.py --output-dir toolchain-delta-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Native retained codec consumer validation failed.' }
+
+      - name: Qualify controlled POSIX lxml parsers only
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && runner.os != 'Windows' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          "$LXML_PROBE_PYTHON" .github/scripts/probe_lxml_native.py --work-root "$RUNNER_TEMP/lxml-native-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
+      - name: Upload host tool diagnostic evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: ${{ startsWith(inputs.linux_arm64_pilot, 'tools-cpython-framework') && 'diagnostic-current-framework' || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-') && 'diagnostic-cpython-providers' || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') && 'diagnostic-libffi' || startsWith(inputs.linux_arm64_pilot, 'tools-mac-providers') && 'diagnostic-macos-providers' || startsWith(inputs.linux_arm64_pilot, 'tools-codec') && 'diagnostic-native-codecs' || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows')) && 'diagnostic-sql-decimal' || ((inputs.linux_arm64_pilot == 'tools-qt-data-windows' || startsWith(inputs.linux_arm64_pilot, 'tools-codec')) || ((startsWith(inputs.linux_arm64_pilot, 'tools-sql-decimal') || startsWith(inputs.linux_arm64_pilot, 'tools-cpython-')) || startsWith(inputs.linux_arm64_pilot, 'tools-ffi-x64-windows') || startsWith(inputs.linux_arm64_pilot, 'tools-ctypes-arm64-windows'))) && 'diagnostic-qt-data' || startsWith(inputs.linux_arm64_pilot, 'tools-lxml') && 'diagnostic-lxml-native' || inputs.linux_arm64_pilot == 'tools-build' && 'diagnostic-build-dependencies' || inputs.linux_arm64_pilot == 'tools-ca' && 'diagnostic-ca-bootstrap' || inputs.linux_arm64_pilot == 'tools-scons' && 'diagnostic-scons-integration' || 'diagnostic-toolchain-delta' }}-${{ matrix.label }}-${{ github.run_id }}
+          path: |
+            toolchain-delta-evidence/
+            !toolchain-delta-evidence/**/server-key.pem
+            !toolchain-delta-evidence/**/ca-key.pem
+          if-no-files-found: error
+          retention-days: 0
+
+  retained-qt-evidence:
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'qt-evidence') }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Verify source and isolated read-only scope
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$EXPECTED_SHA" = '${{ github.sha }}'
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+      - name: Verify stable Python 3.14
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
+      - name: Verify original ZIP and retain small source/legal/native evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/${{ inputs.linux_arm64_pilot == 'qt-evidence-macos-arm64' && 'extract_macos_pilot_evidence.py' || 'extract_qt_pilot_evidence.py' }}
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: retained-qt-integration-evidence-${{ github.run_id }}
+          path: retained-qt-evidence/*.zip
+          compression-level: 0
+          retention-days: 0
+          if-no-files-found: error
+
+  capture:
+    if: ${{ !inputs.runtime_pilot && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') }}
+    name: ${{ inputs.component_audit && 'Components' || 'Styles' }} / ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.component_audit && '[{"os":"windows-2025","label":"windows-x64","platform_key":"windows","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","platform_key":"windows","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","platform_key":"linux","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","platform_key":"linux","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","platform_key":"macos","arch":"x64"},{"os":"macos-26","label":"macos-arm64","platform_key":"macos","arch":"arm64"}]' || '[{"os":"windows-2025","label":"Windows","platform_key":"windows","arch":"x64"},{"os":"macos-15","label":"macOS","platform_key":"macos","arch":"arm64"},{"os":"ubuntu-24.04","label":"Linux","platform_key":"linux","arch":"x64"}]') }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      COMPONENT_AUDIT: ${{ inputs.component_audit }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify component diagnostic source SHA
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#EXPECTED_SHA}" = 40
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Set up Python 3.14
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -76,13 +517,51 @@ jobs:
             xauth \
             xvfb
 
-      - name: Install source-mode UI dependencies
+      - name: Provision diagnostic Windows ARM64 cryptography
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          & ./.github/scripts/provision_windows_arm64_openssl.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "openssl-arm64-$env:GITHUB_RUN_ID")
+          if ($LASTEXITCODE -ne 0) { throw 'Native crypto prerequisite failed.' }
+
+      - name: Provision diagnostic Intel macOS cryptography
+        if: ${{ inputs.component_audit && runner.os == 'macOS' && matrix.arch == 'x64' }}
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+          MACOSX_DEPLOYMENT_TARGET: '10.15'
+        run: bash .github/scripts/provision_macos_intel_crypto.sh
+
+      - name: Select producing Linux x64 compatibility runtime for diagnostics
+        if: ${{ inputs.component_audit && runner.os == 'Linux' && matrix.arch == 'x64' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/prepare_linux_x64_sysroot.sh
+
+      - name: Install source-mode UI dependencies
+        if: ${{ !(inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/bootstrap_pip.py
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if [ "$COMPONENT_AUDIT" = true ]; then
+            python -m pip install "Nuitka==4.3.5"
+            if [ "${{ runner.os }}" = Linux ]; then python -m pip install "patchelf==0.19.3.0"; fi
+          fi
+
+      - name: Install native Windows ARM64 diagnostic dependencies
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          python .github/scripts/bootstrap_pip.py
+          if ($LASTEXITCODE -ne 0) { throw 'Secure pip bootstrap failed.' }
+          python -m pip install -r requirements-dev.txt --report component-install.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native dependency installation failed.' }
+          python -m pip install "Nuitka==4.3.5"
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic compiler metadata installation failed.' }
 
       - name: Capture Windows native and Fusion styles
-        if: runner.os == 'Windows'
+        if: ${{ !inputs.component_audit && runner.os == 'Windows' }}
         shell: pwsh
         env:
           QT_SCALE_FACTOR: "1"
@@ -93,7 +572,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Fusion Windows UI capture failed.' }
 
       - name: Capture macOS native and Fusion styles
-        if: runner.os == 'macOS'
+        if: ${{ !inputs.component_audit && runner.os == 'macOS' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -102,7 +581,7 @@ jobs:
           python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Capture Linux default and Fusion styles under Xvfb
-        if: runner.os == 'Linux'
+        if: ${{ !inputs.component_audit && runner.os == 'Linux' }}
         env:
           QT_SCALE_FACTOR: "1"
         run: |
@@ -111,6 +590,7 @@ jobs:
           xvfb-run -a python .github/scripts/capture_ui_style.py --style fusion --output-dir ui-style-audit
 
       - name: Validate audit evidence
+        if: ${{ !inputs.component_audit }}
         shell: bash
         env:
           PLATFORM_KEY: ${{ matrix.platform_key }}
@@ -177,9 +657,1032 @@ jobs:
           PY
 
       - name: Upload UI audit screenshots and metadata
-        uses: actions/upload-artifact@v7
+        if: ${{ !inputs.component_audit }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: ui-style-audit-${{ matrix.platform_key }}
           path: ui-style-audit/
           if-no-files-found: error
+          retention-days: 0
+
+      - name: Inspect native component providers
+        if: ${{ inputs.component_audit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/audit_runtime_components.py --output-dir component-audit
+
+      - name: Verify ARM64 cryptography and probe CPython OpenSSL 4 feasibility
+        if: ${{ inputs.component_audit && runner.os == 'Windows' && matrix.arch == 'arm64' }}
+        shell: pwsh
+        run: |
+          Copy-Item component-install.json (Join-Path $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE 'cryptography-install.json')
+          python .github/scripts/verify_windows_arm64_crypto.py --evidence-dir $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Native cryptography verification failed.' }
+          python .github/scripts/probe_cpython_openssl4.py --output-dir component-audit/cpython-openssl4
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded CPython/OpenSSL API probe failed.' }
+          Copy-Item -LiteralPath $env:CRYPTOGRAPHY_OPENSSL_EVIDENCE -Destination component-audit/openssl-cryptography -Recurse
+
+      - name: Upload non-release component diagnostic evidence
+        if: ${{ always() && inputs.component_audit }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: diagnostic-components-${{ matrix.platform_key }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            component-audit/
+            component-install.json
+            linux-diagnostics/
+          if-no-files-found: error
+          retention-days: 0
+
+  runtime-pilot:
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ (inputs.runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-http-limits' || inputs.linux_arm64_pilot == 'qt-md4c-flags' || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') || inputs.linux_arm64_pilot == 'qt-intake') && !inputs.windows_runtime_pilot && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    name: ${{ inputs.linux_arm64_pilot == 'qt-data-prerequisites' && 'Qt expected and PSL prerequisites / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' && 'Unicode 18 generator prerequisite / Linux x64 Jammy' || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') && 'Changed Qt-PySide integration / Linux x64 Jammy' || (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) && 'Retained QtCore CBOR consumer / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-md4c-flags' && 'Qt MD4C flags only / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-http-limits' && 'Qt HTTP security / Linux x64 Jammy' || inputs.linux_arm64_pilot == 'qt-text-prerequisites' && 'Qt text provider prerequisite / Linux x64 Jammy' || 'Native runtime-framework pilot / Linux x64 Jammy' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated pilot source and native target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test '${{ inputs.component_audit }}' = false
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+          if [[ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-http-limits || '${{ inputs.linux_arm64_pilot }}' = qt-md4c-flags || '${{ inputs.linux_arm64_pilot }}' = qt-cbor-sdk || '${{ inputs.linux_arm64_pilot }}' = qt-unicode-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-data-prerequisites || '${{ inputs.linux_arm64_pilot }}' = qt-integration || '${{ inputs.linux_arm64_pilot }}' = qt-imageformats || '${{ inputs.linux_arm64_pilot }}' = qt-intake ]]; then
+            test '${{ inputs.runtime_pilot }}' = false
+            test '${{ inputs.trust_diagnostics_only }}' = false
+          fi
+
+      - name: Diagnose system trust and C++ SDK before downloads or build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 .github/scripts/verify_native_runtime_pilot.py \
+            --diagnose-system-trust --output-dir pilot-evidence
+
+      - name: Qualify maintained target C++ link SDK before runtime downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 .github/scripts/provision_pilot_cxx_sdk.py \
+            --work-root "$RUNNER_TEMP/pilot-cxx-sdk-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --evidence-dir pilot-evidence
+
+      - name: Set up bootstrap Python
+        if: ${{ !inputs.trust_diagnostics_only }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+
+      - name: Verify stable Python 3.14
+        if: ${{ !inputs.trust_diagnostics_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Install ephemeral native build prerequisites
+        if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' && inputs.linux_arm64_pilot != 'qt-unicode-prerequisites' && inputs.linux_arm64_pilot != 'qt-data-prerequisites' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libglib2.0-dev fonts-dejavu-core \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+          python .github/scripts/bootstrap_pip.py
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
+
+      - name: Verify unchanged Python suite provenance before integrated Qt rebuild
+        if: ${{ (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.linux_arm64_pilot }}' = qt-integration ]; then
+            python .github/scripts/reuse_linux_python_evidence.py --output-dir pilot-evidence
+            python .github/scripts/reuse_linux_pre_qt_sdk.py --qt --bindings
+          else
+            python .github/scripts/reuse_linux_pre_qt_sdk.py --qt --bindings --imageformats
+          fi
+
+      - name: Retain exact qualified parser input before controlled runtime tests
+        if: ${{ !inputs.trust_diagnostics_only && (inputs.runtime_pilot || (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats')) }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/intake_lxml_native.py --target linux-x64 --output-dir pilot-evidence/lxml-intake
+
+      - name: Build and exercise one controlled native stack
+        if: ${{ !inputs.trust_diagnostics_only && inputs.linux_arm64_pilot != 'qt-imageformats' && inputs.linux_arm64_pilot != 'qt-intake' && inputs.linux_arm64_pilot != 'qt-text-prerequisites' && inputs.linux_arm64_pilot != 'qt-http-limits' && inputs.linux_arm64_pilot != 'qt-md4c-flags' && inputs.linux_arm64_pilot != 'qt-cbor-sdk' && inputs.linux_arm64_pilot != 'qt-unicode-prerequisites' && inputs.linux_arm64_pilot != 'qt-data-prerequisites' }}
+        shell: bash
+        env:
+          PILOT_QT_INTEGRATION_ONLY: ${{ (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') && '1' || '0' }}
+          PILOT_REUSE_COMPILED_QT: ${{ (inputs.linux_arm64_pilot == 'qt-integration' || inputs.linux_arm64_pilot == 'qt-imageformats') && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          test -d pilot-evidence
+          bash .github/scripts/build_native_runtime_pilot.sh \
+            "$RUNNER_TEMP/native-runtime-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee pilot-evidence/pilot-build.log
+
+      - name: Qualify matching image module only on retained Jammy SDK
+        if: ${{ inputs.linux_arm64_pilot == 'qt-imageformats' }}
+        shell: bash
+        run: bash .github/scripts/qualify_linux_imageformats.sh linux-x64
+
+      - name: Qualify current source text providers without rebuilding Qt
+        if: ${{ inputs.linux_arm64_pilot == 'qt-text-prerequisites' || inputs.linux_arm64_pilot == 'qt-md4c-flags' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites ]; then
+            sudo apt-get update
+            sudo apt-get install -y libglib2.0-dev
+          fi
+          python -m venv "$RUNNER_TEMP/qt-text-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          source "$RUNNER_TEMP/qt-text-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/bootstrap_pip.py > pilot-evidence/text-pip-bootstrap.log
+          if [ '${{ inputs.linux_arm64_pilot }}' = qt-text-prerequisites ]; then
+            python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' --report pilot-evidence/text-tools-install.json
+          fi
+          python .github/scripts/probe_qt_text_providers.py ${{ inputs.linux_arm64_pilot == 'qt-md4c-flags' && '--md4c-flags-only' || '' }} \
+            --work-root "$RUNNER_TEMP/qt-text-source-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir pilot-evidence
+
+      - name: Qualify official Qt HTTP security patches only
+        if: ${{ inputs.linux_arm64_pilot == 'qt-http-limits' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/qt-http-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          source "$RUNNER_TEMP/qt-http-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/bootstrap_pip.py > pilot-evidence/http-pip-bootstrap.log
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' --report pilot-evidence/http-tools-install.json
+          python .github/scripts/probe_qt_http_limits.py \
+            --work-root "$RUNNER_TEMP/qt-http-source-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir pilot-evidence
+
+      - name: Prepare isolated CBOR consumer build tools
+        if: ${{ (inputs.linux_arm64_pilot == 'qt-cbor-sdk' || (inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' || inputs.linux_arm64_pilot == 'qt-data-prerequisites')) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/qt-cbor-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          source "$RUNNER_TEMP/qt-cbor-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/bootstrap_pip.py > pilot-evidence/cbor-pip-bootstrap.log
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' --report pilot-evidence/cbor-tools-install.json
+
+      - name: Exercise CBOR through the unchanged compiled diagnostic QtCore SDK
+        if: ${{ inputs.linux_arm64_pilot == 'qt-cbor-sdk' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/qt-cbor-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/probe_qt_http_limits.py --retained-cbor-sdk \
+            --work-root "$RUNNER_TEMP/qt-cbor-sdk-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir pilot-evidence
+
+      - name: Qualify Unicode 18 generator only against retained QtCore
+        if: ${{ inputs.linux_arm64_pilot == 'qt-unicode-prerequisites' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/qt-cbor-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/probe_qt_unicode18.py \
+            --work-root "$RUNNER_TEMP/qt-unicode18-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir pilot-evidence
+
+      - name: Qualify expected and PSL consumers only against retained QtCore
+        if: ${{ inputs.linux_arm64_pilot == 'qt-data-prerequisites' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source "$RUNNER_TEMP/qt-cbor-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/activate"
+          python .github/scripts/probe_qt_data_refresh.py \
+            --work-root "$RUNNER_TEMP/qt-data-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output-dir pilot-evidence
+
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'qt-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-x64
+
+      - name: Upload diagnostic runtime-framework evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: diagnostic-runtime-framework-linux-x64-${{ github.run_id }}
+          # Original unchanged-suite ZIP is already retained at14098850639;
+          # keep its hash/provenance and exact XML here, avoiding duplicate278MB.
+          path: |
+            ${{ inputs.linux_arm64_pilot == 'qt-intake' && 'controlled-runtime-evidence/' || 'pilot-evidence/' }}
+            !pilot-evidence/original-python-14098850639.zip
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-runtime-pilot:
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ (inputs.windows_runtime_pilot && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off') || inputs.linux_arm64_pilot == 'windows-ca-prerequisites' || inputs.linux_arm64_pilot == 'windows-ca-guard' || inputs.linux_arm64_pilot == 'windows-ca-replay' || inputs.linux_arm64_pilot == 'windows-ca-native' || inputs.linux_arm64_pilot == 'windows-ca-intake') && !inputs.windows_arm64_runtime_probe && !inputs.windows_arm64_host_tools && !inputs.windows_arm64_full_pilot }}
+    name: Native runtime-framework pilot / Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated Windows pilot SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'X64') { throw 'Native x64 runner required.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows x64 pilot.' }
+          if ('${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-') -and ('${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false')) { throw 'Select only the bounded Schannel diagnostic mode.' }
+
+      - name: Set up Windows pilot bootstrap Python
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: x64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform, sys, sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'AMD64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Stable native bootstrap required.' }
+
+      - name: Install existing tools for bounded Schannel diagnostic only
+        if: ${{ startsWith(inputs.linux_arm64_pilot, 'windows-ca-') && inputs.linux_arm64_pilot != 'windows-ca-intake' }}
+        shell: pwsh
+        run: |
+          python .github/scripts/bootstrap_pip.py
+          if ($LASTEXITCODE -ne 0) { throw 'Secure bootstrap failed.' }
+          New-Item -ItemType Directory -Path windows-pilot-evidence -Force | Out-Null
+          python -m pip install 'cmake==4.4.4' 'ninja==1.13.2' 'cryptography==50.0.2' --report windows-pilot-evidence/qt-ca-tools-install.json
+          if ($LASTEXITCODE -ne 0) { throw 'Existing native diagnostic tools unavailable.' }
+
+      - name: Verify original compiled artifact through native Windows HTTPS only
+        if: ${{ inputs.linux_arm64_pilot == 'windows-ca-intake' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/probe_windows_qt_ca_guard.py --compiled-intake-only --work-root "$env:RUNNER_TEMP/windows-intake-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if ($LASTEXITCODE -ne 0) { throw 'Immutable Windows artifact intake failed.' }
+
+      - name: Qualify and exercise controlled Windows stack
+        if: ${{ inputs.linux_arm64_pilot != 'windows-ca-intake' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ (inputs.linux_arm64_pilot == 'windows-ca-replay' || inputs.linux_arm64_pilot == 'windows-ca-native') && github.token || '' }}
+        run: |
+          $prerequisitesOnly = '${{ inputs.windows_prerequisites_only }}' -eq 'true' -or '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-prerequisites'
+          $qtCaGuardOnly = '${{ inputs.linux_arm64_pilot }}'.StartsWith('windows-ca-')
+          $nativeRollover = '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-native'
+          $qtCaReplayOnly = '${{ inputs.linux_arm64_pilot }}' -eq 'windows-ca-replay' -or $nativeRollover
+          & ./.github/scripts/build_windows_runtime_pilot.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "windows-runtime-pilot-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -PrerequisitesOnly:$prerequisitesOnly -QtCaGuardOnly:$qtCaGuardOnly -QtCaReplayOnly:$qtCaReplayOnly -NativeRollover:$nativeRollover
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows pilot failed.' }
+
+      - name: Upload diagnostic Windows runtime evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: diagnostic-runtime-framework-windows-x64-${{ github.run_id }}
+          path: windows-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+
+  windows-arm64-runtime-probe:
+    if: ${{ ((inputs.windows_arm64_runtime_probe || inputs.windows_arm64_host_tools || inputs.windows_arm64_full_pilot) && (!inputs.linux_arm64_pilot || inputs.linux_arm64_pilot == 'off')) || inputs.linux_arm64_pilot == 'ffi-arm64-prerequisites' }}
+    name: ${{ inputs.windows_arm64_full_pilot && 'Native runtime-framework pilot / Windows ARM64' || 'Native runtime prerequisites / Windows ARM64' }}
+    runs-on: windows-11-arm
+    timeout-minutes: ${{ inputs.windows_arm64_full_pilot && 240 || 30 }}
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated ARM64 probe SHA and target
+        shell: pwsh
+        run: |
+          if ($env:EXPECTED_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required.' }
+          if ($env:EXPECTED_SHA -ne '${{ github.sha }}') { throw 'Dispatch SHA mismatch.' }
+          if ((git rev-parse HEAD) -ne $env:EXPECTED_SHA) { throw 'Checkout SHA mismatch.' }
+          if ($env:RUNNER_ARCH -ne 'ARM64') { throw 'Native ARM64 runner required.' }
+          if ('${{ inputs.linux_arm64_pilot }}' -eq 'ffi-arm64-prerequisites' -and ('${{ inputs.windows_arm64_runtime_probe }}' -ne 'false' -or '${{ inputs.windows_arm64_host_tools }}' -ne 'false' -or '${{ inputs.windows_arm64_full_pilot }}' -ne 'false')) { throw 'libffi prerequisites exclude other ARM64 modes.' }
+          if ('${{ inputs.runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_runtime_pilot }}' -ne 'false' -or '${{ inputs.windows_prerequisites_only }}' -ne 'false' -or '${{ inputs.component_audit }}' -ne 'false' -or '${{ inputs.trust_diagnostics_only }}' -ne 'false') { throw 'Select only Windows ARM64 prerequisites.' }
+
+      - name: Set up ARM64 probe bootstrap Python
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: pwsh
+        run: |
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine().upper() == 'ARM64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if ($LASTEXITCODE -ne 0) { throw 'Native GIL-enabled stable bootstrap required.' }
+
+      - name: Probe native compiler, DLL linkage and Qt host generators
+        shell: pwsh
+        run: |
+          $hostTools = '${{ inputs.windows_arm64_host_tools }}' -eq 'true'
+          $fullPilot = '${{ inputs.windows_arm64_full_pilot }}' -eq 'true'
+          $ffiOnly = '${{ inputs.linux_arm64_pilot }}' -eq 'ffi-arm64-prerequisites'
+          & ./.github/scripts/probe_windows_arm64_runtime.ps1 -WorkRoot (Join-Path $env:RUNNER_TEMP "arm64-runtime-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT") -HostTools:$hostTools -FullPilot:$fullPilot -FfiPrerequisitesOnly:$ffiOnly
+          if ($LASTEXITCODE -ne 0) { throw 'ARM64 diagnostic failed; inspect prerequisite/host/runtime gate evidence.' }
+
+      - name: Upload native ARM64 prerequisite evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: ${{ inputs.windows_arm64_full_pilot && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-windows-arm64-${{ github.run_id }}
+          path: windows-arm64-pilot-evidence/
+          if-no-files-found: error
+          retention-days: 0
+  linux-arm64-runtime-pilot:
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ inputs.linux_arm64_pilot == 'prerequisites' || inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') || inputs.linux_arm64_pilot == 'full-intake' }}
+    name: ${{ (inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats')) && 'Native runtime-framework pilot / Linux ARM64 Noble' || 'Native runtime prerequisites / Linux ARM64 Noble' }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated Linux ARM64 source and accepted OS
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+
+      - name: Set up native ARM64 bootstrap Python
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'aarch64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Install ephemeral native source-build prerequisites
+        if: ${{ inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patch \
+            libbz2-dev libffi-dev liblzma-dev libreadline-dev libsqlite3-dev \
+            libzstd-dev zlib1g-dev libgdbm-dev libncurses-dev uuid-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libfontconfig1-dev libfreetype6-dev libglib2.0-dev fonts-dejavu-core \
+            libdbus-1-dev libx11-dev libx11-xcb-dev libxext-dev libxrender-dev \
+            libxcb1-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-shape0-dev libxcb-sync-dev libxcb-util-dev libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev xvfb xauth
+
+      - name: Qualify native compiler, link SDK, CA and parser/generators before rebuilds
+        if: ${{ inputs.linux_arm64_pilot != 'full-consumers' && inputs.linux_arm64_pilot != 'full-imageformats' && inputs.linux_arm64_pilot != 'full-intake' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p linux-arm64-pilot-evidence
+          python .github/scripts/probe_linux_arm64_runtime.py \
+            --work-root "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/prerequisite-build.log
+
+      - name: Restore exact compiled Noble SDK and binding bytes without rebuild
+        if: ${{ (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+          gcc-13 --version
+          python .github/scripts/reuse_linux_arm64_pilot.py --output-dir linux-arm64-pilot-evidence
+
+      - name: Retain exact qualified parser input before native ARM64 runtime tests
+        if: ${{ inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/intake_lxml_native.py --target linux-arm64 --output-dir linux-arm64-pilot-evidence/lxml-intake
+
+      - name: Build and exercise one gated native AArch64 source stack
+        if: ${{ inputs.linux_arm64_pilot == 'full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_linux_arm64_runtime_pilot.sh \
+            "$RUNNER_TEMP/linux-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee linux-arm64-pilot-evidence/pilot-build.log
+
+      - name: Repeat only affected Noble native runtime consumers
+        if: ${{ (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.linux_arm64_pilot }}' = full-imageformats ]; then
+            bash .github/scripts/qualify_linux_imageformats.sh linux-arm64 2>&1 | tee linux-arm64-pilot-evidence/imageformats-build.log
+          else
+            bash .github/scripts/resume_linux_arm64_consumers.sh 2>&1 | tee linux-arm64-pilot-evidence/consumer-build.log
+          fi
+
+      - name: Install existing Qt GUI loader dependencies for Noble intake
+        if: ${{ inputs.linux_arm64_pilot == 'full-intake' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libopengl0
+
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'full-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-arm64
+
+      - name: Upload diagnostic Linux ARM64 evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: ${{ (inputs.linux_arm64_pilot == 'full' || (inputs.linux_arm64_pilot == 'full-consumers' || inputs.linux_arm64_pilot == 'full-imageformats')) && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-linux-arm64-${{ github.run_id }}
+          path: ${{ inputs.linux_arm64_pilot == 'full-intake' && 'controlled-runtime-evidence/' || 'linux-arm64-pilot-evidence/' }}
+          if-no-files-found: error
+          retention-days: 0
+
+  macos-arm64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot == 'macos-prerequisites' || inputs.linux_arm64_pilot == 'macos-full' || (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) || inputs.linux_arm64_pilot == 'macos-intake' }}
+    name: ${{ inputs.linux_arm64_pilot == 'macos-full' && 'Native runtime-framework pilot / macOS ARM64' || 'Native runtime prerequisites / macOS ARM64' }}
+    runs-on: macos-26
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated macOS ARM64 SHA and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = arm64
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+          test -d "$DEVELOPER_DIR"
+          xcode_version=$(xcodebuild -version)
+          test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
+
+      - name: Set up macOS ARM64 bootstrap Python
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: arm64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'arm64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Select original work root for exact partial prefix reuse
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        run: python .github/scripts/reuse_macos_arm64_partial_sdk.py select --output macos-arm64-pilot-evidence
+
+      - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
+        if: ${{ inputs.linux_arm64_pilot != 'macos-public-http' && inputs.linux_arm64_pilot != 'macos-bindings' && inputs.linux_arm64_pilot != 'macos-consumers' && inputs.linux_arm64_pilot != 'macos-imageformats' && inputs.linux_arm64_pilot != 'macos-intake' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p macos-arm64-pilot-evidence
+          python .github/scripts/probe_macos_arm64_runtime.py \
+            --work-root "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
+            2>&1 | tee macos-arm64-pilot-evidence/prerequisite-build.log
+
+      - name: Verify retained native parser bytes before source rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/intake_lxml_native.py --target macos-arm64 --output-dir macos-arm64-pilot-evidence/lxml-qualified
+
+      - name: Restore only the exact source-bound partial prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/reuse_macos_arm64_partial_sdk.py restore --output macos-arm64-pilot-evidence
+
+      - name: Build and exercise the gated native ARM64 controlled source prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_macos_arm64_runtime_pilot.sh \
+            "${PSAA_MACOS_PILOT_WORK:-$RUNNER_TEMP/macos-arm64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}" \
+            2>&1 | tee macos-arm64-pilot-evidence/pilot-build.log
+
+      - name: Exercise public HTTP against exact compiled SDK only
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-public-http' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/reuse_macos_arm64_compiled_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-bindings' && '--bindings' || inputs.linux_arm64_pilot == 'macos-imageformats' && '--consumers-only --imageformats' || inputs.linux_arm64_pilot == 'macos-consumers' && '--consumers-only' || '' }}
+
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-arm64
+
+      - name: Upload diagnostic macOS ARM64 evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: ${{ (inputs.linux_arm64_pilot == 'macos-full' || inputs.linux_arm64_pilot == 'macos-bindings' || (inputs.linux_arm64_pilot == 'macos-consumers' || inputs.linux_arm64_pilot == 'macos-imageformats')) && 'diagnostic-runtime-framework' || inputs.linux_arm64_pilot == 'macos-public-http' && 'diagnostic-public-http' || 'diagnostic-runtime-prerequisites' }}-macos-arm64-${{ github.run_id }}
+          path: |
+            macos-arm64-pilot-evidence/
+            !macos-arm64-pilot-evidence/**/server-key.pem
+            !macos-arm64-pilot-evidence/**/ca-key.pem
+          if-no-files-found: error
+          retention-days: 0
+
+
+  macos-x64-runtime-pilot:
+    if: ${{ inputs.linux_arm64_pilot == 'macos-x64-health' || inputs.linux_arm64_pilot == 'macos-x64-prerequisites' || inputs.linux_arm64_pilot == 'macos-x64-full' || (inputs.linux_arm64_pilot == 'macos-x64-consumers' || inputs.linux_arm64_pilot == 'macos-x64-imageformats') || inputs.linux_arm64_pilot == 'macos-x64-intake' }}
+    name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'Native runtime-framework pilot / macOS Intel/x64' || 'Native runtime prerequisites / macOS Intel/x64' }}
+    runs-on: macos-26-intel
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PYTHONUNBUFFERED: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      QT_SSL_USE_TEMPORARY_KEYCHAIN: '1'
+    steps:
+      - name: Checkout repository
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+
+      - name: Verify isolated macOS Intel/x64 SHA and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+          test '${{ inputs.component_audit }}' = false
+          test '${{ inputs.runtime_pilot }}' = false
+          test '${{ inputs.windows_runtime_pilot }}' = false
+          test '${{ inputs.windows_arm64_runtime_probe }}' = false
+          test '${{ inputs.windows_arm64_host_tools }}' = false
+          test '${{ inputs.windows_arm64_full_pilot }}' = false
+          test '${{ inputs.windows_prerequisites_only }}' = false
+          test '${{ inputs.trust_diagnostics_only }}' = false
+          test -d "$DEVELOPER_DIR"
+          xcode_version=$(xcodebuild -version)
+          test "${xcode_version%%$'\n'*}" = 'Xcode 26.6'
+
+      - name: Set up macOS Intel/x64 bootstrap Python
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: x64
+
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; print(platform.python_version()); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert platform.machine() == 'x86_64' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+
+      - name: Diagnose native Intel host without downloads or rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-health' }}
+        run: python .github/scripts/probe_macos_x64_health.py
+
+      - name: Qualify native SDK, sources, trust and parser before controlled rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-prerequisites' || inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p macos-x64-pilot-evidence
+          python .github/scripts/probe_macos_x64_runtime.py \
+            --work-root "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-x64-pilot-evidence/prerequisite-build.log
+
+      - name: Verify retained native parser bytes before source rebuilds
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/intake_lxml_native.py --target macos-x64 --output-dir macos-x64-pilot-evidence/lxml-qualified
+
+      - name: Retain the completed native Intel prerequisites before expensive compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/retain_macos_runtime_sdk.py \
+            --work "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --output macos-x64-pilot-evidence --exit-code 1 --sdk-name macos-intel-prerequisite-sdk
+
+      - name: Upload Intel prerequisite checkpoint before source compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: diagnostic-intel-prerequisite-checkpoint-${{ github.run_id }}
+          path: |
+            macos-x64-pilot-evidence/
+            !macos-x64-pilot-evidence/**/server-key.pem
+            !macos-x64-pilot-evidence/**/ca-key.pem
+          if-no-files-found: error
+          retention-days: 0
+
+      - name: Build and exercise the gated native Intel/x64 controlled source prefix
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/build_macos_x64_runtime_pilot.sh \
+            "$RUNNER_TEMP/macos-x64-pilot-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            2>&1 | tee macos-x64-pilot-evidence/pilot-build.log
+
+      - name: Replay native Intel consumers from the complete verified SDK
+        if: ${{ (inputs.linux_arm64_pilot == 'macos-x64-consumers' || inputs.linux_arm64_pilot == 'macos-x64-imageformats') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/reuse_macos_x64_bound_sdk.py ${{ inputs.linux_arm64_pilot == 'macos-x64-imageformats' && '--imageformats --reuse-unchanged-incidents --reuse-imageformats-overlay --diagnose-gui' || '' }}
+
+      - name: Prepare qualified dependency SDK only; no application compilation
+        if: ${{ inputs.linux_arm64_pilot == 'macos-x64-intake' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target macos-x64
+
+      - name: Upload diagnostic macOS Intel/x64 evidence only
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: ${{ inputs.linux_arm64_pilot == 'macos-x64-full' && 'diagnostic-runtime-framework' || 'diagnostic-runtime-prerequisites' }}-macos-x64-${{ github.run_id }}
+          path: |
+            macos-x64-pilot-evidence/
+            !macos-x64-pilot-evidence/**/server-key.pem
+            !macos-x64-pilot-evidence/**/ca-key.pem
+          if-no-files-found: error
+          retention-days: 0
+
+  native-adb:
+    permissions:
+      contents: read
+      actions: read
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'adb-linux-arm64') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Guard native diagnostic source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = '${{ inputs.expected_sha }}'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(uname -m)" = aarch64
+          test "$(. /etc/os-release; echo "$VERSION_ID")" = 24.04
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+      - name: Verify stable Python 3.14 and native tool prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; actual=platform.python_version(); print('Stable Python',actual); assert sys.version_info[:2] == (3, 14) and platform.machine() == 'aarch64' and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          sudo apt-get update
+          if [ '${{ inputs.linux_arm64_pilot }}' = adb-linux-arm64-consumers ]; then
+            sudo apt-get install -y libudev1 libprotobuf32t64 libbrotli1 libzstd1 liblz4-1 zlib1g
+          else
+            sudo apt-get install -y gcc-13 g++-13 pkg-config libudev-dev libgtest-dev libusb-1.0-0-dev libpcre2-dev libprotobuf-dev protobuf-compiler libbrotli-dev libzstd-dev liblz4-dev zlib1g-dev
+          fi
+          if [ '${{ inputs.linux_arm64_pilot }}' != adb-linux-arm64-abi ] && [ '${{ inputs.linux_arm64_pilot }}' != adb-linux-arm64-consumers ]; then
+            python .github/scripts/bootstrap_pip.py
+            python -m pip install 'cmake==4.4.4' 'ninja==1.13.2'
+            rustup toolchain install 1.99.1 --profile minimal
+          fi
+      - name: Prepare existing CLI dependencies for external ADB consumers only
+        if: ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-consumers' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/bootstrap_pip.py
+          python .github/scripts/intake_lxml_native.py --target linux-arm64 --output-dir adb-lxml-intake
+          python .github/scripts/intake_lxml_native.py --target linux-arm64 --output-dir adb-lxml-intake --qualify
+          python -c "from pathlib import Path; lines=Path('requirements.txt').read_text().splitlines(); Path('adb-external-runtime.txt').write_text('\n'.join(x for x in lines if not x.startswith('PySide6-Essentials=='))+'\n')"
+          python -m pip install --only-binary=:all: -r adb-external-runtime.txt
+          python -m pip check
+
+      - name: Build only native adb and exercise isolated read-only consumers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.linux_arm64_pilot }}' = adb-linux-arm64-consumers ]; then
+            python .github/scripts/verify_external_adb_linux_arm64.py
+          else
+            python .github/scripts/probe_adb_linux_arm64.py --work "$RUNNER_TEMP/adb-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --output adb-diagnostic-evidence ${{ inputs.linux_arm64_pilot == 'adb-linux-arm64-abi' && '--system-abi-only' || '' }}
+          fi
+      - name: Retain diagnostic sources legal native bytes and results
+        if: always()
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          name: diagnostic-adb-linux-arm64-${{ github.run_id }}
+          path: adb-diagnostic-evidence
+          if-no-files-found: warn
+          retention-days: 0
+
+  selected-rust-graphs:
+    name: Selected Rust / ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.linux_arm64_pilot == 'rust-native-ruff-intel' && '[{"os":"macos-26-intel","label":"macos-x64","arch":"x64"}]' || inputs.linux_arm64_pilot == 'rust-native-ruff' && '[{"os":"windows-2025","label":"windows-x64","arch":"x64"},{"os":"windows-11-arm","label":"windows-arm64","arch":"arm64"},{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","label":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","label":"macos-x64","arch":"x64"},{"os":"macos-26","label":"macos-arm64","arch":"arm64"}]' || '[{"os":"ubuntu-24.04","label":"linux-x64","arch":"x64"}]') }}
+    env:
+      EXPECTED_ARCH: ${{ matrix.arch }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.label, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+    if: ${{ startsWith(inputs.linux_arm64_pilot, 'rust-') }}
+    runs-on: ${{ matrix.label == 'linux-x64' && startsWith(inputs.linux_arm64_pilot, 'rust-native-ruff') && 'ubuntu-22.04' || matrix.os }}
+    timeout-minutes: 70
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Verify exact diagnostic source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = '${{ inputs.expected_sha }}'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+      - name: Verify stable Python 3.14 before source resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys,sysconfig; actual=platform.python_version(); print('Stable Python',actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final' and not sysconfig.get_config_var('Py_GIL_DISABLED')"
+          if [[ '${{ inputs.linux_arm64_pilot }}' == *check ]]; then
+            python .github/scripts/bootstrap_pip.py
+            python -m pip install -c .github/scripts/source_build_constraints.txt -r .github/scripts/source_build_requirements.txt 'cffi==2.1.1' 'pycparser==3.12'
+            python -c "from cffi import FFI; FFI().cdef('int api_check(void);'); print('CFFI source-build frontend ready')"
+          fi
+          if [[ '${{ inputs.linux_arm64_pilot }}' == rust-native-ruff* ]] && [ '${{ matrix.label }}' = macos-x64 ]; then
+            export CARGO_HOME="$RUNNER_TEMP/ruff-cargo" RUSTUP_HOME="$RUNNER_TEMP/ruff-rustup"
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/rustup-init" https://static.rust-lang.org/rustup/archive/1.29.2/x86_64-apple-darwin/rustup-init
+            echo "b9610730ddeef52765723847866fd1e3540b2bf7d5ab0c324aa143a5edf25ba0  $RUNNER_TEMP/rustup-init" | shasum -a 256 -c -
+            chmod +x "$RUNNER_TEMP/rustup-init"
+            "$RUNNER_TEMP/rustup-init" -y --no-modify-path --profile minimal --default-toolchain 1.100.0
+            export PATH="$CARGO_HOME/bin:$PATH"
+          else
+            rustup toolchain install 1.100.0 --profile minimal
+          fi
+          if [[ '${{ inputs.linux_arm64_pilot }}' == rust-native-ruff* ]]; then
+            RUSTUP_TOOLCHAIN=1.100.0 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence --only-package ruff --maintained-paste --qualified-lock .github/sources/ruff-0.17.5-psaa.Cargo.lock --native-ruff
+          else
+          RUSTUP_TOOLCHAIN=1.100.0 python .github/scripts/probe_selected_rust_graphs.py --work "$RUNNER_TEMP/selected-rust-$GITHUB_RUN_ID" --output selected-rust-evidence ${{ (startsWith(inputs.linux_arm64_pilot, 'rust-candidate-') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--update-compatible' || '' }} ${{ (endsWith(inputs.linux_arm64_pilot, 'check') || inputs.linux_arm64_pilot == 'rust-maintained-ruff') && '--check-candidate' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-candidate-crypto-check' && '--check-package cryptography-rust' || '' }} ${{ inputs.linux_arm64_pilot == 'rust-maintained-ruff' && '--only-package ruff --check-package ruff --maintained-paste' || '' }}
+          fi
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        if: always()
+        with:
+          name: selected-rust-graphs-${{ matrix.label }}-${{ github.run_id }}
+          path: selected-rust-evidence
+          if-no-files-found: warn
+          retention-days: 0
+
+
+  ffi-posix-security:
+    if: ${{ (inputs.linux_arm64_pilot == 'ffi-posix-security' || inputs.linux_arm64_pilot == 'ffi-linux-security') }}
+    permissions:
+      contents: read
+      actions: read
+    name: libffi3.8.1 affected consumers / ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.linux_arm64_pilot == 'ffi-linux-security' && '[{"os":"ubuntu-22.04","target":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","target":"linux-arm64","arch":"arm64"}]' || '[{"os":"ubuntu-22.04","target":"linux-x64","arch":"x64"},{"os":"ubuntu-24.04-arm","target":"linux-arm64","arch":"arm64"},{"os":"macos-26-intel","target":"macos-x64","arch":"x64"},{"os":"macos-26","target":"macos-arm64","arch":"arm64"}]') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.target, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Verify isolated exact source before downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = '${{ github.sha }}'
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
+      - name: Install existing native GUI and compiler prerequisites
+        if: ${{ runner.os == 'Linux' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libopengl0 libfontconfig1 libx11-xcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-shape0 libxkbcommon-x11-0 xvfb xauth
+          if [ '${{ matrix.arch }}' = arm64 ]; then sudo apt-get install -y gcc-13 g++-13; else sudo apt-get install -y gcc-11 g++-11; fi
+      - name: Restore original qualified SDK without dependency rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target ${{ matrix.target }} --export-github-environment
+      - name: Build only ABI-compatible FFI and exercise affected consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ runner.os }}' = Linux ]; then
+            xvfb-run -a "$PSAA_RUNTIME_PYTHON" .github/scripts/qualify_posix_libffi381.py --target '${{ matrix.target }}'
+          else
+            "$PSAA_RUNTIME_PYTHON" .github/scripts/qualify_posix_libffi381.py --target '${{ matrix.target }}'
+          fi
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        if: always()
+        with:
+          name: diagnostic-libffi381-${{ matrix.target }}-${{ github.run_id }}
+          path: ffi381-evidence/
+          if-no-files-found: warn
+          retention-days: 0
+
+
+  qualified-ffi-intake:
+    if: ${{ inputs.linux_arm64_pilot == 'ffi-qualified-intake' }}
+    permissions:
+      contents: read
+      actions: read
+    name: Qualified FFI SDK intake / ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-2025-vs2026, target: windows-x64, arch: x64}
+          - {os: windows-11-arm, target: windows-arm64, arch: arm64}
+          - {os: ubuntu-22.04, target: linux-x64, arch: x64}
+          - {os: ubuntu-24.04-arm, target: linux-arm64, arch: arm64}
+          - {os: macos-26-intel, target: macos-x64, arch: x64}
+          - {os: macos-26, target: macos-arm64, arch: arm64}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      PACKAGE_ARCH: ${{ matrix.arch }}
+      DEVELOPER_DIR: ${{ startsWith(matrix.target, 'macos-') && '/Applications/Xcode_26.6.app/Contents/Developer' || '' }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
+      - name: Verify isolated exact source before downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = '${{ github.sha }}'
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
+        with:
+          python-version: "3.14"
+          check-latest: true
+          architecture: ${{ matrix.arch }}
+      - name: Verify stable Python 3.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c "import platform,sys;print(platform.python_version());assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
+      - name: Install existing Linux GUI loader prerequisites
+        if: ${{ runner.os == 'Linux' }}
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libopengl0
+      - name: Select qualified native Windows compiler context
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: . ./.github/scripts/enter_windows_release_toolchain.ps1
+      - name: Restore and verify current FFI security SDK without compiling
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/prepare_controlled_runtime.py --target '${{ matrix.target }}' --apply-qualified-ffi --export-github-environment
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
+        if: always()
+        with:
+          name: qualified-ffi-intake-${{ matrix.target }}-${{ github.run_id }}
+          path: |
+            controlled-runtime-evidence/*.json
+            toolchain-delta-evidence/*.json
+            macos-arm64-pilot-evidence/*.json
+            macos-x64-pilot-evidence/*.json
+          if-no-files-found: warn
           retention-days: 0

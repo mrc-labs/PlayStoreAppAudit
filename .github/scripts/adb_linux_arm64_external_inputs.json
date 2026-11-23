@@ -1,0 +1,12 @@
+{
+  "artifact": 14143110207,
+  "run": 43666658887,
+  "source_sha": "30a41226534b09ab8a0209fb233c7f1d086e4cce",
+  "zip_bytes": 45716784,
+  "zip_sha256": "e0feb58b2d408f713195d0249299a98173ee8dcb1e7bbafe7ac4bcaec88d9f41",
+  "source_contract_canonical_sha256": "f4c290579cd9f18d25076e5c378e0149398b0a937751bfd454df18d51350c759",
+  "adb_sha256": "d272d91990c4024674545cbe26d0974764fec6d765b66ec963c9218c56da30b6",
+  "libusb_member": "private-libusb/libusb-1.0.so.0.6.0",
+  "libusb_sha256": "55c5b6e9da290a49fdeb95ba6b403d2cdb5413c6e5b003b3ffce7357756797ba",
+  "scope": "Qualified native external ADB only; never bundled with application. Original sources/legal remain in exact original artifact."
+}

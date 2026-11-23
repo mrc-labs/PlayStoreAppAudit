@@ -6,6 +6,11 @@ import sys
 
 
 def main() -> int:
+    from playstore_app_audit.platform.certificates import configure_packaged_python_trust
+
+    configure_packaged_python_trust(
+        packaged=bool(getattr(sys, "frozen", False) or globals().get("__compiled__")),
+    )
     if len(sys.argv) > 1 and sys.argv[1] == "cli":
         from playstore_app_audit.cli import main as cli_main
 

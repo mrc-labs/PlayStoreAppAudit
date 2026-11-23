@@ -1,0 +1,11 @@
+{
+  "artifact": 14278400478,
+  "run": 43968346929,
+  "source_sha": "1179e937e52d16e5537df06ded702b81bf590ace",
+  "zip_bytes": 360773719,
+  "zip_sha256": "7266f5ee78c4993a947215e4a16908da9de8513ad23ec1e3543e0a8ea57944d1",
+  "provenance_sha256": "b44d0cca17bd4e4c0c18155864fde0786ceba9f0992e2d305e6b64910a324e70",
+  "overlay_sha256": "4a8bfbde02f111c4b82fdcc3881d95e72889d972af545525db420efbde96d380",
+  "scope": "Exact unchanged module bytes carried by successful native consumer artifact; compiled source identity remains explicit. No dependency recompile.",
+  "compiled_source_sha": "edd36a9ad3303398bb3e8e3aeb87120e24f135bf"
+}

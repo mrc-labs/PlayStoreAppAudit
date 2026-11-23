@@ -1,0 +1,9 @@
+{
+  "scope": "Only exact native ARM64 OpenSSL/codecs prefix from failed CPython PE gate. No Python/Qt acceptance; preserve original compiler, SDK, source and test identities.",
+  "artifact": 14186567609,
+  "run": 43774526949,
+  "source_sha": "1dff28d805d0daf6f9ea0b4a02a0bcd02c402939",
+  "zip_bytes": 387874160,
+  "zip_sha256": "bc343ceece5e1eca1e6a0af5e8a8daf3415d2e377b690a5ceb7d07246d3aee46",
+  "work_name": "cpython-current-43774526949-1"
+}

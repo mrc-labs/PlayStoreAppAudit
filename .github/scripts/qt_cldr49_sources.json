@@ -1,0 +1,108 @@
+{
+  "scope": "Controlled CLDR49 data generation for matched project Qt6.12; existing current349 language-code records reused, no full ISO code-set redistribution",
+  "date": "2026-11-14",
+  "generated_date": "2026-11-14",
+  "cldr_version": "49",
+  "sources": [
+    {
+      "name": "cldr-common-49.zip",
+      "url": "https://www.unicode.org/Public/cldr/49/cldr-common-49.zip",
+      "sha256": "78403d8d6fb1fed6e208bf9001bf5be00bb5abfd9f8110dae062bf49309d6a89",
+      "sha512": "c704a2baf9ce4e28f40e242f8b2fbd0123579bb2c56daaaf8a92d72abd02485a1f60095c3cc4fe89eaf2d5c9f5fd07954c2eaee88839f97e18b1ff37cd62e2d8",
+      "authority": "https://www.unicode.org/Public/cldr/49/hashes/SHASUM512.txt"
+    },
+    {
+      "name": "cldr-exemplars-delta-49.zip",
+      "url": "https://www.unicode.org/Public/cldr/49/cldr-exemplars-delta-49.zip",
+      "sha256": "431005849467937da777c8ee70009a8d45042fcd5a25e9e5b432b50d081d8c67",
+      "sha512": "8c0331f4927833499d24a716e2d072a87ae169098d41886d3ae51028e4f5033f8c139339c2c8b073b59da8431663c91ed15d24a61aaa78305994e22326521836",
+      "authority": "https://www.unicode.org/Public/cldr/49/hashes/SHASUM512.txt"
+    }
+  ],
+  "patches": [
+    {
+      "path": ".github/patches/qtbase-6.12.0-cldr49-monrovia.patch",
+      "sha256": "b49757bd0c92418fab4428f90f24fa85680a6e3fd73d431815bc99307f3deffb",
+      "files": {
+        "util/locale_database/cldr.py": {
+          "base_sha256": "55adbef5f8ba39d5086479ce50655f443ec7d366dd260fd85054c9328124cb8d",
+          "patched_sha256": "8ee33c429a8d353dc43ff8477c9dbcec270cd7b1bb310e1a5795a81001190782"
+        }
+      },
+      "official_url": "https://github.com/qt/qtbase/commit/17395cd71bd7b44784add9c0d2a71c03fc3c1b1f.patch"
+    },
+    {
+      "path": ".github/patches/qtbase-6.12.0-cldr49-windows-zones.patch",
+      "sha256": "aa33f6c248b03304e8b5213a1c0818d0500f0e6e1ca4f0ca5c91d643d2314e03",
+      "files": {
+        "util/locale_database/cldr.py": {
+          "base_sha256": "8ee33c429a8d353dc43ff8477c9dbcec270cd7b1bb310e1a5795a81001190782",
+          "patched_sha256": "290c675758b07d95644815f6696a4c8319abb0bb37950b65b038ec71c7e6a21d"
+        },
+        "util/locale_database/zonedata.py": {
+          "base_sha256": "48d86f571bba59f5e8ee04b918d509c1bd481046ea84c051925e27be08ad2cb0",
+          "patched_sha256": "14e56a7f3770c349f11405375d9867b76ef78c7d900a2da39f4b42ea10ce203c"
+        }
+      },
+      "official_url": "https://github.com/qt/qtbase/commit/e7f52631d2778549a61933afa9fb3d56c280af41.patch"
+    },
+    {
+      "path": ".github/patches/qtbase-6.12.0-cldr49-reuse-codes.patch",
+      "sha256": "8de2d9410f087d3009f8301a62223f67822a61a34b5c2fb8ba7f8795d45a03da",
+      "files": {
+        "util/locale_database/qlocalexml2cpp.py": {
+          "base_sha256": "326db87cd475d86e8d9ba7665e2da61404373aff9ed076a26c769c006c9e3004",
+          "patched_sha256": "45d3e3b04d0bf79bab210d724bc604958526ef42ce343b9600cddf79a48156eb"
+        }
+      },
+      "reason": "Minimal project tooling option retains already-current Qt language codes and a deterministic comment date. Full ISO reference table is not required or redistributed; original default mode is unchanged."
+    }
+  ],
+  "retained_code_sha256": "5a3c2ad1acb393b16fe28ca54dbead74eeb7b7f5fb3511f85d735d909ea88aeb",
+  "retained_code_records": 349,
+  "baseline_locale_keys": 711,
+  "generated_locale_keys": 714,
+  "removed_locale_keys": 0,
+  "registry_comparison": {
+    "official_archive": "https://iso639-3.sil.org/sites/iso639-3/files/downloads/iso-639-3_Code_Tables_20261015.zip",
+    "archive_sha256": "1b75148ff267404afd32d61464f636e692b5a15396418c9b728485237ee5eb37",
+    "table_sha256": "07ce5fed94472312bdd1a4bd7f297c83e7cd4ac4ff335dfbed0824a270f482ed",
+    "terms_url": "https://iso639-3.sil.org/code_tables/download_tables#termsofuse",
+    "result": "Private local comparison against complete current registry yields byte-identical Qt349 code mappings. Full registry absent from maintained build inputs, public artifacts and source redistribution."
+  },
+  "original_files": {
+    ".cmake.conf": "e78b439fa15619a942f8b78d9321021778eb44dafba7f7067a1962637a5a4b64",
+    "util/locale_database/cldr.py": "55adbef5f8ba39d5086479ce50655f443ec7d366dd260fd85054c9328124cb8d",
+    "util/locale_database/cldr2qlocalexml.py": "dcfae2005e6637150130b363bf9753dc6dfa02238c2c930ca2b799f9602b8445",
+    "util/locale_database/dateconverter.py": "29af88713fab6ac9e14265aad1a9a920bc096ae1086ed8d57da3ab341f40df24",
+    "util/locale_database/enumdata.py": "925c0e85283b4af3f8eae443f2f9e595580fe2e80fae2a933592361b0d915eab",
+    "util/locale_database/iso639_3.py": "dcfb25eb08039779a88822255eb93e5d67e3dcb91f692150564f1979c07e2e2d",
+    "util/locale_database/ldml.py": "b05b53103acf0bba4ff6d9440e96fa08484e4412523e92cf790f3bddd53e835a",
+    "util/locale_database/localetools.py": "47df6cdf422690d3b276eacb2f9a785a6136130eb4778d43251efead2b5045e9",
+    "util/locale_database/qlocalexml.py": "12f0f0f931f55e7202193849bc5d02320796af281c380e04dfdc69fac5cfc654",
+    "util/locale_database/qlocalexml2cpp.py": "326db87cd475d86e8d9ba7665e2da61404373aff9ed076a26c769c006c9e3004",
+    "util/locale_database/zonedata.py": "48d86f571bba59f5e8ee04b918d509c1bd481046ea84c051925e27be08ad2cb0",
+    "util/locale_database/testlocales/localemodel.cpp": "f9472b3a7c06beecc39dc2efbe25f8be3becf6a5a2a67ab0009c993af2b38c04",
+    "src/corelib/text/qlocale.h": "a40567fc1acd9f53c6a359012c3f828f75fa6904891cfe774f5f8361643bad2a",
+    "src/corelib/text/qlocale.qdoc": "792e4475b15b5945248da4c3985842322d54ebbd849a0ec8ea5bc3f629111f1a",
+    "src/corelib/text/qlocale_data_p.h": "f0d5886ccbf22c277686dcacb7e126f8bc42b10d6f9957133cca6f77fe23d35b",
+    "src/corelib/text/qt_attribution.json": "4e23736600be956e4214849ad8baaa955441656db7324713fab6353c1163b4f5",
+    "src/corelib/time/qhijricalendar_data_p.h": "b32f159107fb5c2b379acb598a2f6b77613dc400c2b103c4cdbdc25cf14f1c0d",
+    "src/corelib/time/qjalalicalendar_data_p.h": "1c425cc40349917ca209e8a4f714164d0a6ead19c759c0cda4756db35e22fbf6",
+    "src/corelib/time/qromancalendar_data_p.h": "a60250ef6101616d78e2939620561b9fb70ec9bfdebcfab699e136794e6af3a5",
+    "src/corelib/time/qtimezonelocale_data_p.h": "e75f3d1d64d12f9adc4c0db3735d50af07a1cca3d549b220c1efb3393a10ac22",
+    "src/corelib/time/qtimezoneprivate_data_p.h": "0cbb94e073b847fe3916b4aea968af4d8fa34ba86861566dec6f67bda75e4020"
+  },
+  "generated_files": {
+    "src/corelib/text/qlocale_data_p.h": "a784dc9cf2ca3df5f143169895ee74215ad99574cf3048ea9f8bfb2f46aba61c",
+    "src/corelib/text/qlocale.h": "a40567fc1acd9f53c6a359012c3f828f75fa6904891cfe774f5f8361643bad2a",
+    "src/corelib/text/qlocale.qdoc": "b17e9d3cc18440c3a20f0bfd86b419dd99928b1b55b7d39ff7d87b9492efb0c7",
+    "src/corelib/time/qromancalendar_data_p.h": "aa61b75e782a52ee53c646ac97b4a78fc50922e3ea12a9d166e659b1da8dff00",
+    "src/corelib/time/qjalalicalendar_data_p.h": "8c9fd8228191f48982f51f6fad0e779d64a2922c0ca9479f27780f77e93cdccb",
+    "src/corelib/time/qhijricalendar_data_p.h": "773291c66cc4f7d0e99fc93cf9b432b487d659799ba475d19edac125e318a94a",
+    "src/corelib/time/qtimezoneprivate_data_p.h": "a147e5cbd5bbe9cad5d7f75690d95f4ef50fb9f412be82d9f6cc30f5428254d5",
+    "src/corelib/time/qtimezonelocale_data_p.h": "a99e0ea135f7a145abbacca9447687b02a25ba633bf91e402301e3f000f52f5e",
+    "util/locale_database/testlocales/localemodel.cpp": "3f9bf156ebe002803c99257e5151b7dc0d788d7b93fd725406c48feeb173a8b4"
+  },
+  "normalization": "UTF8/LF source text and fixed audited generated-comment date; numerical/locale data is unchanged by normalization"
+}

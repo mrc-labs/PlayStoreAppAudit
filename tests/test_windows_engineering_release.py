@@ -129,7 +129,7 @@ def test_windows_engineering_workflow_is_manual_exact_sha_and_unsigned() -> None
     assert '"refs/heads/main"' in text
     assert '"Build Windows - Qt6"' in text
     assert "Sign Windows release candidates" not in text
-    assert "actions/download-artifact@v8" in text
+    assert "mrc-labs/PlayStoreAppAudit/.github/actions/controlled-download-artifact@10cb7992bd060977c9028956d64f8e28127f8022" in text
     assert "run-id: ${{ inputs.windows_run_id }}" in text
     assert (
         "PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-windows-x64"
@@ -145,7 +145,7 @@ def test_windows_engineering_workflow_is_manual_exact_sha_and_unsigned() -> None
     assert "Windows architecture: x64 only" in text
     assert "Signing: intentionally unsigned engineering profile" in text
     assert "production signing is deferred to v2.0 or later" in text
-    assert text.count("actions/upload-artifact@v7") == 1
+    assert text.count("mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022") == 1
 
     forbidden = (
         "pyside6-deploy",

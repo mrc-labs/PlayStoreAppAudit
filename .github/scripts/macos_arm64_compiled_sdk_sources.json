@@ -1,0 +1,27 @@
+{
+  "scope": "Exact compiled native ARM64 Python/providers/QtBase/QtSvg SDK before binding/HTTP harness acceptance; no qualified whole pilot or final candidate claim",
+  "artifact": 14170246801,
+  "run": 43731251629,
+  "source_sha": "0aec8dcceb728a60333f5bab4ca9d109f6732be0",
+  "zip_bytes": 476950205,
+  "zip_sha256": "db57014a38251f16765c7be57ce895d837e26af828c63ceb56a70c72e121cd58",
+  "sdk_sha256": "8b8610286edaf5f3ecd5f6b68babc47e58888096036f38af69b2b7cfd9bb6f55",
+  "work_name": "macos-arm64-pilot-43726926268-1",
+  "compiler_sdk": {
+    "xcode": "Xcode 26.6\nBuild version 17F113\n",
+    "sdk_version": "26.5",
+    "clang_first_line": "Apple clang version 21.0.0 (clang-2100.1.1.101)"
+  },
+  "component_inputs": {
+    "macos_arm64_runtime_pilot_sources.json": "66ce07ae1b9ac18eee5724126d08b2b80017304159e17abf384d0833a8bdce8d",
+    "native_runtime_pilot_sources.json": "6cddc9f24342bfccb0249788297327879774449d25a7a668d78a8fbf07feb3bf",
+    "macos_native_provider_sources.json": "72c5af7651e45a67106494eabd4c792dcf151e48009a3c88145f9e90ab209ef6",
+    "qt_text_provider_sources.json": "16f3bd002e71a6a1120b472950aa1179409ab1da40013499c00073896f55aa94",
+    "qt_cbor_provider_sources.json": "c4a793751b927273c3e11c83919447bf507fd5a652c650627b342ce440c842c6",
+    "qt_data_refresh_sources.json": "3cabb3678b38fda57e9bfa0d8db14862e73f140b8af05fda018023099c047b4d",
+    "qt_cldr49_sources.json": "801db189ddd3f4741fee036151d57a22c20f456c9e673144916d2796a1c9aa6f",
+    "provider_ca_security_sources.json": "970cebde6579842baf6e4780dfcbfe1208fb028a65f259b1c59ca88fc403618f",
+    "qt_cldr49_generated_cache.json": "3101e37151225b29c0ddc790ca4adb7fbdddc33c68b3a10ea02962c6a10ec8fc",
+    "qt_http_security_sources.json": "d3be4c16c17005fd7c7dad599e83806972cefba17b3ba235d9180b2d24e13bec"
+  }
+}

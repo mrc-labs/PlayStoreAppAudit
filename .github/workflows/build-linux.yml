@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-linux:
@@ -18,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-22.04
             arch: x64
             expected_elf_machine: Advanced Micro Devices X86-64
             managed_adb: true
@@ -29,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-checkout@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           ref: ${{ github.sha }}
 
@@ -61,10 +62,10 @@ jobs:
 
           echo "Release-candidate source SHA verified: $actual"
 
-      - uses: actions/setup-python@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-setup-python@10cb7992bd060977c9028956d64f8e28127f8022
         with:
-          python-version: "3.14"
-          check-latest: true
+          python-version: "3.14.10"
+          check-latest: false
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -74,16 +75,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
+          python -c "import platform, sys; actual=platform.python_version(); print(actual); assert actual == '3.14.10'; assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final', actual"
 
       - name: Verify Python 3.14 baseline
         run: |
           python -c "import platform, sys; print(sys.version); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'"
-      - name: Prepare x64 compatibility target on native Ubuntu 24.04
-        if: ${{ matrix.arch == 'x64' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/prepare_linux_x64_sysroot.sh
       - name: Read canonical project version
         id: project_version
         run: |
@@ -94,13 +90,17 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
+          SSL_PACKAGE=libssl3t64
+          if [ "${{ matrix.arch }}" = x64 ]; then SSL_PACKAGE=libssl3; fi
           sudo apt-get install -y \
             binutils \
             libegl1 \
             libfontconfig1 \
             libgl1 \
-            libssl3t64 \
+            "$SSL_PACKAGE" \
+            libopengl0 \
             openssl \
+            zlib1g \
             libx11-xcb1 \
             libxcb1 \
             libxcb-cursor0 \
@@ -123,25 +123,30 @@ jobs:
             xauth \
             xvfb \
             zip
-          # USN-8847-1: refresh the vendor runtime even when the runner image
-          # predates its security update. Keep the distro integration/ABI.
-          ssl_package_version="$(dpkg-query -W -f='${Version}' libssl3t64)"
-          dpkg --compare-versions "$ssl_package_version" ge 3.0.13-0ubuntu3.16
-          printf 'Noble libssl3t64: %s\n' "$ssl_package_version"
-          # Inspect the host tool with host libraries: x64's deliberate
-          # LD_LIBRARY_PATH selects Jammy libraries for compatibility Python.
+          if [ "${{ matrix.arch }}" = arm64 ]; then
+            # Preserve the qualified Noble vendor security floors.
+            dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libssl3t64)" ge 3.0.13-0ubuntu3.16
+            dpkg --compare-versions "$(dpkg-query -W -f='${Version}' zlib1g)" ge 1:1.3.dfsg-3.1ubuntu2.3
+            sudo apt-get install -y gcc-13 g++-13 adb
+          else
+            sudo apt-get install -y gcc-11 g++-11
+          fi
+          dpkg-query -W "$SSL_PACKAGE" zlib1g
           env -u LD_LIBRARY_PATH openssl version
-          if [ "${{ matrix.managed_adb }}" != "true" ]; then sudo apt-get install -y adb; fi
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt "Nuitka==4.2.2"
+      - name: Restore qualified controlled runtime and framework
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/prepare_controlled_runtime.py --target linux-${{ matrix.arch }} --export-github-environment --apply-qualified-ffi
       - name: Verify Python and Qt baseline
         run: |
-          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.11.2'"
+          python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
       - name: Preflight release legal material
         run: |
           python .github/scripts/preflight_release_legal_material.py \
             --repo-root "$PWD" \
-            --expected-nuitka-version "4.2.2"
+            --expected-nuitka-version "4.3.5" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256"
       - name: Test shared source and Qt event loop
         env:
           QT_QPA_PLATFORM: offscreen
@@ -171,7 +176,7 @@ jobs:
         run: python -c "from app_icon import generate_app_icon; print(generate_app_icon('app_icon.png', 256))"
       - name: Configure Qt deployment
         run: |
-          pyside6-deploy main.py --name PlayStoreAppAudit --init
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' main.py --name PlayStoreAppAudit --init --no-install
           python - <<'PY'
           from configparser import ConfigParser
           from pathlib import Path
@@ -179,7 +184,7 @@ jobs:
           p['app']['exec_directory']=str(Path('dist').resolve())
           p['app']['icon']=str(Path('app_icon.png').resolve())
           p['nuitka']['mode']='standalone'
-          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --nofollow-import-to=PIL --assume-yes-for-downloads --report=compilation-report.xml'
+          p['nuitka']['extra_args']='--quiet --noinclude-qt-translations --noinclude-qt-plugins=platforminputcontexts --include-package-data=playstore_app_audit.device_profiles:*.json --include-data-dir=docs/images=help-images --nofollow-import-to=PIL --assume-yes-for-downloads --noinclude-dlls=libcrypto.so.3 --noinclude-dlls=libssl.so.3 --report=compilation-report.xml'
           with open('pysidedeploy.spec','w',encoding='utf-8') as f: p.write(f)
           PY
       - name: Build, inspect and smoke packaged Linux standalone tree
@@ -192,32 +197,11 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist artifact package roundtrip
-          pyside6-deploy -c pysidedeploy.spec -f
+          python -c 'from PySide6.scripts.pyside_tool import deploy; deploy()' -c pysidedeploy.spec -f --no-install
           test -s compilation-report.xml
 
           STANDALONE_DIR="$(find dist -maxdepth 1 -type d -name '*.dist' -print -quit)"
           test -n "$STANDALONE_DIR"
-
-          if [ "$PACKAGE_ARCH" = x64 ]; then
-            # QtNetwork's Nuitka plugin explicitly locates crypto via host
-            # ldconfig, overriding ldd's target selection. Normalize the two
-            # existing same-SONAME files to the declared vendor integration
-            # before every package smoke, legal/hash check and ZIP roundtrip.
-            test -n "$LINUX_COMPAT_RUNTIME"
-            mkdir -p linux-diagnostics
-            for library in libcrypto.so.3 libssl.so.3; do
-              source="$LINUX_COMPAT_RUNTIME/$library"
-              destination="$STANDALONE_DIR/$library"
-              test -s "$source" && test -s "$destination"
-              readelf -d "$source" | grep -F "[$library]"
-              readelf -d "$destination" | grep -F "[$library]"
-              sha256sum "$source" "$destination" >> linux-diagnostics/openssl-runtime-normalization.txt
-              cp -L "$source" "$destination"
-              cmp "$source" "$destination"
-              patchelf --set-rpath '$ORIGIN' "$destination"
-              sha256sum "$destination" >> linux-diagnostics/openssl-runtime-normalization.txt
-            done
-          fi
 
           python .github/scripts/validate_device_specific_profile_resources.py "$STANDALONE_DIR"
           python .github/scripts/validate_canonical_help_resources.py "$STANDALONE_DIR" --canonical-dir "$PWD/docs/images"
@@ -253,8 +237,8 @@ jobs:
           test "$ELF_MACHINE" = "${{ matrix.expected_elf_machine }}"
           export PACKAGE_ELF_MACHINE="$ELF_MACHINE"
 
-          "$BIN"
-          "$BIN" cli audit --help >/dev/null
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$BIN"
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$BIN" cli audit --help >/dev/null
 
           PACKAGE_NAME="PlayStoreAppAudit-v${APP_VERSION}-linux-${PACKAGE_ARCH}"
           PACKAGE_DIR="package/$PACKAGE_NAME"
@@ -327,6 +311,9 @@ jobs:
             --repo-root "$PWD" \
             --release-tag "v${APP_VERSION}" \
             --nuitka-report "$PWD/compilation-report.xml" \
+            --controlled-qt-sdk-receipt "$PSAA_CONTROLLED_QT_RECEIPT" \
+            --controlled-qt-sdk-receipt-sha256 "$PSAA_CONTROLLED_QT_RECEIPT_SHA256" \
+            --controlled-runtime-selection "$PSAA_CONTROLLED_RUNTIME_SELECTION" \
             --inject
 
           python .github/scripts/validate_release_legal_bundle.py \
@@ -385,8 +372,8 @@ jobs:
 
           test "$ROUNDTRIP_MACHINE" = "${{ matrix.expected_elf_machine }}"
 
-          timeout 30s xvfb-run -a             env QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
-          "$ROUNDTRIP_BIN" cli audit --help >/dev/null
+          timeout 30s xvfb-run -a             env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH QT_QPA_PLATFORM=xcb "$ROUNDTRIP_BIN"
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH -u QT_PLUGIN_PATH "$ROUNDTRIP_BIN" cli audit --help >/dev/null
 
           sha256sum "$ARCHIVE"
           ls -lh artifact/*
@@ -418,14 +405,14 @@ jobs:
 
       - name: Upload Linux compatibility evidence
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: linux-compatibility-${{ matrix.arch }}-${{ github.sha }}
           path: linux-diagnostics/
           if-no-files-found: warn
           retention-days: 0
 
-      - uses: actions/upload-artifact@v7
+      - uses: mrc-labs/PlayStoreAppAudit/.github/actions/controlled-upload-artifact@10cb7992bd060977c9028956d64f8e28127f8022
         with:
           name: PlayStoreAppAudit-v${{ steps.project_version.outputs.version }}-linux-${{ matrix.arch }}
           path: artifact/
