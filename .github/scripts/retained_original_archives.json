@@ -1,0 +1,107 @@
+{
+  "14126645491": {
+    "original": {
+      "artifact": 14126645491,
+      "run": 43623545058,
+      "source_sha": "367486bea017f81426e4cc80e2bacfeac0dcf441",
+      "sha256": "1a6b377a3923dfe313a3bfb86c7c9e32d6291f7e34a77b116186c04cea7ee8d3",
+      "bytes": 529280327
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781150508,
+      "name": "qt-367486b.zip"
+    },
+    "recovered": null
+  },
+  "14142662897": {
+    "original": {
+      "artifact": 14142662897,
+      "run": 43666656687,
+      "source_sha": "30a41226534b09ab8a0209fb233c7f1d086e4cce",
+      "sha256": "e5d8ac980b380d2a3d4338af3fb134c3add3950b10db951d8180481dcfddc4aa",
+      "bytes": 368353444
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781150510,
+      "name": "qt-30a4122.zip"
+    },
+    "recovered": null
+  },
+  "14143608998": {
+    "original": {
+      "artifact": 14143608998,
+      "run": 43667240760,
+      "source_sha": "1ba799e7fecafe1a0675495294670c316c8457ba",
+      "sha256": "d58103215ca9a07fc9e3c4c0e3ed057bf67096f62c67a4ee004afcb316744e5f",
+      "bytes": 615903336
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781150516,
+      "name": "arm64-1ba799e.zip"
+    },
+    "recovered": null
+  },
+  "14113559200": {
+    "original": {
+      "artifact": 14113559200,
+      "run": 43594977950,
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "sha256": "acd93dbca6b5372d14a741152c47728ff72e5721fb6be778042760915ad53963",
+      "bytes": 55215724
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781150517,
+      "name": "parser-14113559200.zip"
+    },
+    "recovered": null
+  },
+  "14113708955": {
+    "original": {
+      "artifact": 14113708955,
+      "run": 43594977950,
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "sha256": "0a1f125879890f85a018e3f5c7c24f2d576b145e5ecb6dbb9d26de67e650158d",
+      "bytes": 24434924
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781150509,
+      "name": "parser-14113708955.zip"
+    },
+    "recovered": null
+  },
+  "14114038492": {
+    "original": {
+      "artifact": 14114038492,
+      "run": 43594977950,
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "sha256": "4e70ee085215635e4e453d1fe1cabf04ec73fc9c083c71966e89478e377dbf26",
+      "bytes": 24674765
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 781163212,
+      "name": "parser-14114038492.zip"
+    },
+    "recovered": null
+  },
+  "14114052290": {
+    "original": {
+      "artifact": 14114052290,
+      "run": 43594977950,
+      "source_sha": "00d7f28360b9fe0ebc0fbbf2694fffe9433f57e8",
+      "sha256": "c4c8478e9db980d2aac20ecaf1966852a58b6ed8beb97a6853f45a36c2563459",
+      "bytes": 55205942
+    },
+    "staging": {
+      "release": 454903125,
+      "asset": 0,
+      "name": "parser-14114052290.zip"
+    },
+    "recovered": null
+  }
+}

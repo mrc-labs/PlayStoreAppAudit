@@ -1,5 +1,11 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## November23 retained-original transport
+
+The maintainer's continuation authorizes the pending private technical staging for the seven byte-identical originals. Temporary draft454903125/internal-sdk-recovery-20261123 is separate from v2.4.0 and must never be published. It is transport only, not a candidate. Original ZIP/run/compiled-source identities remain pinned; recovered Actions containers receive their actual new run/source/hash metadata separately. Each reader verifies both the recovered container and the unchanged inner ZIP before the original SDK/parser guards execute. No fabricated original GitHub metadata or relabelled compilation is used.
+
+The existing diagnostic workflow adds a bounded transfer profile, plus a Mac-parser-only selection so native ARM recovery can start while the larger Linux backups upload. This compiles no component. Current selected recovery receipts also participate in active-input retention protection. Temporary draft assets must be removed after all seven are migrated and verified in Actions; final v2.4.0 still requires a fresh exact-main freeze, six application packages and exactly eight public assets.
+
 ## November23 first producer attempt: closed gates and recovery
 
 PR239 merged normally to **04266b5a4b78b7960e12e3af0e540dcad9cfc5dc**; exact-main Quality45088563560 PASSes **2294 tests** plus lint/compilation/helper syntax/Qt smoke. Windows45088969244 and Linux45088974484 stop during SDK intake, before application compilation. Mac45088978101 is cancelled to avoid work on the superseded producer inputs. No final candidate was accepted, no tag or publication occurred.

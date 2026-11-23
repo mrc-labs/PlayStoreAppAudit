@@ -24,7 +24,7 @@ def _retention_days(workflow: str) -> list[int]:
 
 def test_artifact_uploads_use_repository_default_retention() -> None:
     expected = {
-        "ui-style-audit.yml": [0] * 18,
+        "ui-style-audit.yml": [0] * 19,
         "controlled-actions-native.yml": [0, 0],
         "build-windows-exe.yml": [0, 0],
         "assemble-windows-engineering-release.yml": [0],

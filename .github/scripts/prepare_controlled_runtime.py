@@ -19,6 +19,16 @@ TARGETS = ('windows-x64', 'windows-arm64', 'linux-x64', 'linux-arm64', 'macos-x6
 
 
 def qualified_download(artifact: int, source: str, run: int) -> bytes:
+    from qualified_original_archive import INDEX, read_original
+
+    selected = json.loads(INDEX.read_text(encoding='utf-8')).get(str(artifact))
+    if selected:
+        expected = selected['original']
+        assert expected['source_sha'] == source and expected['run'] == run
+        data, receipt = read_original(artifact, run, source, expected['sha256'], expected['bytes'])
+        evidence = ROOT / 'controlled-runtime-evidence' / ('archive-storage-' + str(artifact) + '.json')
+        evidence.write_text(json.dumps(receipt, indent=2), encoding='utf-8')
+        return data
     metadata, data = fetch_artifact(artifact)
     assert not metadata['expired'] and metadata['workflow_run']['head_repository_id'] == 1334403620
     assert metadata['workflow_run']['id'] == run and metadata['workflow_run']['head_sha'] == source
