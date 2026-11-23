@@ -9,6 +9,48 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize('mismatched_pem', [False, True])
+def test_fresh_source_stage_follows_selected_certifi_and_checks_pem_bytes(tmp_path, monkeypatch, mismatched_pem):
+    import probe_macos_arm64_runtime as native
+
+    work, evidence = tmp_path / 'work', tmp_path / 'evidence'
+    work.mkdir()
+    (evidence / 'sources').mkdir(parents=True)
+    (evidence / 'legal').mkdir()
+    (work / 'certifi-cacert.pem').write_bytes(b'pinned PEM fixture')
+    (work / 'certifi-current.whl').write_bytes(b'pinned wheel fixture')
+    arm = {'certifi_source': {'name': 'certifi-2026.11.20.tar.gz'},
+           'certifi_wheel': {'name': 'certifi-current.whl'},
+           'zlib_source': {'name': 'zlib.tar.gz'}, 'cryptography_source': {'name': 'crypto.tar.gz'},
+           'host_extractor': {'source': {'name': 'extractor.tar.gz'}}}
+    monkeypatch.setattr(native, 'contract', lambda: (arm, {'sources': [{}]}))
+
+    def fetch(item, directory):
+        path = directory / item['name']
+        path.write_bytes(b'source fixture')
+        return path
+
+    def unpack(archive, destination):
+        destination.mkdir(parents=True, exist_ok=True)
+        if archive.name.startswith('certifi-'):
+            package = destination / archive.name.removesuffix('.tar.gz') / 'certifi'
+            package.mkdir(parents=True)
+            (package / 'cacert.pem').write_bytes(b'changed PEM' if mismatched_pem else b'pinned PEM fixture')
+
+    monkeypatch.setattr(native, 'fetch', fetch)
+    monkeypatch.setattr(native, 'unpack', unpack)
+    monkeypatch.setenv('PILOT_WORK', str(work))
+    monkeypatch.setenv('PILOT_EVIDENCE', str(evidence))
+    recipe = (ROOT / '.github/scripts/build_macos_arm64_runtime_pilot.sh').read_text()
+    code = 'import concurrent.futures' + recipe.split("python - <<'PY'\nimport concurrent.futures", 1)[1].split('\nPY', 1)[0]
+    if mismatched_pem:
+        with pytest.raises(AssertionError):
+            exec(compile(code, 'native-source-stage', 'exec'), {})
+    else:
+        exec(compile(code, 'native-source-stage', 'exec'), {})
+        assert (evidence / 'sources/certifi-current.whl').read_bytes() == b'pinned wheel fixture'
+
+
 def commands(minimum: str, *, legacy: bool = False) -> str:
     deployment = f'cmd LC_VERSION_MIN_MACOSX\nversion {minimum}' if legacy else f'cmd LC_BUILD_VERSION\nplatform 1\nminos {minimum}'
     return f'''Load command 0
