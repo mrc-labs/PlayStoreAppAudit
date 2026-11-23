@@ -39,7 +39,6 @@ jobs:
       EXPECTED_RUNNER_ARCH: ${{ matrix.arch == 'x64' && 'X64' || 'ARM64' }}
       EXPECTED_PLATFORM_MACHINE: ${{ matrix.arch == 'x64' && 'AMD64' || 'ARM64' }}
       EXPECTED_PE_MACHINE: ${{ matrix.arch == 'x64' && '0x8664' || '0xAA64' }}
-      PYSIDE_WHEEL_PLATFORM: ${{ matrix.arch == 'x64' && 'win_amd64' || 'win_arm64' }}
       RUNNER_LABEL: ${{ matrix.arch == 'x64' && 'windows-2025' || 'windows-11-arm' }}
       RUNNER_STATUS: generally available
 
@@ -182,19 +181,18 @@ jobs:
           python -c "import platform, sys, PySide6; print(sys.version); print('PySide6', PySide6.__version__); assert sys.version_info[:2] == (3, 14) and sys.version_info.releaselevel == 'final'; assert PySide6.__version__ == '6.12.0'"
           if ($LASTEXITCODE -ne 0) { throw 'PySide6 import or version verification failed.' }
 
-          $wheelTags = @(python -c "from importlib.metadata import distribution; print(*[line.removeprefix('Tag: ') for line in distribution('PySide6').read_text('WHEEL').splitlines() if line.startswith('Tag: ')], sep='\n')")
-          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the Controlled PySide6 build metadata.' }
-          $nativeWheelTag = $wheelTags | Where-Object { $_ -match "-$([regex]::Escape($env:PYSIDE_WHEEL_PLATFORM))$" } | Select-Object -First 1
-          if (-not $nativeWheelTag) {
-            throw "Controlled PySide6 metadata does not match a $env:PYSIDE_WHEEL_PLATFORM wheel. Found: $($wheelTags -join ', ')"
+          $bindingIdentity = Get-Content -Raw (Join-Path $env:PSAA_RUNTIME_EVIDENCE 'controlled-qt-identity.json') | ConvertFrom-Json
+          if ($bindingIdentity.distribution -ne 'PySide6' -or $bindingIdentity.version -ne '6.12.0' -or $bindingIdentity.sdk_receipt_sha256 -ne $env:PSAA_CONTROLLED_QT_RECEIPT_SHA256 -or $bindingIdentity.verified_qt_binding_paths -le 0) {
+            throw 'Controlled source binding identity does not match the verified SDK.'
           }
+          $bindingDescription = "Project-controlled PySide6 $($bindingIdentity.version); SDK source $($bindingIdentity.sdk_source_sha)"
 
           $qtCoreBinary = python -c "from PySide6 import QtCore; print(QtCore.__file__)"
           $qtCorePeArchitecture = python .github/scripts/inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $qtCoreBinary
           if ($LASTEXITCODE -ne 0) { throw 'QtCore native extension PE architecture verification failed.' }
-          Write-Host "Controlled PySide6 build tag: $nativeWheelTag"
+          Write-Host $bindingDescription
           Write-Host "QtCore PE architecture: $qtCorePeArchitecture"
-          "PYSIDE6_WHEEL_TAG=$nativeWheelTag" >> $env:GITHUB_ENV
+          "PYSIDE6_BUILD_IDENTITY=$bindingDescription" >> $env:GITHUB_ENV
           "PYSIDE6_QTCORE_PE_ARCHITECTURE=$qtCorePeArchitecture" >> $env:GITHUB_ENV
 
       - name: Preflight release legal material

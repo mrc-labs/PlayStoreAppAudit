@@ -1,5 +1,14 @@
 # v2.4.0 maintenance, security and compatibility preparation
 
+## November23 Windows producer identity correction
+
+Main d7e35f2a14a9f3aaf03250fbcfe4e081bea3a4a0 exact Quality45126382795 PASSes2314 tests. All24 selected SDK/module/parser/FFI containers are live with expected repository/run/source/size/digest. First current app attempts Windows45126758430, Linux45126766494 and Mac45126776450 do not yield accepted candidates; the latter two are cancelled when demonstrated Windows producer fixes invalidate this freeze.
+
+Windows x64 stops before application compilation because the SDK's original compiler lived under D:/a/_temp/psaa-native-msvc, while the current hosted stable Enterprise installation provides the same14.52.37025 native toolset under Program Files. SDK restore now compares exact VC/Tools/MSVC/version/bin/native-host/native-target/cl.exe suffix, permitting only installation-root/case changes; existing native compiler PE/toolset/GIL/source and full original SDK byte guards remain. Provenance records both original and consumer compiler paths. Wrong patch/host/target/layout regressions reject.
+
+Windows ARM64 successfully restores the current SDK/FFI/legal inputs, then the producer incorrectly requires WHEEL metadata from the explicitly controlled source PySide6 installation. It now consumes the intake's verified controlled-qt-identity receipt/version/hash/path count and retains actual QtCore PE inspection plus strict legal preflight. Package evidence explicitly identifies a project-controlled source build, never an official Essentials wheel. No runtime/framework/binding/vendor patch or component version changes.42 focused checks, Ruff and workflow YAML pass. The existing diagnostic workflow's Windows-only SDK intake runs the exact same native binding verification body before any application rebuild. All other compiled inputs and prior native source evidence remain unchanged; a new exact-main Quality/freeze and all six same-SHA application packages remain required.
+
+
 ## November23 recovered inputs and bounded ARM requalification
 
 All seven locally preserved original SDK/parser ZIPs are restored in Actions run45123034560 at11a70a995ff0147a192d968163e2143aef66faed. Original inner ZIP sizes/SHA256 and original compiled-source identities are unchanged. retained_original_archives.json separately pins actual recovery containers/run/source/size/digest; readers validate both layers, receipts and original SDK/parser guards. The temporary private technical draft454903125 and its assets were deleted after successful migration; no matching tag or final v2.4.0 tag was created. Actions-retention is active again after PR242/main1f95be9 and its read-only protected-input plan. Recovery selections are protected alongside original SDK inputs.

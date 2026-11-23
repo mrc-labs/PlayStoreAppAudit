@@ -340,3 +340,19 @@ def test_posix_deployment_excludes_sdk_evidence_from_application_scan() -> None:
         assert calls, name
         for call in calls:
             assert '--extra-ignore-dirs=controlled-runtime-evidence,toolchain-delta-evidence,artifact' in call
+
+
+def test_windows_controlled_source_binding_does_not_impersonate_a_wheel() -> None:
+    workflow = _workflow('build-windows-exe.yml')
+    assert "read_text('WHEEL')" not in workflow
+    assert 'controlled-qt-identity.json' in workflow
+    assert '$bindingIdentity.sdk_receipt_sha256 -ne $env:PSAA_CONTROLLED_QT_RECEIPT_SHA256' in workflow
+    assert 'inspect_pe.py --expect $env:EXPECTED_PE_MACHINE $qtCoreBinary' in workflow
+    assert 'PYSIDE6_BUILD_IDENTITY=$bindingDescription' in workflow
+
+
+def test_windows_sdk_probe_runs_the_same_binding_verification_as_producer() -> None:
+    def body(name):
+        step = _workflow(name).split('      - name: Verify native PySide6 runtime\n', 1)[1]
+        return step.split('      - name:', 1)[0].split('        run: |\n', 1)[1].strip()
+    assert body('ui-style-audit.yml') == body('build-windows-exe.yml')
